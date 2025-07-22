@@ -1,0 +1,36 @@
+# .github/workflows/deploy-backend.yml
+
+name: Deploy Backend to Firebase
+
+on:
+  # Se déclenche uniquement quand du code est fusionné dans 'develop'
+  push:
+    branches:
+      - develop
+
+jobs:
+  deploy:
+    name: Deploy Backend to Dev
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Deploy to Firebase
+        env:
+          # Utilise le secret que nous avons configuré
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV }}
+        run: |
+          # Crée un fichier temporaire pour les identifiants
+          echo $FIREBASE_SERVICE_ACCOUNT > ./firebase-credentials.json
+          # Déploie les fonctions en utilisant le projet 'taxasge-dev'
+          firebase deploy --project taxasge-dev --only functions --token "$FIREBASE_TOKEN" --non-interactive --json
