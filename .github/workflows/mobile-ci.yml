@@ -1,0 +1,45 @@
+# .github/workflows/mobile-ci.yml
+
+name: Mobile CI (React Native)
+
+# Déclencheurs : Ce workflow s'exécute quand...
+on:
+  # ...une modification est poussée sur une branche de fonctionnalité ou de correction.
+  push:
+    branches:
+      - 'feature/**'
+      - 'fix/**'
+  # ...une Pull Request est ouverte ou mise à jour vers la branche 'develop'.
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  test-and-lint:
+    name: Test & Lint Mobile App
+    runs-on: ubuntu-latest # Utilise une machine virtuelle Linux
+
+    steps:
+      # Étape 1 : Récupère le code source du dépôt
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Étape 2 : Configure l'environnement Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'yarn' # Met en cache les dépendances pour accélérer les futurs runs
+
+      # Étape 3 : Installe les dépendances du projet
+      - name: Install dependencies
+        # Suppose que le package.json de l'app mobile est dans un sous-dossier 'packages/mobile'
+        run: cd packages/mobile && yarn install --frozen-lockfile
+
+      # Étape 4 : Vérifie le formatage et la qualité du code (Linting)
+      - name: Run ESLint and Prettier checks
+        run: cd packages/mobile && yarn lint && yarn format:check
+
+      # Étape 5 : Lance les tests unitaires
+      - name: Run unit tests
+        run: cd packages/mobile && yarn test
