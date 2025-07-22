@@ -1,0 +1,44 @@
+# .github/workflows/distribute-mobile.yml
+
+name: Distribute Mobile App (Android)
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  build-and-distribute:
+    name: Build and Distribute Android App
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: cd packages/mobile && yarn install --frozen-lockfile
+
+      - name: Build Android App (APK)
+        # Suppose que votre projet est dans 'packages/mobile'
+        run: cd packages/mobile/android && ./gradlew assembleRelease
+
+      - name: Distribute to Firebase App Distribution
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: "VOTRE_ANDROID_APP_ID" # À remplacer par l'ID de votre app Android sur Firebase
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV }}
+          groups: "testeurs-internes" # Nom du groupe de testeurs sur Firebase
+          file: packages/mobile/android/app/build/outputs/apk/release/app-release.apk
