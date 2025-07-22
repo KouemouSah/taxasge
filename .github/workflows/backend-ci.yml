@@ -1,0 +1,42 @@
+# .github/workflows/backend-ci.yml
+
+name: Backend CI (Python)
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+      - 'fix/**'
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  test-and-lint:
+    name: Test & Lint Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      # Étape 1 : Récupère le code source
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Étape 2 : Configure l'environnement Python
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip' # Met en cache les dépendances Python
+
+      # Étape 3 : Installe les dépendances
+      - name: Install dependencies
+        # Suppose que les requirements sont dans un sous-dossier 'packages/backend'
+        run: cd packages/backend && pip install -r requirements.txt
+
+      # Étape 4 : Vérifie le formatage et la qualité du code
+      - name: Run linter (flake8) and formatter (black)
+        run: cd packages/backend && flake8 . && black --check .
+
+      # Étape 5 : Lance les tests unitaires
+      - name: Run unit tests
+        run: cd packages/backend && pytest
