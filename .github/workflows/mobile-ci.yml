@@ -150,7 +150,7 @@ jobs:
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
           appId: ${{ secrets.FIREBASE_ANDROID_APP_ID }} # À configurer
-          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEV }}
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV }}
           groups: testeurs-internes
           file: packages/mobile/android/app/build/outputs/apk/debug/app-debug.apk
           releaseNotes: |
