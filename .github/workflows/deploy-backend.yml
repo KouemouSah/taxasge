@@ -258,6 +258,10 @@ jobs:
       - name: 🚀 Deploy Backend Functions
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV }}
+          # ✅ AJOUT DES VARIABLES SUPABASE
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           export GOOGLE_APPLICATION_CREDENTIALS="/tmp/firebase-sa.json"
           
