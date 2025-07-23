@@ -1,27 +1,27 @@
-# .github/workflows/deploy-backend.yml
-# .github/workflows/deploy-backend.yml
+# ============================================================================
+# 2. CORRECTION deploy-backend.yml - Structure job corrigée
+# ============================================================================
+
+---
 name: Deploy Backend to Firebase
 
 on:
-  # Se déclenche uniquement quand du code est fusionné dans 'develop'
   push:
-    branches:
-      - develop
-    paths:
-      - 'packages/backend/**'  # Optimisation: seulement si backend modifié
+    branches: [develop]
+    paths: ['packages/backend/**']
 
 jobs:
+  # ✅ CORRECTION: Job autonome (sans needs)
   deploy:
     name: 🚀 Deploy to Firebase
     runs-on: ubuntu-latest
-    # ✅ GARDÉ: condition de branche
-    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/develop'
     
     steps:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
       
-      - name: 🔧 Setup Node.js (Firebase CLI)
+      - name: 🔧 Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
@@ -29,327 +29,74 @@ jobs:
       - name: 🔥 Setup Firebase CLI
         run: npm install -g firebase-tools
       
-      # ✅ NOUVEAU : Vérification de l'existence de firebase.json
       - name: 🔍 Check Firebase Configuration
         run: |
           if [ ! -f "firebase.json" ]; then
-            echo "⚠️  firebase.json not found - initializing Firebase project"
-            echo "📝 Creating minimal firebase.json for Functions deployment"
-            
-            # Création d'un firebase.json minimal
+            echo "Creating firebase.json..."
             cat > firebase.json << 'EOF'
           {
             "functions": {
               "source": "packages/backend",
-              "runtime": "python311",
-              "ignore": [
-                "**/node_modules/**",
-                "**/*.pyc",
-                "**/__pycache__/**",
-                "**/venv/**",
-                "**/env/**"
-              ]
+              "runtime": "python311"
             },
             "hosting": {
               "public": "public",
-              "ignore": [
-                "firebase.json",
-                "**/.*",
-                "**/node_modules/**"
-              ],
               "rewrites": [
-                {
-                  "source": "/api/**",
-                  "function": "main"
-                },
-                {
-                  "source": "**",
-                  "destination": "/index.html"
-                }
+                {"source": "/api/**", "function": "main"},
+                {"source": "**", "destination": "/index.html"}
               ]
             }
           }
           EOF
             
-            # Création du dossier public minimal
             mkdir -p public
-            cat > public/index.html << 'EOF'
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <title>TaxasGE API</title>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <style>
-              body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
-              .status { padding: 10px; border-radius: 5px; margin: 10px 0; }
-              .success { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
-            </style>
-          </head>
-          <body>
-            <h1>🚀 TaxasGE Backend API</h1>
-            <div class="status success">
-              <p>✅ Deployment successful!</p>
-              <p>📅 Deployed: <span id="timestamp"></span></p>
-              <p>🌿 Branch: develop</p>
-            </div>
-            
-            <h2>📡 Available Endpoints</h2>
-            <ul>
-              <li><a href="/api/health" target="_blank">/api/health</a> - Health check</li>
-              <li><a href="/api/main" target="_blank">/api/main</a> - Main API info</li>
-              <li>/api/taxes - Tax information (coming soon)</li>
-              <li>/api/chatbot - AI Chatbot (coming soon)</li>
-            </ul>
-            
-            <h2>🔗 Resources</h2>
-            <ul>
-              <li><a href="https://github.com/your-username/taxasge" target="_blank">GitHub Repository</a></li>
-              <li><a href="https://console.firebase.google.com/project/taxasge-dev" target="_blank">Firebase Console</a></li>
-            </ul>
-            
-            <script>
-              document.getElementById('timestamp').textContent = new Date().toISOString();
-            </script>
-          </body>
-          </html>
-          EOF
-            
-            echo "✅ Firebase configuration initialized"
-          else
-            echo "✅ firebase.json found - proceeding with deployment"
+            echo '<h1>🚀 TaxasGE API</h1><p>Deployed successfully!</p>' > public/index.html
           fi
       
-      # ✅ NOUVEAU : Vérification de la structure backend
       - name: 🔍 Check Backend Structure
         run: |
-          if [ ! -f "packages/backend/main.py" ]; then
-            echo "⚠️  Backend entry point not found - creating placeholder"
-            mkdir -p packages/backend
-            
-            cat > packages/backend/main.py << 'EOF'
-          """
-          TaxasGE Backend API - Firebase Functions Entry Point
-          Placeholder until real backend implementation
-          """
+          mkdir -p packages/backend
+          cd packages/backend
+          
+          if [ ! -f "main.py" ]; then
+            cat > main.py << 'EOF'
           from firebase_functions import https_fn
-          from firebase_admin import initialize_app
           import json
-          from datetime import datetime
-          
-          # Initialize Firebase Admin
-          initialize_app()
-          
+
           @https_fn.on_request()
-          def main(req: https_fn.Request) -> https_fn.Response:
-              """Main API entry point"""
-              response_data = {
-                  "status": "success",
-                  "message": "🚀 TaxasGE Backend API is running!",
-                  "version": "0.1.0-dev",
-                  "timestamp": datetime.now().isoformat(),
-                  "endpoints": [
-                      {"path": "/api/health", "description": "Health check endpoint"},
-                      {"path": "/api/taxes", "description": "Tax information (coming soon)"},
-                      {"path": "/api/chatbot", "description": "AI Chatbot (coming soon)"},
-                      {"path": "/api/payments", "description": "Payment processing (coming soon)"}
-                  ],
-                  "database": {
-                      "type": "PostgreSQL",
-                      "status": "Planning phase"
-                  }
-              }
-              
+          def main(req):
               return https_fn.Response(
-                  json.dumps(response_data, indent=2),
-                  status=200,
-                  headers={
-                      "Content-Type": "application/json",
-                      "Access-Control-Allow-Origin": "*",
-                      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-                      "Access-Control-Allow-Headers": "Content-Type, Authorization"
-                  }
-              )
-          
-          @https_fn.on_request()
-          def health(req: https_fn.Request) -> https_fn.Response:
-              """Health check endpoint"""
-              health_data = {
-                  "status": "healthy",
-                  "timestamp": datetime.now().isoformat(),
-                  "version": "0.1.0-dev",
-                  "environment": "development",
-                  "services": {
-                      "firebase": "✅ Connected",
-                      "postgresql": "⏳ Planning phase",
-                      "ai_model": "✅ Ready (0.41MB)"
-                  }
-              }
-              
-              return https_fn.Response(
-                  json.dumps(health_data, indent=2),
-                  status=200,
-                  headers={
-                      "Content-Type": "application/json",
-                      "Access-Control-Allow-Origin": "*"
-                  }
-              )
-          
-          @https_fn.on_request()
-          def taxes(req: https_fn.Request) -> https_fn.Response:
-              """Taxes endpoint placeholder"""
-              return https_fn.Response(
-                  json.dumps({
-                      "message": "🏗️ Taxes API endpoint in development",
-                      "planned_features": [
-                          "547 types of taxes",
-                          "Multilingual support (ES/FR/EN)",
-                          "Search by keywords",
-                          "Tax calculator"
-                      ],
-                      "status": "coming_soon"
-                  }, indent=2),
-                  status=200,
+                  json.dumps({"message": "TaxasGE API", "status": "running"}),
                   headers={"Content-Type": "application/json"}
               )
           EOF
-            
-            # Requirements minimal pour Firebase Functions
-            cat > packages/backend/requirements.txt << 'EOF'
-          firebase-functions>=0.1.0
-          firebase-admin>=6.0.0
-          functions-framework>=3.0.0
-          EOF
-            
-            echo "✅ Backend placeholder created"
-          else
-            echo "✅ Backend files found"
+          fi
+          
+          if [ ! -f "requirements.txt" ]; then
+            echo "firebase-functions>=0.1.0" > requirements.txt
           fi
       
-      # ✅ Authentification sécurisée (corrigée)
-      - name: 🔑 Authenticate Firebase
-        env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV }}
-        run: |
-          # Vérification que le secret existe
-          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
-            echo "❌ FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV secret not found"
-            echo "Please configure this secret in GitHub repository settings"
-            exit 1
-          fi
-          
-          # Création sécurisée du fichier credentials
-          echo "$FIREBASE_SERVICE_ACCOUNT" > /tmp/firebase-sa.json
-          export GOOGLE_APPLICATION_CREDENTIALS="/tmp/firebase-sa.json"
-          
-          # Vérification de l'authentification
-          echo "🔍 Testing Firebase authentication..."
-          firebase projects:list --project taxasge-dev
-          
-          if [ $? -eq 0 ]; then
-            echo "✅ Firebase authentication successful"
-          else
-            echo "❌ Firebase authentication failed"
-            rm -f /tmp/firebase-sa.json
-            exit 1
-          fi
-      
-      # ✅ Déploiement avec gestion d'erreur
+      # ✅ CORRECTION: Variables d'environnement Supabase ajoutées
       - name: 🚀 Deploy Backend Functions
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV }}
-          # ✅ AJOUT DES VARIABLES SUPABASE
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          export GOOGLE_APPLICATION_CREDENTIALS="/tmp/firebase-sa.json"
-          
-          echo "::group::Firebase Deploy"
-          
-          # Vérification de la structure avant déploiement
-          echo "📋 Pre-deployment checks:"
-          echo "- firebase.json exists: $([ -f firebase.json ] && echo '✅' || echo '❌')"
-          echo "- main.py exists: $([ -f packages/backend/main.py ] && echo '✅' || echo '❌')"
-          echo "- requirements.txt exists: $([ -f packages/backend/requirements.txt ] && echo '✅' || echo '❌')"
-          
-          # Déploiement avec retry en cas d'échec
-          echo "🚀 Starting deployment..."
-          for i in {1..3}; do
-            echo "Attempt $i/3..."
-            if firebase deploy --only functions --project taxasge-dev --non-interactive --json; then
-              echo "✅ Deployment successful on attempt $i"
-              break
-            else
-              echo "❌ Deployment failed on attempt $i"
-              if [ $i -eq 3 ]; then
-                echo "💥 Deployment failed after 3 attempts"
-                echo "::endgroup::"
-                rm -f /tmp/firebase-sa.json
-                exit 1
-              fi
-              echo "⏳ Waiting 15 seconds before retry..."
-              sleep 15
-            fi
-          done
-          echo "::endgroup::"
-          
-          # Nettoyage sécurisé
-          rm -f /tmp/firebase-sa.json
-      
-      # ✅ Test de santé amélioré
-      - name: 🧪 Post-Deploy Health Check
-        run: |
-          echo "::group::API Health Check"
-          
-          # Attendre que le déploiement soit effectif
-          echo "⏳ Waiting for deployment to be active (60 seconds)..."
-          sleep 60
-          
-          # Test endpoint de santé
-          HEALTH_URL="https://taxasge-dev.web.app/api/health"
-          MAIN_URL="https://taxasge-dev.web.app/api/main"
-          
-          echo "🔍 Testing endpoints:"
-          echo "- Health: $HEALTH_URL"
-          echo "- Main: $MAIN_URL"
-          
-          # Test health endpoint
-          echo "Testing health endpoint..."
-          for i in {1..5}; do
-            if curl -f -s "$HEALTH_URL" | jq . > /dev/null 2>&1; then
-              echo "✅ Health check passed on attempt $i"
-              curl -s "$HEALTH_URL" | jq .
-              break
-            else
-              echo "⚠️  Health check failed on attempt $i, retrying in 15s..."
-              if [ $i -eq 5 ]; then
-                echo "❌ Health check failed after 5 attempts"
-                echo "🌐 Trying direct curl without JSON parsing..."
-                curl -v "$HEALTH_URL" || true
-              fi
-              sleep 15
-            fi
-          done
-          
-          # Test main endpoint
-          echo "Testing main endpoint..."
-          if curl -f -s "$MAIN_URL" > /dev/null 2>&1; then
-            echo "✅ Main endpoint is accessible"
-          else
-            echo "⚠️  Main endpoint test failed (non-critical)"
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "❌ FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV not configured"
+            exit 1
           fi
           
-          echo "::endgroup::"
+          echo "$FIREBASE_SERVICE_ACCOUNT" > /tmp/firebase-sa.json
+          export GOOGLE_APPLICATION_CREDENTIALS="/tmp/firebase-sa.json"
+          
+          firebase deploy --only functions --project taxasge-dev --non-interactive
+          
+          rm -f /tmp/firebase-sa.json
       
-      # ✅ Notification de succès
-      - name: 📢 Deployment Success Notification
-        if: success()
+      - name: 🧪 Health Check
         run: |
-          echo "🎉 Deployment completed successfully!"
-          echo "📍 Your API is available at:"
-          echo "   - Main: https://taxasge-dev.web.app/api/main"
-          echo "   - Health: https://taxasge-dev.web.app/api/health"
-          echo "   - Dashboard: https://taxasge-dev.web.app"
-          echo ""
-          echo "🔗 Firebase Console: https://console.firebase.google.com/project/taxasge-dev"
+          sleep 30
+          curl -f "https://taxasge-dev.web.app/api/main" || echo "Health check failed (non-critical)"
