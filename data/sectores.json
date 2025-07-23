@@ -1,0 +1,142 @@
+[
+  {
+    "id": "S-001",
+    "ministerio_id": "M-001",
+    "nombre_es": "SECTOR DE ASUNTOS EXTERIORES Y COOPERACIÓN",
+    "nombre_fr": "SECTEUR DES AFFAIRES ÉTRANGÈRES ET DE LA COOPÉRATION",
+    "nombre_en": "FOREIGN AFFAIRS AND COOPERATION SECTOR"
+  },
+  {
+    "id": "S-002",
+    "ministerio_id": "M-002",
+    "nombre_es": "SECTOR DE AVIACION CIVIL",
+    "nombre_fr": "SECTEUR DE L'AVIATION CIVILE",
+    "nombre_en": "CIVIL AVIATION SECTOR"
+  },
+  {
+    "id": "S-003",
+    "ministerio_id": "M-003",
+    "nombre_es": "SECTOR DE COMERCIO",
+    "nombre_fr": "SECTEUR DU COMMERCE",
+    "nombre_en": "COMMERCE SECTOR"
+  },
+  {
+    "id": "S-005",
+    "ministerio_id": "M-004",
+    "nombre_es": "SECTOR DE ECONOMÍA, CULTURA Y PROMOCIÓN ARTESAL",
+    "nombre_fr": "SECTEUR DE L'ÉCONOMIE, DE LA CULTURE ET DE LA PROMOTION ARTISANALE",
+    "nombre_en": "ECONOMY, CULTURE AND CRAFT PROMOTION SECTOR"
+  },
+  {
+    "id": "S-007",
+    "ministerio_id": "M-005",
+    "nombre_es": "SECTOR DE DEFENSA NACIONAL",
+    "nombre_fr": "SECTEUR DE LA DÉFENSE NATIONALE",
+    "nombre_en": "NATIONAL DEFENSE SECTOR"
+  },
+  {
+    "id": "S-008",
+    "ministerio_id": "M-006",
+    "nombre_es": "SECTOR DE EDUCACION Y CIENCIAS",
+    "nombre_fr": "SECTEUR DE L'ÉDUCATION ET DES SCIENCES",
+    "nombre_en": "EDUCATION AND SCIENCES SECTOR"
+  },
+  {
+    "id": "S-009",
+    "ministerio_id": "M-007",
+    "nombre_es": "SECTOR DE ECONOMÍA, PLANIFICACIÓN E INVERSIONES PÚBLICAS",
+    "nombre_fr": "SECTEUR DE L'ÉCONOMIE, DE LA PLANIFICATION ET DES INVESTISSEMENTS PUBLICS",
+    "nombre_en": "ECONOMY, PLANNING AND PUBLIC INVESTMENTS SECTOR"
+  },
+  {
+    "id": "S-010",
+    "ministerio_id": "M-007",
+    "nombre_es": "SECTOR DE HACIENDA Y PRESUPUESTOS",
+    "nombre_fr": "SECTEUR DES FINANCES ET DES BUDGETS",
+    "nombre_en": "FINANCE AND BUDGET SECTOR"
+  },
+  {
+    "id": "S-011",
+    "ministerio_id": "M-008",
+    "nombre_es": "SECTOR DE INFORMACION, PRENSA Y RADIO",
+    "nombre_fr": "SECTEUR DE L'INFORMATION, DE LA PRESSE ET DE LA RADIO",
+    "nombre_en": "INFORMATION, PRESS AND RADIO SECTOR"
+  },
+  {
+    "id": "S-012",
+    "ministerio_id": "M-009",
+    "nombre_es": "SECTOR DE INTERIOR Y COOPERACIONES LOCALES",
+    "nombre_fr": "SECTEUR DE L'INTÉRIEUR ET DES COOPÉRATIONS LOCALES",
+    "nombre_en": "INTERIOR AND LOCAL COOPERATIONS SECTOR"
+  },
+  {
+    "id": "S-013",
+    "ministerio_id": "M-010",
+    "nombre_es": "SECTOR DE MINAS E HIDROCARBUROS",
+    "nombre_fr": "SECTEUR DES MINES ET DES HYDROCARBURES",
+    "nombre_en": "MINES AND HYDROCARBONS SECTOR"
+  },
+  {
+    "id": "S-014",
+    "ministerio_id": "M-011",
+    "nombre_es": "SECTOR DE OBRAS PÚBLICAS E INFRAESTRUCTURAS",
+    "nombre_fr": "SECTEUR DES TRAVAUX PUBLICS ET INFRASTRUCTURES",
+    "nombre_en": "PUBLIC WORKS AND INFRASTRUCTURE SECTOR"
+  },
+  {
+    "id": "S-015",
+    "ministerio_id": "M-011",
+    "nombre_es": "SECTOR DE URBANISMO",
+    "nombre_fr": "SECTEUR DE L'URBANISME",
+    "nombre_en": "URBAN PLANNING SECTOR"
+  },
+  {
+    "id": "S-016",
+    "ministerio_id": "M-012",
+    "nombre_es": "SECTOR DE SEGURIDAD NACIONAL",
+    "nombre_fr": "SECTEUR DE LA SÉCURITÉ NATIONALE",
+    "nombre_en": "NATIONAL SECURITY SECTOR"
+  },
+  {
+    "id": "S-017",
+    "ministerio_id": "M-013",
+    "nombre_es": "SECTOR TRANSPORTES Y CORREOS",
+    "nombre_fr": "SECTEUR TRANSPORTS ET POSTES",
+    "nombre_en": "TRANSPORT AND POSTAL SECTOR"
+  },
+  {
+    "id": "C-098",
+    "ministerio_id": "M-013",
+    "nombre_es": "SERVICIO DE GUINEA ECUATORIAL DE CORREOS",
+    "nombre_fr": "SERVICE POSTAL DE GUINÉE ÉQUATORIALE",
+    "nombre_en": "EQUATORIAL GUINEA POSTAL SERVICE"
+  },
+  {
+    "id": "C-096",
+    "ministerio_id": "M-013",
+    "nombre_es": "Inspeccón de buques",
+    "nombre_fr": "Inspection des navires",
+    "nombre_en": "Ship inspection"
+  },
+  {
+    "id": "C-097",
+    "ministerio_id": "M-013",
+    "nombre_es": "Registro de buques y empresa marítima",
+    "nombre_fr": "Registre des navires et entreprise maritime",
+    "nombre_en": "Ship and maritime company registration"
+  },
+  {
+    "id": "C-098",
+    "ministerio_id": "M-013",
+    "nombre_es": "SERVICIO DE GUINEA ECUATORIAL DE CORREOS",
+    "nombre_fr": "SERVICE POSTAL DE GUINÉE ÉQUATORIALE",
+    "nombre_en": "EQUATORIAL GUINEA POSTAL SERVICE"
+  },
+  {
+    "id": "S-018",
+    "ministerio_id": "M-014",
+    "nombre_es": "SECTOR DE MANTENIMIENTO DE CARRETERAS Y PEAJES",
+    "nombre_fr": "SECTEUR DE L'ENTRETIEN DES ROUTES ET DES PÉAGES",
+    "nombre_en": "ROAD MAINTENANCE AND TOLL SECTOR"
+  }
+]
