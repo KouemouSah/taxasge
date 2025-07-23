@@ -28,8 +28,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'yarn'
-          cache-dependency-path: 'packages/mobile/yarn.lock'  # ✅ Path corrigé
+          #cache: 'yarn'
+          #cache-dependency-path: 'packages/mobile/yarn.lock'  # ✅ Path corrigé
       
       # ✅ CORRECTION: Vérification et création yarn.lock si nécessaire
       - name: 🔍 Check Mobile Project Structure
