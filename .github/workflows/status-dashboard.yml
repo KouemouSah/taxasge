@@ -1,0 +1,83 @@
+# ============================================================================
+# .github/workflows/status-dashboard.yml
+# Dashboard de statut en temps réel (mise à jour README automatique)
+# ============================================================================
+
+---
+name: 📊 Status Dashboard Update
+
+on:
+  workflow_run:
+    workflows: ["📱 Mobile CI/CD Production", "🐍 Backend CI/CD Production"]
+    types: [completed]
+  schedule:
+    - cron: '*/30 * * * *' # Toutes les 30 minutes
+
+jobs:
+  update-dashboard:
+    name: 📊 Update Status Dashboard
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: 📊 Generate Status Badges
+        run: |
+          # Création du fichier de status
+          cat > STATUS.md << 'EOF'
+          # 🚀 TaxasGE - Status Dashboard
+          
+          > **Last updated:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          
+          ## 🔄 Build Status
+          
+          | Component | Status | Last Build | Coverage |
+          |-----------|--------|------------|----------|
+          | 📱 Mobile App | ![Mobile CI](https://github.com/${{ github.repository }}/workflows/📱%20Mobile%20CI/CD%20Production/badge.svg) | - | - |
+          | 🐍 Backend API | ![Backend CI](https://github.com/${{ github.repository }}/workflows/🐍%20Backend%20CI/CD%20Production/badge.svg) | - | [![codecov](https://codecov.io/gh/${{ github.repository }}/branch/develop/graph/badge.svg)](https://codecov.io/gh/${{ github.repository }}) |
+          
+          ## 📊 Quick Metrics
+          
+          - 🏗️ **Deployments this week:** $(git log --since="7 days ago" --oneline | wc -l)
+          - 🐛 **Open issues:** $(curl -s https://api.github.com/repos/${{ github.repository }}/issues?state=open | jq length)
+          - 🔀 **Open PRs:** $(curl -s https://api.github.com/repos/${{ github.repository }}/pulls?state=open | jq length)
+          
+          ## 🌍 Environment Status
+          
+          | Environment | URL | Status | Last Deploy |
+          |-------------|-----|--------|-------------|
+          | 🧪 Development | [taxasge-dev.web.app](https://taxasge-dev.web.app) | ![Website](https://img.shields.io/website?url=https%3A//taxasge-dev.web.app) | $(git log develop -1 --format="%cd" --date=short) |
+          | 🏭 Production | [taxasge-prod.web.app](https://taxasge-prod.web.app) | ![Website](https://img.shields.io/website?url=https%3A//taxasge-prod.web.app) | $(git log main -1 --format="%cd" --date=short) |
+          
+          ## 🔗 Quick Links
+          
+          - 📊 [GitHub Actions](https://github.com/${{ github.repository }}/actions)
+          - 🐛 [Issues](https://github.com/${{ github.repository }}/issues)
+          - 🔀 [Pull Requests](https://github.com/${{ github.repository }}/pulls)
+          - 📚 [Wiki](https://github.com/${{ github.repository }}/wiki)
+          
+          ---
+          *Generated automatically by GitHub Actions*
+          EOF
+          
+          # Substitution des variables
+          sed -i "s/\$(date -u '+%Y-%m-%d %H:%M:%S UTC')/$(date -u '+%Y-%m-%d %H:%M:%S UTC')/g" STATUS.md
+          sed -i "s/\$(git log --since=\"7 days ago\" --oneline | wc -l)/$(git log --since="7 days ago" --oneline | wc -l)/g" STATUS.md
+          sed -i "s/\$(git log develop -1 --format=\"%cd\" --date=short)/$(git log develop -1 --format="%cd" --date=short 2>/dev/null || echo "N/A")/g" STATUS.md
+          sed -i "s/\$(git log main -1 --format=\"%cd\" --date=short)/$(git log main -1 --format="%cd" --date=short 2>/dev/null || echo "N/A")/g" STATUS.md
+      
+      - name: 💾 Commit Status Update
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          if [[ $(git status --porcelain) ]]; then
+            git add STATUS.md
+            git commit -m "🤖 Auto-update status dashboard [skip ci]"
+            git push
+          else
+            echo "No changes to commit"
+          fi
