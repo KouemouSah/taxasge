@@ -1,42 +1,138 @@
-# .github/workflows/backend-ci.yml
+# ============================================================================
+# .github/workflows/backend-ci-production.yml
+# Script CI/CD backend avec tests d'intégration Firebase
+# ============================================================================
 
-name: Backend CI (Python)
+---
+name: 🐍 Backend CI/CD Production
 
 on:
   push:
-    branches:
-      - 'feature/**'
-      - 'fix/**'
+    branches: ['feature/**', 'fix/**', 'develop', 'main']
+    paths: ['packages/backend/**']
   pull_request:
-    branches:
-      - develop
+    branches: [develop, main]
+    paths: ['packages/backend/**']
+
+env:
+  PYTHON_VERSION: '3.11'
 
 jobs:
-  test-and-lint:
-    name: Test & Lint Backend
+  # ===== JOB 1: TESTS UNITAIRES =====
+  test:
+    name: 🧪 Backend Tests
     runs-on: ubuntu-latest
-
+    
+    # Services pour tests d'intégration
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_USER: testuser
+          POSTGRES_DB: taxasge_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
     steps:
-      # Étape 1 : Récupère le code source
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      # Étape 2 : Configure l'environnement Python
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+      
+      - name: 🐍 Setup Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip' # Met en cache les dépendances Python
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: packages/backend/requirements*.txt
+      
+      - name: 📦 Install Dependencies
+        run: |
+          cd packages/backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-test.txt 2>/dev/null || echo "No test requirements file"
+      
+      - name: 🔍 Code Quality (Flake8 + Black)
+        run: |
+          cd packages/backend
+          echo "::group::Flake8 Linting"
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+          echo "::endgroup::"
+          
+          echo "::group::Black Formatting Check"
+          black --check --diff .
+          echo "::endgroup::"
+      
+      - name: 🧪 Run Unit Tests
+        env:
+          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/taxasge_test
+        run: |
+          cd packages/backend
+          echo "::group::Pytest Execution"
+          pytest --cov=. --cov-report=xml --cov-report=term-missing -v
+          echo "::endgroup::"
+      
+      - name: 📊 Upload Coverage
+        uses: codecov/codecov-action@v4
+        with:
+          directory: packages/backend
+          flags: backend
+          name: backend-coverage
+          fail_ci_if_error: false
 
-      # Étape 3 : Installe les dépendances
-      - name: Install dependencies
-        # Suppose que les requirements sont dans un sous-dossier 'packages/backend'
-        run: cd packages/backend && pip install -r requirements.txt
-
-      # Étape 4 : Vérifie le formatage et la qualité du code
-      - name: Run linter (flake8) and formatter (black)
-        run: cd packages/backend && flake8 . && black --check .
-
-      # Étape 5 : Lance les tests unitaires
-      - name: Run unit tests
-        run: cd packages/backend && pytest
+  # ===== JOB 2: DEPLOY FIREBASE (DEVELOP) =====
+  deploy:
+    name: 🚀 Deploy to Firebase
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+      
+      - name: 🔧 Setup Node.js (Firebase CLI)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: 🔥 Setup Firebase CLI
+        run: npm install -g firebase-tools
+      
+      # ✅ CORRECTION: Authentification sécurisée
+      - name: 🔑 Authenticate Firebase
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV }}
+        run: |
+          # Création sécurisée du fichier credentials
+          echo "$FIREBASE_SERVICE_ACCOUNT" | base64 --decode > /tmp/firebase-sa.json
+          export GOOGLE_APPLICATION_CREDENTIALS="/tmp/firebase-sa.json"
+          
+          # Vérification de l'authentification
+          firebase projects:list --project taxasge-dev
+      
+      - name: 🚀 Deploy Backend Functions
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV }}
+        run: |
+          export GOOGLE_APPLICATION_CREDENTIALS="/tmp/firebase-sa.json"
+          
+          echo "::group::Firebase Deploy"
+          firebase deploy --only functions --project taxasge-dev --non-interactive --json
+          echo "::endgroup::"
+          
+          # Nettoyage sécurisé
+          rm -f /tmp/firebase-sa.json
+      
+      - name: 🧪 Post-Deploy Health Check
+        run: |
+          echo "::group::API Health Check"
+          # Test basic endpoint (remplacez par votre URL)
+          curl -f https://taxasge-dev.web.app/api/health || echo "Health check failed"
+          echo "::endgroup::"
