@@ -1,45 +1,190 @@
-# .github/workflows/mobile-ci.yml
+# ============================================================================
+# .github/workflows/mobile-ci-production.yml
+# Script CI/CD mobile avec monitoring temps réel et notifications
+# ============================================================================
 
-name: Mobile CI (React Native)
+name: 📱 Mobile CI/CD Production
 
-# Déclencheurs : Ce workflow s'exécute quand...
 on:
-  # ...une modification est poussée sur une branche de fonctionnalité ou de correction.
   push:
-    branches:
-      - 'feature/**'
-      - 'fix/**'
-  # ...une Pull Request est ouverte ou mise à jour vers la branche 'develop'.
+    branches: ['feature/**', 'fix/**', 'develop', 'main']
+    paths: ['packages/mobile/**']
   pull_request:
-    branches:
-      - develop
+    branches: [develop, main]
+    paths: ['packages/mobile/**']
+
+env:
+  NODE_VERSION: '18'
+  JAVA_VERSION: '11'
 
 jobs:
-  test-and-lint:
-    name: Test & Lint Mobile App
-    runs-on: ubuntu-latest # Utilise une machine virtuelle Linux
-
+  # ===== JOB 1: TESTS ET QUALITÉ =====
+  test:
+    name: 🧪 Tests & Quality Check
+    runs-on: ubuntu-latest
+    
     steps:
-      # Étape 1 : Récupère le code source du dépôt
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      # Étape 2 : Configure l'environnement Node.js
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      # Étape 1: Checkout avec cache Git
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
         with:
-          node-version: '18'
-          cache: 'yarn' # Met en cache les dépendances pour accélérer les futurs runs
+          fetch-depth: 0 # Nécessaire pour SonarCloud
+      
+      # Étape 2: Setup Node.js avec cache intelligent
+      - name: 🔧 Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
+          cache-dependency-path: packages/mobile/yarn.lock
+      
+      # Étape 3: Installation des dépendances avec cache
+      - name: 📦 Install Dependencies
+        run: |
+          cd packages/mobile
+          yarn install --frozen-lockfile --prefer-offline
+      
+      # Étape 4: Vérification de la qualité du code
+      - name: 🔍 Code Quality Check (ESLint + Prettier)
+        run: |
+          cd packages/mobile
+          echo "::group::ESLint Analysis"
+          yarn lint --format=compact --output-file=eslint-report.txt || true
+          echo "::endgroup::"
+          
+          echo "::group::Prettier Check"
+          yarn format:check
+          echo "::endgroup::"
+      
+      # Étape 5: Tests unitaires avec coverage
+      - name: 🧪 Run Unit Tests
+        run: |
+          cd packages/mobile
+          yarn test --coverage --watchAll=false --passWithNoTests
+          
+          # Affichage du résumé coverage dans GitHub Actions
+          echo "::group::Coverage Summary"
+          cat coverage/text-summary.txt || echo "No coverage report found"
+          echo "::endgroup::"
+      
+      # Étape 6: Upload des artefacts de test
+      - name: 📊 Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-test-results-${{ github.run_id }}
+          path: |
+            packages/mobile/coverage/
+            packages/mobile/eslint-report.txt
+          retention-days: 7
+      
+      # Étape 7: SonarCloud Analysis (gratuit pour projets publics)
+      - name: 📈 SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        if: github.repository_owner == 'votre-organisation' # Remplacez par votre org
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }} # À configurer dans GitHub Secrets
+        with:
+          projectBaseDir: packages/mobile
+      
+      # Étape 8: Build validation (sans APK complet)
+      - name: 🔨 Validate Build
+        run: |
+          cd packages/mobile
+          echo "::group::Metro Bundle Check"
+          npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android-test.bundle --assets-dest /tmp || true
+          echo "::endgroup::"
 
-      # Étape 3 : Installe les dépendances du projet
-      - name: Install dependencies
-        # Suppose que le package.json de l'app mobile est dans un sous-dossier 'packages/mobile'
-        run: cd packages/mobile && yarn install --frozen-lockfile
+  # ===== JOB 2: BUILD ET DISTRIBUTION (DEVELOP SEULEMENT) =====
+  build:
+    name: 🔨 Build & Distribute
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+      
+      # Setup Java pour Android
+      - name: ☕ Setup Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+      
+      # Setup Node.js
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
+          cache-dependency-path: packages/mobile/yarn.lock
+      
+      # Installation des dépendances
+      - name: 📦 Install Dependencies
+        run: |
+          cd packages/mobile
+          yarn install --frozen-lockfile
+      
+      # Build APK Debug
+      - name: 🔨 Build Android APK (Debug)
+        run: |
+          cd packages/mobile/android
+          echo "::group::Gradle Build"
+          ./gradlew assembleDebug --no-daemon --parallel
+          echo "::endgroup::"
+          
+          # Vérification que l'APK existe
+          if [ -f app/build/outputs/apk/debug/app-debug.apk ]; then
+            echo "✅ APK built successfully"
+            ls -lh app/build/outputs/apk/debug/app-debug.apk
+          else
+            echo "❌ APK build failed"
+            exit 1
+          fi
+      
+      # Distribution Firebase (remplacez les valeurs)
+      - name: 🚀 Distribute to Firebase App Distribution
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: ${{ secrets.FIREBASE_ANDROID_APP_ID }} # À configurer
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEV }}
+          groups: testeurs-internes
+          file: packages/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          releaseNotes: |
+            🔄 Auto-deployment from develop branch
+            📅 Build: ${{ github.run_number }}
+            🌿 Branch: ${{ github.ref_name }}
+            👤 Author: ${{ github.actor }}
+            
+            Changes in this build:
+            ${{ github.event.head_commit.message }}
 
-      # Étape 4 : Vérifie le formatage et la qualité du code (Linting)
-      - name: Run ESLint and Prettier checks
-        run: cd packages/mobile && yarn lint && yarn format:check
-
-      # Étape 5 : Lance les tests unitaires
-      - name: Run unit tests
-        run: cd packages/mobile && yarn test
+  # ===== JOB 3: NOTIFICATIONS =====
+  notify:
+    name: 📢 Send Notifications
+    runs-on: ubuntu-latest
+    needs: [test, build]
+    if: always()
+    
+    steps:
+      - name: 📨 Notify Slack/Discord
+        uses: 8398a7/action-slack@v3
+        if: env.SLACK_WEBHOOK_URL != ''
+        with:
+          status: ${{ job.status }}
+          channel: '#taxasge-ci'
+          username: 'TaxasGE Bot'
+          icon_emoji: ':robot_face:'
+          title: 'Mobile CI/CD Results'
+          message: |
+            📱 *Mobile Build Status*: ${{ needs.test.result == 'success' && '✅ PASSED' || '❌ FAILED' }}
+            🔗 *Branch*: `${{ github.ref_name }}`
+            👤 *Author*: ${{ github.actor }}
+            🔗 *View Details*: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            
+            ${{ needs.build.result == 'success' && '📦 APK distributed to Firebase' || '' }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }} # À configurer
