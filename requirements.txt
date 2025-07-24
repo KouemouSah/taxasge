@@ -1,5 +1,5 @@
 # ============================================================================
-# TaxasGE Backend Requirements - Unified Configuration
+# TaxasGE Backend Requirements - Corrected Version
 # Compatible with: CI/CD, Firebase Functions, Local Development
 # ============================================================================
 
@@ -7,8 +7,7 @@
 fastapi>=0.104.0,<0.105.0
 uvicorn[standard]>=0.24.0,<0.25.0
 
-# Firebase (Production Environment)
-firebase-functions>=0.1.0,<0.2.0
+# Firebase Admin SDK (NOT firebase-functions - that's Node.js only)
 firebase-admin>=6.2.0,<7.0.0
 
 # Database & Supabase
@@ -47,6 +46,5 @@ orjson>=3.9.0,<4.0.0
 python-jose[cryptography]>=3.3.0,<4.0.0
 passlib[bcrypt]>=1.7.4,<2.0.0
 
-# Optional: AI/ML (if needed later)
-# tensorflow-lite>=2.13.0,<3.0.0
-# numpy>=1.24.0,<2.0.0
+# Functions Framework (Python equivalent of Firebase Functions)
+functions-framework>=3.5.0,<4.0.0
