@@ -37,88 +37,88 @@ jobs:
           if [ ! -f "firebase.json" ]; then
             echo "Creating firebase.json for root structure..."
             cat > firebase.json << 'EOF'
-          {
-            "functions": {
-              "source": ".",
-              "runtime": "python311",
-              "ignore": [
-                "node_modules",
-                ".git",
-                "__pycache__",
-                "*.pyc",
-                ".pytest_cache",
-                ".coverage",
-                "tests"
-              ]
-            },
-            "hosting": {
-              "public": "public",
-              "rewrites": [
-                {"source": "/api/**", "function": "main"},
-                {"source": "**", "destination": "/index.html"}
-              ],
-              "headers": [
-                {
-                  "source": "/api/**",
-                  "headers": [
-                    {"key": "Access-Control-Allow-Origin", "value": "*"},
-                    {"key": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, DELETE, OPTIONS"},
-                    {"key": "Access-Control-Allow-Headers", "value": "*"}
-                  ]
-                }
-              ]
-            },
-            "emulators": {
-              "functions": {
-                "port": 5001
-              },
-              "hosting": {
-                "port": 5000
-              }
-            }
-          }
+{
+  "functions": {
+    "source": ".",
+    "runtime": "python311",
+    "ignore": [
+      "node_modules",
+      ".git",
+      "__pycache__",
+      "*.pyc",
+      ".pytest_cache",
+      ".coverage",
+      "tests"
+    ]
+  },
+  "hosting": {
+    "public": "public",
+    "rewrites": [
+      {"source": "/api/**", "function": "main"},
+      {"source": "**", "destination": "/index.html"}
+    ],
+    "headers": [
+      {
+        "source": "/api/**",
+        "headers": [
+          {"key": "Access-Control-Allow-Origin", "value": "*"},
+          {"key": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, DELETE, OPTIONS"},
+          {"key": "Access-Control-Allow-Headers", "value": "*"}
+        ]
+      }
+    ]
+  },
+  "emulators": {
+    "functions": {
+      "port": 5001
+    },
+    "hosting": {
+      "port": 5000
+    }
+  }
+}
           EOF
             
             # Création du dossier public pour hosting
             mkdir -p public
-            cat > public/index.html << 'EOF'
-          <!DOCTYPE html>
-          <html>
-          <head>
-              <title>🚀 TaxasGE API</title>
-              <meta charset="utf-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1">
-              <style>
-                  body { 
-                      font-family: Arial, sans-serif; 
-                      text-align: center; 
-                      padding: 50px;
-                      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                      color: white;
-                  }
-                  .container { 
-                      max-width: 600px; 
-                      margin: 0 auto; 
-                      background: rgba(255,255,255,0.1); 
-                      padding: 30px; 
-                      border-radius: 10px;
-                  }
-                  .status { color: #4CAF50; font-weight: bold; }
-              </style>
-          </head>
-          <body>
-              <div class="container">
-                  <h1>🚀 TaxasGE API</h1>
-                  <p class="status">Deployed successfully!</p>
-                  <p>API Version: 0.1.0</p>
-                  <p>Database: Supabase PostgreSQL</p>
-                  <p>AI Model: Ready (0.41MB)</p>
-                  <hr>
-                  <p><a href="/api/main" style="color: white;">Test API</a></p>
-                  <p><a href="/api/health" style="color: white;">Health Check</a></p>
-              </div>
-          </body>
-          </html>
+          cat > public/index.html << 'EOF'
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🚀 TaxasGE API</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            padding: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background: rgba(255,255,255,0.1); 
+            padding: 30px; 
+            border-radius: 10px;
+        }
+        .status { color: #4CAF50; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 TaxasGE API</h1>
+        <p class="status">Deployed successfully!</p>
+        <p>API Version: 0.1.0</p>
+        <p>Database: Supabase PostgreSQL</p>
+        <p>AI Model: Ready (0.41MB)</p>
+        <hr>
+        <p><a href="/api/main" style="color: white;">Test API</a></p>
+        <p><a href="/api/health" style="color: white;">Health Check</a></p>
+    </div>
+</body>
+</html>
           EOF
             echo "✅ Firebase configuration created for root structure"
           fi
