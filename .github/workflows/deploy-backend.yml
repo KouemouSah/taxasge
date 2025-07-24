@@ -322,7 +322,7 @@ EOF
           fi
           
           if [ -n "$SUPABASE_URL" ]; then
-          firebase functions:config:set supabase.url="$SUPABASE_URL" --project taxasge-dev || echo "Config already set"
+            firebase functions:config:set supabase.url="$SUPABASE_URL" --project taxasge-dev || echo "Config already set"
           fi
           
           if [ -n "$SUPABASE_SERVICE_ROLE_KEY" ]; then
