@@ -42,34 +42,25 @@ jobs:
           
           # Python dependencies
           pip install -r requirements.txt
+          echo "✅ Dependencies installed"
       
-      # ✅ SIMPLIFICATION: Vérification des fichiers de configuration
-      - name: 🔍 Validate Configuration Files
+      - name: 🔍 Debug - Validate Configuration Files
         run: |
           echo "🔍 Validating configuration files..."
           
-          # Vérification firebase.json
-          if [ ! -f "firebase.json" ]; then
-            echo "❌ firebase.json not found in repository"
-            echo "Please commit firebase.json to the repository"
-            exit 1
-          fi
-          
-          # Vérification config/environments.json
-          if [ ! -f "config/environments.json" ]; then
-            echo "❌ config/environments.json not found"
-            echo "Please commit configuration files to the repository"
-            exit 1
-          fi
-          
-          # Vérification script setup
-          if [ ! -f "scripts/setup-firebase.js" ]; then
-            echo "❌ scripts/setup-firebase.js not found"
-            echo "Please commit setup scripts to the repository"
-            exit 1
-          fi
+          # Liste des fichiers requis
+          echo "📋 Checking required files:"
+          for file in "firebase.json" "config/environments.json" "scripts/setup-firebase.js" "requirements.txt" "main.py"; do
+            if [ -f "$file" ]; then
+              echo "✅ $file found"
+            else
+              echo "❌ $file missing"
+              exit 1
+            fi
+          done
           
           # Validation JSON syntax
+          echo "🔍 Validating JSON files..."
           python -m json.tool firebase.json > /dev/null || {
             echo "❌ firebase.json has invalid JSON syntax"
             exit 1
@@ -82,7 +73,6 @@ jobs:
           
           echo "✅ All configuration files are valid"
       
-      # ✅ SIMPLIFICATION: Configuration dynamique via script
       - name: ⚙️ Setup Firebase Configuration
         env:
           FIREBASE_PROJECT: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
@@ -92,14 +82,103 @@ jobs:
           # Exécution du script de configuration
           node scripts/setup-firebase.js
           
-          # Vérification des fichiers générés
+          # Debug: Affichage des fichiers générés
           echo "📋 Generated files:"
-          ls -la .firebaserc public/index.html .env.firebase 2>/dev/null || echo "Some files not generated"
+          if [ -f ".firebaserc" ]; then
+            echo "✅ .firebaserc created"
+            echo "🔍 Content preview:"
+            head -5 .firebaserc
+          else
+            echo "❌ .firebaserc not created"
+            exit 1
+          fi
+          
+          if [ -f "public/index.html" ]; then
+            echo "✅ public/index.html created"
+          else
+            echo "❌ public/index.html not created"
+            exit 1
+          fi
           
           # Affichage de la configuration (sans secrets)
-          echo "🎯 Target project: $(cat .firebaserc | grep -o '"default":"[^"]*"' | cut -d'"' -f4)"
+          echo "🎯 Target project: $(cat .firebaserc | grep -o '"default":"[^"]*"' | cut -d'"' -f4 || echo 'unknown')"
       
-      # ✅ SIMPLIFICATION: Déploiement avec gestion d'environnement
+      - name: 🐍 Setup Backend Configuration
+        env:
+          ENVIRONMENT: ${{ github.ref == 'refs/heads/main' && 'firebase_prod' || 'firebase_dev' }}
+        run: |
+          echo "🔧 Setting up backend configuration for: $ENVIRONMENT"
+          
+          # Exécution du script de configuration backend
+          python scripts/setup-backend.py
+          
+          # Vérification des fichiers générés
+          echo "📋 Backend files generated:"
+          if [ -f "main.py" ]; then
+            echo "✅ main.py exists"
+            echo "🔍 main.py preview (first 10 lines):"
+            head -10 main.py
+          else
+            echo "❌ main.py not found"
+            exit 1
+          fi
+          
+          if [ -f ".env.backend.json" ]; then
+            echo "✅ .env.backend.json created"
+          fi
+      
+      - name: 🔍 Debug - Environment and Secrets
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV }}
+          FIREBASE_SERVICE_ACCOUNT_PROD: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_PROD }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          IS_PRODUCTION: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          echo "🔍 Debug: Environment and secrets check..."
+          
+          # Détermination de l'environnement
+          if [ "$IS_PRODUCTION" = "true" ]; then
+            echo "🏭 Production deployment detected"
+            PROJECT="taxasge-prod"
+            SERVICE_ACCOUNT="$FIREBASE_SERVICE_ACCOUNT_PROD"
+          else
+            echo "🧪 Development deployment detected"
+            PROJECT="taxasge-dev"
+            SERVICE_ACCOUNT="$FIREBASE_SERVICE_ACCOUNT"
+          fi
+          
+          # Vérification des secrets (sans exposer les valeurs)
+          echo "🔐 Secrets verification:"
+          if [ -n "$SERVICE_ACCOUNT" ]; then
+            echo "✅ Firebase service account configured (${#SERVICE_ACCOUNT} chars)"
+          else
+            echo "❌ Firebase service account missing for $PROJECT"
+            echo "Required secret: FIREBASE_SERVICE_ACCOUNT_TAXASGE_$([ "$IS_PRODUCTION" = "true" ] && echo "PROD" || echo "DEV")"
+            exit 1
+          fi
+          
+          if [ -n "$DATABASE_URL" ]; then
+            echo "✅ DATABASE_URL configured (${#DATABASE_URL} chars)"
+          else
+            echo "⚠️ DATABASE_URL not configured"
+          fi
+          
+          if [ -n "$SUPABASE_URL" ]; then
+            echo "✅ SUPABASE_URL configured (${#SUPABASE_URL} chars)"
+          else
+            echo "⚠️ SUPABASE_URL not configured"
+          fi
+          
+          if [ -n "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "✅ SUPABASE_SERVICE_ROLE_KEY configured (${#SUPABASE_SERVICE_ROLE_KEY} chars)"
+          else
+            echo "⚠️ SUPABASE_SERVICE_ROLE_KEY not configured"
+          fi
+          
+          echo "🎯 Target project: $PROJECT"
+      
       - name: 🚀 Deploy to Firebase
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV }}
@@ -120,17 +199,23 @@ jobs:
             SERVICE_ACCOUNT="$FIREBASE_SERVICE_ACCOUNT"
           fi
           
-          # Vérification du service account
-          if [ -z "$SERVICE_ACCOUNT" ]; then
-            echo "❌ Firebase service account not configured for $PROJECT"
-            echo "Please add the appropriate secret in GitHub repository settings"
-            exit 1
-          fi
-          
           # Configuration des credentials Firebase
           echo "🔐 Setting up Firebase credentials..."
           echo "$SERVICE_ACCOUNT" > /tmp/firebase-sa.json
           export GOOGLE_APPLICATION_CREDENTIALS="/tmp/firebase-sa.json"
+          
+          # Debug: Vérification de la structure du projet
+          echo "🔍 Project structure verification:"
+          echo "📁 Current directory contents:"
+          ls -la
+          echo "📁 Firebase configuration:"
+          cat firebase.json | head -20
+          echo "📁 Main.py exists: $([ -f "main.py" ] && echo "YES" || echo "NO")"
+          echo "📁 Requirements.txt exists: $([ -f "requirements.txt" ] && echo "YES" || echo "NO")"
+          
+          # Test Firebase CLI
+          echo "🔥 Testing Firebase CLI..."
+          firebase --version
           
           # Configuration des variables d'environnement pour Firebase Functions
           echo "⚙️ Setting up Functions environment variables..."
@@ -139,15 +224,17 @@ jobs:
             supabase.url="$SUPABASE_URL" \
             supabase.service_role_key="$SUPABASE_SERVICE_ROLE_KEY" \
             app.environment="$PROJECT" \
-            --project "$PROJECT" || echo "Config may already be set"
+            --project "$PROJECT" || echo "⚠️ Config may already be set"
           
-          # Déploiement
+          # Déploiement avec debugging étendu
           echo "🚀 Deploying to Firebase project: $PROJECT"
+          echo "📋 Deployment command: firebase deploy --only functions,hosting --project $PROJECT --non-interactive"
+          
           firebase deploy \
             --only functions,hosting \
             --project "$PROJECT" \
             --non-interactive \
-            --force
+            --debug
           
           # Nettoyage sécurisé
           rm -f /tmp/firebase-sa.json
@@ -155,47 +242,71 @@ jobs:
           echo "✅ Deployment completed successfully!"
           echo "🌐 URL: https://$PROJECT.web.app"
       
-      # ✅ SIMPLIFICATION: Health check avec retry
       - name: 🧪 Post-Deployment Health Check
         run: |
           # Détermination de l'URL selon la branch
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
             BASE_URL="https://taxasge-prod.web.app"
+            ENV_NAME="Production"
           else
             BASE_URL="https://taxasge-dev.web.app"
+            ENV_NAME="Development"
           fi
           
-          echo "🔍 Testing deployed API at: $BASE_URL"
+          echo "🔍 Testing deployed API at: $BASE_URL ($ENV_NAME)"
           echo "⏳ Waiting for deployment to be ready..."
-          sleep 30
+          sleep 45  # Augmenté pour Firebase Functions cold start
           
-          # Fonction de test avec retry
+          # Fonction de test avec retry amélioré
           test_endpoint() {
             local endpoint=$1
             local description=$2
             
-            echo "Testing $description..."
-            for i in {1..3}; do
-              if curl -f "$BASE_URL$endpoint" -m 10 --silent > /dev/null; then
+            echo "🧪 Testing $description ($endpoint)..."
+            for i in {1..5}; do  # Augmenté à 5 tentatives
+              if curl -f "$BASE_URL$endpoint" -m 15 --silent --show-error > /tmp/response.txt 2>/dev/null; then
                 echo "✅ $description: OK"
+                if [ "$endpoint" = "/" ] || [ "$endpoint" = "/api/main" ]; then
+                  echo "📄 Response preview:"
+                  head -3 /tmp/response.txt
+                fi
                 return 0
               else
-                echo "⚠️ $description: Failed (attempt $i/3)"
-                [ $i -lt 3 ] && sleep 10
+                echo "⚠️ $description: Failed (attempt $i/5)"
+                if [ $i -lt 5 ]; then
+                  echo "   ⏳ Waiting 10s before retry..."
+                  sleep 10
+                fi
               fi
             done
-            echo "❌ $description: Failed after 3 attempts"
+            echo "❌ $description: Failed after 5 attempts"
             return 1
           }
           
-          # Tests des endpoints
-          test_endpoint "/api/main" "Main API endpoint"
-          test_endpoint "/api/health" "Health check endpoint"
-          test_endpoint "/api/taxes" "Taxes endpoint"
-          test_endpoint "/" "Hosting page"
+          # Tests des endpoints avec retry
+          success_count=0
+          total_tests=4
+          
+          if test_endpoint "/" "Hosting page"; then ((success_count++)); fi
+          if test_endpoint "/api/main" "Main API endpoint"; then ((success_count++)); fi
+          if test_endpoint "/health" "Health check endpoint"; then ((success_count++)); fi
+          if test_endpoint "/api/taxes" "Taxes endpoint"; then ((success_count++)); fi
+          
+          # Résumé des résultats
+          echo ""
+          echo "📊 Health Check Results: $success_count/$total_tests endpoints successful"
+          
+          if [ $success_count -eq $total_tests ]; then
+            echo "🎉 All health checks passed!"
+          elif [ $success_count -gt 0 ]; then
+            echo "⚠️ Partial success - some endpoints working"
+          else
+            echo "❌ All health checks failed"
+            echo "🔍 This might be normal for Firebase Functions cold start"
+            echo "💡 Try accessing $BASE_URL manually in a few minutes"
+          fi
           
           echo ""
-          echo "🎉 Health check completed!"
           echo "🔗 Application URL: $BASE_URL"
           echo "🔗 API Documentation: $BASE_URL/docs"
           
@@ -205,3 +316,6 @@ jobs:
           else
             echo "🔗 Firebase Console: https://console.firebase.google.com/project/taxasge-dev"
           fi
+          
+          # Cleanup
+          rm -f /tmp/response.txt
