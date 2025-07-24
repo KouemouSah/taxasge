@@ -1,0 +1,20 @@
+# 1) Se placer à la racine du repo
+cd C:\Users\User\source\repos\KouemouSah\taxasge
+
+# 2) Saisir le nom de ta branche courante (optionnel, ici on l’attrape automatiquement)
+$BR = (git rev-parse --abbrev-ref HEAD)
+
+# 3) Récupérer l’état distant à jour
+git fetch origin
+
+# 4) Revenir exactement à l’état de la branche distante (perd tout ce qui est local)
+git reset --hard origin/$BR
+
+# 5) Supprimer tous les fichiers non suivis/ignorés (dont .vs/)
+git clean -fdx
+
+# 6) (Optionnel) Si jamais un lock traîne encore
+if (Test-Path .git\index.lock) { Remove-Item .git\index.lock -Force }
+
+# 7) (Optionnel) Re-synchroniser quand même (devrait être déjà à jour)
+git pull --rebase origin $BR
