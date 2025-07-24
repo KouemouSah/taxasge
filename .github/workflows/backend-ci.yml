@@ -44,12 +44,17 @@ jobs:
           
           # ✅ CORRECTION: Plus de mkdir -p packages/backend ni cd packages/backend
           
-          # Requirements.txt avec Supabase à la racine
+          # Requirements.txt unifié pour CI/CD et déploiement
           if [ ! -f "requirements.txt" ]; then
-            echo "⚠️ requirements.txt not found, creating with Supabase support"
+            echo "⚠️ requirements.txt not found, creating unified version"
             cat > requirements.txt << 'EOF'
-# TaxasGE Backend Requirements
-# Core Framework
+# TaxasGE Backend Requirements - Unified for CI/CD and Deploy
+
+# Firebase (Production)
+firebase-functions>=0.1.0
+firebase-admin>=6.2.0
+
+# FastAPI (Development & Testing)
 fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
 
@@ -58,9 +63,6 @@ sqlalchemy>=2.0.0
 psycopg2-binary>=2.9.0
 supabase>=2.0.0
 postgrest>=0.13.0
-
-# Firebase
-firebase-admin>=6.2.0
 
 # Utilities
 python-dotenv>=1.0.0
@@ -74,193 +76,250 @@ pytest-asyncio>=0.21.0
 pytest-cov>=4.1.0
 black>=23.0.0
 flake8>=6.0.0
+requests>=2.31.0
 EOF
             echo "✅ requirements.txt created with Supabase support at root"
           fi
           
-          # App FastAPI avec Supabase à la racine
+          # App hybride FastAPI + Firebase Functions à la racine
           if [ ! -f "main.py" ]; then
-            echo "⚠️ main.py not found, creating FastAPI app with Supabase"
+            echo "⚠️ main.py not found, creating hybrid FastAPI/Firebase app"
             cat > main.py << 'EOF'
 """
-TaxasGE Backend API with Supabase
+TaxasGE Backend - Hybrid FastAPI + Firebase Functions
 """
-from fastapi import FastAPI, HTTPException, Depends
-from fastapi.middleware.cors import CORSMiddleware
-from datetime import datetime
 import os
+from datetime import datetime
 from typing import Optional
 
-# Supabase imports
-try:
-    from supabase import create_client, Client
-    SUPABASE_AVAILABLE = True
-except ImportError:
-    SUPABASE_AVAILABLE = False
-    print("⚠️ Supabase not installed")
+# Détection de l'environnement
+IS_FIREBASE = os.getenv('FUNCTION_TARGET') or os.getenv('K_SERVICE')
+IS_LOCAL = not IS_FIREBASE
 
-# Create FastAPI app
-app = FastAPI(
-    title="TaxasGE API",
-    description="API for Equatorial Guinea tax information and payments",
-    version="0.1.0"
-)
-
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Supabase client
-supabase_client: Optional[Client] = None
-
-def get_supabase() -> Optional[Client]:
-    """Get Supabase client"""
-    global supabase_client
-    if not supabase_client and SUPABASE_AVAILABLE:
-        url = os.getenv("SUPABASE_URL")
-        key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY")
-        if url and key:
-            supabase_client = create_client(url, key)
-    return supabase_client
-
-@app.get("/")
-async def root():
-    """Root endpoint"""
-    return {
-        "message": "🚀 TaxasGE Backend API with Supabase",
-        "version": "0.1.0",
-        "status": "running",
-        "timestamp": datetime.now().isoformat(),
-        "database": "Supabase PostgreSQL"
-    }
-
-@app.get("/health")
-async def health_check():
-    """Health check endpoint with database test"""
-    supabase = get_supabase()
+if IS_FIREBASE:
+    # Mode Firebase Functions
+    from firebase_functions import https_fn, options
+    import json
     
-    # Test database connection
-    db_status = "disconnected"
-    if supabase:
+    cors_options = options.CorsOptions(
+        cors_origins=["*"],
+        cors_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        cors_allow_headers=["*"]
+    )
+    
+    @https_fn.on_request(cors=cors_options)
+    def main(req):
+        """Firebase Functions entry point"""
+        from app_logic import get_app_response
+        return get_app_response(req.path, req.method)
+        
+else:
+    # Mode FastAPI pour développement et tests
+    from fastapi import FastAPI
+    from fastapi.middleware.cors import CORSMiddleware
+    
+    app = FastAPI(
+        title="TaxasGE API",
+        description="API for Equatorial Guinea tax information and payments",
+        version="0.1.0"
+    )
+    
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+# Logique métier partagée (indépendante de la plateforme)
+class AppLogic:
+    """Logique métier partagée entre FastAPI et Firebase Functions"""
+    
+    def __init__(self):
+        self.supabase_client = None
+        self._init_supabase()
+    
+    def _init_supabase(self):
+        """Initialiser le client Supabase"""
         try:
-            # Simple query to test connection
-            result = supabase.rpc('version').execute()
-            db_status = "connected" if result else "error"
-        except Exception as e:
-            db_status = f"error: {str(e)[:50]}"
+            from supabase import create_client
+            url = os.getenv("SUPABASE_URL")
+            key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY")
+            if url and key:
+                self.supabase_client = create_client(url, key)
+        except ImportError:
+            print("⚠️ Supabase not installed")
     
-    return {
-        "status": "healthy",
-        "timestamp": datetime.now().isoformat(),
-        "services": {
-            "database": db_status,
-            "supabase": "available" if SUPABASE_AVAILABLE else "not_installed",
-            "firebase": "pending",
-            "ai_model": "ready (0.41MB)"
-        },
-        "environment": os.getenv("ENVIRONMENT", "development")
-    }
-
-@app.get("/api/taxes")
-async def get_taxes():
-    """Get tax information from Supabase"""
-    supabase = get_supabase()
-    
-    if not supabase:
+    def get_root_response(self):
+        """Response pour endpoint racine"""
         return {
-            "message": "Database not configured",
-            "total_taxes": 547,
-            "status": "configuration_pending"
-        }
-    
-    try:
-        # Try to query taxes table (once it's imported)
-        result = supabase.table('taxes').select('count', count='exact').execute()
-        tax_count = result.count if result.count else 0
-        
-        return {
-            "message": "Tax information from Supabase",
-            "total_taxes": tax_count,
+            "message": "🚀 TaxasGE Backend API with Supabase",
+            "version": "0.1.0",
+            "status": "running",
+            "timestamp": datetime.now().isoformat(),
             "database": "Supabase PostgreSQL",
-            "languages": ["es", "fr", "en"],
-            "status": "connected"
+            "platform": "Firebase Functions" if IS_FIREBASE else "FastAPI"
         }
-    except Exception as e:
-        return {
-            "message": "Tax table not yet imported",
-            "total_taxes": 547,
-            "error": str(e)[:100],
-            "status": "tables_pending"
-        }
-
-@app.get("/api/database/status")
-async def database_status():
-    """Detailed database status"""
-    supabase = get_supabase()
     
-    if not supabase:
-        return {"status": "not_configured"}
+    def get_health_response(self):
+        """Response pour health check"""
+        db_status = "disconnected"
+        if self.supabase_client:
+            try:
+                result = self.supabase_client.rpc('version').execute()
+                db_status = "connected" if result else "error"
+            except Exception as e:
+                db_status = f"error: {str(e)[:50]}"
+        
+        return {
+            "status": "healthy",
+            "timestamp": datetime.now().isoformat(),
+            "services": {
+                "database": db_status,
+                "supabase": "available" if self.supabase_client else "not_configured",
+                "firebase": "connected" if IS_FIREBASE else "not_applicable",
+                "ai_model": "ready (0.41MB)"
+            },
+            "environment": os.getenv("ENVIRONMENT", "development")
+        }
+    
+    def get_taxes_response(self):
+        """Response pour endpoint taxes"""
+        if not self.supabase_client:
+            return {
+                "message": "Database not configured",
+                "total_taxes": 547,
+                "status": "configuration_pending"
+            }
+        
+        try:
+            result = self.supabase_client.table('taxes').select('count', count='exact').execute()
+            tax_count = result.count if result.count else 0
+            
+            return {
+                "message": "Tax information from Supabase",
+                "total_taxes": tax_count,
+                "database": "Supabase PostgreSQL",
+                "languages": ["es", "fr", "en"],
+                "status": "connected"
+            }
+        except Exception as e:
+            return {
+                "message": "Tax table not yet imported",
+                "total_taxes": 547,
+                "error": str(e)[:100],
+                "status": "tables_pending"
+            }
+
+# Instance partagée de la logique métier
+app_logic = AppLogic()
+
+def get_app_response(path, method="GET"):
+    """Fonction partagée pour générer les réponses"""
+    path = path.lower().rstrip('/')
     
     try:
-        # Check which tables exist
-        tables_query = """
-        SELECT table_name 
-        FROM information_schema.tables 
-        WHERE table_schema = 'public'
-        ORDER BY table_name;
-        """
-        
-        result = supabase.rpc('exec_sql', {'sql': tables_query}).execute()
-        
-        return {
-            "status": "connected",
-            "database": "taxasge-db",
-            "tables": result.data if result.data else [],
-            "timestamp": datetime.now().isoformat()
-        }
+        if path == "" or path == "/" or path == "/api/main":
+            data = app_logic.get_root_response()
+        elif path == "/health" or path == "/api/health":
+            data = app_logic.get_health_response()
+        elif path == "/api/taxes" or path.startswith("/api/taxes"):
+            data = app_logic.get_taxes_response()
+        else:
+            data = {
+                "error": "Endpoint not found",
+                "path": path,
+                "available_endpoints": ["/", "/health", "/api/taxes"]
+            }
+            
+        if IS_FIREBASE:
+            # Retour Firebase Functions
+            import json
+            from firebase_functions import https_fn
+            return https_fn.Response(
+                json.dumps(data),
+                headers={"Content-Type": "application/json"}
+            )
+        else:
+            # Retour FastAPI
+            return data
+            
     except Exception as e:
-        return {
-            "status": "error",
-            "error": str(e),
+        error_data = {
+            "error": "Internal server error",
+            "message": str(e)[:100],
             "timestamp": datetime.now().isoformat()
         }
+        
+        if IS_FIREBASE:
+            import json
+            from firebase_functions import https_fn
+            return https_fn.Response(
+                json.dumps(error_data),
+                status=500,
+                headers={"Content-Type": "application/json"}
+            )
+        else:
+            return error_data
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+# Endpoints FastAPI (seulement en mode local)
+if not IS_FIREBASE:
+    @app.get("/")
+    async def root():
+        return get_app_response("/")
+    
+    @app.get("/health")
+    async def health_check():
+        return get_app_response("/health")
+    
+    @app.get("/api/taxes")
+    async def get_taxes():
+        return get_app_response("/api/taxes")
+    
+    # Point d'entrée pour uvicorn
+    if __name__ == "__main__":
+        import uvicorn
+        uvicorn.run(app, host="0.0.0.0", port=8000)
 EOF
             echo "✅ main.py created with Supabase integration at root"
           fi
           
-          # Tests avec Supabase à la racine
+          # Tests hybrides FastAPI + Firebase Functions à la racine
           mkdir -p tests
           if [ ! -f "tests/test_main.py" ]; then
             cat > tests/test_main.py << 'EOF'
 """
-Tests for TaxasGE Backend API with Supabase
+Tests for TaxasGE Backend - Hybrid FastAPI + Firebase Functions
 """
 import pytest
 import os
 from fastapi.testclient import TestClient
-from main import app
 
-client = TestClient(app)
+# Configuration du mode test
+os.environ['ENVIRONMENT'] = 'testing'
 
-def test_root():
-    """Test root endpoint"""
+def test_local_fastapi_mode():
+    """Test FastAPI mode (local development)"""
+    # Force le mode FastAPI
+    os.environ.pop('FUNCTION_TARGET', None)
+    os.environ.pop('K_SERVICE', None)
+    
+    from main import app
+    client = TestClient(app)
+    
+    # Test root endpoint
     response = client.get("/")
     assert response.status_code == 200
     data = response.json()
     assert "TaxasGE" in data["message"]
-    assert data["database"] == "Supabase PostgreSQL"
+    assert data["platform"] == "FastAPI"
 
 def test_health_check():
     """Test health check endpoint"""
+    from main import app
+    client = TestClient(app)
+    
     response = client.get("/health")
     assert response.status_code == 200
     data = response.json()
@@ -269,17 +328,49 @@ def test_health_check():
 
 def test_taxes_endpoint():
     """Test taxes endpoint"""
+    from main import app
+    client = TestClient(app)
+    
     response = client.get("/api/taxes")
     assert response.status_code == 200
     data = response.json()
-    # Should work even without DB connection
     assert "total_taxes" in data
 
-def test_database_status():
-    """Test database status endpoint"""
-    response = client.get("/api/database/status")
-    assert response.status_code == 200
-    # Should return status even if DB not configured
+def test_firebase_functions_mode():
+    """Test Firebase Functions mode simulation"""
+    # Simuler l'environnement Firebase
+    os.environ['FUNCTION_TARGET'] = 'main'
+    
+    # Import après configuration de l'env
+    from main import get_app_response
+    
+    # Test de la fonction partagée
+    response = get_app_response("/")
+    assert "TaxasGE" in response["message"]
+    assert response["platform"] == "Firebase Functions"
+    
+    # Nettoyage
+    os.environ.pop('FUNCTION_TARGET', None)
+
+def test_app_logic_shared():
+    """Test de la logique métier partagée"""
+    from main import AppLogic
+    
+    logic = AppLogic()
+    
+    # Test root response
+    root_resp = logic.get_root_response()
+    assert "TaxasGE" in root_resp["message"]
+    assert root_resp["version"] == "0.1.0"
+    
+    # Test health response
+    health_resp = logic.get_health_response()
+    assert health_resp["status"] == "healthy"
+    assert "services" in health_resp
+    
+    # Test taxes response
+    taxes_resp = logic.get_taxes_response()
+    assert "total_taxes" in taxes_resp
 
 @pytest.mark.skipif(not os.getenv("DATABASE_URL"), reason="No database configured")
 def test_database_connection():
@@ -293,6 +384,16 @@ def test_database_connection():
         assert True, "Database connection successful"
     except Exception as e:
         pytest.fail(f"Database connection failed: {e}")
+
+def test_environment_detection():
+    """Test de la détection d'environnement"""
+    # Test mode local
+    os.environ.pop('FUNCTION_TARGET', None)
+    os.environ.pop('K_SERVICE', None)
+    
+    from main import IS_FIREBASE, IS_LOCAL
+    assert not IS_FIREBASE
+    assert IS_LOCAL
 EOF
             echo "✅ tests created with Supabase support at root"
           fi
