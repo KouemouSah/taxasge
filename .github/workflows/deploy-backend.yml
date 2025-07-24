@@ -77,7 +77,7 @@ jobs:
     }
   }
 }
-          EOF
+EOF
             
             # Création du dossier public pour hosting
             mkdir -p public
