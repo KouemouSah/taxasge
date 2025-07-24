@@ -1,6 +1,7 @@
 [flake8]
-# TaxasGE Backend - Flake8 Configuration
+# TaxasGE Backend - Flake8 Configuration (CORRECTED)
 max-line-length = 127
+
 exclude = 
     .git,
     __pycache__,
@@ -13,17 +14,18 @@ exclude =
     .github,
     config
 
+# Fixed ignore codes - removed comments causing errors
 ignore = 
-    E203,  # whitespace before ':'
-    W503,  # line break before binary operator
-    E501   # line too long (handled by max-line-length)
+    E203,
+    W503,
+    E501
 
 # Select specific error codes to check
 select = 
-    E,     # pycodestyle errors
-    W,     # pycodestyle warnings  
-    F,     # pyflakes
-    C90    # mccabe complexity
+    E,
+    W,
+    F,
+    C90
 
 max-complexity = 10
 
