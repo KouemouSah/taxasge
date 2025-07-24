@@ -36,6 +36,7 @@ jobs:
         run: |
           if [ ! -f "firebase.json" ]; then
             echo "Creating firebase.json for root structure..."
+
             cat > firebase.json << 'EOF'
 {
   "functions": {
@@ -81,7 +82,7 @@ EOF
 
             # Création du dossier public pour hosting
             mkdir -p public
-          cat > public/index.html << 'EOF'
+            cat > public/index.html << 'EOF'
 <!DOCTYPE html>
 <html>
 <head>
@@ -120,6 +121,7 @@ EOF
 </body>
 </html>
 EOF
+
             echo "✅ Firebase configuration created for root structure"
           fi
 
