@@ -1,372 +1,207 @@
 ---
-name: "🚀 Deploy Backend to Firebase"
+name: 🚀 Deploy Backend to Firebase
 
 on:
   push:
-    branches: [develop]
-    # ✅ CORRECTION: Chemins adaptés à la structure racine backend
-    paths:
-      - "src/**"
-      - "*.py"
-      - "requirements.txt"
-      - "firebase.json"
-      - "main.py"
+    branches: [develop, main]
+    paths: 
+      - 'src/**'
+      - '*.py'
+      - 'requirements.txt'
+      - 'firebase.json'
+      - 'main.py'
+      - 'config/**'
+      - 'scripts/**'
 
 jobs:
-  # ✅ CORRECTION: Job autonome (sans needs)
   deploy:
-    name: "🚀 Deploy to Firebase"
+    name: 🚀 Deploy to Firebase
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/develop'
-
+    
     steps:
-      - name: "📥 Checkout Repository"
+      - name: 📥 Checkout Repository
         uses: actions/checkout@v4
-
-      - name: "🔧 Setup Node.js"
+      
+      - name: 🔧 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "18"
-
-      - name: "🔥 Setup Firebase CLI"
-        run: npm install -g firebase-tools
-
-      # ✅ CORRECTION: Configuration Firebase pour structure racine
-      - name: "🔍 Check Firebase Configuration"
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'requirements.txt'
+      
+      - name: 📦 Install Dependencies
         run: |
+          # Node.js dependencies for Firebase CLI
+          npm install -g firebase-tools
+          
+          # Python dependencies
+          pip install -r requirements.txt
+      
+      # ✅ SIMPLIFICATION: Vérification des fichiers de configuration
+      - name: 🔍 Validate Configuration Files
+        run: |
+          echo "🔍 Validating configuration files..."
+          
+          # Vérification firebase.json
           if [ ! -f "firebase.json" ]; then
-            echo "Creating firebase.json for root structure..."
-
-            cat > firebase.json << 'EOF'
-            {
-              "functions": {
-                "source": ".",
-                "runtime": "python311",
-                "ignore": [
-                  "node_modules",
-                  ".git",
-                  "__pycache__",
-                  "*.pyc",
-                  ".pytest_cache",
-                  ".coverage",
-                  "tests"
-                ]
-              },
-              "hosting": {
-                "public": "public",
-                "rewrites": [
-                  {"source": "/api/**", "function": "main"},
-                  {"source": "**", "destination": "/index.html"}
-                ],
-                "headers": [
-                  {
-                    "source": "/api/**",
-                    "headers": [
-                      {"key": "Access-Control-Allow-Origin", "value": "*"},
-                      {"key": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, DELETE, OPTIONS"},
-                      {"key": "Access-Control-Allow-Headers", "value": "*"}
-                    ]
-                  }
-                ]
-              },
-              "emulators": {
-                "functions": {
-                  "port": 5001
-                },
-                "hosting": {
-                  "port": 5000
-                }
-              }
-            }
-EOF
-
-            # Création du dossier public pour hosting
-            mkdir -p public
-            cat > public/index.html << 'EOF'
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>🚀 TaxasGE API</title>
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-                <style>
-                    body {
-                        font-family: Arial, sans-serif;
-                        text-align: center;
-                        padding: 50px;
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        color: white;
-                    }
-                    .container {
-                        max-width: 600px;
-                        margin: 0 auto;
-                        background: rgba(255,255,255,0.1);
-                        padding: 30px;
-                        border-radius: 10px;
-                    }
-                    .status { color: #4CAF50; font-weight: bold; }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <h1>🚀 TaxasGE API</h1>
-                    <p class="status">Deployed successfully!</p>
-                    <p>API Version: 0.1.0</p>
-                    <p>Database: Supabase PostgreSQL</p>
-                    <p>AI Model: Ready (0.41MB)</p>
-                    <hr>
-                    <p><a href="/api/main" style="color: white;">Test API</a></p>
-                    <p><a href="/api/health" style="color: white;">Health Check</a></p>
-                </div>
-            </body>
-            </html>
-EOF
-            echo "✅ Firebase configuration created for root structure"
+            echo "❌ firebase.json not found in repository"
+            echo "Please commit firebase.json to the repository"
+            exit 1
           fi
-
-      # ✅ CORRECTION: Structure backend à la racine (suppression packages/backend)
-      - name: "🔍 Check Backend Structure"
+          
+          # Vérification config/environments.json
+          if [ ! -f "config/environments.json" ]; then
+            echo "❌ config/environments.json not found"
+            echo "Please commit configuration files to the repository"
+            exit 1
+          fi
+          
+          # Vérification script setup
+          if [ ! -f "scripts/setup-firebase.js" ]; then
+            echo "❌ scripts/setup-firebase.js not found"
+            echo "Please commit setup scripts to the repository"
+            exit 1
+          fi
+          
+          # Validation JSON syntax
+          python -m json.tool firebase.json > /dev/null || {
+            echo "❌ firebase.json has invalid JSON syntax"
+            exit 1
+          }
+          
+          python -m json.tool config/environments.json > /dev/null || {
+            echo "❌ config/environments.json has invalid JSON syntax"
+            exit 1
+          }
+          
+          echo "✅ All configuration files are valid"
+      
+      # ✅ SIMPLIFICATION: Configuration dynamique via script
+      - name: ⚙️ Setup Firebase Configuration
+        env:
+          FIREBASE_PROJECT: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
         run: |
-          echo "📋 Checking backend structure at root..."
+          echo "🔧 Setting up Firebase configuration for: $FIREBASE_PROJECT"
           
-          # ✅ CORRECTION: Plus de mkdir packages/backend ni cd packages/backend
+          # Exécution du script de configuration
+          node scripts/setup-firebase.js
           
-          # Vérification main.py à la racine
-          if [ ! -f "main.py" ]; then
-            echo "⚠️ main.py not found, creating Firebase Functions entry point"
-            cat > main.py << 'EOF'
-            """
-            TaxasGE Backend - Firebase Functions Entry Point
-            """
-            from firebase_functions import https_fn, options
-            import json
-            import os
-            from datetime import datetime
-
-            # Configuration CORS
-            cors_options = options.CorsOptions(
-                cors_origins=["*"],
-                cors_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-                cors_allow_headers=["*"]
-            )
-
-            @https_fn.on_request(cors=cors_options)
-            def main(req):
-                """Main API endpoint for Firebase Functions"""
-                
-                # Route vers différents endpoints selon le path
-                path = req.path.lower()
-                method = req.method.upper()
-                
-                try:
-                    if path == "/" or path == "/api/main":
-                        return handle_root()
-                    elif path == "/health" or path == "/api/health":
-                        return handle_health()
-                    elif path == "/api/taxes" or path.startswith("/api/taxes"):
-                        return handle_taxes()
-                    elif path == "/api/database/status":
-                        return handle_database_status()
-                    else:
-                        return https_fn.Response(
-                            json.dumps({
-                                "error": "Endpoint not found",
-                                "path": path,
-                                "available_endpoints": [
-                                    "/api/main",
-                                    "/api/health",
-                                    "/api/taxes",
-                                    "/api/database/status"
-                                ]
-                            }),
-                            status=404,
-                            headers={"Content-Type": "application/json"}
-                        )
-                except Exception as e:
-                    return https_fn.Response(
-                        json.dumps({
-                            "error": "Internal server error",
-                            "message": str(e)[:100],
-                            "timestamp": datetime.now().isoformat()
-                        }),
-                        status=500,
-                        headers={"Content-Type": "application/json"}
-                    )
-
-            def handle_root():
-                """Handle root endpoint"""
-                return https_fn.Response(
-                    json.dumps({
-                        "message": "🚀 TaxasGE Backend API with Supabase",
-                        "version": "0.1.0",
-                        "status": "running",
-                        "timestamp": datetime.now().isoformat(),
-                        "database": "Supabase PostgreSQL",
-                        "platform": "Firebase Functions"
-                    }),
-                    headers={"Content-Type": "application/json"}
-                )
-
-            def handle_health():
-                """Handle health check endpoint"""
-                
-                # Vérification des variables d'environnement critiques
-                env_status = {
-                    "DATABASE_URL": "✅" if os.getenv("DATABASE_URL") else "❌",
-                    "SUPABASE_URL": "✅" if os.getenv("SUPABASE_URL") else "❌",
-                    "SUPABASE_SERVICE_ROLE_KEY": "✅" if os.getenv("SUPABASE_SERVICE_ROLE_KEY") else "❌"
-                }
-                
-                return https_fn.Response(
-                    json.dumps({
-                        "status": "healthy",
-                        "timestamp": datetime.now().isoformat(),
-                        "services": {
-                            "database": "connected" if os.getenv("DATABASE_URL") else "not_configured",
-                            "supabase": "available" if os.getenv("SUPABASE_URL") else "not_configured",
-                            "firebase": "connected",
-                            "ai_model": "ready (0.41MB)"
-                        },
-                        "environment": os.getenv("ENVIRONMENT", "production"),
-                        "config_status": env_status
-                    }),
-                    headers={"Content-Type": "application/json"}
-                )
-
-            def handle_taxes():
-                """Handle taxes endpoint"""
-                # Placeholder pour l'intégration Supabase future
-                return https_fn.Response(
-                    json.dumps({
-                        "message": "Tax information from Supabase",
-                        "total_taxes": 547,
-                        "database": "Supabase PostgreSQL",
-                        "languages": ["es", "fr", "en"],
-                        "status": "ready_for_import",
-                        "note": "Awaiting data import from JSON files"
-                    }),
-                    headers={"Content-Type": "application/json"}
-                )
-
-            def handle_database_status():
-                """Handle database status endpoint"""
-                return https_fn.Response(
-                    json.dumps({
-                        "status": "configured",
-                        "database": "taxasge-db",
-                        "provider": "Supabase",
-                        "tables_status": "pending_import",
-                        "timestamp": datetime.now().isoformat()
-                    }),
-                    headers={"Content-Type": "application/json"}
-                )
-EOF
-            echo "✅ main.py created with Firebase Functions integration"
-          fi
+          # Vérification des fichiers générés
+          echo "📋 Generated files:"
+          ls -la .firebaserc public/index.html .env.firebase 2>/dev/null || echo "Some files not generated"
           
-          # Vérification requirements.txt à la racine
-          if [ ! -f "requirements.txt" ]; then
-            echo "⚠️ requirements.txt not found, creating Firebase Functions requirements"
-            cat > requirements.txt << 'EOF'
-            # Firebase Functions Requirements
-            firebase-functions>=0.1.0
-            firebase-admin>=6.2.0
-
-            # TaxasGE Backend Core
-            fastapi>=0.104.0
-
-            # Database & Supabase
-            sqlalchemy>=2.0.0
-            psycopg2-binary>=2.9.0
-            supabase>=2.0.0
-            postgrest>=0.13.0
-
-            # Utilities
-            python-dotenv>=1.0.0
-            pydantic>=2.0.0
-            httpx>=0.25.0
-EOF
-            echo "✅ requirements.txt created for Firebase Functions"
-          fi
-          
-          # Création structure src/ si nécessaire
-          mkdir -p src
-          touch src/__init__.py
-          
-          echo "✅ Backend structure ready for Firebase deployment"
-
-      # ✅ CORRECTION: Variables d'environnement Supabase ajoutées
-      - name: "🚀 Deploy Backend Functions"
+          # Affichage de la configuration (sans secrets)
+          echo "🎯 Target project: $(cat .firebaserc | grep -o '"default":"[^"]*"' | cut -d'"' -f4)"
+      
+      # ✅ SIMPLIFICATION: Déploiement avec gestion d'environnement
+      - name: 🚀 Deploy to Firebase
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV }}
+          FIREBASE_SERVICE_ACCOUNT_PROD: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_PROD }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          IS_PRODUCTION: ${{ github.ref == 'refs/heads/main' }}
         run: |
-          # Vérification des secrets critiques
-          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
-            echo "❌ FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV not configured"
-            echo "Please add this secret in GitHub repository settings"
+          # Sélection du service account selon l'environnement
+          if [ "$IS_PRODUCTION" = "true" ]; then
+            echo "🏭 Production deployment"
+            PROJECT="taxasge-prod"
+            SERVICE_ACCOUNT="$FIREBASE_SERVICE_ACCOUNT_PROD"
+          else
+            echo "🧪 Development deployment"
+            PROJECT="taxasge-dev"
+            SERVICE_ACCOUNT="$FIREBASE_SERVICE_ACCOUNT"
+          fi
+          
+          # Vérification du service account
+          if [ -z "$SERVICE_ACCOUNT" ]; then
+            echo "❌ Firebase service account not configured for $PROJECT"
+            echo "Please add the appropriate secret in GitHub repository settings"
             exit 1
           fi
           
           # Configuration des credentials Firebase
           echo "🔐 Setting up Firebase credentials..."
-          echo "$FIREBASE_SERVICE_ACCOUNT" > /tmp/firebase-sa.json
+          echo "$SERVICE_ACCOUNT" > /tmp/firebase-sa.json
           export GOOGLE_APPLICATION_CREDENTIALS="/tmp/firebase-sa.json"
           
           # Configuration des variables d'environnement pour Firebase Functions
-          echo "⚙️ Setting up environment variables..."
-          if [ -n "$DATABASE_URL" ]; then
-            firebase functions:config:set database.url="$DATABASE_URL" --project taxasge-dev || echo "Config already set"
-          fi
-          
-          if [ -n "$SUPABASE_URL" ]; then
-            firebase functions:config:set supabase.url="$SUPABASE_URL" --project taxasge-dev || echo "Config already set"
-          fi
-          
-          if [ -n "$SUPABASE_SERVICE_ROLE_KEY" ]; then
-            firebase functions:config:set supabase.service_role_key="$SUPABASE_SERVICE_ROLE_KEY" --project taxasge-dev || echo "Config already set"
-          fi
+          echo "⚙️ Setting up Functions environment variables..."
+          firebase functions:config:set \
+            database.url="$DATABASE_URL" \
+            supabase.url="$SUPABASE_URL" \
+            supabase.service_role_key="$SUPABASE_SERVICE_ROLE_KEY" \
+            app.environment="$PROJECT" \
+            --project "$PROJECT" || echo "Config may already be set"
           
           # Déploiement
-          echo "🚀 Deploying to Firebase Functions..."
-          firebase deploy --only functions,hosting --project taxasge-dev --non-interactive
+          echo "🚀 Deploying to Firebase project: $PROJECT"
+          firebase deploy \
+            --only functions,hosting \
+            --project "$PROJECT" \
+            --non-interactive \
+            --force
           
           # Nettoyage sécurisé
           rm -f /tmp/firebase-sa.json
           
           echo "✅ Deployment completed successfully!"
-
-      # ✅ Health Check avec URL corrigée
-      - name: "🧪 Health Check"
+          echo "🌐 URL: https://$PROJECT.web.app"
+      
+      # ✅ SIMPLIFICATION: Health check avec retry
+      - name: 🧪 Post-Deployment Health Check
         run: |
+          # Détermination de l'URL selon la branch
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            BASE_URL="https://taxasge-prod.web.app"
+          else
+            BASE_URL="https://taxasge-dev.web.app"
+          fi
+          
+          echo "🔍 Testing deployed API at: $BASE_URL"
           echo "⏳ Waiting for deployment to be ready..."
           sleep 30
           
-          echo "🔍 Testing deployed API endpoints..."
+          # Fonction de test avec retry
+          test_endpoint() {
+            local endpoint=$1
+            local description=$2
+            
+            echo "Testing $description..."
+            for i in {1..3}; do
+              if curl -f "$BASE_URL$endpoint" -m 10 --silent > /dev/null; then
+                echo "✅ $description: OK"
+                return 0
+              else
+                echo "⚠️ $description: Failed (attempt $i/3)"
+                [ $i -lt 3 ] && sleep 10
+              fi
+            done
+            echo "❌ $description: Failed after 3 attempts"
+            return 1
+          }
           
-          # Test endpoint principal
-          if curl -f "https://taxasge-dev.web.app/api/main" -m 10; then
-            echo "✅ Main endpoint: OK"
-          else
-            echo "⚠️ Main endpoint: Failed (non-critical)"
-          fi
+          # Tests des endpoints
+          test_endpoint "/api/main" "Main API endpoint"
+          test_endpoint "/api/health" "Health check endpoint"
+          test_endpoint "/api/taxes" "Taxes endpoint"
+          test_endpoint "/" "Hosting page"
           
-          # Test health check
-          if curl -f "https://taxasge-dev.web.app/api/health" -m 10; then
-            echo "✅ Health endpoint: OK"
-          else
-            echo "⚠️ Health endpoint: Failed (non-critical)"
-          fi
-          
-          # Test taxes endpoint
-          if curl -f "https://taxasge-dev.web.app/api/taxes" -m 10; then
-            echo "✅ Taxes endpoint: OK"
-          else
-            echo "⚠️ Taxes endpoint: Failed (non-critical)"
-          fi
-          
+          echo ""
           echo "🎉 Health check completed!"
-          echo "🔗 API URL: https://taxasge-dev.web.app"
-          echo "🔗 Firebase Console: https://console.firebase.google.com/project/taxasge-dev"
+          echo "🔗 Application URL: $BASE_URL"
+          echo "🔗 API Documentation: $BASE_URL/docs"
+          
+          # Affichage des liens utiles
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "🔗 Firebase Console: https://console.firebase.google.com/project/taxasge-prod"
+          else
+            echo "🔗 Firebase Console: https://console.firebase.google.com/project/taxasge-dev"
+          fi
