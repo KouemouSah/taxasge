@@ -1,38 +1,38 @@
 ---
-name: 🚀 Deploy Backend to Firebase
+name: "🚀 Deploy Backend to Firebase"
 
 on:
   push:
     branches: [develop]
     # ✅ CORRECTION: Chemins adaptés à la structure racine backend
-    paths: 
-      - 'src/**'
-      - '*.py'
-      - 'requirements.txt'
-      - 'firebase.json'
-      - 'main.py'
+    paths:
+      - "src/**"
+      - "*.py"
+      - "requirements.txt"
+      - "firebase.json"
+      - "main.py"
 
 jobs:
   # ✅ CORRECTION: Job autonome (sans needs)
   deploy:
-    name: 🚀 Deploy to Firebase
+    name: "🚀 Deploy to Firebase"
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/develop'
-    
+
     steps:
-      - name: 📥 Checkout Repository
+      - name: "📥 Checkout Repository"
         uses: actions/checkout@v4
-      
-      - name: 🔧 Setup Node.js
+
+      - name: "🔧 Setup Node.js"
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-      
-      - name: 🔥 Setup Firebase CLI
+          node-version: "18"
+
+      - name: "🔥 Setup Firebase CLI"
         run: npm install -g firebase-tools
-      
+
       # ✅ CORRECTION: Configuration Firebase pour structure racine
-      - name: 🔍 Check Firebase Configuration
+      - name: "🔍 Check Firebase Configuration"
         run: |
           if [ ! -f "firebase.json" ]; then
             echo "Creating firebase.json for root structure..."
@@ -78,7 +78,7 @@ jobs:
   }
 }
 EOF
-            
+
             # Création du dossier public pour hosting
             mkdir -p public
           cat > public/index.html << 'EOF'
@@ -119,12 +119,12 @@ EOF
     </div>
 </body>
 </html>
-          EOF
+EOF
             echo "✅ Firebase configuration created for root structure"
           fi
-      
+
       # ✅ CORRECTION: Structure backend à la racine (suppression packages/backend)
-      - name: 🔍 Check Backend Structure
+      - name: "🔍 Check Backend Structure"
         run: |
           echo "📋 Checking backend structure at root..."
           
@@ -293,9 +293,9 @@ EOF
           touch src/__init__.py
           
           echo "✅ Backend structure ready for Firebase deployment"
-      
+
       # ✅ CORRECTION: Variables d'environnement Supabase ajoutées
-      - name: 🚀 Deploy Backend Functions
+      - name: "🚀 Deploy Backend Functions"
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -336,9 +336,9 @@ EOF
           rm -f /tmp/firebase-sa.json
           
           echo "✅ Deployment completed successfully!"
-      
+
       # ✅ Health Check avec URL corrigée
-      - name: 🧪 Health Check
+      - name: "🧪 Health Check"
         run: |
           echo "⏳ Waiting for deployment to be ready..."
           sleep 30
