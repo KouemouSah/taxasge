@@ -38,90 +38,89 @@ jobs:
             echo "Creating firebase.json for root structure..."
 
             cat > firebase.json << 'EOF'
-{
-  "functions": {
-    "source": ".",
-    "runtime": "python311",
-    "ignore": [
-      "node_modules",
-      ".git",
-      "__pycache__",
-      "*.pyc",
-      ".pytest_cache",
-      ".coverage",
-      "tests"
-    ]
-  },
-  "hosting": {
-    "public": "public",
-    "rewrites": [
-      {"source": "/api/**", "function": "main"},
-      {"source": "**", "destination": "/index.html"}
-    ],
-    "headers": [
-      {
-        "source": "/api/**",
-        "headers": [
-          {"key": "Access-Control-Allow-Origin", "value": "*"},
-          {"key": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, DELETE, OPTIONS"},
-          {"key": "Access-Control-Allow-Headers", "value": "*"}
-        ]
-      }
-    ]
-  },
-  "emulators": {
-    "functions": {
-      "port": 5001
-    },
-    "hosting": {
-      "port": 5000
-    }
-  }
-}
+            {
+              "functions": {
+                "source": ".",
+                "runtime": "python311",
+                "ignore": [
+                  "node_modules",
+                  ".git",
+                  "__pycache__",
+                  "*.pyc",
+                  ".pytest_cache",
+                  ".coverage",
+                  "tests"
+                ]
+              },
+              "hosting": {
+                "public": "public",
+                "rewrites": [
+                  {"source": "/api/**", "function": "main"},
+                  {"source": "**", "destination": "/index.html"}
+                ],
+                "headers": [
+                  {
+                    "source": "/api/**",
+                    "headers": [
+                      {"key": "Access-Control-Allow-Origin", "value": "*"},
+                      {"key": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, DELETE, OPTIONS"},
+                      {"key": "Access-Control-Allow-Headers", "value": "*"}
+                    ]
+                  }
+                ]
+              },
+              "emulators": {
+                "functions": {
+                  "port": 5001
+                },
+                "hosting": {
+                  "port": 5000
+                }
+              }
+            }
 EOF
 
             # Création du dossier public pour hosting
             mkdir -p public
             cat > public/index.html << 'EOF'
-<!DOCTYPE html>
-<html>
-<head>
-    <title>🚀 TaxasGE API</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            text-align: center; 
-            padding: 50px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        .container { 
-            max-width: 600px; 
-            margin: 0 auto; 
-            background: rgba(255,255,255,0.1); 
-            padding: 30px; 
-            border-radius: 10px;
-        }
-        .status { color: #4CAF50; font-weight: bold; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🚀 TaxasGE API</h1>
-        <p class="status">Deployed successfully!</p>
-        <p>API Version: 0.1.0</p>
-        <p>Database: Supabase PostgreSQL</p>
-        <p>AI Model: Ready (0.41MB)</p>
-        <hr>
-        <p><a href="/api/main" style="color: white;">Test API</a></p>
-        <p><a href="/api/health" style="color: white;">Health Check</a></p>
-    </div>
-</body>
-</html>
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>🚀 TaxasGE API</title>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        text-align: center;
+                        padding: 50px;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        color: white;
+                    }
+                    .container {
+                        max-width: 600px;
+                        margin: 0 auto;
+                        background: rgba(255,255,255,0.1);
+                        padding: 30px;
+                        border-radius: 10px;
+                    }
+                    .status { color: #4CAF50; font-weight: bold; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1>🚀 TaxasGE API</h1>
+                    <p class="status">Deployed successfully!</p>
+                    <p>API Version: 0.1.0</p>
+                    <p>Database: Supabase PostgreSQL</p>
+                    <p>AI Model: Ready (0.41MB)</p>
+                    <hr>
+                    <p><a href="/api/main" style="color: white;">Test API</a></p>
+                    <p><a href="/api/health" style="color: white;">Health Check</a></p>
+                </div>
+            </body>
+            </html>
 EOF
-
             echo "✅ Firebase configuration created for root structure"
           fi
 
@@ -136,131 +135,131 @@ EOF
           if [ ! -f "main.py" ]; then
             echo "⚠️ main.py not found, creating Firebase Functions entry point"
             cat > main.py << 'EOF'
-"""
-TaxasGE Backend - Firebase Functions Entry Point
-"""
-from firebase_functions import https_fn, options
-import json
-import os
-from datetime import datetime
+            """
+            TaxasGE Backend - Firebase Functions Entry Point
+            """
+            from firebase_functions import https_fn, options
+            import json
+            import os
+            from datetime import datetime
 
-# Configuration CORS
-cors_options = options.CorsOptions(
-    cors_origins=["*"],
-    cors_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    cors_allow_headers=["*"]
-)
-
-@https_fn.on_request(cors=cors_options)
-def main(req):
-    """Main API endpoint for Firebase Functions"""
-    
-    # Route vers différents endpoints selon le path
-    path = req.path.lower()
-    method = req.method.upper()
-    
-    try:
-        if path == "/" or path == "/api/main":
-            return handle_root()
-        elif path == "/health" or path == "/api/health":
-            return handle_health()
-        elif path == "/api/taxes" or path.startswith("/api/taxes"):
-            return handle_taxes()
-        elif path == "/api/database/status":
-            return handle_database_status()
-        else:
-            return https_fn.Response(
-                json.dumps({
-                    "error": "Endpoint not found",
-                    "path": path,
-                    "available_endpoints": [
-                        "/api/main",
-                        "/api/health", 
-                        "/api/taxes",
-                        "/api/database/status"
-                    ]
-                }),
-                status=404,
-                headers={"Content-Type": "application/json"}
+            # Configuration CORS
+            cors_options = options.CorsOptions(
+                cors_origins=["*"],
+                cors_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+                cors_allow_headers=["*"]
             )
-    except Exception as e:
-        return https_fn.Response(
-            json.dumps({
-                "error": "Internal server error",
-                "message": str(e)[:100],
-                "timestamp": datetime.now().isoformat()
-            }),
-            status=500,
-            headers={"Content-Type": "application/json"}
-        )
 
-def handle_root():
-    """Handle root endpoint"""
-    return https_fn.Response(
-        json.dumps({
-            "message": "🚀 TaxasGE Backend API with Supabase",
-            "version": "0.1.0",
-            "status": "running",
-            "timestamp": datetime.now().isoformat(),
-            "database": "Supabase PostgreSQL",
-            "platform": "Firebase Functions"
-        }),
-        headers={"Content-Type": "application/json"}
-    )
+            @https_fn.on_request(cors=cors_options)
+            def main(req):
+                """Main API endpoint for Firebase Functions"""
+                
+                # Route vers différents endpoints selon le path
+                path = req.path.lower()
+                method = req.method.upper()
+                
+                try:
+                    if path == "/" or path == "/api/main":
+                        return handle_root()
+                    elif path == "/health" or path == "/api/health":
+                        return handle_health()
+                    elif path == "/api/taxes" or path.startswith("/api/taxes"):
+                        return handle_taxes()
+                    elif path == "/api/database/status":
+                        return handle_database_status()
+                    else:
+                        return https_fn.Response(
+                            json.dumps({
+                                "error": "Endpoint not found",
+                                "path": path,
+                                "available_endpoints": [
+                                    "/api/main",
+                                    "/api/health",
+                                    "/api/taxes",
+                                    "/api/database/status"
+                                ]
+                            }),
+                            status=404,
+                            headers={"Content-Type": "application/json"}
+                        )
+                except Exception as e:
+                    return https_fn.Response(
+                        json.dumps({
+                            "error": "Internal server error",
+                            "message": str(e)[:100],
+                            "timestamp": datetime.now().isoformat()
+                        }),
+                        status=500,
+                        headers={"Content-Type": "application/json"}
+                    )
 
-def handle_health():
-    """Handle health check endpoint"""
-    
-    # Vérification des variables d'environnement critiques
-    env_status = {
-        "DATABASE_URL": "✅" if os.getenv("DATABASE_URL") else "❌",
-        "SUPABASE_URL": "✅" if os.getenv("SUPABASE_URL") else "❌",
-        "SUPABASE_SERVICE_ROLE_KEY": "✅" if os.getenv("SUPABASE_SERVICE_ROLE_KEY") else "❌"
-    }
-    
-    return https_fn.Response(
-        json.dumps({
-            "status": "healthy",
-            "timestamp": datetime.now().isoformat(),
-            "services": {
-                "database": "connected" if os.getenv("DATABASE_URL") else "not_configured",
-                "supabase": "available" if os.getenv("SUPABASE_URL") else "not_configured",
-                "firebase": "connected",
-                "ai_model": "ready (0.41MB)"
-            },
-            "environment": os.getenv("ENVIRONMENT", "production"),
-            "config_status": env_status
-        }),
-        headers={"Content-Type": "application/json"}
-    )
+            def handle_root():
+                """Handle root endpoint"""
+                return https_fn.Response(
+                    json.dumps({
+                        "message": "🚀 TaxasGE Backend API with Supabase",
+                        "version": "0.1.0",
+                        "status": "running",
+                        "timestamp": datetime.now().isoformat(),
+                        "database": "Supabase PostgreSQL",
+                        "platform": "Firebase Functions"
+                    }),
+                    headers={"Content-Type": "application/json"}
+                )
 
-def handle_taxes():
-    """Handle taxes endpoint"""
-    # Placeholder pour l'intégration Supabase future
-    return https_fn.Response(
-        json.dumps({
-            "message": "Tax information from Supabase",
-            "total_taxes": 547,
-            "database": "Supabase PostgreSQL",
-            "languages": ["es", "fr", "en"],
-            "status": "ready_for_import",
-            "note": "Awaiting data import from JSON files"
-        }),
-        headers={"Content-Type": "application/json"}
-    )
+            def handle_health():
+                """Handle health check endpoint"""
+                
+                # Vérification des variables d'environnement critiques
+                env_status = {
+                    "DATABASE_URL": "✅" if os.getenv("DATABASE_URL") else "❌",
+                    "SUPABASE_URL": "✅" if os.getenv("SUPABASE_URL") else "❌",
+                    "SUPABASE_SERVICE_ROLE_KEY": "✅" if os.getenv("SUPABASE_SERVICE_ROLE_KEY") else "❌"
+                }
+                
+                return https_fn.Response(
+                    json.dumps({
+                        "status": "healthy",
+                        "timestamp": datetime.now().isoformat(),
+                        "services": {
+                            "database": "connected" if os.getenv("DATABASE_URL") else "not_configured",
+                            "supabase": "available" if os.getenv("SUPABASE_URL") else "not_configured",
+                            "firebase": "connected",
+                            "ai_model": "ready (0.41MB)"
+                        },
+                        "environment": os.getenv("ENVIRONMENT", "production"),
+                        "config_status": env_status
+                    }),
+                    headers={"Content-Type": "application/json"}
+                )
 
-def handle_database_status():
-    """Handle database status endpoint"""
-    return https_fn.Response(
-        json.dumps({
-            "status": "configured",
-            "database": "taxasge-db",
-            "provider": "Supabase",
-            "tables_status": "pending_import",
-            "timestamp": datetime.now().isoformat()
-        }),
-        headers={"Content-Type": "application/json"}
-    )
+            def handle_taxes():
+                """Handle taxes endpoint"""
+                # Placeholder pour l'intégration Supabase future
+                return https_fn.Response(
+                    json.dumps({
+                        "message": "Tax information from Supabase",
+                        "total_taxes": 547,
+                        "database": "Supabase PostgreSQL",
+                        "languages": ["es", "fr", "en"],
+                        "status": "ready_for_import",
+                        "note": "Awaiting data import from JSON files"
+                    }),
+                    headers={"Content-Type": "application/json"}
+                )
+
+            def handle_database_status():
+                """Handle database status endpoint"""
+                return https_fn.Response(
+                    json.dumps({
+                        "status": "configured",
+                        "database": "taxasge-db",
+                        "provider": "Supabase",
+                        "tables_status": "pending_import",
+                        "timestamp": datetime.now().isoformat()
+                    }),
+                    headers={"Content-Type": "application/json"}
+                )
 EOF
             echo "✅ main.py created with Firebase Functions integration"
           fi
@@ -269,23 +268,23 @@ EOF
           if [ ! -f "requirements.txt" ]; then
             echo "⚠️ requirements.txt not found, creating Firebase Functions requirements"
             cat > requirements.txt << 'EOF'
-# Firebase Functions Requirements
-firebase-functions>=0.1.0
-firebase-admin>=6.2.0
+            # Firebase Functions Requirements
+            firebase-functions>=0.1.0
+            firebase-admin>=6.2.0
 
-# TaxasGE Backend Core
-fastapi>=0.104.0
+            # TaxasGE Backend Core
+            fastapi>=0.104.0
 
-# Database & Supabase
-sqlalchemy>=2.0.0
-psycopg2-binary>=2.9.0
-supabase>=2.0.0
-postgrest>=0.13.0
+            # Database & Supabase
+            sqlalchemy>=2.0.0
+            psycopg2-binary>=2.9.0
+            supabase>=2.0.0
+            postgrest>=0.13.0
 
-# Utilities
-python-dotenv>=1.0.0
-pydantic>=2.0.0
-httpx>=0.25.0
+            # Utilities
+            python-dotenv>=1.0.0
+            pydantic>=2.0.0
+            httpx>=0.25.0
 EOF
             echo "✅ requirements.txt created for Firebase Functions"
           fi
@@ -323,7 +322,7 @@ EOF
           fi
           
           if [ -n "$SUPABASE_URL" ]; then
-            firebase functions:config:set supabase.url="$SUPABASE_URL" --project taxasge-dev || echo "Config already set"
+          firebase functions:config:set supabase.url="$SUPABASE_URL" --project taxasge-dev || echo "Config already set"
           fi
           
           if [ -n "$SUPABASE_SERVICE_ROLE_KEY" ]; then
