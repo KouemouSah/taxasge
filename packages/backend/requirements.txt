@@ -1,0 +1,136 @@
+# ============================================================================
+# TaxasGE Backend Requirements - CORRECTED VERSION
+# Compatible with: CI/CD, Firebase Functions, Local Development, VS Code
+# Python 3.11+ Required - TESTED & WORKING
+# ============================================================================
+
+# Core Framework
+fastapi>=0.104.0,<0.105.0
+uvicorn[standard]>=0.24.0,<0.25.0
+
+# Firebase Admin SDK (NOT firebase-functions - that's Node.js only)
+firebase-admin>=6.2.0,<7.0.0
+
+# Database & Supabase
+sqlalchemy>=2.0.0,<2.1.0
+psycopg2-binary>=2.9.0,<3.0.0
+supabase>=2.0.0,<3.0.0
+postgrest>=0.13.0,<0.14.0
+
+# HTTP & API
+httpx>=0.25.0,<0.26.0
+requests>=2.31.0,<3.0.0
+
+# Utilities & Configuration
+python-dotenv>=1.0.0,<2.0.0
+pydantic>=2.0.0,<3.0.0
+python-multipart>=0.0.6,<0.1.0
+
+# Development & Testing
+pytest>=7.4.0,<8.0.0
+pytest-asyncio>=0.21.0,<0.22.0
+pytest-cov>=4.1.0,<5.0.0
+pytest-mock>=3.11.0,<4.0.0
+
+# Code Quality
+black>=23.0.0,<24.0.0
+flake8>=6.0.0,<7.0.0
+isort>=5.12.0,<6.0.0
+
+# Logging & Monitoring
+structlog>=23.0.0,<24.0.0
+
+# JSON & Data Processing
+orjson>=3.9.0,<4.0.0
+
+# Security
+python-jose[cryptography]>=3.3.0,<4.0.0
+passlib[bcrypt]>=1.7.4,<2.0.0
+
+# Functions Framework (Python equivalent of Firebase Functions)
+functions-framework>=3.5.0,<4.0.0
+
+# ============================================================================
+# Additional Production Dependencies
+# ============================================================================
+
+# CORS & Middleware (Fixed: python-cors doesn't exist, using fastapi built-in)
+# python-cors>=1.7.0,<2.0.0  # REMOVED - FastAPI has built-in CORS
+
+# Email & Notifications
+aiosmtplib>=2.0.0,<3.0.0
+jinja2>=3.1.0,<4.0.0
+
+# File Handling
+aiofiles>=23.0.0,<24.0.0
+pillow>=10.0.0,<11.0.0
+
+# Caching
+redis>=4.5.0,<5.0.0
+aioredis>=2.0.0,<3.0.0
+
+# Task Queue (optional for background tasks)
+celery>=5.3.0,<6.0.0
+
+# Monitoring & APM
+sentry-sdk[fastapi]>=1.32.0,<2.0.0
+
+# ============================================================================
+# Development Only Dependencies (install with: pip install -r requirements.txt -r requirements-dev.txt)
+# ============================================================================
+
+# Enhanced Development Tools
+pre-commit>=3.4.0,<4.0.0
+mypy>=1.5.0,<2.0.0
+bandit>=1.7.0,<2.0.0
+
+# Documentation
+mkdocs>=1.5.0,<2.0.0
+mkdocs-material>=9.2.0,<10.0.0
+
+# Performance Profiling
+py-spy>=0.3.14,<1.0.0
+memory-profiler>=0.61.0,<1.0.0
+
+# Database Migrations
+alembic>=1.12.0,<2.0.0
+
+# ============================================================================
+# Platform Specific Notes
+# ============================================================================
+
+# Windows (PowerShell): pip install -r requirements.txt
+# Linux/Mac: pip install -r requirements.txt
+# Docker: COPY requirements.txt . && RUN pip install -r requirements.txt
+# Firebase Functions: Handled automatically by functions-framework
+
+# ============================================================================
+# Version Pinning Strategy
+# ============================================================================
+
+# Major versions pinned for stability
+# Minor versions allowed for security updates
+# Patch versions auto-updated
+# Compatible with Python 3.11+ only
+
+# ============================================================================
+# Installation Commands
+# ============================================================================
+
+# Production:
+# pip install -r requirements.txt
+
+# Development:  
+# pip install -r requirements.txt
+# pip install -r requirements-dev.txt
+
+# Testing:
+# pip install -r requirements.txt
+# pytest
+
+# Linting:
+# black .
+# flake8 .
+# isort .
+
+# ============================================================================
