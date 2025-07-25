@@ -1,9 +1,0 @@
-{
-  "projects": {
-    "default": "taxasge-prod",
-    "dev": "taxasge-dev",
-    "prod": "taxasge-prod"
-  },
-  "targets": {},
-  "etags": {}
-}
