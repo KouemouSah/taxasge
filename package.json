@@ -1,0 +1,104 @@
+{
+  "name": "taxasge",
+  "version": "1.0.0",
+  "description": "Application Mobile et Web de Gestion Fiscale - Guinée Équatoriale",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/KouemouSah/taxasge.git"
+  },
+  "author": "KOUEMOU SAH Jean Emac <kouemou.sah@gmail.com>",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=18.0.0",
+    "yarn": ">=1.22.0"
+  },
+  "scripts": {
+    "dev": "yarn workspace mobile start",
+    "dev:mobile": "yarn workspace mobile start",
+    "dev:backend": "cd packages/backend && python main.py",
+    "dev:web": "yarn workspace web dev",
+    "build": "yarn workspaces run build",
+    "build:mobile": "yarn workspace mobile build",
+    "build:backend": "cd packages/backend && python -m build",
+    "test": "yarn workspaces run test",
+    "test:mobile": "yarn workspace mobile test",
+    "test:backend": "cd packages/backend && python -m pytest",
+    "test:all": "yarn test:mobile && yarn test:backend",
+    "lint": "yarn workspaces run lint",
+    "lint:mobile": "yarn workspace mobile lint",
+    "lint:backend": "cd packages/backend && flake8 app/ --max-line-length=100",
+    "format": "yarn workspaces run format",
+    "format:mobile": "yarn workspace mobile format",
+    "format:backend": "cd packages/backend && black app/ && isort app/",
+    "setup": "./scripts/setup-dev.sh",
+    "setup:firebase": "node scripts/setup-firebase.js",
+    "setup:backend": "python scripts/setup-backend.py",
+    "deploy": "./scripts/deploy.sh",
+    "deploy:backend": "firebase deploy --only functions",
+    "deploy:mobile": "cd packages/mobile && yarn build:android",
+    "clean": "yarn workspaces run clean",
+    "clean:all": "rm -rf node_modules packages/*/node_modules packages/backend/__pycache__ packages/backend/.pytest_cache",
+    "postinstall": "echo '🚀 TaxasGE dependencies installed successfully!'",
+    "precommit": "yarn lint && yarn test",
+    "status": "echo '📊 TaxasGE Project Status:' && git status",
+    "info": "echo '📋 TaxasGE Project Info:' && yarn workspaces info"
+  },
+  "devDependencies": {
+    "lerna": "^7.4.2",
+    "prettier": "^3.1.0",
+    "eslint": "^8.55.0",
+    "@typescript-eslint/eslint-plugin": "^6.14.0",
+    "@typescript-eslint/parser": "^6.14.0",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0",
+    "concurrently": "^8.2.2"
+  },
+  "lint-staged": {
+    "packages/mobile/**/*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "packages/backend/**/*.py": [
+      "black",
+      "isort",
+      "flake8"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged",
+      "pre-push": "yarn test"
+    }
+  },
+  "keywords": [
+    "taxasge",
+    "guinee-equatoriale",
+    "gestion-fiscale",
+    "react-native",
+    "fastapi",
+    "supabase",
+    "firebase",
+    "mobile-app",
+    "tax-management",
+    "equatorial-guinea"
+  ],
+  "config": {
+    "firebase": {
+      "project": {
+        "development": "taxasge-dev",
+        "production": "taxasge-prod"
+      }
+    }
+  },
+  "resolutions": {
+    "react": "18.2.0",
+    "react-native": "0.73.0"
+  }
+}
