@@ -1,0 +1,368 @@
+name: 🐍 Backend CI/CD
+
+on:
+  push:
+    branches: [develop, main]
+    paths: 
+      - 'packages/backend/**'
+      - 'config/**'
+      - 'scripts/**'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - 'packages/backend/**'
+      - 'config/**'
+      - 'scripts/**'
+
+# Cancel previous runs on new push
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: '3.11'
+  ENVIRONMENT: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
+
+jobs:
+  # ============================================================================
+  # SETUP & VALIDATION
+  # ============================================================================
+  setup:
+    name: 🔧 Setup & Validation
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+      python-version: ${{ steps.env.outputs.python-version }}
+      
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🔍 Detect environment
+        id: env
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+            echo "environment=development" >> $GITHUB_OUTPUT
+          else
+            echo "environment=testing" >> $GITHUB_OUTPUT
+          fi
+          echo "python-version=${{ env.PYTHON_VERSION }}" >> $GITHUB_OUTPUT
+          
+      - name: 📊 Environment Info
+        run: |
+          echo "🔍 Environment detected: ${{ steps.env.outputs.environment }}"
+          echo "🐍 Python version: ${{ steps.env.outputs.python-version }}"
+          echo "📝 Triggered by: ${{ github.event_name }}"
+          echo "🌿 Branch: ${{ github.ref_name }}"
+
+  # ============================================================================
+  # PYTHON TESTS & QUALITY
+  # ============================================================================
+  backend-tests:
+    name: 🧪 Backend Tests
+    runs-on: ubuntu-latest
+    needs: setup
+    
+    strategy:
+      matrix:
+        test-type: [unit, integration, quality]
+        
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🐍 Setup Python ${{ needs.setup.outputs.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ needs.setup.outputs.python-version }}
+          cache: 'pip'
+          cache-dependency-path: packages/backend/requirements.txt
+          
+      - name: 📦 Install dependencies
+        run: |
+          cd packages/backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          
+      - name: 🔧 Setup backend configuration
+        env:
+          ENVIRONMENT: ${{ needs.setup.outputs.environment }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          cd packages/backend
+          # Create minimal .env for testing
+          echo "ENVIRONMENT=$ENVIRONMENT" > .env
+          echo "DEBUG=true" >> .env
+          echo "SUPABASE_URL=${SUPABASE_URL:-https://placeholder.supabase.co}" >> .env
+          echo "SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-placeholder-key}" >> .env
+          echo "FIREBASE_PROJECT_ID=taxasge-$ENVIRONMENT" >> .env
+          
+      - name: 🧪 Run unit tests
+        if: matrix.test-type == 'unit'
+        run: |
+          cd packages/backend
+          python -m pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term-missing
+          
+      - name: 🔗 Run integration tests
+        if: matrix.test-type == 'integration'
+        run: |
+          cd packages/backend
+          # Test imports and basic functionality
+          python -c "
+          print('🔍 Testing imports...')
+          from app.config import settings
+          print(f'✅ Config loaded: {settings.ENVIRONMENT}')
+          
+          import fastapi
+          print(f'✅ FastAPI version: {fastapi.__version__}')
+          
+          from app import __version__
+          print(f'✅ App version: {__version__}')
+          
+          print('🎉 All integration tests passed!')
+          "
+          
+      - name: 🔍 Code quality checks
+        if: matrix.test-type == 'quality'
+        run: |
+          cd packages/backend
+          
+          echo "🔍 Running flake8..."
+          flake8 app/ --max-line-length=100 --extend-ignore=E203,W503
+          
+          echo "🔍 Running black check..."
+          black --check app/ --diff
+          
+          echo "🔍 Running isort check..."
+          isort --check-only app/ --diff
+          
+          echo "✅ All quality checks passed!"
+          
+      - name: 📊 Upload coverage to Codecov
+        if: matrix.test-type == 'unit'
+        uses: codecov/codecov-action@v3
+        with:
+          file: packages/backend/coverage.xml
+          flags: backend
+          name: backend-coverage
+          fail_ci_if_error: false
+
+  # ============================================================================
+  # API VALIDATION
+  # ============================================================================
+  api-validation:
+    name: 🚀 API Validation
+    runs-on: ubuntu-latest
+    needs: [setup, backend-tests]
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🐍 Setup Python ${{ needs.setup.outputs.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ needs.setup.outputs.python-version }}
+          cache: 'pip'
+          cache-dependency-path: packages/backend/requirements.txt
+          
+      - name: 📦 Install dependencies
+        run: |
+          cd packages/backend
+          pip install -r requirements.txt
+          
+      - name: 🔧 Generate backend configuration
+        env:
+          ENVIRONMENT: ${{ needs.setup.outputs.environment }}
+        run: |
+          python scripts/setup-backend.py --environment $ENVIRONMENT
+          
+      - name: 🚀 Start API server
+        run: |
+          cd packages/backend
+          python main.py &
+          API_PID=$!
+          echo "API_PID=$API_PID" >> $GITHUB_ENV
+          
+          # Wait for API to start
+          echo "⏳ Waiting for API to start..."
+          timeout 30 bash -c 'until curl -f http://localhost:8000/health; do sleep 1; done'
+          
+      - name: 🧪 Test API endpoints
+        run: |
+          echo "🔍 Testing API endpoints..."
+          
+          # Test root endpoint
+          echo "📡 Testing root endpoint..."
+          curl -f http://localhost:8000/ | jq .
+          
+          # Test health endpoint
+          echo "🏥 Testing health endpoint..."
+          HEALTH=$(curl -f http://localhost:8000/health)
+          echo $HEALTH | jq .
+          
+          # Verify health status
+          STATUS=$(echo $HEALTH | jq -r .status)
+          if [[ "$STATUS" != "healthy" ]]; then
+            echo "❌ Health check failed: $STATUS"
+            exit 1
+          fi
+          
+          # Test API v1 endpoint
+          echo "📋 Testing API v1 endpoint..."
+          curl -f http://localhost:8000/api/v1/ | jq .
+          
+          echo "✅ All API tests passed!"
+          
+      - name: 🛑 Stop API server
+        if: always()
+        run: |
+          if [[ -n "$API_PID" ]]; then
+            kill $API_PID || true
+          fi
+
+  # ============================================================================
+  # SECURITY SCAN
+  # ============================================================================
+  security-scan:
+    name: 🔒 Security Scan
+    runs-on: ubuntu-latest
+    needs: setup
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🐍 Setup Python ${{ needs.setup.outputs.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ needs.setup.outputs.python-version }}
+          
+      - name: 📦 Install security tools
+        run: |
+          pip install bandit safety
+          
+      - name: 🔍 Run Bandit security scan
+        run: |
+          cd packages/backend
+          bandit -r app/ -f json -o bandit-report.json || true
+          bandit -r app/ --severity-level medium
+          
+      - name: 🔍 Check for known vulnerabilities
+        run: |
+          cd packages/backend
+          safety check --json --output safety-report.json || true
+          safety check
+          
+      - name: 📊 Upload security reports
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-reports-${{ needs.setup.outputs.environment }}
+          path: |
+            packages/backend/bandit-report.json
+            packages/backend/safety-report.json
+
+  # ============================================================================
+  # SONARQUBE ANALYSIS
+  # ============================================================================
+  sonarqube:
+    name: 📊 SonarQube Analysis
+    runs-on: ubuntu-latest
+    needs: [setup, backend-tests]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for SonarQube
+          
+      - name: 📊 SonarQube Scan
+        uses: sonarqube-quality-gate-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          scanMetadataReportFile: packages/backend/.scannerwork/report-task.txt
+
+  # ============================================================================
+  # NOTIFICATION
+  # ============================================================================
+  notify:
+    name: 📢 Notification
+    runs-on: ubuntu-latest
+    needs: [setup, backend-tests, api-validation, security-scan]
+    if: always()
+    
+    steps:
+      - name: 📊 Determine status
+        id: status
+        run: |
+          if [[ "${{ needs.backend-tests.result }}" == "success" && "${{ needs.api-validation.result }}" == "success" ]]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "emoji=✅" >> $GITHUB_OUTPUT
+            echo "color=#00d084" >> $GITHUB_OUTPUT
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "emoji=❌" >> $GITHUB_OUTPUT
+            echo "color=#ff4757" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: 📢 Slack notification
+        if: secrets.SLACK_WEBHOOK_URL
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              "text": "${{ steps.status.outputs.emoji }} TaxasGE Backend CI - ${{ steps.status.outputs.status }}",
+              "attachments": [
+                {
+                  "color": "${{ steps.status.outputs.color }}",
+                  "fields": [
+                    {
+                      "title": "Environment",
+                      "value": "${{ needs.setup.outputs.environment }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Branch",
+                      "value": "${{ github.ref_name }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Commit",
+                      "value": "<${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>",
+                      "short": true
+                    },
+                    {
+                      "title": "Author",
+                      "value": "${{ github.actor }}",
+                      "short": true
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+# ============================================================================
+# WORKFLOW SUMMARY
+# ============================================================================
+# Ce workflow Backend CI/CD pour TaxasGE effectue:
+# 1. 🔧 Setup & détection d'environnement automatique
+# 2. 🧪 Tests unitaires, intégration et qualité de code
+# 3. 🚀 Validation API avec tests endpoints complets
+# 4. 🔒 Scan de sécurité avec Bandit et Safety
+# 5. 📊 Analyse SonarQube pour la qualité
+# 6. 📢 Notifications Slack des résultats
+#
+# Déclenché sur: push/PR vers develop/main avec changements backend
+# Compatible avec: GitHub Secrets configurés (Supabase, Slack, SonarQube)
+# ============================================================================
