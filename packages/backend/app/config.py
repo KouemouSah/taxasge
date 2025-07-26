@@ -313,6 +313,7 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = True
+        extra = "allow"  # ✅ CORRECTION: Permettre les champs supplémentaires
         
         # Custom environment variable parsing
         @classmethod
