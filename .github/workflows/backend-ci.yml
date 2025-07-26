@@ -271,25 +271,25 @@ jobs:
   # ============================================================================
   # SONARQUBE ANALYSIS (Optionnel - commenté pour tests initiaux)
   # ============================================================================
-  sonarqube:
-     name: 📊 SonarQube Analysis
-     runs-on: ubuntu-latest
-     needs: [setup, backend-tests]
-     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
-     
-     steps:
-       - name: 📥 Checkout code
-         uses: actions/checkout@v4
-         with:
-           fetch-depth: 0
-           
-       - name: 📊 SonarQube Scan
-         uses: sonarqube-quality-gate-action@v1.3.0
-         env:
-           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-           SONAR_HOST_URL: https://sonarcloud.io
-         with:
-           projectBaseDir: packages/backend
+  # sonarqube:
+  #   name: 📊 SonarQube Analysis
+  #   runs-on: ubuntu-latest
+  #   needs: [setup, backend-tests]
+  #   if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+  #   
+  #   steps:
+  #     - name: 📥 Checkout code
+  #       uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+  #         
+  #     - name: 📊 SonarQube Scan
+  #       uses: sonarqube-quality-gate-action@v1.3.0
+  #       env:
+  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  #         SONAR_HOST_URL: https://sonarcloud.io
+  #       with:
+  #         projectBaseDir: packages/backend
 
   # ============================================================================
   # NOTIFICATION
