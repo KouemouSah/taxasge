@@ -1,0 +1,116 @@
+{
+  "hosting": {
+    "public": "public",
+    "rewrites": [
+      {
+        "source": "/api/**",
+        "function": "main"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "/api/**",
+        "headers": [
+          {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+          },
+          {
+            "key": "Access-Control-Allow-Methods",
+            "value": "GET, POST, PUT, DELETE, OPTIONS"
+          },
+          {
+            "key": "Access-Control-Allow-Headers",
+            "value": "Content-Type, Authorization"
+          },
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "**/*.@(jpg|jpeg|gif|png|svg|webp|css|js)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "max-age=31536000"
+          }
+        ]
+      }
+    ],
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "packages/**",
+      "scripts/**",
+      "config/**",
+      "docs/**",
+      "data/**"
+    ],
+    "cleanUrls": true,
+    "trailingSlash": false
+  },
+  "functions": {
+    "source": "packages/backend",
+    "runtime": "python311",
+    "predeploy": [
+      "python scripts/setup-backend.py --environment $RESOURCE_DIR",
+      "cd packages/backend && pip install -r requirements.txt"
+    ],
+    "env": {
+      "ENVIRONMENT": "development",
+      "PYTHON_VERSION": "3.11"
+    },
+    "ignore": [
+      "venv",
+      "__pycache__",
+      ".pytest_cache",
+      "*.pyc",
+      "*.pyo",
+      "*.pyd",
+      ".env",
+      ".env.*",
+      "*.log",
+      "*.backup.*"
+    ]
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "emulators": {
+    "auth": {
+      "port": 9099
+    },
+    "functions": {
+      "port": 5001
+    },
+    "firestore": {
+      "port": 8080
+    },
+    "hosting": {
+      "port": 5000
+    },
+    "storage": {
+      "port": 9199
+    },
+    "ui": {
+      "enabled": true,
+      "port": 4000
+    },
+    "singleProjectMode": true
+  },
+  "extensions": {},
+  "remoteconfig": {
+    "template": "remoteconfig.template.json"
+  }
+}
