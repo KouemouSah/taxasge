@@ -24,6 +24,7 @@ requests>=2.31.0,<3.0.0
 # Utilities & Configuration
 python-dotenv>=1.0.0,<2.0.0
 pydantic>=2.0.0,<3.0.0
+pydantic-settings>=2.0.0,<3.0.0  
 python-multipart>=0.0.6,<0.1.0
 
 # Development & Testing
