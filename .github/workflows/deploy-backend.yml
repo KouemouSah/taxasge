@@ -3,7 +3,7 @@
 # ============================================================================
 # Déploiement automatique du backend Python FastAPI vers Firebase Functions
 # Déclenché sur: push main/develop + déploiement manuel
-# 
+# 
 # Features:
 # - Déploiement multi-environnement (dev/prod)
 # - Setup automatique avec script setup-backend.py
@@ -21,8 +21,8 @@ on:
   # Déploiement automatique sur push vers branches principales
   push:
     branches:
-      - main        # Production
-      - develop     # Development
+      - main      # Production
+      - develop   # Development
     paths:
       - 'packages/backend/**'
       - 'scripts/setup-backend.py'
@@ -193,14 +193,14 @@ jobs:
           
           # Test de validation de la configuration Python
           cd packages/backend
-          python -c "
+          python << 'EOF'
           import os
-          os.environ['ENVIRONMENT'] = '$ENVIRONMENT'
+          os.environ['ENVIRONMENT'] = os.getenv('ENVIRONMENT')
           from app.config import settings
           print(f'✅ Configuration validée pour {settings.ENVIRONMENT}')
           print(f'📊 Debug mode: {settings.DEBUG}')
           print(f'🎯 API Version: {settings.VERSION}')
-          "
+          EOF
           
           echo "✅ Configuration backend validée"
       
@@ -224,19 +224,19 @@ jobs:
             echo "✅ Validation structure: OK (dossier tests/ existe)"
             
             # Validation basique sans pytest pour éviter l'erreur
-            python -c "
-import sys
-sys.path.append('.')
-try:
-    from app.config import settings
-    print('✅ Import configuration: OK')
-    print(f'📊 Environment: {settings.ENVIRONMENT}')
-    print(f'🏷️ Version: {settings.VERSION}')
-    print('✅ Structure backend validée')
-except Exception as e:
-    print(f'❌ Erreur validation: {e}')
-    sys.exit(1)
-"
+            python << 'EOF'
+          import sys
+          sys.path.append('.')
+          try:
+              from app.config import settings
+              print('✅ Import configuration: OK')
+              print(f'📊 Environment: {settings.ENVIRONMENT}')
+              print(f'🏷️ Version: {settings.VERSION}')
+              print('✅ Structure backend validée')
+          except Exception as e:
+              print(f'❌ Erreur validation: {e}')
+              sys.exit(1)
+          EOF
           else
             echo "🧪 $test_count fichier(s) de test trouvé(s)"
             pytest --cov=app --cov-report=xml --cov-report=term-missing
@@ -265,7 +265,7 @@ except Exception as e:
     
     strategy:
       matrix:
-        environment: 
+        environment:
           - ${{ needs.prepare.outputs.environment }}
     
     steps:
@@ -306,9 +306,9 @@ except Exception as e:
           
           # Test d'import et validation config
           cd packages/backend
-          python -c "
+          python << 'EOF'
           import os
-          os.environ['ENVIRONMENT'] = '$ENVIRONMENT'
+          os.environ['ENVIRONMENT'] = os.getenv('ENVIRONMENT')
           try:
               from app.config import settings
               print(f'✅ Configuration {settings.ENVIRONMENT} validée')
@@ -317,7 +317,7 @@ except Exception as e:
           except Exception as e:
               print(f'❌ Erreur configuration: {e}')
               exit(1)
-          "
+          EOF
           
           echo "✅ Configuration production validée"
       
