@@ -83,6 +83,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install python-dotenv
+      
+      - name: 🗑️ Remove existing .env.test if it exists
+        run: |
+          cd packages/backend
+          if [ -f .env.test ]; then
+            rm .env.test
+            echo "Removed existing .env.test file."
+          fi
 
       - name: 🔧 Setup temporary .env.test for testing
         env:
@@ -98,11 +106,22 @@ jobs:
           echo "SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-placeholder-key}" >> .env.test
           echo "FIREBASE_PROJECT_ID=taxasge-$ENVIRONMENT" >> .env.test
 
+      
+      - name: 🔍 Verify .env.test file creation
+        run: |
+          cd packages/backend
+          if [ -f .env.test ]; then
+            echo ".env.test file has been successfully created."
+          else
+            echo "Failed to create .env.test file."
+            exit 1
+          fi
+      
       - name: 🧪 Run unit tests
         if: matrix.test-type == 'unit'
         run: |
           cd packages/backend
-          pytest --dotenv-path=.env.test tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term-missing -p no:warnings
+          python -m pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term-missing
 
       - name: 🔗 Run integration tests
         if: matrix.test-type == 'integration'
