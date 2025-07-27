@@ -82,7 +82,7 @@ jobs:
           cd packages/backend
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          
+          pip install python-dotenv
 
       - name: 🔧 Setup temporary .env.test for testing
         env:
@@ -102,9 +102,7 @@ jobs:
         if: matrix.test-type == 'unit'
         run: |
           cd packages/backend
-          python -m pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term-missing --env-file=.env.test
-        env:
-          ENV_FILE: .env.test
+          pytest --dotenv-path=.env.test tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term-missing -p no:warnings
 
       - name: 🔗 Run integration tests
         if: matrix.test-type == 'integration'
