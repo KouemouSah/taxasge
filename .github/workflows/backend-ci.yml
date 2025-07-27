@@ -127,8 +127,7 @@ jobs:
         if: matrix.test-type == 'integration'
         run: |
           cd packages/backend
-          PYTHONPATH=. python -c "
-          import app
+          python -c "
           print('🔍 Testing imports...')
           from app.config import settings
           print(f'✅ Config loaded: {settings.ENVIRONMENT}')
