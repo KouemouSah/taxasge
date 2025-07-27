@@ -133,7 +133,7 @@ jobs:
           print(f'✅ Config loaded: {settings.ENVIRONMENT}')
           import fastapi
           print(f'✅ FastAPI version: {fastapi.__version__}')
-          from app import __version__
+          from app.__init__ import __version__
           print(f'✅ App version: {__version__}')
           print('🎉 All integration tests passed!')
           " --env-file=.env.test
