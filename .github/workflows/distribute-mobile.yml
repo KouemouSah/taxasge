@@ -408,8 +408,20 @@ jobs:
             echo "message=Build échoué" >> $GITHUB_OUTPUT
           fi
 
+      
+      
+      - name: Check Slack Webhook Availability
+        id: check-slack
+        run: |
+          if [ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
+            echo "has_slack_webhook=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_slack_webhook=false" >> $GITHUB_OUTPUT
+          fi
+            
+      
       - name: 📢 Slack notification
-        if: secrets.SLACK_WEBHOOK_URL
+        if: steps.check-slack.outputs.has_slack_webhook == 'true'
         uses: 8398a7/action-slack@v3
         with:
           status: custom
