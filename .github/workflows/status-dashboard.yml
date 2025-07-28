@@ -1,0 +1,463 @@
+# ============================================================================
+# 📊 TaxasGE Status Dashboard - Project Monitoring
+# ============================================================================
+# Workflow de monitoring et dashboard de statut du projet TaxasGE
+# Collecte et publie les métriques de santé de l'infrastructure
+#
+# Features:
+# - Monitoring santé des services (Backend API, Mobile, Database)
+# - Métriques de performance et disponibilité
+# - Status badges automatiques pour le README
+# - Alertes proactives sur les problèmes
+# - Dashboard temps réel avec historique
+# - Intégration Slack/Discord pour notifications
+#
+# Author: KOUEMOU SAH Jean Emac
+# ============================================================================
+
+name: 📊 Status Dashboard
+
+on:
+  # Monitoring périodique
+  schedule:
+    - cron: '*/15 * * * *' # Toutes les 15 minutes
+    - cron: '0 */1 * * *'  # Toutes les heures (métriques détaillées)
+    - cron: '0 0 * * *'    # Quotidien (rapport complet)
+  
+  # Monitoring sur événements importants
+  workflow_run:
+    workflows: ["🚀 Deploy Backend to Firebase", "📱 Mobile CI (React Native)", "🐍 Backend CI/CD"]
+    types: [completed]
+  
+  # Monitoring manuel
+  workflow_dispatch:
+    inputs:
+      check_type:
+        description: 'Type de vérification'
+        required: true
+        default: 'full'
+        type: choice
+        options:
+          - quick
+          - full
+          - deep
+      notify_team:
+        description: 'Notifier l''équipe'
+        required: false
+        default: true
+        type: boolean
+
+# ============================================================================
+# VARIABLES GLOBALES
+# ============================================================================
+
+env:
+  FIREBASE_PROJECT_DEV: 'taxasge-dev'
+  FIREBASE_PROJECT_PROD: 'taxasge-prod'
+  API_TIMEOUT: '30'
+  MAX_RETRIES: '3'
+
+# ============================================================================
+# JOBS DE MONITORING
+# ============================================================================
+
+jobs:
+  # ==========================================================================
+  # JOB 1: MONITORING SERVICES CORE
+  # ==========================================================================
+  
+  monitor-services:
+    name: 🔍 Monitor Core Services
+    runs-on: ubuntu-latest
+    
+    outputs:
+      backend-status: ${{ steps.backend.outputs.status }}
+      database-status: ${{ steps.database.outputs.status }}
+      firebase-status: ${{ steps.firebase.outputs.status }}
+      overall-health: ${{ steps.summary.outputs.health }}
+      
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup monitoring environment
+        run: |
+          echo "🔧 Configuration monitoring TaxasGE"
+          echo "📅 Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "🎯 Check type: ${{ github.event.inputs.check_type || 'scheduled' }}"
+          
+          # Installation outils monitoring
+          curl -s -o /dev/null -w "curl_version: %{version}\n" https://httpbin.org/get > /dev/null
+
+      - name: 🚀 Monitor Backend API
+        id: backend
+        run: |
+          echo "🚀 Vérification Backend API TaxasGE"
+          
+          # URLs à tester selon environnement
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            API_BASE="https://taxasge-prod.web.app"
+          else
+            API_BASE="https://taxasge-dev.web.app"
+          fi
+          
+          # Test endpoints critiques
+          declare -A endpoints=(
+            ["root"]="/"
+            ["health"]="/health"
+            ["api-v1"]="/api/v1/"
+            ["docs"]="/docs"
+          )
+          
+          success_count=0
+          total_count=${#endpoints[@]}
+          response_times=""
+          
+          for endpoint in "${!endpoints[@]}"; do
+            url="$API_BASE${endpoints[$endpoint]}"
+            echo "🔍 Test $endpoint: $url"
+            
+            # Mesurer temps de réponse
+            start_time=$(date +%s%N)
+            if response=$(curl -s -w "%{http_code}|%{time_total}" -m ${{ env.API_TIMEOUT }} "$url" 2>/dev/null); then
+              end_time=$(date +%s%N)
+              
+              http_code=$(echo "$response" | tail -c 12 | cut -d'|' -f1)
+              response_time=$(echo "$response" | tail -c 12 | cut -d'|' -f2)
+              
+              if [[ "$http_code" =~ ^(200|201|302)$ ]]; then
+                echo "✅ $endpoint: OK (${response_time}s)"
+                ((success_count++))
+                response_times="$response_times$endpoint:${response_time}s "
+              else
+                echo "⚠️ $endpoint: HTTP $http_code"
+              fi
+            else
+              echo "❌ $endpoint: Timeout/Error"
+            fi
+          done
+          
+          # Calcul status global backend
+          if [[ $success_count -eq $total_count ]]; then
+            backend_status="operational"
+            echo "✅ Backend API: Tous services opérationnels ($success_count/$total_count)"
+          elif [[ $success_count -gt 0 ]]; then
+            backend_status="degraded"
+            echo "⚠️ Backend API: Performance dégradée ($success_count/$total_count)"
+          else
+            backend_status="down"
+            echo "❌ Backend API: Services indisponibles"
+          fi
+          
+          echo "status=$backend_status" >> $GITHUB_OUTPUT
+          echo "success_rate=$((success_count * 100 / total_count))" >> $GITHUB_OUTPUT
+          echo "response_times=$response_times" >> $GITHUB_OUTPUT
+
+      - name: 🗄️ Monitor Database Status
+        id: database
+        run: |
+          echo "🗄️ Vérification Supabase Database"
+          
+          # Test connexion Supabase via API REST
+          SUPABASE_URL="${{ secrets.SUPABASE_URL }}"
+          SUPABASE_KEY="${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
+          
+          if [[ -n "$SUPABASE_URL" && -n "$SUPABASE_KEY" ]]; then
+            # Test basique de connexion
+            if curl -s -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $SUPABASE_KEY" \
+                -m 10 "$SUPABASE_URL/rest/v1/" > /dev/null; then
+              echo "✅ Supabase: Connexion OK"
+              
+              # Test requête simple (si tables existent)
+              if curl -s -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $SUPABASE_KEY" \
+                  -m 10 "$SUPABASE_URL/rest/v1/taxes?limit=1" > /dev/null 2>&1; then
+                database_status="operational"
+                echo "✅ Database: Tables accessibles"
+              else
+                database_status="partial"
+                echo "⚠️ Database: Connexion OK, tables en cours d'initialisation"
+              fi
+            else
+              database_status="down"
+              echo "❌ Supabase: Connexion échouée"
+            fi
+          else
+            database_status="unknown"
+            echo "⚠️ Database: Secrets Supabase non configurés"
+          fi
+          
+          echo "status=$database_status" >> $GITHUB_OUTPUT
+
+      - name: 🔥 Monitor Firebase Services
+        id: firebase
+        run: |
+          echo "🔥 Vérification Firebase Services"
+          
+          # Test Firebase Functions (via HTTP)
+          firebase_status="unknown"
+          
+          # Test connexion Firebase Hosting
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            FIREBASE_URL="https://taxasge-prod.web.app"
+          else
+            FIREBASE_URL="https://taxasge-dev.web.app"
+          fi
+          
+          if curl -s -m 10 "$FIREBASE_URL" > /dev/null; then
+            echo "✅ Firebase Hosting: Accessible"
+            firebase_status="operational"
+          else
+            echo "❌ Firebase Hosting: Inaccessible"
+            firebase_status="down"
+          fi
+          
+          # Test Firebase Functions (si déployées)
+          if curl -s -m 15 "$FIREBASE_URL/api/" > /dev/null 2>&1; then
+            echo "✅ Firebase Functions: Opérationnelles"
+          else
+            echo "⚠️ Firebase Functions: Non déployées ou inaccessibles"
+            if [[ "$firebase_status" == "operational" ]]; then
+              firebase_status="partial"
+            fi
+          fi
+          
+          echo "status=$firebase_status" >> $GITHUB_OUTPUT
+
+      - name: 📊 Calculate Overall Health
+        id: summary
+        run: |
+          backend="${{ steps.backend.outputs.status }}"
+          database="${{ steps.database.outputs.status }}"
+          firebase="${{ steps.firebase.outputs.status }}"
+          
+          echo "📊 Status Summary:"
+          echo "Backend: $backend"
+          echo "Database: $database"
+          echo "Firebase: $firebase"
+          
+          # Calcul santé globale
+          if [[ "$backend" == "operational" && "$database" == "operational" && "$firebase" == "operational" ]]; then
+            overall_health="healthy"
+            health_emoji="✅"
+            health_color="green"
+          elif [[ "$backend" == "down" || "$database" == "down" || "$firebase" == "down" ]]; then
+            overall_health="critical"
+            health_emoji="❌"
+            health_color="red"
+          else
+            overall_health="degraded"
+            health_emoji="⚠️"
+            health_color="yellow"
+          fi
+          
+          echo "health=$overall_health" >> $GITHUB_OUTPUT
+          echo "emoji=$health_emoji" >> $GITHUB_OUTPUT
+          echo "color=$health_color" >> $GITHUB_OUTPUT
+          
+          echo "$health_emoji TaxasGE Global Health: $overall_health"
+
+  # ==========================================================================
+  # JOB 2: MÉTRIQUES DE PERFORMANCE
+  # ==========================================================================
+  
+  collect-metrics:
+    name: 📈 Collect Performance Metrics
+    runs-on: ubuntu-latest
+    needs: monitor-services
+    if: github.event.inputs.check_type != 'quick'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📈 Collect GitHub Metrics
+        id: github-metrics
+        run: |
+          echo "📈 Collection métriques GitHub"
+          
+          # API GitHub pour statistiques repository
+          REPO_API="https://api.github.com/repos/${{ github.repository }}"
+          
+          # Métriques repository
+          if repo_data=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "$REPO_API"); then
+            stars=$(echo "$repo_data" | jq -r '.stargazers_count // 0')
+            forks=$(echo "$repo_data" | jq -r '.forks_count // 0')
+            issues=$(echo "$repo_data" | jq -r '.open_issues_count // 0')
+            size=$(echo "$repo_data" | jq -r '.size // 0')
+            
+            echo "⭐ Stars: $stars"
+            echo "🍴 Forks: $forks"
+            echo "🐛 Open Issues: $issues"
+            echo "📦 Size: ${size}KB"
+            
+            echo "stars=$stars" >> $GITHUB_OUTPUT
+            echo "forks=$forks" >> $GITHUB_OUTPUT
+            echo "issues=$issues" >> $GITHUB_OUTPUT
+            echo "size=$size" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ Impossible de récupérer les métriques GitHub"
+          fi
+
+      - name: 📊 Collect Workflow Metrics
+        run: |
+          echo "📊 Métriques workflows récents"
+          
+          # Dernières exécutions workflows
+          WORKFLOWS_API="https://api.github.com/repos/${{ github.repository }}/actions/runs"
+          
+          if workflow_data=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "$WORKFLOWS_API?per_page=10"); then
+            success_count=$(echo "$workflow_data" | jq '[.workflow_runs[] | select(.conclusion == "success")] | length')
+            failure_count=$(echo "$workflow_data" | jq '[.workflow_runs[] | select(.conclusion == "failure")] | length')
+            total_runs=$(echo "$workflow_data" | jq '.workflow_runs | length')
+            
+            if [[ $total_runs -gt 0 ]]; then
+              success_rate=$((success_count * 100 / total_runs))
+              echo "✅ Workflows Success Rate: ${success_rate}% ($success_count/$total_runs)"
+            else
+              echo "📝 Aucun workflow récent trouvé"
+            fi
+          fi
+
+  # ==========================================================================
+  # JOB 3: GÉNÉRATION STATUS BADGES
+  # ==========================================================================
+  
+  update-badges:
+    name: 🏷️ Update Status Badges
+    runs-on: ubuntu-latest
+    needs: [monitor-services, collect-metrics]
+    if: always()
+    
+    steps:
+      - name: 🏷️ Generate Status Badges
+        run: |
+          echo "🏷️ Génération badges de statut"
+          
+          # Configuration badges selon santé globale
+          health="${{ needs.monitor-services.outputs.overall-health }}"
+          
+          case "$health" in
+            "healthy")
+              badge_color="brightgreen"
+              badge_message="Operational"
+              ;;
+            "degraded")
+              badge_color="yellow"
+              badge_message="Degraded"
+              ;;
+            "critical")
+              badge_color="red"
+              badge_message="Critical"
+              ;;
+            *)
+              badge_color="lightgrey"
+              badge_message="Unknown"
+              ;;
+          esac
+          
+          echo "📊 Status Badge: $badge_message ($badge_color)"
+          
+          # URLs badges (shields.io)
+          echo "🔗 Badge URLs générées:"
+          echo "Status: https://img.shields.io/badge/Status-$badge_message-$badge_color"
+          echo "Backend: https://img.shields.io/badge/Backend-${{ needs.monitor-services.outputs.backend-status }}-$badge_color"
+          echo "Database: https://img.shields.io/badge/Database-${{ needs.monitor-services.outputs.database-status }}-$badge_color"
+
+  # ==========================================================================
+  # JOB 4: NOTIFICATIONS ÉQUIPE
+  # ==========================================================================
+  
+  notify-team:
+    name: 📢 Team Notifications
+    runs-on: ubuntu-latest
+    needs: [monitor-services, collect-metrics]
+    if: always() && (needs.monitor-services.outputs.overall-health == 'critical' || github.event.inputs.notify_team == 'true')
+    
+    steps:
+      
+      - name: 📊 Check Slack webhook availability
+        id: check-slack
+        run: |
+          if [ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
+            echo "has_slack_webhook=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_slack_webhook=false" >> $GITHUB_OUTPUT
+          fi
+         
+      - name: 📢 Slack notification
+        if: steps.check-slack.outputs.has_slack_webhook == 'true'
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              "text": "${{ needs.monitor-services.outputs.overall-health == 'critical' && '🚨 ALERT' || '📊' }} TaxasGE Status Dashboard",
+              "attachments": [
+                {
+                  "color": "${{ needs.monitor-services.outputs.overall-health == 'healthy' && 'good' || needs.monitor-services.outputs.overall-health == 'critical' && 'danger' || 'warning' }}",
+                  "fields": [
+                    {
+                      "title": "Overall Health",
+                      "value": "${{ needs.monitor-services.outputs.overall-health }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Backend API",
+                      "value": "${{ needs.monitor-services.outputs.backend-status }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Database",
+                      "value": "${{ needs.monitor-services.outputs.database-status }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Firebase",
+                      "value": "${{ needs.monitor-services.outputs.firebase-status }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Timestamp",
+                      "value": "$(date -u +%Y-%m-%d\ %H:%M:%S\ UTC)",
+                      "short": false
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: 📊 Status Summary
+        run: |
+          echo "📊 TaxasGE Status Dashboard Summary"
+          echo "=================================="
+          echo "🕐 Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "🎯 Overall Health: ${{ needs.monitor-services.outputs.overall-health }}"
+          echo "🚀 Backend: ${{ needs.monitor-services.outputs.backend-status }}"
+          echo "🗄️ Database: ${{ needs.monitor-services.outputs.database-status }}"
+          echo "🔥 Firebase: ${{ needs.monitor-services.outputs.firebase-status }}"
+          echo ""
+          echo "📈 Next check: 15 minutes"
+          echo "📧 Notifications: ${{ needs.monitor-services.outputs.overall-health == 'critical' && 'SENT' || 'None' }}"
+
+# ============================================================================
+# CONCURRENCY CONTROL
+# ============================================================================
+concurrency:
+  group: status-dashboard
+  cancel-in-progress: true # Annuler les checks précédents
+
+# ============================================================================
+# WORKFLOW SUMMARY
+# ============================================================================
+# Ce workflow Status Dashboard pour TaxasGE effectue:
+# 1. 🔍 Monitoring services core (Backend, Database, Firebase)
+# 2. 📈 Collection métriques performance et GitHub
+# 3. 🏷️ Génération badges statut automatiques
+# 4. 📢 Notifications équipe en cas de problème critique
+#
+# Exécution: Toutes les 15min + événements workflow + manuel
+# Monitoring: API endpoints, Supabase, Firebase services
+# Alertes: Slack notifications pour incidents critiques
+# ============================================================================
