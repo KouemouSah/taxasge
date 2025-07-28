@@ -18,11 +18,8 @@
 name: 📲 Distribute Mobile App
 
 on:
-  # Distribution sur création de release/tag
   release:
     types: [published, created]
-  
-  # Distribution manuelle avec options
   workflow_dispatch:
     inputs:
       environment:
@@ -31,16 +28,16 @@ on:
         default: 'development'
         type: choice
         options:
-          - development
-          - production
+        - development
+        - production
       build_type:
         description: 'Type de build'
         required: true
         default: 'debug'
         type: choice
         options:
-          - debug
-          - release
+        - debug
+        - release
       notify_testers:
         description: 'Notifier les testeurs'
         required: false
@@ -61,8 +58,8 @@ env:
   FIREBASE_CLI_VERSION: '12.9.1'
   FIREBASE_PROJECT_DEV: 'taxasge-dev'
   FIREBASE_PROJECT_PROD: 'taxasge-prod'
-  APP_ID_ANDROID_DEV: '1:392159428433:android:877edaeebd6f9558ef1d70'  # À remplacer par le vrai ID
-  APP_ID_ANDROID_PROD: '1:430718042574:android:ae49f5671d0e22b7162b9f'  # À remplacer par le vrai ID
+  APP_ID_ANDROID_DEV: '1:123456789:android:abcdef'  # À remplacer par le vrai ID
+  APP_ID_ANDROID_PROD: '1:987654321:android:fedcba'  # À remplacer par le vrai ID
 
 # ============================================================================
 # JOBS DE DISTRIBUTION
