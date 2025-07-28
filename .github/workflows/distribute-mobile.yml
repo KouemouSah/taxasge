@@ -1,0 +1,491 @@
+# ============================================================================
+# 📲 TaxasGE Mobile Distribution - Firebase App Distribution
+# ============================================================================
+# Workflow de distribution automatique des builds mobiles vers les testeurs
+# Déclenché sur: Release tags + déploiement manuel
+#
+# Features:
+# - Build APK/IPA optimisés pour distribution
+# - Upload automatique Firebase App Distribution
+# - Notification testeurs avec release notes
+# - Distribution différenciée dev/prod
+# - Gestion des versions et métadonnées
+# - Intégration avec les releases GitHub
+#
+# Author: KOUEMOU SAH Jean Emac
+# ============================================================================
+
+name: 📲 Distribute Mobile App
+
+on:
+  # Distribution sur création de release/tag
+  release:
+    types: [published, created]
+  
+  # Distribution manuelle avec options
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environnement de distribution'
+        required: true
+        default: 'development'
+        type: choice
+        options:
+          - development
+          - production
+      build_type:
+        description: 'Type de build'
+        required: true
+        default: 'debug'
+        type: choice
+        options:
+          - debug
+          - release
+      notify_testers:
+        description: 'Notifier les testeurs'
+        required: false
+        default: true
+        type: boolean
+      release_notes:
+        description: 'Notes de version (optionnel)'
+        required: false
+        type: string
+
+# ============================================================================
+# VARIABLES GLOBALES
+# ============================================================================
+
+env:
+  NODE_VERSION: '18'
+  JAVA_VERSION: '17'
+  FIREBASE_CLI_VERSION: '12.9.1'
+  FIREBASE_PROJECT_DEV: 'taxasge-dev'
+  FIREBASE_PROJECT_PROD: 'taxasge-prod'
+  APP_ID_ANDROID_DEV: '1:392159428433:android:877edaeebd6f9558ef1d70'  # À remplacer par le vrai ID
+  APP_ID_ANDROID_PROD: '1:430718042574:android:ae49f5671d0e22b7162b9f'  # À remplacer par le vrai ID
+
+# ============================================================================
+# JOBS DE DISTRIBUTION
+# ============================================================================
+
+jobs:
+  # ==========================================================================
+  # JOB 1: PRÉPARATION DISTRIBUTION
+  # ==========================================================================
+  
+  prepare-distribution:
+    name: 🔧 Prepare Distribution
+    runs-on: ubuntu-latest
+    
+    outputs:
+      environment: ${{ steps.config.outputs.environment }}
+      build-type: ${{ steps.config.outputs.build-type }}
+      firebase-project: ${{ steps.config.outputs.firebase-project }}
+      app-id: ${{ steps.config.outputs.app-id }}
+      version-name: ${{ steps.config.outputs.version-name }}
+      version-code: ${{ steps.config.outputs.version-code }}
+      release-notes: ${{ steps.config.outputs.release-notes }}
+      
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Configure distribution parameters
+        id: config
+        run: |
+          # Déterminer l'environnement
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            if [[ "${{ github.event.release.prerelease }}" == "true" ]]; then
+              ENVIRONMENT="development"
+              BUILD_TYPE="debug"
+            else
+              ENVIRONMENT="production"
+              BUILD_TYPE="release"
+            fi
+          else
+            ENVIRONMENT="${{ github.event.inputs.environment }}"
+            BUILD_TYPE="${{ github.event.inputs.build_type }}"
+          fi
+          
+          # Configuration Firebase selon environnement
+          if [[ "$ENVIRONMENT" == "production" ]]; then
+            FIREBASE_PROJECT="${{ env.FIREBASE_PROJECT_PROD }}"
+            APP_ID="${{ env.APP_ID_ANDROID_PROD }}"
+          else
+            FIREBASE_PROJECT="${{ env.FIREBASE_PROJECT_DEV }}"
+            APP_ID="${{ env.APP_ID_ANDROID_DEV }}"
+          fi
+          
+          # Génération version
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            VERSION_NAME="${{ github.event.release.tag_name }}"
+            VERSION_CODE=$(date +%s)
+          else
+            VERSION_NAME="v$(date +%Y.%m.%d)-$ENVIRONMENT"
+            VERSION_CODE=$(date +%s)
+          fi
+          
+          # Notes de version
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            RELEASE_NOTES="${{ github.event.release.body }}"
+          elif [[ -n "${{ github.event.inputs.release_notes }}" ]]; then
+            RELEASE_NOTES="${{ github.event.inputs.release_notes }}"
+          else
+            RELEASE_NOTES="Build automatique $VERSION_NAME pour $ENVIRONMENT"
+          fi
+          
+          # Outputs
+          echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
+          echo "build-type=$BUILD_TYPE" >> $GITHUB_OUTPUT
+          echo "firebase-project=$FIREBASE_PROJECT" >> $GITHUB_OUTPUT
+          echo "app-id=$APP_ID" >> $GITHUB_OUTPUT
+          echo "version-name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "version-code=$VERSION_CODE" >> $GITHUB_OUTPUT
+          echo "release-notes=$RELEASE_NOTES" >> $GITHUB_OUTPUT
+
+      - name: 📊 Distribution Summary
+        run: |
+          echo "📲 TaxasGE Mobile Distribution"
+          echo "=============================="
+          echo "🎯 Environment: ${{ steps.config.outputs.environment }}"
+          echo "🏗️ Build Type: ${{ steps.config.outputs.build-type }}"
+          echo "🔥 Firebase: ${{ steps.config.outputs.firebase-project }}"
+          echo "📱 App ID: ${{ steps.config.outputs.app-id }}"
+          echo "🏷️ Version: ${{ steps.config.outputs.version-name }}"
+          echo "🔢 Code: ${{ steps.config.outputs.version-code }}"
+          echo "📝 Notes: ${{ steps.config.outputs.release-notes }}"
+
+  # ==========================================================================
+  # JOB 2: BUILD ANDROID OPTIMISÉ
+  # ==========================================================================
+  
+  build-android:
+    name: 🤖 Build Android
+    runs-on: ubuntu-latest
+    needs: prepare-distribution
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
+          cache-dependency-path: packages/mobile/yarn.lock
+
+      - name: ☕ Setup Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: 🤖 Setup Android SDK
+        uses: android-actions/setup-android@v2
+
+      - name: 📦 Install dependencies
+        run: |
+          cd packages/mobile
+          
+          if [[ ! -f "package.json" ]] || [[ ! -s "package.json" ]]; then
+            echo "❌ package.json manquant ou vide"
+            echo "📝 Structure mobile non prête pour distribution"
+            exit 1
+          fi
+          
+          echo "📦 Installation des dépendances pour distribution..."
+          yarn install --frozen-lockfile --production=false
+
+      - name: 🔧 Configure build environment
+        env:
+          ENVIRONMENT: ${{ needs.prepare-distribution.outputs.environment }}
+          VERSION_NAME: ${{ needs.prepare-distribution.outputs.version-name }}
+          VERSION_CODE: ${{ needs.prepare-distribution.outputs.version-code }}
+        run: |
+          cd packages/mobile
+          
+          # Vérifier structure Android
+          if [[ ! -d "android" ]] || [[ ! -f "android/gradlew" ]]; then
+            echo "❌ Structure Android manquante"
+            echo "📝 Initialisation React Native Android requise"
+            exit 1
+          fi
+          
+          echo "🔧 Configuration build pour $ENVIRONMENT"
+          
+          # Mettre à jour versionName et versionCode dans build.gradle
+          if [[ -f "android/app/build.gradle" ]]; then
+            sed -i "s/versionName \".*\"/versionName \"$VERSION_NAME\"/" android/app/build.gradle
+            sed -i "s/versionCode [0-9]*/versionCode $VERSION_CODE/" android/app/build.gradle
+            echo "✅ Version mise à jour: $VERSION_NAME ($VERSION_CODE)"
+          fi
+          
+          # Validation configuration Firebase
+          if [[ -f "android/app/google-services.json" ]]; then
+            echo "✅ google-services.json présent"
+            
+            # Vérifier cohérence projet Firebase avec environnement
+            PROJECT_ID=$(grep -o '"project_id": "[^"]*"' android/app/google-services.json | cut -d'"' -f4)
+            
+            if [[ "$ENVIRONMENT" == "production" && "$PROJECT_ID" != "taxasge-prod" ]]; then
+              echo "⚠️ WARNING: Configuration Firebase dev détectée pour environnement production"
+              echo "📝 Considérer la gestion par branches (develop→taxasge-dev, main→taxasge-prod)"
+            elif [[ "$ENVIRONMENT" == "development" && "$PROJECT_ID" != "taxasge-dev" ]]; then
+              echo "⚠️ WARNING: Configuration Firebase prod détectée pour environnement development"
+              echo "📝 Considérer la gestion par branches (develop→taxasge-dev, main→taxasge-prod)"
+            else
+              echo "✅ Configuration Firebase cohérente: $PROJECT_ID pour $ENVIRONMENT"
+            fi
+          else
+            echo "❌ google-services.json manquant"
+            echo "📝 Configuration Firebase Android requise"
+            exit 1
+          fi
+
+      - name: 🏗️ Build Android APK
+        env:
+          BUILD_TYPE: ${{ needs.prepare-distribution.outputs.build-type }}
+        run: |
+          cd packages/mobile/android
+          
+          echo "🏗️ Build Android $BUILD_TYPE..."
+          
+          # Nettoyer le projet
+          ./gradlew clean
+          
+          # Build selon le type
+          if [[ "$BUILD_TYPE" == "release" ]]; then
+            echo "🚀 Building release APK..."
+            ./gradlew assembleRelease
+            APK_PATH="app/build/outputs/apk/release/app-release.apk"
+          else
+            echo "🔧 Building debug APK..."
+            ./gradlew assembleDebug
+            APK_PATH="app/build/outputs/apk/debug/app-debug.apk"
+          fi
+          
+          # Vérifier génération
+          if [[ -f "$APK_PATH" ]]; then
+            APK_SIZE=$(du -h "$APK_PATH" | cut -f1)
+            echo "✅ APK généré: $APK_SIZE"
+            echo "apk-path=$APK_PATH" >> $GITHUB_ENV
+          else
+            echo "❌ Échec génération APK"
+            exit 1
+          fi
+
+      - name: 📊 APK Info
+        run: |
+          cd packages/mobile/android
+          
+          if [[ -f "${{ env.apk-path }}" ]]; then
+            echo "📱 APK Information:"
+            echo "Path: ${{ env.apk-path }}"
+            echo "Size: $(du -h "${{ env.apk-path }}" | cut -f1)"
+            echo "SHA256: $(sha256sum "${{ env.apk-path }}" | cut -d' ' -f1)"
+          fi
+
+      - name: 📤 Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: taxasge-android-${{ needs.prepare-distribution.outputs.environment }}-${{ needs.prepare-distribution.outputs.version-name }}
+          path: packages/mobile/android/${{ env.apk-path }}
+          retention-days: 90
+
+  # ==========================================================================
+  # JOB 3: DISTRIBUTION FIREBASE
+  # ==========================================================================
+  
+  distribute-firebase:
+    name: 🔥 Firebase App Distribution
+    runs-on: ubuntu-latest
+    needs: [prepare-distribution, build-android]
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 🔥 Install Firebase CLI
+        run: |
+          npm install -g firebase-tools@${{ env.FIREBASE_CLI_VERSION }}
+          firebase --version
+
+      - name: 📥 Download APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: taxasge-android-${{ needs.prepare-distribution.outputs.environment }}-${{ needs.prepare-distribution.outputs.version-name }}
+          path: ./artifacts/
+
+      - name: 🔥 Firebase Authentication
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV }}
+        run: |
+          echo "$FIREBASE_SERVICE_ACCOUNT" > service-account.json
+          firebase auth:ci-login --service-account service-account.json
+
+      - name: 📲 Distribute to App Distribution
+        env:
+          FIREBASE_PROJECT: ${{ needs.prepare-distribution.outputs.firebase-project }}
+          APP_ID: ${{ needs.prepare-distribution.outputs.app-id }}
+          RELEASE_NOTES: ${{ needs.prepare-distribution.outputs.release-notes }}
+          NOTIFY_TESTERS: ${{ github.event.inputs.notify_testers || 'true' }}
+        run: |
+          # Trouver le fichier APK
+          APK_FILE=$(find ./artifacts/ -name "*.apk" | head -1)
+          
+          if [[ -z "$APK_FILE" ]]; then
+            echo "❌ Aucun fichier APK trouvé"
+            exit 1
+          fi
+          
+          echo "📲 Distribution via Firebase App Distribution..."
+          echo "Project: $FIREBASE_PROJECT"
+          echo "App ID: $APP_ID"
+          echo "APK: $APK_FILE"
+          
+          # Configuration du projet Firebase
+          firebase use $FIREBASE_PROJECT
+          
+          # Distribution avec notes de version
+          DISTRIBUTE_CMD="firebase appdistribution:distribute \"$APK_FILE\" --app \"$APP_ID\""
+          
+          if [[ -n "$RELEASE_NOTES" ]]; then
+            DISTRIBUTE_CMD="$DISTRIBUTE_CMD --release-notes \"$RELEASE_NOTES\""
+          fi
+          
+          # Groupes de testeurs selon environnement
+          if [[ "${{ needs.prepare-distribution.outputs.environment }}" == "production" ]]; then
+            DISTRIBUTE_CMD="$DISTRIBUTE_CMD --groups \"beta-testers,stakeholders\""
+          else
+            DISTRIBUTE_CMD="$DISTRIBUTE_CMD --groups \"internal-testers,developers\""
+          fi
+          
+          # Notifications conditionnelles
+          if [[ "$NOTIFY_TESTERS" == "false" ]]; then
+            echo "📵 Notifications testeurs désactivées"
+          fi
+          
+          # Exécuter la distribution
+          eval $DISTRIBUTE_CMD
+          
+          echo "✅ Distribution Firebase réussie !"
+
+  # ==========================================================================
+  # JOB 4: NOTIFICATIONS & SUIVI
+  # ==========================================================================
+  
+  notify:
+    name: 📢 Notifications Distribution
+    runs-on: ubuntu-latest
+    needs: [prepare-distribution, build-android, distribute-firebase]
+    if: always()
+
+    steps:
+      - name: 📊 Determine distribution status
+        id: status
+        run: |
+          if [[ "${{ needs.build-android.result }}" == "success" && "${{ needs.distribute-firebase.result }}" == "success" ]]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "emoji=✅" >> $GITHUB_OUTPUT
+            echo "color=#00d084" >> $GITHUB_OUTPUT
+            echo "message=Distribution réussie" >> $GITHUB_OUTPUT
+          elif [[ "${{ needs.build-android.result }}" == "success" ]]; then
+            echo "status=partial" >> $GITHUB_OUTPUT
+            echo "emoji=⚠️" >> $GITHUB_OUTPUT
+            echo "color=#ffa500" >> $GITHUB_OUTPUT
+            echo "message=Build réussi, distribution échouée" >> $GITHUB_OUTPUT
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "emoji=❌" >> $GITHUB_OUTPUT
+            echo "color=#ff4757" >> $GITHUB_OUTPUT
+            echo "message=Build échoué" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 📢 Slack notification
+        if: secrets.SLACK_WEBHOOK_URL
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              "text": "${{ steps.status.outputs.emoji }} TaxasGE Mobile Distribution - ${{ steps.status.outputs.status }}",
+              "attachments": [
+                {
+                  "color": "${{ steps.status.outputs.color }}",
+                  "fields": [
+                    {
+                      "title": "Environment",
+                      "value": "${{ needs.prepare-distribution.outputs.environment }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Version",
+                      "value": "${{ needs.prepare-distribution.outputs.version-name }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Build Type",
+                      "value": "${{ needs.prepare-distribution.outputs.build-type }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Firebase Project",
+                      "value": "${{ needs.prepare-distribution.outputs.firebase-project }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Status",
+                      "value": "${{ steps.status.outputs.message }}",
+                      "short": false
+                    },
+                    {
+                      "title": "Release Notes",
+                      "value": "${{ needs.prepare-distribution.outputs.release-notes }}",
+                      "short": false
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: 📊 Distribution Summary
+        run: |
+          echo "📲 TaxasGE Mobile Distribution Summary"
+          echo "====================================="
+          echo "🎯 Environment: ${{ needs.prepare-distribution.outputs.environment }}"
+          echo "🏷️ Version: ${{ needs.prepare-distribution.outputs.version-name }}"
+          echo "🏗️ Build: ${{ needs.build-android.result }}"
+          echo "🔥 Distribution: ${{ needs.distribute-firebase.result }}"
+          echo "📊 Overall: ${{ steps.status.outputs.status }}"
+          echo ""
+          echo "📝 Release Notes:"
+          echo "${{ needs.prepare-distribution.outputs.release-notes }}"
+
+# ============================================================================
+# CONCURRENCY CONTROL
+# ============================================================================
+concurrency:
+  group: distribute-mobile-${{ github.ref }}-${{ github.event.inputs.environment }}
+  cancel-in-progress: false  # Ne pas annuler les distributions en cours
+
+# ============================================================================
+# WORKFLOW SUMMARY
+# ============================================================================
+# Ce workflow Mobile Distribution pour TaxasGE effectue:
+# 1. 🔧 Préparation paramètres distribution (version, environment, notes)
+# 2. 🤖 Build Android APK optimisé (debug/release selon contexte)
+# 3. 🔥 Distribution Firebase App Distribution avec groupes testeurs
+# 4. 📢 Notifications équipe et testeurs
+#
+# Déclenché sur: Release GitHub + workflow_dispatch manuel
+# Compatible avec: Environments dev/prod, Build types debug/release
+# Features: Versioning automatique, groupes testeurs, release notes
+# ============================================================================
