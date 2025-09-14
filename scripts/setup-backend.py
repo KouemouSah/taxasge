@@ -27,8 +27,8 @@ CONFIG_DIR = PROJECT_ROOT / "config"
 
 # Environment detection
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
-CI_ENVIRONMENT = os.getenv("CI", "false").lower() == "true"
-GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS", "false").lower() == "true"
+CI_ENVIRONMENT = os.getenv("CI", "False").lower() == "True"
+GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS", "False").lower() == "True"
 
 # ============================================================================
 # LOGGING SETUP

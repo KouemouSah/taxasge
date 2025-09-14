@@ -408,8 +408,32 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV }}
         run: |
+          # Créer le fichier service account
           echo "$FIREBASE_SERVICE_ACCOUNT" > service-account.json
-          firebase auth:ci-login --service-account service-account.json
+    
+          # Vérifier que le service account a été créé correctement
+          if [ ! -s "service-account.json" ]; then
+            echo "❌ Erreur: Le service account est vide ou n'a pas été créé"
+            exit 1
+          fi
+    
+          # Définir la variable d'environnement pour l'authentification automatique
+          export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/service-account.json"
+    
+          # Vérifier le contenu du service account (sans l'afficher pour des raisons de sécurité)
+          if ! jq . service-account.json > /dev/null 2>&1; then
+            echo "❌ Erreur: Le service account n'est pas un JSON valide"
+            exit 1
+          fi
+    
+          # Sélectionner le projet Firebase
+          firebase use ${{ env.FIREBASE_PROJECT_DEV }}
+    
+          # Vérifier l'authentification en listant les projets
+          firebase projects:list
+    
+          echo "✅ Authentification Firebase réussie"
+          
 
       - name: 🔍 Validate Firebase Configuration
         run: |

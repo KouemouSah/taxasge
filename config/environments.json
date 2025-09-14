@@ -10,18 +10,24 @@
         "project_id": "taxasge-dev",
         "hosting_url": "https://taxasge-dev.web.app",
         "functions_url": "https://taxasge-dev.cloudfunctions.net",
-        "storage_bucket": "taxasge-dev.appspot.com",
-        "auth_domain": "taxasge-dev.firebaseapp.com",
-        "database_url": "https://taxasge-dev-default-rtdb.firebaseio.com",
-        "api_key": "AIzaSyDevelopmentKeyExample",
-        "messaging_sender_id": "123456789012"
+        "storage_bucket": "taxasge-dev.firebasestorage.app",
+        "auth_domain": "taxasge-dev.firebaseapp.com",     
+        "api_key": "MANAGED_BY_FIREBASE_CONFIG_JS",
+        "messaging_sender_id": "MANAGED_BY_FIREBASE_CONFIG_JS"
       },
       "supabase": {
-        "project_ref": "taxasge-dev",
-        "url": "https://taxasge-dev.supabase.co",
-        "region": "eu-west-1",
-        "database_name": "postgres",
+        "project_ref": "taxasge-prod",
+        "url_ref": "SUPABASE_URL",
+        "service_role_key_ref": "SUPABASE_SERVICE_ROLE_KEY", 
+        "anon_key_ref": "SUPABASE_ANON_KEY",
+        "region": "eu-west-3",
+        "database_name": "taxasge-db",
         "schema": "public"
+      },
+	  "database": {
+        "url_ref": "DATABASE_URL",
+        "type": "postgresql",
+        "provider": "supabase"
       },
       "api": {
         "base_url": "http://localhost:8000",
@@ -33,7 +39,7 @@
         }
       },
       "mobile": {
-        "bundle_id": "com.taxasge.dev",
+        "bundle_id": "com.taxasge.app",
         "app_name": "TaxasGE Dev",
         "deep_link_scheme": "taxasge-dev",
         "update_check_interval": 300,
@@ -70,92 +76,31 @@
         "https_only": false
       }
     },
-    "testing": {
-      "name": "Testing",
-      "description": "Environnement de tests automatisés",
-      "firebase": {
-        "project_id": "taxasge-test",
-        "hosting_url": "https://taxasge-test.web.app",
-        "functions_url": "https://taxasge-test.cloudfunctions.net",
-        "storage_bucket": "taxasge-test.appspot.com",
-        "auth_domain": "taxasge-test.firebaseapp.com",
-        "database_url": "https://taxasge-test-default-rtdb.firebaseio.com",
-        "api_key": "AIzaSyTestingKeyExample",
-        "messaging_sender_id": "123456789013"
-      },
-      "supabase": {
-        "project_ref": "taxasge-test",
-        "url": "https://taxasge-test.supabase.co",
-        "region": "eu-west-1",
-        "database_name": "postgres",
-        "schema": "public"
-      },
-      "api": {
-        "base_url": "https://taxasge-test.web.app/api",
-        "version": "v1",
-        "timeout": 15000,
-        "rate_limit": {
-          "requests_per_minute": 200,
-          "burst_limit": 50
-        }
-      },
-      "mobile": {
-        "bundle_id": "com.taxasge.test",
-        "app_name": "TaxasGE Test",
-        "deep_link_scheme": "taxasge-test",
-        "update_check_interval": 60,
-        "offline_sync_interval": 120
-      },
-      "ai": {
-        "model_version": "1.0.0",
-        "confidence_threshold": 0.7,
-        "max_response_length": 300,
-        "fallback_enabled": true,
-        "debug_mode": true
-      },
-      "features": {
-        "chatbot_enabled": true,
-        "offline_mode": true,
-        "payments_enabled": false,
-        "analytics_enabled": false,
-        "crash_reporting": false,
-        "performance_monitoring": false,
-        "debug_tools": true
-      },
-      "logging": {
-        "level": "INFO",
-        "structured_logging": true,
-        "console_output": true,
-        "file_output": true,
-        "remote_logging": false
-      },
-      "security": {
-        "jwt_expiry_minutes": 15,
-        "refresh_token_days": 1,
-        "rate_limiting_enabled": true,
-        "cors_strict": true,
-        "https_only": true
-      }
-    },
     "production": {
       "name": "Production",
       "description": "Environnement de production pour les utilisateurs finaux",
       "firebase": {
-        "project_id": "taxasge-prod",
-        "hosting_url": "https://taxasge.app",
-        "functions_url": "https://taxasge-prod.cloudfunctions.net",
-        "storage_bucket": "taxasge-prod.appspot.com",
-        "auth_domain": "taxasge.app",
-        "database_url": "https://taxasge-prod-default-rtdb.firebaseio.com",
-        "api_key": "AIzaSyProductionKeyExample",
-        "messaging_sender_id": "123456789014"
+        "project_id": "taxasge-pro",
+        "hosting_url": "https://taxasge-pro.web.app",
+        "functions_url": "https://taxasge-pro.cloudfunctions.net",
+        "storage_bucket": "taxasge-pro.firebasestorage.app",
+        "auth_domain": "taxasge-pro.firebaseapp.com",
+        "api_key": "MANAGED_BY_FIREBASE_CONFIG_JS",
+        "messaging_sender_id": "MANAGED_BY_FIREBASE_CONFIG_JS"
       },
       "supabase": {
         "project_ref": "taxasge-prod",
-        "url": "https://taxasge-prod.supabase.co",
-        "region": "eu-west-1",
-        "database_name": "postgres",
+        "url_ref": "SUPABASE_URL",
+        "service_role_key_ref": "SUPABASE_SERVICE_ROLE_KEY", 
+        "anon_key_ref": "SUPABASE_ANON_KEY",
+        "region": "eu-west-3",
+        "database_name": "taxasge-db",
         "schema": "public"
+      },
+	  "database": {
+        "url_ref": "DATABASE_URL",
+        "type": "postgresql",
+        "provider": "supabase"
       },
       "api": {
         "base_url": "https://taxasge.app/api",

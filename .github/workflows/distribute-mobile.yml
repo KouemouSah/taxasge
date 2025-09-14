@@ -53,13 +53,13 @@ on:
 # ============================================================================
 
 env:
-  NODE_VERSION: '18'
+  NODE_VERSION: '20'
   JAVA_VERSION: '17'
   FIREBASE_CLI_VERSION: '12.9.1'
   FIREBASE_PROJECT_DEV: 'taxasge-dev'
   FIREBASE_PROJECT_PROD: 'taxasge-prod'
-  APP_ID_ANDROID_DEV: '1:123456789:android:abcdef' # À remplacer par le vrai ID
-  APP_ID_ANDROID_PROD: '1:987654321:android:fedcba' # À remplacer par le vrai ID
+  APP_ID_ANDROID_DEV: '1:392159428433:android:877edaeebd6f9558ef1d70' # À remplacer par le vrai ID
+  APP_ID_ANDROID_PROD: '1:430718042574:android:ae49f5671d0e22b7162b9f' # À remplacer par le vrai ID
 
 # ============================================================================
 # JOBS DE DISTRIBUTION
@@ -195,7 +195,7 @@ jobs:
           fi
           
           echo "📦 Installation des dépendances pour distribution..."
-          yarn install --frozen-lockfile --production=false
+          yarn install  --production=false --network-timeout 300000
 
       - name: 🔧 Configure build environment
         env:
@@ -327,8 +327,31 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV }}
         run: |
+          # Créer le fichier service account
           echo "$FIREBASE_SERVICE_ACCOUNT" > service-account.json
-          firebase auth:ci-login --service-account service-account.json
+    
+          # Vérifier que le service account a été créé correctement
+          if [ ! -s "service-account.json" ]; then
+            echo "❌ Erreur: Le service account est vide ou n'a pas été créé"
+            exit 1
+          fi
+    
+          # Définir la variable d'environnement pour l'authentification automatique
+          export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/service-account.json"
+    
+          # Vérifier le contenu du service account (sans l'afficher pour des raisons de sécurité)
+          if ! jq . service-account.json > /dev/null 2>&1; then
+            echo "❌ Erreur: Le service account n'est pas un JSON valide"
+            exit 1
+          fi
+    
+          # Sélectionner le projet Firebase
+          firebase use ${{ env.FIREBASE_PROJECT_DEV }}
+    
+          # Vérifier l'authentification en listant les projets
+          firebase projects:list
+    
+          echo "✅ Authentification Firebase réussie"
 
       - name: 📲 Distribute to App Distribution
         env:
