@@ -41,7 +41,7 @@ concurrency:
 # ============================================================================
 
 env:
-  NODE_VERSION: '18'
+  NODE_VERSION: '20'
   JAVA_VERSION: '17'
   REACT_NATIVE_VERSION: '0.73.0'
   ENVIRONMENT: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
