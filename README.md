@@ -1,4 +1,4 @@
-# TaxasGE - Application Mobile et Web de Gestion Fiscale
+ï»¿# TaxasGE - Application Mobile et Web de Gestion Fiscale
 
 <!-- BADGES SECTION - STATUS DASHBOARD -->
 <div align="center">
@@ -18,30 +18,30 @@
 ---
 
 ## Description
-Application Mobile et Web de Gestion Fiscale pour la Guinée Équatoriale. Solution complète avec chatbot IA hors ligne, paiements sécurisés et base de données de 547 taxes structurées.
+Application Mobile et Web de Gestion Fiscale pour la GuinÃ©e Ã‰quatoriale. Solution complÃ¨te avec chatbot IA hors ligne, paiements sÃ©curisÃ©s et base de donnÃ©es de 547 taxes structurÃ©es.
 
-## ?? Project Health Dashboard
+## ğŸ“Š Project Health Dashboard
 
 ### System Status
 | Component | Status | Performance | Last Check |
 |-----------|---------|-------------|------------|
-| ?? **Backend API** | ? Operational | ~200ms avg | 2 min ago |
-| ??? **Database** | ? Operational | 99.8% uptime | 2 min ago |
-| ?? **Firebase** | ? Operational | All regions | 2 min ago |
-| ?? **Mobile App** | ?? Development | Build ready | 1h ago |
+| ğŸš€ **Backend API** | âœ… Operational | ~200ms avg | 2 min ago |
+| ğŸ—„ï¸ **Database** | âœ… Operational | 99.8% uptime | 2 min ago |
+| ğŸ”¥ **Firebase** | âœ… Operational | All regions | 2 min ago |
+| ğŸ“± **Mobile App** | ğŸ”„ Development | Build ready | 1h ago |
 
 ### Quick Metrics
-- **?? Success Rate (7 days):** 94% (47/50 deployments)
-- **? API Response Time:** ~200ms average
-- **?? Uptime:** 99.8% (last 30 days)
-- **?? Test Coverage:** 78% backend, 65% mobile
-- **?? Last Deployment:** develop ? dev (2h ago)
+- **ğŸ¯ Success Rate (7 days):** 94% (47/50 deployments)
+- **âš¡ API Response Time:** ~200ms average
+- **ğŸ“ˆ Uptime:** 99.8% (last 30 days)
+- **ğŸ§ª Test Coverage:** 78% backend, 65% mobile
+- **ğŸ”„ Last Deployment:** develop â†’ dev (2h ago)
 
 ### Quick Access
-- ?? [SonarCloud Analysis](https://sonarcloud.io/project/overview?id=KouemouSah_taxasge) - Code quality metrics
-- ?? [Firebase Console](https://console.firebase.google.com) - Infrastructure management
-- ?? [CI/CD Workflows](https://github.com/KouemouSah/taxasge/actions) - Build & deployment status
-- ?? [Project Board](https://github.com/KouemouSah/taxasge/projects) - Development progress
+- ğŸ“Š [SonarCloud Analysis](https://sonarcloud.io/project/overview?id=KouemouSah_taxasge) - Code quality metrics
+- ğŸ”¥ [Firebase Console](https://console.firebase.google.com) - Infrastructure management
+- ğŸ“ˆ [CI/CD Workflows](https://github.com/KouemouSah/taxasge/actions) - Build & deployment status
+- ğŸ“‹ [Project Board](https://github.com/KouemouSah/taxasge/projects) - Development progress
 
 ---
 
@@ -49,46 +49,46 @@ Application Mobile et Web de Gestion Fiscale pour la Guinée Équatoriale. Solutio
 
 ```
 taxasge/
-+-- packages/
-¦   +-- mobile/     # ?? React Native App (iOS/Android)
-¦   +-- backend/    # ?? FastAPI Python API + Firebase Functions
-¦   +-- web/        # ?? Next.js Dashboard Admin
-+-- config/         # ?? Configuration externe (dev/prod)
-+-- scripts/        # ??? Scripts automatisation DevOps
-+-- data/           # ?? Données fiscales Guinée Équatoriale (547 taxes)
-+-- docs/           # ?? Documentation technique
-+-- .github/        # ?? Workflows CI/CD GitHub Actions
+â”œâ”€â”€ packages/
+â”‚   â”œâ”€â”€ mobile/     # ğŸ“± React Native App (iOS/Android)
+â”‚   â”œâ”€â”€ backend/    # ğŸ FastAPI Python API + Firebase Functions
+â”‚   â””â”€â”€ web/        # ğŸŒ Next.js Dashboard Admin
+â”œâ”€â”€ config/         # âš™ï¸ Configuration externe (dev/prod)
+â”œâ”€â”€ scripts/        # ğŸ› ï¸ Scripts automatisation DevOps
+â”œâ”€â”€ data/           # ğŸ“Š DonnÃ©es fiscales GuinÃ©e Ã‰quatoriale (547 taxes)
+â”œâ”€â”€ docs/           # ğŸ“š Documentation technique
+â””â”€â”€ .github/        # ğŸ”„ Workflows CI/CD GitHub Actions
 ```
 
-## Fonctionnalités Principales
+## FonctionnalitÃ©s Principales
 
 ### **Application Mobile (React Native)**
-- **?? Chatbot IA hors ligne** : Assistant fiscal intelligent (TensorFlow Lite)
-- **?? Base de données locale** : 547 taxes de Guinée Équatoriale
-- **?? Multilingue** : Support ES/FR/EN
-- **?? Paiements sécurisés** : Intégration Bange
-- **?? Synchronisation** : Mode hors ligne avec sync automatique
+- **ğŸ¤– Chatbot IA hors ligne** : Assistant fiscal intelligent (TensorFlow Lite)
+- **ğŸ’¾ Base de donnÃ©es locale** : 547 taxes de GuinÃ©e Ã‰quatoriale
+- **ğŸŒ Multilingue** : Support ES/FR/EN
+- **ğŸ’³ Paiements sÃ©curisÃ©s** : IntÃ©gration Bange
+- **ğŸ”„ Synchronisation** : Mode hors ligne avec sync automatique
 
 ### **Backend API (FastAPI + Firebase)**
-- **? API REST haute performance** : FastAPI avec validation Pydantic
-- **??? Base de données** : PostgreSQL + Supabase
-- **?? Authentification** : JWT + Firebase Auth
-- **?? Déploiement** : Firebase Functions auto-scaling
-- **?? Monitoring** : Logs structurés + métriques
+- **âš¡ API REST haute performance** : FastAPI avec validation Pydantic
+- **ğŸ—„ï¸ Base de donnÃ©es** : PostgreSQL + Supabase
+- **ğŸ” Authentification** : JWT + Firebase Auth
+- **â˜ï¸ DÃ©ploiement** : Firebase Functions auto-scaling
+- **ğŸ“ˆ Monitoring** : Logs structurÃ©s + mÃ©triques
 
 ### **Dashboard Web (Next.js)**
-- **?? Interface admin** : Gestion taxes et utilisateurs
-- **?? Analytics** : Statistiques et rapports
-- **?? Configuration** : Paramètres système
-- **?? Multi-utilisateurs** : Rôles et permissions
+- **ğŸ‘¥ Interface admin** : Gestion taxes et utilisateurs
+- **ğŸ“Š Analytics** : Statistiques et rapports
+- **âš™ï¸ Configuration** : ParamÃ¨tres systÃ¨me
+- **ğŸ”’ Multi-utilisateurs** : RÃ´les et permissions
 
 ## Installation Rapide
 
-### **Prérequis**
+### **PrÃ©requis**
 - **Node.js** 18+ avec Yarn
 - **Python** 3.11+ avec pip
-- **Git** avec accès repository
-- **VS Code** (recommandé)
+- **Git** avec accÃ¨s repository
+- **VS Code** (recommandÃ©)
 
 ### **Installation Automatique**
 ```powershell
@@ -96,13 +96,13 @@ taxasge/
 git clone https://github.com/KouemouSah/taxasge.git
 cd taxasge
 
-# Installation des dépendances
+# Installation des dÃ©pendances
 yarn install
 
 # Configuration de l'environnement
 ./scripts/setup-dev.sh
 
-# Démarrage du développement
+# DÃ©marrage du dÃ©veloppement
 yarn dev
 ```
 
@@ -126,12 +126,12 @@ yarn dev
 
 ## Scripts Disponibles
 
-### **Développement**
+### **DÃ©veloppement**
 ```powershell
-yarn dev              # Démarrage mobile
-yarn dev:mobile       # Démarrage mobile spécifique
-yarn dev:backend      # Démarrage backend Python
-yarn dev:web          # Démarrage dashboard web
+yarn dev              # DÃ©marrage mobile
+yarn dev:mobile       # DÃ©marrage mobile spÃ©cifique
+yarn dev:backend      # DÃ©marrage backend Python
+yarn dev:web          # DÃ©marrage dashboard web
 ```
 
 ### **Build & Test**
@@ -143,10 +143,10 @@ yarn lint             # Linting code
 yarn format           # Formatage code
 ```
 
-### **Déploiement**
+### **DÃ©ploiement**
 ```powershell
-yarn deploy           # Déploiement complet
-yarn deploy:backend   # Déploiement Firebase Functions
+yarn deploy           # DÃ©ploiement complet
+yarn deploy:backend   # DÃ©ploiement Firebase Functions
 yarn deploy:mobile    # Build APK/IPA
 ```
 
@@ -158,136 +158,136 @@ yarn status           # Statut du projet
 yarn info             # Informations workspaces
 ```
 
-## Technologies Utilisées
+## Technologies UtilisÃ©es
 
 ### **Frontend Mobile**
 - **React Native** 0.73.0 - Framework mobile cross-platform
 - **TensorFlow Lite** - IA/ML pour chatbot hors ligne
 - **Firebase SDK** - Auth, Analytics, Crashlytics
 - **React Navigation** - Navigation native
-- **React Native Vector Icons** - Icônes
+- **React Native Vector Icons** - IcÃ´nes
 
 ### **Backend API**
 - **FastAPI** - Framework web moderne Python
-- **Supabase** - Base données PostgreSQL as a Service
+- **Supabase** - Base donnÃ©es PostgreSQL as a Service
 - **Firebase Functions** - Serverless computing
-- **Pydantic** - Validation données
+- **Pydantic** - Validation donnÃ©es
 - **SQLAlchemy** - ORM Python
 
-### **Base de Données**
-- **PostgreSQL** - Base données relationnelle
+### **Base de DonnÃ©es**
+- **PostgreSQL** - Base donnÃ©es relationnelle
 - **Supabase** - Backend as a Service
-- **Row Level Security** - Sécurité fine
-- **Real-time** - Synchronisation temps réel
+- **Row Level Security** - SÃ©curitÃ© fine
+- **Real-time** - Synchronisation temps rÃ©el
 
 ### **Infrastructure**
 - **Firebase** - Hosting, Functions, Auth
-- **GitHub Actions** - CI/CD automatisé
-- **Vercel** - Déploiement web
-- **VS Code** - Environnement développement
+- **GitHub Actions** - CI/CD automatisÃ©
+- **Vercel** - DÃ©ploiement web
+- **VS Code** - Environnement dÃ©veloppement
 
-## Données Fiscales Guinée Équatoriale
+## DonnÃ©es Fiscales GuinÃ©e Ã‰quatoriale
 
-### **Couverture Complète**
-- **547 taxes** structurées et validées
-- **8 ministères** avec secteurs détaillés
-- **Procédures complètes** pour chaque taxe
-- **Documents requis** spécifiés
-- **Mots-clés multilingues** pour recherche
+### **Couverture ComplÃ¨te**
+- **547 taxes** structurÃ©es et validÃ©es
+- **8 ministÃ¨res** avec secteurs dÃ©taillÃ©s
+- **ProcÃ©dures complÃ¨tes** pour chaque taxe
+- **Documents requis** spÃ©cifiÃ©s
+- **Mots-clÃ©s multilingues** pour recherche
 
-### **Structure des Données**
+### **Structure des DonnÃ©es**
 ```json
 {
-  "ministerios": "8 ministères gouvernementaux",
-  "sectores": "Secteurs économiques par ministère", 
-  "categorias": "Catégories de taxes par secteur",
-  "taxes": "547 taxes avec détails complets",
-  "documentos_requeridos": "Documents nécessaires",
-  "procedimientos": "Étapes procédurales",
-  "palabras_clave": "Mots-clés ES/FR/EN"
+  "ministerios": "8 ministÃ¨res gouvernementaux",
+  "sectores": "Secteurs Ã©conomiques par ministÃ¨re", 
+  "categorias": "CatÃ©gories de taxes par secteur",
+  "taxes": "547 taxes avec dÃ©tails complets",
+  "documentos_requeridos": "Documents nÃ©cessaires",
+  "procedimientos": "Ã‰tapes procÃ©durales",
+  "palabras_clave": "Mots-clÃ©s ES/FR/EN"
 }
 ```
 
 ## Intelligence Artificielle
 
 ### **Chatbot Hors Ligne**
-- **Modèle optimisé** : 0.41MB TensorFlow Lite
-- **100% précision** : Entraîné sur 62k questions
-- **Trilingue** : Espagnol, Français, Anglais
-- **Réponses contextuelles** : Basées sur vraies données
+- **ModÃ¨le optimisÃ©** : 0.41MB TensorFlow Lite
+- **100% prÃ©cision** : EntraÃ®nÃ© sur 62k questions
+- **Trilingue** : Espagnol, FranÃ§ais, Anglais
+- **RÃ©ponses contextuelles** : BasÃ©es sur vraies donnÃ©es
 - **Fonctionnement hors ligne** : Aucune connexion requise
 
-### **Corpus d'Entraînement**
-- **62,000 questions** générées automatiquement
-- **Scenarios réels** d'utilisation fiscale
-- **Validation manuelle** des réponses critiques
-- **Amélioration continue** basée usage
+### **Corpus d'EntraÃ®nement**
+- **62,000 questions** gÃ©nÃ©rÃ©es automatiquement
+- **Scenarios rÃ©els** d'utilisation fiscale
+- **Validation manuelle** des rÃ©ponses critiques
+- **AmÃ©lioration continue** basÃ©e usage
 
-## Sécurité
+## SÃ©curitÃ©
 
 ### **Authentification**
 - **Firebase Auth** - Authentification multi-facteurs
-- **JWT Tokens** - Sécurisation API
-- **Row Level Security** - Protection données Supabase
+- **JWT Tokens** - SÃ©curisation API
+- **Row Level Security** - Protection donnÃ©es Supabase
 - **HTTPS Obligatoire** - Chiffrement transit
 
-### **Protection Données**
-- **Variables d'environnement** sécurisées
+### **Protection DonnÃ©es**
+- **Variables d'environnement** sÃ©curisÃ©es
 - **Secrets GitHub** pour CI/CD
-- **Chiffrement** données sensibles
+- **Chiffrement** donnÃ©es sensibles
 - **Audit logs** complets
 
-## ?? État du Projet
+## ğŸš€ Ã‰tat du Projet
 
 <div align="center">
 
-### ?? Progression Globale
+### ğŸ“ˆ Progression Globale
 ![Progress](https://img.shields.io/badge/Progress-60%25-yellow?style=for-the-badge&logo=github)
 
 </div>
 
-| Phase | Status | Progression | Détails | ETA |
+| Phase | Status | Progression | DÃ©tails | ETA |
 |-------|--------|-------------|---------|-----|
-| ??? **Infrastructure** | ? **COMPLÉTÉE** | ![100%](https://img.shields.io/badge/-100%25-brightgreen) | DevOps, CI/CD, Base données | ? Done |
-| ?? **Développement Core** | ?? **EN COURS** | ![60%](https://img.shields.io/badge/-60%25-yellow) | Mobile, Backend, IA | Nov 2025 |
-| ?? **Finalisation** | ?? **PLANIFIÉE** | ![0%](https://img.shields.io/badge/-0%25-lightgrey) | Paiements, Dashboard, Tests | Déc 2025 |
+| ğŸ—ï¸ **Infrastructure** | âœ… **COMPLÃ‰TÃ‰E** | ![100%](https://img.shields.io/badge/-100%25-brightgreen) | DevOps, CI/CD, Base donnÃ©es | âœ… Done |
+| ğŸ’» **DÃ©veloppement Core** | ğŸ”„ **EN COURS** | ![60%](https://img.shields.io/badge/-60%25-yellow) | Mobile, Backend, IA | Nov 2025 |
+| ğŸš€ **Finalisation** | ğŸ“… **PLANIFIÃ‰E** | ![0%](https://img.shields.io/badge/-0%25-lightgrey) | Paiements, Dashboard, Tests | DÃ©c 2025 |
 
-### **Dernières Réalisations**
-- ? Workflows CI/CD opérationnels (backend-ci, deploy-backend)
-- ? Intégration SonarCloud avec analyse qualité
-- ? Dashboard de monitoring temps réel
-- ? Configuration multi-environnements (dev/prod)
+### **DerniÃ¨res RÃ©alisations**
+- âœ… Workflows CI/CD opÃ©rationnels (backend-ci, deploy-backend)
+- âœ… IntÃ©gration SonarCloud avec analyse qualitÃ©
+- âœ… Dashboard de monitoring temps rÃ©el
+- âœ… Configuration multi-environnements (dev/prod)
 
-### **Prochaines Étapes (Sprint actuel)**
-- ?? Finalisation tests backend (coverage ? 85%)
-- ?? Intégration mobile React Native
-- ?? Déploiement chatbot IA TensorFlow Lite
-- ?? Configuration paiements Bange (API)
+### **Prochaines Ã‰tapes (Sprint actuel)**
+- ğŸ”„ Finalisation tests backend (coverage â†’ 85%)
+- ğŸ”„ IntÃ©gration mobile React Native
+- ğŸ”„ DÃ©ploiement chatbot IA TensorFlow Lite
+- ğŸ“… Configuration paiements Bange (API)
 
-## Métriques de Qualité
+## MÃ©triques de QualitÃ©
 
 ### **Objectifs Techniques**
 - **Code Coverage** : >80% (Backend + Mobile)
-- **Performance** : <3s démarrage mobile
-- **Disponibilité** : 99.5% uptime API
+- **Performance** : <3s dÃ©marrage mobile
+- **DisponibilitÃ©** : 99.5% uptime API
 - **Tests** : 100% workflows CI/CD passants
 
 ### **Monitoring Actuel**
-- ? **Backend CI** : Tests Python automatisés
-- ? **Status Dashboard** : Monitoring 24/7
-- ? **Deploy Backend** : Firebase Functions opérationnel
-- ?? **Mobile Distribution** : En cours d'optimisation
+- âœ… **Backend CI** : Tests Python automatisÃ©s
+- âœ… **Status Dashboard** : Monitoring 24/7
+- âœ… **Deploy Backend** : Firebase Functions opÃ©rationnel
+- ğŸ”„ **Mobile Distribution** : En cours d'optimisation
 
-## Équipe & Contribution
+## Ã‰quipe & Contribution
 
-### **Développement**
+### **DÃ©veloppement**
 - **KOUEMOU SAH Jean Emac** - Lead Developer & Product Owner
-- **Architecture** - Design système & infrastructure
-- **IA/ML** - Développement chatbot intelligent
+- **Architecture** - Design systÃ¨me & infrastructure
+- **IA/ML** - DÃ©veloppement chatbot intelligent
 
 ### **Contribution**
 1. Fork le repository
-2. Créer une branche feature (`git checkout -b feature/amazing-feature`)
+2. CrÃ©er une branche feature (`git checkout -b feature/amazing-feature`)
 3. Commit les changements (`git commit -m 'Add amazing feature'`)
 4. Push sur la branche (`git push origin feature/amazing-feature`)
 5. Ouvrir une Pull Request
@@ -295,9 +295,9 @@ yarn info             # Informations workspaces
 ## Documentation
 
 ### **Guides Disponibles**
-- [**Installation**](docs/SETUP.md) - Guide installation détaillé
-- [**API**](docs/API.md) - Documentation API complète
-- [**Déploiement**](docs/DEPLOYMENT.md) - Guide déploiement production
+- [**Installation**](docs/SETUP.md) - Guide installation dÃ©taillÃ©
+- [**API**](docs/API.md) - Documentation API complÃ¨te
+- [**DÃ©ploiement**](docs/DEPLOYMENT.md) - Guide dÃ©ploiement production
 - [**Architecture**](docs/architecture/) - Documentation technique
 
 ### **Liens Utiles**
@@ -307,7 +307,7 @@ yarn info             # Informations workspaces
 
 ## Licence
 
-Ce projet est sous licence **MIT**. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
+Ce projet est sous licence **MIT**. Voir le fichier [LICENSE](LICENSE) pour plus de dÃ©tails.
 
 ## Support
 
@@ -316,13 +316,13 @@ Ce projet est sous licence **MIT**. Voir le fichier [LICENSE](LICENSE) pour plus
 - **GitHub** : [@KouemouSah](https://github.com/KouemouSah)
 
 ### **Signaler un Bug**
-Utiliser les [GitHub Issues](https://github.com/KouemouSah/taxasge/issues) avec le template approprié.
+Utiliser les [GitHub Issues](https://github.com/KouemouSah/taxasge/issues) avec le template appropriÃ©.
 
-### **Demander une Fonctionnalité**
-Créer une [Feature Request](https://github.com/KouemouSah/taxasge/issues/new?template=feature_request.md).
+### **Demander une FonctionnalitÃ©**
+CrÃ©er une [Feature Request](https://github.com/KouemouSah/taxasge/issues/new?template=feature_request.md).
 
 ---
 
-**???? Développé pour la Guinée Équatoriale**
+**ğŸ‡¬ğŸ‡¶ DÃ©veloppÃ© pour la GuinÃ©e Ã‰quatoriale**
 
 *Simplifiant la gestion fiscale pour tous les citoyens et entreprises*
