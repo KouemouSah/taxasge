@@ -1,0 +1,234 @@
+name: ?? Create TaxasGE Issues
+
+on:
+  workflow_dispatch:
+    inputs:
+      create_labels:
+        description: 'Créer les labels TaxasGE'
+        required: false
+        default: true
+        type: boolean
+      create_issues:
+        description: 'Créer les issues prédéfinies'
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  create-issues:
+    name: ?? Create GitHub Issues
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: ?? Checkout code
+        uses: actions/checkout@v4
+        
+      - name: ?? Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: ?? Install dependencies
+        run: |
+          pip install requests
+          
+      - name: ?? Create Issues
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python << 'EOF'
+          import requests
+          import json
+          import os
+          from datetime import datetime
+          
+          class GitHubIssueCreator:
+              def __init__(self, token, repo_owner, repo_name):
+                  self.token = token
+                  self.repo_owner = repo_owner
+                  self.repo_name = repo_name
+                  self.base_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}"
+                  self.headers = {
+                      "Authorization": f"token {token}",
+                      "Accept": "application/vnd.github.v3+json",
+                      "Content-Type": "application/json"
+                  }
+              
+              def create_issue(self, title, body, labels=None):
+                  url = f"{self.base_url}/issues"
+                  data = {"title": title, "body": body}
+                  if labels:
+                      data["labels"] = labels
+                      
+                  response = requests.post(url, headers=self.headers, json=data)
+                  if response.status_code == 201:
+                      issue = response.json()
+                      print(f"? Issue créée: #{issue['number']} - {title}")
+                      return issue
+                  else:
+                      print(f"? Erreur création issue: {response.status_code}")
+                      return None
+              
+              def create_label(self, name, color, description=""):
+                  # Vérifier si le label existe
+                  url = f"{self.base_url}/labels"
+                  response = requests.get(url, headers=self.headers)
+                  if response.status_code == 200:
+                      existing_labels = [label['name'] for label in response.json()]
+                      if name in existing_labels:
+                          print(f"??  Label '{name}' existe déjà")
+                          return True
+                  
+                  # Créer le label
+                  data = {"name": name, "color": color, "description": description}
+                  response = requests.post(url, headers=self.headers, json=data)
+                  if response.status_code == 201:
+                      print(f"? Label créé: {name}")
+                      return True
+                  else:
+                      print(f"? Erreur création label: {response.status_code}")
+                      return False
+          
+          # Configuration
+          token = os.getenv("GITHUB_TOKEN")
+          repo_owner = "${{ github.repository_owner }}"
+          repo_name = "${{ github.event.repository.name }}"
+          
+          creator = GitHubIssueCreator(token, repo_owner, repo_name)
+          
+          # Créer les labels si demandé
+          if "${{ github.event.inputs.create_labels }}" == "true":
+              print("??? Création des labels TaxasGE...")
+              labels = [
+                  {"name": "?? feature", "color": "0052cc", "description": "Nouvelle fonctionnalité"},
+                  {"name": "?? bug", "color": "d73a4a", "description": "Quelque chose ne fonctionne pas"},
+                  {"name": "?? documentation", "color": "0075ca", "description": "Amélioration de la documentation"},
+                  {"name": "?? enhancement", "color": "a2eeef", "description": "Amélioration d'une fonctionnalité existante"},
+                  {"name": "?? mobile", "color": "e99695", "description": "Application mobile React Native"},
+                  {"name": "?? backend", "color": "f9d0c4", "description": "API Backend FastAPI"},
+                  {"name": "?? web", "color": "c2e0c6", "description": "Dashboard web Next.js"},
+                  {"name": "?? ci/cd", "color": "bfd4f2", "description": "Workflows GitHub Actions"},
+                  {"name": "?? ai/ml", "color": "d4c5f9", "description": "Intelligence artificielle / Machine Learning"},
+                  {"name": "?? firebase", "color": "ff9500", "description": "Services Firebase"},
+                  {"name": "??? database", "color": "006b75", "description": "Base de données Supabase"},
+                  {"name": "? performance", "color": "fbca04", "description": "Optimisation des performances"},
+                  {"name": "?? security", "color": "b60205", "description": "Sécurité"},
+                  {"name": "?? ui/ux", "color": "c5def5", "description": "Interface utilisateur / Expérience"},
+                  {"name": "?? dashboard", "color": "0e8a16", "description": "Dashboard de monitoring"},
+                  {"name": "?? critical", "color": "b60205", "description": "Priorité critique"},
+                  {"name": "? priority-high", "color": "d93f0b", "description": "Priorité haute"},
+                  {"name": "?? priority-medium", "color": "fbca04", "description": "Priorité moyenne"},
+                  {"name": "?? priority-low", "color": "0052cc", "description": "Priorité basse"},
+              ]
+              
+              for label in labels:
+                  creator.create_label(label["name"], label["color"], label["description"])
+          
+          # Créer les issues si demandé
+          if "${{ github.event.inputs.create_issues }}" == "true":
+              print("?? Création des issues TaxasGE...")
+              
+              issues = [
+                  {
+                      "title": "?? Finaliser les tests unitaires Backend",
+                      "body": """## Description
+          Compléter la suite de tests unitaires pour l'API Backend FastAPI.
+          
+          ## Tâches
+          - [ ] Tests endpoints API (/health, /api/v1/, /docs)
+          - [ ] Tests modèles Pydantic
+          - [ ] Tests intégration Supabase
+          - [ ] Tests authentification JWT
+          - [ ] Coverage minimum 85%
+          
+          ## Critères d'acceptation
+          - Tous les endpoints principaux testés
+          - Coverage rapport généré
+          - Tests intégrés dans CI/CD""",
+                      "labels": ["?? backend", "?? enhancement", "? priority-high"]
+                  },
+                  {
+                      "title": "?? Intégrer le chatbot IA TensorFlow Lite",
+                      "body": """## Description
+          Intégrer le modèle de chatbot IA hors ligne dans l'application mobile React Native.
+          
+          ## Spécifications techniques
+          - Modèle: TensorFlow Lite (0.41MB)
+          - Précision: 100% sur 62k questions
+          - Support: ES/FR/EN
+          - Mode: Complètement hors ligne
+          
+          ## Tâches
+          - [ ] Intégration TensorFlow Lite React Native
+          - [ ] Configuration modèle dans assets
+          - [ ] Interface chat utilisateur
+          - [ ] Tests multilingues
+          - [ ] Optimisation performance""",
+                      "labels": ["?? mobile", "?? ai/ml", "?? feature", "?? critical"]
+                  },
+                  {
+                      "title": "?? Créer workflow Mobile CI (React Native)",
+                      "body": """## Description
+          Développer le workflow CI/CD pour l'application mobile React Native.
+          
+          ## Fonctionnalités requises
+          - Build Android APK
+          - Build iOS IPA
+          - Tests automatisés
+          - Distribution TestFlight/Play Console
+          - Matrix strategy (Android/iOS)
+          
+          ## Tâches
+          - [ ] Workflow mobile-ci.yml
+          - [ ] Configuration Android build
+          - [ ] Configuration iOS build  
+          - [ ] Tests Metro bundler
+          - [ ] Integration avec Firebase App Distribution""",
+                      "labels": ["?? ci/cd", "?? mobile", "?? feature", "? priority-high"]
+                  },
+                  {
+                      "title": "?? Audit de sécurité complet",
+                      "body": """## Description
+          Effectuer un audit de sécurité complet de l'infrastructure TaxasGE.
+          
+          ## Scope
+          - API Backend endpoints
+          - Base de données Supabase
+          - Firebase Functions
+          - Mobile app permissions
+          - CI/CD workflows secrets
+          
+          ## Tâches
+          - [ ] Scan vulnérabilités Bandit/Safety
+          - [ ] Audit permissions Supabase RLS
+          - [ ] Révision secrets GitHub
+          - [ ] Test pénétration API
+          - [ ] Documentation sécurité""",
+                      "labels": ["?? security", "?? critical", "?? backend", "?? mobile"]
+                  },
+                  {
+                      "title": "? Optimisation performance globale",
+                      "body": """## Description
+          Optimiser les performances de l'ensemble de l'écosystème TaxasGE.
+          
+          ## Targets
+          - API: < 100ms
+          - Mobile startup: < 3s
+          - Dashboard: < 1s
+          - Lighthouse score: 95+
+          
+          ## Tâches
+          - [ ] Profiling API endpoints
+          - [ ] Mobile bundle optimization
+          - [ ] Dashboard asset optimization
+          - [ ] CDN implementation
+          - [ ] Caching strategy""",
+                      "labels": ["? performance", "?? feature", "? priority-high"]
+                  }
+              ]
+              
+              for issue in issues:
+                  creator.create_issue(issue["title"], issue["body"], issue["labels"])
+          
+          print("? Création des issues terminée!")
+          EOF
