@@ -372,6 +372,17 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           projectBaseDir: packages/backend
+          args: >
+            -Dsonar.projectKey=KouemouSah_taxasge
+            -Dsonar.organization=kouemousah
+            -Dsonar.projectName=TaxasGE Backend
+            -Dsonar.projectVersion=1.0.0
+            -Dsonar.sources=app/
+            -Dsonar.tests=tests/
+            -Dsonar.python.version=3.11
+            -Dsonar.exclusions=**/__pycache__/**,**/venv/**,**/env/**,**/*.pyc,**/migrations/**
+            -Dsonar.test.exclusions=tests/**
+            -Dsonar.coverage.exclusions=tests/**,**/test_*.py
 
   # ============================================================================
   # NOTIFICATION
