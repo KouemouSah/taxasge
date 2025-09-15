@@ -375,7 +375,7 @@ jobs:
           args: >
             -Dsonar.projectKey=KouemouSah_taxasge
             -Dsonar.organization=kouemousah
-            -Dsonar.projectName=TaxasGE Backend
+            -Dsonar.projectName=TaxasGE-Backend
             -Dsonar.projectVersion=1.0.0
             -Dsonar.sources=app/
             -Dsonar.tests=tests/
