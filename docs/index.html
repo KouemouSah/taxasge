@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaxasGE - Dashboard de Statut</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            color: #444;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        
+        .status-label {
+            font-weight: 600;
+            color: #666;
+        }
+        
+        .status-value {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+        
+        .status-operational {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-degraded {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-critical {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .metric:last-child {
+            border-bottom: none;
+        }
+        
+        .metric-value {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #2c5aa0;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            color: white;
+            opacity: 0.8;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .last-update {
+            text-align: center;
+            margin: 20px 0;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .status-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 TaxasGE Dashboard</h1>
+            <p>Monitoring en temps réel de l'infrastructure</p>
+        </div>
+        
+        <div id="lastUpdate" class="last-update">
+            Chargement...
+        </div>
+        
+        <div class="dashboard">
+            <div class="card">
+                <h3>🔍 État des Services</h3>
+                <div id="systemStatus" class="loading">Chargement des données...</div>
+            </div>
+            
+            <div class="card">
+                <h3>📈 Métriques Performance</h3>
+                <div id="performanceMetrics" class="loading">Chargement des données...</div>
+            </div>
+            
+            <div class="card">
+                <h3>🏷️ Informations Repository</h3>
+                <div id="repositoryInfo" class="loading">Chargement des données...</div>
+            </div>
+            
+            <div class="card">
+                <h3>🚀 Dernier Déploiement</h3>
+                <div id="deploymentInfo" class="loading">Chargement des données...</div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>🇬🇶 TaxasGE - Développé pour la Guinée Équatoriale</p>
+            <p>Dashboard mis à jour automatiquement toutes les 15 minutes</p>
+        </div>
+    </div>
+    
+    <script>
+        async function loadDashboardData() {
+            try {
+                const response = await fetch('./status.json');
+                const data = await response.json();
+                
+                updateLastUpdate(data.timestamp);
+                updateSystemStatus(data.system_status);
+                updatePerformanceMetrics(data.performance, data.quality);
+                updateRepositoryInfo(data.repository);
+                updateDeploymentInfo(data.last_deployment);
+                
+            } catch (error) {
+                console.error('Erreur lors du chargement des données:', error);
+                showError('Impossible de charger les données du dashboard');
+            }
+        }
+        
+        function updateLastUpdate(timestamp) {
+            const lastUpdateEl = document.getElementById('lastUpdate');
+            const date = new Date(timestamp);
+            lastUpdateEl.textContent = `Dernière mise à jour: ${date.toLocaleString('fr-FR')}`;
+        }
+        
+        function updateSystemStatus(systemStatus) {
+            const container = document.getElementById('systemStatus');
+            
+            const statusClass = {
+                'healthy': 'status-operational',
+                'degraded': 'status-degraded', 
+                'critical': 'status-critical'
+            }[systemStatus.overall] || 'status-operational';
+            
+            const statusText = {
+                'healthy': 'Opérationnel',
+                'degraded': 'Dégradé',
+                'critical': 'Critique'
+            }[systemStatus.overall] || 'Inconnu';
+            
+            container.innerHTML = `
+                <div class="status-grid">
+                    <div class="status-item">
+                        <span class="status-label">État Global</span>
+                        <span class="status-value ${statusClass}">${statusText}</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Backend API</span>
+                        <span class="status-value ${getStatusClass(systemStatus.components.backend)}">${capitalizeFirst(systemStatus.components.backend)}</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Base de Données</span>
+                        <span class="status-value ${getStatusClass(systemStatus.components.database)}">${capitalizeFirst(systemStatus.components.database)}</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Firebase</span>
+                        <span class="status-value ${getStatusClass(systemStatus.components.firebase)}">${capitalizeFirst(systemStatus.components.firebase)}</span>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function updatePerformanceMetrics(performance, quality) {
+            const container = document.getElementById('performanceMetrics');
+            
+            container.innerHTML = `
+                <div class="metric">
+                    <span>Temps de Réponse</span>
+                    <span class="metric-value">${performance.response_time_ms}ms</span>
+                </div>
+                <div class="metric">
+                    <span>Disponibilité</span>
+                    <span class="metric-value">${performance.uptime_percentage}%</span>
+                </div>
+                <div class="metric">
+                    <span>Taux de Succès (7j)</span>
+                    <span class="metric-value">${performance.success_rate_7d}%</span>
+                </div>
+                <div class="metric">
+                    <span>Couverture Tests</span>
+                    <span class="metric-value">${quality.test_coverage}%</span>
+                </div>
+                <div class="metric">
+                    <span>Quality Gate</span>
+                    <span class="metric-value">${quality.sonarqube_gate === 'passed' ? '✅ Validé' : '❌ Échec'}</span>
+                </div>
+            `;
+        }
+        
+        function updateRepositoryInfo(repository) {
+            const container = document.getElementById('repositoryInfo');
+            
+            container.innerHTML = `
+                <div class="metric">
+                    <span>⭐ Stars</span>
+                    <span class="metric-value">${repository.stars}</span>
+                </div>
+                <div class="metric">
+                    <span>🍴 Forks</span>
+                    <span class="metric-value">${repository.forks}</span>
+                </div>
+                <div class="metric">
+                    <span>🐛 Issues Ouvertes</span>
+                    <span class="metric-value">${repository.open_issues}</span>
+                </div>
+            `;
+        }
+        
+        function updateDeploymentInfo(deployment) {
+            const container = document.getElementById('deploymentInfo');
+            const deployDate = new Date(deployment.timestamp);
+            
+            container.innerHTML = `
+                <div class="metric">
+                    <span>Environnement</span>
+                    <span class="metric-value">${capitalizeFirst(deployment.environment)}</span>
+                </div>
+                <div class="metric">
+                    <span>Statut</span>
+                    <span class="metric-value">${deployment.status === 'success' ? '✅ Succès' : '❌ Échec'}</span>
+                </div>
+                <div class="metric">
+                    <span>Date</span>
+                    <span class="metric-value">${deployDate.toLocaleDateString('fr-FR')}</span>
+                </div>
+                <div class="metric">
+                    <span>Durée</span>
+                    <span class="metric-value">${deployment.duration}</span>
+                </div>
+            `;
+        }
+        
+        function getStatusClass(status) {
+            return {
+                'operational': 'status-operational',
+                'degraded': 'status-degraded',
+                'partial': 'status-degraded',
+                'down': 'status-critical',
+                'critical': 'status-critical'
+            }[status] || 'status-operational';
+        }
+        
+        function capitalizeFirst(str) {
+            return str.charAt(0).toUpperCase() + str.slice(1);
+        }
+        
+        function showError(message) {
+            const dashboard = document.querySelector('.dashboard');
+            dashboard.innerHTML = `<div class="error">${message}</div>`;
+        }
+        
+        // Charger les données au démarrage
+        loadDashboardData();
+        
+        // Recharger les données toutes les 5 minutes
+        setInterval(loadDashboardData, 5 * 60 * 1000);
+    </script>
+</body>
+</html>
