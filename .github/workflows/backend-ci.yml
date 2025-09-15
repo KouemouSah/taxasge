@@ -374,7 +374,7 @@ jobs:
           projectBaseDir: packages/backend
           args: >
             -Dsonar.projectKey=KouemouSah_taxasge
-            -Dsonar.organization=Kouemousah25
+            -Dsonar.organization=sahkouemou25
             -Dsonar.projectName=taxasge
             -Dsonar.projectVersion=1.0.0
             -Dsonar.sources=app/
