@@ -385,7 +385,7 @@ jobs:
             -Dsonar.coverage.exclusions=tests/**,**/test_*.py
 
   # ============================================================================
-  # NOTIFICATION
+  # NOTIFICATION VIA SLACK
   # ============================================================================
   notify:
     name: 📢 Notification
