@@ -52,7 +52,7 @@ on:
 
 env:
   PYTHON_VERSION: '3.11'
-  NODE_VERSION: '18'
+  NODE_VERSION: '20'
   FIREBASE_CLI_VERSION: '12.9.1'
   FIREBASE_PROJECT_DEV: 'taxasge-dev'
   FIREBASE_PROJECT_PROD: 'taxasge-prod'
@@ -172,6 +172,7 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          working-directory: packages/backend
         run: |
           echo "🔧 Validation configuration pour: $ENVIRONMENT"
           
@@ -323,7 +324,7 @@ jobs:
       
       - name: 📦 Installation Dépendances Backend
         run: |
-          cd packages/backend
+          working-directory: packages/backend
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           echo "✅ Dépendances installées"
