@@ -172,7 +172,7 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          working-directory: packages/backend
+          
         run: |
           echo "🔧 Validation configuration pour: $ENVIRONMENT"
           
@@ -194,14 +194,18 @@ jobs:
           
           # Test de validation de la configuration Python
           cd packages/backend
-          python << 'EOF'
-          import os
-          os.environ['ENVIRONMENT'] = os.getenv('ENVIRONMENT')
-          from app.config import settings
-          print(f'✅ Configuration validée pour {settings.ENVIRONMENT}')
-          print(f'📊 Debug mode: {settings.DEBUG}')
-          print(f'🎯 API Version: {settings.VERSION}')
-          EOF
+          #python << 'EOF'
+          #import os
+          #os.environ['ENVIRONMENT'] = os.getenv('ENVIRONMENT')
+          #from app.config import settings
+          #print(f'✅ Configuration validée pour {settings.ENVIRONMENT}')
+          #print(f'📊 Debug mode: {settings.DEBUG}')
+          #print(f'🎯 API Version: {settings.VERSION}')
+          #EOF
+          python -c "import os; os.environ['ENVIRONMENT']='$ENVIRONMENT'; from app.config import settings; print(f'✅ Configuration validée pour {settings.ENVIRONMENT}'); print(f'📊 Debug mode: {settings.DEBUG}'); print(f'🎯 API Version: {settings.VERSION}')" || {
+          echo "❌ Erreur lors de l'import de la configuration"
+          exit 1
+          }
           
           echo "✅ Configuration backend validée"
       
@@ -324,7 +328,7 @@ jobs:
       
       - name: 📦 Installation Dépendances Backend
         run: |
-          working-directory: packages/backend
+          
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           echo "✅ Dépendances installées"
