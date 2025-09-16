@@ -1,0 +1,650 @@
+﻿# ============================================================================
+
+# 🎯 TaxasGE Milestone Manager — Intelligent Milestone Orchestrator
+
+# ============================================================================
+# Workflow d’orchestration des milestones avec calculs d’échéances “smart”
+# Déclenché via: `workflow_dispatch` (exécution manuelle depuis l’onglet Actions)
+
+# Ce que fait le workflow :
+
+# - Analyse (ou fallback) du contexte projet (`docs/historical-context.json`)
+# - Calcule des dates d’échéance réalistes par phase (IA simple + vélocité)
+# - Crée les milestones manquants et met à jour ceux existants (idempotent)
+# - Organise automatiquement les issues ouvertes par priorité & mots-clés
+# - Génère un récap détaillé `milestone-summary.json` (poussé dans `docs/`)
+# - Expose les résultats en sortie de job + export comme artifact Actions
+
+
+# Entrées (inputs) :
+# - `update_existing` (true/false) : met à jour les milestones déjà présents
+# - `link_to_project` (true/false) : réservé à une extension future (liaison Project v2)
+
+# Permissions & secrets :
+# - Utilise le `GITHUB_TOKEN` natif avec : contents\:write, issues\:write, repo-projects\:write
+# (aucun PAT additionnel requis dans cette version ; la liaison Project v2 serait optionnelle)
+
+# Sorties (outputs) :
+# - Artifact: `taxasge-milestone-summary` (fichier `milestone-summary.json`)
+# - Commit automatique : `docs/milestone-summary.json`
+
+# Sécurité / robustesse :
+# - Idempotent : pas de doublons de milestones (matching par titre)
+# - Respect du rate limiting (petites pauses entre appels API)
+# - Fallback automatique si le contexte historique est absent
+# - Affichage final via script Python temporaire généré avec `printf` (YAML-safe)
+
+# Étapes clés :
+
+# 1) Checkout du repo
+# 2) Setup Python 3.11 + deps (`requests`, `python-dateutil`)
+# 3) Génération & exécution de `milestone_manager.py`
+# 4) Upload artifact + commit du résumé dans `docs/`
+# 5) Affichage des KPIs (totaux, complétés, actifs, critical path, progression)
+
+# Auteur : KOUEMOU SAH Jean Emac
+# ============================================================================
+
+
+name: 🎯 TaxasGE Milestone Manager
+
+on:
+  workflow_dispatch:
+    inputs:
+      update_existing:
+        description: 'Mettre à jour les milestones existants'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+        - 'true'
+        - 'false'
+      link_to_project:
+        description: 'Lier les milestones au GitHub Project'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+        - 'true'
+        - 'false'
+
+permissions:
+  contents: write
+  issues: write
+  repository-projects: write
+
+jobs:
+  milestone-manager:
+    name: 🎯 Intelligent Milestone Management
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: 📦 Install dependencies
+        run: |
+          pip install requests python-dateutil
+          
+      - name: 🎯 Create Milestone Manager Script
+        run: |
+          cat > milestone_manager.py << 'EOF'
+          import os
+          import json
+          import requests
+          from datetime import datetime, timedelta
+          import time
+          
+          class TaxasGEMilestoneManager:
+              def __init__(self, token, repo_owner, repo_name):
+                  self.token = token
+                  self.repo_owner = repo_owner
+                  self.repo_name = repo_name
+                  
+                  self.headers = {
+                      "Authorization": f"token {token}",
+                      "Accept": "application/vnd.github.v3+json",
+                      "User-Agent": "TaxasGE-Milestone-Manager/1.0"
+                  }
+                  
+                  self.graphql_headers = {
+                      "Authorization": f"Bearer {token}",
+                      "Content-Type": "application/json",
+                      "User-Agent": "TaxasGE-Milestone-Manager/1.0"
+                  }
+                  
+                  self.graphql_url = "https://api.github.com/graphql"
+              
+              def load_context(self):
+                  """Charge le contexte historique pour les estimations"""
+                  print("📄 Chargement contexte pour estimations intelligentes...")
+                  
+                  try:
+                      with open("docs/historical-context.json", 'r', encoding='utf-8') as f:
+                          context = json.load(f)
+                      print(f"✅ Contexte chargé: {context['metadata']['overall_progress']}% progression")
+                      return context
+                  except Exception as e:
+                      print(f"⚠️  Contexte non trouvé, utilisation estimations par défaut: {e}")
+                      return self.get_default_context()
+              
+              def get_default_context(self):
+                  """Contexte par défaut basé sur notre analyse"""
+                  return {
+                      "metadata": {"overall_progress": 62.5},
+                      "project_status": {"current_phase": "mobile_integration_critical_path"},
+                      "phases": {
+                          "phase_0_infrastructure": {"completion": 95, "status": "completed"},
+                          "phase_1_backend": {"completion": 70, "status": "in_progress"},
+                          "phase_2_mobile": {"completion": 60, "status": "critical_path"},
+                          "phase_3_dashboard": {"completion": 90, "status": "nearly_complete"},
+                          "phase_4_production": {"completion": 20, "status": "planned"},
+                          "phase_5_business": {"completion": 10, "status": "planned"}
+                      }
+                  }
+              
+              def calculate_intelligent_dates(self, context):
+                  """Calcule des dates réalistes basées sur l'état actuel"""
+                  print("🧠 Calcul des dates avec intelligence artificielle...")
+                  
+                  base_date = datetime.utcnow()
+                  current_progress = context["metadata"]["overall_progress"]
+                  estimated_velocity = 10  # % par mois
+                  
+                  dates = {}
+                  
+                  infrastructure_completion = context["phases"]["phase_0_infrastructure"]["completion"]
+                  if infrastructure_completion >= 90:
+                      dates["infrastructure"] = base_date - timedelta(weeks=8)
+                  else:
+                      remaining_weeks = (95 - infrastructure_completion) / estimated_velocity * 4
+                      dates["infrastructure"] = base_date + timedelta(weeks=remaining_weeks)
+                  
+                  backend_completion = context["phases"]["phase_1_backend"]["completion"] 
+                  remaining_backend = (85 - backend_completion) / estimated_velocity * 4
+                  dates["backend"] = base_date + timedelta(weeks=max(1, remaining_backend))
+                  
+                  mobile_completion = context["phases"]["phase_2_mobile"]["completion"]
+                  remaining_mobile = (90 - mobile_completion) / estimated_velocity * 4
+                  dates["mobile"] = base_date + timedelta(weeks=max(2, remaining_mobile))
+                  
+                  dashboard_completion = context["phases"]["phase_3_dashboard"]["completion"]
+                  remaining_dashboard = (95 - dashboard_completion) / estimated_velocity * 4
+                  dates["dashboard"] = base_date + timedelta(weeks=max(0.5, remaining_dashboard))
+                  
+                  dates["production"] = dates["mobile"] + timedelta(weeks=4)
+                  dates["business"] = dates["production"] + timedelta(weeks=6)
+                  
+                  print("📊 Estimations calculées:")
+                  for phase, date in dates.items():
+                      status = "✅" if date < base_date else "🔄"
+                      print(f"  {status} {phase.title()}: {date.strftime('%Y-%m-%d')}")
+                  
+                  return dates
+              
+              def get_existing_milestones(self):
+                  """Récupère les milestones existants"""
+                  url = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/milestones"
+                  params = {"state": "all", "per_page": 100}
+                  response = requests.get(url, headers=self.headers, params=params)
+                  if response.status_code == 200:
+                      milestones = response.json()
+                      existing = {m["title"]: m for m in milestones}
+                      print(f"📋 {len(existing)} milestones existants trouvés")
+                      return existing
+                  else:
+                      print(f"❌ Erreur récupération milestones: {response.status_code}")
+                      return {}
+              
+              def create_or_update_milestones(self, context, dates, update_existing=True):
+                  """Crée ou met à jour les milestones avec dates intelligentes"""
+                  print("🎯 Création/mise à jour des milestones intelligents...")
+                  existing_milestones = self.get_existing_milestones()
+                  
+                  milestones_config = [
+                      {
+                          "title": "🛠️ Infrastructure Foundation",
+                          "description": """Phase 0 - Infrastructure & AI Pipeline (95% complété)
+
+          ✅ Validé et opérationnel:
+          • Firebase integration complète (Auth, Firestore, Functions)
+          • Supabase configuration et tests (RLS, Edge Functions) 
+          • SonarQube quality gates configurés
+          • AI Data Pipeline complet (PDF→JSON→Training→Model)
+          • TensorFlow Lite model ready (taxasge_model.tflite, 0.41MB)
+          • GitHub Actions workflows opérationnels
+          • CI/CD infrastructure solide
+          
+          🎯 Cette phase constitue la fondation technique exceptionnelle du projet.""",
+                          "due_on": dates["infrastructure"].strftime("%Y-%m-%dT%H:%M:%SZ"),
+                          "state": "closed" if context["phases"]["phase_0_infrastructure"]["completion"] >= 90 else "open"
+                      },
+                      {
+                          "title": "🐍 Backend API Excellence",
+                          "description": """Phase 1 - Backend Development (70% → 85% target)
+
+          ✅ Accomplissements:
+          • FastAPI architecture et structure modulaire
+          • Endpoints principaux (/health, /api/v1/, /docs)
+          • Modèles Pydantic pour validation des données
+          • Intégration Supabase opérationnelle
+          • Documentation API automatique (OpenAPI/Swagger)
+          
+          🔄 Objectifs restants:
+          • Tests unitaires complets (85% coverage minimum)
+          • Authentication JWT finalisée et sécurisée
+          • Middleware de sécurité et rate limiting
+          • Optimisation performances et caching""",
+                          "due_on": dates["backend"].strftime("%Y-%m-%dT%H:%M:%SZ"),
+                          "state": "open"
+                      },
+                      {
+                          "title": "📱 Mobile Critical Path",
+                          "description": """Phase 2 - Mobile Development (60% → 90% target) 🚨 CRITIQUE
+
+          ✅ Fondation solide:
+          • React Native structure complète et navigation
+          • Firebase integration configurée (Auth, Analytics)
+          • AI Model TensorFlow Lite prêt (100% accuracy, multilingue)
+          • Screens de base et composants UI
+          
+          🚨 CRITICAL PATH - Bloque toutes les phases suivantes:
+          • Intégration TensorFlow Lite dans l'app mobile
+          • Interface chatbot IA utilisateur
+          • Tests multilingues complets (ES/FR/EN)
+          • Optimisation performances mobile
+          • Tests sur devices réels (Android/iOS)
+          
+          ⚡ Cette phase détermine la timeline globale du projet.""",
+                          "due_on": dates["mobile"].strftime("%Y-%m-%dT%H:%M:%SZ"),
+                          "state": "open"
+                      },
+                      {
+                          "title": "🌐 Dashboard Excellence", 
+                          "description": """Phase 3 - Dashboard & Monitoring (90% → 95% target)
+
+          ✅ Accomplissements exceptionnels:
+          • Dashboard Phases 1-3 design complètement finalisées
+          • Interface responsive et professionnelle
+          • Métriques temps réel intégrées et optimisées
+          • Design system TaxasGE cohérent
+          • Workflow status-dashboard automatisé
+          
+          🔄 Finitions:
+          • Configuration GitHub Pages finale
+          • Tests d'accessibilité WCAG 2.1 complets
+          • Optimisation SEO et performance""",
+                          "due_on": dates["dashboard"].strftime("%Y-%m-%dT%H:%M:%SZ"),
+                          "state": "open"
+                      },
+                      {
+                          "title": "🚀 Production Ready",
+                          "description": """Phase 4 - Production Deployment (20% → 80% target)
+
+          🔄 Objectifs production:
+          • Audit sécurité complet (OWASP, pentest)
+          • Load testing et optimisation performances
+          • CI/CD Mobile complet (Android Play Store, iOS App Store)
+          • Monitoring avancé et alerting (Sentry, LogRocket)
+          • Documentation déploiement et maintenance
+          • Backup et disaster recovery procedures
+          
+          📊 Dépendances: 
+          • BLOQUÉ par Phase 2 Mobile (critical path)
+          • Estimation ajustée automatiquement""",
+                          "due_on": dates["production"].strftime("%Y-%m-%dT%H:%M:%SZ"),
+                          "state": "open"
+                      },
+                      {
+                          "title": "💳 Business Integration",
+                          "description": """Phase 5 - Business Ready (10% → 70% target)
+
+          🔄 Objectifs business:
+          • Intégration paiements Bange (API & SDK)
+          • Dashboard admin Next.js pour gestion
+          • Analytics et reporting avancés
+          • Support multi-tenant architecture
+          • Formation équipe et documentation utilisateur
+          • Marketing et stratégie de lancement
+          
+          📊 Dépendances:
+          • BLOQUÉ par Phase 4 Production
+          • Planning long terme (3+ mois)""",
+                          "due_on": dates["business"].strftime("%Y-%m-%dT%H:%M:%SZ"),
+                          "state": "open"
+                      }
+                  ]
+                  
+                  created_milestones = []
+                  updated_milestones = []
+                  
+                  for config in milestones_config:
+                      title = config["title"]
+                      if title in existing_milestones:
+                          if update_existing:
+                              milestone = self.update_milestone(existing_milestones[title], config)
+                              if milestone:
+                                  updated_milestones.append(milestone)
+                          else:
+                              print(f"  ⏭️  Milestone existant conservé: {title}")
+                              updated_milestones.append(existing_milestones[title])
+                      else:
+                          milestone = self.create_milestone(config)
+                          if milestone:
+                              created_milestones.append(milestone)
+                      time.sleep(0.5)
+                  
+                  print(f"✅ {len(created_milestones)} milestones créés")
+                  print(f"🔄 {len(updated_milestones)} milestones mis à jour")
+                  return created_milestones + updated_milestones
+              
+              def create_milestone(self, config):
+                  url = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/milestones"
+                  response = requests.post(url, headers=self.headers, json=config)
+                  if response.status_code == 201:
+                      milestone = response.json()
+                      status_icon = "✅" if config.get("state") == "closed" else "🔄"
+                      print(f"  {status_icon} Milestone créé: {milestone['title']}")
+                      return milestone
+                  else:
+                      print(f"  ❌ Erreur création {config['title']}: {response.status_code}")
+                      try:
+                          error_detail = response.json()
+                          print(f"      Détail: {error_detail.get('message', 'Erreur inconnue')}")
+                      except:
+                          pass
+                      return None
+              
+              def update_milestone(self, existing_milestone, new_config):
+                  url = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/milestones/{existing_milestone['number']}"
+                  update_data = {}
+                  if existing_milestone.get("due_on") != new_config.get("due_on"):
+                      update_data["due_on"] = new_config["due_on"]
+                  if existing_milestone.get("description") != new_config.get("description"):
+                      update_data["description"] = new_config["description"]
+                  if existing_milestone.get("state") != new_config.get("state"):
+                      update_data["state"] = new_config["state"]
+                  if not update_data:
+                      print(f"  ⏭️  Milestone inchangé: {existing_milestone['title']}")
+                      return existing_milestone
+                  response = requests.patch(url, headers=self.headers, json=update_data)
+                  if response.status_code == 200:
+                      milestone = response.json()
+                      print(f"  🔄 Milestone mis à jour: {milestone['title']}")
+                      return milestone
+                  else:
+                      print(f"  ❌ Erreur mise à jour {existing_milestone['title']}: {response.status_code}")
+                      return existing_milestone
+              
+              def organize_issues_by_priority(self, milestones):
+                  print("🔗 Organisation intelligente des issues...")
+                  issues = self.get_repository_issues()
+                  if not issues:
+                      print("ℹ️  Aucune issue à organiser")
+                      return 0
+                  milestone_patterns = {
+                      "🛠️ Infrastructure Foundation": {
+                          "keywords": ["firebase", "supabase", "sonar", "infrastructure", "devops", "ci/cd", "workflow", "github-actions"],
+                          "priority": 1
+                      },
+                      "🐍 Backend API Excellence": {
+                          "keywords": ["backend", "api", "fastapi", "test", "unittest", "auth", "jwt", "endpoint", "database"],
+                          "priority": 3
+                      },
+                      "📱 Mobile Critical Path": {
+                          "keywords": ["mobile", "react-native", "app", "ai", "tensorflow", "tflite", "chatbot", "android", "ios"],
+                          "priority": 5
+                      },
+                      "🌐 Dashboard Excellence": {
+                          "keywords": ["dashboard", "monitoring", "status", "ui", "frontend", "pages", "web"],
+                          "priority": 2
+                      },
+                      "🚀 Production Ready": {
+                          "keywords": ["security", "audit", "performance", "optimization", "production", "deploy", "monitoring"],
+                          "priority": 4
+                      },
+                      "💳 Business Integration": {
+                          "keywords": ["bange", "payment", "business", "admin", "integration", "monetization"],
+                          "priority": 2
+                      }
+                  }
+                  milestone_mapping = {m["title"]: m for m in milestones}
+                  organized_count = 0
+                  critical_path_issues = []
+                  for issue in issues:
+                      if issue.get("milestone"):
+                          continue
+                      analysis = self.analyze_issue_content(issue, milestone_patterns)
+                      if analysis["best_milestone"]:
+                          milestone = milestone_mapping.get(analysis["best_milestone"])
+                          if milestone:
+                              success = self.assign_milestone_to_issue(issue, milestone)
+                              if success:
+                                  organized_count += 1
+                                  if analysis["priority"] == 5:
+                                      critical_path_issues.append(issue)
+                              time.sleep(0.3)
+                  print(f"✅ {organized_count} issues organisées")
+                  print(f"🚨 {len(critical_path_issues)} issues identifiées sur critical path (Mobile)")
+                  return organized_count
+              
+              def analyze_issue_content(self, issue, milestone_patterns):
+                  issue_text = (issue["title"] + " " + (issue.get("body") or "")).lower()
+                  scores = {}
+                  for milestone_title, config in milestone_patterns.items():
+                      score = 0
+                      keywords_found = []
+                      for keyword in config["keywords"]:
+                          keyword_count = issue_text.count(keyword.lower())
+                          if keyword_count > 0:
+                              score += keyword_count * config["priority"]
+                              keywords_found.append(keyword)
+                      if score > 0:
+                          scores[milestone_title] = {
+                              "score": score,
+                              "keywords": keywords_found,
+                              "priority": config["priority"]
+                          }
+                  if scores:
+                      best_milestone = max(scores.items(), key=lambda x: x[1]["score"])[0]
+                      return {
+                          "best_milestone": best_milestone,
+                          "score": scores[best_milestone]["score"],
+                          "priority": scores[best_milestone]["priority"],
+                          "keywords": scores[best_milestone]["keywords"]
+                      }
+                  return {"best_milestone": None, "score": 0, "priority": 0, "keywords": []}
+              
+              def get_repository_issues(self):
+                  url = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/issues"
+                  params = {"state": "open", "per_page": 100}
+                  response = requests.get(url, headers=self.headers, params=params)
+                  if response.status_code == 200:
+                      issues = response.json()
+                      issues = [issue for issue in issues if "pull_request" not in issue]
+                      print(f"📋 {len(issues)} issues ouvertes trouvées")
+                      return issues
+                  else:
+                      print(f"❌ Erreur récupération issues: {response.status_code}")
+                      return []
+              
+              def assign_milestone_to_issue(self, issue, milestone):
+                  url = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/issues/{issue['number']}"
+                  data = {"milestone": milestone["number"]}
+                  response = requests.patch(url, headers=self.headers, json=data)
+                  if response.status_code == 200:
+                      priority_icon = "🚨" if "Critical Path" in milestone["title"] else "🔄"
+                      print(f"  {priority_icon} Issue #{issue['number']} → {milestone['title']}")
+                      return True
+                  else:
+                      print(f"  ❌ Erreur assignation #{issue['number']}: {response.status_code}")
+                      return False
+              
+              def generate_milestone_summary(self, context, milestones, organized_issues):
+                  print("📊 Génération du résumé intelligent...")
+                  closed_milestones = [m for m in milestones if m.get("state") == "closed"]
+                  open_milestones = [m for m in milestones if m.get("state") == "open"]
+                  critical_milestone = None
+                  for milestone in milestones:
+                      if "Critical Path" in milestone["title"]:
+                          critical_milestone = milestone
+                          break
+                  summary = {
+                      "metadata": {
+                          "generated_at": datetime.now().isoformat(),
+                          "repository": f"{self.repo_owner}/{self.repo_name}",
+                          "type": "intelligent_milestone_analysis"
+                      },
+                      "milestone_analysis": {
+                          "total_milestones": len(milestones),
+                          "completed_milestones": len(closed_milestones),
+                          "active_milestones": len(open_milestones),
+                          "completion_rate": round((len(closed_milestones) / len(milestones)) * 100, 1) if milestones else 0
+                      },
+                      "critical_path": {
+                          "milestone": critical_milestone["title"] if critical_milestone else None,
+                          "due_date": critical_milestone.get("due_on") if critical_milestone else None,
+                          "importance": "BLOQUE toutes les phases suivantes",
+                          "recommendation": "Focus prioritaire sur Mobile AI Integration"
+                      },
+                      "milestones": [
+                          {
+                              "title": m["title"],
+                              "number": m["number"],
+                              "state": m["state"],
+                              "due_on": m.get("due_on"),
+                              "html_url": m["html_url"],
+                              "open_issues": m.get("open_issues", 0),
+                              "closed_issues": m.get("closed_issues", 0)
+                          } for m in milestones
+                      ],
+                      "context_analysis": {
+                          "overall_progress": context["metadata"]["overall_progress"],
+                          "current_phase": context["project_status"]["current_phase"]
+                      },
+                      "organization": {
+                          "issues_organized": organized_issues,
+                          "algorithm": "intelligent_priority_scoring"
+                      },
+                      "recommendations": {
+                          "immediate_focus": ["Mobile AI Integration (TensorFlow Lite)", "Dashboard GitHub Pages config"],
+                          "next_quarter": ["Backend tests completion", "Production security audit"],
+                          "timeline_confidence": "High - based on solid infrastructure foundation"
+                      }
+                  }
+                  with open("milestone-summary.json", "w", encoding='utf-8') as f:
+                      json.dump(summary, f, indent=2, ensure_ascii=False)
+                  return summary
+          
+          def main():
+              print("🎯 TaxasGE Intelligent Milestone Manager")
+              print("========================================")
+              token = os.getenv("GITHUB_TOKEN")
+              repo_owner = os.getenv("REPO_OWNER")
+              repo_name = os.getenv("REPO_NAME")
+              update_existing = os.getenv("UPDATE_EXISTING", "true").lower() == "true"
+              link_to_project = os.getenv("LINK_TO_PROJECT", "true").lower() == "true"
+              if not all([token, repo_owner, repo_name]):
+                  print("❌ Variables d'environnement manquantes")
+                  return
+              manager = TaxasGEMilestoneManager(token, repo_owner, repo_name)
+              context = manager.load_context()
+              dates = manager.calculate_intelligent_dates(context)
+              milestones = manager.create_or_update_milestones(context, dates, update_existing)
+              organized_issues = manager.organize_issues_by_priority(milestones) if milestones else 0
+              summary = manager.generate_milestone_summary(context, milestones, organized_issues)
+              print(f"\n🎯 TaxasGE Milestone Manager - Résultats:")
+              print(f"📊 Progression globale: {context['metadata']['overall_progress']}%")
+              print(f"🎯 Milestones gérés: {len(milestones)}")
+              print(f"🔗 Issues organisées: {organized_issues}")
+              print(f"📈 Taux completion: {summary['milestone_analysis']['completion_rate']}%")
+              if summary['critical_path']['milestone']:
+                  print(f"\n🚨 CRITICAL PATH identifié:")
+                  print(f"   {summary['critical_path']['milestone']}")
+                  print(f"   📅 Échéance: {summary['critical_path']['due_date']}")
+              print(f"\n✅ Milestone management terminé avec succès!")
+              print(f"📄 Résumé détaillé: milestone-summary.json")
+              return summary
+          
+          if __name__ == "__main__":
+              main()
+          EOF
+          
+      - name: 🎯 Execute Milestone Manager
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+          UPDATE_EXISTING: ${{ github.event.inputs.update_existing }}
+          LINK_TO_PROJECT: ${{ github.event.inputs.link_to_project }}
+        run: |
+          python milestone_manager.py
+          
+      - name: 📄 Upload Milestone Summary
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: taxasge-milestone-summary
+          path: milestone-summary.json
+          retention-days: 30
+          
+      - name: 📄 Auto-commit Milestone Summary
+        if: success()
+        run: |
+          if [ -f "milestone-summary.json" ]; then
+            mkdir -p docs
+            cp milestone-summary.json docs/milestone-summary.json
+            
+            git config --local user.email "action@github.com"
+            git config --local user.name "GitHub Action - Milestone Manager"
+            
+            git add docs/milestone-summary.json
+            if ! git diff --staged --quiet; then
+              git commit -m "🎯 Update TaxasGE milestone analysis
+
+              - Intelligent milestone dates calculated
+              - Issues organized by priority and critical path
+              - Ready for focused execution on Mobile AI Integration" || true
+              git push || true
+              echo "✅ Milestone summary committed to docs/"
+            fi
+          fi
+          
+      - name: 📊 Display Milestone Results
+        if: always()
+        run: |
+          echo "🎯 TaxasGE Milestone Manager terminé!"
+          echo ""
+          
+          if [ -f "milestone-summary.json" ]; then
+            echo "📊 Résultats milestone management:"
+            printf "%s\n" \
+              "import json" \
+              "with open('milestone-summary.json', 'r', encoding='utf-8') as f:" \
+              "    data = json.load(f)" \
+              "print(f\"Total milestones: {data['milestone_analysis']['total_milestones']}\")" \
+              "print(f\"Complétés: {data['milestone_analysis']['completed_milestones']}\")" \
+              "print(f\"Actifs: {data['milestone_analysis']['active_milestones']}\")" \
+              "print(f\"Taux completion: {data['milestone_analysis']['completion_rate']}%\")" \
+              "print(f\"Issues organisées: {data['organization']['issues_organized']}\")" \
+              "if data['critical_path']['milestone']:" \
+              "    print(f\"\\n🚨 CRITICAL PATH: {data['critical_path']['milestone']}\")" \
+              "    print(f\"   Échéance: {data['critical_path']['due_date']}\")" \
+              "print(f\"\\n📊 Progression globale: {data['context_analysis']['overall_progress']}%\")" \
+              > /tmp/show_milestones.py
+            python3 /tmp/show_milestones.py
+          fi
+          
+          echo ""
+          echo "🔗 Prochaines actions recommandées:"
+          echo "   1. Repository → Issues → Milestones (vérifier organisation)"
+          echo "   2. GitHub Project → Vérifier liaison milestones ↔ issues"
+          echo "   3. 🚨 FOCUS CRITIQUE: Mobile AI Integration (TensorFlow Lite)"
+          echo "   4. 🌐 Finaliser Dashboard GitHub Pages configuration"
+          echo ""
+          echo "📄 Analyse complète: docs/milestone-summary.json"
