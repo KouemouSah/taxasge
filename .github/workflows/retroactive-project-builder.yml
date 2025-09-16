@@ -59,7 +59,7 @@ on:
         - 'false'
 
 permissions:
-  contents: write
+  contents: read
   issues: write
   repository-projects: write
 
@@ -67,20 +67,20 @@ jobs:
   retroactive-project-builder:
     name: 🗂️ Build Retroactive Project Structure
     runs-on: ubuntu-latest
-
+    
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
-
+        
       - name: 🐍 Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-
+          
       - name: 📦 Install dependencies
         run: |
           pip install requests python-dateutil
-
+          
       - name: 🔍 Create Retroactive Project Builder Script
         run: |
           cat > retroactive_project_builder.py << 'EOF'
@@ -90,68 +90,72 @@ jobs:
           from datetime import datetime, timedelta
           from dateutil.relativedelta import relativedelta
           import time
-
+          
           class TaxasGERetroactiveProjectBuilder:
               def __init__(self, token, repo_owner, repo_name):
                   self.token = token
                   self.repo_owner = repo_owner
                   self.repo_name = repo_name
                   self.repo_id = None
+                  self.owner_id = None   # <-- (NEW) Owner node id (User/Org) pour Projects V2
                   self.project_id = None
-
+                  
                   # REST API headers
                   self.headers = {
                       "Authorization": f"token {token}",
                       "Accept": "application/vnd.github.v3+json",
                       "User-Agent": "TaxasGE-Project-Builder/1.0"
                   }
-
+                  
                   # GraphQL headers (for Projects V2)
                   self.graphql_headers = {
                       "Authorization": f"Bearer {token}",
                       "Content-Type": "application/json",
                       "User-Agent": "TaxasGE-Project-Builder/1.0"
                   }
-
+                  
                   self.graphql_url = "https://api.github.com/graphql"
-
+                  
               def load_historical_context(self, context_file):
                   """Charge le contexte historique généré"""
                   print(f"📄 Chargement contexte: {context_file}")
-
+                  
                   try:
                       with open(context_file, 'r', encoding='utf-8') as f:
                           context = json.load(f)
-
+                      
                       print(f"✅ Contexte chargé: {context['metadata']['overall_progress']}% progression")
                       return context
-
+                      
                   except FileNotFoundError:
                       print(f"❌ Fichier contexte non trouvé: {context_file}")
                       return None
                   except json.JSONDecodeError as e:
                       print(f"❌ Erreur parsing JSON: {e}")
                       return None
-
+              
               def get_repository_info(self):
                   """Récupère les infos du repository"""
                   url = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}"
                   response = requests.get(url, headers=self.headers)
-
+                  
                   if response.status_code == 200:
                       repo_data = response.json()
                       self.repo_id = repo_data['node_id']
+                      # IMPORTANT: Projects V2 ownerId = owner.node_id (User/Org), pas repo.node_id
+                      self.owner_id = repo_data['owner']['node_id']
                       print(f"✅ Repository ID: {self.repo_id}")
+                      print(f"✅ Owner ID (Projects V2): {self.owner_id}")
                       return repo_data
                   else:
                       print(f"❌ Erreur récupération repo: {response.status_code}")
                       return None
-
+              
               def create_project_v2(self, context):
-                  """Crée un GitHub Project V2 (version corrigée)"""
+                  """Crée un GitHub Project V2"""
                   print("🗂️ Création du GitHub Project V2...")
-
-                  # GraphQL mutation corrigée (sans le champ 'body' qui n'est pas supporté)
+                  
+                  # GraphQL mutation pour créer le projet (⚠️ sans 'body' qui n'est pas supporté)
                   mutation = """
                   mutation CreateProject($ownerId: ID!, $title: String!) {
                     createProjectV2(input: {ownerId: $ownerId, title: $title}) {
@@ -164,42 +168,43 @@ jobs:
                     }
                   }
                   """
-
+                  
                   project_title = "🎯 TaxasGE Master Project"
+                  
                   variables = {
-                      "ownerId": self.repo_id,
+                      "ownerId": self.owner_id,   # <-- (FIX) ownerId = owner.node_id
                       "title": project_title
                   }
-
+                  
                   response = requests.post(
                       self.graphql_url,
                       headers=self.graphql_headers,
                       json={"query": mutation, "variables": variables}
                   )
-
+                  
                   if response.status_code == 200:
                       data = response.json()
                       if "errors" in data:
                           print(f"❌ Erreurs GraphQL: {data['errors']}")
                           return None
-
+                          
                       project = data['data']['createProjectV2']['projectV2']
                       self.project_id = project['id']
-
+                      
                       print(f"✅ Project créé: {project['title']}")
                       print(f"🔗 URL: {project['url']}")
                       print(f"📊 Project ID: {self.project_id}")
-
+                      
                       return project
                   else:
                       print(f"❌ Erreur création projet: {response.status_code}")
                       print(f"Response: {response.text}")
                       return None
-
+              
               def setup_project_fields(self):
                   """Configure les champs personnalisés du projet"""
                   print("🔧 Configuration des champs personnalisés...")
-
+                  
                   fields_to_create = [
                       {
                           "name": "Priority",
@@ -212,7 +217,7 @@ jobs:
                           ]
                       },
                       {
-                          "name": "Component",
+                          "name": "Component", 
                           "dataType": "SINGLE_SELECT",
                           "options": [
                               {"name": "🛠️ Infrastructure", "color": "6f42c1"},
@@ -225,7 +230,7 @@ jobs:
                       },
                       {
                           "name": "Phase",
-                          "dataType": "SINGLE_SELECT",
+                          "dataType": "SINGLE_SELECT", 
                           "options": [
                               {"name": "Phase 0: Infrastructure", "color": "6f42c1"},
                               {"name": "Phase 1: Backend", "color": "f9d0c4"},
@@ -240,7 +245,7 @@ jobs:
                           "dataType": "SINGLE_SELECT",
                           "options": [
                               {"name": "1 day", "color": "0e8a16"},
-                              {"name": "3 days", "color": "0e8a16"},
+                              {"name": "3 days", "color": "0e8a16"}, 
                               {"name": "1 week", "color": "fbca04"},
                               {"name": "2 weeks", "color": "fbca04"},
                               {"name": "1 month", "color": "d93f0b"},
@@ -248,17 +253,17 @@ jobs:
                           ]
                       }
                   ]
-
+                  
                   created_fields = []
                   for field_config in fields_to_create:
                       field = self.create_project_field(field_config)
                       if field:
                           created_fields.append(field)
                           time.sleep(1)  # Rate limiting
-
+                  
                   print(f"✅ {len(created_fields)} champs personnalisés créés")
                   return created_fields
-
+              
               def create_project_field(self, field_config):
                   """Crée un champ personnalisé dans le projet"""
                   mutation = """
@@ -276,43 +281,47 @@ jobs:
                     }
                   }
                   """
-
+                  
                   variables = {
                       "projectId": self.project_id,
                       "name": field_config["name"],
                       "dataType": field_config["dataType"],
                       "options": field_config.get("options", [])
                   }
-
+                  
                   response = requests.post(
                       self.graphql_url,
                       headers=self.graphql_headers,
                       json={"query": mutation, "variables": variables}
                   )
-
+                  
                   if response.status_code == 200:
                       data = response.json()
                       if "errors" not in data:
                           field = data['data']['createProjectV2Field']['projectV2Field']
                           print(f"  ✅ Champ créé: {field['name']}")
                           return field
-
+                  
                   print(f"  ❌ Erreur création champ {field_config['name']}")
                   return None
-
+              
               def create_milestones_from_context(self, context):
-                  """Crée les milestones avec des titres plus courts"""
+                  """Crée les milestones basés sur le contexte historique"""
                   print("🎯 Création des milestones basés sur l'analyse...")
-
-                  # Calculer les dates basées sur l'état actuel et estimations
-                  base_date = datetime.now()
+                  
+                  # Utiliser UTC et ISO 8601 complet (Z) pour due_on
+                  base_date = datetime.utcnow()
+                  def iso_utc(dt):
+                      return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+                  
                   milestones_config = []
-
+                  
                   # Phase 0: Infrastructure (95% complété - RÉTROACTIF)
                   infra_date = base_date - timedelta(weeks=8)
                   milestones_config.append({
-                      "title": "Infrastructure Foundation",  # Titre plus court
+                      "title": "🛠️ Infrastructure Foundation", 
                       "description": """Phase 0 - Infrastructure & AI Pipeline
+          
           ✅ Accomplissements validés:
           - Firebase integration complète
           - Supabase configuration et tests
@@ -320,106 +329,118 @@ jobs:
           - AI Data Pipeline (PDF → JSON → Training)
           - TensorFlow Lite model (0.41MB, 100% accuracy)
           - GitHub Actions workflows
-
-          📊 Statut: 95% Complété (Validé utilisateur)""",
-                      "due_on": infra_date.strftime("%Y-%m-%d"),
-                      "state": "closed"
+          
+          📊 Statut: 95% Complété (Validé utilisateur)
+          🔗 Fondation solide pour toutes les phases suivantes""",
+                      "due_on": iso_utc(infra_date),
+                      "state": "closed"  # accepté par l'API, sinon on patcherait après
                   })
-
+                  
                   # Phase 1: Backend (70% complété - EN COURS)
                   backend_date = base_date + timedelta(weeks=2)
                   milestones_config.append({
-                      "title": "Backend API",  # Titre plus court
+                      "title": "🐍 Backend & API Excellence",
                       "description": """Phase 1 - Backend Development
+          
           ✅ Accomplissements:
           - FastAPI structure et architecture
           - Endpoints principaux (/health, /api/v1/, /docs)
           - Modèles Pydantic définis
           - Intégration Supabase opérationnelle
-
+          
           🔄 Restant:
           - Tests unitaires complets (85% coverage target)
           - Authentication JWT finalisée
           - Documentation API complète
-
+          
           📊 Statut: 70% Complété""",
-                      "due_on": backend_date.strftime("%Y-%m-%d"),
+                      "due_on": iso_utc(backend_date),
                       "state": "open"
                   })
-
+                  
                   # Phase 2: Mobile (60% complété - CRITIQUE)
                   mobile_date = base_date + timedelta(weeks=3)
                   milestones_config.append({
-                      "title": "Mobile App",  # Titre plus court
+                      "title": "📱 Mobile App Critical Path",
                       "description": """Phase 2 - Mobile Development (CRITICAL PATH)
+          
           ✅ Accomplissements:
           - React Native structure complète
           - Navigation et screens de base
           - Firebase integration configurée
           - AI Model ready (taxasge_model.tflite)
-
+          
           🚨 Critique - Restant:
           - Intégration TensorFlow Lite dans l'app
           - Interface chatbot utilisateur
           - Tests multilingues (ES/FR/EN)
-
-          📊 Statut: 60% Complété""",
-                      "due_on": mobile_date.strftime("%Y-%m-%d"),
+          - UI polish et optimisation
+          
+          📊 Statut: 60% Complété
+          ⚠️  BLOQUE les phases suivantes""",
+                      "due_on": iso_utc(mobile_date),
                       "state": "open"
                   })
-
+                  
                   # Phase 3: Dashboard (90% complété - PRESQUE FINI)
                   dashboard_date = base_date + timedelta(weeks=1)
                   milestones_config.append({
-                      "title": "Project Dashboard",  # Titre plus court
+                      "title": "🌐 Dashboard Excellence",
                       "description": """Phase 3 - Dashboard & Monitoring
-          ✅ Accomplissements:
-          - Dashboard Phases 1-3 complétées
+          
+          ✅ Accomplissements exceptionnels:
+          - Dashboard Phases 1-3 complétées (Design/Métriques/Optimisation)
           - Interface responsive professionnelle
           - Métriques temps réel intégrées
           - Design system cohérent TaxasGE
-
+          
           🔄 Finitions:
           - Configuration GitHub Pages finale
           - Tests accessibilité WCAG
-
+          
           📊 Statut: 90% Complété""",
-                      "due_on": dashboard_date.strftime("%Y-%m-d"),
+                      "due_on": iso_utc(dashboard_date),
                       "state": "open"
                   })
-
+                  
                   # Phase 4: Production (20% complété - DÉPEND MOBILE)
                   production_date = base_date + timedelta(weeks=6)
                   milestones_config.append({
-                      "title": "Production Ready",  # Titre plus court
+                      "title": "🚀 Production Ready",
                       "description": """Phase 4 - Production Deployment
+          
           🔄 Objectifs:
-          - Audit sécurité complet
+          - Audit sécurité complet (API, Mobile, Infrastructure)
           - Optimisation performances globales
+          - Load testing et monitoring avancé
           - CI/CD Mobile (Android/iOS builds)
           - Documentation production
-
-          📊 Statut: 20% Complété""",
-                      "due_on": production_date.strftime("%Y-%m-%d"),
+          
+          📊 Statut: 20% Complété
+          🔗 Dépend de: Phase 2 Mobile (critical path)""",
+                      "due_on": iso_utc(production_date),
                       "state": "open"
                   })
-
+                  
                   # Phase 5: Business (10% complété - LONG TERME)
                   business_date = base_date + timedelta(weeks=12)
                   milestones_config.append({
-                      "title": "Business Integration",  # Titre plus court
-                      "description": """Phase 5 - Business Integration
+                      "title": "💳 Business Integration",
+                      "description": """Phase 5 - Business Ready
+          
           🔄 Objectifs:
           - Intégration paiements Bange
           - Dashboard admin Next.js
           - Analytics et reporting avancés
           - Support multi-tenant
-
-          📊 Statut: 10% Complété""",
-                      "due_on": business_date.strftime("%Y-%m-%d"),
+          - Formation et documentation utilisateur
+          
+          📊 Statut: 10% Complété
+          🔗 Dépend de: Phase 4 Production""",
+                      "due_on": iso_utc(business_date),
                       "state": "open"
                   })
-
+                  
                   # Créer les milestones
                   created_milestones = []
                   for milestone_config in milestones_config:
@@ -427,71 +448,86 @@ jobs:
                       if milestone:
                           created_milestones.append(milestone)
                           time.sleep(0.5)  # Rate limiting
-
+                  
                   print(f"✅ {len(created_milestones)} milestones créés")
                   return created_milestones
-
+              
               def create_milestone(self, milestone_config):
-                  """Crée un milestone avec gestion d'erreur détaillée"""
+                  """Crée un milestone dans le repository"""
                   url = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/milestones"
-
+                  
                   response = requests.post(url, headers=self.headers, json=milestone_config)
-
+                  
                   if response.status_code == 201:
                       milestone = response.json()
                       status_icon = "✅" if milestone_config.get("state") == "closed" else "🔄"
                       print(f"  {status_icon} Milestone créé: {milestone['title']}")
                       return milestone
                   else:
-                      print(f"  ❌ Erreur création milestone {milestone_config['title']}: {response.status_code}")
-                      print(f"     Response: {response.text}")
+                      # Afficher le détail de l'erreur pour debug (du 422 par ex.)
+                      try:
+                          print(f"  ❌ Erreur création milestone {milestone_config['title']}: {response.status_code} -> {response.text}")
+                      except Exception:
+                          print(f"  ❌ Erreur création milestone {milestone_config['title']}: {response.status_code}")
                       return None
-
+              
               def organize_existing_issues(self, context, milestones):
                   """Organise les issues existantes selon les milestones"""
                   print("🔗 Organisation des issues existantes...")
-
+                  
                   # Récupérer toutes les issues ouvertes
                   issues = self.get_repository_issues()
                   if not issues:
                       print("ℹ️  Aucune issue trouvée à organiser")
                       return
-
+                  
                   # Mapping des patterns d'issues vers milestones
                   milestone_mapping = {}
                   for milestone in milestones:
                       milestone_mapping[milestone['title']] = milestone
-
+                  
                   issue_patterns = {
-                      "Infrastructure Foundation": ["firebase", "supabase", "sonar", "infrastructure", "devops", "ci/cd", "workflow"],
-                      "Backend API": ["backend", "api", "fastapi", "test", "unittest", "auth", "jwt", "endpoint"],
-                      "Mobile App": ["mobile", "react-native", "chatbot", "ai", "tensorflow", "tflite", "app"],
-                      "Project Dashboard": ["dashboard", "monitoring", "status", "ui", "frontend", "pages"],
-                      "Production Ready": ["security", "audit", "performance", "optimization", "production", "deploy"],
-                      "Business Integration": ["bange", "payment", "business", "admin", "integration"]
+                      "🛠️ Infrastructure Foundation": [
+                          "firebase", "supabase", "sonar", "infrastructure", "devops", "ci/cd", "workflow"
+                      ],
+                      "🐍 Backend & API Excellence": [
+                          "backend", "api", "fastapi", "test", "unittest", "auth", "jwt", "endpoint"
+                      ],
+                      "📱 Mobile App Critical Path": [
+                          "mobile", "react-native", "chatbot", "ai", "tensorflow", "tflite", "app"
+                      ],
+                      "🌐 Dashboard Excellence": [
+                          "dashboard", "monitoring", "status", "ui", "frontend", "pages"
+                      ],
+                      "🚀 Production Ready": [
+                          "security", "audit", "performance", "optimization", "production", "deploy"
+                      ],
+                      "💳 Business Integration": [
+                          "bange", "payment", "business", "admin", "integration"
+                      ]
                   }
-
+                  
                   organized_count = 0
                   for issue in issues:
                       # Déterminer le milestone approprié
                       assigned_milestone = self.determine_issue_milestone(issue, issue_patterns, milestone_mapping)
-
+                      
                       if assigned_milestone:
                           # Assigner le milestone à l'issue
                           success = self.assign_milestone_to_issue(issue, assigned_milestone)
                           if success:
                               organized_count += 1
                           time.sleep(0.3)  # Rate limiting
-
+                  
                   print(f"✅ {organized_count} issues organisées dans les milestones")
-
+              
               def get_repository_issues(self):
                   """Récupère toutes les issues du repository"""
                   url = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/issues"
                   params = {"state": "open", "per_page": 100}
-
+                  
                   response = requests.get(url, headers=self.headers, params=params)
-
+                  
                   if response.status_code == 200:
                       issues = response.json()
                       # Filtrer les pull requests
@@ -501,44 +537,44 @@ jobs:
                   else:
                       print(f"❌ Erreur récupération issues: {response.status_code}")
                       return []
-
+              
               def determine_issue_milestone(self, issue, patterns, milestone_mapping):
                   """Détermine le milestone approprié pour une issue"""
-                  issue_text = (issue['title'] + ' ' + (issue['body'] or '')).lower()
-
+                  issue_text = (issue['title'] + ' ' + (issue.get('body') or '')).lower()
+                  
                   # Calculer le score pour chaque milestone
                   milestone_scores = {}
-
+                  
                   for milestone_title, keywords in patterns.items():
                       score = 0
                       for keyword in keywords:
                           if keyword in issue_text:
                               score += issue_text.count(keyword)
-
+                      
                       if score > 0:
                           milestone_scores[milestone_title] = score
-
+                  
                   # Retourner le milestone avec le score le plus élevé
                   if milestone_scores:
                       best_milestone = max(milestone_scores.items(), key=lambda x: x[1])[0]
                       return milestone_mapping.get(best_milestone)
-
+                  
                   return None
-
+              
               def assign_milestone_to_issue(self, issue, milestone):
                   """Assigne un milestone à une issue"""
                   url = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/issues/{issue['number']}"
                   data = {"milestone": milestone["number"]}
-
+                  
                   response = requests.patch(url, headers=self.headers, json=data)
-
+                  
                   if response.status_code == 200:
                       print(f"  🔗 Issue #{issue['number']} → {milestone['title']}")
                       return True
                   else:
                       print(f"  ❌ Erreur assignation #{issue['number']}: {response.status_code}")
                       return False
-
+              
               def generate_project_summary(self, context, project, milestones):
                   """Génère un résumé du projet créé"""
                   summary = {
@@ -573,48 +609,48 @@ jobs:
                           "Commencer le travail sur la critical path: Mobile AI integration"
                       ]
                   }
-
+                  
                   # Sauvegarder le résumé
                   with open("project-summary.json", "w", encoding='utf-8') as f:
                       json.dump(summary, f, indent=2, ensure_ascii=False)
-
+                  
                   return summary
-
+          
           def main():
               print("🗂️ TaxasGE Retroactive Project Builder")
               print("======================================")
-
+              
               # Configuration
               token = os.getenv("GITHUB_TOKEN")
               repo_owner = os.getenv("REPO_OWNER")
               repo_name = os.getenv("REPO_NAME")
               context_file = os.getenv("CONTEXT_FILE", "docs/historical-context.json")
-
+              
               create_project = os.getenv("CREATE_PROJECT", "true").lower() == "true"
               create_milestones = os.getenv("CREATE_MILESTONES", "true").lower() == "true"
               organize_issues = os.getenv("ORGANIZE_ISSUES", "true").lower() == "true"
-
+              
               if not all([token, repo_owner, repo_name]):
                   print("❌ Variables d'environnement manquantes")
                   return
-
+              
               # Initialize builder
               builder = TaxasGERetroactiveProjectBuilder(token, repo_owner, repo_name)
-
+              
               # Load historical context
               context = builder.load_historical_context(context_file)
               if not context:
                   print("❌ Impossible de charger le contexte historique")
                   return
-
+              
               # Get repository info
               repo_info = builder.get_repository_info()
               if not repo_info:
                   return
-
+              
               project = None
               milestones = []
-
+              
               # Create GitHub Project
               if create_project:
                   project = builder.create_project_v2(context)
@@ -622,19 +658,19 @@ jobs:
                       # Setup custom fields
                       builder.setup_project_fields()
                       time.sleep(2)
-
+              
               # Create milestones
               if create_milestones:
                   milestones = builder.create_milestones_from_context(context)
-
+              
               # Organize existing issues
               if organize_issues and milestones:
                   builder.organize_existing_issues(context, milestones)
-
+              
               # Generate summary
               if project and milestones:
                   summary = builder.generate_project_summary(context, project, milestones)
-
+                  
                   print(f"\n🎯 Projet TaxasGE créé avec succès!")
                   print(f"📊 Progression globale: {context['metadata']['overall_progress']}%")
                   print(f"🗂️  Projet: {project['title']}")
@@ -644,11 +680,11 @@ jobs:
                   print(f"\n🚀 Prochaine étape critique: Mobile AI Integration")
               else:
                   print("⚠️  Création de projet incomplète")
-
+          
           if __name__ == "__main__":
               main()
           EOF
-
+          
       - name: 🗂️ Execute Retroactive Project Builder
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -660,37 +696,36 @@ jobs:
           ORGANIZE_ISSUES: ${{ github.event.inputs.organize_issues }}
         run: |
           python retroactive_project_builder.py
-
+          
       - name: 📄 Upload Project Summary
         uses: actions/upload-artifact@v4
-        if: success()
         with:
           name: taxasge-project-summary
           path: project-summary.json
           retention-days: 30
-
+          
       - name: 📄 Auto-commit Project Summary
         if: success()
         run: |
           if [ -f "project-summary.json" ]; then
             mkdir -p docs
             cp project-summary.json docs/project-summary.json
-
+            
             git config --local user.email "action@github.com"
             git config --local user.name "GitHub Action - Project Builder"
-
+            
             git add docs/project-summary.json
             if ! git diff --staged --quiet; then
               git commit -m "🗂️ Add TaxasGE project summary
+              
               - GitHub Project V2 created with milestones
-              - Issues organized automatically
+              - Issues organized automatically 
               - Ready for critical path: Mobile AI integration"
-              git pull --rebase
               git push
               echo "✅ Project summary committed to docs/"
             fi
           fi
-
+          
       - name: 📊 Display Project Creation Results
         if: success()
         run: |
@@ -707,3 +742,4 @@ jobs:
           echo "   🌐 Dashboard GitHub Pages finalization"
           echo ""
           echo "📄 Résumé détaillé: docs/project-summary.json"
+
