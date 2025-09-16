@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "generated_at": "2025-09-16T10:24:40.284257",
+    "generated_at": "2025-09-16T11:33:19.796417",
     "repository": "KouemouSah/taxasge",
     "analysis_type": "historical_mapping",
     "overall_progress": 57.5
@@ -190,7 +190,7 @@
     }
   },
   "codebase_analysis": {
-    "total_commits": 192,
+    "total_commits": 201,
     "timespan": "6_months",
     "activity_by_phase": {
       "infrastructure": {
@@ -218,11 +218,11 @@
         ]
       },
       "dashboard": {
-        "commits": 53,
+        "commits": 58,
         "samples": [
-          "c5c4555 🤖 Update dashboard metrics - 2025-09-16 10:16 UTC",
-          "bd2d7fd 🤖 Update dashboard metrics - 2025-09-16 09:57 UTC",
-          "1bf43ef 🤖 Update dashboard metrics - 2025-09-16 09:44 UTC"
+          "ede9008 🤖 Update dashboard metrics - 2025-09-16 11:21 UTC",
+          "a3a6fe2 🤖 Update dashboard metrics - 2025-09-16 11:12 UTC",
+          "f25b147 🤖 Update dashboard metrics - 2025-09-16 10:57 UTC"
         ]
       },
       "ai": {
