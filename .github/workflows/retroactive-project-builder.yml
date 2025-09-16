@@ -59,7 +59,7 @@ on:
         - 'false'
 
 permissions:
-  contents: read
+  contents: write          # <-- fix: nécessaire pour le commit/push
   issues: write
   repository-projects: write
 
@@ -331,7 +331,7 @@ jobs:
                       if field:
                           created_fields.append(field)
                           time.sleep(1)
-                  print(f"✅ {len(created_fields)} champs créés (les autres existaient déjà)")
+                  print(f"✅ {len(created_fields)} champs créés (les autres existaient déjà ou ont échoué)")
                   return created_fields
               
               def create_project_field(self, field_config):
@@ -356,12 +356,19 @@ jobs:
                   r = requests.post(self.graphql_url, headers=self.graphql_headers, json={"query": mutation, "variables": variables})
                   if r.status_code == 200:
                       data = r.json()
-                      if "errors" not in data:
+                      if "errors" in data:
+                          print(f"  ❌ Erreur création champ {field_config['name']}: {data['errors']}")
+                          return None
+                      try:
                           field = data['data']['createProjectV2Field']['projectV2Field']
                           print(f"  ✅ Champ créé: {field['name']}")
                           return field
-                  print(f"  ❌ Erreur création champ {field_config['name']}")
-                  return None
+                      except Exception as e:
+                          print(f"  ❌ Réponse inattendue création champ {field_config['name']}: {data}")
+                          return None
+                  else:
+                      print(f"  ❌ HTTP {r.status_code} à la création du champ {field_config['name']}: {r.text}")
+                      return None
               
               # ---------- Milestones / Issues ----------
               def get_existing_milestones(self):
