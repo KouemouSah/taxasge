@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-09-16T10:28:39Z",
+  "timestamp": "2025-09-16T10:45:11Z",
   "generator": "status-dashboard-workflow",
   "project": {
     "name": "TaxasGE",
@@ -18,9 +18,9 @@
   "performance": {
     "uptime_percentage": "99.8",
     "response_time_ms": "0",
-    "success_rate_7d": "80",
+    "success_rate_7d": "70",
     "api_success_rate": "0",
-    "last_check": "2025-09-16T10:28:39Z"
+    "last_check": "2025-09-16T10:45:11Z"
   },
   "quality": {
     "test_coverage": "78",
@@ -35,8 +35,8 @@
   "last_deployment": {
     "environment": "development",
     "status": "success",
-    "timestamp": "2025-09-16T08:28:39Z",
+    "timestamp": "2025-09-16T08:45:11Z",
     "duration": "6m 32s",
-    "commit": "6b4e96dd876d03151a238e477ecc253d6a8a5912"
+    "commit": "e928371bdf7f9d560ae383bff50de1b5cb1ff7f1"
   }
 }
