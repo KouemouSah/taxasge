@@ -59,7 +59,7 @@ on:
         - 'false'
 
 permissions:
-  contents: write          # <-- fix: nécessaire pour le commit/push
+  contents: write
   issues: write
   repository-projects: write
 
@@ -335,15 +335,40 @@ jobs:
                   return created_fields
               
               def create_project_field(self, field_config):
+                  # >>> Mutation corrigée : fragments inline sur l'union renvoyée <<<
                   mutation = """
-                  mutation CreateProjectField($projectId: ID!, $name: String!, $dataType: ProjectV2CustomFieldType!, $options: [ProjectV2SingleSelectFieldOptionInput!]) {
+                  mutation CreateProjectField(
+                    $projectId: ID!,
+                    $name: String!,
+                    $dataType: ProjectV2CustomFieldType!,
+                    $options: [ProjectV2SingleSelectFieldOptionInput!]
+                  ) {
                     createProjectV2Field(input: {
                       projectId: $projectId,
                       name: $name,
                       dataType: $dataType,
                       singleSelectOptions: $options
                     }) {
-                      projectV2Field { id name }
+                      projectV2Field {
+                        __typename
+                        ... on ProjectV2FieldCommon {
+                          id
+                          name
+                          dataType
+                        }
+                        ... on ProjectV2SingleSelectField {
+                          id
+                          name
+                          dataType
+                          options { id name }
+                        }
+                        ... on ProjectV2IterationField {
+                          id
+                          name
+                          dataType
+                          configuration { iterations { id startDate } }
+                        }
+                      }
                     }
                   }
                   """
@@ -353,17 +378,18 @@ jobs:
                       "dataType": field_config["dataType"],
                       "options": field_config.get("options", [])
                   }
-                  r = requests.post(self.graphql_url, headers=self.graphql_headers, json={"query": mutation, "variables": variables})
+                  r = requests.post(self.graphql_url, headers=self.graphql_headers,
+                                    json={"query": mutation, "variables": variables})
                   if r.status_code == 200:
                       data = r.json()
                       if "errors" in data:
                           print(f"  ❌ Erreur création champ {field_config['name']}: {data['errors']}")
                           return None
                       try:
-                          field = data['data']['createProjectV2Field']['projectV2Field']
-                          print(f"  ✅ Champ créé: {field['name']}")
+                          field = data["data"]["createProjectV2Field"]["projectV2Field"]
+                          print(f"  ✅ Champ créé: {field['name']} ({field['__typename']})")
                           return field
-                      except Exception as e:
+                      except Exception:
                           print(f"  ❌ Réponse inattendue création champ {field_config['name']}: {data}")
                           return None
                   else:
@@ -680,13 +706,13 @@ jobs:
               builder.generate_project_summary(context, project, milestones)
               
               if project and milestones:
-                  print(f"\\n🎯 Projet TaxasGE prêt!")
+                  print(f"\n🎯 Projet TaxasGE prêt!")
                   print(f"📊 Progression globale: {context['metadata']['overall_progress']}%")
                   print(f"🗂️  Projet: {project['title']}")
                   print(f"🔗 URL: {project['url']}")
                   print(f"🎯 Milestones: {len(milestones)} prêts")
                   print(f"📋 Issues organisées automatiquement (si applicable)")
-                  print(f"\\n🚀 Prochaine étape critique: Mobile AI Integration")
+                  print(f"\n🚀 Prochaine étape critique: Mobile AI Integration")
               else:
                   print("⚠️  Création de projet incomplète (ou déjà existant réutilisé)")
           
