@@ -616,3 +616,4 @@ jobs:
           if [ -f "historical-context.json" ]; then
             echo "📊 Preview du contexte:"
             python3 scripts/display_results.py
+          fi
