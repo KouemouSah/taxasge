@@ -1,3 +1,23 @@
+# ============================================================================
+# 📊 TaxasGE Historical Context Mapper
+# ============================================================================
+# Workflow d’analyse historique du projet et de génération de rapports
+# Déclenché sur: Lancement manuel (workflow_dispatch)
+#
+# Features:
+# - Analyse de l’infrastructure existante (workflows, Firebase, Supabase, etc.)
+# - Détection des intégrations critiques (SonarQube, AI model, dashboard, mobile)
+# - Analyse de l’historique des commits et activité par phase
+# - Génération automatique d’un rapport JSON (historical-context.json)
+# - Upload en artifact et auto-commit dans le dossier docs/
+# - Affichage résumé de la progression et des phases du projet
+#
+# Author: KOUEMOU SAH Jean Emac
+# ============================================================================
+
+
+
+
 name: 📊 TaxasGE Historical Context Mapper
 
 on:
@@ -593,18 +613,6 @@ jobs:
           echo "📄 Artifact: historical-context.json disponible"
           echo "🔄 Prêt pour ÉTAPE 2: Retroactive Project Builder"
 
-          # Show file content summary
           if [ -f "historical-context.json" ]; then
             echo "📊 Preview du contexte:"
-            python3 - <<'PY'
-import json
-
-with open('historical-context.json', 'r', encoding='utf-8') as f:
-    data = json.load(f)
-
-print(f"Progression: {data['metadata']['overall_progress']}%")
-print(f"Phase critique: {data['project_status']['current_phase']}")
-for phase, info in data['phases'].items():
-    print(f"{phase}: {info['completion']}% - {info['status']}")
-PY
-          fi
+            python3 scripts/display_results.py
