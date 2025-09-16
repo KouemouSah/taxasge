@@ -596,4 +596,15 @@ jobs:
           # Show file content summary
           if [ -f "historical-context.json" ]; then
             echo "📊 Preview du contexte:"
-            python3 -c ""import json;f=open('historical-context.json');data=json.load(f);print(f'Progression: {data[\"metadata\"][\"overall_progress\"]}%');print(f'Phase critique: {data[\"project_status\"][\"current_phase\"]}');exec('''for k in data[\"phases\"].keys(): print(f\"{k}: {data[\\\"phases\\\"][k][\\\"completion\\\"]}% - {data[\\\"phases\\\"][k][\\\"status\\\"]}\")''');f.close()"; fi
+            python3 - <<'PY'
+import json
+
+with open('historical-context.json', 'r', encoding='utf-8') as f:
+    data = json.load(f)
+
+print(f"Progression: {data['metadata']['overall_progress']}%")
+print(f"Phase critique: {data['project_status']['current_phase']}")
+for phase, info in data['phases'].items():
+    print(f"{phase}: {info['completion']}% - {info['status']}")
+PY
+          fi
