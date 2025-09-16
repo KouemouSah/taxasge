@@ -273,51 +273,53 @@ jobs:
                   
                   existing_names = self.get_project_fields(self.project_id)
                   
+                  # ✅ Couleurs ENUM (GRAY, BLUE, GREEN, YELLOW, ORANGE, RED, PINK, PURPLE)
+                  # ✅ Chaque option doit avoir une 'description' non nulle
                   fields_to_create = [
                       {
                           "name": "Priority",
                           "dataType": "SINGLE_SELECT",
                           "options": [
-                              {"name": "🚨 Critical", "color": "d73a4a"},
-                              {"name": "⭐ High", "color": "d93f0b"},
-                              {"name": "🔶 Medium", "color": "fbca04"},
-                              {"name": "🔵 Low", "color": "0052cc"}
+                              {"name": "🚨 Critical", "color": "RED",    "description": "Priorité maximale, à traiter immédiatement"},
+                              {"name": "⭐ High",     "color": "ORANGE", "description": "Haute priorité, planifier très prochainement"},
+                              {"name": "🔶 Medium",   "color": "YELLOW", "description": "Priorité moyenne, à traiter dans le sprint"},
+                              {"name": "🔵 Low",      "color": "BLUE",   "description": "Priorité basse, peut attendre"}
                           ]
                       },
                       {
                           "name": "Component", 
                           "dataType": "SINGLE_SELECT",
                           "options": [
-                              {"name": "🛠️ Infrastructure", "color": "6f42c1"},
-                              {"name": "🐍 Backend", "color": "f9d0c4"},
-                              {"name": "📱 Mobile", "color": "e99695"},
-                              {"name": "🌐 Web", "color": "c2e0c6"},
-                              {"name": "🤖 AI/ML", "color": "d4c5f9"},
-                              {"name": "📊 Dashboard", "color": "0e8a16"}
+                              {"name": "🛠️ Infrastructure", "color": "PURPLE", "description": "CI/CD, Sonar, Actions, hébergement"},
+                              {"name": "🐍 Backend",         "color": "RED",    "description": "API, FastAPI, modèles, base de données"},
+                              {"name": "📱 Mobile",          "color": "BLUE",   "description": "App React Native, écrans, navigation"},
+                              {"name": "🌐 Web",             "color": "GREEN",  "description": "Frontend web, sites, dashboards publics"},
+                              {"name": "🤖 AI/ML",           "color": "PINK",   "description": "Modèles ML, TFLite, pipeline de données"},
+                              {"name": "📊 Dashboard",       "color": "ORANGE", "description": "Monitoring, métriques, vues projets"}
                           ]
                       },
                       {
                           "name": "Phase",
                           "dataType": "SINGLE_SELECT", 
                           "options": [
-                              {"name": "Phase 0: Infrastructure", "color": "6f42c1"},
-                              {"name": "Phase 1: Backend", "color": "f9d0c4"},
-                              {"name": "Phase 2: Mobile", "color": "e99695"},
-                              {"name": "Phase 3: Dashboard", "color": "c2e0c6"},
-                              {"name": "Phase 4: Production", "color": "d93f0b"},
-                              {"name": "Phase 5: Business", "color": "0052cc"}
+                              {"name": "Phase 0: Infrastructure", "color": "PURPLE", "description": "Base technique & pipeline IA"},
+                              {"name": "Phase 1: Backend",        "color": "PINK",   "description": "API & services"},
+                              {"name": "Phase 2: Mobile",         "color": "RED",    "description": "App mobile & intégration IA"},
+                              {"name": "Phase 3: Dashboard",      "color": "GREEN",  "description": "Monitoring & métriques"},
+                              {"name": "Phase 4: Production",     "color": "ORANGE", "description": "Préparation et déploiement prod"},
+                              {"name": "Phase 5: Business",       "color": "BLUE",   "description": "Monétisation & intégrations"}
                           ]
                       },
                       {
                           "name": "Estimation",
                           "dataType": "SINGLE_SELECT",
                           "options": [
-                              {"name": "1 day", "color": "0e8a16"},
-                              {"name": "3 days", "color": "0e8a16"}, 
-                              {"name": "1 week", "color": "fbca04"},
-                              {"name": "2 weeks", "color": "fbca04"},
-                              {"name": "1 month", "color": "d93f0b"},
-                              {"name": "2+ months", "color": "d73a4a"}
+                              {"name": "1 day",      "color": "GREEN",  "description": "Tâche courte (≤ 1 jour)"},
+                              {"name": "3 days",     "color": "BLUE",   "description": "Tâche courte (≤ 3 jours)"},
+                              {"name": "1 week",     "color": "YELLOW", "description": "Tâche moyenne (≈ 1 semaine)"},
+                              {"name": "2 weeks",    "color": "ORANGE", "description": "Tâche longue (≈ 2 semaines)"},
+                              {"name": "1 month",    "color": "RED",    "description": "Initiative (≈ 1 mois)"},
+                              {"name": "2+ months",  "color": "PURPLE", "description": "Épic (≥ 2 mois)"}
                           ]
                       }
                   ]
@@ -771,5 +773,7 @@ jobs:
           echo "✅ Issues: organisées si non déjà assignées"
           echo ""
           echo "📄 Résumé détaillé: docs/project-summary.json"
+
+
 
 
