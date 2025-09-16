@@ -97,19 +97,23 @@ jobs:
                   self.repo_owner = repo_owner
                   self.repo_name = repo_name
                   self.repo_id = None
-                  self.owner_id = None   # <-- (NEW) Owner node id (User/Org) pour Projects V2
+                  self.owner_id = None
+                  self.owner_type = None
                   self.project_id = None
                   
-                  # REST API headers
+                  # Token GraphQL (Projects v2) : préférer PROJECTS_TOKEN (PAT), sinon GITHUB_TOKEN
+                  self.projects_token = os.getenv("PROJECTS_TOKEN") or token
+                  
+                  # REST API headers (issues/milestones)
                   self.headers = {
                       "Authorization": f"token {token}",
                       "Accept": "application/vnd.github.v3+json",
                       "User-Agent": "TaxasGE-Project-Builder/1.0"
                   }
                   
-                  # GraphQL headers (for Projects V2)
+                  # GraphQL headers (Projects V2)
                   self.graphql_headers = {
-                      "Authorization": f"Bearer {token}",
+                      "Authorization": f"Bearer {self.projects_token}",
                       "Content-Type": "application/json",
                       "User-Agent": "TaxasGE-Project-Builder/1.0"
                   }
@@ -117,16 +121,12 @@ jobs:
                   self.graphql_url = "https://api.github.com/graphql"
                   
               def load_historical_context(self, context_file):
-                  """Charge le contexte historique généré"""
                   print(f"📄 Chargement contexte: {context_file}")
-                  
                   try:
                       with open(context_file, 'r', encoding='utf-8') as f:
                           context = json.load(f)
-                      
                       print(f"✅ Contexte chargé: {context['metadata']['overall_progress']}% progression")
                       return context
-                      
                   except FileNotFoundError:
                       print(f"❌ Fichier contexte non trouvé: {context_file}")
                       return None
@@ -135,75 +135,143 @@ jobs:
                       return None
               
               def get_repository_info(self):
-                  """Récupère les infos du repository"""
                   url = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}"
                   response = requests.get(url, headers=self.headers)
-                  
                   if response.status_code == 200:
                       repo_data = response.json()
                       self.repo_id = repo_data['node_id']
-                      # IMPORTANT: Projects V2 ownerId = owner.node_id (User/Org), pas repo.node_id
-                      self.owner_id = repo_data['owner']['node_id']
+                      self.owner_id = repo_data['owner']['node_id']   # Projects v2 = owner (user/org)
+                      self.owner_type = repo_data['owner'].get('type')  # "Organization" ou "User"
                       print(f"✅ Repository ID: {self.repo_id}")
-                      print(f"✅ Owner ID (Projects V2): {self.owner_id}")
+                      print(f"✅ Owner ID (Projects V2): {self.owner_id} ({self.owner_type})")
+                      using_pat = "PROJECTS_TOKEN (secret GH_PROJECTS_TOKEN)" if os.getenv("PROJECTS_TOKEN") else "GITHUB_TOKEN (permissions limitées)"
+                      print(f"🔐 Token GraphQL utilisé pour Projects v2: {using_pat}")
                       return repo_data
                   else:
                       print(f"❌ Erreur récupération repo: {response.status_code}")
                       return None
               
-              def create_project_v2(self, context):
-                  """Crée un GitHub Project V2"""
-                  print("🗂️ Création du GitHub Project V2...")
-                  
-                  # GraphQL mutation pour créer le projet (⚠️ sans 'body' qui n'est pas supporté)
-                  mutation = """
-                  mutation CreateProject($ownerId: ID!, $title: String!) {
-                    createProjectV2(input: {ownerId: $ownerId, title: $title}) {
-                      projectV2 {
-                        id
-                        number
-                        title
-                        url
+              # ---------- Projects V2 helpers ----------
+              def find_existing_project_v2(self, title):
+                  """Retourne le projet v2 existant par titre (si trouvé), sinon None."""
+                  query = """
+                  query FindProjects($ownerId: ID!) {
+                    node(id: $ownerId) {
+                      ... on Organization {
+                        projectsV2(first: 50, orderBy: {field: UPDATED_AT, direction: DESC}) {
+                          nodes { id title number url }
+                        }
+                      }
+                      ... on User {
+                        projectsV2(first: 50, orderBy: {field: UPDATED_AT, direction: DESC}) {
+                          nodes { id title number url }
+                        }
                       }
                     }
                   }
                   """
-                  
+                  variables = {"ownerId": self.owner_id}
+                  r = requests.post(self.graphql_url, headers=self.graphql_headers, json={"query": query, "variables": variables})
+                  if r.status_code != 200:
+                      print(f"⚠️  Impossible de lister les Projects v2 (HTTP {r.status_code})")
+                      return None
+                  data = r.json()
+                  nodes = []
+                  try:
+                      node = data["data"]["node"]
+                      if node and "projectsV2" in node:
+                          nodes = node["projectsV2"]["nodes"]
+                  except Exception:
+                      pass
+                  for p in nodes or []:
+                      if p.get("title") == title:
+                          print(f"ℹ️  Project v2 existant trouvé: {p['title']} ({p['url']})")
+                          return p
+                  return None
+              
+              def get_project_fields(self, project_id):
+                  """Liste les champs existants d'un Project v2 (par nom)."""
+                  query = """
+                  query Fields($projectId: ID!) {
+                    node(id: $projectId) {
+                      ... on ProjectV2 {
+                        fields(first: 50) {
+                          nodes {
+                            __typename
+                            ... on ProjectV2FieldCommon { id name dataType }
+                            ... on ProjectV2SingleSelectField { id name dataType options { id name } }
+                          }
+                        }
+                      }
+                    }
+                  }
+                  """
+                  r = requests.post(self.graphql_url, headers=self.graphql_headers, json={"query": query, "variables": {"projectId": project_id}})
+                  if r.status_code != 200:
+                      print(f"⚠️  Impossible de lister les champs (HTTP {r.status_code})")
+                      return set()
+                  data = r.json()
+                  names = set()
+                  try:
+                      nodes = data["data"]["node"]["fields"]["nodes"]
+                      for n in nodes:
+                          if "name" in n and n["name"]:
+                              names.add(n["name"])
+                  except Exception:
+                      pass
+                  return names
+              
+              def create_project_v2(self, context):
+                  print("🗂️ Création du GitHub Project V2...")
                   project_title = "🎯 TaxasGE Master Project"
                   
+                  # 1) Vérifier si le projet existe déjà
+                  existing = self.find_existing_project_v2(project_title)
+                  if existing:
+                      self.project_id = existing["id"]
+                      print(f"✅ Réutilisation du Project existant: {existing['title']}")
+                      return existing
+                  
+                  # 2) Créer sinon
+                  mutation = """
+                  mutation CreateProject($ownerId: ID!, $title: String!) {
+                    createProjectV2(input: {ownerId: $ownerId, title: $title}) {
+                      projectV2 { id number title url }
+                    }
+                  }
+                  """
                   variables = {
-                      "ownerId": self.owner_id,   # <-- (FIX) ownerId = owner.node_id
+                      "ownerId": self.owner_id,
                       "title": project_title
                   }
-                  
-                  response = requests.post(
-                      self.graphql_url,
-                      headers=self.graphql_headers,
-                      json={"query": mutation, "variables": variables}
-                  )
-                  
+                  response = requests.post(self.graphql_url, headers=self.graphql_headers, json={"query": mutation, "variables": variables})
                   if response.status_code == 200:
                       data = response.json()
                       if "errors" in data:
                           print(f"❌ Erreurs GraphQL: {data['errors']}")
+                          if not os.getenv("PROJECTS_TOKEN"):
+                              print("ℹ️ Conseil: fournissez un PAT avec droit 'Project: Read & write' via le secret GH_PROJECTS_TOKEN pour créer un Project v2.")
                           return None
-                          
                       project = data['data']['createProjectV2']['projectV2']
                       self.project_id = project['id']
-                      
                       print(f"✅ Project créé: {project['title']}")
                       print(f"🔗 URL: {project['url']}")
                       print(f"📊 Project ID: {self.project_id}")
-                      
                       return project
                   else:
                       print(f"❌ Erreur création projet: {response.status_code}")
                       print(f"Response: {response.text}")
+                      if not os.getenv("PROJECTS_TOKEN"):
+                          print("ℹ️ Conseil: utilisez un PAT dans GH_PROJECTS_TOKEN pour Projects v2.")
                       return None
               
               def setup_project_fields(self):
-                  """Configure les champs personnalisés du projet"""
                   print("🔧 Configuration des champs personnalisés...")
+                  if not self.project_id:
+                      print("⚠️  Pas de project_id, skip champs.")
+                      return []
+                  
+                  existing_names = self.get_project_fields(self.project_id)
                   
                   fields_to_create = [
                       {
@@ -256,16 +324,17 @@ jobs:
                   
                   created_fields = []
                   for field_config in fields_to_create:
+                      if field_config["name"] in existing_names:
+                          print(f"  ⏭️  Champ déjà présent: {field_config['name']}")
+                          continue
                       field = self.create_project_field(field_config)
                       if field:
                           created_fields.append(field)
-                          time.sleep(1)  # Rate limiting
-                  
-                  print(f"✅ {len(created_fields)} champs personnalisés créés")
+                          time.sleep(1)
+                  print(f"✅ {len(created_fields)} champs créés (les autres existaient déjà)")
                   return created_fields
               
               def create_project_field(self, field_config):
-                  """Crée un champ personnalisé dans le projet"""
                   mutation = """
                   mutation CreateProjectField($projectId: ID!, $name: String!, $dataType: ProjectV2CustomFieldType!, $options: [ProjectV2SingleSelectFieldOptionInput!]) {
                     createProjectV2Field(input: {
@@ -274,49 +343,48 @@ jobs:
                       dataType: $dataType,
                       singleSelectOptions: $options
                     }) {
-                      projectV2Field {
-                        id
-                        name
-                      }
+                      projectV2Field { id name }
                     }
                   }
                   """
-                  
                   variables = {
                       "projectId": self.project_id,
                       "name": field_config["name"],
                       "dataType": field_config["dataType"],
                       "options": field_config.get("options", [])
                   }
-                  
-                  response = requests.post(
-                      self.graphql_url,
-                      headers=self.graphql_headers,
-                      json={"query": mutation, "variables": variables}
-                  )
-                  
-                  if response.status_code == 200:
-                      data = response.json()
+                  r = requests.post(self.graphql_url, headers=self.graphql_headers, json={"query": mutation, "variables": variables})
+                  if r.status_code == 200:
+                      data = r.json()
                       if "errors" not in data:
                           field = data['data']['createProjectV2Field']['projectV2Field']
                           print(f"  ✅ Champ créé: {field['name']}")
                           return field
-                  
                   print(f"  ❌ Erreur création champ {field_config['name']}")
                   return None
               
+              # ---------- Milestones / Issues ----------
+              def get_existing_milestones(self):
+                  """Retourne dict {title: milestone} pour state=all."""
+                  url = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/milestones"
+                  params = {"state": "all", "per_page": 100}
+                  r = requests.get(url, headers=self.headers, params=params)
+                  if r.status_code != 200:
+                      print(f"⚠️  Impossible de lister les milestones (HTTP {r.status_code})")
+                      return {}
+                  out = {}
+                  for m in r.json():
+                      out[m["title"]] = m
+                  return out
+              
               def create_milestones_from_context(self, context):
-                  """Crée les milestones basés sur le contexte historique"""
                   print("🎯 Création des milestones basés sur l'analyse...")
-                  
-                  # Utiliser UTC et ISO 8601 complet (Z) pour due_on
                   base_date = datetime.utcnow()
-                  def iso_utc(dt):
-                      return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+                  def iso_utc(dt): return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+                  
+                  existing = self.get_existing_milestones()
                   
                   milestones_config = []
-                  
-                  # Phase 0: Infrastructure (95% complété - RÉTROACTIF)
                   infra_date = base_date - timedelta(weeks=8)
                   milestones_config.append({
                       "title": "🛠️ Infrastructure Foundation", 
@@ -333,10 +401,8 @@ jobs:
           📊 Statut: 95% Complété (Validé utilisateur)
           🔗 Fondation solide pour toutes les phases suivantes""",
                       "due_on": iso_utc(infra_date),
-                      "state": "closed"  # accepté par l'API, sinon on patcherait après
+                      "state": "closed"
                   })
-                  
-                  # Phase 1: Backend (70% complété - EN COURS)
                   backend_date = base_date + timedelta(weeks=2)
                   milestones_config.append({
                       "title": "🐍 Backend & API Excellence",
@@ -357,8 +423,6 @@ jobs:
                       "due_on": iso_utc(backend_date),
                       "state": "open"
                   })
-                  
-                  # Phase 2: Mobile (60% complété - CRITIQUE)
                   mobile_date = base_date + timedelta(weeks=3)
                   milestones_config.append({
                       "title": "📱 Mobile App Critical Path",
@@ -381,8 +445,6 @@ jobs:
                       "due_on": iso_utc(mobile_date),
                       "state": "open"
                   })
-                  
-                  # Phase 3: Dashboard (90% complété - PRESQUE FINI)
                   dashboard_date = base_date + timedelta(weeks=1)
                   milestones_config.append({
                       "title": "🌐 Dashboard Excellence",
@@ -392,7 +454,6 @@ jobs:
           - Dashboard Phases 1-3 complétées (Design/Métriques/Optimisation)
           - Interface responsive professionnelle
           - Métriques temps réel intégrées
-          - Design system cohérent TaxasGE
           
           🔄 Finitions:
           - Configuration GitHub Pages finale
@@ -402,8 +463,6 @@ jobs:
                       "due_on": iso_utc(dashboard_date),
                       "state": "open"
                   })
-                  
-                  # Phase 4: Production (20% complété - DÉPEND MOBILE)
                   production_date = base_date + timedelta(weeks=6)
                   milestones_config.append({
                       "title": "🚀 Production Ready",
@@ -421,8 +480,6 @@ jobs:
                       "due_on": iso_utc(production_date),
                       "state": "open"
                   })
-                  
-                  # Phase 5: Business (10% complété - LONG TERME)
                   business_date = base_date + timedelta(weeks=12)
                   milestones_config.append({
                       "title": "💳 Business Integration",
@@ -441,161 +498,117 @@ jobs:
                       "state": "open"
                   })
                   
-                  # Créer les milestones
                   created_milestones = []
-                  for milestone_config in milestones_config:
-                      milestone = self.create_milestone(milestone_config)
+                  for cfg in milestones_config:
+                      if cfg["title"] in existing:
+                          print(f"  ⏭️  Milestone déjà présent: {cfg['title']}")
+                          created_milestones.append(existing[cfg["title"]])
+                          continue
+                      milestone = self.create_milestone(cfg)
                       if milestone:
                           created_milestones.append(milestone)
-                          time.sleep(0.5)  # Rate limiting
-                  
-                  print(f"✅ {len(created_milestones)} milestones créés")
+                          time.sleep(0.5)
+                  print(f"✅ {len(created_milestones)} milestones prêts (créés ou réutilisés)")
                   return created_milestones
               
               def create_milestone(self, milestone_config):
-                  """Crée un milestone dans le repository"""
                   url = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/milestones"
-                  
-                  response = requests.post(url, headers=self.headers, json=milestone_config)
-                  
-                  if response.status_code == 201:
-                      milestone = response.json()
+                  r = requests.post(url, headers=self.headers, json=milestone_config)
+                  if r.status_code == 201:
+                      m = r.json()
                       status_icon = "✅" if milestone_config.get("state") == "closed" else "🔄"
-                      print(f"  {status_icon} Milestone créé: {milestone['title']}")
-                      return milestone
+                      print(f"  {status_icon} Milestone créé: {m['title']}")
+                      return m
                   else:
-                      # Afficher le détail de l'erreur pour debug (du 422 par ex.)
                       try:
-                          print(f"  ❌ Erreur création milestone {milestone_config['title']}: {response.status_code} -> {response.text}")
+                          print(f"  ❌ Erreur création milestone {milestone_config['title']}: {r.status_code} -> {r.text}")
                       except Exception:
-                          print(f"  ❌ Erreur création milestone {milestone_config['title']}: {response.status_code}")
+                          print(f"  ❌ Erreur création milestone {milestone_config['title']}: {r.status_code}")
                       return None
               
               def organize_existing_issues(self, context, milestones):
-                  """Organise les issues existantes selon les milestones"""
                   print("🔗 Organisation des issues existantes...")
-                  
-                  # Récupérer toutes les issues ouvertes
                   issues = self.get_repository_issues()
                   if not issues:
                       print("ℹ️  Aucune issue trouvée à organiser")
                       return
-                  
-                  # Mapping des patterns d'issues vers milestones
-                  milestone_mapping = {}
-                  for milestone in milestones:
-                      milestone_mapping[milestone['title']] = milestone
-                  
+                  milestone_mapping = {m['title']: m for m in milestones}
                   issue_patterns = {
-                      "🛠️ Infrastructure Foundation": [
-                          "firebase", "supabase", "sonar", "infrastructure", "devops", "ci/cd", "workflow"
-                      ],
-                      "🐍 Backend & API Excellence": [
-                          "backend", "api", "fastapi", "test", "unittest", "auth", "jwt", "endpoint"
-                      ],
-                      "📱 Mobile App Critical Path": [
-                          "mobile", "react-native", "chatbot", "ai", "tensorflow", "tflite", "app"
-                      ],
-                      "🌐 Dashboard Excellence": [
-                          "dashboard", "monitoring", "status", "ui", "frontend", "pages"
-                      ],
-                      "🚀 Production Ready": [
-                          "security", "audit", "performance", "optimization", "production", "deploy"
-                      ],
-                      "💳 Business Integration": [
-                          "bange", "payment", "business", "admin", "integration"
-                      ]
+                      "🛠️ Infrastructure Foundation": ["firebase","supabase","sonar","infrastructure","devops","ci/cd","workflow"],
+                      "🐍 Backend & API Excellence": ["backend","api","fastapi","test","unittest","auth","jwt","endpoint"],
+                      "📱 Mobile App Critical Path": ["mobile","react-native","chatbot","ai","tensorflow","tflite","app"],
+                      "🌐 Dashboard Excellence": ["dashboard","monitoring","status","ui","frontend","pages"],
+                      "🚀 Production Ready": ["security","audit","performance","optimization","production","deploy"],
+                      "💳 Business Integration": ["bange","payment","business","admin","integration"]
                   }
-                  
                   organized_count = 0
                   for issue in issues:
-                      # Déterminer le milestone approprié
+                      # si déjà assignée, on n'y touche pas
+                      if issue.get("milestone"):
+                          continue
                       assigned_milestone = self.determine_issue_milestone(issue, issue_patterns, milestone_mapping)
-                      
                       if assigned_milestone:
-                          # Assigner le milestone à l'issue
                           success = self.assign_milestone_to_issue(issue, assigned_milestone)
                           if success:
                               organized_count += 1
-                          time.sleep(0.3)  # Rate limiting
-                  
+                          time.sleep(0.3)
                   print(f"✅ {organized_count} issues organisées dans les milestones")
               
               def get_repository_issues(self):
-                  """Récupère toutes les issues du repository"""
                   url = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/issues"
                   params = {"state": "open", "per_page": 100}
-                  
-                  response = requests.get(url, headers=self.headers, params=params)
-                  
-                  if response.status_code == 200:
-                      issues = response.json()
-                      # Filtrer les pull requests
-                      issues = [issue for issue in issues if "pull_request" not in issue]
+                  r = requests.get(url, headers=self.headers, params=params)
+                  if r.status_code == 200:
+                      issues = r.json()
+                      issues = [i for i in issues if "pull_request" not in i]
                       print(f"📋 {len(issues)} issues trouvées")
                       return issues
                   else:
-                      print(f"❌ Erreur récupération issues: {response.status_code}")
+                      print(f"❌ Erreur récupération issues: {r.status_code}")
                       return []
               
               def determine_issue_milestone(self, issue, patterns, milestone_mapping):
-                  """Détermine le milestone approprié pour une issue"""
                   issue_text = (issue['title'] + ' ' + (issue.get('body') or '')).lower()
-                  
-                  # Calculer le score pour chaque milestone
                   milestone_scores = {}
-                  
                   for milestone_title, keywords in patterns.items():
                       score = 0
                       for keyword in keywords:
                           if keyword in issue_text:
                               score += issue_text.count(keyword)
-                      
                       if score > 0:
                           milestone_scores[milestone_title] = score
-                  
-                  # Retourner le milestone avec le score le plus élevé
                   if milestone_scores:
-                      best_milestone = max(milestone_scores.items(), key=lambda x: x[1])[0]
-                      return milestone_mapping.get(best_milestone)
-                  
+                      best = max(milestone_scores.items(), key=lambda x: x[1])[0]
+                      return milestone_mapping.get(best)
                   return None
               
               def assign_milestone_to_issue(self, issue, milestone):
-                  """Assigne un milestone à une issue"""
                   url = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/issues/{issue['number']}"
                   data = {"milestone": milestone["number"]}
-                  
-                  response = requests.patch(url, headers=self.headers, json=data)
-                  
-                  if response.status_code == 200:
+                  r = requests.patch(url, headers=self.headers, json=data)
+                  if r.status_code == 200:
                       print(f"  🔗 Issue #{issue['number']} → {milestone['title']}")
                       return True
                   else:
-                      print(f"  ❌ Erreur assignation #{issue['number']}: {response.status_code}")
+                      print(f"  ❌ Erreur assignation #{issue['number']}: {r.status_code}")
                       return False
               
               def generate_project_summary(self, context, project, milestones):
-                  """Génère un résumé du projet créé"""
                   summary = {
                       "metadata": {
                           "generated_at": datetime.now().isoformat(),
                           "repository": f"{self.repo_owner}/{self.repo_name}",
-                          "project_created": True
+                          "project_created": bool(project)
                       },
                       "project": {
-                          "title": project["title"],
-                          "url": project["url"],
-                          "number": project["number"],
-                          "id": project["id"]
-                      },
+                          "title": project["title"] if project else None,
+                          "url": project["url"] if project else None,
+                          "number": project["number"] if project else None,
+                          "id": project["id"] if project else None
+                      } if project else {},
                       "milestones": [
-                          {
-                              "title": m["title"],
-                              "due_date": m.get("due_on"),
-                              "state": m["state"],
-                              "number": m["number"]
-                          } for m in milestones
+                          {"title": m["title"], "due_date": m.get("due_on"), "state": m["state"], "number": m["number"]}
+                          for m in milestones
                       ],
                       "context_analysis": {
                           "overall_progress": context["metadata"]["overall_progress"],
@@ -603,24 +616,20 @@ jobs:
                           "confidence_level": context["project_status"]["confidence_level"]
                       },
                       "next_steps": [
-                          "Accéder au projet: " + project["url"],
+                          ("Accéder au projet: " + project["url"]) if project else "Créer le Project v2 (nécessite PAT GH_PROJECTS_TOKEN)",
                           "Vérifier l'organisation des issues dans les milestones",
                           "Configurer les vues personnalisées du projet",
                           "Commencer le travail sur la critical path: Mobile AI integration"
                       ]
                   }
-                  
-                  # Sauvegarder le résumé
                   with open("project-summary.json", "w", encoding='utf-8') as f:
                       json.dump(summary, f, indent=2, ensure_ascii=False)
-                  
                   return summary
           
           def main():
               print("🗂️ TaxasGE Retroactive Project Builder")
               print("======================================")
               
-              # Configuration
               token = os.getenv("GITHUB_TOKEN")
               repo_owner = os.getenv("REPO_OWNER")
               repo_name = os.getenv("REPO_NAME")
@@ -634,16 +643,13 @@ jobs:
                   print("❌ Variables d'environnement manquantes")
                   return
               
-              # Initialize builder
               builder = TaxasGERetroactiveProjectBuilder(token, repo_owner, repo_name)
               
-              # Load historical context
               context = builder.load_historical_context(context_file)
               if not context:
                   print("❌ Impossible de charger le contexte historique")
                   return
               
-              # Get repository info
               repo_info = builder.get_repository_info()
               if not repo_info:
                   return
@@ -651,35 +657,31 @@ jobs:
               project = None
               milestones = []
               
-              # Create GitHub Project
               if create_project:
                   project = builder.create_project_v2(context)
                   if project:
-                      # Setup custom fields
                       builder.setup_project_fields()
                       time.sleep(2)
               
-              # Create milestones
               if create_milestones:
                   milestones = builder.create_milestones_from_context(context)
               
-              # Organize existing issues
               if organize_issues and milestones:
                   builder.organize_existing_issues(context, milestones)
               
-              # Generate summary
+              # Résumé (même sans projet pour debug)
+              builder.generate_project_summary(context, project, milestones)
+              
               if project and milestones:
-                  summary = builder.generate_project_summary(context, project, milestones)
-                  
-                  print(f"\n🎯 Projet TaxasGE créé avec succès!")
+                  print(f"\\n🎯 Projet TaxasGE prêt!")
                   print(f"📊 Progression globale: {context['metadata']['overall_progress']}%")
                   print(f"🗂️  Projet: {project['title']}")
                   print(f"🔗 URL: {project['url']}")
-                  print(f"🎯 Milestones: {len(milestones)} créés")
-                  print(f"📋 Issues organisées automatiquement")
-                  print(f"\n🚀 Prochaine étape critique: Mobile AI Integration")
+                  print(f"🎯 Milestones: {len(milestones)} prêts")
+                  print(f"📋 Issues organisées automatiquement (si applicable)")
+                  print(f"\\n🚀 Prochaine étape critique: Mobile AI Integration")
               else:
-                  print("⚠️  Création de projet incomplète")
+                  print("⚠️  Création de projet incomplète (ou déjà existant réutilisé)")
           
           if __name__ == "__main__":
               main()
@@ -687,7 +689,8 @@ jobs:
           
       - name: 🗂️ Execute Retroactive Project Builder
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}         # REST (issues/milestones)
+          PROJECTS_TOKEN: ${{ secrets.GH_PROJECTS_TOKEN }}  # GraphQL Projects v2 (PAT)
           REPO_OWNER: ${{ github.repository_owner }}
           REPO_NAME: ${{ github.event.repository.name }}
           CONTEXT_FILE: ${{ github.event.inputs.context_file }}
@@ -716,11 +719,11 @@ jobs:
             
             git add docs/project-summary.json
             if ! git diff --staged --quiet; then
-              git commit -m "🗂️ Add TaxasGE project summary
+              git commit -m "🗂️ Add/Update TaxasGE project summary
               
-              - GitHub Project V2 created with milestones
-              - Issues organized automatically 
-              - Ready for critical path: Mobile AI integration"
+              - Project v2 created or reused (idempotent)
+              - Milestones created or reused (idempotent)
+              - Issues organized when applicable"
               git push
               echo "✅ Project summary committed to docs/"
             fi
@@ -730,16 +733,10 @@ jobs:
         if: success()
         run: |
           echo "🎯 TaxasGE Retroactive Project Builder terminé!"
-          echo "✅ GitHub Project V2 créé avec structure complète"
-          echo "✅ Milestones basés sur analyse historique"
-          echo "✅ Issues existantes organisées automatiquement"
-          echo ""
-          echo "🔗 Accédez à votre nouveau projet via:"
-          echo "   Repository → Projects tab → TaxasGE Master Project"
-          echo ""
-          echo "🚀 Focus immédiat recommandé:"
-          echo "   📱 Mobile AI Integration (Critical Path)"
-          echo "   🌐 Dashboard GitHub Pages finalization"
+          echo "✅ Project v2: créé OU réutilisé"
+          echo "✅ Milestones: créés OU réutilisés"
+          echo "✅ Issues: organisées si non déjà assignées"
           echo ""
           echo "📄 Résumé détaillé: docs/project-summary.json"
+
 
