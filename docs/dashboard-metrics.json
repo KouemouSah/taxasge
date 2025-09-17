@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "generated_at": "2025-09-17T06:18:16.956128",
+    "generated_at": "2025-09-17T19:52:40.971993",
     "repository": "KouemouSah/taxasge",
     "type": "dashboard_project_metrics"
   },
@@ -24,10 +24,10 @@
     "completion_rate": 12.5
   },
   "issues": {
-    "open": 5,
+    "open": 4,
     "critical": 2,
-    "high_priority": 3,
-    "organized": 5
+    "high_priority": 2,
+    "organized": 4
   },
   "critical_path": {
     "name": "📱 Mobile App Critical Path",
@@ -37,7 +37,7 @@
   },
   "activity": {
     "commits_last_week": 100,
-    "last_commit": "2025-09-17T05:55:28Z",
+    "last_commit": "2025-09-17T19:48:54Z",
     "project_active": true
   },
   "recommendations": {
