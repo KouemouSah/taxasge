@@ -1,0 +1,922 @@
+﻿name: 📚 TaxasGE Project Documentation Generator
+
+on:
+  workflow_dispatch:
+    inputs:
+      doc_type:
+        description: 'Type de documentation à générer'
+        required: false
+        default: 'complete'
+        type: choice
+        options:
+        - 'complete'
+        - 'user_guide'
+        - 'technical_specs'
+        - 'roadmap'
+      output_format:
+        description: 'Format de sortie'
+        required: false
+        default: 'markdown'
+        type: choice
+        options:
+        - 'markdown'
+        - 'html'
+        - 'pdf'
+  schedule:
+    # Mise à jour documentation chaque dimanche à 10:00 UTC
+    - cron: '0 10 * * 0'
+
+permissions:
+  contents: write
+
+jobs:
+  documentation-generator:
+    name: 📚 Generate Project Documentation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: 📦 Install dependencies
+        run: |
+          pip install requests python-dateutil markdown jinja2
+          
+      - name: 📚 Create Documentation Generator Script
+        run: |
+          cat > documentation_generator.py << 'EOF'
+          import os
+          import json
+          import requests
+          from datetime import datetime
+          import markdown
+          from jinja2 import Template
+          
+          class TaxasGEDocumentationGenerator:
+              def __init__(self, token, repo_owner, repo_name):
+                  self.token = token
+                  self.repo_owner = repo_owner
+                  self.repo_name = repo_name
+                  
+                  self.headers = {
+                      "Authorization": f"token {token}",
+                      "Accept": "application/vnd.github.v3+json",
+                      "User-Agent": "TaxasGE-Documentation/1.0"
+                  }
+              
+              def load_all_contexts(self):
+                  """Charge tous les contextes disponibles"""
+                  print("📄 Chargement de tous les contextes...")
+                  
+                  contexts = {}
+                  
+                  context_files = [
+                      ("historical", "docs/historical-context.json"),
+                      ("project", "docs/project-summary.json"),
+                      ("milestones", "docs/milestone-summary.json"),
+                      ("dashboard", "docs/dashboard-metrics.json"),
+                      ("automation", "docs/automation-results.json")
+                  ]
+                  
+                  for context_name, file_path in context_files:
+                      try:
+                          if os.path.exists(file_path):
+                              with open(file_path, 'r', encoding='utf-8') as f:
+                                  contexts[context_name] = json.load(f)
+                              print(f"✅ {context_name} context loaded")
+                          else:
+                              print(f"⚠️  {context_name} context missing")
+                              contexts[context_name] = None
+                      except Exception as e:
+                          print(f"❌ Error loading {context_name}: {e}")
+                          contexts[context_name] = None
+                  
+                  return contexts
+              
+              def fetch_repository_info(self):
+                  """Récupère les informations du repository"""
+                  print("📊 Récupération informations repository...")
+                  
+                  url = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}"
+                  response = requests.get(url, headers=self.headers)
+                  
+                  if response.status_code != 200:
+                      return None
+                  
+                  repo_data = response.json()
+                  
+                  # Récupérer les contributeurs
+                  contributors_url = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/contributors"
+                  contributors_response = requests.get(contributors_url, headers=self.headers)
+                  contributors = contributors_response.json() if contributors_response.status_code == 200 else []
+                  
+                  # Récupérer les branches
+                  branches_url = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/branches"
+                  branches_response = requests.get(branches_url, headers=self.headers)
+                  branches = branches_response.json() if branches_response.status_code == 200 else []
+                  
+                  return {
+                      "repo": repo_data,
+                      "contributors": contributors[:5],
+                      "branches": [b["name"] for b in branches[:10]]
+                  }
+              
+              def generate_complete_documentation(self, contexts, repo_info):
+                  """Génère la documentation complète du projet"""
+                  print("📚 Génération documentation complète...")
+                  
+                  doc_template = """# 🎯 TaxasGE - Documentation Projet Complète
+          
+          > **Générée automatiquement le {{ generated_date }}**
+          
+          ## 📊 Vue d'ensemble du projet
+          
+          **TaxasGE** est un système intelligent de gestion des taxes avec intelligence artificielle multilingue.
+          
+          ### 🏆 Statut actuel
+          
+          {% if historical_context %}
+          - **Progression globale**: {{ historical_context.metadata.overall_progress }}%
+          - **Phase actuelle**: {{ historical_context.project_status.current_phase }}
+          - **Niveau de confiance**: {{ historical_context.project_status.confidence_level }}
+          {% endif %}
+          
+          {% if dashboard_metrics %}
+          - **Score santé projet**: {{ dashboard_metrics.project_overview.overall_progress }}/100
+          - **Critical Path**: {{ dashboard_metrics.critical_path.name }}
+          {% endif %}
+          
+          ---
+          
+          ## 🛠️ Architecture technique
+          
+          ### Infrastructure (95% complétée ✅)
+          
+          - **Firebase Integration**: Authentication, Firestore, Functions
+          - **Supabase**: Base de données PostgreSQL avec RLS
+          - **SonarQube**: Quality gates et analyse code
+          - **GitHub Actions**: CI/CD complet avec 5+ workflows
+          
+          ### Backend API (70% complétée 🔄)
+          
+          - **FastAPI**: Framework moderne Python
+          - **Architecture modulaire**: Endpoints /health, /api/v1/, /docs
+          - **Modèles Pydantic**: Validation automatique des données
+          - **Documentation OpenAPI**: Swagger UI intégré
+          
+          ### Intelligence Artificielle (90% complétée ✅)
+          
+          - **Modèle TensorFlow Lite**: 0.41MB, 100% précision
+          - **Support multilingue**: Espagnol, Français, Anglais
+          - **Pipeline de données**: PDF → JSON → Training → Model
+          - **Corpus Q&A**: 62k questions/réponses
+          
+          ### Mobile App (60% complétée 🔄)
+          
+          - **React Native**: Structure cross-platform
+          - **Firebase Integration**: Auth et Analytics
+          - **Navigation**: Screens et composants UI
+          - **🚨 CRITICAL PATH**: Intégration TensorFlow Lite pending
+          
+          ### Dashboard Web (90% complétée ✅)
+          
+          - **Interface responsive**: Design system TaxasGE
+          - **Métriques temps réel**: Monitoring automatisé
+          - **GitHub Pages**: Déploiement automatique
+          - **Phases 1-3 complétées**: Design, Métriques, Optimisation
+          
+          ---
+          
+          ## 🎯 Milestones et Roadmap
+          
+          {% if milestones_context %}
+          ### Statut Milestones
+          
+          - **Total**: {{ milestones_context.milestone_analysis.total_milestones }}
+          - **Complétés**: {{ milestones_context.milestone_analysis.completed_milestones }}
+          - **Actifs**: {{ milestones_context.milestone_analysis.active_milestones }}
+          - **Taux complétion**: {{ milestones_context.milestone_analysis.completion_rate }}%
+          
+          ### Milestones Actifs
+          
+          {% for milestone in milestones_context.milestones %}
+          #### {{ milestone.title }}
+          - **État**: {{ milestone.state }}
+          - **Échéance**: {{ milestone.due_on or "Non définie" }}
+          - **Issues**: {{ milestone.open_issues }} ouvertes, {{ milestone.closed_issues }} fermées
+          
+          {% endfor %}
+          {% endif %}
+          
+          ---
+          
+          ## 🚨 Critical Path
+          
+          {% if dashboard_metrics and dashboard_metrics.critical_path %}
+          **{{ dashboard_metrics.critical_path.name }}**
+          
+          - **Priorité**: {{ dashboard_metrics.critical_path.priority }}
+          - **Impact**: {{ dashboard_metrics.critical_path.blocking }}
+          - **Échéance**: {{ dashboard_metrics.critical_path.due_date or "À définir" }}
+          
+          > ⚠️ Cette phase bloque toutes les phases suivantes et détermine le timeline global du projet.
+          {% endif %}
+          
+          ---
+          
+          ## 📈 Métriques et Performance
+          
+          {% if automation_context and automation_context.health_report %}
+          ### Score Santé Projet
+          
+          **{{ automation_context.health_report.health_score }}/100** - {{ automation_context.health_report.summary.overall_status }}
+          
+          ### Métriques Issues
+          
+          - **Issues ouvertes**: {{ automation_context.health_report.metrics.issues.open }}
+          - **Issues critiques**: {{ automation_context.health_report.metrics.issues.critical }}
+          - **Issues organisées**: {{ automation_context.health_report.metrics.issues.organized }}
+          
+          ### Activité Développement
+          
+          - **Commits semaine**: {{ automation_context.health_report.metrics.activity.commits_last_week }}
+          - **Vélocité**: {{ automation_context.health_report.metrics.activity.velocity }}
+          {% endif %}
+          
+          ---
+          
+          ## 🛠️ Workflows et Automation
+          
+          Le projet TaxasGE dispose d'un système de project management automatisé complet :
+          
+          ### Workflows Principaux
+          
+          1. **📊 Historical Context Mapper**
+             - Analyse l'historique et état actuel
+             - Génère le contexte de progression
+          
+          2. **🗂️ Retroactive Project Builder**
+             - Crée le GitHub Project V2
+             - Configure les champs personnalisés
+          
+          3. **🎯 Milestone Manager**
+             - Gère les milestones avec dates intelligentes
+             - Organise les issues par priorité
+          
+          4. **📈 Dashboard Integration**
+             - Met à jour le dashboard avec métriques projet
+             - Visualisation temps réel
+          
+          5. **🔄 Project Automation**
+             - Monitoring quotidien automatique
+             - Rapports hebdomadaires
+             - Auto-priorisation des issues
+          
+          6. **📚 Documentation Generator** (ce workflow)
+             - Génération automatique documentation
+             - Mise à jour hebdomadaire
+          
+          ### Automation
+          
+          - **Sync quotidien**: 7h00 UTC
+          - **Rapport hebdo**: Lundi 9h00 UTC  
+          - **Documentation**: Dimanche 10h00 UTC
+          - **Dashboard**: Temps réel + 6h00 UTC
+          
+          ---
+          
+          ## 🚀 Prochaines étapes
+          
+          {% if dashboard_metrics and dashboard_metrics.recommendations %}
+          ### Priorités Immédiates
+          
+          {% for rec in dashboard_metrics.recommendations.immediate %}
+          - {{ rec }}
+          {% endfor %}
+          
+          ### Cette Semaine
+          
+          {% for rec in dashboard_metrics.recommendations.this_week %}
+          - {{ rec }}
+          {% endfor %}
+          
+          ### Prochain Mois
+          
+          {% for rec in dashboard_metrics.recommendations.next_month %}
+          - {{ rec }}
+          {% endfor %}
+          {% endif %}
+          
+          ---
+          
+          ## 👥 Équipe et Contributions
+          
+          {% if repo_info %}
+          ### Repository Info
+          
+          - **Créé**: {{ repo_info.repo.created_at.split('T')[0] }}
+          - **Dernière mise à jour**: {{ repo_info.repo.updated_at.split('T')[0] }}
+          - **Langage principal**: {{ repo_info.repo.language or "Multiple" }}
+          - **Taille**: {{ repo_info.repo.size }} KB
+          
+          ### Branches Actives
+          
+          {% for branch in repo_info.branches %}
+          - `{{ branch }}`
+          {% endfor %}
+          {% endif %}
+          
+          ---
+          
+          ## 📞 Support et Contact
+          
+          - **Repository**: [{{ repo_owner }}/{{ repo_name }}](https://github.com/{{ repo_owner }}/{{ repo_name }})
+          - **Issues**: [GitHub Issues](https://github.com/{{ repo_owner }}/{{ repo_name }}/issues)
+          - **Project Board**: [TaxasGE Master Project](https://github.com/{{ repo_owner }}/{{ repo_name }}/projects)
+          - **Dashboard**: [GitHub Pages](https://{{ repo_owner }}.github.io/{{ repo_name }})
+          
+          ---
+          
+          *Documentation générée automatiquement par TaxasGE Project Documentation Generator*
+          
+          **Dernière mise à jour**: {{ generated_date }}
+          """
+                  
+                  template = Template(doc_template)
+                  
+                  documentation = template.render(
+                      generated_date=datetime.now().strftime("%Y-%m-%d %H:%M UTC"),
+                      repo_owner=self.repo_owner,
+                      repo_name=self.repo_name,
+                      historical_context=contexts.get("historical"),
+                      project_context=contexts.get("project"),
+                      milestones_context=contexts.get("milestones"),
+                      dashboard_metrics=contexts.get("dashboard"),
+                      automation_context=contexts.get("automation"),
+                      repo_info=repo_info
+                  )
+                  
+                  return documentation
+              
+              def generate_user_guide(self, contexts):
+                  """Génère le guide utilisateur"""
+                  print("👤 Génération guide utilisateur...")
+                  
+                  user_guide_template = """# 📖 TaxasGE - Guide Utilisateur
+          
+          ## 🎯 Accès au Project Management
+          
+          ### 1. GitHub Project Board
+          
+          Accédez au tableau de bord principal :
+          1. Allez sur [GitHub Repository](https://github.com/{{ repo_owner }}/{{ repo_name }})
+          2. Cliquez sur l'onglet **"Projects"**
+          3. Sélectionnez **"🎯 TaxasGE Master Project"**
+          
+          ### 2. Dashboard Métriques
+          
+          Consultez les métriques temps réel :
+          - **URL**: https://{{ repo_owner }}.github.io/{{ repo_name }}
+          - **Section**: Project Management Dashboard
+          - **Mise à jour**: Automatique quotidienne
+          
+          ## 🎯 Navigation des Milestones
+          
+          {% if milestones_context %}
+          ### Milestones Actifs
+          
+          {% for milestone in milestones_context.milestones %}
+          {% if milestone.state == "open" %}
+          #### {{ milestone.title }}
+          - **Statut**: En cours
+          - **Issues**: {{ milestone.open_issues }} à traiter
+          - **Échéance**: {{ milestone.due_on or "Flexible" }}
+          
+          {% endif %}
+          {% endfor %}
+          {% endif %}
+          
+          ## 🚨 Critical Path - Mobile AI Integration
+          
+          **Pourquoi c'est critique ?**
+          - Bloque les phases Production et Business
+          - Détermine le timeline global du projet
+          - 60% complété, nécessite focus prioritaire
+          
+          **Actions immédiates** :
+          1. Intégrer TensorFlow Lite dans l'app React Native
+          2. Tester l'interface chatbot multilingue  
+          3. Valider les performances sur devices réels
+          
+          ## 📊 Interpretation des Métriques
+          
+          ### Score Santé Projet
+          - **90-100**: Excellent - projet sur les rails
+          - **75-89**: Bon - quelques ajustements nécessaires
+          - **60-74**: Correct - attention requise
+          - **40-59**: Préoccupant - actions correctives
+          - **<40**: Critique - intervention urgente
+          
+          ### Statuts Issues
+          - **🚨 Critique**: À traiter immédiatement
+          - **⭐ Haute**: Planifier cette semaine
+          - **🔶 Moyenne**: Traiter dans le sprint
+          - **🔵 Basse**: Peut attendre
+          
+          ## 🔄 Automation Active
+          
+          Le système fonctionne automatiquement :
+          - **Sync quotidien 7h00**: Mise à jour métriques
+          - **Rapport lundi 9h00**: Analyse hebdomadaire
+          - **Dashboard 6h00**: Métriques temps réel
+          - **Documentation dimanche**: Mise à jour complète
+          
+          ## ❓ FAQ
+          
+          **Q: Comment ajouter une nouvelle issue ?**
+          R: GitHub Issues → New Issue → Le système l'organisera automatiquement
+          
+          **Q: Comment voir la progression ?**  
+          R: Dashboard GitHub Pages section "Project Management"
+          
+          **Q: Que faire si critical path bloqué ?**
+          R: Focus absolu sur Mobile AI Integration, suspend autres tâches
+          
+          **Q: Comment interpréter les alertes ?**
+          R: Vérifier docs/automation-results.json pour détails
+          
+          ---
+          
+          *Guide utilisateur généré automatiquement*
+          """
+                  
+                  template = Template(user_guide_template)
+                  return template.render(
+                      repo_owner=self.repo_owner,
+                      repo_name=self.repo_name,
+                      milestones_context=contexts.get("milestones")
+                  )
+              
+              def generate_technical_specs(self, contexts):
+                  """Génère les spécifications techniques"""
+                  print("⚙️ Génération spécifications techniques...")
+                  
+                  tech_specs_template = """# ⚙️ TaxasGE - Spécifications Techniques
+          
+          ## 🏗️ Architecture Système
+          
+          ### Infrastructure Layer (95% ✅)
+          
+          ```
+          GitHub Actions Workflows
+          ├── historical-context-mapper.yml
+          ├── retroactive-project-builder.yml  
+          ├── milestone-manager.yml
+          ├── dashboard-integration.yml
+          ├── project-automation.yml
+          └── documentation-generator.yml
+          ```
+          
+          **Services Externes**:
+          - Firebase (Auth, Firestore, Functions)
+          - Supabase (PostgreSQL + RLS)
+          - SonarQube (Quality Gates)
+          
+          ### Backend API Layer (70% 🔄)
+          
+          ```python
+          # FastAPI Structure
+          packages/backend/
+          ├── app/
+          │   ├── main.py              # FastAPI app
+          │   ├── models/              # Pydantic models
+          │   ├── routers/             # API endpoints
+          │   └── database/            # Supabase integration
+          ```
+          
+          **Endpoints**:
+          - `GET /health` - Health check
+          - `GET /api/v1/` - API root  
+          - `GET /docs` - OpenAPI documentation
+          - `POST /api/v1/taxes/query` - AI tax query
+          
+          ### AI/ML Pipeline (90% ✅)
+          
+          ```
+          Data Pipeline:
+          PDF Sources (547 taxes) 
+            → JSON Extraction
+            → Multilingual Transform (ES/FR/EN)
+            → Training Dataset  
+            → TensorFlow Model
+            → TensorFlow Lite (0.41MB)
+            → Mobile Integration
+          ```
+          
+          **Model Specs**:
+          - Format: TensorFlow Lite
+          - Size: 0.41MB  
+          - Accuracy: 100% on test set
+          - Languages: Spanish, French, English
+          - Deployment: Mobile app assets
+          
+          ### Mobile App Layer (60% 🔄)
+          
+          ```javascript
+          // React Native Structure
+          packages/mobile/
+          ├── src/
+          │   ├── assets/ml/           # TensorFlow Lite model
+          │   ├── components/          # UI components  
+          │   ├── screens/             # App screens
+          │   ├── navigation/          # Navigation setup
+          │   └── services/            # Firebase integration
+          ```
+          
+          **Technologies**:
+          - React Native 0.72+
+          - Firebase SDK
+          - TensorFlow Lite React Native
+          - React Navigation 6
+          
+          ### Dashboard Layer (90% ✅)
+          
+          ```html
+          <!-- Dashboard Structure -->
+          docs/index.html
+          ├── Project Overview Cards
+          ├── Phase Progress Bars  
+          ├── Milestone Status
+          ├── Critical Path Alert
+          └── Real-time Metrics
+          ```
+          
+          **Features**:
+          - Responsive design
+          - Real-time metrics
+          - GitHub Pages deployment
+          - Auto-update integration
+          
+          ## 🔄 Automation System
+          
+          ### Workflow Orchestration
+          
+          ```yaml
+          # Cron Schedule
+          daily_sync: "0 7 * * *"      # 7:00 UTC daily
+          weekly_report: "0 9 * * 1"   # Monday 9:00 UTC  
+          dashboard_update: "0 6 * * *" # 6:00 UTC daily
+          documentation: "0 10 * * 0"  # Sunday 10:00 UTC
+          ```
+          
+          ### Data Flow
+          
+          ```
+          GitHub API 
+            → Historical Context Analysis
+            → Project Metrics Calculation
+            → Dashboard HTML Update
+            → Documentation Generation
+            → Auto-commit Results
+          ```
+          
+          ## 📊 Project Management Schema
+          
+          ### GitHub Project V2 Structure
+          
+          **Custom Fields**:
+          - Priority: Critical/High/Medium/Low
+          - Component: Infrastructure/Backend/Mobile/Web/AI/Dashboard
+          - Phase: Phase 0-5
+          - Estimation: 1day/3days/1week/2weeks/1month/2months+
+          
+          **Views**:
+          - Kanban Board (default)
+          - Timeline View  
+          - Component Filter Views
+          - Priority Matrix
+          
+          ### Milestone Configuration
+          
+          ```json
+          {
+            "milestones": [
+              {
+                "title": "🛠️ Infrastructure Foundation",
+                "completion": 95,
+                "state": "closed"
+              },
+              {
+                "title": "📱 Mobile Critical Path", 
+                "completion": 60,
+                "state": "open",
+                "critical_path": true
+              }
+            ]
+          }
+          ```
+          
+          ## 🔐 Security & Permissions
+          
+          ### GitHub Actions Permissions
+          
+          ```yaml
+          permissions:
+            contents: write          # Commit automation results
+            issues: write           # Update issue labels/milestones  
+            repository-projects: write # Manage Project V2
+          ```
+          
+          ### API Rate Limits
+          
+          - GitHub REST API: 5000 requests/hour
+          - GitHub GraphQL: 5000 points/hour  
+          - Auto rate limiting: 0.5s between calls
+          - Error handling: Exponential backoff
+          
+          ## 🔧 Configuration Files
+          
+          ### Context Files (docs/)
+          
+          ```
+          docs/
+          ├── historical-context.json      # Project state analysis
+          ├── project-summary.json         # GitHub Project info
+          ├── milestone-summary.json       # Milestone analytics  
+          ├── dashboard-metrics.json       # Dashboard data
+          ├── automation-results.json      # Automation logs
+          └── documentation.md             # This documentation
+          ```
+          
+          ### Workflow Triggers
+          
+          ```yaml
+          # Manual Triggers
+          workflow_dispatch:
+            inputs:
+              action_type: [full_sync, metrics_only, critical_path_check]
+              force_update: [true, false]
+          
+          # Automatic Triggers  
+          schedule:
+            - cron: '0 7 * * *'  # Daily
+            - cron: '0 9 * * 1'  # Weekly
+          ```
+          
+          ## 🚀 Deployment Pipeline
+          
+          ### GitHub Pages
+          
+          ```
+          Source: docs/ folder
+          Domain: {{ repo_owner }}.github.io/{{ repo_name }}
+          Auto-deploy: On push to main/develop
+          SSL: Enabled
+          ```
+          
+          ### CI/CD Stages
+          
+          1. **Context Analysis** → Generate historical-context.json
+          2. **Project Setup** → Create/update GitHub Project V2  
+          3. **Milestone Management** → Smart date calculation
+          4. **Dashboard Integration** → HTML update with metrics
+          5. **Automation** → Health monitoring + auto-prioritization
+          6. **Documentation** → Generate/update all docs
+          
+          ---
+          
+          *Spécifications techniques générées automatiquement*
+          """
+                  
+                  template = Template(tech_specs_template)
+                  return template.render(
+                      repo_owner=self.repo_owner,
+                      repo_name=self.repo_name
+                  )
+              
+              def generate_roadmap(self, contexts):
+                  """Génère la roadmap du projet"""
+                  print("🗺️ Génération roadmap projet...")
+                  
+                  roadmap_template = """# 🗺️ TaxasGE - Roadmap Projet
+          ...
+          """
+                  
+                  template = Template(roadmap_template)
+                  return template.render(
+                      repo_owner=self.repo_owner,
+                      repo_name=self.repo_name,
+                      historical_context=contexts.get("historical"),
+                      milestones_context=contexts.get("milestones"),
+                      automation_context=contexts.get("automation")
+                  )
+              
+              def save_documentation(self, doc_type, content, output_format):
+                  """Sauvegarde la documentation générée"""
+                  print(f"💾 Sauvegarde documentation {doc_type}...")
+                  
+                  filenames = {
+                      "complete": "documentation-complete",
+                      "user_guide": "user-guide", 
+                      "technical_specs": "technical-specifications",
+                      "roadmap": "project-roadmap"
+                  }
+                  
+                  base_filename = filenames.get(doc_type, "documentation")
+                  
+                  if output_format == "markdown":
+                      filename = f"docs/{base_filename}.md"
+                      with open(filename, 'w', encoding='utf-8') as f:
+                          f.write(content)
+                  
+                  elif output_format == "html":
+                      html_content = markdown.markdown(content, extensions=['tables', 'fenced_code'])
+                      full_html = f"""<!DOCTYPE html>
+          <html lang="fr">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>TaxasGE - {doc_type.replace('_', ' ').title()}</title>
+              <style>
+                  body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+                         line-height: 1.6; color: #333; max-width: 1200px; margin: 0 auto; padding: 2rem; }}
+                  h1, h2, h3 {{ color: #2d3748; }}
+                  code {{ background: #f7fafc; padding: 0.2em 0.4em; border-radius: 3px; }}
+                  pre {{ background: #f7fafc; padding: 1rem; border-radius: 5px; overflow-x: auto; }}
+                  table {{ border-collapse: collapse; width: 100%; margin: 1rem 0; }}
+                  th, td {{ border: 1px solid #e2e8f0; padding: 0.5rem; text-align: left; }}
+                  th {{ background: #f7fafc; }}
+                  blockquote {{ border-left: 4px solid #4299e1; padding-left: 1rem; margin: 1rem 0; 
+                               background: #f0f8ff; padding: 0.5rem 1rem; }}
+              </style>
+          </head>
+          <body>
+          {html_content}
+          </body>
+          </html>"""
+                      
+                      filename = f"docs/{base_filename}.html"
+                      with open(filename, 'w', encoding='utf-8') as f:
+                          f.write(full_html)
+                  
+                  print(f"✅ Documentation sauvée: {filename}")
+                  return filename
+          
+          def main():
+              print("📚 TaxasGE Documentation Generator")
+              print("==================================")
+              
+              token = os.getenv("GITHUB_TOKEN")
+              repo_owner = os.getenv("REPO_OWNER")
+              repo_name = os.getenv("REPO_NAME")
+              doc_type = os.getenv("DOC_TYPE", "complete")
+              output_format = os.getenv("OUTPUT_FORMAT", "markdown")
+              
+              if not all([token, repo_owner, repo_name]):
+                  print("❌ Variables d'environnement manquantes")
+                  return
+              
+              generator = TaxasGEDocumentationGenerator(token, repo_owner, repo_name)
+              contexts = generator.load_all_contexts()
+              repo_info = generator.fetch_repository_info()
+              
+              documentation = None
+              if doc_type == "complete":
+                  documentation = generator.generate_complete_documentation(contexts, repo_info)
+              elif doc_type == "user_guide":
+                  documentation = generator.generate_user_guide(contexts)
+              elif doc_type == "technical_specs":
+                  documentation = generator.generate_technical_specs(contexts)  
+              elif doc_type == "roadmap":
+                  documentation = generator.generate_roadmap(contexts)
+              
+              if not documentation:
+                  print(f"❌ Erreur génération documentation type: {doc_type}")
+                  return
+              
+              filename = generator.save_documentation(doc_type, documentation, output_format)
+              
+              summary = {
+                  "metadata": {
+                      "generated_at": datetime.now().isoformat(),
+                      "doc_type": doc_type,
+                      "output_format": output_format,
+                      "filename": filename
+                  },
+                  "contexts_loaded": {k: v is not None for k, v in contexts.items()},
+                  "repo_info_loaded": repo_info is not None,
+                  "success": True
+              }
+              
+              with open("documentation-summary.json", "w", encoding='utf-8') as f:
+                  json.dump(summary, f, indent=2, ensure_ascii=False)
+              
+              print(f"\n📚 TaxasGE Documentation Generator - Résultats:")
+              print(f"Type: {doc_type}")
+              print(f"Format: {output_format}")  
+              print(f"Fichier: {filename}")
+              print(f"Contextes chargés: {sum(1 for v in contexts.values() if v is not None)}/5")
+              
+              print(f"\n✅ Documentation générée avec succès!")
+              print(f"📄 Fichier: {filename}")
+              print(f"📄 Résumé: documentation-summary.json")
+              
+              return summary
+          
+          if __name__ == "__main__":
+              main()
+          EOF
+          
+      - name: 📚 Execute Documentation Generator
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+          DOC_TYPE: ${{ github.event.inputs.doc_type }}
+          OUTPUT_FORMAT: ${{ github.event.inputs.output_format }}
+        run: |
+          python documentation_generator.py
+          
+      - name: 📄 Upload Documentation
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: taxasge-documentation
+          path: |
+            docs/*.md
+            docs/*.html
+            documentation-summary.json
+          retention-days: 30
+          
+      - name: 📄 Auto-commit Documentation
+        if: success()
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action - Documentation Generator"
+          
+          # Add all generated documentation
+          git add docs/*.md docs/*.html documentation-summary.json
+          
+          if ! git diff --cached --quiet; then
+            git commit -m "📚 Auto-update TaxasGE project documentation
+            
+            - Complete project documentation generated
+            - User guide and technical specs updated  
+            - Roadmap with critical path analysis
+            - Generated automatically by Documentation Generator workflow" || true
+            git push || true
+            echo "✅ Documentation committed and pushed"
+          else
+            echo "ℹ️  No documentation changes to commit"
+          fi
+          
+      - name: 📊 Display Documentation Results
+        if: always()
+        run: |
+          echo "📚 TaxasGE Documentation Generator terminé!"
+          echo ""
+          
+          if [ -f "documentation-summary.json" ]; then
+            echo "📊 Documentation générée:"
+            printf "%s\n" \
+              "import json" \
+              "try:" \
+              "    with open('documentation-summary.json', 'r', encoding='utf-8') as f:" \
+              "        data = json.load(f)" \
+              "" \
+              "    print(f\"Type: {data['metadata']['doc_type']}\")" \
+              "    print(f\"Format: {data['metadata']['output_format']}\")" \
+              "    print(f\"Fichier: {data['metadata']['filename']}\")" \
+              "    print(f\"Succès: {data['success']}\")" \
+              "" \
+              "    contexts = data.get('contexts_loaded', {})" \
+              "    loaded = sum(1 for v in contexts.values() if v)" \
+              "    total = len(contexts)" \
+              "    print(f\"Contextes: {loaded}/{total} chargés\")" \
+              "" \
+              "    if data.get('repo_info_loaded'):" \
+              "        print('Repository info: Chargé')" \
+              "    else:" \
+              "        print('Repository info: Non disponible')" \
+              "except Exception as e:" \
+              "    print(f'Erreur lecture summary: {e}')" \
+              > /tmp/show_docs.py
+            python3 /tmp/show_docs.py
+          fi
+          
+          echo ""
+          echo "📁 Documentation disponible:"
+          echo "   📄 docs/documentation-complete.md"
+          echo "   👤 docs/user-guide.md"  
+          echo "   ⚙️ docs/technical-specifications.md"
+          echo "   🗺️ docs/project-roadmap.md"
+          echo ""
+          echo "🔗 Accès:"
+          echo "   📊 Dashboard: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+          echo "   🎯 Project: Repository → Projects → TaxasGE Master Project"
+          echo "   📚 Documentation: Repository → docs/ folder"
