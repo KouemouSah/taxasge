@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-09-20T23:53:39Z",
+  "timestamp": "2025-09-21T01:15:41Z",
   "entries": [
     {
       "date": "2025-09-15",
@@ -33,6 +33,12 @@
     },
     {
       "date": "2025-09-20",
+      "status": "critical",
+      "uptime": "99.8%",
+      "response_time": "0ms"
+    },
+    {
+      "date": "2025-09-21",
       "status": "critical",
       "uptime": "99.8%",
       "response_time": "0ms"
