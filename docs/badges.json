@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-09-22T10:47:10Z",
+  "timestamp": "2025-09-22T11:13:24Z",
   "badges": {
     "status": {
       "label": "Status",
@@ -19,9 +19,8 @@ yellow"
     },
     "firebase": {
       "label": "Firebase",
-      "message": "operational",
-      "color": "brightgreen
-yellow"
+      "message": "down",
+      "color": "red"
     },
     "build": {
       "label": "Build",
