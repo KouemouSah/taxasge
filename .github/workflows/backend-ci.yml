@@ -77,10 +77,9 @@ jobs:
       - name: 📦 Install dependencies
         run: |
           cd packages/backend
-          python -m pip install --upgrade pip
+          python3 -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install python-dotenv
-
       - name: 🗑️ Remove existing .env.test if it exists
         run: |
           cd packages/backend
@@ -110,26 +109,21 @@ jobs:
             echo "Failed to create .env.test file."
             exit 1
           fi
-
       - name: 🧪 Run unit tests
         if: matrix.test-type == 'unit'
         run: |
           cd packages/backend
           echo "🧪 Exécution des tests unitaires"
-
           if [ ! -d "tests" ]; then
             echo "❌ Dossier tests/ manquant"
             exit 1
           fi
-
           test_count=$(find tests/ -name "test_*.py" 2>/dev/null | wc -l)
-
           if [ "$test_count" -eq 0 ]; then
             echo "⚠️ Aucun fichier test_*.py trouvé dans tests/"
             echo "📝 Phase développement: Tests à implémenter"
             echo "✅ Validation structure: OK (dossier tests/ existe)"
-
-            python << 'EOF'
+            python3 << 'EOF'
             import sys
             import os
             sys.path.append('.')
@@ -145,15 +139,14 @@ jobs:
             EOF
           else
             echo "🧪 $test_count fichier(s) de test trouvé(s)"
-            if python -c "import pytest" 2>/dev/null; then
+            if python3 -c "import pytest" 2>/dev/null; then
               echo "✅ Pytest disponible, exécution des tests"
-              python -m pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term-missing
+              python3 -m pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term-missing
             else
               echo "⚠️ Pytest non disponible - Phase développement Firebase Functions"
               echo "📝 Tests unitaires à implémenter avec pytest"
               echo "✅ Validation structure: OK (fichiers de test présents)"
-
-              python << 'EOF'
+              python3 << 'EOF'
               import sys
               import os
               sys.path.append('.')
@@ -167,13 +160,12 @@ jobs:
               EOF
             fi
           fi
-
       - name: 🔗 Run integration tests
         if: matrix.test-type == 'integration'
         run: |
           cd packages/backend
           echo "🔗 Tests d'intégration backend"
-          python << 'EOF'
+          python3 << 'EOF'
           import sys
           import os
           sys.path.append('.')
@@ -204,7 +196,6 @@ jobs:
               sys.exit(1)
           print('🎉 All integration tests passed!')
           EOF
-
       - name: 🔍 Code quality checks
         if: matrix.test-type == 'quality'
         run: |
@@ -216,7 +207,6 @@ jobs:
           echo "🔍 Running isort check..."
           isort --check-only app/ --diff || echo "⚠️ Import sorting needed"
           echo "✅ Quality checks completed"
-
       - name: 📊 Upload coverage to Codecov
         if: matrix.test-type == 'unit'
         uses: codecov/codecov-action@v3
@@ -225,13 +215,11 @@ jobs:
           flags: backend
           name: backend-coverage
           fail_ci_if_error: false
-
       - name: 🗑️ Remove temporary .env.test
         if: always()
         run: |
           cd packages/backend
           rm -f .env.test
-
   # ============================================================================
   # API VALIDATION
   # ============================================================================
@@ -261,8 +249,7 @@ jobs:
         run: |
           cd packages/backend
           echo "🔧 Validation configuration pour: $ENVIRONMENT"
-
-          python << 'EOF'
+          python3 << 'EOF'
           import os
           import sys
           sys.path.append('.')
@@ -277,7 +264,6 @@ jobs:
               print(f'❌ Erreur configuration: {e}')
               sys.exit(1)
           EOF
-
       - name: 🚀 Start API server
         run: |
           cd packages/backend
@@ -287,7 +273,6 @@ jobs:
           echo "API_PID=$API_PID" >> $GITHUB_ENV
           echo "⏳ Attente démarrage API..."
           sleep 15
-
       - name: 🧪 Test API endpoints
         run: |
           echo "🔍 Test des endpoints API..."
@@ -305,15 +290,11 @@ jobs:
             echo "❌ Health endpoint: Indisponible après plusieurs tentatives."
             exit 1
           fi
-
           echo "📡 Test endpoint root..."
           curl -f http://localhost:8000/ | jq . || echo "⚠️ Root endpoint failed"
-
           echo "📋 Test API v1 endpoint..."
           curl -f http://localhost:8000/api/v1/ | jq . || echo "⚠️ API v1 endpoint failed"
-
           echo "✅ Tests API terminés"
-
       - name: 🛑 Stop API server
         if: always()
         run: |
@@ -321,7 +302,6 @@ jobs:
             kill $API_PID || true
             echo "🛑 Serveur API arrêté"
           fi
-
   # ============================================================================
   # SECURITY SCAN
   # ============================================================================
@@ -358,7 +338,6 @@ jobs:
           path: |
             packages/backend/bandit-report.json
             packages/backend/safety-report.json
-
   # ============================================================================
   # SONARQUBE ANALYSIS
   # ============================================================================
@@ -390,7 +369,6 @@ jobs:
             -Dsonar.exclusions=**/__pycache__/**,**/venv/**,**/env/**,**/*.pyc,**/migrations/**
             -Dsonar.test.exclusions=tests/**
             -Dsonar.coverage.exclusions=tests/**,**/test_*.py
-
   # ============================================================================
   # NOTIFICATION VIA SLACK
   # ============================================================================
