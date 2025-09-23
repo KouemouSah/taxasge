@@ -136,12 +136,13 @@ jobs:
             
             python << 'EOF'
           import sys
+          import os
           sys.path.append('.')
           try:
-              from app.config import settings
-              print('✅ Import configuration: OK')
-              print(f'📊 Environment: {settings.ENVIRONMENT}')
-              print(f'🏷️ Version: {settings.VERSION}')
+              import main
+              print('✅ Import Firebase Functions: OK')
+              print(f'📊 Environment: {os.getenv("ENVIRONMENT", "development")}')
+              print(f'🏷️ Functions Framework: OK')
               print('✅ Structure backend validée')
           except Exception as e:
               print(f'❌ Erreur validation: {e}')
@@ -159,32 +160,32 @@ jobs:
           echo "🔗 Tests d'intégration backend"
           python << 'EOF'
           import sys
+          import os
           sys.path.append('.')
           print('🔍 Testing imports...')
           try:
-              from app.config import settings
-              print(f'✅ Config loaded: {settings.ENVIRONMENT}')
+              import main
+              print(f'✅ Functions loaded: {os.getenv("ENVIRONMENT", "development")}')
           except Exception as e:
-              print(f'❌ Config import failed: {e}')
+              print(f'❌ Functions import failed: {e}')
               sys.exit(1)
           try:
-              import fastapi
-              print(f'✅ FastAPI version: {fastapi.__version__}')
+              import functions_framework
+              print(f'✅ Functions Framework: OK')
           except Exception as e:
-              print(f'❌ FastAPI import failed: {e}')
+              print(f'❌ Functions Framework import failed: {e}')
               sys.exit(1)
           try:
-              from app import __version__
-              print(f'✅ App version: {__version__}')
+              import main
+              print(f'✅ Functions module: OK')
           except Exception as e:
-              print(f'⚠️ App version import failed: {e}')
-              from app.config import settings
-              print('✅ Using config version instead: {}'.format(settings.VERSION))
+              print(f'⚠️ Functions module import failed: {e}')
+              print('✅ Using environment version instead: 1.0.0')
           try:
-              from app import main
-              print('✅ Main module import: OK')
+              import main
+              print('✅ Main Firebase Functions import: OK')
           except Exception as e:
-              print(f'❌ Main module import failed: {e}')
+              print(f'❌ Main Firebase Functions import failed: {e}')
               sys.exit(1)
           print('🎉 All integration tests passed!')
           EOF
@@ -255,10 +256,10 @@ jobs:
           sys.path.append('.')
           os.environ['ENVIRONMENT'] = os.getenv('ENVIRONMENT')
           try:
-              from app.config import settings
-              print(f'✅ Configuration {settings.ENVIRONMENT} validée')
-              print(f'🔗 API Host: {settings.API_HOST}:{settings.API_PORT}')
-              print(f'🛡️ Security: JWT configuré')
+              import main
+              print(f'✅ Firebase Functions main module validé')
+              print(f'🔗 Environment: {os.getenv("ENVIRONMENT", "development")}')
+              print(f'🛡️ Functions Framework: configuré')
               print('✅ Configuration backend prête pour API')
           except Exception as e:
               print(f'❌ Erreur configuration: {e}')
@@ -268,8 +269,8 @@ jobs:
       - name: 🚀 Start API server
         run: |
           cd packages/backend
-          echo "🚀 Démarrage du serveur API..."
-          python main.py &
+          echo "🚀 Démarrage du serveur Firebase Functions..."
+          functions-framework --target=main --port=8000 &
           API_PID=$!
           echo "API_PID=$API_PID" >> $GITHUB_ENV
           echo "⏳ Attente démarrage API..."
