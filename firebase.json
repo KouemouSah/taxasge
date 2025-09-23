@@ -56,32 +56,31 @@
     "cleanUrls": true,
     "trailingSlash": false
   },
-  "functions": {
-    "source": "packages/backend",
-    "runtime": "python311",
-    "predeploy": [
-      "cd packages/backend && pip install -r requirements.txt"
-    ],
-    "env": {
-      "ENVIRONMENT": "development",
-      "PYTHON_VERSION": "3.11"
-    },
-    "ignore": [
-      "venv",
-      "__pycache__",
-      ".pytest_cache",
-      "*.pyc",
-      "*.pyo",
-      "*.pyd",
-      ".env",
-      ".env.*",
-      "*.log",
-      "*.backup.*",
-      "tests/",
-      "app/",
-      "main.py"
-    ]
-  },
+  "functions": [
+    {
+      "source": "packages/backend",
+      "codebase": "default",
+      "runtime": "python311",
+      "predeploy": [
+        "cd packages/backend && pip install -r requirements.txt"
+      ],
+      "ignore": [
+        "venv",
+        "__pycache__",
+        ".pytest_cache",
+        "*.pyc",
+        "*.pyo",
+        "*.pyd",
+        ".env",
+        ".env.*",
+        "*.log",
+        "*.backup.*",
+        "tests/",
+        "app/",
+        "main_temp.py"
+      ]
+    }
+  ],
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
