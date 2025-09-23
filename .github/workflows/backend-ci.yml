@@ -13,6 +13,7 @@ on:
       - 'packages/backend/**'
       - 'config/**'
       - 'scripts/**'
+      - '.github/workflows/backend-ci.yml'
 
 # Cancel previous runs on new push
 concurrency:
@@ -36,7 +37,6 @@ jobs:
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
-
       - name: 🔍 Detect environment
         id: env
         run: |
@@ -48,7 +48,6 @@ jobs:
             echo "environment=testing" >> $GITHUB_OUTPUT
           fi
           echo "python-version=${{ env.PYTHON_VERSION }}" >> $GITHUB_OUTPUT
-
       - name: 📊 Environment Info
         run: |
           echo "🔍 Environment detected: ${{ steps.env.outputs.environment }}"
@@ -69,21 +68,19 @@ jobs:
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
-
       - name: 🐍 Setup Python ${{ needs.setup.outputs.python-version }}
         uses: actions/setup-python@v4
         with:
           python-version: ${{ needs.setup.outputs.python-version }}
           cache: 'pip'
           cache-dependency-path: packages/backend/requirements.txt
-
       - name: 📦 Install dependencies
         run: |
           cd packages/backend
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install python-dotenv
-      
+
       - name: 🗑️ Remove existing .env.test if it exists
         run: |
           cd packages/backend
@@ -91,7 +88,6 @@ jobs:
             rm .env.test
             echo "Removed existing .env.test file."
           fi
-
       - name: 🔧 Setup temporary .env.test for testing
         env:
           ENVIRONMENT: ${{ needs.setup.outputs.environment }}
@@ -105,7 +101,6 @@ jobs:
           echo "SUPABASE_URL=${SUPABASE_URL:-https://placeholder.supabase.co}" >> .env.test
           echo "SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-placeholder-key}" >> .env.test
           echo "FIREBASE_PROJECT_ID=taxasge-$ENVIRONMENT" >> .env.test
-
       - name: 🔍 Verify .env.test file creation
         run: |
           cd packages/backend
@@ -115,42 +110,41 @@ jobs:
             echo "Failed to create .env.test file."
             exit 1
           fi
-      
+
       - name: 🧪 Run unit tests
         if: matrix.test-type == 'unit'
         run: |
           cd packages/backend
           echo "🧪 Exécution des tests unitaires"
-          
+
           if [ ! -d "tests" ]; then
             echo "❌ Dossier tests/ manquant"
             exit 1
           fi
-          
+
           test_count=$(find tests/ -name "test_*.py" 2>/dev/null | wc -l)
-          
+
           if [ "$test_count" -eq 0 ]; then
             echo "⚠️ Aucun fichier test_*.py trouvé dans tests/"
             echo "📝 Phase développement: Tests à implémenter"
             echo "✅ Validation structure: OK (dossier tests/ existe)"
-            
+
             python << 'EOF'
-          import sys
-          import os
-          sys.path.append('.')
-          try:
-              import main
-              print('✅ Import Firebase Functions: OK')
-              print(f'📊 Environment: {os.getenv("ENVIRONMENT", "development")}')
-              print(f'🏷️ Functions Framework: OK')
-              print('✅ Structure backend validée')
-          except Exception as e:
-              print(f'❌ Erreur validation: {e}')
-              sys.exit(1)
-          EOF
+            import sys
+            import os
+            sys.path.append('.')
+            try:
+                import main
+                print('✅ Import Firebase Functions: OK')
+                print(f'📊 Environment: {os.getenv("ENVIRONMENT", "development")}')
+                print(f'🏷️ Functions Framework: OK')
+                print('✅ Structure backend validée')
+            except Exception as e:
+                print(f'❌ Erreur validation: {e}')
+                sys.exit(1)
+            EOF
           else
             echo "🧪 $test_count fichier(s) de test trouvé(s)"
-            # Vérifier si pytest est disponible
             if python -c "import pytest" 2>/dev/null; then
               echo "✅ Pytest disponible, exécution des tests"
               python -m pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term-missing
@@ -158,19 +152,19 @@ jobs:
               echo "⚠️ Pytest non disponible - Phase développement Firebase Functions"
               echo "📝 Tests unitaires à implémenter avec pytest"
               echo "✅ Validation structure: OK (fichiers de test présents)"
-              # Validation basique
+
               python << 'EOF'
-import sys
-import os
-sys.path.append('.')
-try:
-    import main
-    print('Import Firebase Functions: OK')
-    print('Tests validation: Structure OK')
-except Exception as e:
-    print('Erreur validation:', str(e))
-    sys.exit(1)
-EOF
+              import sys
+              import os
+              sys.path.append('.')
+              try:
+                  import main
+                  print('Import Firebase Functions: OK')
+                  print('Tests validation: Structure OK')
+              except Exception as e:
+                  print('Erreur validation:', str(e))
+                  sys.exit(1)
+              EOF
             fi
           fi
 
@@ -248,19 +242,16 @@ EOF
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
-
       - name: 🐍 Setup Python ${{ needs.setup.outputs.python-version }}
         uses: actions/setup-python@v4
         with:
           python-version: ${{ needs.setup.outputs.python-version }}
           cache: 'pip'
           cache-dependency-path: packages/backend/requirements.txt
-
       - name: 📦 Install dependencies
         run: |
           cd packages/backend
           pip install -r requirements.txt
-
       - name: 🔧 Validation Configuration Backend
         env:
           ENVIRONMENT: ${{ needs.setup.outputs.environment }}
@@ -270,7 +261,7 @@ EOF
         run: |
           cd packages/backend
           echo "🔧 Validation configuration pour: $ENVIRONMENT"
-          
+
           python << 'EOF'
           import os
           import sys
@@ -295,7 +286,7 @@ EOF
           API_PID=$!
           echo "API_PID=$API_PID" >> $GITHUB_ENV
           echo "⏳ Attente démarrage API..."
-          sleep 15 # Increased sleep time for server to initialize
+          sleep 15
 
       - name: 🧪 Test API endpoints
         run: |
@@ -314,13 +305,13 @@ EOF
             echo "❌ Health endpoint: Indisponible après plusieurs tentatives."
             exit 1
           fi
-          
+
           echo "📡 Test endpoint root..."
           curl -f http://localhost:8000/ | jq . || echo "⚠️ Root endpoint failed"
-          
+
           echo "📋 Test API v1 endpoint..."
           curl -f http://localhost:8000/api/v1/ | jq . || echo "⚠️ API v1 endpoint failed"
-          
+
           echo "✅ Tests API terminés"
 
       - name: 🛑 Stop API server
@@ -341,29 +332,24 @@ EOF
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
-
       - name: 🐍 Setup Python ${{ needs.setup.outputs.python-version }}
         uses: actions/setup-python@v4
         with:
           python-version: ${{ needs.setup.outputs.python-version }}
-
       - name: 📦 Install security tools
         run: pip install bandit safety
-
       - name: 🔍 Run Bandit security scan
         run: |
           cd packages/backend
           echo "🔍 Scan sécurité avec Bandit..."
           bandit -r app/ -f json -o bandit-report.json || echo "⚠️ Problèmes sécurité détectés par Bandit"
           bandit -r app/ --severity-level medium || echo "⚠️ Warnings de sécurité (medium+) trouvés par Bandit"
-
       - name: 🔍 Check for known vulnerabilities
         run: |
           cd packages/backend
           echo "🔍 Vérification vulnérabilités connues..."
           safety check --json --output safety-report.json || echo "⚠️ Vulnérabilités détectées par Safety"
           safety check || echo "⚠️ Rapport de vulnérabilités Safety généré"
-
       - name: 📊 Upload security reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -386,7 +372,6 @@ EOF
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - name: 📊 SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v5.0.0
         env:
@@ -414,7 +399,6 @@ EOF
     runs-on: ubuntu-latest
     needs: [setup, backend-tests, api-validation, security-scan, sonarqube]
     if: always()
-
     steps:
       - name: Check if SLACK_WEBHOOK_URL is set
         id: check-secret
@@ -424,7 +408,6 @@ EOF
           else
             echo "has_slack_webhook=false" >> $GITHUB_OUTPUT
           fi
-
       - name: 📊 Determine status
         id: status
         run: |
@@ -437,7 +420,6 @@ EOF
             echo "emoji=❌" >> $GITHUB_OUTPUT
             echo "color=#ff4757" >> $GITHUB_OUTPUT
           fi
-
       - name: 📢 Slack notification
         if: steps.check-secret.outputs.has_slack_webhook == 'true'
         uses: 8398a7/action-slack@v3
