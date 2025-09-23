@@ -147,17 +147,17 @@ jobs:
               echo "📝 Tests unitaires à implémenter avec pytest"
               echo "✅ Validation structure: OK (fichiers de test présents)"
               python3 << 'EOF'
-              import sys
-              import os
-              sys.path.append('.')
-              try:
+            import sys
+            import os
+            sys.path.append('.')
+            try:
                   import main
                   print('Import Firebase Functions: OK')
                   print('Tests validation: Structure OK')
-              except Exception as e:
+            except Exception as e:
                   print('Erreur validation:', str(e))
                   sys.exit(1)
-              EOF
+            EOF
             fi
           fi
       - name: 🔗 Run integration tests
