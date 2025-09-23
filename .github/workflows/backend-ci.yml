@@ -160,17 +160,17 @@ jobs:
               echo "✅ Validation structure: OK (fichiers de test présents)"
               # Validation basique
               python << 'EOF'
-import sys
-import os
-sys.path.append('.')
-try:
-    import main
-    print('✅ Import Firebase Functions: OK')
-    print('✅ Tests validation: Structure OK')
-except Exception as e:
-    print(f'❌ Erreur validation: {e}')
-    sys.exit(1)
-EOF
+              import sys
+              import os
+              sys.path.append('.')
+              try:
+                  import main
+                  print('Import Firebase Functions: OK')
+                  print('Tests validation: Structure OK')
+              except Exception as e:
+                  print('Erreur validation:', str(e))
+                  sys.exit(1)
+              EOF
             fi
           fi
 
