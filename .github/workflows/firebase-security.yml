@@ -277,7 +277,7 @@ jobs:
           echo "Security report generated"
 
       - name: Upload Security Report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: security-report
           path: security-report.md
@@ -626,7 +626,7 @@ jobs:
           python pentest.py
 
       - name: Upload penetration test report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: pentest-report
           path: pentest-report.json
