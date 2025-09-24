@@ -1,0 +1,13 @@
+{
+  name taxasge-security-tests,
+  version 1.0.0,
+  private true,
+  description Isolated npm project for Firebase security rules tests — auteur  kouemou sah jean emac,
+  scripts {
+    test jest
+  },
+  devDependencies {
+    @firebaserules-unit-testing ^2.0.4,
+    jest ^29.7.0
+  }
+}

