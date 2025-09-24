@@ -1,0 +1,191 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions for authentication and authorization
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+             'admin' in request.auth.token &&
+             request.auth.token.admin == true;
+    }
+
+    function isOfficialUser() {
+      return isAuthenticated() &&
+             'role' in request.auth.token &&
+             request.auth.token.role in ['admin', 'official', 'tax_officer'];
+    }
+
+    function hasValidUserData() {
+      return request.resource.data.keys().hasAll(['email', 'createdAt', 'updatedAt']) &&
+             request.resource.data.email is string &&
+             request.resource.data.createdAt is timestamp &&
+             request.resource.data.updatedAt is timestamp;
+    }
+
+    function isValidTaxData() {
+      return request.resource.data.keys().hasAll(['id', 'sub_categoria_id', 'tasa_expedicion']) &&
+             request.resource.data.id is string &&
+             request.resource.data.sub_categoria_id is string &&
+             request.resource.data.tasa_expedicion is number &&
+             request.resource.data.tasa_expedicion >= 0;
+    }
+
+    function rateLimit(maxRequests) {
+      return request.time > (resource == null ? timestamp.date(1970, 1, 1) : resource.data.lastRequest) + duration.value(1, 'h') / maxRequests;
+    }
+
+    // Users collection - users can read/write their own data
+    match /users/{userId} {
+      allow read, write: if isOwner(userId) && hasValidUserData();
+      allow read: if isAdmin();
+      allow create: if isAuthenticated() && hasValidUserData() && request.auth.uid == userId;
+      allow update: if isOwner(userId) && hasValidUserData() &&
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['updatedAt', 'profile', 'preferences']);
+      allow delete: if isAdmin() || isOwner(userId);
+    }
+
+    // Tax reference data - read-only for authenticated users, write for officials
+    match /taxes/{taxId} {
+      allow read: if isAuthenticated() && rateLimit(100);
+      allow write: if isAdmin() && isValidTaxData();
+      allow create: if isAdmin() && isValidTaxData();
+      allow update: if isOfficialUser() && isValidTaxData() &&
+                       request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['tasa_expedicion', 'tasa_renovacion', 'updatedAt', 'updatedBy']);
+      allow delete: if isAdmin();
+    }
+
+    // Categories - read for all authenticated, write for officials
+    match /categorias/{categoryId} {
+      allow read: if isAuthenticated() && rateLimit(50);
+      allow write: if isAdmin();
+      allow update: if isOfficialUser() &&
+                       request.resource.data.keys().hasAll(['id', 'sector_id']) &&
+                       request.resource.data.id is string &&
+                       request.resource.data.sector_id is string;
+    }
+
+    // Sub-categories
+    match /sub_categorias/{subCategoryId} {
+      allow read: if isAuthenticated() && rateLimit(50);
+      allow write: if isAdmin();
+      allow update: if isOfficialUser() &&
+                       request.resource.data.keys().hasAll(['id', 'categoria_id']) &&
+                       request.resource.data.id is string &&
+                       request.resource.data.categoria_id is string;
+    }
+
+    // Sectors
+    match /sectores/{sectorId} {
+      allow read: if isAuthenticated() && rateLimit(25);
+      allow write: if isAdmin();
+    }
+
+    // Ministerios (Ministries)
+    match /ministerios/{ministerioId} {
+      allow read: if isAuthenticated() && rateLimit(25);
+      allow write: if isAdmin();
+    }
+
+    // Required documents
+    match /documentos_requeridos/{docId} {
+      allow read: if isAuthenticated() && rateLimit(50);
+      allow write: if isOfficialUser();
+    }
+
+    // Procedures
+    match /procedimientos/{procedureId} {
+      allow read: if isAuthenticated() && rateLimit(50);
+      allow write: if isOfficialUser();
+    }
+
+    // Keywords for search
+    match /palabras_clave/{keywordId} {
+      allow read: if isAuthenticated() && rateLimit(100);
+      allow write: if isOfficialUser();
+    }
+
+    // User tax applications/submissions
+    match /applications/{applicationId} {
+      allow read: if isAuthenticated() &&
+                     (isOwner(resource.data.userId) || isOfficialUser()) &&
+                     rateLimit(20);
+      allow create: if isAuthenticated() &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.keys().hasAll(['userId', 'taxId', 'status', 'createdAt']) &&
+                       request.resource.data.status in ['pending', 'submitted'] &&
+                       request.resource.data.createdAt is timestamp;
+      allow update: if (isOwner(resource.data.userId) &&
+                          request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly(['status', 'documents', 'updatedAt'])) ||
+                       (isOfficialUser() &&
+                          request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly(['status', 'reviewNotes', 'reviewedBy', 'updatedAt']) &&
+                          request.resource.data.status in ['pending', 'approved', 'rejected', 'processing']);
+      allow delete: if isAdmin() || (isOwner(resource.data.userId) && resource.data.status in ['pending', 'draft']);
+    }
+
+    // Payment records
+    match /payments/{paymentId} {
+      allow read: if isAuthenticated() &&
+                     (isOwner(resource.data.userId) || isOfficialUser()) &&
+                     rateLimit(10);
+      allow create: if isAuthenticated() &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.keys().hasAll(['userId', 'applicationId', 'amount', 'status', 'createdAt']) &&
+                       request.resource.data.amount is number &&
+                       request.resource.data.amount > 0 &&
+                       request.resource.data.status == 'pending';
+      allow update: if isOfficialUser() &&
+                       request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['status', 'processedAt', 'processedBy', 'transactionId']) &&
+                       request.resource.data.status in ['completed', 'failed', 'refunded'];
+    }
+
+    // System logs and audit trails - admin only
+    match /audit_logs/{logId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Analytics and metrics - officials and admins only
+    match /analytics/{analyticsId} {
+      allow read: if isOfficialUser() && rateLimit(10);
+      allow write: if isAdmin();
+    }
+
+    // Configuration settings - admin only
+    match /config/{configId} {
+      allow read: if isOfficialUser() && rateLimit(5);
+      allow write: if isAdmin();
+    }
+
+    // Notifications
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() &&
+                     isOwner(resource.data.userId) &&
+                     rateLimit(50);
+      allow create: if isOfficialUser() &&
+                       request.resource.data.keys().hasAll(['userId', 'message', 'type', 'createdAt']) &&
+                       request.resource.data.type in ['info', 'warning', 'success', 'error'] &&
+                       request.resource.data.createdAt is timestamp;
+      allow update: if isOwner(resource.data.userId) &&
+                       request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['read', 'readAt']);
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+
+    // Deny all other requests
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
