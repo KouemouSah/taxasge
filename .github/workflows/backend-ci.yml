@@ -123,20 +123,20 @@ jobs:
             echo "⚠️ Aucun fichier test_*.py trouvé dans tests/"
             echo "📝 Phase développement: Tests à implémenter"
             echo "✅ Validation structure: OK (dossier tests/ existe)"
-            python3 << 'EOF'
-            import sys
-            import os
-            sys.path.append('.')
-            try:
-                import main
-                print('✅ Import Firebase Functions: OK')
-                print(f'📊 Environment: {os.getenv("ENVIRONMENT", "development")}')
-                print(f'🏷️ Functions Framework: OK')
-                print('✅ Structure backend validée')
-            except Exception as e:
-                print(f'❌ Erreur validation: {e}')
-                sys.exit(1)
-            EOF
+            cat << 'EOF' | python3
+import sys
+import os
+sys.path.append('.')
+try:
+    import main
+    print('✅ Import Firebase Functions: OK')
+    print(f'📊 Environment: {os.getenv("ENVIRONMENT", "development")}')
+    print(f'🏷️ Functions Framework: OK')
+    print('✅ Structure backend validée')
+except Exception as e:
+    print(f'❌ Erreur validation: {e}')
+    sys.exit(1)
+EOF
           else
             echo "🧪 $test_count fichier(s) de test trouvé(s)"
             if python3 -c "import pytest" 2>/dev/null; then
@@ -146,18 +146,18 @@ jobs:
               echo "⚠️ Pytest non disponible - Phase développement Firebase Functions"
               echo "📝 Tests unitaires à implémenter avec pytest"
               echo "✅ Validation structure: OK (fichiers de test présents)"
-              python3 << 'EOF'
-            import sys
-            import os
-            sys.path.append('.')
-            try:
-                  import main
-                  print('Import Firebase Functions: OK')
-                  print('Tests validation: Structure OK')
-            except Exception as e:
-                  print('Erreur validation:', str(e))
-                  sys.exit(1)
-            EOF
+              cat << 'EOF' | python3
+import sys
+import os
+sys.path.append('.')
+try:
+    import main
+    print('Import Firebase Functions: OK')
+    print('Tests validation: Structure OK')
+except Exception as e:
+    print('Erreur validation:', str(e))
+    sys.exit(1)
+EOF
             fi
           fi
       - name: 🔗 Run integration tests
