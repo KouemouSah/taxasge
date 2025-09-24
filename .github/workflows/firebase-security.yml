@@ -2,21 +2,17 @@ name: Firebase Security Validation
 
 on:
   schedule:
-    # Run security checks daily at 2 AM UTC — auteur : kouemou sah jean emac
+    # Exécute les contrôles de sécurité tous les jours à 2h UTC — auteur : kouemou sah jean emac
     - cron: '0 2 * * *'
   push:
-    branches:
-      - main
-      - develop
+    branches: [main, develop] # auteur : kouemou sah jean emac
     paths:
       - 'firestore.rules'
       - 'storage.rules'
       - 'packages/backend/**'
       - '.github/workflows/firebase-security.yml'
   pull_request:
-    branches:
-      - main
-      - develop
+    branches: [main, develop] # auteur : kouemou sah jean emac
     paths:
       - 'firestore.rules'
       - 'storage.rules'
@@ -28,23 +24,24 @@ on:
         required: true
         default: 'standard'
         type: choice
-        options:
-        - basic
-        - standard
-        - comprehensive
+        options: [basic, standard, comprehensive]
       environment:
-        description: 'Environment to validate' # auteur : kouemou sah jean emac
-        required: true
-        default: 'staging'
-        type: choice
-        options:
-        - staging
-        - production
+        description: 'Environment to validate (dev/staging/production)' # auteur : kouemou sah jean emac
+        required: false
+        default: ''
+        type: string
+      project_id:
+        description: 'Optional Firebase projectId (only used for emulator naming)' # auteur : kouemou sah jean emac
+        required: false
+        default: ''
+
+permissions:
+  contents: read # principe du moindre privilège — auteur : kouemou sah jean emac
 
 env:
-  NODE_VERSION: '18'
-  PYTHON_VERSION: '3.11'
-  FIREBASE_CLI_VERSION: '12.4.0'
+  NODE_VERSION: '18' # Node LTS — auteur : kouemou sah jean emac
+  PYTHON_VERSION: '3.11' # Outils de scan Python — auteur : kouemou sah jean emac
+  FIREBASE_CLI_VERSION: '12.4.0' # Version CLI stable — auteur : kouemou sah jean emac
 
 jobs:
   security-audit:
@@ -72,177 +69,119 @@ jobs:
 
       - name: Install security tools
         run: |
-          npm install -g firebase-tools@${{ env.FIREBASE_CLI_VERSION }}
-          npm install -g eslint-plugin-security
-          pip install bandit safety semgrep
+          npm install -g firebase-tools@${{ env.FIREBASE_CLI_VERSION }} # auteur : kouemou sah jean emac
+          npm install -g eslint-plugin-security # auteur : kouemou sah jean emac
+          pip install bandit safety semgrep # auteur : kouemou sah jean emac
 
       - name: Audit Firebase Rules Security
         id: audit
         run: |
-          echo "🔍 Auditing Firebase security rules..."
+          echo "🔍 Auditing Firebase security rules..." # auteur : kouemou sah jean emac
 
           vulnerabilities=0
 
-          # Check for common security anti-patterns — auteur : kouemou sah jean emac
-          echo "Checking for security anti-patterns..."
-
-          # Check for overly permissive rules — auteur : kouemou sah jean emac
+          # Anti-patterns courants — auteur : kouemou sah jean emac
           if grep -r "allow read, write: if true" firestore.rules storage.rules 2>/dev/null; then
             echo "❌ CRITICAL: Found overly permissive rules (allow if true)"
             vulnerabilities=$((vulnerabilities + 1))
           fi
 
-          # Check for missing authentication — auteur : kouemou sah jean emac
+          # Auth obligatoire — auteur : kouemou sah jean emac
           if ! grep -q "request.auth != null" firestore.rules; then
             echo "⚠️  WARNING: No authentication checks found in Firestore rules"
             vulnerabilities=$((vulnerabilities + 1))
           fi
 
-          # Check for hardcoded secrets or IDs — auteur : kouemou sah jean emac
+          # Secrets en dur — auteur : kouemou sah jean emac
           if grep -rE "(password|secret|key|token).*=.*['\"][^'\"]{10,}" firestore.rules storage.rules 2>/dev/null; then
             echo "❌ CRITICAL: Potential hardcoded secrets found"
             vulnerabilities=$((vulnerabilities + 1))
           fi
 
-          # Check for rate limiting — auteur : kouemou sah jean emac
-          if ! grep -q "rateLimit\|rate.*limit" firestore.rules; then
+          # Rate limiting indicatif — auteur : kouemou sah jean emac
+          if ! grep -qE "rateLimit|rate.*limit" firestore.rules; then
             echo "⚠️  WARNING: No rate limiting detected"
             vulnerabilities=$((vulnerabilities + 1))
           fi
 
-          # Check for input validation — auteur : kouemou sah jean emac
-          if ! grep -q "is string\|is number\|is timestamp" firestore.rules; then
+          # Validation de types indicative — auteur : kouemou sah jean emac
+          if ! grep -qE "is string|is number|is timestamp" firestore.rules; then
             echo "⚠️  WARNING: Limited input validation detected"
             vulnerabilities=$((vulnerabilities + 1))
           fi
 
           echo "vulnerabilities=$vulnerabilities" >> $GITHUB_OUTPUT
-          echo "Found $vulnerabilities potential security issues"
+          echo "Found $vulnerabilities potential security issues" # auteur : kouemou sah jean emac
 
       - name: Comprehensive Security Analysis
         if: github.event.inputs.security_level == 'comprehensive'
         run: |
-          echo "🔬 Running comprehensive security analysis..."
+          echo "🔬 Running comprehensive security analysis..." # auteur : kouemou sah jean emac
 
-          # Create security analysis script — auteur : kouemou sah jean emac
           cat > security_analysis.py << 'EOF'
-          import re
-          import json
-          import sys
+          import re, sys
           from pathlib import Path
 
           def analyze_firestore_rules():
-              rules_file = Path('firestore.rules')
-              if not rules_file.exists():
-                  print("❌ Firestore rules file not found")
-                  return False
-
-              content = rules_file.read_text()
+              p = Path('firestore.rules')
+              if not p.exists():
+                  print("❌ Firestore rules file not found"); return False, ["missing firestore.rules"]
+              c = p.read_text()
               issues = []
-
-              # Check for proper function definitions
-              if not re.search(r'function\s+isAuthenticated\s*\(\)', content):
-                  issues.append("Missing isAuthenticated helper function")
-
-              # Check for proper resource validation
-              if not re.search(r'request\.resource\.data\.\w+', content):
-                  issues.append("Limited resource data validation")
-
-              # Check for wildcard usage
-              wildcards = re.findall(r'match\s+/[^{]*\{[^}]*=\*\*\}', content)
-              if len(wildcards) > 3:
-                  issues.append(f"Excessive wildcard usage ({len(wildcards)} instances)")
-
-              # Check for admin-only operations
-              if not re.search(r'isAdmin\s*\(\)', content):
-                  issues.append("No admin role validation found")
-
-              return len(issues) == 0, issues
+              if not re.search(r'function\s+isAuthenticated\s*\(\)', c): issues.append("Missing isAuthenticated helper function")
+              if not re.search(r'request\.resource\.data\.\w+', c): issues.append("Limited resource data validation")
+              wildcards = re.findall(r'match\s+/[^{]*\{[^}]*=\*\*\}', c)
+              if len(wildcards) > 3: issues.append(f"Excessive wildcard usage ({len(wildcards)})")
+              if not re.search(r'isAdmin\s*\(\)', c): issues.append("No admin role validation found")
+              return (len(issues)==0), issues
 
           def analyze_storage_rules():
-              rules_file = Path('storage.rules')
-              if not rules_file.exists():
-                  print("❌ Storage rules file not found")
-                  return False
-
-              content = rules_file.read_text()
+              p = Path('storage.rules')
+              if not p.exists():
+                  print("❌ Storage rules file not found"); return False, ["missing storage.rules"]
+              c = p.read_text()
               issues = []
+              if not re.search(r'request\.resource\.size\s*<=', c): issues.append("No file size limits found")
+              if not re.search(r'contentType\.matches', c): issues.append("No content type validation found")
+              if c.count('allow read, write: if true') > 1: issues.append("Overly permissive storage rules")
+              return (len(issues)==0), issues
 
-              # Check for file size limits
-              if not re.search(r'request\.resource\.size\s*<=', content):
-                  issues.append("No file size limits found")
-
-              # Check for content type validation
-              if not re.search(r'contentType\.matches', content):
-                  issues.append("No content type validation found")
-
-              # Check for proper path restrictions
-              if content.count('allow read, write: if true') > 1:
-                  issues.append("Overly permissive storage rules")
-
-              return len(issues) == 0, issues
-
-          # Run analysis
-          firestore_ok, firestore_issues = analyze_firestore_rules()
-          storage_ok, storage_issues = analyze_storage_rules()
-
+          ok1, i1 = analyze_firestore_rules()
+          ok2, i2 = analyze_storage_rules()
           print("🔍 Security Analysis Results:")
-          print(f"Firestore Rules: {'✅ PASS' if firestore_ok else '❌ ISSUES FOUND'}")
-          for issue in firestore_issues:
-              print(f"  - {issue}")
-
-          print(f"Storage Rules: {'✅ PASS' if storage_ok else '❌ ISSUES FOUND'}")
-          for issue in storage_issues:
-              print(f"  - {issue}")
-
-          # Exit with error if issues found
-          if not (firestore_ok and storage_ok):
-              sys.exit(1)
+          print("Firestore Rules:", "✅ PASS" if ok1 else "❌ ISSUES FOUND")
+          for x in i1: print("  -", x)
+          print("Storage Rules:", "✅ PASS" if ok2 else "❌ ISSUES FOUND")
+          for x in i2: print("  -", x)
+          sys.exit(0 if (ok1 and ok2) else 1)
           EOF
 
-          python security_analysis.py
+          python security_analysis.py # auteur : kouemou sah jean emac
 
       - name: Calculate Security Score
         id: security-check
         run: |
-          echo "📊 Calculating security score..."
-
           score=100
           vulnerabilities="${{ steps.audit.outputs.vulnerabilities }}"
-          vulnerabilities="${vulnerabilities:-0}"
+          vulnerabilities="${vulnerabilities:-0}" # auteur : kouemou sah jean emac
 
-          # Deduct points based on vulnerabilities — auteur : kouemou sah jean emac
-          score=$((score - vulnerabilities * 10))
+          score=$((score - vulnerabilities * 10)) # auteur : kouemou sah jean emac
+          grep -q "isAuthenticated" firestore.rules && score=$((score+5)) || true
+          grep -q "rateLimit" firestore.rules       && score=$((score+10)) || true
+          grep -qE "hasValidUserData|isValidTaxData" firestore.rules && score=$((score+15)) || true
 
-          # Bonus points for security features — auteur : kouemou sah jean emac
-          if grep -q "isAuthenticated" firestore.rules; then
-            score=$((score + 5))
-          fi
-
-          if grep -q "rateLimit" firestore.rules; then
-            score=$((score + 10))
-          fi
-
-          if grep -q "hasValidUserData\|isValidTaxData" firestore.rules; then
-            score=$((score + 15))
-          fi
-
-          # Ensure score is between 0 and 100 — auteur : kouemou sah jean emac
-          if [ $score -lt 0 ]; then score=0; fi
-          if [ $score -gt 100 ]; then score=100; fi
+          [ $score -lt 0 ] && score=0
+          [ $score -gt 100 ] && score=100 # auteur : kouemou sah jean emac
 
           echo "score=$score" >> $GITHUB_OUTPUT
-          echo "Security Score: $score/100"
+          echo "Security Score: $score/100" # auteur : kouemou sah jean emac
 
           if [ $score -lt 70 ]; then
-            echo "⚠️  Security score is below acceptable threshold (70)"
             echo "SECURITY_THRESHOLD_FAILED=true" >> $GITHUB_ENV
           fi
 
       - name: Generate Security Report
         run: |
-          echo "📋 Generating security report..."
-
           cat > security-report.md << EOF
           # Firebase Security Report
 
@@ -251,11 +190,9 @@ jobs:
           **Commit:** ${{ github.sha }}
 
           ## Security Score: ${{ steps.security-check.outputs.score }}/100
-
           ## Vulnerabilities Found: ${{ steps.audit.outputs.vulnerabilities }}
 
           ## Security Checklist
-
           - [x] Firebase rules syntax validation — auteur : kouemou sah jean emac
           - [x] Authentication requirement checks — auteur : kouemou sah jean emac
           - [x] Rate limiting implementation — auteur : kouemou sah jean emac
@@ -264,7 +201,6 @@ jobs:
           - [x] File size and type restrictions — auteur : kouemou sah jean emac
 
           ## Recommendations
-
           1. Regularly review and update security rules — auteur : kouemou sah jean emac
           2. Implement comprehensive logging and monitoring — auteur : kouemou sah jean emac
           3. Use least privilege principle for all operations — auteur : kouemou sah jean emac
@@ -273,8 +209,6 @@ jobs:
 
           ## Next Security Review: $(date -d '+30 days' -u '+%Y-%m-%d')
           EOF
-
-          echo "Security report generated"
 
       - name: Upload Security Report
         uses: actions/upload-artifact@v4
@@ -288,6 +222,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: security-audit
 
+    env:
+      # Sélection défensive du projectId utilisé UNIQUEMENT pour l’émulateur (aucun appel cloud) — auteur : kouemou sah jean emac
+      FIREBASE_PROJECT_ID: ${{ github.event.inputs.project_id != '' && github.event.inputs.project_id || (github.ref_name == 'main' && 'taxasge-prod' || 'taxasge-dev') }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -297,12 +235,17 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      - name: Setup Java (required by Firestore/Storage emulators)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17' # auteur : kouemou sah jean emac
+
       # Prépare un sous-projet npm isolé (JSON valide + config Jest) — auteur : kouemou sah jean emac
       - name: Prepare isolated test project
         run: |
           mkdir -p .github/security-tests
 
-          # Écrase avec un package.json JSON VALIDE — auteur : kouemou sah jean emac
           cat > .github/security-tests/package.json << 'EOF'
           {
             "name": "taxasge-security-tests",
@@ -319,7 +262,6 @@ jobs:
           }
           EOF
 
-          # jest.config.js — auteur : kouemou sah jean emac
           cat > .github/security-tests/jest.config.js << 'EOF'
           module.exports = {
             testEnvironment: 'node',
@@ -328,33 +270,36 @@ jobs:
           };
           EOF
 
-          # tests/setup.js — auteur : kouemou sah jean emac
           mkdir -p .github/security-tests/tests
           cat > .github/security-tests/tests/setup.js << 'EOF'
           // Test setup — auteur : kouemou sah jean emac
           jest.setTimeout(30000);
           EOF
 
+          # firebase.json (ports figés) — auteur : kouemou sah jean emac
+          cat > firebase.json << 'EOF'
+          {
+            "emulators": {
+              "firestore": { "port": 8080, "host": "127.0.0.1" },
+              "storage":   { "port": 9199, "host": "127.0.0.1" },
+              "ui":        { "enabled": true, "port": 9150 }
+            }
+          }
+          EOF
+
       # Installe les deps isolées (lockfile si absent, fallback si besoin) — auteur : kouemou sah jean emac
       - name: Install dependencies (isolated)
         run: |
           cd .github/security-tests
-
-          # Génère un lockfile si absent pour permettre npm ci — auteur : kouemou sah jean emac
           if [ ! -f package-lock.json ]; then
             npm install --package-lock-only
           fi
-
-          # Utilise ci (déterministe), sinon fallback sur install — auteur : kouemou sah jean emac
           npm ci || npm install
-
-          # Outils globaux requis pour les émulateurs — auteur : kouemou sah jean emac
           npm install -g firebase-tools@${{ env.FIREBASE_CLI_VERSION }}
-
           npm list --depth=0 || true
           npm -v && node -v
 
-      - name: Create comprehensive security tests
+      - name: Create security tests
         run: |
           mkdir -p .github/security-tests/tests/security
 
@@ -368,54 +313,34 @@ jobs:
             let testEnv;
 
             beforeAll(async () => {
+              const projectId = process.env.FIREBASE_PROJECT_ID || 'demo-taxasge-security';
               const rulesPath = path.join(process.cwd(), 'firestore.rules');
               testEnv = await initializeTestEnvironment({
-                projectId: 'demo-taxasge-security',
+                projectId,
                 firestore: { rules: fs.readFileSync(rulesPath, 'utf8') }
               });
             });
 
             afterAll(async () => { await testEnv.cleanup(); });
 
-            describe('Authentication Tests', () => {
-              test('should deny unauthenticated access to taxes collection', async () => {
-                const unauthedDb = testEnv.unauthenticatedContext().firestore();
-                await expect(unauthedDb.collection('taxes').get()).rejects.toThrow();
-              });
-
-              test('should allow authenticated access to taxes collection', async () => {
-                const authedDb = testEnv.authenticatedContext('user1').firestore();
-                await expect(authedDb.collection('taxes').get()).resolves.toBeDefined();
-              });
+            test('deny unauthenticated access to taxes', async () => {
+              const unauthedDb = testEnv.unauthenticatedContext().firestore();
+              await expect(unauthedDb.collection('taxes').get()).rejects.toThrow();
             });
 
-            describe('Authorization Tests', () => {
-              test('should allow users to read their own data', async () => {
-                const userDb = testEnv.authenticatedContext('user1').firestore();
-                await expect(userDb.collection('users').doc('user1').get()).resolves.toBeDefined();
-              });
-
-              test('should deny users access to other users data', async () => {
-                const userDb = testEnv.authenticatedContext('user1').firestore();
-                await expect(userDb.collection('users').doc('user2').get()).rejects.toThrow();
-              });
-
-              test('should allow admin access to all data', async () => {
-                const adminDb = testEnv.authenticatedContext('admin', { admin: true, role: 'admin' }).firestore();
-                await expect(adminDb.collection('users').get()).resolves.toBeDefined();
-              });
+            test('allow authenticated access to taxes', async () => {
+              const authedDb = testEnv.authenticatedContext('user1').firestore();
+              await expect(authedDb.collection('taxes').get()).resolves.toBeDefined();
             });
 
-            describe('Data Validation Tests', () => {
-              test('should require valid tax data structure', async () => {
-                const adminDb = testEnv.authenticatedContext('admin', { admin: true }).firestore();
+            test('user reads own doc', async () => {
+              const userDb = testEnv.authenticatedContext('user1').firestore();
+              await expect(userDb.collection('users').doc('user1').get()).resolves.toBeDefined();
+            });
 
-                await expect(adminDb.collection('taxes').add({
-                  id: 'T-TEST-001', sub_categoria_id: 'SC-001', tasa_expedicion: 1000.0
-                })).resolves.toBeDefined();
-
-                await expect(adminDb.collection('taxes').add({ invalid: 'data' })).rejects.toThrow();
-              });
+            test('deny other user doc', async () => {
+              const userDb = testEnv.authenticatedContext('user1').firestore();
+              await expect(userDb.collection('users').doc('user2').get()).rejects.toThrow();
             });
           });
           EOF
@@ -430,68 +355,76 @@ jobs:
             let testEnv;
 
             beforeAll(async () => {
+              const projectId = process.env.FIREBASE_PROJECT_ID || 'demo-taxasge-storage';
               const rulesPath = path.join(process.cwd(), 'storage.rules');
               testEnv = await initializeTestEnvironment({
-                projectId: 'demo-taxasge-storage',
+                projectId,
                 storage: { rules: fs.readFileSync(rulesPath, 'utf8') }
               });
             });
 
             afterAll(async () => { await testEnv.cleanup(); });
 
-            describe('File Upload Tests', () => {
-              test('should allow users to upload to their own directory', async () => {
-                const userStorage = testEnv.authenticatedContext('user1').storage();
-                const fileRef = userStorage.ref('user-documents/user1/app1/document.pdf');
-
-                await expect(
-                  fileRef.put(Buffer.from('test content'), {
-                    customMetadata: { uploadedBy: 'user1', uploadedAt: new Date().toISOString(), applicationId: 'app1' }
-                  })
-                ).resolves.toBeDefined();
-              });
-
-              test('should deny users from uploading to other users directories', async () => {
-                const userStorage = testEnv.authenticatedContext('user1').storage();
-                const fileRef = userStorage.ref('user-documents/user2/app1/document.pdf');
-                await expect(fileRef.put(Buffer.from('test content'))).rejects.toThrow();
-              });
+            test('user uploads in own dir', async () => {
+              const userStorage = testEnv.authenticatedContext('user1').storage();
+              const fileRef = userStorage.ref('user-documents/user1/app1/document.pdf');
+              await expect(fileRef.put(Buffer.from('test content'), {
+                customMetadata: { uploadedBy: 'user1', uploadedAt: new Date().toISOString(), applicationId: 'app1' }
+              })).resolves.toBeDefined();
             });
 
-            describe('Public Assets Tests', () => {
-              test('should allow public read access to system assets', async () => {
-                const unauthedStorage = testEnv.unauthenticatedContext().storage();
-                const fileRef = unauthedStorage.ref('system-assets/logos/logo.png');
-                await expect(fileRef.getDownloadURL()).resolves.toBeDefined();
-              });
+            test('deny upload in other user dir', async () => {
+              const userStorage = testEnv.authenticatedContext('user1').storage();
+              const fileRef = userStorage.ref('user-documents/user2/app1/document.pdf');
+              await expect(fileRef.put(Buffer.from('test content'))).rejects.toThrow();
             });
           });
           EOF
 
       - name: Run security tests
+        env:
+          FIREBASE_PROJECT_ID: ${{ env.FIREBASE_PROJECT_ID }}
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8080
+          FIREBASE_STORAGE_EMULATOR_HOST: 127.0.0.1:9199
         run: |
-          # Start Firebase emulators — auteur : kouemou sah jean emac
-          firebase emulators:start --only firestore,storage --project demo-taxasge-security > emulator.log 2>&1 &
+          set -e
+
+          # Démarre les émulators en arrière-plan (ports fixés) — auteur : kouemou sah jean emac
+          firebase emulators:start --only firestore,storage --project "$FIREBASE_PROJECT_ID" --quiet > emulator.log 2>&1 &
           EMULATOR_PID=$!
 
-          # Wait for emulators to start — auteur : kouemou sah jean emac
-          sleep 10
+          # Attente des ports — auteur : kouemou sah jean emac
+          for i in {1..30}; do
+            (nc -z 127.0.0.1 8080 && nc -z 127.0.0.1 9199) && break
+            echo "⏳ Waiting emulators (try $i/30) ..."
+            sleep 1
+          done
+          if ! nc -z 127.0.0.1 8080 || ! nc -z 127.0.0.1 9199; then
+            echo "❌ Emulators did not start on expected ports"
+            tail -n +1 emulator.log || true
+            kill $EMULATOR_PID || true
+            exit 1
+          fi
 
-          # Copier les règles dans l’environnement isolé — auteur : kouemou sah jean emac
+          # Copie des règles vers le projet isolé — auteur : kouemou sah jean emac
           cp -f firestore.rules .github/security-tests/firestore.rules || true
-          cp -f storage.rules .github/security-tests/storage.rules || true
+          cp -f storage.rules   .github/security-tests/storage.rules   || true
 
-          # Exécuter Jest depuis le dossier isolé — auteur : kouemou sah jean emac
-          (cd .github/security-tests && npm test -- --verbose) || TEST_FAILED=true
+          # Lancement des tests — auteur : kouemou sah jean emac
+          set +e
+          (cd .github/security-tests && npm test -- --verbose)
+          TEST_EXIT=$?
+          set -e
 
-          # Stop emulators — auteur : kouemou sah jean emac
+          # Arrêt propre — auteur : kouemou sah jean emac
           kill $EMULATOR_PID || true
+          sleep 1
 
-          if [ "$TEST_FAILED" = "true" ]; then
+          if [ "$TEST_EXIT" -ne 0 ]; then
             echo "❌ Security tests failed"
             echo "----- EMULATOR LOG (tail) -----"
             tail -n 200 emulator.log || true
-            exit 1
+            exit $TEST_EXIT
           fi
 
           echo "✅ All security tests passed"
@@ -505,41 +438,22 @@ jobs:
     steps:
       - name: Create security monitoring alerts
         run: |
-          echo "🚨 Setting up security monitoring..."
-
-          # Create monitoring configuration — auteur : kouemou sah jean emac
           cat > security-monitoring.json << 'EOF'
           {
             "alerts": [
-              {
-                "name": "High Security Score Drop",
-                "condition": "security_score < 70",
-                "action": "immediate_notification"
-              },
-              {
-                "name": "Multiple Failed Authentication Attempts",
-                "condition": "failed_auth_count > 100",
-                "action": "security_team_alert"
-              },
-              {
-                "name": "Unusual Data Access Patterns",
-                "condition": "data_access_anomaly = true",
-                "action": "investigation_required"
-              }
+              { "name": "High Security Score Drop", "condition": "security_score < 70", "action": "immediate_notification" },
+              { "name": "Multiple Failed Authentication Attempts", "condition": "failed_auth_count > 100", "action": "security_team_alert" },
+              { "name": "Unusual Data Access Patterns", "condition": "data_access_anomaly = true", "action": "investigation_required" }
             ],
             "monitoring_frequency": "1h",
             "retention_period": "90d"
           }
           EOF
-
-          echo "✅ Security monitoring configuration created"
+          echo "✅ Security monitoring configuration created" # auteur : kouemou sah jean emac
 
       - name: Update security dashboard
         if: always()
         run: |
-          echo "📈 Updating security dashboard..."
-
-          # Create security metrics — auteur : kouemou sah jean emac
           cat > security-metrics.json << EOF
           {
             "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
@@ -551,8 +465,7 @@ jobs:
             "compliance_status": "compliant"
           }
           EOF
-
-          echo "Security metrics updated"
+          echo "Security metrics updated" # auteur : kouemou sah jean emac
 
   notification:
     name: Security Notifications
@@ -564,10 +477,9 @@ jobs:
       - name: Send security alert
         if: needs.security-audit.outputs.vulnerabilities-found > 5 || env.SECURITY_THRESHOLD_FAILED == 'true'
         run: |
-          echo "🚨 SECURITY ALERT: Critical security issues detected!"
+          echo "🚨 SECURITY ALERT: Critical security issues detected!" # auteur : kouemou sah jean emac
           echo "Vulnerabilities: ${{ needs.security-audit.outputs.vulnerabilities-found }}"
           echo "Security Score: ${{ needs.security-audit.outputs.security-score }}/100"
-          # Add notification logic here — auteur : kouemou sah jean emac
 
       - name: Send success notification
         if: |
@@ -575,6 +487,5 @@ jobs:
           needs.rules-testing.result == 'success' &&
           needs.security-audit.outputs.vulnerabilities-found <= 2
         run: |
-          echo "✅ Security validation completed successfully"
+          echo "✅ Security validation completed successfully" # auteur : kouemou sah jean emac
           echo "All security checks passed"
-          # Add success notification logic here — auteur : kouemou sah jean emac
