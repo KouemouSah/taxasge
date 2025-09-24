@@ -19,21 +19,17 @@
 #
 # Author: KOUEMOU SAH Jean Emac
 # ============================================================================
-
 name: 📊 Unified Monitoring System
-
 on:
   # Optimized scheduling: 3x per day instead of 96x
   schedule:
     - cron: '0 7 * * *'   # 07:00 UTC - Morning check
     - cron: '0 14 * * *'  # 14:00 UTC - Afternoon validation
     - cron: '0 20 * * *'  # 20:00 UTC - Evening summary
-
   # Smart triggering on important events
   workflow_run:
     workflows: ["🚀 Deploy Backend to Firebase", "📱 Mobile CI (React Native)", "🐍 Backend CI/CD"]
     types: [completed, failure]
-
   # Manual execution with options
   workflow_dispatch:
     inputs:
@@ -61,7 +57,6 @@ on:
           - auto
           - development
           - production
-
 # Environment variables
 env:
   FIREBASE_PROJECT_DEV: 'taxasge-dev'
@@ -69,17 +64,14 @@ env:
   API_TIMEOUT: '30'
   MAX_RETRIES: '3'
   CACHE_DURATION: '300' # 5 minutes cache
-
 jobs:
   # ============================================================================
   # JOB 1: UNIFIED HEALTH CHECK
   # ============================================================================
-
   unified-health-check:
     name: 🔍 Unified System Health Check
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
     outputs:
       overall-health: ${{ steps.health-summary.outputs.health }}
       technical-status: ${{ steps.technical-check.outputs.status }}
@@ -87,22 +79,18 @@ jobs:
       critical-alerts: ${{ steps.health-summary.outputs.alerts }}
       should-notify: ${{ steps.health-summary.outputs.should_notify }}
       environment: ${{ steps.environment.outputs.environment }}
-
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
-
       - name: 🔧 Setup monitoring environment
         run: |
           echo "🔧 TaxasGE Unified Monitoring System"
           echo "📅 Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           echo "🎯 Mode: ${{ github.event.inputs.monitoring_mode || 'scheduled' }}"
           echo "🌍 Environment: ${{ github.event.inputs.environment || 'auto' }}"
-
           # Install monitoring tools
           sudo apt-get update -qq
           sudo apt-get install -y jq bc curl
-
       - name: 🌍 Determine Environment
         id: environment
         run: |
@@ -115,10 +103,8 @@ jobs:
           else
             environment="development"
           fi
-
           echo "environment=$environment" >> $GITHUB_OUTPUT
           echo "🌍 Monitoring environment: $environment"
-
       - name: ⚡ Cache Check
         id: cache-check
         uses: actions/cache@v4
@@ -128,21 +114,17 @@ jobs:
           key: taxasge-monitoring-${{ steps.environment.outputs.environment }}-${{ hashFiles('**/*.yml') }}-${{ github.run_number }}
           restore-keys: |
             taxasge-monitoring-${{ steps.environment.outputs.environment }}-
-
       - name: 🚀 Technical System Check
         id: technical-check
         run: |
           echo "🚀 Monitoring technical systems..."
-
           # Determine API base URL
           if [[ "${{ steps.environment.outputs.environment }}" == "production" ]]; then
             API_BASE="https://taxasge-prod.web.app"
           else
             API_BASE="https://taxasge-dev.web.app"
           fi
-
           echo "🎯 API Base: $API_BASE"
-
           # Technical endpoints to check
           declare -A endpoints=(
             ["root"]="/"
@@ -150,23 +132,18 @@ jobs:
             ["api"]="/api/v1/"
             ["docs"]="/docs"
           )
-
           success_count=0
           total_count=${#endpoints[@]}
           total_response_time=0
           failed_endpoints=()
-
           for endpoint in "${!endpoints[@]}"; do
             url="$API_BASE${endpoints[$endpoint]}"
             echo "🔍 Testing $endpoint: $url"
-
             start_time=$(date +%s.%N)
             if response=$(curl -s -w "%{http_code}" -m ${{ env.API_TIMEOUT }} "$url" 2>/dev/null); then
               end_time=$(date +%s.%N)
               response_time=$(echo "$end_time - $start_time" | bc -l)
-
               http_code="${response: -3}"
-
               if [[ "$http_code" =~ ^(200|201|302)$ ]]; then
                 echo "✅ $endpoint: OK (${response_time}s)"
                 ((success_count++))
@@ -180,16 +157,13 @@ jobs:
               failed_endpoints+=("$endpoint:timeout")
             fi
           done
-
           # Calculate metrics
           if [[ $success_count -gt 0 ]]; then
             avg_response_time=$(echo "scale=0; $total_response_time / $success_count * 1000" | bc -l)
           else
             avg_response_time=9999
           fi
-
           success_rate=$((success_count * 100 / total_count))
-
           # Determine status
           if [[ $success_count -eq $total_count ]]; then
             tech_status="healthy"
@@ -201,21 +175,17 @@ jobs:
             tech_status="critical"
             echo "❌ Technical systems: Critical issues ($success_count/$total_count)"
           fi
-
           # Output results
           echo "status=$tech_status" >> $GITHUB_OUTPUT
           echo "success_rate=$success_rate" >> $GITHUB_OUTPUT
           echo "avg_response_time=$avg_response_time" >> $GITHUB_OUTPUT
           echo "failed_endpoints=${failed_endpoints[*]}" >> $GITHUB_OUTPUT
-
       - name: 🗄️ Database & Services Check
         id: services-check
         run: |
           echo "🗄️ Checking database and services..."
-
           services_status="healthy"
           services_details=()
-
           # Supabase check
           if [[ -n "${{ secrets.SUPABASE_URL }}" && -n "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ]]; then
             if curl -s -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
@@ -232,7 +202,6 @@ jobs:
             echo "⚠️ Supabase: Credentials not configured"
             services_details+=("supabase:no_config")
           fi
-
           # Firebase check
           env_name="${{ steps.environment.outputs.environment }}"
           if [[ "$env_name" == "production" ]]; then
@@ -240,7 +209,6 @@ jobs:
           else
             firebase_url="https://${{ env.FIREBASE_PROJECT_DEV }}.web.app"
           fi
-
           if curl -s -m 10 "$firebase_url" > /dev/null; then
             echo "✅ Firebase: Operational"
             services_details+=("firebase:ok")
@@ -251,19 +219,15 @@ jobs:
               services_status="degraded"
             fi
           fi
-
           echo "status=$services_status" >> $GITHUB_OUTPUT
           echo "details=${services_details[*]}" >> $GITHUB_OUTPUT
-
       - name: 📊 Project Health Check
         id: project-check
         run: |
           echo "📊 Checking project health metrics..."
-
           # Get project metrics from GitHub API
           project_health="healthy"
           alerts=()
-
           # Check for critical issues
           if critical_issues=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
                               "https://api.github.com/repos/${{ github.repository }}/issues?state=open&labels=critical" \
@@ -274,7 +238,6 @@ jobs:
               project_health="attention"
             fi
           fi
-
           # Check workflow failures (last 10 runs)
           if workflow_runs=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
                             "https://api.github.com/repos/${{ github.repository }}/actions/runs?per_page=10" \
@@ -285,7 +248,6 @@ jobs:
               project_health="attention"
             fi
           fi
-
           # Check stale milestones
           if milestones=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
                          "https://api.github.com/repos/${{ github.repository }}/milestones" \
@@ -296,56 +258,45 @@ jobs:
               project_health="attention"
             fi
           fi
-
           echo "health=$project_health" >> $GITHUB_OUTPUT
           echo "alerts=${alerts[*]}" >> $GITHUB_OUTPUT
           echo "critical_issues=$critical_issues" >> $GITHUB_OUTPUT
-
       - name: 📈 Performance Metrics Collection
         id: performance-metrics
         run: |
           echo "📈 Collecting performance metrics..."
-
           # Calculate uptime (simplified - in production would use historical data)
           uptime="99.5"
-
           # Repository metrics
           if repo_data=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
                          "https://api.github.com/repos/${{ github.repository }}"); then
             stars=$(echo "$repo_data" | jq -r '.stargazers_count // 0')
             forks=$(echo "$repo_data" | jq -r '.forks_count // 0')
             open_issues=$(echo "$repo_data" | jq -r '.open_issues_count // 0')
-
             echo "⭐ Repository metrics: $stars stars, $forks forks, $open_issues issues"
           else
             stars=0; forks=0; open_issues=0
           fi
-
           echo "uptime=$uptime" >> $GITHUB_OUTPUT
           echo "stars=$stars" >> $GITHUB_OUTPUT
           echo "forks=$forks" >> $GITHUB_OUTPUT
           echo "open_issues=$open_issues" >> $GITHUB_OUTPUT
-
       - name: 📊 Health Summary & Alert Decision
         id: health-summary
         run: |
           echo "📊 Calculating overall health..."
-
           tech_status="${{ steps.technical-check.outputs.status }}"
           services_status="${{ steps.services-check.outputs.status }}"
           project_health="${{ steps.project-check.outputs.health }}"
-
           # Determine overall health
           critical_count=0
           if [[ "$tech_status" == "critical" ]]; then ((critical_count++)); fi
           if [[ "$services_status" == "critical" ]]; then ((critical_count++)); fi
           if [[ "$project_health" == "critical" ]]; then ((critical_count++)); fi
-
           degraded_count=0
           if [[ "$tech_status" == "degraded" ]]; then ((degraded_count++)); fi
           if [[ "$services_status" == "degraded" ]]; then ((degraded_count++)); fi
           if [[ "$project_health" == "attention" ]]; then ((degraded_count++)); fi
-
           if [[ $critical_count -gt 0 ]]; then
             overall_health="critical"
             health_color="red"
@@ -359,11 +310,9 @@ jobs:
             health_color="green"
             should_notify="${{ github.event.inputs.force_alerts || 'false' }}"
           fi
-
           # Collect all alerts
           project_alerts="${{ steps.project-check.outputs.alerts }}"
           failed_endpoints="${{ steps.technical-check.outputs.failed_endpoints }}"
-
           all_alerts=()
           if [[ -n "$project_alerts" ]]; then
             IFS=' ' read -ra ADDR <<< "$project_alerts"
@@ -375,43 +324,34 @@ jobs:
               all_alerts+=("Endpoint $endpoint failed")
             done
           fi
-
           echo "health=$overall_health" >> $GITHUB_OUTPUT
           echo "color=$health_color" >> $GITHUB_OUTPUT
           echo "should_notify=$should_notify" >> $GITHUB_OUTPUT
           echo "alerts=${all_alerts[*]}" >> $GITHUB_OUTPUT
-
           echo "🏥 Overall Health: $overall_health"
           echo "🚨 Should notify: $should_notify"
           echo "📊 Alerts: ${#all_alerts[@]} total"
-
   # ============================================================================
   # JOB 2: DASHBOARD UPDATE & METRICS
   # ============================================================================
-
   update-unified-dashboard:
     name: 📄 Update Unified Dashboard
     runs-on: ubuntu-latest
     needs: unified-health-check
     if: always()
     timeout-minutes: 10
-
     permissions:
       contents: write
-
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-
       - name: 📊 Generate Unified Metrics JSON
         run: |
           echo "📊 Generating unified metrics..."
-
           timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           environment="${{ needs.unified-health-check.outputs.environment }}"
-
           # Create comprehensive metrics JSON
           cat << EOF > unified-metrics.json
           {
@@ -454,15 +394,11 @@ jobs:
             "next_check": "$(date -u -d '+7 hours' +%Y-%m-%dT%H:%M:%SZ)"
           }
           EOF
-
           echo "✅ Unified metrics generated"
-
       - name: 🌐 Update Dashboard HTML
         run: |
           echo "🌐 Updating unified dashboard HTML..."
-
           mkdir -p docs
-
           # Generate modern, comprehensive dashboard
           cat << 'EOF' > docs/index.html
           <!DOCTYPE html>
@@ -483,16 +419,13 @@ jobs:
                       --card: #ffffff;
                       --border: #e2e8f0;
                   }
-
                   * { margin: 0; padding: 0; box-sizing: border-box; }
-
                   body {
                       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
                       background: var(--bg);
                       color: #1f2937;
                       line-height: 1.6;
                   }
-
                   .header {
                       background: linear-gradient(135deg, var(--primary) 0%, #1d4ed8 100%);
                       color: white;
@@ -500,24 +433,20 @@ jobs:
                       text-align: center;
                       box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
                   }
-
                   .header h1 {
                       font-size: 2.5rem;
                       font-weight: 700;
                       margin-bottom: 0.5rem;
                   }
-
                   .header .subtitle {
                       font-size: 1.125rem;
                       opacity: 0.9;
                   }
-
                   .container {
                       max-width: 1200px;
                       margin: 0 auto;
                       padding: 2rem;
                   }
-
                   .status-banner {
                       background: var(--card);
                       border-radius: 12px;
@@ -526,17 +455,14 @@ jobs:
                       border-left: 4px solid var(--success);
                       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
                   }
-
                   .status-banner.warning { border-left-color: var(--warning); }
                   .status-banner.critical { border-left-color: var(--danger); }
-
                   .metrics-grid {
                       display: grid;
                       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
                       gap: 1.5rem;
                       margin-bottom: 2rem;
                   }
-
                   .metric-card {
                       background: var(--card);
                       border-radius: 12px;
@@ -544,19 +470,16 @@ jobs:
                       border: 1px solid var(--border);
                       transition: transform 0.2s, box-shadow 0.2s;
                   }
-
                   .metric-card:hover {
                       transform: translateY(-2px);
                       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
                   }
-
                   .metric-header {
                       display: flex;
                       align-items: center;
                       justify-content: space-between;
                       margin-bottom: 1rem;
                   }
-
                   .metric-title {
                       font-size: 0.875rem;
                       font-weight: 600;
@@ -564,18 +487,15 @@ jobs:
                       letter-spacing: 0.05em;
                       color: var(--muted);
                   }
-
                   .metric-value {
                       font-size: 2rem;
                       font-weight: 700;
                       color: var(--primary);
                   }
-
                   .metric-change {
                       font-size: 0.875rem;
                       color: var(--success);
                   }
-
                   .section {
                       background: var(--card);
                       border-radius: 12px;
@@ -583,14 +503,12 @@ jobs:
                       margin-bottom: 1.5rem;
                       border: 1px solid var(--border);
                   }
-
                   .section-title {
                       font-size: 1.25rem;
                       font-weight: 600;
                       margin-bottom: 1rem;
                       color: #111827;
                   }
-
                   .status-indicator {
                       display: inline-flex;
                       align-items: center;
@@ -600,22 +518,18 @@ jobs:
                       font-size: 0.875rem;
                       font-weight: 500;
                   }
-
                   .status-healthy {
                       background: #dcfce7;
                       color: #166534;
                   }
-
                   .status-warning {
                       background: #fef3c7;
                       color: #92400e;
                   }
-
                   .status-critical {
                       background: #fee2e2;
                       color: #991b1b;
                   }
-
                   .optimization-badge {
                       display: inline-block;
                       background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
@@ -626,14 +540,12 @@ jobs:
                       font-weight: 600;
                       margin: 1rem 0;
                   }
-
                   .footer {
                       text-align: center;
                       padding: 2rem;
                       color: var(--muted);
                       font-size: 0.875rem;
                   }
-
                   @media (max-width: 768px) {
                       .header h1 { font-size: 2rem; }
                       .container { padding: 1rem; }
@@ -646,7 +558,6 @@ jobs:
                   <h1>📊 TaxasGE Monitoring</h1>
                   <p class="subtitle">Unified System Health & Project Dashboard</p>
               </div>
-
               <div class="container">
                   <div id="status-banner" class="status-banner">
                       <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
@@ -659,7 +570,6 @@ jobs:
                           </div>
                       </div>
                   </div>
-
                   <div class="metrics-grid">
                       <div class="metric-card">
                           <div class="metric-header">
@@ -669,7 +579,6 @@ jobs:
                           <div class="metric-value">150ms</div>
                           <div class="metric-change">↓ 25ms from last week</div>
                       </div>
-
                       <div class="metric-card">
                           <div class="metric-header">
                               <span class="metric-title">System Uptime</span>
@@ -678,7 +587,6 @@ jobs:
                           <div class="metric-value">24h</div>
                           <div class="metric-change">SLA: 99.9% target</div>
                       </div>
-
                       <div class="metric-card">
                           <div class="metric-header">
                               <span class="metric-title">Project Progress</span>
@@ -687,7 +595,6 @@ jobs:
                           <div class="metric-value">67.5%</div>
                           <div class="metric-change">Mobile Critical Path Focus</div>
                       </div>
-
                       <div class="metric-card">
                           <div class="metric-header">
                               <span class="metric-title">Monitoring Efficiency</span>
@@ -697,7 +604,6 @@ jobs:
                           <div class="metric-change">Down from 96x/day</div>
                       </div>
                   </div>
-
                   <div class="section">
                       <h2 class="section-title">🚀 Technical Systems</h2>
                       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
@@ -719,7 +625,6 @@ jobs:
                           </div>
                       </div>
                   </div>
-
                   <div class="section">
                       <h2 class="section-title">📊 Project Health</h2>
                       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
@@ -737,7 +642,6 @@ jobs:
                           </div>
                       </div>
                   </div>
-
                   <div class="section">
                       <h2 class="section-title">⚡ Performance Optimizations</h2>
                       <ul style="list-style: none; padding: 0;">
@@ -756,17 +660,14 @@ jobs:
                       </ul>
                   </div>
               </div>
-
               <div class="footer">
                   <p>🇬🇶 TaxasGE - Built for Equatorial Guinea</p>
                   <p>Unified monitoring system • Next check: 7 hours</p>
               </div>
-
               <script>
                   // Update timestamp
                   document.getElementById('last-update').textContent =
                       `Last updated: ${new Date().toLocaleString()}`;
-
                   // Simulate real-time updates (in production, fetch from unified-metrics.json)
                   setInterval(() => {
                       const timestamp = document.getElementById('last-update');
@@ -776,63 +677,49 @@ jobs:
           </body>
           </html>
           EOF
-
           echo "✅ Unified dashboard HTML generated"
-
       - name: 💾 Commit Dashboard Updates
         run: |
           echo "💾 Committing unified dashboard updates..."
-
           # Create docs directory
           mkdir -p docs
-
           # Copy metrics to docs
           cp unified-metrics.json docs/unified-metrics.json
-
           # Configure Git
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action - Unified Monitoring"
-
           # Add files
           git add docs/
-
           # Check for changes
           if git diff --staged --quiet; then
             echo "ℹ️ No changes to commit"
           else
             # Commit changes
             git commit -m "📊 Unified monitoring system update - $(date -u +%Y-%m-%d\ %H:%M\ UTC)
-
             🏥 System Health: ${{ needs.unified-health-check.outputs.overall-health }}
             🚀 Technical Status: ${{ needs.unified-health-check.outputs.technical-status }}
             📊 Project Health: ${{ needs.unified-health-check.outputs.project-health }}
             ⚡ Optimization: 96.8% reduction in workflow executions
-
             Auto-generated by Unified Monitoring System"
-
             # Push changes
             git push
             echo "✅ Dashboard updates committed and pushed"
           fi
-
   # ============================================================================
   # JOB 3: SMART NOTIFICATIONS
   # ============================================================================
-
   smart-notifications:
     name: 📢 Smart Alert System
     runs-on: ubuntu-latest
     needs: unified-health-check
     if: needs.unified-health-check.outputs.should-notify == 'true'
     timeout-minutes: 5
-
     steps:
       - name: 📊 Prepare Alert Context
         id: alert-context
         run: |
           overall_health="${{ needs.unified-health-check.outputs.overall-health }}"
           alerts="${{ needs.unified-health-check.outputs.critical-alerts }}"
-
           # Determine alert level and emoji
           if [[ "$overall_health" == "critical" ]]; then
             alert_emoji="🚨"
@@ -847,11 +734,9 @@ jobs:
             alert_level="INFO"
             alert_color="good"
           fi
-
           echo "emoji=$alert_emoji" >> $GITHUB_OUTPUT
           echo "level=$alert_level" >> $GITHUB_OUTPUT
           echo "color=$alert_color" >> $GITHUB_OUTPUT
-
       - name: 📢 Send Slack Notification
         if: ${{ secrets.SLACK_WEBHOOK_URL != '' }}
         uses: 8398a7/action-slack@v3
@@ -897,25 +782,21 @@ jobs:
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-
       - name: 📧 Email Notification Fallback
-        if: "!secrets.SLACK_WEBHOOK_URL"
+        if: ${{ secrets.SLACK_WEBHOOK_URL == '' }}
         run: |
           echo "📧 Email notification would be sent here"
           echo "Subject: [${{ steps.alert-context.outputs.level }}] TaxasGE System Alert"
           echo "Health: ${{ needs.unified-health-check.outputs.overall-health }}"
           echo "Environment: ${{ needs.unified-health-check.outputs.environment }}"
           echo "Alerts: ${{ needs.unified-health-check.outputs.critical-alerts }}"
-
 # ============================================================================
 # WORKFLOW CONFIGURATION
 # ============================================================================
-
 # Prevent concurrent executions
 concurrency:
   group: unified-monitoring
   cancel-in-progress: true
-
 # ============================================================================
 # OPTIMIZATION SUMMARY
 # ============================================================================
