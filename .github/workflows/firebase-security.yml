@@ -389,35 +389,67 @@ jobs:
         run: |
           set -e
 
-          # Démarre les émulators en arrière-plan (ports fixés) — auteur : kouemou sah jean emac
-          firebase emulators:start --only firestore,storage --project "$FIREBASE_PROJECT_ID" --quiet > emulator.log 2>&1 &
+          # Debug versions — auteur : kouemou sah jean emac
+          firebase --version
+          node -v
+          npm -v
+          java -version
+
+          # S'assurer que 'nc' est dispo (certains runners n'ont pas netcat) — auteur : kouemou sah jean emac
+          if ! command -v nc >/dev/null 2>&1; then
+            echo "🔧 Installing netcat..."
+            sudo apt-get update -y
+            sudo apt-get install -y netcat-openbsd
+          fi
+
+          # Démarre les émulateurs en arrière-plan (⚠️ PAS de --quiet sur v12.4.0) — auteur : kouemou sah jean emac
+          # firebase.json avec ports fixés (8080/9199) a été créé plus tôt à la racine du repo
+          rm -f emulator.log
+          ( firebase emulators:start --only firestore,storage --project "$FIREBASE_PROJECT_ID" ) > emulator.log 2>&1 &
           EMULATOR_PID=$!
 
-          # Attente des ports — auteur : kouemou sah jean emac
-          for i in {1..30}; do
-            (nc -z 127.0.0.1 8080 && nc -z 127.0.0.1 9199) && break
-            echo "⏳ Waiting emulators (try $i/30) ..."
+          # Attente des ports (jusqu'à 180s) — auteur : kouemou sah jean emac
+          READY=0
+          for i in $(seq 1 180); do
+            if nc -z 127.0.0.1 8080 && nc -z 127.0.0.1 9199; then
+              READY=1
+              echo "✅ Emulators are up (after ${i}s)"
+              break
+            fi
+            # si le process est mort, on sort tôt avec les logs — auteur : kouemou sah jean emac
+            if ! kill -0 "$EMULATOR_PID" 2>/dev/null; then
+              echo "❌ Emulator process terminated unexpectedly"
+              echo "----- EMULATOR LOG (tail) -----"
+              tail -n 200 emulator.log || true
+              exit 1
+            fi
+            echo "⏳ Waiting emulators (try $i/180) ..."
             sleep 1
           done
-          if ! nc -z 127.0.0.1 8080 || ! nc -z 127.0.0.1 9199; then
-            echo "❌ Emulators did not start on expected ports"
-            tail -n +1 emulator.log || true
-            kill $EMULATOR_PID || true
+
+          if [ "$READY" -ne 1 ]; then
+            echo "❌ Emulators did not start on expected ports (8080/9199)"
+            echo "----- EMULATOR LOG (tail) -----"
+            tail -n 200 emulator.log || true
+            # On tente un arrêt propre si toujours vivant — auteur : kouemou sah jean emac
+            kill "$EMULATOR_PID" 2>/dev/null || true
             exit 1
           fi
 
-          # Copie des règles vers le projet isolé — auteur : kouemou sah jean emac
+          # Copier les règles dans l’environnement isolé — auteur : kouemou sah jean emac
           cp -f firestore.rules .github/security-tests/firestore.rules || true
           cp -f storage.rules   .github/security-tests/storage.rules   || true
 
-          # Lancement des tests — auteur : kouemou sah jean emac
+          # Lancer les tests — auteur : kouemou sah jean emac
           set +e
           (cd .github/security-tests && npm test -- --verbose)
           TEST_EXIT=$?
           set -e
 
           # Arrêt propre — auteur : kouemou sah jean emac
-          kill $EMULATOR_PID || true
+          if kill -0 "$EMULATOR_PID" 2>/dev/null; then
+            kill "$EMULATOR_PID" || true
+          fi
           sleep 1
 
           if [ "$TEST_EXIT" -ne 0 ]; then
