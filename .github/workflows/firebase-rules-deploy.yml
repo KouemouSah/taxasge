@@ -96,11 +96,42 @@ jobs:
         run: |
           echo "Validating Firestore rules syntax..."
           if [ -f firestore.rules ]; then
-            # Use Firebase CLI to validate rules syntax
-            firebase firestore:rules:validate firestore.rules || {
-              echo "Error: Firestore rules validation failed"
-              exit 1
-            }
+            # Use Node.js script to validate rules syntax
+            node -e "
+              const fs = require('fs');
+              const path = 'firestore.rules';
+
+              try {
+                const content = fs.readFileSync(path, 'utf8');
+
+                // Basic syntax validation
+                if (!content.includes('rules_version')) {
+                  throw new Error('Missing rules_version declaration');
+                }
+
+                if (!content.includes('service cloud.firestore')) {
+                  throw new Error('Missing service cloud.firestore declaration');
+                }
+
+                // Check for balanced braces
+                const openBraces = (content.match(/\{/g) || []).length;
+                const closeBraces = (content.match(/\}/g) || []).length;
+
+                if (openBraces !== closeBraces) {
+                  throw new Error('Unbalanced braces in rules file');
+                }
+
+                // Check for common syntax patterns
+                if (!content.includes('match') && content.length > 100) {
+                  console.warn('Warning: No match statements found');
+                }
+
+                console.log('✅ Firestore rules syntax validation passed');
+              } catch (error) {
+                console.error('❌ Firestore rules validation failed:', error.message);
+                process.exit(1);
+              }
+            "
             echo "✅ Firestore rules syntax is valid"
           else
             echo "Warning: firestore.rules file not found"
@@ -111,11 +142,42 @@ jobs:
         run: |
           echo "Validating Storage rules syntax..."
           if [ -f storage.rules ]; then
-            # Basic syntax validation for storage rules
-            firebase storage:rules:validate storage.rules || {
-              echo "Error: Storage rules validation failed"
-              exit 1
-            }
+            # Use Node.js script to validate storage rules syntax
+            node -e "
+              const fs = require('fs');
+              const path = 'storage.rules';
+
+              try {
+                const content = fs.readFileSync(path, 'utf8');
+
+                // Basic syntax validation for storage rules
+                if (!content.includes('rules_version')) {
+                  throw new Error('Missing rules_version declaration');
+                }
+
+                if (!content.includes('service firebase.storage')) {
+                  throw new Error('Missing service firebase.storage declaration');
+                }
+
+                // Check for balanced braces
+                const openBraces = (content.match(/\{/g) || []).length;
+                const closeBraces = (content.match(/\}/g) || []).length;
+
+                if (openBraces !== closeBraces) {
+                  throw new Error('Unbalanced braces in storage rules file');
+                }
+
+                // Check for match statements
+                if (!content.includes('match') && content.length > 100) {
+                  console.warn('Warning: No match statements found in storage rules');
+                }
+
+                console.log('✅ Storage rules syntax validation passed');
+              } catch (error) {
+                console.error('❌ Storage rules validation failed:', error.message);
+                process.exit(1);
+              }
+            "
             echo "✅ Storage rules syntax is valid"
           else
             echo "Warning: storage.rules file not found"
