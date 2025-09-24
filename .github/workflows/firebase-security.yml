@@ -2,7 +2,7 @@ name: Firebase Security Validation
 
 on:
   schedule:
-    # Run security checks daily at 2 AM UTC
+    # Run security checks daily at 2 AM UTC — auteur : kouemou sah jean emac
     - cron: '0 2 * * *'
   push:
     branches:
@@ -84,34 +84,34 @@ jobs:
 
           vulnerabilities=0
 
-          # Check for common security anti-patterns
+          # Check for common security anti-patterns — auteur : kouemou sah jean emac
           echo "Checking for security anti-patterns..."
 
-          # Check for overly permissive rules
+          # Check for overly permissive rules — auteur : kouemou sah jean emac
           if grep -r "allow read, write: if true" firestore.rules storage.rules 2>/dev/null; then
             echo "❌ CRITICAL: Found overly permissive rules (allow if true)"
             vulnerabilities=$((vulnerabilities + 1))
           fi
 
-          # Check for missing authentication
+          # Check for missing authentication — auteur : kouemou sah jean emac
           if ! grep -q "request.auth != null" firestore.rules; then
             echo "⚠️  WARNING: No authentication checks found in Firestore rules"
             vulnerabilities=$((vulnerabilities + 1))
           fi
 
-          # Check for hardcoded secrets or IDs
+          # Check for hardcoded secrets or IDs — auteur : kouemou sah jean emac
           if grep -rE "(password|secret|key|token).*=.*['\"][^'\"]{10,}" firestore.rules storage.rules 2>/dev/null; then
             echo "❌ CRITICAL: Potential hardcoded secrets found"
             vulnerabilities=$((vulnerabilities + 1))
           fi
 
-          # Check for rate limiting
+          # Check for rate limiting — auteur : kouemou sah jean emac
           if ! grep -q "rateLimit\|rate.*limit" firestore.rules; then
             echo "⚠️  WARNING: No rate limiting detected"
             vulnerabilities=$((vulnerabilities + 1))
           fi
 
-          # Check for input validation
+          # Check for input validation — auteur : kouemou sah jean emac
           if ! grep -q "is string\|is number\|is timestamp" firestore.rules; then
             echo "⚠️  WARNING: Limited input validation detected"
             vulnerabilities=$((vulnerabilities + 1))
@@ -125,7 +125,7 @@ jobs:
         run: |
           echo "🔬 Running comprehensive security analysis..."
 
-          # Create security analysis script
+          # Create security analysis script — auteur : kouemou sah jean emac
           cat > security_analysis.py << 'EOF'
           import re
           import json
@@ -209,12 +209,13 @@ jobs:
           echo "📊 Calculating security score..."
 
           score=100
-          vulnerabilities=${{ steps.audit.outputs.vulnerabilities }}
+          vulnerabilities="${{ steps.audit.outputs.vulnerabilities }}"
+          vulnerabilities="${vulnerabilities:-0}"
 
-          # Deduct points based on vulnerabilities
+          # Deduct points based on vulnerabilities — auteur : kouemou sah jean emac
           score=$((score - vulnerabilities * 10))
 
-          # Bonus points for security features
+          # Bonus points for security features — auteur : kouemou sah jean emac
           if grep -q "isAuthenticated" firestore.rules; then
             score=$((score + 5))
           fi
@@ -227,7 +228,7 @@ jobs:
             score=$((score + 15))
           fi
 
-          # Ensure score is between 0 and 100
+          # Ensure score is between 0 and 100 — auteur : kouemou sah jean emac
           if [ $score -lt 0 ]; then score=0; fi
           if [ $score -gt 100 ]; then score=100; fi
 
@@ -299,8 +300,15 @@ jobs:
 
       - name: Install dependencies
         run: |
-          npm install -g firebase-tools@${{ env.FIREBASE_CLI_VERSION }}
+          # Init package.json pour permettre l’install des devDeps — auteur : kouemou sah jean emac
+          npm init -y
+          npm pkg set scripts.test="jest"
+
+          # Dépendances locales pour les tests — auteur : kouemou sah jean emac
           npm install --save-dev @firebase/rules-unit-testing jest
+
+          # Outils globaux requis — auteur : kouemou sah jean emac
+          npm install -g firebase-tools@${{ env.FIREBASE_CLI_VERSION }}
 
       - name: Create comprehensive security tests
         run: |
@@ -462,27 +470,29 @@ jobs:
           EOF
 
           cat > tests/setup.js << 'EOF'
-          // Test setup
+          // Test setup — auteur : kouemou sah jean emac
           jest.setTimeout(30000);
           EOF
 
       - name: Run security tests
         run: |
-          # Start Firebase emulators
-          firebase emulators:start --only firestore,storage --project demo-taxasge-security &
+          # Start Firebase emulators — auteur : kouemou sah jean emac
+          firebase emulators:start --only firestore,storage --project demo-taxasge-security > emulator.log 2>&1 &
           EMULATOR_PID=$!
 
-          # Wait for emulators to start
+          # Wait for emulators to start — auteur : kouemou sah jean emac
           sleep 10
 
-          # Run tests
+          # Run tests — auteur : kouemou sah jean emac
           npm test -- --verbose || TEST_FAILED=true
 
-          # Stop emulators
+          # Stop emulators — auteur : kouemou sah jean emac
           kill $EMULATOR_PID || true
 
           if [ "$TEST_FAILED" = "true" ]; then
             echo "❌ Security tests failed"
+            echo "----- EMULATOR LOG (tail) -----"
+            tail -n 200 emulator.log || true
             exit 1
           fi
 
@@ -501,8 +511,7 @@ jobs:
       - name: Setup testing environment
         run: |
           echo "🎯 Setting up penetration testing environment..."
-
-          # Install security testing tools
+          # Install security testing tools — auteur : kouemou sah jean emac
           pip install firebase-admin requests
 
       - name: Run automated security tests
@@ -643,7 +652,7 @@ jobs:
         run: |
           echo "🚨 Setting up security monitoring..."
 
-          # Create monitoring configuration
+          # Create monitoring configuration — auteur : kouemou sah jean emac
           cat > security-monitoring.json << 'EOF'
           {
             "alerts": [
@@ -675,7 +684,7 @@ jobs:
         run: |
           echo "📈 Updating security dashboard..."
 
-          # Create security metrics
+          # Create security metrics — auteur : kouemou sah jean emac
           cat > security-metrics.json << EOF
           {
             "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
@@ -703,7 +712,7 @@ jobs:
           echo "🚨 SECURITY ALERT: Critical security issues detected!"
           echo "Vulnerabilities: ${{ needs.security-audit.outputs.vulnerabilities-found }}"
           echo "Security Score: ${{ needs.security-audit.outputs.security-score }}/100"
-          # Add notification logic here (Slack, email, PagerDuty, etc.)
+          # Add notification logic here (Slack, email, PagerDuty, etc.) — auteur : kouemou sah jean emac
 
       - name: Send success notification
         if: |
@@ -713,4 +722,4 @@ jobs:
         run: |
           echo "✅ Security validation completed successfully"
           echo "All security checks passed"
-          # Add success notification logic here
+          # Add success notification logic here — auteur : kouemou sah jean emac
