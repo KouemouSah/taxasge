@@ -301,6 +301,12 @@ jobs:
       - name: Install dependencies (isolated)
         run: |
           cd .github/security-tests
+          
+          # Si pas de lockfile, on le génère d’abord pour permettre npm ci — auteur : kouemou sah jean emac
+          if [ ! -f package-lock.json ]; then
+            npm install --package-lock-only
+          fi
+          
           npm ci
           npm list --depth=0 || true
           npm -v && node -v
