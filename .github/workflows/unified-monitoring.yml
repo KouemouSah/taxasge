@@ -853,7 +853,7 @@ jobs:
           echo "color=$alert_color" >> $GITHUB_OUTPUT
 
       - name: 📢 Send Slack Notification
-        if: secrets.SLACK_WEBHOOK_URL
+        if: ${{ secrets.SLACK_WEBHOOK_URL != '' }}
         uses: 8398a7/action-slack@v3
         with:
           status: custom
