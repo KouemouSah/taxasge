@@ -399,13 +399,13 @@ jobs:
       - name: Deploy Storage rules to production
         run: |
           echo "Deploying Storage rules to production..."
-          firebase deploy --only storage:rules --project taxasge-pro --token "${{ secrets.FIREBASE_TOKEN_PRO }}" --force
+          firebase deploy --only storage:rules --project taxasge-pro --force
 
       - name: Deploy Firestore indexes to production
         if: needs.validate-rules.outputs.indexes-changed == 'true'
         run: |
           echo "Deploying Firestore indexes to production..."
-          firebase deploy --only firestore:indexes --project taxasge-pro --token "${{ secrets.FIREBASE_TOKEN_PRO }}" --force
+          firebase deploy --only firestore:indexes --project taxasge-pro --force
 
       - name: Post-deployment verification
         run: |
