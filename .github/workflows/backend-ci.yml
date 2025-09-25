@@ -14,19 +14,16 @@ on:
       - 'config/**'
       - 'scripts/**'
       - '.github/workflows/backend-ci.yml'
-
-# Cancel previous runs on new push
+# Cancel previous runs on new push — auteur : kouemou sah jean emac
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
 env:
   PYTHON_VERSION: '3.11'
   ENVIRONMENT: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
-
 jobs:
   # ============================================================================
-  # SETUP & VALIDATION
+  # SETUP & VALIDATION — auteur : kouemou sah jean emac
   # ============================================================================
   setup:
     name: 🔧 Setup & Validation
@@ -54,9 +51,8 @@ jobs:
           echo "🐍 Python version: ${{ steps.env.outputs.python-version }}"
           echo "📝 Triggered by: ${{ github.event_name }}"
           echo "🌿 Branch: ${{ github.ref_name }}"
-
   # ============================================================================
-  # PYTHON TESTS & QUALITY
+  # PYTHON TESTS & QUALITY — auteur : kouemou sah jean emac
   # ============================================================================
   backend-tests:
     name: 🧪 Backend Tests
@@ -123,20 +119,18 @@ jobs:
             echo "⚠️ Aucun fichier test_*.py trouvé dans tests/"
             echo "📝 Phase développement: Tests à implémenter"
             echo "✅ Validation structure: OK (dossier tests/ existe)"
-            cat << 'EOF' | python3
-import sys
-import os
-sys.path.append('.')
-try:
-    import main
-    print('✅ Import Firebase Functions: OK')
-    print(f'📊 Environment: {os.getenv("ENVIRONMENT", "development")}')
-    print(f'🏷️ Functions Framework: OK')
-    print('✅ Structure backend validée')
-except Exception as e:
-    print(f'❌ Erreur validation: {e}')
-    sys.exit(1)
-EOF
+            echo 'PYTHON_SCRIPT_UNIT_TESTS_NO_FILES<<EOF' >> $GITHUB_ENV
+            import sys, os
+            sys.path.append('.')
+            try:
+                import main
+                print('✅ Import Firebase Functions: OK')
+                print(f'📊 Environment: {os.getenv("ENVIRONMENT", "development")}')
+                print('✅ Structure backend validée')
+            except Exception as e:
+                print(f'❌ Erreur validation: {e}')
+                sys.exit(1)
+            EOF
           else
             echo "🧪 $test_count fichier(s) de test trouvé(s)"
             if python3 -c "import pytest" 2>/dev/null; then
@@ -146,18 +140,27 @@ EOF
               echo "⚠️ Pytest non disponible - Phase développement Firebase Functions"
               echo "📝 Tests unitaires à implémenter avec pytest"
               echo "✅ Validation structure: OK (fichiers de test présents)"
-              cat << 'EOF' | python3
-import sys
-import os
-sys.path.append('.')
-try:
-    import main
-    print('Import Firebase Functions: OK')
-    print('Tests validation: Structure OK')
-except Exception as e:
-    print('Erreur validation:', str(e))
-    sys.exit(1)
-EOF
+              echo 'PYTHON_SCRIPT_UNIT_TESTS_WITH_FILES<<EOF' >> $GITHUB_ENV
+              import sys, os
+              sys.path.append('.')
+              try:
+                  import main
+                  print('Import Firebase Functions: OK')
+                  print('Tests validation: Structure OK')
+              except Exception as e:
+                  print('Erreur validation:', str(e))
+                  sys.exit(1)
+              EOF
+            fi
+          fi
+          # Execute the appropriate Python script
+          if [ "$test_count" -eq 0 ]; then
+            python3 -c "$PYTHON_SCRIPT_UNIT_TESTS_NO_FILES"
+          else
+            if python3 -c "import pytest" 2>/dev/null; then
+              python3 -m pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term-missing
+            else
+              python3 -c "$PYTHON_SCRIPT_UNIT_TESTS_WITH_FILES"
             fi
           fi
       - name: 🔗 Run integration tests
@@ -165,9 +168,8 @@ EOF
         run: |
           cd packages/backend
           echo "🔗 Tests d'intégration backend"
-          python3 << 'EOF'
-          import sys
-          import os
+          echo 'PYTHON_SCRIPT_INTEGRATION_TESTS<<EOF' >> $GITHUB_ENV
+          import sys, os
           sys.path.append('.')
           print('🔍 Testing imports...')
           try:
@@ -196,6 +198,7 @@ EOF
               sys.exit(1)
           print('🎉 All integration tests passed!')
           EOF
+          python3 -c "$PYTHON_SCRIPT_INTEGRATION_TESTS"
       - name: 🔍 Code quality checks
         if: matrix.test-type == 'quality'
         run: |
@@ -221,7 +224,7 @@ EOF
           cd packages/backend
           rm -f .env.test
   # ============================================================================
-  # API VALIDATION
+  # API VALIDATION — auteur : kouemou sah jean emac
   # ============================================================================
   api-validation:
     name: 🚀 API Validation
@@ -249,9 +252,8 @@ EOF
         run: |
           cd packages/backend
           echo "🔧 Validation configuration pour: $ENVIRONMENT"
-          python3 << 'EOF'
-          import os
-          import sys
+          echo 'PYTHON_SCRIPT_API_VALIDATION<<EOF' >> $GITHUB_ENV
+          import os, sys
           sys.path.append('.')
           os.environ['ENVIRONMENT'] = os.getenv('ENVIRONMENT')
           try:
@@ -264,6 +266,7 @@ EOF
               print(f'❌ Erreur configuration: {e}')
               sys.exit(1)
           EOF
+          python3 -c "$PYTHON_SCRIPT_API_VALIDATION"
       - name: 🚀 Start API server
         run: |
           cd packages/backend
@@ -303,7 +306,7 @@ EOF
             echo "🛑 Serveur API arrêté"
           fi
   # ============================================================================
-  # SECURITY SCAN
+  # SECURITY SCAN — auteur : kouemou sah jean emac
   # ============================================================================
   security-scan:
     name: 🔒 Security Scan
@@ -339,7 +342,7 @@ EOF
             packages/backend/bandit-report.json
             packages/backend/safety-report.json
   # ============================================================================
-  # SONARQUBE ANALYSIS
+  # SONARQUBE ANALYSIS — auteur : kouemou sah jean emac
   # ============================================================================
   sonarqube:
     name: 📊 SonarQube Analysis
@@ -370,7 +373,7 @@ EOF
             -Dsonar.test.exclusions=tests/**
             -Dsonar.coverage.exclusions=tests/**,**/test_*.py
   # ============================================================================
-  # NOTIFICATION VIA SLACK
+  # NOTIFICATION VIA SLACK — auteur : kouemou sah jean emac
   # ============================================================================
   notify:
     name: 📢 Notification
@@ -436,19 +439,18 @@ EOF
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-
 # ============================================================================
-# WORKFLOW SUMMARY
+# WORKFLOW SUMMARY — auteur : kouemou sah jean emac
 # ============================================================================
-# Ce workflow Backend CI/CD pour TaxasGE effectue:
-# 1. 🔧 Setup & détection d'environnement automatique
-# 2. 🧪 Tests unitaires, intégration et qualité de code (avec fallback si pas de tests)
-# 3. 🚀 Validation API avec tests endpoints (robuste avec fallback)
-# 4. 🔒 Scan de sécurité avec Bandit et Safety (non-bloquant)
-# 5. 📊 Analyse SonarQube pour la qualité
-# 6. 📢 Notifications Slack des résultats
+# Ce workflow Backend CI/CD pour TaxasGE effectue: — auteur : kouemou sah jean emac
+# 1. 🔧 Setup & détection d'environnement automatique — auteur : kouemou sah jean emac
+# 2. 🧪 Tests unitaires, intégration et qualité de code (avec fallback si pas de tests) — auteur : kouemou sah jean emac
+# 3. 🚀 Validation API avec tests endpoints (robuste avec fallback) — auteur : kouemou sah jean emac
+# 4. 🔒 Scan de sécurité avec Bandit et Safety (non-bloquant) — auteur : kouemou sah jean emac
+# 5. 📊 Analyse SonarQube pour la qualité — auteur : kouemou sah jean emac
+# 6. 📢 Notifications Slack des résultats — auteur : kouemou sah jean emac
 #
-# Déclenché sur: push/PR vers develop/main avec changements backend
-# Compatible avec: GitHub Secrets configurés (Supabase, Slack, SonarQube)
-# Robuste: Fonctionne même sans tests implémentés (phase développement)
+# Déclenché sur: push/PR vers develop/main avec changements backend — auteur : kouemou sah jean emac
+# Compatible avec: GitHub Secrets configurés (Supabase, Slack, SonarQube) — auteur : kouemou sah jean emac
+# Robuste: Fonctionne même sans tests implémentés (phase développement) — auteur : kouemou sah jean emac
 # ============================================================================
