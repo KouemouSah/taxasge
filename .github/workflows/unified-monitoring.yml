@@ -293,14 +293,30 @@ jobs:
           services_status="${{ steps.services-check.outputs.status }}"
           project_health="${{ steps.project-check.outputs.health }}"
 
+          # Initialize counters
           critical_count=0
           degraded_count=0
-          all_alerts=()
 
-          if [[ "$tech_status" == "critical" ]]; then ((critical_count++)); elif [[ "$tech_status" == "degraded" ]]; then ((degraded_count++)); fi
-          if [[ "$services_status" == "critical" ]]; then ((critical_count++)); elif [[ "$services_status" == "degraded" ]]; then ((degraded_count++)); fi
-          if [[ "$project_health" == "critical" ]]; then ((critical_count++)); elif [[ "$project_health" == "attention" ]]; then ((degraded_count++)); fi
+          # Tally statuses
+          if [[ "$tech_status" == "critical" ]]; then
+            ((critical_count++))
+          elif [[ "$tech_status" == "degraded" ]]; then
+            ((degraded_count++))
+          fi
 
+          if [[ "$services_status" == "critical" ]]; then
+            ((critical_count++))
+          elif [[ "$services_status" == "degraded" ]]; then
+            ((degraded_count++))
+          fi
+
+          if [[ "$project_health" == "critical" ]]; then
+            ((critical_count++))
+          elif [[ "$project_health" == "attention" ]]; then
+            ((degraded_count++))
+          fi
+
+          # Decide overall health
           if [[ $critical_count -gt 0 ]]; then
             overall_health="critical"; health_color="red"; should_notify="true"
           elif [[ $degraded_count -gt 1 ]]; then
@@ -309,18 +325,27 @@ jobs:
             overall_health="healthy"; health_color="green"; should_notify="${{ github.event.inputs.force_alerts || 'false' }}"
           fi
 
+          # Safely collect alerts (NO failures when empty)
           project_alerts="${{ steps.project-check.outputs.alerts }}"
           failed_endpoints="${{ steps.technical-check.outputs.failed_endpoints }}"
 
+          all_alerts=()
+
           if [[ -n "$project_alerts" ]]; then
-            IFS=' ' read -ra alert_array <<< "$project_alerts"
-            for alert in "${alert_array[@]}"; do all_alerts+=("$alert"); done
-          fi
-          if [[ -n "$failed_endpoints" ]]; then
-            IFS=' ' read -ra endpoint_array <<< "$failed_endpoints"
-            for endpoint in "${endpoint_array[@]}"; do all_alerts+=("Endpoint $endpoint failed"); done
+            IFS=' ' read -ra alert_array <<< "$project_alerts" || true
+            for alert in "${alert_array[@]}"; do
+              all_alerts+=("$alert")
+            done
           fi
 
+          if [[ -n "$failed_endpoints" ]]; then
+            IFS=' ' read -ra endpoint_array <<< "$failed_endpoints" || true
+            for endpoint in "${endpoint_array[@]}"; do
+              all_alerts+=("Endpoint $endpoint failed")
+            done
+          fi
+
+          # Emit outputs
           echo "health=$overall_health" >> "$GITHUB_OUTPUT"
           echo "color=$health_color" >> "$GITHUB_OUTPUT"
           echo "should_notify=$should_notify" >> "$GITHUB_OUTPUT"
