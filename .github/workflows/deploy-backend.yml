@@ -341,6 +341,7 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT_DEV: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV }}
           FIREBASE_SERVICE_ACCOUNT_PRO: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_PRO }}
+          SMTP_PASSWORD_GMAIL: ${{ secrets.SMTP_PASSWORD_GMAIL }}
           ENVIRONMENT: ${{ needs.prepare.outputs.environment }}
         run: |
           # Sélection du service account selon l'environnement
@@ -423,6 +424,7 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT_DEV: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV }}
           FIREBASE_SERVICE_ACCOUNT_PRO: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_PRO }}
+          SMTP_PASSWORD_GMAIL: ${{ secrets.SMTP_PASSWORD_GMAIL }}
           ENVIRONMENT: ${{ needs.prepare.outputs.environment }}
         run: |
           # Sélection du service account selon l'environnement

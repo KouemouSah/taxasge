@@ -8,19 +8,19 @@
 
 ## 🚨 **SECRETS GITHUB REQUIS (OPTIMISÉ)**
 
-### **✅ OPTIMISATION APPLIQUÉE - TOKENS ÉLIMINÉS**
+### **✅ SÉCURISATION COMPLÈTE - CONFIGURATION FINALE**
 ```bash
-✅ À METTRE À JOUR:
-   FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV (nouveau contenu)
+✅ FIREBASE SERVICE ACCOUNTS:
+   FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV (JSON complet)
+   FIREBASE_SERVICE_ACCOUNT_TAXASGE_PRO (JSON complet)
 
-✅ À CRÉER:
-   FIREBASE_SERVICE_ACCOUNT_TAXASGE_PRO (nouveau)
+✅ SMTP SÉCURISÉ (NOUVEAU):
+   SMTP_PASSWORD_GMAIL (App Password 16 caractères)
 
 ❌ TOKENS SUPPRIMÉS (redondants):
-   FIREBASE_TOKEN_DEV (inutile avec service accounts)
-   FIREBASE_TOKEN_PRO (inutile avec service accounts)
-   FIREBASE_TOKEN_STAGING (obsolète)
-   FIREBASE_TOKEN_PRODUCTION (obsolète)
+   FIREBASE_TOKEN_DEV/PRO/STAGING/PRODUCTION
+
+TOTAL: 3 secrets GitHub (au lieu de 6+)
 ```
 
 ---

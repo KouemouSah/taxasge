@@ -50,13 +50,21 @@ IMPORTANT: Copier IMMÉDIATEMENT (affiché une seule fois)
 
 ## ⚙️ **CONFIGURATION BACKEND**
 
-### **Mise à jour .env**
+### **Sécurisation GitHub Secrets (PRIORITÉ)**
 ```bash
-# REMPLACER:
-SMTP_PASSWORD=Seigneur1
+1. GitHub → Repository → Settings → Secrets and variables → Actions
+2. New repository secret:
+   - Name: SMTP_PASSWORD_GMAIL
+   - Secret: votre_nouveau_app_password_16_chars
+```
 
-# PAR:
-SMTP_PASSWORD=votre_nouveau_app_password_16_chars
+### **Configuration .env (Variable d'environnement)**
+```bash
+# CONFIGURATION ACTUELLE SÉCURISÉE:
+SMTP_PASSWORD=${SMTP_PASSWORD_GMAIL}
+
+# ✅ Plus de password en clair dans le code !
+# ✅ Variable d'environnement sécurisée GitHub Secrets
 ```
 
 ### **Test Fonctionnement**
