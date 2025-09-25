@@ -1,80 +1,62 @@
 # ============================================================================
-# 📊 TaxasGE Unified Monitoring System — auteur : kouemou sah jean emac
+# 📊 TaxasGE Unified Monitoring System
 # ============================================================================
-# Consolidated monitoring workflow replacing status-dashboard.yml and
-# dashboard-integration.yml with intelligent scheduling and smart alerting. — auteur : kouemou sah jean emac
+# Consolidated monitoring workflow with intelligent scheduling, smart alerting,
+# caching, and a unified dashboard output.
 #
-# OPTIMIZATION: Reduced from 96 runs/day to 3 runs/day = 96.8% reduction — auteur : kouemou sah jean emac
-# - Morning check: 07:00 UTC (primary business hours) — auteur : kouemou sah jean emac
-# - Afternoon check: 14:00 UTC (mid-day validation) — auteur : kouemou sah jean emac
-# - Evening summary: 20:00 UTC (end-of-day report) — auteur : kouemou sah jean emac
+# Runs:
+#   • 07:00 UTC – Morning check
+#   • 14:00 UTC – Afternoon validation
+#   • 20:00 UTC – Evening summary
 #
-# Features: — auteur : kouemou sah jean emac
-# - Combined technical monitoring + project metrics — auteur : kouemou sah jean emac
-# - Smart alerting (only on critical issues, not noise) — auteur : kouemou sah jean emac
-# - Caching strategies to reduce execution time — auteur : kouemou sah jean emac
-# - Professional error handling with rollback — auteur : kouemou sah jean emac
-# - Supports both development and production environments — auteur : kouemou sah jean emac
-# - Unified dashboard JSON and HTML generation — auteur : kouemou sah jean emac
-#
-# Author: KOUEMOU SAH Jean Emac — auteur : kouemou sah jean emac
+# Author: KOUEMOU SAH Jean Emac
 # ============================================================================
-name: 📊 Unified Monitoring System
+
+name: "📊 Unified Monitoring System"
 
 on:
-  # Optimized scheduling: 3x per day instead of 96x — auteur : kouemou sah jean emac
   schedule:
-    - cron: '0 7 * * *'   # 07:00 UTC - Morning check — auteur : kouemou sah jean emac
-    - cron: '0 14 * * *'  # 14:00 UTC - Afternoon validation — auteur : kouemou sah jean emac
-    - cron: '0 20 * * *'  # 20:00 UTC - Evening summary — auteur : kouemou sah jean emac
+    - cron: "0 7 * * *"
+    - cron: "0 14 * * *"
+    - cron: "0 20 * * *"
 
-  # Smart triggering on important events — auteur : kouemou sah jean emac
   workflow_run:
     workflows: ["🚀 Deploy Backend to Firebase", "📱 Mobile CI (React Native)", "🐍 Backend CI/CD"]
     types: [completed, failure]
 
-  # Manual execution with options — auteur : kouemou sah jean emac
   workflow_dispatch:
     inputs:
       monitoring_mode:
-        description: 'Type of monitoring to perform'
+        description: "Type of monitoring to perform"
         required: true
-        default: 'full'
+        default: "full"
         type: choice
-        options:
-          - full
-          - technical_only
-          - project_only
-          - critical_check
+        options: [full, technical_only, project_only, critical_check]
       force_alerts:
-        description: 'Force send notifications even if not critical'
+        description: "Force send notifications even if not critical"
         required: false
         default: false
         type: boolean
       environment:
-        description: 'Environment to monitor'
+        description: "Environment to monitor"
         required: false
-        default: 'auto'
+        default: "auto"
         type: choice
-        options:
-          - auto
-          - development
-          - production
+        options: [auto, development, production]
 
-# Environment variables — auteur : kouemou sah jean emac
 env:
-  FIREBASE_PROJECT_DEV: 'taxasge-dev'
-  FIREBASE_PROJECT_PROD: 'taxasge-prod'
-  API_TIMEOUT: '30'
-  MAX_RETRIES: '3'
-  CACHE_DURATION: '300' # 5 minutes cache — auteur : kouemou sah jean emac
+  FIREBASE_PROJECT_DEV: "taxasge-dev"
+  FIREBASE_PROJECT_PROD: "taxasge-prod"
+  API_TIMEOUT: "30"
+  MAX_RETRIES: "3"
+  CACHE_DURATION: "300"    # seconds
 
 jobs:
   # ============================================================================
-  # JOB 1: UNIFIED HEALTH CHECK — auteur : kouemou sah jean emac
+  # JOB 1: UNIFIED HEALTH CHECK
   # ============================================================================
   unified-health-check:
-    name: 🔍 Unified System Health Check
+    name: "🔍 Unified System Health Check"
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -87,19 +69,19 @@ jobs:
       environment: ${{ steps.environment.outputs.environment }}
 
     steps:
-      - name: 📥 Checkout code
+      - name: "📥 Checkout code"
         uses: actions/checkout@v4
 
-      - name: 🔧 Setup monitoring environment
+      - name: "🔧 Setup monitoring environment"
         run: |
-          echo "🔧 TaxasGE Unified Monitoring System"  # auteur : kouemou sah jean emac
-          echo "📅 Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"  # auteur : kouemou sah jean emac
-          echo "🎯 Mode: ${{ github.event.inputs.monitoring_mode || 'scheduled' }}"  # auteur : kouemou sah jean emac
-          echo "🌍 Environment: ${{ github.event.inputs.environment || 'auto' }}"  # auteur : kouemou sah jean emac
-          sudo apt-get update -qq  # auteur : kouemou sah jean emac
-          sudo apt-get install -y jq bc curl  # auteur : kouemou sah jean emac
+          echo "🔧 TaxasGE Unified Monitoring System"
+          echo "📅 Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "🎯 Mode: ${{ github.event.inputs.monitoring_mode || 'scheduled' }}"
+          echo "🌍 Environment: ${{ github.event.inputs.environment || 'auto' }}"
+          sudo apt-get update -qq
+          sudo apt-get install -y jq bc curl
 
-      - name: 🌍 Determine Environment
+      - name: "🌍 Determine Environment"
         id: environment
         run: |
           if [[ "${{ github.event.inputs.environment }}" == "production" ]]; then
@@ -111,10 +93,10 @@ jobs:
           else
             environment="development"
           fi
-          echo "environment=$environment" >> $GITHUB_OUTPUT
-          echo "🌍 Monitoring environment: $environment"  # auteur : kouemou sah jean emac
+          echo "environment=$environment" >> "$GITHUB_OUTPUT"
+          echo "🌍 Monitoring environment: $environment"
 
-      - name: ⚡ Cache Check
+      - name: "⚡ Cache Check"
         id: cache-check
         uses: actions/cache@v4
         with:
@@ -124,16 +106,17 @@ jobs:
           restore-keys: |
             taxasge-monitoring-${{ steps.environment.outputs.environment }}-
 
-      - name: 🚀 Technical System Check
+      - name: "🚀 Technical System Check"
         id: technical-check
         run: |
-          echo "🚀 Monitoring technical systems..."  # auteur : kouemou sah jean emac
+          echo "🚀 Monitoring technical systems..."
+
           if [[ "${{ steps.environment.outputs.environment }}" == "production" ]]; then
             API_BASE="https://taxasge-prod.web.app"
           else
             API_BASE="https://taxasge-dev.web.app"
           fi
-          echo "🎯 API Base: $API_BASE"  # auteur : kouemou sah jean emac
+          echo "🎯 API Base: $API_BASE"
 
           declare -A endpoints=(
             ["root"]="/"
@@ -149,13 +132,12 @@ jobs:
 
           for endpoint in "${!endpoints[@]}"; do
             url="$API_BASE${endpoints[$endpoint]}"
-            echo "🔍 Testing $endpoint: $url"  # auteur : kouemou sah jean emac
+            echo "🔍 Testing $endpoint: $url"
             start_time=$(date +%s.%N)
             if response=$(curl -s -w "%{http_code}" -m ${{ env.API_TIMEOUT }} "$url" 2>/dev/null); then
               end_time=$(date +%s.%N)
               response_time=$(echo "$end_time - $start_time" | bc -l)
               http_code="${response: -3}"
-
               if [[ "$http_code" =~ ^(200|201|302)$ ]]; then
                 echo "✅ $endpoint: OK (${response_time}s)"
                 ((success_count++))
@@ -189,19 +171,19 @@ jobs:
             echo "❌ Technical systems: Critical issues ($success_count/$total_count)"
           fi
 
-          echo "status=$tech_status" >> $GITHUB_OUTPUT
-          echo "success_rate=$success_rate" >> $GITHUB_OUTPUT
-          echo "avg_response_time=$avg_response_time" >> $GITHUB_OUTPUT
-          echo "failed_endpoints=${failed_endpoints[*]}" >> $GITHUB_OUTPUT
+          echo "status=$tech_status" >> "$GITHUB_OUTPUT"
+          echo "success_rate=$success_rate" >> "$GITHUB_OUTPUT"
+          echo "avg_response_time=$avg_response_time" >> "$GITHUB_OUTPUT"
+          echo "failed_endpoints=${failed_endpoints[*]}" >> "$GITHUB_OUTPUT"
 
-      - name: 🗄️ Database & Services Check
+      - name: "🗄️ Database & Services Check"
         id: services-check
         run: |
-          echo "🗄️ Checking database and services..."  # auteur : kouemou sah jean emac
+          echo "🗄️ Checking database and services..."
           services_status="healthy"
           services_details=()
 
-          # Supabase check — auteur : kouemou sah jean emac
+          # Supabase check
           if [[ -n "${{ secrets.SUPABASE_URL }}" && -n "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ]]; then
             if curl -s -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
                    -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
@@ -218,7 +200,7 @@ jobs:
             services_details+=("supabase:no_config")
           fi
 
-          # Firebase hosting ping — auteur : kouemou sah jean emac
+          # Firebase hosting reachability
           env_name="${{ steps.environment.outputs.environment }}"
           if [[ "$env_name" == "production" ]]; then
             firebase_url="https://${{ env.FIREBASE_PROJECT_PROD }}.web.app"
@@ -232,25 +214,22 @@ jobs:
           else
             echo "❌ Firebase: Connection failed"
             services_details+=("firebase:failed")
-            if [[ "$services_status" != "critical" ]]; then
-              services_status="degraded"
-            fi
+            services_status="degraded"
           fi
 
-          echo "status=$services_status" >> $GITHUB_OUTPUT
-          echo "details=${services_details[*]}" >> $GITHUB_OUTPUT
+          echo "status=$services_status" >> "$GITHUB_OUTPUT"
+          echo "details=${services_details[*]}" >> "$GITHUB_OUTPUT"
 
-      - name: 📊 Project Health Check
+      - name: "📊 Project Health Check"
         id: project-check
         run: |
-          echo "📊 Checking project health metrics..."  # auteur : kouemou sah jean emac
+          echo "📊 Checking project health metrics..."
           project_health="healthy"
           alerts=()
 
-          # Critical issues — auteur : kouemou sah jean emac
+          # Critical issues
           if critical_issues=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                              "https://api.github.com/repos/${{ github.repository }}/issues?state=open&labels=critical" \
-                              | jq length); then
+              "https://api.github.com/repos/${{ github.repository }}/issues?state=open&labels=critical" | jq length); then
             if [[ $critical_issues -gt 0 ]]; then
               echo "⚠️ Found $critical_issues critical issues"
               alerts+=("$critical_issues critical issues open")
@@ -258,10 +237,10 @@ jobs:
             fi
           fi
 
-          # Recent workflow failures — auteur : kouemou sah jean emac
+          # Recent workflow failures
           if workflow_runs=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                            "https://api.github.com/repos/${{ github.repository }}/actions/runs?per_page=10" \
-                            | jq '.workflow_runs[] | select(.conclusion == "failure") | .name' | wc -l); then
+              "https://api.github.com/repos/${{ github.repository }}/actions/runs?per_page=10" \
+              | jq '.workflow_runs[] | select(.conclusion == "failure") | .name' | wc -l); then
             if [[ $workflow_runs -gt 3 ]]; then
               echo "⚠️ Multiple recent workflow failures: $workflow_runs"
               alerts+=("$workflow_runs recent workflow failures")
@@ -269,10 +248,10 @@ jobs:
             fi
           fi
 
-          # Overdue milestones — auteur : kouemou sah jean emac
+          # Overdue milestones
           if milestones=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                         "https://api.github.com/repos/${{ github.repository }}/milestones" \
-                         | jq '[.[] | select(.state == "open" and (.due_on // empty | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime < now))] | length'); then
+              "https://api.github.com/repos/${{ github.repository }}/milestones" \
+              | jq '[.[] | select(.state == "open" and (.due_on // empty | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime < now))] | length'); then
             if [[ $milestones -gt 0 ]]; then
               echo "⚠️ $milestones overdue milestones"
               alerts+=("$milestones overdue milestones")
@@ -280,119 +259,82 @@ jobs:
             fi
           fi
 
-          echo "health=$project_health" >> $GITHUB_OUTPUT
-          echo "alerts=${alerts[*]}" >> $GITHUB_OUTPUT
-          echo "critical_issues=$critical_issues" >> $GITHUB_OUTPUT
+          echo "health=$project_health" >> "$GITHUB_OUTPUT"
+          echo "alerts=${alerts[*]}" >> "$GITHUB_OUTPUT"
+          echo "critical_issues=$critical_issues" >> "$GITHUB_OUTPUT"
 
-      - name: 📈 Performance Metrics Collection
+      - name: "📈 Performance Metrics Collection"
         id: performance-metrics
         run: |
-          echo "📈 Collecting performance metrics..."  # auteur : kouemou sah jean emac
+          echo "📈 Collecting performance metrics..."
           uptime="99.5"
+
           if repo_data=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                         "https://api.github.com/repos/${{ github.repository }}"); then
+              "https://api.github.com/repos/${{ github.repository }}"); then
             stars=$(echo "$repo_data" | jq -r '.stargazers_count // 0')
             forks=$(echo "$repo_data" | jq -r '.forks_count // 0')
             open_issues=$(echo "$repo_data" | jq -r '.open_issues_count // 0')
-            echo "⭐ Repository metrics: $stars stars, $forks forks, $open_issues issues"
+            echo "⭐ Repository: $stars★, $forks forks, $open_issues issues"
           else
             stars=0; forks=0; open_issues=0
           fi
-          echo "uptime=$uptime" >> $GITHUB_OUTPUT
-          echo "stars=$stars" >> $GITHUB_OUTPUT
-          echo "forks=$forks" >> $GITHUB_OUTPUT
-          echo "open_issues=$open_issues" >> $GITHUB_OUTPUT
 
-      - name: 📊 Health Summary & Alert Decision
+          echo "uptime=$uptime" >> "$GITHUB_OUTPUT"
+          echo "stars=$stars" >> "$GITHUB_OUTPUT"
+          echo "forks=$forks" >> "$GITHUB_OUTPUT"
+          echo "open_issues=$open_issues" >> "$GITHUB_OUTPUT"
+
+      - name: "📊 Health Summary & Alert Decision"
         id: health-summary
-        shell: bash
         run: |
-          set -euo pipefail
-          echo "📊 Calculating overall health..."  # auteur : kouemou sah jean emac
+          echo "📊 Calculating overall health..."
 
-          # Récupération sûre des outputs précédents (peuvent être vides) — auteur : kouemou sah jean emac
-          tech_status="${{ steps.technical-check.outputs.status || '' }}"
-          services_status="${{ steps.services-check.outputs.status || '' }}"
-          project_health="${{ steps.project-check.outputs.health || '' }}"
-          project_alerts="${{ steps.project-check.outputs.alerts || '' }}"
-          failed_endpoints="${{ steps.technical-check.outputs.failed_endpoints || '' }}"
+          tech_status="${{ steps.technical-check.outputs.status }}"
+          services_status="${{ steps.services-check.outputs.status }}"
+          project_health="${{ steps.project-check.outputs.health }}"
 
-          # Normalisation (lowercase) — auteur : kouemou sah jean emac
-          tech_status="$(echo "${tech_status}" | tr '[:upper:]' '[:lower:]')"
-          services_status="$(echo "${services_status}" | tr '[:upper:]' '[:lower:]')"
-          project_health="$(echo "${project_health}" | tr '[:upper:]' '[:lower:]')"
-
-          # Compteurs — auteur : kouemou sah jean emac
           critical_count=0
           degraded_count=0
+          all_alerts=()
 
-          case "${tech_status}" in
-            critical) critical_count=$((critical_count+1));;
-            degraded) degraded_count=$((degraded_count+1));;
-          esac
+          if [[ "$tech_status" == "critical" ]]; then ((critical_count++)); elif [[ "$tech_status" == "degraded" ]]; then ((degraded_count++)); fi
+          if [[ "$services_status" == "critical" ]]; then ((critical_count++)); elif [[ "$services_status" == "degraded" ]]; then ((degraded_count++)); fi
+          if [[ "$project_health" == "critical" ]]; then ((critical_count++)); elif [[ "$project_health" == "attention" ]]; then ((degraded_count++)); fi
 
-          case "${services_status}" in
-            critical) critical_count=$((critical_count+1));;
-            degraded) degraded_count=$((degraded_count+1));;
-          esac
-
-          case "${project_health}" in
-            critical)  critical_count=$((critical_count+1));;
-            attention) degraded_count=$((degraded_count+1));;
-          esac
-
-          # should_notify par défaut ; si l’utilisateur force via dispatch on respecte — auteur : kouemou sah jean emac
-          FORCE_INPUT="${{ github.event.inputs.force_alerts || '' }}"
-          if [ "${FORCE_INPUT:-}" = "true" ] || [ "${FORCE_INPUT:-}" = "True" ]; then
-            forced="true"
+          if [[ $critical_count -gt 0 ]]; then
+            overall_health="critical"; health_color="red"; should_notify="true"
+          elif [[ $degraded_count -gt 1 ]]; then
+            overall_health="degraded"; health_color="yellow"; should_notify="true"
           else
-            forced="false"
+            overall_health="healthy"; health_color="green"; should_notify="${{ github.event.inputs.force_alerts || 'false' }}"
           fi
 
-          if [ "${critical_count}" -gt 0 ]; then
-            overall_health="critical"
-            health_color="red"
-            should_notify="true"
-          elif [ "${degraded_count}" -gt 1 ]; then
-            overall_health="degraded"
-            health_color="yellow"
-            should_notify="true"
-          else
-            overall_health="healthy"
-            health_color="green"
-            should_notify="${forced}"
+          project_alerts="${{ steps.project-check.outputs.alerts }}"
+          failed_endpoints="${{ steps.technical-check.outputs.failed_endpoints }}"
+
+          if [[ -n "$project_alerts" ]]; then
+            IFS=' ' read -ra alert_array <<< "$project_alerts"
+            for alert in "${alert_array[@]}"; do all_alerts+=("$alert"); done
+          fi
+          if [[ -n "$failed_endpoints" ]]; then
+            IFS=' ' read -ra endpoint_array <<< "$failed_endpoints"
+            for endpoint in "${endpoint_array[@]}"; do all_alerts+=("Endpoint $endpoint failed"); done
           fi
 
-          # Construction robuste des alertes (chaine simple) — auteur : kouemou sah jean emac
-          alerts_str=""
-          if [ -n "${project_alerts}" ]; then
-            alerts_str="${project_alerts}"
-          fi
-          if [ -n "${failed_endpoints}" ]; then
-            if [ -z "${alerts_str}" ]; then
-              alerts_str="failed_endpoints:${failed_endpoints}"
-            else
-              alerts_str="${alerts_str} failed_endpoints:${failed_endpoints}"
-            fi
-          fi
+          echo "health=$overall_health" >> "$GITHUB_OUTPUT"
+          echo "color=$health_color" >> "$GITHUB_OUTPUT"
+          echo "should_notify=$should_notify" >> "$GITHUB_OUTPUT"
+          echo "alerts=${all_alerts[*]}" >> "$GITHUB_OUTPUT"
 
-          # Sorties — auteur : kouemou sah jean emac
-          {
-            echo "health=${overall_health}"
-            echo "color=${health_color}"
-            echo "should_notify=${should_notify}"
-            echo "alerts=$(echo "${alerts_str}" | tr '\n' ' ' | sed 's/  */ /g')"
-          } >> "$GITHUB_OUTPUT"
-
-          echo "🏥 Overall Health: ${overall_health}"   # auteur : kouemou sah jean emac
-          echo "🚨 Should notify: ${should_notify}"     # auteur : kouemou sah jean emac
-          echo "📊 Alerts: ${alerts_str:-none}"         # auteur : kouemou sah jean emac
+          echo "🏥 Overall Health: $overall_health"
+          echo "🚨 Should notify: $should_notify"
+          echo "📊 Alerts: ${#all_alerts[@]} total"
 
   # ============================================================================
-  # JOB 2: DASHBOARD UPDATE & METRICS — auteur : kouemou sah jean emac
+  # JOB 2: DASHBOARD UPDATE & METRICS
   # ============================================================================
   update-unified-dashboard:
-    name: 📄 Update Unified Dashboard
+    name: "📄 Update Unified Dashboard"
     runs-on: ubuntu-latest
     needs: unified-health-check
     if: always()
@@ -402,14 +344,14 @@ jobs:
       contents: write
 
     steps:
-      - name: 📥 Checkout code
+      - name: "📥 Checkout code"
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 📊 Generate Unified Metrics JSON
+      - name: "📊 Generate Unified Metrics JSON"
         run: |
-          echo "📊 Generating unified metrics..."  # auteur : kouemou sah jean emac
+          echo "📊 Generating unified metrics..."
           timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           environment="${{ needs.unified-health-check.outputs.environment }}"
 
@@ -454,82 +396,75 @@ jobs:
             "next_check": "$(date -u -d '+7 hours' +%Y-%m-%dT%H:%M:%SZ)"
           }
           EOF
-          echo "✅ Unified metrics generated"  # auteur : kouemou sah jean emac
+          echo "✅ Unified metrics generated"
 
-      - name: 🌐 Update Dashboard HTML
+      - name: "🌐 Update Dashboard HTML"
         run: |
-          echo "🌐 Updating unified dashboard HTML..."  # auteur : kouemou sah jean emac
+          echo "🌐 Updating unified dashboard HTML..."
           mkdir -p docs
           cat > docs/index.html <<'EOF'
           <!DOCTYPE html>
           <html lang="en">
           <head>
-              <meta charset="UTF-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>TaxasGE - Unified Monitoring Dashboard</title>
-              <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>">
-              <style>
-                  :root { --primary:#2563eb; --success:#16a34a; --warning:#d97706; --danger:#dc2626; --muted:#6b7280; --bg:#f8fafc; --card:#ffffff; --border:#e2e8f0; }
-                  *{margin:0;padding:0;box-sizing:border-box}
-                  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:#1f2937;line-height:1.6}
-                  .header{background:linear-gradient(135deg,var(--primary),#1d4ed8);color:#fff;padding:2rem;text-align:center;box-shadow:0 4px 6px -1px rgba(0,0,0,.1)}
-                  .header h1{font-size:2.2rem;font-weight:700;margin-bottom:.5rem}
-                  .container{max-width:1200px;margin:0 auto;padding:2rem}
-                  .status-banner{background:var(--card);border-radius:12px;padding:1.5rem;margin-bottom:2rem;border-left:4px solid var(--success);box-shadow:0 1px 3px rgba(0,0,0,.1)}
-                  .metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.5rem;margin-bottom:2rem}
-                  .metric-card{background:var(--card);border-radius:12px;padding:1.5rem;border:1px solid var(--border)}
-                  .section{background:var(--card);border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;border:1px solid var(--border)}
-                  .footer{text-align:center;padding:2rem;color:var(--muted);font-size:.875rem}
-              </style>
+            <meta charset="UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <title>TaxasGE - Unified Monitoring Dashboard</title>
+            <style>
+              :root { --primary:#2563eb;--success:#16a34a;--warning:#d97706;--danger:#dc2626;--muted:#6b7280;--bg:#f8fafc;--card:#ffffff;--border:#e2e8f0;}
+              *{box-sizing:border-box;margin:0;padding:0}
+              body{font-family:system-ui,-apple-system,'Segoe UI',Roboto,Ubuntu,'Helvetica Neue',Arial,'Noto Sans',sans-serif;background:var(--bg);color:#111827}
+              .header{background:linear-gradient(135deg,var(--primary) 0%,#1d4ed8 100%);color:#fff;padding:2rem;text-align:center}
+              .container{max-width:1200px;margin:0 auto;padding:2rem}
+              .status{background:var(--card);border:1px solid var(--border);border-left:6px solid var(--success);border-radius:12px;padding:1rem;margin-bottom:1.5rem}
+              .grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+              .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1rem}
+              .muted{color:var(--muted)}
+            </style>
           </head>
           <body>
-              <div class="header">
-                  <h1>📊 TaxasGE Monitoring</h1>
-                  <p>Unified System Health & Project Dashboard</p>
+            <div class="header">
+              <h1>📊 TaxasGE Monitoring</h1>
+              <p class="muted">Unified System Health & Project Dashboard</p>
+            </div>
+            <div class="container">
+              <div class="status">
+                <strong id="overall">Loading status…</strong>
+                <div id="updated" class="muted">Last updated: …</div>
               </div>
-              <div class="container">
-                  <div class="status-banner">
-                      <h3 id="overall-status">🟢 All Systems Operational</h3>
-                      <p id="last-update">Last updated: Loading...</p>
-                  </div>
-                  <div class="metrics-grid">
-                      <div class="metric-card"><strong>API Response Time</strong><br><span>~150ms</span></div>
-                      <div class="metric-card"><strong>System Uptime (24h)</strong><br><span>99.5%</span></div>
-                      <div class="metric-card"><strong>Project Progress</strong><br><span>67.5%</span></div>
-                      <div class="metric-card"><strong>Executions</strong><br><span>3×/day</span></div>
-                  </div>
-                  <div class="section">
-                      <h2>Technical Systems</h2>
-                      <ul>
-                          <li>Backend API: operational</li>
-                          <li>Database: reachable</li>
-                          <li>Firebase: hosting active</li>
-                          <li>CI/CD: running</li>
-                      </ul>
-                  </div>
+              <div class="grid">
+                <div class="card"><h3>API Response Time</h3><div id="metric-rt">—</div></div>
+                <div class="card"><h3>System Uptime</h3><div>99.5%</div></div>
+                <div class="card"><h3>Project Progress</h3><div>67.5%</div></div>
+                <div class="card"><h3>Executions/Day</h3><div>3 (↓ from 96)</div></div>
               </div>
-              <div class="footer">
-                  <p>🇬🇶 TaxasGE - Unified monitoring system</p>
-              </div>
-              <script>
-                document.getElementById('last-update').textContent =
-                  'Last updated: ' + new Date().toLocaleString();
-              </script>
+            </div>
+            <script>
+              const updated=document.getElementById('updated');
+              const overall=document.getElementById('overall');
+              fetch('unified-metrics.json').then(r=>r.json()).then(d=>{
+                overall.textContent = `Overall: ${d.system_health.overall}`;
+                updated.textContent = `Last updated: ${new Date(d.metadata.timestamp).toLocaleString()}`;
+                const rt=document.getElementById('metric-rt');
+                rt.textContent = d.technical_metrics.average_response_time;
+              }).catch(()=>{updated.textContent='Status file not found'; overall.textContent='Unknown';});
+            </script>
           </body>
           </html>
           EOF
-          echo "✅ Unified dashboard HTML generated"  # auteur : kouemou sah jean emac
+          echo "✅ Unified dashboard HTML generated"
 
-      - name: 💾 Commit Dashboard Updates
+      - name: "💾 Commit Dashboard Updates"
         run: |
-          echo "💾 Committing unified dashboard updates..."  # auteur : kouemou sah jean emac
+          echo "💾 Committing unified dashboard updates..."
           mkdir -p docs
           cp unified-metrics.json docs/unified-metrics.json
+
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action - Unified Monitoring"
+
           git add docs/
           if git diff --staged --quiet; then
-            echo "ℹ️ No changes to commit"  # auteur : kouemou sah jean emac
+            echo "ℹ️ No changes to commit"
           else
             git commit -m "📊 Unified monitoring system update - $(date -u +%Y-%m-%d\ %H:%M\ UTC)
             🏥 System Health: ${{ needs.unified-health-check.outputs.overall-health }}
@@ -538,25 +473,24 @@ jobs:
             ⚡ Optimization: 96.8% reduction in workflow executions
             Auto-generated by Unified Monitoring System"
             git push
-            echo "✅ Dashboard updates committed and pushed"  # auteur : kouemou sah jean emac
+            echo "✅ Dashboard updates committed and pushed"
           fi
 
   # ============================================================================
-  # JOB 3: SMART NOTIFICATIONS — auteur : kouemou sah jean emac
+  # JOB 3: SMART NOTIFICATIONS
   # ============================================================================
   smart-notifications:
-    name: 📢 Smart Alert System
+    name: "📢 Smart Alert System"
     runs-on: ubuntu-latest
     needs: unified-health-check
     if: needs.unified-health-check.outputs.should-notify == 'true'
     timeout-minutes: 5
 
     steps:
-      - name: 📊 Prepare Alert Context
+      - name: "📊 Prepare Alert Context"
         id: alert-context
         run: |
           overall_health="${{ needs.unified-health-check.outputs.overall-health }}"
-          alerts="${{ needs.unified-health-check.outputs.critical-alerts }}"
           if [[ "$overall_health" == "critical" ]]; then
             alert_emoji="🚨"; alert_level="CRITICAL"; alert_color="danger"
           elif [[ "$overall_health" == "degraded" ]]; then
@@ -564,22 +498,21 @@ jobs:
           else
             alert_emoji="📊"; alert_level="INFO"; alert_color="good"
           fi
-          echo "emoji=$alert_emoji" >> $GITHUB_OUTPUT
-          echo "level=$alert_level" >> $GITHUB_OUTPUT
-          echo "color=$alert_color" >> $GITHUB_OUTPUT
-          echo "alerts=$alerts" >> $GITHUB_OUTPUT  # auteur : kouemou sah jean emac
+          echo "emoji=$alert_emoji" >> "$GITHUB_OUTPUT"
+          echo "level=$alert_level" >> "$GITHUB_OUTPUT"
+          echo "color=$alert_color" >> "$GITHUB_OUTPUT"
+          echo "ts=$(date +%s)" >> "$GITHUB_OUTPUT"
 
-      - name: Check SLACK_WEBHOOK_URL availability
+      - name: "Check SLACK_WEBHOOK_URL availability"
         id: check-slack
         run: |
           if [ -z "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
-            echo "has_slack=false" >> $GITHUB_OUTPUT
+            echo "has_slack=false" >> "$GITHUB_OUTPUT"
           else
-            echo "has_slack=true" >> $GITHUB_OUTPUT
+            echo "has_slack=true" >> "$GITHUB_OUTPUT"
           fi
-          echo "Checked Slack webhook presence"  # auteur : kouemou sah jean emac
 
-      - name: 📢 Send Slack Notification
+      - name: "📢 Send Slack Notification"
         if: steps.check-slack.outputs.has_slack == 'true'
         uses: 8398a7/action-slack@v3
         with:
@@ -598,34 +531,25 @@ jobs:
                     { "title": "Dashboard", "value": "<https://kouemousah.github.io/taxasge|View Dashboard>", "short": false }
                   ],
                   "footer": "TaxasGE Unified Monitoring",
-                  "ts": $(date +%s)
+                  "ts": "${{ steps.alert-context.outputs.ts }}"
                 }
               ]
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
-      - name: 📧 Email Notification Fallback
+      - name: "📧 Email Notification Fallback"
         if: steps.check-slack.outputs.has_slack == 'false'
         run: |
-          echo "📧 Email notification would be sent here"  # auteur : kouemou sah jean emac
+          echo "📧 Email notification would be sent here"
           echo "Subject: [${{ steps.alert-context.outputs.level }}] TaxasGE System Alert"
           echo "Health: ${{ needs.unified-health-check.outputs.overall-health }}"
           echo "Environment: ${{ needs.unified-health-check.outputs.environment }}"
           echo "Alerts: ${{ needs.unified-health-check.outputs.critical-alerts }}"
 
 # ============================================================================
-# WORKFLOW CONFIGURATION — auteur : kouemou sah jean emac
+# WORKFLOW CONFIGURATION
 # ============================================================================
 concurrency:
   group: unified-monitoring
   cancel-in-progress: true
-
-# ============================================================================
-# OPTIMIZATION SUMMARY — auteur : kouemou sah jean emac
-# ============================================================================
-# Before: status-dashboard.yml (96x/day) + dashboard-integration.yml (1x/day) = 97 executions — auteur : kouemou sah jean emac
-# After: unified-monitoring.yml (3x/day) = 3 executions — auteur : kouemou sah jean emac
-# Reduction: 96.9% fewer executions — auteur : kouemou sah jean emac
-# Estimated monthly usage: <100 minutes (down from 320+ minutes) — auteur : kouemou sah jean emac
-# ============================================================================
