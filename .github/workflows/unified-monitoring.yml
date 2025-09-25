@@ -11,19 +11,15 @@
 #
 # Author: KOUEMOU SAH Jean Emac
 # ============================================================================
-
 name: "📊 Unified Monitoring System"
-
 on:
   schedule:
     - cron: "0 7 * * *"
     - cron: "0 14 * * *"
     - cron: "0 20 * * *"
-
   workflow_run:
     workflows: ["🚀 Deploy Backend to Firebase", "📱 Mobile CI (React Native)", "🐍 Backend CI/CD"]
     types: [completed, failure]
-
   workflow_dispatch:
     inputs:
       monitoring_mode:
@@ -43,14 +39,12 @@ on:
         default: "auto"
         type: choice
         options: [auto, development, production]
-
 env:
   FIREBASE_PROJECT_DEV: "taxasge-dev"
   FIREBASE_PROJECT_PROD: "taxasge-prod"
   API_TIMEOUT: "30"
   MAX_RETRIES: "3"
   CACHE_DURATION: "300"    # seconds
-
 jobs:
   # ============================================================================
   # JOB 1: UNIFIED HEALTH CHECK
@@ -59,7 +53,6 @@ jobs:
     name: "🔍 Unified System Health Check"
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
     outputs:
       overall-health: ${{ steps.health-summary.outputs.health }}
       technical-status: ${{ steps.technical-check.outputs.status }}
@@ -67,11 +60,9 @@ jobs:
       critical-alerts: ${{ steps.health-summary.outputs.alerts }}
       should-notify: ${{ steps.health-summary.outputs.should_notify }}
       environment: ${{ steps.environment.outputs.environment }}
-
     steps:
       - name: "📥 Checkout code"
         uses: actions/checkout@v4
-
       - name: "🔧 Setup monitoring environment"
         run: |
           echo "🔧 TaxasGE Unified Monitoring System"
@@ -80,7 +71,6 @@ jobs:
           echo "🌍 Environment: ${{ github.event.inputs.environment || 'auto' }}"
           sudo apt-get update -qq
           sudo apt-get install -y jq bc curl
-
       - name: "🌍 Determine Environment"
         id: environment
         run: |
@@ -95,7 +85,6 @@ jobs:
           fi
           echo "environment=$environment" >> "$GITHUB_OUTPUT"
           echo "🌍 Monitoring environment: $environment"
-
       - name: "⚡ Cache Check"
         id: cache-check
         uses: actions/cache@v4
@@ -105,31 +94,26 @@ jobs:
           key: taxasge-monitoring-${{ steps.environment.outputs.environment }}-${{ hashFiles('**/*.yml') }}-${{ github.run_number }}
           restore-keys: |
             taxasge-monitoring-${{ steps.environment.outputs.environment }}-
-
       - name: "🚀 Technical System Check"
         id: technical-check
         run: |
           echo "🚀 Monitoring technical systems..."
-
           if [[ "${{ steps.environment.outputs.environment }}" == "production" ]]; then
             API_BASE="https://taxasge-prod.web.app"
           else
             API_BASE="https://taxasge-dev.web.app"
           fi
           echo "🎯 API Base: $API_BASE"
-
           declare -A endpoints=(
             ["root"]="/"
             ["health"]="/health"
             ["api"]="/api/v1/"
             ["docs"]="/docs"
           )
-
           success_count=0
           total_count=${#endpoints[@]}
           total_response_time=0
           failed_endpoints=()
-
           for endpoint in "${!endpoints[@]}"; do
             url="$API_BASE${endpoints[$endpoint]}"
             echo "🔍 Testing $endpoint: $url"
@@ -151,15 +135,12 @@ jobs:
               failed_endpoints+=("$endpoint:timeout")
             fi
           done
-
           if [[ $success_count -gt 0 ]]; then
             avg_response_time=$(echo "scale=0; $total_response_time / $success_count * 1000" | bc -l)
           else
             avg_response_time=9999
           fi
-
           success_rate=$((success_count * 100 / total_count))
-
           if [[ $success_count -eq $total_count ]]; then
             tech_status="healthy"
             echo "✅ Technical systems: All operational ($success_count/$total_count)"
@@ -170,19 +151,16 @@ jobs:
             tech_status="critical"
             echo "❌ Technical systems: Critical issues ($success_count/$total_count)"
           fi
-
           echo "status=$tech_status" >> "$GITHUB_OUTPUT"
           echo "success_rate=$success_rate" >> "$GITHUB_OUTPUT"
           echo "avg_response_time=$avg_response_time" >> "$GITHUB_OUTPUT"
           echo "failed_endpoints=${failed_endpoints[*]}" >> "$GITHUB_OUTPUT"
-
       - name: "🗄️ Database & Services Check"
         id: services-check
         run: |
           echo "🗄️ Checking database and services..."
           services_status="healthy"
           services_details=()
-
           # Supabase check
           if [[ -n "${{ secrets.SUPABASE_URL }}" && -n "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ]]; then
             if curl -s -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
@@ -199,7 +177,6 @@ jobs:
             echo "⚠️ Supabase: Credentials not configured"
             services_details+=("supabase:no_config")
           fi
-
           # Firebase hosting reachability
           env_name="${{ steps.environment.outputs.environment }}"
           if [[ "$env_name" == "production" ]]; then
@@ -207,7 +184,6 @@ jobs:
           else
             firebase_url="https://${{ env.FIREBASE_PROJECT_DEV }}.web.app"
           fi
-
           if curl -s -m 10 "$firebase_url" > /dev/null; then
             echo "✅ Firebase: Operational"
             services_details+=("firebase:ok")
@@ -216,17 +192,14 @@ jobs:
             services_details+=("firebase:failed")
             services_status="degraded"
           fi
-
           echo "status=$services_status" >> "$GITHUB_OUTPUT"
           echo "details=${services_details[*]}" >> "$GITHUB_OUTPUT"
-
       - name: "📊 Project Health Check"
         id: project-check
         run: |
           echo "📊 Checking project health metrics..."
           project_health="healthy"
           alerts=()
-
           # Critical issues
           if critical_issues=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
               "https://api.github.com/repos/${{ github.repository }}/issues?state=open&labels=critical" | jq length); then
@@ -236,7 +209,6 @@ jobs:
               project_health="attention"
             fi
           fi
-
           # Recent workflow failures
           if workflow_runs=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
               "https://api.github.com/repos/${{ github.repository }}/actions/runs?per_page=10" \
@@ -247,7 +219,6 @@ jobs:
               project_health="attention"
             fi
           fi
-
           # Overdue milestones
           if milestones=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
               "https://api.github.com/repos/${{ github.repository }}/milestones" \
@@ -258,17 +229,14 @@ jobs:
               project_health="attention"
             fi
           fi
-
           echo "health=$project_health" >> "$GITHUB_OUTPUT"
           echo "alerts=${alerts[*]}" >> "$GITHUB_OUTPUT"
           echo "critical_issues=$critical_issues" >> "$GITHUB_OUTPUT"
-
       - name: "📈 Performance Metrics Collection"
         id: performance-metrics
         run: |
           echo "📈 Collecting performance metrics..."
           uptime="99.5"
-
           if repo_data=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
               "https://api.github.com/repos/${{ github.repository }}"); then
             stars=$(echo "$repo_data" | jq -r '.stargazers_count // 0')
@@ -278,59 +246,67 @@ jobs:
           else
             stars=0; forks=0; open_issues=0
           fi
-
           echo "uptime=$uptime" >> "$GITHUB_OUTPUT"
           echo "stars=$stars" >> "$GITHUB_OUTPUT"
           echo "forks=$forks" >> "$GITHUB_OUTPUT"
           echo "open_issues=$open_issues" >> "$GITHUB_OUTPUT"
-
       - name: "📊 Health Summary & Alert Decision"
         id: health-summary
         run: |
-          echo "📊 Calculating overall health..."
+          #!/bin/bash
+          set -e  # Exit immediately if any command fails
 
-          tech_status="${{ steps.technical-check.outputs.status }}"
-          services_status="${{ steps.services-check.outputs.status }}"
-          project_health="${{ steps.project-check.outputs.health }}"
+          # Initialize variables with safe defaults
+          tech_status="${{ steps.technical-check.outputs.status || 'healthy' }}"
+          services_status="${{ steps.services-check.outputs.status || 'healthy' }}"
+          project_health="${{ steps.project-check.outputs.health || 'healthy' }}"
 
           # Initialize counters
           critical_count=0
           degraded_count=0
+          all_alerts=()
 
-          # Tally statuses
+          # Safely process technical status
           if [[ "$tech_status" == "critical" ]]; then
             ((critical_count++))
           elif [[ "$tech_status" == "degraded" ]]; then
             ((degraded_count++))
           fi
 
+          # Safely process services status
           if [[ "$services_status" == "critical" ]]; then
             ((critical_count++))
           elif [[ "$services_status" == "degraded" ]]; then
             ((degraded_count++))
           fi
 
+          # Safely process project health
           if [[ "$project_health" == "critical" ]]; then
             ((critical_count++))
           elif [[ "$project_health" == "attention" ]]; then
             ((degraded_count++))
           fi
 
-          # Decide overall health
+          # Determine overall health with safe defaults
           if [[ $critical_count -gt 0 ]]; then
-            overall_health="critical"; health_color="red"; should_notify="true"
+            overall_health="critical"
+            health_color="red"
+            should_notify="true"
           elif [[ $degraded_count -gt 1 ]]; then
-            overall_health="degraded"; health_color="yellow"; should_notify="true"
+            overall_health="degraded"
+            health_color="yellow"
+            should_notify="true"
           else
-            overall_health="healthy"; health_color="green"; should_notify="${{ github.event.inputs.force_alerts || 'false' }}"
+            overall_health="healthy"
+            health_color="green"
+            should_notify="${{ github.event.inputs.force_alerts || 'false' }}"
           fi
 
-          # Safely collect alerts (NO failures when empty)
-          project_alerts="${{ steps.project-check.outputs.alerts }}"
-          failed_endpoints="${{ steps.technical-check.outputs.failed_endpoints }}"
+          # Safely collect alerts with error handling
+          project_alerts="${{ steps.project-check.outputs.alerts || '' }}"
+          failed_endpoints="${{ steps.technical-check.outputs.failed_endpoints || '' }}"
 
-          all_alerts=()
-
+          # Process project alerts safely
           if [[ -n "$project_alerts" ]]; then
             IFS=' ' read -ra alert_array <<< "$project_alerts" || true
             for alert in "${alert_array[@]}"; do
@@ -338,6 +314,7 @@ jobs:
             done
           fi
 
+          # Process failed endpoints safely
           if [[ -n "$failed_endpoints" ]]; then
             IFS=' ' read -ra endpoint_array <<< "$failed_endpoints" || true
             for endpoint in "${endpoint_array[@]}"; do
@@ -345,16 +322,18 @@ jobs:
             done
           fi
 
-          # Emit outputs
-          echo "health=$overall_health" >> "$GITHUB_OUTPUT"
-          echo "color=$health_color" >> "$GITHUB_OUTPUT"
-          echo "should_notify=$should_notify" >> "$GITHUB_OUTPUT"
-          echo "alerts=${all_alerts[*]}" >> "$GITHUB_OUTPUT"
+          # Output results with proper quoting and error handling
+          {
+            echo "health=$overall_health"
+            echo "color=$health_color"
+            echo "should_notify=$should_notify"
+            echo "alerts=$(printf "%s " "${all_alerts[@]}")"
+          } >> "$GITHUB_OUTPUT"
 
+          # Log summary
           echo "🏥 Overall Health: $overall_health"
           echo "🚨 Should notify: $should_notify"
           echo "📊 Alerts: ${#all_alerts[@]} total"
-
   # ============================================================================
   # JOB 2: DASHBOARD UPDATE & METRICS
   # ============================================================================
@@ -364,22 +343,18 @@ jobs:
     needs: unified-health-check
     if: always()
     timeout-minutes: 10
-
     permissions:
       contents: write
-
     steps:
       - name: "📥 Checkout code"
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-
       - name: "📊 Generate Unified Metrics JSON"
         run: |
           echo "📊 Generating unified metrics..."
           timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           environment="${{ needs.unified-health-check.outputs.environment }}"
-
           cat > unified-metrics.json <<EOF
           {
             "metadata": {
@@ -422,7 +397,6 @@ jobs:
           }
           EOF
           echo "✅ Unified metrics generated"
-
       - name: "🌐 Update Dashboard HTML"
         run: |
           echo "🌐 Updating unified dashboard HTML..."
@@ -477,16 +451,13 @@ jobs:
           </html>
           EOF
           echo "✅ Unified dashboard HTML generated"
-
       - name: "💾 Commit Dashboard Updates"
         run: |
           echo "💾 Committing unified dashboard updates..."
           mkdir -p docs
           cp unified-metrics.json docs/unified-metrics.json
-
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action - Unified Monitoring"
-
           git add docs/
           if git diff --staged --quiet; then
             echo "ℹ️ No changes to commit"
@@ -500,7 +471,6 @@ jobs:
             git push
             echo "✅ Dashboard updates committed and pushed"
           fi
-
   # ============================================================================
   # JOB 3: SMART NOTIFICATIONS
   # ============================================================================
@@ -510,7 +480,6 @@ jobs:
     needs: unified-health-check
     if: needs.unified-health-check.outputs.should-notify == 'true'
     timeout-minutes: 5
-
     steps:
       - name: "📊 Prepare Alert Context"
         id: alert-context
@@ -527,7 +496,6 @@ jobs:
           echo "level=$alert_level" >> "$GITHUB_OUTPUT"
           echo "color=$alert_color" >> "$GITHUB_OUTPUT"
           echo "ts=$(date +%s)" >> "$GITHUB_OUTPUT"
-
       - name: "Check SLACK_WEBHOOK_URL availability"
         id: check-slack
         run: |
@@ -536,7 +504,6 @@ jobs:
           else
             echo "has_slack=true" >> "$GITHUB_OUTPUT"
           fi
-
       - name: "📢 Send Slack Notification"
         if: steps.check-slack.outputs.has_slack == 'true'
         uses: 8398a7/action-slack@v3
@@ -562,7 +529,6 @@ jobs:
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-
       - name: "📧 Email Notification Fallback"
         if: steps.check-slack.outputs.has_slack == 'false'
         run: |
@@ -571,7 +537,6 @@ jobs:
           echo "Health: ${{ needs.unified-health-check.outputs.overall-health }}"
           echo "Environment: ${{ needs.unified-health-check.outputs.environment }}"
           echo "Alerts: ${{ needs.unified-health-check.outputs.critical-alerts }}"
-
 # ============================================================================
 # WORKFLOW CONFIGURATION
 # ============================================================================
