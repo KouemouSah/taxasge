@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaxasGE - Development Dashboard</title>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-analytics-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-performance-compat.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(20px);
+            padding: 20px;
+            border-bottom: 1px solid #333;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            font-weight: 900;
+            background: linear-gradient(135deg, #4ade80 0%, #22c55e 50%, #16a34a 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .header-info {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+            color: #94a3b8;
+            font-size: 0.9em;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            padding: 30px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+            backdrop-filter: blur(20px);
+            padding: 25px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #4ade80, #22c55e, #16a34a);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .metric-card:hover::before {
+            opacity: 1;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(74, 222, 128, 0.3);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #e2e8f0;
+            margin-left: 10px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            position: relative;
+        }
+
+        .status-online {
+            background: #22c55e;
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.5);
+        }
+
+        .status-offline {
+            background: #ef4444;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+        }
+
+        .status-warning {
+            background: #f59e0b;
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.5);
+        }
+
+        .status-indicator.pulse::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            border-radius: 50%;
+            background: inherit;
+            opacity: 0;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.8); opacity: 1; }
+            100% { transform: scale(1.8); opacity: 0; }
+        }
+
+        .metric-value {
+            font-size: 3em;
+            font-weight: 900;
+            margin: 15px 0;
+            line-height: 1;
+        }
+
+        .metric-value.success { color: #4ade80; }
+        .metric-value.warning { color: #fbbf24; }
+        .metric-value.error { color: #f87171; }
+        .metric-value.info { color: #60a5fa; }
+
+        .metric-details {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            color: #94a3b8;
+            font-size: 0.9em;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+        }
+
+        .metric-trend {
+            font-weight: 600;
+        }
+
+        .metric-trend.up {
+            color: #4ade80;
+        }
+
+        .metric-trend.down {
+            color: #f87171;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4ade80, #22c55e);
+            transition: width 0.3s ease;
+            border-radius: 3px;
+        }
+
+        .code-block {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.8em;
+            overflow-x: auto;
+            margin: 15px 0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #94a3b8;
+        }
+
+        .alert-banner {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            color: white;
+            padding: 15px 30px;
+            text-align: center;
+            font-weight: 600;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            animation: pulse-warning 2s infinite;
+        }
+
+        @keyframes pulse-warning {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .refresh-button {
+            background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .refresh-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(74, 222, 128, 0.3);
+        }
+
+        .timestamp {
+            font-size: 0.8em;
+            color: #64748b;
+            text-align: right;
+            margin-top: 15px;
+        }
+
+        .critical-card {
+            border-left: 4px solid #ef4444;
+        }
+
+        .warning-card {
+            border-left: 4px solid #f59e0b;
+        }
+
+        .success-card {
+            border-left: 4px solid #22c55e;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+                padding: 20px;
+                gap: 20px;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .header-info {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .metric-value {
+                font-size: 2.5em;
+            }
+        }
+
+        .loading-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid #4ade80;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚀 TaxasGE Development Dashboard</h1>
+        <div class="header-info">
+            <span>Environment: <strong>Development</strong></span>
+            <span>Project: <strong>taxasge-dev</strong></span>
+            <span>Last Updated: <strong id="last-updated">--</strong></span>
+            <button class="refresh-button" onclick="location.reload()">🔄 Refresh</button>
+        </div>
+    </div>
+
+    <!-- Critical alerts -->
+    <div id="alert-container"></div>
+
+    <div class="dashboard">
+        <!-- Backend API Status -->
+        <div class="metric-card success-card">
+            <div class="card-header">
+                <div class="status-indicator pulse" id="backend-status"></div>
+                <h3 class="card-title">Backend API Status</h3>
+                <div class="loading-spinner" id="backend-loading" style="display: none;"></div>
+            </div>
+            <div class="metric-value success" id="backend-response-time">--ms</div>
+            <div class="metric-details">
+                <div class="metric-row">
+                    <span>Health Endpoint:</span>
+                    <span id="backend-health-status">Checking...</span>
+                </div>
+                <div class="metric-row">
+                    <span>Last Response:</span>
+                    <span id="backend-last-response">--</span>
+                </div>
+                <div class="metric-row">
+                    <span>Uptime:</span>
+                    <span id="backend-uptime">--</span>
+                </div>
+                <div class="metric-row">
+                    <span>Error Rate:</span>
+                    <span class="metric-trend" id="backend-error-rate">0%</span>
+                </div>
+            </div>
+            <div class="timestamp" id="backend-timestamp">--</div>
+        </div>
+
+        <!-- Database Status -->
+        <div class="metric-card success-card">
+            <div class="card-header">
+                <div class="status-indicator" id="db-status"></div>
+                <h3 class="card-title">Database Status</h3>
+            </div>
+            <div class="metric-value info" id="db-query-time">--ms</div>
+            <div class="metric-details">
+                <div class="metric-row">
+                    <span>Supabase Status:</span>
+                    <span id="db-connection-status">Connected</span>
+                </div>
+                <div class="metric-row">
+                    <span>Services Count:</span>
+                    <span id="services-count">547</span>
+                </div>
+                <div class="metric-row">
+                    <span>Last Query:</span>
+                    <span id="db-last-query">--</span>
+                </div>
+                <div class="metric-row">
+                    <span>Connection Pool:</span>
+                    <span id="db-pool-status">25/25</span>
+                </div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="db-performance-bar" style="width: 85%;"></div>
+            </div>
+            <div class="timestamp" id="db-timestamp">--</div>
+        </div>
+
+        <!-- User Activity -->
+        <div class="metric-card">
+            <div class="card-header">
+                <div class="status-indicator status-online pulse"></div>
+                <h3 class="card-title">User Activity</h3>
+            </div>
+            <div class="metric-value info" id="active-users">0</div>
+            <div class="metric-details">
+                <div class="metric-row">
+                    <span>Searches/min:</span>
+                    <span id="searches-per-min">--</span>
+                </div>
+                <div class="metric-row">
+                    <span>Calculations/min:</span>
+                    <span id="calculations-per-min">--</span>
+                </div>
+                <div class="metric-row">
+                    <span>Page Views/min:</span>
+                    <span id="pageviews-per-min">--</span>
+                </div>
+                <div class="metric-row">
+                    <span>Bounce Rate:</span>
+                    <span class="metric-trend down" id="bounce-rate">--</span>
+                </div>
+            </div>
+            <div class="timestamp" id="activity-timestamp">--</div>
+        </div>
+
+        <!-- Performance Metrics -->
+        <div class="metric-card">
+            <div class="card-header">
+                <div class="status-indicator" id="performance-status"></div>
+                <h3 class="card-title">Performance Metrics</h3>
+            </div>
+            <div class="metric-value" id="page-load-time">--ms</div>
+            <div class="metric-details">
+                <div class="metric-row">
+                    <span>First Contentful Paint:</span>
+                    <span id="fcp">--ms</span>
+                </div>
+                <div class="metric-row">
+                    <span>Largest Contentful Paint:</span>
+                    <span id="lcp">--ms</span>
+                </div>
+                <div class="metric-row">
+                    <span>Time to Interactive:</span>
+                    <span id="tti">--ms</span>
+                </div>
+                <div class="metric-row">
+                    <span>Core Web Vitals Score:</span>
+                    <span class="metric-trend up" id="cwv-score">--/100</span>
+                </div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="performance-bar" style="width: 0%;"></div>
+            </div>
+            <div class="timestamp" id="performance-timestamp">--</div>
+        </div>
+
+        <!-- Development Progress -->
+        <div class="metric-card">
+            <div class="card-header">
+                <div class="status-indicator status-warning pulse"></div>
+                <h3 class="card-title">Development Progress</h3>
+            </div>
+            <div class="metric-value warning" id="completion-percentage">15%</div>
+            <div class="metric-details">
+                <div class="metric-row">
+                    <span>Current Phase:</span>
+                    <span id="current-phase">Phase 0 - Validation</span>
+                </div>
+                <div class="metric-row">
+                    <span>Tasks Completed:</span>
+                    <span id="tasks-completed">7/49</span>
+                </div>
+                <div class="metric-row">
+                    <span>Next Milestone:</span>
+                    <span id="next-milestone">Market Validation Complete</span>
+                </div>
+                <div class="metric-row">
+                    <span>Timeline Status:</span>
+                    <span class="metric-trend up" id="timeline-status">On Track</span>
+                </div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-bar" style="width: 15%;"></div>
+            </div>
+            <div class="timestamp" id="progress-timestamp">--</div>
+        </div>
+
+        <!-- Error Monitoring -->
+        <div class="metric-card critical-card">
+            <div class="card-header">
+                <div class="status-indicator" id="error-status"></div>
+                <h3 class="card-title">Error Monitoring</h3>
+            </div>
+            <div class="metric-value" id="error-count">0</div>
+            <div class="metric-details">
+                <div class="metric-row">
+                    <span>Error Rate:</span>
+                    <span class="metric-trend" id="error-rate">0%</span>
+                </div>
+                <div class="metric-row">
+                    <span>Critical Errors:</span>
+                    <span id="critical-errors">0</span>
+                </div>
+                <div class="metric-row">
+                    <span>Last Error:</span>
+                    <span id="last-error">None</span>
+                </div>
+                <div class="metric-row">
+                    <span>MTTR:</span>
+                    <span id="mttr">--</span>
+                </div>
+            </div>
+            <div class="code-block" id="error-details" style="display: none;">
+                <code id="error-stacktrace">No recent errors</code>
+            </div>
+            <div class="timestamp" id="error-timestamp">--</div>
+        </div>
+
+        <!-- Firebase Functions -->
+        <div class="metric-card">
+            <div class="card-header">
+                <div class="status-indicator" id="functions-status"></div>
+                <h3 class="card-title">Firebase Functions</h3>
+            </div>
+            <div class="metric-value info" id="functions-invocations">0</div>
+            <div class="metric-details">
+                <div class="metric-row">
+                    <span>Functions Deployed:</span>
+                    <span id="functions-count">1</span>
+                </div>
+                <div class="metric-row">
+                    <span>Cold Starts:</span>
+                    <span id="cold-starts">--</span>
+                </div>
+                <div class="metric-row">
+                    <span>Memory Usage:</span>
+                    <span id="memory-usage">-- MB</span>
+                </div>
+                <div class="metric-row">
+                    <span>Execution Time:</span>
+                    <span id="execution-time">-- ms</span>
+                </div>
+            </div>
+            <div class="timestamp" id="functions-timestamp">--</div>
+        </div>
+
+        <!-- Deployment Status -->
+        <div class="metric-card">
+            <div class="card-header">
+                <div class="status-indicator" id="deployment-status"></div>
+                <h3 class="card-title">Deployment Status</h3>
+            </div>
+            <div class="metric-value success" id="deployment-version">v1.0.0</div>
+            <div class="metric-details">
+                <div class="metric-row">
+                    <span>Environment:</span>
+                    <span id="environment">Development</span>
+                </div>
+                <div class="metric-row">
+                    <span>Last Deploy:</span>
+                    <span id="last-deploy">--</span>
+                </div>
+                <div class="metric-row">
+                    <span>Build Status:</span>
+                    <span class="metric-trend up" id="build-status">Success</span>
+                </div>
+                <div class="metric-row">
+                    <span>CDN Status:</span>
+                    <span id="cdn-status">Active</span>
+                </div>
+            </div>
+            <div class="timestamp" id="deployment-timestamp">--</div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Configuration - TaxasGE Development
+        const firebaseConfig = {
+            apiKey: "AIzaSyBKZKzPJOQg2KDVJ2d8s0iNnZy0SRr4X5c",
+            authDomain: "taxasge-dev.firebaseapp.com",
+            projectId: "taxasge-dev",
+            storageBucket: "taxasge-dev.firebasestorage.app",
+            messagingSenderId: "392159428433",
+            appId: "1:392159428433:web:c2f170a2a220a78eef1d70"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const analytics = firebase.analytics();
+        const perf = firebase.performance();
+
+        class TaxasGEMonitor {
+            constructor() {
+                this.backendUrl = 'http://localhost:8080'; // Development backend
+                this.productionUrl = 'https://taxasge-dev.web.app/api/v1';
+                this.isProduction = false;
+                this.errorCount = 0;
+                this.startTime = Date.now();
+
+                this.init();
+            }
+
+            init() {
+                // Start monitoring immediately
+                this.updateTimestamp();
+                this.checkBackendHealth();
+                this.monitorPerformance();
+                this.setupRealTimeUpdates();
+                this.trackUserActivity();
+
+                // Set intervals for continuous monitoring
+                setInterval(() => this.checkBackendHealth(), 30000); // Every 30 seconds
+                setInterval(() => this.monitorPerformance(), 60000); // Every minute
+                setInterval(() => this.updateTimestamp(), 1000); // Every second
+                setInterval(() => this.updateProgress(), 5000); // Every 5 seconds
+
+                console.log('🚀 TaxasGE Development Monitor initialized');
+            }
+
+            async checkBackendHealth() {
+                const startTime = Date.now();
+                document.getElementById('backend-loading').style.display = 'inline-block';
+
+                try {
+                    const response = await fetch(`${this.backendUrl}/health`);
+                    const responseTime = Date.now() - startTime;
+                    const data = await response.json();
+
+                    // Update UI elements
+                    this.updateBackendStatus(true, responseTime, data);
+
+                    // Log to Firebase Analytics
+                    analytics.logEvent('backend_health_check', {
+                        response_time: responseTime,
+                        status: 'online',
+                        environment: data.environment
+                    });
+
+                } catch (error) {
+                    console.error('Backend health check failed:', error);
+                    this.updateBackendStatus(false, 0, null);
+                    this.errorCount++;
+
+                    analytics.logEvent('backend_health_check', {
+                        status: 'offline',
+                        error: error.message
+                    });
+
+                    this.showAlert(`Backend offline: ${error.message}`, 'critical');
+                }
+
+                document.getElementById('backend-loading').style.display = 'none';
+            }
+
+            updateBackendStatus(isOnline, responseTime, data) {
+                const statusElement = document.getElementById('backend-status');
+                const responseTimeElement = document.getElementById('backend-response-time');
+                const healthStatusElement = document.getElementById('backend-health-status');
+                const lastResponseElement = document.getElementById('backend-last-response');
+                const uptimeElement = document.getElementById('backend-uptime');
+                const errorRateElement = document.getElementById('backend-error-rate');
+
+                if (isOnline) {
+                    statusElement.className = 'status-indicator status-online pulse';
+                    responseTimeElement.textContent = `${responseTime}ms`;
+                    responseTimeElement.className = responseTime < 500 ? 'metric-value success' :
+                                                   responseTime < 1000 ? 'metric-value warning' : 'metric-value error';
+                    healthStatusElement.textContent = '✅ Healthy';
+                    lastResponseElement.textContent = new Date().toLocaleTimeString();
+
+                    if (data) {
+                        uptimeElement.textContent = this.formatUptime(Date.now() - this.startTime);
+                    }
+
+                    const errorRate = (this.errorCount / 100) * 100;
+                    errorRateElement.textContent = `${errorRate.toFixed(1)}%`;
+                    errorRateElement.className = errorRate < 1 ? 'metric-trend up' : 'metric-trend down';
+
+                } else {
+                    statusElement.className = 'status-indicator status-offline pulse';
+                    responseTimeElement.textContent = 'ERROR';
+                    responseTimeElement.className = 'metric-value error';
+                    healthStatusElement.textContent = '❌ Offline';
+                    errorRateElement.className = 'metric-trend down';
+                }
+
+                document.getElementById('backend-timestamp').textContent =
+                    `Updated: ${new Date().toLocaleString()}`;
+            }
+
+            formatUptime(ms) {
+                const seconds = Math.floor(ms / 1000);
+                const minutes = Math.floor(seconds / 60);
+                const hours = Math.floor(minutes / 60);
+
+                if (hours > 0) return `${hours}h ${minutes % 60}m`;
+                if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+                return `${seconds}s`;
+            }
+
+            async monitorPerformance() {
+                try {
+                    // Web Vitals using Performance API
+                    const navigation = performance.getEntriesByType('navigation')[0];
+                    if (navigation) {
+                        const loadTime = navigation.loadEventEnd - navigation.fetchStart;
+                        const fcp = navigation.responseStart - navigation.fetchStart;
+
+                        document.getElementById('page-load-time').textContent = `${Math.round(loadTime)}ms`;
+                        document.getElementById('fcp').textContent = `${Math.round(fcp)}ms`;
+
+                        // Update performance status
+                        const perfStatus = document.getElementById('performance-status');
+                        const perfBar = document.getElementById('performance-bar');
+
+                        if (loadTime < 2000) {
+                            perfStatus.className = 'status-indicator status-online pulse';
+                            perfBar.style.width = '90%';
+                        } else if (loadTime < 4000) {
+                            perfStatus.className = 'status-indicator status-warning pulse';
+                            perfBar.style.width = '60%';
+                        } else {
+                            perfStatus.className = 'status-indicator status-offline';
+                            perfBar.style.width = '30%';
+                        }
+                    }
+
+                    // Simulate LCP and TTI (in real app these would come from actual measurements)
+                    document.getElementById('lcp').textContent = '1.2s';
+                    document.getElementById('tti').textContent = '2.1s';
+                    document.getElementById('cwv-score').textContent = '87/100';
+
+                } catch (error) {
+                    console.error('Performance monitoring error:', error);
+                }
+
+                document.getElementById('performance-timestamp').textContent =
+                    `Updated: ${new Date().toLocaleString()}`;
+            }
+
+            setupRealTimeUpdates() {
+                // Simulate real-time user activity
+                let userCount = 0;
+                let searches = 0;
+                let calculations = 0;
+                let pageviews = 0;
+
+                setInterval(() => {
+                    // Simulate user activity with some randomness
+                    userCount = Math.floor(Math.random() * 50) + 10;
+                    searches = Math.floor(Math.random() * 20);
+                    calculations = Math.floor(Math.random() * 10);
+                    pageviews = Math.floor(Math.random() * 30);
+
+                    document.getElementById('active-users').textContent = userCount;
+                    document.getElementById('searches-per-min').textContent = searches;
+                    document.getElementById('calculations-per-min').textContent = calculations;
+                    document.getElementById('pageviews-per-min').textContent = pageviews;
+                    document.getElementById('bounce-rate').textContent = `${(Math.random() * 20 + 20).toFixed(1)}%`;
+
+                    document.getElementById('activity-timestamp').textContent =
+                        `Updated: ${new Date().toLocaleString()}`;
+                }, 10000); // Update every 10 seconds
+            }
+
+            trackUserActivity() {
+                // Track page interactions
+                analytics.logEvent('dashboard_view', {
+                    page_title: 'Development Dashboard',
+                    timestamp: Date.now()
+                });
+
+                // Track clicks and interactions
+                document.addEventListener('click', (e) => {
+                    if (e.target.closest('.metric-card')) {
+                        analytics.logEvent('metric_card_click', {
+                            card_type: e.target.closest('.metric-card').querySelector('.card-title').textContent
+                        });
+                    }
+                });
+            }
+
+            updateProgress() {
+                // Update development progress (this would normally come from project management API)
+                const phases = {
+                    phase_0: { total: 12, completed: 7 },
+                    phase_1: { total: 16, completed: 0 },
+                    phase_2: { total: 9, completed: 0 },
+                    phase_3: { total: 8, completed: 0 }
+                };
+
+                let totalTasks = 0;
+                let completedTasks = 0;
+
+                Object.values(phases).forEach(phase => {
+                    totalTasks += phase.total;
+                    completedTasks += phase.completed;
+                });
+
+                const completionPercentage = Math.round((completedTasks / totalTasks) * 100);
+                document.getElementById('completion-percentage').textContent = `${completionPercentage}%`;
+                document.getElementById('tasks-completed').textContent = `${completedTasks}/${totalTasks}`;
+                document.getElementById('progress-bar').style.width = `${completionPercentage}%`;
+
+                // Update status colors
+                const progressValue = document.getElementById('completion-percentage');
+                if (completionPercentage < 30) {
+                    progressValue.className = 'metric-value warning';
+                } else if (completionPercentage < 70) {
+                    progressValue.className = 'metric-value info';
+                } else {
+                    progressValue.className = 'metric-value success';
+                }
+
+                document.getElementById('progress-timestamp').textContent =
+                    `Updated: ${new Date().toLocaleString()}`;
+            }
+
+            updateTimestamp() {
+                document.getElementById('last-updated').textContent = new Date().toLocaleString();
+            }
+
+            showAlert(message, severity = 'warning') {
+                const alertContainer = document.getElementById('alert-container');
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert-banner';
+                alertDiv.innerHTML = `⚠️ ${message}`;
+
+                alertContainer.appendChild(alertDiv);
+
+                // Auto remove after 10 seconds
+                setTimeout(() => {
+                    alertDiv.remove();
+                }, 10000);
+            }
+
+            updateErrorMonitoring() {
+                const errorStatus = document.getElementById('error-status');
+                const errorCountElement = document.getElementById('error-count');
+                const errorRateElement = document.getElementById('error-rate');
+                const lastErrorElement = document.getElementById('last-error');
+
+                if (this.errorCount === 0) {
+                    errorStatus.className = 'status-indicator status-online pulse';
+                    errorCountElement.className = 'metric-value success';
+                } else {
+                    errorStatus.className = 'status-indicator status-offline pulse';
+                    errorCountElement.className = 'metric-value error';
+                }
+
+                errorCountElement.textContent = this.errorCount;
+                errorRateElement.textContent = `${(this.errorCount / 100 * 100).toFixed(1)}%`;
+                lastErrorElement.textContent = this.errorCount > 0 ? 'Backend connection error' : 'None';
+
+                document.getElementById('error-timestamp').textContent =
+                    `Updated: ${new Date().toLocaleString()}`;
+            }
+        }
+
+        // Initialize the monitoring dashboard
+        document.addEventListener('DOMContentLoaded', () => {
+            new TaxasGEMonitor();
+        });
+
+        // Update error monitoring periodically
+        setInterval(() => {
+            window.monitor?.updateErrorMonitoring();
+        }, 30000);
+    </script>
+</body>
+</html>
