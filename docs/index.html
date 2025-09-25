@@ -1,56 +1,47 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TaxasGE - Unified Monitoring Dashboard</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>">
-    <style>
-        :root { --primary:#2563eb; --success:#16a34a; --warning:#d97706; --danger:#dc2626; --muted:#6b7280; --bg:#f8fafc; --card:#ffffff; --border:#e2e8f0; }
-        *{margin:0;padding:0;box-sizing:border-box}
-        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:#1f2937;line-height:1.6}
-        .header{background:linear-gradient(135deg,var(--primary),#1d4ed8);color:#fff;padding:2rem;text-align:center;box-shadow:0 4px 6px -1px rgba(0,0,0,.1)}
-        .header h1{font-size:2.2rem;font-weight:700;margin-bottom:.5rem}
-        .container{max-width:1200px;margin:0 auto;padding:2rem}
-        .status-banner{background:var(--card);border-radius:12px;padding:1.5rem;margin-bottom:2rem;border-left:4px solid var(--success);box-shadow:0 1px 3px rgba(0,0,0,.1)}
-        .metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.5rem;margin-bottom:2rem}
-        .metric-card{background:var(--card);border-radius:12px;padding:1.5rem;border:1px solid var(--border)}
-        .section{background:var(--card);border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;border:1px solid var(--border)}
-        .footer{text-align:center;padding:2rem;color:var(--muted);font-size:.875rem}
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TaxasGE - Unified Monitoring Dashboard</title>
+  <style>
+    :root { --primary:#2563eb;--success:#16a34a;--warning:#d97706;--danger:#dc2626;--muted:#6b7280;--bg:#f8fafc;--card:#ffffff;--border:#e2e8f0;}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:system-ui,-apple-system,'Segoe UI',Roboto,Ubuntu,'Helvetica Neue',Arial,'Noto Sans',sans-serif;background:var(--bg);color:#111827}
+    .header{background:linear-gradient(135deg,var(--primary) 0%,#1d4ed8 100%);color:#fff;padding:2rem;text-align:center}
+    .container{max-width:1200px;margin:0 auto;padding:2rem}
+    .status{background:var(--card);border:1px solid var(--border);border-left:6px solid var(--success);border-radius:12px;padding:1rem;margin-bottom:1.5rem}
+    .grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1rem}
+    .muted{color:var(--muted)}
+  </style>
 </head>
 <body>
-    <div class="header">
-        <h1>📊 TaxasGE Monitoring</h1>
-        <p>Unified System Health & Project Dashboard</p>
+  <div class="header">
+    <h1>📊 TaxasGE Monitoring</h1>
+    <p class="muted">Unified System Health & Project Dashboard</p>
+  </div>
+  <div class="container">
+    <div class="status">
+      <strong id="overall">Loading status…</strong>
+      <div id="updated" class="muted">Last updated: …</div>
     </div>
-    <div class="container">
-        <div class="status-banner">
-            <h3 id="overall-status">🟢 All Systems Operational</h3>
-            <p id="last-update">Last updated: Loading...</p>
-        </div>
-        <div class="metrics-grid">
-            <div class="metric-card"><strong>API Response Time</strong><br><span>~150ms</span></div>
-            <div class="metric-card"><strong>System Uptime (24h)</strong><br><span>99.5%</span></div>
-            <div class="metric-card"><strong>Project Progress</strong><br><span>67.5%</span></div>
-            <div class="metric-card"><strong>Executions</strong><br><span>3×/day</span></div>
-        </div>
-        <div class="section">
-            <h2>Technical Systems</h2>
-            <ul>
-                <li>Backend API: operational</li>
-                <li>Database: reachable</li>
-                <li>Firebase: hosting active</li>
-                <li>CI/CD: running</li>
-            </ul>
-        </div>
+    <div class="grid">
+      <div class="card"><h3>API Response Time</h3><div id="metric-rt">—</div></div>
+      <div class="card"><h3>System Uptime</h3><div>99.5%</div></div>
+      <div class="card"><h3>Project Progress</h3><div>67.5%</div></div>
+      <div class="card"><h3>Executions/Day</h3><div>3 (↓ from 96)</div></div>
     </div>
-    <div class="footer">
-        <p>🇬🇶 TaxasGE - Unified monitoring system</p>
-    </div>
-    <script>
-      document.getElementById('last-update').textContent =
-        'Last updated: ' + new Date().toLocaleString();
-    </script>
+  </div>
+  <script>
+    const updated=document.getElementById('updated');
+    const overall=document.getElementById('overall');
+    fetch('unified-metrics.json').then(r=>r.json()).then(d=>{
+      overall.textContent = `Overall: ${d.system_health.overall}`;
+      updated.textContent = `Last updated: ${new Date(d.metadata.timestamp).toLocaleString()}`;
+      const rt=document.getElementById('metric-rt');
+      rt.textContent = d.technical_metrics.average_response_time;
+    }).catch(()=>{updated.textContent='Status file not found'; overall.textContent='Unknown';});
+  </script>
 </body>
 </html>
