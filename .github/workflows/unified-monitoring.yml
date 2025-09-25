@@ -250,44 +250,47 @@ jobs:
           echo "stars=$stars" >> "$GITHUB_OUTPUT"
           echo "forks=$forks" >> "$GITHUB_OUTPUT"
           echo "open_issues=$open_issues" >> "$GITHUB_OUTPUT"
+          
       - name: "📊 Health Summary & Alert Decision"
         id: health-summary
         run: |
           #!/bin/bash
-          set -e  # Exit immediately if any command fails
+          set +e  # Désactive l'arrêt sur erreur pour ce script
 
-          # Initialize variables with safe defaults
+          echo "📊 Calculating overall health..."
+
+          # Initialisation sécurisée des variables avec valeurs par défaut
           tech_status="${{ steps.technical-check.outputs.status || 'healthy' }}"
           services_status="${{ steps.services-check.outputs.status || 'healthy' }}"
           project_health="${{ steps.project-check.outputs.health || 'healthy' }}"
 
-          # Initialize counters
+          # Initialisation des compteurs
           critical_count=0
           degraded_count=0
           all_alerts=()
 
-          # Safely process technical status
+          # Traitement sécurisé du statut technique
           if [[ "$tech_status" == "critical" ]]; then
             ((critical_count++))
           elif [[ "$tech_status" == "degraded" ]]; then
             ((degraded_count++))
           fi
 
-          # Safely process services status
+          # Traitement sécurisé du statut des services
           if [[ "$services_status" == "critical" ]]; then
             ((critical_count++))
           elif [[ "$services_status" == "degraded" ]]; then
             ((degraded_count++))
           fi
 
-          # Safely process project health
+          # Traitement sécurisé de la santé du projet
           if [[ "$project_health" == "critical" ]]; then
             ((critical_count++))
           elif [[ "$project_health" == "attention" ]]; then
             ((degraded_count++))
           fi
 
-          # Determine overall health with safe defaults
+          # Détermination de la santé globale
           if [[ $critical_count -gt 0 ]]; then
             overall_health="critical"
             health_color="red"
@@ -302,11 +305,11 @@ jobs:
             should_notify="${{ github.event.inputs.force_alerts || 'false' }}"
           fi
 
-          # Safely collect alerts with error handling
+          # Collecte sécurisée des alertes
           project_alerts="${{ steps.project-check.outputs.alerts || '' }}"
           failed_endpoints="${{ steps.technical-check.outputs.failed_endpoints || '' }}"
 
-          # Process project alerts safely
+          # Traitement sécurisé des alertes de projet
           if [[ -n "$project_alerts" ]]; then
             IFS=' ' read -ra alert_array <<< "$project_alerts" || true
             for alert in "${alert_array[@]}"; do
@@ -314,7 +317,7 @@ jobs:
             done
           fi
 
-          # Process failed endpoints safely
+          # Traitement sécurisé des endpoints en échec
           if [[ -n "$failed_endpoints" ]]; then
             IFS=' ' read -ra endpoint_array <<< "$failed_endpoints" || true
             for endpoint in "${endpoint_array[@]}"; do
@@ -322,15 +325,15 @@ jobs:
             done
           fi
 
-          # Output results with proper quoting and error handling
+          # Écriture sécurisée des outputs
           {
             echo "health=$overall_health"
             echo "color=$health_color"
             echo "should_notify=$should_notify"
-            echo "alerts=$(printf "%s " "${all_alerts[@]}")"
+            echo "alerts=$(printf "%q " "${all_alerts[@]}")"
           } >> "$GITHUB_OUTPUT"
 
-          # Log summary
+          # Logs de résumé
           echo "🏥 Overall Health: $overall_health"
           echo "🚨 Should notify: $should_notify"
           echo "📊 Alerts: ${#all_alerts[@]} total"
