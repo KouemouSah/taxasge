@@ -1,10 +1,10 @@
 {
   "metadata": {
-    "timestamp": "2025-09-25T18:29:55Z",
+    "timestamp": "2025-09-25T18:48:48Z",
     "generator": "unified-monitoring-workflow",
     "version": "2.0",
     "environment": "development",
-    "monitoring_mode": "scheduled"
+    "monitoring_mode": "full"
   },
   "system_health": {
     "overall": "",
@@ -35,5 +35,5 @@
     "performance_budget": "within_limits",
     "uptime_sla": "met"
   },
-  "next_check": "2025-09-26T01:29:55Z"
+  "next_check": "2025-09-26T01:48:48Z"
 }
