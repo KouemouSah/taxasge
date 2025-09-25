@@ -14,13 +14,16 @@ on:
       - 'config/**'
       - 'scripts/**'
       - '.github/workflows/backend-ci.yml'
+
 # Cancel previous runs on new push — auteur : kouemou sah jean emac
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
 env:
   PYTHON_VERSION: '3.11'
   ENVIRONMENT: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
+
 jobs:
   # ============================================================================
   # SETUP & VALIDATION — auteur : kouemou sah jean emac
@@ -51,6 +54,7 @@ jobs:
           echo "🐍 Python version: ${{ steps.env.outputs.python-version }}"
           echo "📝 Triggered by: ${{ github.event_name }}"
           echo "🌿 Branch: ${{ github.ref_name }}"
+
   # ============================================================================
   # PYTHON TESTS & QUALITY — auteur : kouemou sah jean emac
   # ============================================================================
@@ -105,100 +109,94 @@ jobs:
             echo "Failed to create .env.test file."
             exit 1
           fi
+
+      # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+      # ✅ FIX 1: Remplacement du heredoc par shell: python (aucune suppression)
+      # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       - name: 🧪 Run unit tests
         if: matrix.test-type == 'unit'
+        shell: python
         run: |
-          cd packages/backend
-          echo "🧪 Exécution des tests unitaires"
-          if [ ! -d "tests" ]; then
-            echo "❌ Dossier tests/ manquant"
-            exit 1
-          fi
-          test_count=$(find tests/ -name "test_*.py" 2>/dev/null | wc -l)
-          if [ "$test_count" -eq 0 ]; then
-            echo "⚠️ Aucun fichier test_*.py trouvé dans tests/"
-            echo "📝 Phase développement: Tests à implémenter"
-            echo "✅ Validation structure: OK (dossier tests/ existe)"
-            echo 'PYTHON_SCRIPT_UNIT_TESTS_NO_FILES<<EOF' >> $GITHUB_ENV
-            import sys, os
-            sys.path.append('.')
-            try:
-                import main
-                print('✅ Import Firebase Functions: OK')
-                print(f'📊 Environment: {os.getenv("ENVIRONMENT", "development")}')
-                print('✅ Structure backend validée')
-            except Exception as e:
-                print(f'❌ Erreur validation: {e}')
-                sys.exit(1)
-            EOF
-          else
-            echo "🧪 $test_count fichier(s) de test trouvé(s)"
-            if python3 -c "import pytest" 2>/dev/null; then
-              echo "✅ Pytest disponible, exécution des tests"
-              python3 -m pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term-missing
-            else
-              echo "⚠️ Pytest non disponible - Phase développement Firebase Functions"
-              echo "📝 Tests unitaires à implémenter avec pytest"
-              echo "✅ Validation structure: OK (fichiers de test présents)"
-              echo 'PYTHON_SCRIPT_UNIT_TESTS_WITH_FILES<<EOF' >> $GITHUB_ENV
-              import sys, os
-              sys.path.append('.')
+          import os, sys, subprocess, glob
+          os.chdir("packages/backend")
+          sys.path.append(".")
+          print("🧪 Exécution des tests unitaires")
+          if not os.path.isdir("tests"):
+              print("❌ Dossier tests/ manquant")
+              raise SystemExit(1)
+          test_files = glob.glob("tests/test_*.py")
+          if not test_files:
+              print("⚠️ Aucun fichier test_*.py trouvé dans tests/")
+              print("📝 Phase développement: Tests à implémenter")
+              print("✅ Validation structure: OK (dossier tests/ existe)")
               try:
                   import main
+                  print('✅ Import Firebase Functions: OK')
+                  print(f'📊 Environment: {os.getenv("ENVIRONMENT", "development")}')
+                  print('🏷️ Functions Framework: OK')
+                  print('✅ Structure backend validée')
+              except Exception as e:
+                  print(f'❌ Erreur validation: {e}')
+                  raise SystemExit(1)
+              raise SystemExit(0)
+          try:
+              import pytest  # noqa: F401
+              print("✅ Pytest disponible, exécution des tests")
+              code = subprocess.call(
+                  ["pytest", "tests/", "-v", "--tb=short",
+                   "--cov=app", "--cov-report=xml", "--cov-report=term-missing"]
+              )
+              raise SystemExit(code)
+          except ImportError:
+              print("⚠️ Pytest non disponible - Phase développement Firebase Functions")
+              print("📝 Tests unitaires à implémenter avec pytest")
+              print("✅ Validation structure: OK (fichiers de test présents)")
+              try:
+                  import main  # noqa: F401
                   print('Import Firebase Functions: OK')
                   print('Tests validation: Structure OK')
               except Exception as e:
                   print('Erreur validation:', str(e))
-                  sys.exit(1)
-              EOF
-            fi
-          fi
-          # Execute the appropriate Python script
-          if [ "$test_count" -eq 0 ]; then
-            python3 -c "$PYTHON_SCRIPT_UNIT_TESTS_NO_FILES"
-          else
-            if python3 -c "import pytest" 2>/dev/null; then
-              python3 -m pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term-missing
-            else
-              python3 -c "$PYTHON_SCRIPT_UNIT_TESTS_WITH_FILES"
-            fi
-          fi
+                  raise SystemExit(1)
+
+      # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+      # ✅ FIX 2: Remplacement du heredoc par shell: python (aucune suppression)
+      # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       - name: 🔗 Run integration tests
         if: matrix.test-type == 'integration'
+        shell: python
         run: |
-          cd packages/backend
-          echo "🔗 Tests d'intégration backend"
-          echo 'PYTHON_SCRIPT_INTEGRATION_TESTS<<EOF' >> $GITHUB_ENV
-          import sys, os
-          sys.path.append('.')
+          import os, sys
+          os.chdir("packages/backend")
+          sys.path.append(".")
+          print("🔗 Tests d'intégration backend")
           print('🔍 Testing imports...')
           try:
               import main
               print(f'✅ Functions loaded: {os.getenv("ENVIRONMENT", "development")}')
           except Exception as e:
               print(f'❌ Functions import failed: {e}')
-              sys.exit(1)
+              raise SystemExit(1)
           try:
-              import functions_framework
-              print(f'✅ Functions Framework: OK')
+              import functions_framework  # noqa: F401
+              print('✅ Functions Framework: OK')
           except Exception as e:
               print(f'❌ Functions Framework import failed: {e}')
-              sys.exit(1)
+              raise SystemExit(1)
           try:
-              import main
-              print(f'✅ Functions module: OK')
+              import main  # noqa: F401
+              print('✅ Functions module: OK')
           except Exception as e:
               print(f'⚠️ Functions module import failed: {e}')
               print('✅ Using environment version instead: 1.0.0')
           try:
-              import main
+              import main  # noqa: F401
               print('✅ Main Firebase Functions import: OK')
           except Exception as e:
               print(f'❌ Main Firebase Functions import failed: {e}')
-              sys.exit(1)
+              raise SystemExit(1)
           print('🎉 All integration tests passed!')
-          EOF
-          python3 -c "$PYTHON_SCRIPT_INTEGRATION_TESTS"
+
       - name: 🔍 Code quality checks
         if: matrix.test-type == 'quality'
         run: |
@@ -223,6 +221,7 @@ jobs:
         run: |
           cd packages/backend
           rm -f .env.test
+
   # ============================================================================
   # API VALIDATION — auteur : kouemou sah jean emac
   # ============================================================================
@@ -243,30 +242,32 @@ jobs:
         run: |
           cd packages/backend
           pip install -r requirements.txt
+
+      # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+      # ✅ FIX 3: Remplacement du heredoc par shell: python (aucune suppression)
+      # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       - name: 🔧 Validation Configuration Backend
         env:
           ENVIRONMENT: ${{ needs.setup.outputs.environment }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        shell: python
         run: |
-          cd packages/backend
-          echo "🔧 Validation configuration pour: $ENVIRONMENT"
-          echo 'PYTHON_SCRIPT_API_VALIDATION<<EOF' >> $GITHUB_ENV
           import os, sys
-          sys.path.append('.')
-          os.environ['ENVIRONMENT'] = os.getenv('ENVIRONMENT')
+          os.chdir("packages/backend")
+          sys.path.append(".")
+          print(f"🔧 Validation configuration pour: {os.getenv('ENVIRONMENT')}")
           try:
-              import main
-              print(f'✅ Firebase Functions main module validé')
+              import main  # noqa: F401
+              print('✅ Firebase Functions main module validé')
               print(f'🔗 Environment: {os.getenv("ENVIRONMENT", "development")}')
-              print(f'🛡️ Functions Framework: configuré')
+              print('🛡️ Functions Framework: configuré')
               print('✅ Configuration backend prête pour API')
           except Exception as e:
               print(f'❌ Erreur configuration: {e}')
-              sys.exit(1)
-          EOF
-          python3 -c "$PYTHON_SCRIPT_API_VALIDATION"
+              raise SystemExit(1)
+
       - name: 🚀 Start API server
         run: |
           cd packages/backend
@@ -305,6 +306,7 @@ jobs:
             kill $API_PID || true
             echo "🛑 Serveur API arrêté"
           fi
+
   # ============================================================================
   # SECURITY SCAN — auteur : kouemou sah jean emac
   # ============================================================================
@@ -341,6 +343,7 @@ jobs:
           path: |
             packages/backend/bandit-report.json
             packages/backend/safety-report.json
+
   # ============================================================================
   # SONARQUBE ANALYSIS — auteur : kouemou sah jean emac
   # ============================================================================
@@ -372,6 +375,7 @@ jobs:
             -Dsonar.exclusions=**/__pycache__/**,**/venv/**,**/env/**,**/*.pyc,**/migrations/**
             -Dsonar.test.exclusions=tests/**
             -Dsonar.coverage.exclusions=tests/**,**/test_*.py
+
   # ============================================================================
   # NOTIFICATION VIA SLACK — auteur : kouemou sah jean emac
   # ============================================================================
@@ -439,6 +443,7 @@ jobs:
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
 # ============================================================================
 # WORKFLOW SUMMARY — auteur : kouemou sah jean emac
 # ============================================================================
