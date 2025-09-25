@@ -540,7 +540,7 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
       - name: 📧 Email Notification Fallback
-        if: ${{ env.SLACK_WEBHOOK_URL == '' }}
+        if: ${{ env.SLACK_WEBHOOK_URL }}
         run: |
           echo "📧 Email notification would be sent here"
           echo "Subject: [${{ steps.alert-context.outputs.level }}] TaxasGE System Alert"
