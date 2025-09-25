@@ -169,6 +169,14 @@ firebase-setup-report.md
 google-services.json.backup
 GoogleService-Info.plist.backup
 
+# Firebase Service Accounts (CRITICAL SECURITY)
+config/*firebase-adminsdk*.json
+config/bange-*-credentials.json
+
+# Additional Security Exclusions
+*.private_key
+*.service_account
+
 # Backup Files
 
 # Backend - Fichiers de backup Python

@@ -339,9 +339,18 @@ jobs:
       
       - name: 🔥 Authentication Firebase
         env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV }}
+          FIREBASE_SERVICE_ACCOUNT_DEV: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV }}
+          FIREBASE_SERVICE_ACCOUNT_PRO: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_PRO }}
+          ENVIRONMENT: ${{ needs.prepare.outputs.environment }}
         run: |
-          echo "$FIREBASE_SERVICE_ACCOUNT" > service-account.json
+          # Sélection du service account selon l'environnement
+          if [ "$ENVIRONMENT" = "production" ]; then
+            echo "$FIREBASE_SERVICE_ACCOUNT_PRO" > service-account.json
+            echo "✅ Utilisation service account PRODUCTION"
+          else
+            echo "$FIREBASE_SERVICE_ACCOUNT_DEV" > service-account.json
+            echo "✅ Utilisation service account DEVELOPMENT"
+          fi
           firebase auth:ci-login --service-account service-account.json
       
       - name: ✅ Validation Firebase Project
@@ -412,9 +421,18 @@ jobs:
       
       - name: 🔥 Authentication Firebase
         env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV }}
+          FIREBASE_SERVICE_ACCOUNT_DEV: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV }}
+          FIREBASE_SERVICE_ACCOUNT_PRO: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_PRO }}
+          ENVIRONMENT: ${{ needs.prepare.outputs.environment }}
         run: |
-          echo "$FIREBASE_SERVICE_ACCOUNT" > service-account.json
+          # Sélection du service account selon l'environnement
+          if [ "$ENVIRONMENT" = "production" ]; then
+            echo "$FIREBASE_SERVICE_ACCOUNT_PRO" > service-account.json
+            echo "✅ Utilisation service account PRODUCTION"
+          else
+            echo "$FIREBASE_SERVICE_ACCOUNT_DEV" > service-account.json
+            echo "✅ Utilisation service account DEVELOPMENT"
+          fi
           firebase auth:ci-login --service-account service-account.json
       
       - name: 🚀 Déploiement Functions
@@ -428,8 +446,8 @@ jobs:
           # Configuration du projet
           firebase use $FIREBASE_PROJECT
           
-          # Déploiement avec timeout étendu
-          firebase deploy --only functions --force --debug
+          # Déploiement avec timeout étendu et projet spécifique
+          firebase deploy --only functions --project $FIREBASE_PROJECT --force --debug
           
           # Récupération de l'URL de la function
           FUNCTION_URL=$(firebase functions:config:get | grep -o 'https://[^"]*' | head -1)
