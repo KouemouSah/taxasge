@@ -1,23 +1,23 @@
 {
   "metadata": {
-    "timestamp": "2025-09-26T01:57:53Z",
+    "timestamp": "2025-09-26T07:12:17Z",
     "generator": "unified-monitoring-workflow",
     "version": "2.0",
-    "environment": "",
+    "environment": "development",
     "monitoring_mode": "scheduled"
   },
   "system_health": {
-    "overall": "",
-    "technical_status": "",
-    "project_health": "",
-    "should_alert": ,
-    "alerts": ""
+    "overall": "critical",
+    "technical_status": "critical",
+    "project_health": "attention",
+    "should_alert": true,
+    "alerts": "1 critical issues open 8 recent workflow failures Endpoint\ docs:404\ failed Endpoint\ api:404\ failed Endpoint\ health:404\ failed Endpoint\ root:404\ failed "
   },
   "technical_metrics": {
     "api_success_rate": "75",
     "average_response_time": "500ms",
     "uptime_24h": "99.5%",
-    "environment": ""
+    "environment": "development"
   },
   "project_metrics": {
     "critical_issues": 0,
@@ -35,5 +35,5 @@
     "performance_budget": "within_limits",
     "uptime_sla": "met"
   },
-  "next_check": "2025-09-26T08:57:53Z"
+  "next_check": "2025-09-26T14:12:17Z"
 }
