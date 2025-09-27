@@ -224,7 +224,8 @@ async def api_v1_info():
         "available_endpoints": {
             "auth": "/api/v1/auth/ - Authentication and authorization",
             "fiscal_services": "/api/v1/fiscal-services/ - 547 fiscal services catalog",
-            "users": "/api/v1/users/ - User management and profiles",
+            "users": "/api/v1/users/ - User management and profiles (CRUD)",
+            "taxes": "/api/v1/taxes/ - Tax service management (administrative)",
             "declarations": "/api/v1/declarations/ - Tax declarations workflow",
             "payments": "/api/v1/payments/ - BANGE mobile payments integration",
             "ai": "/api/v1/ai/ - AI assistant conversations",
@@ -241,9 +242,11 @@ async def api_v1_info():
 
 # Include API routers
 try:
-    from app.api.v1 import auth, fiscal_services
+    from app.api.v1 import auth, fiscal_services, users, taxes
     app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
     app.include_router(fiscal_services.router, prefix="/api/v1/fiscal-services", tags=["fiscal-services"])
+    app.include_router(users.router, prefix="/api/v1/users", tags=["user-management"])
+    app.include_router(taxes.router, prefix="/api/v1/taxes", tags=["tax-management"])
     logger.info("✅ API routers loaded successfully")
 except ImportError as e:
     logger.warning(f"⚠️ Some API routers not available: {e}")
