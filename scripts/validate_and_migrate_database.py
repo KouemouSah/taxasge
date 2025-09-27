@@ -38,10 +38,18 @@ class TaxasGEDatabaseValidator:
         missing_vars = []
         if not self.db_url:
             missing_vars.append("DATABASE_URL")
+        else:
+            logger.info(f"📊 DATABASE_URL trouvée: {self.db_url[:50]}...")
+
         if not self.supabase_url:
             missing_vars.append("SUPABASE_URL")
+        else:
+            logger.info(f"📊 SUPABASE_URL trouvée: {self.supabase_url}")
+
         if not self.supabase_key:
             missing_vars.append("SUPABASE_SERVICE_ROLE_KEY")
+        else:
+            logger.info(f"📊 SUPABASE_SERVICE_ROLE_KEY trouvée: {self.supabase_key[:20]}...")
 
         if missing_vars:
             logger.error(f"❌ Variables manquantes: {', '.join(missing_vars)}")
@@ -225,14 +233,80 @@ class TaxasGEDatabaseValidator:
             return True
 
         try:
-            # Cette partie nécessiterait l'implémentation complète
-            # du script de migration intelligent
             logger.info("📝 Migration données JSON en cours...")
-            logger.info("✅ Migration JSON terminée")
+
+            # Migration ministries
+            json_file = self.data_path / "ministerios.json"
+            if json_file.exists():
+                with open(json_file, 'r', encoding='utf-8') as f:
+                    ministries = json.load(f)
+                logger.info(f"📊 Migration {len(ministries)} ministères...")
+
+                cursor = self.connection.cursor()
+                for ministry in ministries:
+                    cursor.execute("""
+                        INSERT INTO ministries (id, name, abbreviation, description, website, created_at)
+                        VALUES (%s, %s, %s, %s, %s, NOW())
+                        ON CONFLICT (id) DO NOTHING
+                    """, (
+                        ministry.get('id', f"MIN-{ministry.get('nombre', 'UNKNOWN')[:3].upper()}"),
+                        ministry.get('nombre', 'Unknown Ministry'),
+                        ministry.get('sigla', ''),
+                        ministry.get('descripcion', ''),
+                        ministry.get('website', ''),
+                    ))
+                self.connection.commit()
+                logger.info(f"✅ Ministères migrés: {len(ministries)}")
+
+            # Migration sectors
+            json_file = self.data_path / "sectores.json"
+            if json_file.exists():
+                with open(json_file, 'r', encoding='utf-8') as f:
+                    sectors = json.load(f)
+                logger.info(f"📊 Migration {len(sectors)} secteurs...")
+
+                cursor = self.connection.cursor()
+                for sector in sectors:
+                    cursor.execute("""
+                        INSERT INTO sectors (id, name, description, created_at)
+                        VALUES (%s, %s, %s, NOW())
+                        ON CONFLICT (id) DO NOTHING
+                    """, (
+                        sector.get('id', f"SEC-{sector.get('nombre', 'UNKNOWN')[:3].upper()}"),
+                        sector.get('nombre', 'Unknown Sector'),
+                        sector.get('descripcion', ''),
+                    ))
+                self.connection.commit()
+                logger.info(f"✅ Secteurs migrés: {len(sectors)}")
+
+            # Migration categories
+            json_file = self.data_path / "categorias.json"
+            if json_file.exists():
+                with open(json_file, 'r', encoding='utf-8') as f:
+                    categories = json.load(f)
+                logger.info(f"📊 Migration {len(categories)} catégories...")
+
+                cursor = self.connection.cursor()
+                for category in categories:
+                    cursor.execute("""
+                        INSERT INTO categories (id, name, description, created_at)
+                        VALUES (%s, %s, %s, NOW())
+                        ON CONFLICT (id) DO NOTHING
+                    """, (
+                        category.get('id', f"CAT-{len(categories)}"),
+                        category.get('nombre', 'Unknown Category'),
+                        category.get('descripcion', ''),
+                    ))
+                self.connection.commit()
+                logger.info(f"✅ Catégories migrées: {len(categories)}")
+
+            logger.info("✅ Migration JSON terminée avec succès")
             return True
 
         except Exception as e:
             logger.error(f"❌ Erreur migration JSON: {e}")
+            if self.connection:
+                self.connection.rollback()
             return False
 
     def generate_validation_report(self, schema_validation: Dict, json_analysis: Dict) -> str:
