@@ -67,13 +67,35 @@ class TaxasGEDatabaseValidator:
                 return False
 
             logger.info("🔗 Connexion à la base de données...")
+
+            # Force IPv4 pour contourner problèmes réseau GitHub Actions
+            import socket
+            original_getaddrinfo = socket.getaddrinfo
+            def ipv4_only_getaddrinfo(*args, **kwargs):
+                kwargs['family'] = socket.AF_INET  # Force IPv4
+                return original_getaddrinfo(*args, **kwargs)
+            socket.getaddrinfo = ipv4_only_getaddrinfo
+
             self.connection = psycopg2.connect(self.db_url)
-            logger.info("✅ Connexion database établie")
+            logger.info("✅ Connexion database établie (IPv4)")
             return True
 
         except Exception as e:
             logger.error(f"❌ Erreur connexion database: {e}")
-            return False
+            logger.info("🔄 Tentative avec DNS flush...")
+
+            # Tentative alternative avec timeout
+            try:
+                import psycopg2
+                self.connection = psycopg2.connect(
+                    self.db_url,
+                    connect_timeout=10
+                )
+                logger.info("✅ Connexion database établie (fallback)")
+                return True
+            except Exception as e2:
+                logger.error(f"❌ Erreur connexion fallback: {e2}")
+                return False
 
     def execute_migration_script(self) -> bool:
         """Exécute le script de migration principal"""

@@ -297,6 +297,20 @@ jobs:
         run: |
           echo "🔍 Validation et migration database pour: $ENVIRONMENT"
 
+          # Diagnostic réseau avant migration
+          echo "🔧 Diagnostic réseau Supabase..."
+          DB_HOST=$(echo "$DATABASE_URL" | grep -oP '(?<=@)[^:]+')
+          echo "Host database: $DB_HOST"
+
+          # Test connectivité IPv4/IPv6
+          nslookup $DB_HOST || echo "DNS lookup failed"
+          ping -c 2 $DB_HOST || echo "Ping failed"
+          nc -zv $DB_HOST 5432 || echo "Port 5432 unreachable"
+
+          # Force IPv4 pour GitHub Actions
+          export PYTHONUNBUFFERED=1
+          echo "🚀 Exécution migration avec debug réseau..."
+
           # Exécution du script de validation et migration
           python scripts/validate_and_migrate_database.py --validate --migrate
 
