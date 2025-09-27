@@ -122,7 +122,7 @@ jobs:
           fi
           
           # Vérification des changements dans le backend
-          if git diff --quiet HEAD~1 HEAD -- packages/backend/ scripts/setup-backend.py config/environments.json; then
+          if git diff --quiet HEAD~1 HEAD -- packages/backend/ scripts/ .github/workflows/deploy-backend.yml; then
             echo "ℹ️ Aucun changement détecté dans le backend"
             DEPLOY_ALLOWED="false"
           fi
