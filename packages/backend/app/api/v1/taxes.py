@@ -354,8 +354,8 @@ async def search_tax_services(
 
 @router.post("/{service_id}/calculate", response_model=PriceCalculationResponse)
 async def calculate_service_price(
-    service_id: str = Path(..., description="Tax service ID"),
     calculation_request: PriceCalculationRequest,
+    service_id: str = Path(..., description="Tax service ID"),
     current_user: UserResponse = Depends(get_current_user)
 ):
     """Calculate price for tax service"""
