@@ -19,7 +19,7 @@ router = APIRouter()
 # Load fiscal services data
 def load_fiscal_services():
     """Load fiscal services from JSON data file"""
-    data_path = os.path.join(os.path.dirname(__file__), "../../../../data/taxes.json")
+    data_path = os.path.join(os.path.dirname(__file__), "../../../../../data/taxes.json")
     try:
         with open(data_path, 'r', encoding='utf-8') as f:
             data = json.load(f)

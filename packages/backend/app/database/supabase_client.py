@@ -17,7 +17,7 @@ class SupabaseClient:
 
     def __init__(self):
         if not settings.SUPABASE_URL or not settings.SUPABASE_SERVICE_ROLE_KEY:
-            logger.warning("� Supabase credentials not configured")
+            logger.warning("⚠️ Supabase credentials not configured")
             self.enabled = False
             return
 
