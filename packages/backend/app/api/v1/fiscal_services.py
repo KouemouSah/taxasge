@@ -70,7 +70,7 @@ class FiscalServiceQuery(BaseModel):
     service_type: Optional[ServiceType] = Field(None, description="Service type filter")
     min_price: Optional[float] = Field(None, ge=0, description="Minimum price filter")
     max_price: Optional[float] = Field(None, ge=0, description="Maximum price filter")
-    language: Optional[str] = Field("es", regex="^(es|fr|en)$", description="Language code")
+    language: Optional[str] = Field("es", pattern="^(es|fr|en)$", description="Language code")
     sort: Optional[SortOption] = Field(SortOption.relevance, description="Sort option")
     page: int = Field(1, ge=1, description="Page number")
     limit: int = Field(20, ge=1, le=100, description="Items per page")
@@ -288,7 +288,7 @@ async def search_fiscal_services(query: FiscalServiceQuery):
 
 @router.get("/hierarchy")
 async def get_fiscal_services_hierarchy(
-    language: str = Query("es", regex="^(es|fr|en)$", description="Language code")
+    language: str = Query("es", pattern="^(es|fr|en)$", description="Language code")
 ):
     """Get hierarchical structure of fiscal services (categories > subcategories > services)"""
 
@@ -358,7 +358,7 @@ async def get_fiscal_services_hierarchy(
 @router.get("/{service_id}")
 async def get_fiscal_service_detail(
     service_id: str = Path(..., description="Fiscal service ID (e.g., T-001)"),
-    language: str = Query("es", regex="^(es|fr|en)$", description="Language code")
+    language: str = Query("es", pattern="^(es|fr|en)$", description="Language code")
 ):
     """Get detailed information about a specific fiscal service"""
 
