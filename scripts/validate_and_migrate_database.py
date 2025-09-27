@@ -347,5 +347,14 @@ python scripts/validate_and_migrate_database.py --validate
             self.connection.close()
 
 if __name__ == "__main__":
+    import sys
+
+    # Parse command line arguments
+    if len(sys.argv) > 1:
+        if "--migrate" in sys.argv:
+            print("🔄 Mode migration activé")
+        if "--validate" in sys.argv:
+            print("🔍 Mode validation activé")
+
     validator = TaxasGEDatabaseValidator()
     asyncio.run(validator.run_complete_validation())
