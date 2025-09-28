@@ -320,9 +320,9 @@ class TaxasGEDatabaseValidator:
             return False
 
     def generate_validation_report(self, schema_validation: Dict, json_analysis: Dict) -> str:
-        """Génère un rapport de validation complet"""
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        report = f"""# 📋 RAPPORT VALIDATION DATABASE TAXASGE
+    """Génère un rapport de validation complet"""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    report = f"""# 📋 RAPPORT VALIDATION DATABASE TAXASGE
 **Date:** {timestamp}
 **Agent:** Database Expert TaxasGE
 **Statut:** RÉEL
@@ -343,12 +343,13 @@ class TaxasGEDatabaseValidator:
 ### Détail par Table
 """
 
-        for table, info in json_analysis.items():
-            if table != 'summary' and isinstance(info, dict):
-                status_emoji = "✅" if info.get('status') == 'found' else "❌"
-                report += f"- **{table}:** {status_emoji} {info.get('records', 0)} enregistrements\n"
+    for table, info in json_analysis.items():
+        if table != 'summary' and isinstance(info, dict):
+            status_emoji = "✅" if info.get('status') == 'found' else "❌"
+            report += f"- **{table}:** {status_emoji} {info.get('records', 0)} enregistrements\n"
 
-        report += f"""
+    # Fermez la chaîne ici
+    report += """
 ## 🚀 PROCHAINES ÉTAPES
 ### Actions Requises
 1. **Vérifier les tables créées** dans Supabase.
