@@ -106,7 +106,6 @@ class TaxasGEDatabaseValidator:
             'document_ocr_status_enum', 'document_extraction_status_enum',
             'document_validation_status_enum', 'document_access_level_enum'
         ]
-
         try:
             # Vérification des tables
             query = """
@@ -323,8 +322,7 @@ class TaxasGEDatabaseValidator:
     def generate_validation_report(self, schema_validation: Dict, json_analysis: Dict) -> str:
         """Génère un rapport de validation complet"""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        report = f"""
-# 📋 RAPPORT VALIDATION DATABASE TAXASGE
+        report = f"""# 📋 RAPPORT VALIDATION DATABASE TAXASGE
 **Date:** {timestamp}
 **Agent:** Database Expert TaxasGE
 **Statut:** RÉEL
@@ -344,10 +342,12 @@ class TaxasGEDatabaseValidator:
 - **Total enregistrements:** {json_analysis.get('summary', {}).get('total_records', 0)}
 ### Détail par Table
 """
+
         for table, info in json_analysis.items():
             if table != 'summary' and isinstance(info, dict):
                 status_emoji = "✅" if info.get('status') == 'found' else "❌"
                 report += f"- **{table}:** {status_emoji} {info.get('records', 0)} enregistrements\n"
+
         report += f"""
 ## 🚀 PROCHAINES ÉTAPES
 ### Actions Requises
@@ -358,4 +358,4 @@ class TaxasGEDatabaseValidator:
 ### Commandes Déploiement
 ```bash
 # 1. Exécuter le script de migration
-python scripts/validate_and_migrate_database.py"""
+python scripts/validate_and_migrate_database.py
