@@ -358,4 +358,4 @@ class TaxasGEDatabaseValidator:
 ### Commandes Déploiement
 ```bash
 # 1. Exécuter le script de migration
-python scripts/validate_and_migrate_database.py
+python scripts/validate_and_migrate_database.py"""
