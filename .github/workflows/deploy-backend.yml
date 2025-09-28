@@ -1,6 +1,3 @@
-### 2. **Workflow `deploy-backend.yml` (mis à jour)**
-
-
 # ============================================================================
 # 🚀 TaxasGE Backend Deployment Workflow
 # ============================================================================
@@ -64,7 +61,7 @@ jobs:
   # ==========================================================================
 
   prepare:
-    name: 🔍 Préparation Déploiement
+    name: 🔧 Préparation Déploiement
     runs-on: ubuntu-latest
 
     outputs:
@@ -134,7 +131,7 @@ jobs:
           fi
 
           echo "deploy-allowed=${DEPLOY_ALLOWED}" >> $GITHUB_OUTPUT
-          echo "🔍 Déploiement autorisé: ${DEPLOY_ALLOWED}"
+          echo "🔧 Déploiement autorisé: ${DEPLOY_ALLOWED}"
 
   # ==========================================================================
   # JOB 2: TESTS BACKEND PRÉ-DÉPLOIEMENT
@@ -150,7 +147,7 @@ jobs:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
 
-      - name: 🐍 Setup Python
+      - name: 🔧 Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -263,7 +260,7 @@ jobs:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
 
-      - name: 🐍 Setup Python
+      - name: 🔧 Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -274,14 +271,14 @@ jobs:
           pip install --upgrade pip
           pip install requests psycopg2-binary
 
-      - name: 🔍 Database Validation & Migration
+      - name: 🔧 Database Validation & Migration
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           ENVIRONMENT: ${{ needs.prepare.outputs.environment }}
         run: |
-          echo "🔍 Validation et migration database pour: $ENVIRONMENT"
+          echo "🔧 Validation et migration database pour: $ENVIRONMENT"
           python scripts/validate_and_migrate_database.py --validate --migrate
           echo "✅ Migration database terminée"
 
@@ -310,7 +307,7 @@ jobs:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
 
-      - name: 🐍 Setup Python
+      - name: 🔧 Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -407,7 +404,7 @@ jobs:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
 
-      - name: 🐍 Setup Python
+      - name: 🔧 Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -489,10 +486,10 @@ jobs:
           echo "function-url=$FUNCTION_URL" >> $GITHUB_OUTPUT
           echo "✅ Déploiement réussi: $FUNCTION_URL"
 
-      - name: 🔍 Tests Post-Déploiement
+      - name: 🔧 Tests Post-Déploiement
         run: |
           FUNCTION_URL="${{ steps.deploy.outputs.function-url }}"
-          echo "🔍 Test de l'endpoint déployé: $FUNCTION_URL"
+          echo "🔧 Test de l'endpoint déployé: $FUNCTION_URL"
 
           # Test de health check
           response=$(curl -s -o /dev/null -w "%{http_code}" "$FUNCTION_URL/health" || echo "000")
@@ -592,14 +589,14 @@ jobs:
               }]
             }
 
-      - name: 📊 Mise à jour Status Dashboard
+      - name: 📊 Mise à à jour Status Dashboard
         if: always()
         run: |
           # Optionnel: Mise à jour du status dashboard via webhook personnalisé
           # Note: STATUS_DASHBOARD_WEBHOOK n'est pas encore configuré
           echo "📊 Status Dashboard: Déploiement ${{ needs.deploy.result == 'success' && 'réussi' || 'échoué' }}"
           echo "🔗 Environnement: ${{ needs.prepare.outputs.environment }}"
-          echo "📍 Function URL: ${{ needs.deploy.outputs.function-url }}"
+          echo "🔧 Function URL: ${{ needs.deploy.outputs.function-url }}"
 
           # TODO: Ajouter STATUS_DASHBOARD_WEBHOOK secret si monitoring dashboard requis
           # curl -X POST "${{ secrets.STATUS_DASHBOARD_WEBHOOK }}" \

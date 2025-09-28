@@ -17,55 +17,96 @@ BEGIN;
 -- CREATE SCHEMA taxasge;
 -- SET search_path TO taxasge, public;
 
--- ============================================
--- 2. TYPES ÉNUMÉRÉS - BASE
--- ============================================
-
-CREATE TYPE user_role_enum AS ENUM (
-    'citizen', 'dgi_agent', 'dgi_admin', 'system_admin'
-);
-
-CREATE TYPE payment_status_enum AS ENUM (
-    'pending', 'processing', 'completed', 'failed', 'cancelled', 'refunded'
-);
-
-CREATE TYPE service_type_enum AS ENUM (
-    'license', 'certificate', 'registration', 'permit', 'declaration', 'other'
-);
-
-CREATE TYPE currency_enum AS ENUM (
-    'XAF', 'EUR', 'USD'
-);
+-- Extensions nécessaires (inoffensif si déjà présentes)
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";  -- pour gen_random_uuid()
 
 -- ============================================
--- 3. TYPES ÉNUMÉRÉS - DOCUMENTS & OCR
+-- 2. TYPES ÉNUMÉRÉS - BASE (création si absents)
 -- ============================================
 
-CREATE TYPE document_processing_mode_enum AS ENUM (
-    'pending', 'server_processing', 'lite_processing', 'assisted_manual'
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role_enum') THEN
+        CREATE TYPE user_role_enum AS ENUM ('citizen', 'dgi_agent', 'dgi_admin', 'system_admin');
+    END IF;
+END$$;
 
-CREATE TYPE document_ocr_status_enum AS ENUM (
-    'pending', 'processing', 'completed', 'failed', 'skipped'
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payment_status_enum') THEN
+        CREATE TYPE payment_status_enum AS ENUM ('pending', 'processing', 'completed', 'failed', 'cancelled', 'refunded');
+    END IF;
+END$$;
 
-CREATE TYPE document_extraction_status_enum AS ENUM (
-    'pending', 'processing', 'completed', 'failed', 'manual'
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'service_type_enum') THEN
+        CREATE TYPE service_type_enum AS ENUM ('license', 'certificate', 'registration', 'permit', 'declaration', 'other');
+    END IF;
+END$$;
 
-CREATE TYPE document_validation_status_enum AS ENUM (
-    'pending', 'valid', 'invalid', 'requires_review', 'user_corrected'
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'currency_enum') THEN
+        CREATE TYPE currency_enum AS ENUM ('XAF', 'EUR', 'USD');
+    END IF;
+END$$;
 
-CREATE TYPE document_access_level_enum AS ENUM (
-    'private', 'shared', 'public', 'confidential'
-);
+-- ============================================
+-- 3. TYPES ÉNUMÉRÉS - DOCUMENTS & OCR (création si absents)
+-- ============================================
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'document_processing_mode_enum') THEN
+        CREATE TYPE document_processing_mode_enum AS ENUM ('pending', 'server_processing', 'lite_processing', 'assisted_manual');
+    END IF;
+END$$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'document_ocr_status_enum') THEN
+        CREATE TYPE document_ocr_status_enum AS ENUM ('pending', 'processing', 'completed', 'failed', 'skipped');
+    END IF;
+END$$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'document_extraction_status_enum') THEN
+        CREATE TYPE document_extraction_status_enum AS ENUM ('pending', 'processing', 'completed', 'failed', 'manual');
+    END IF;
+END$$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'document_validation_status_enum') THEN
+        CREATE TYPE document_validation_status_enum AS ENUM ('pending', 'valid', 'invalid', 'requires_review', 'user_corrected');
+    END IF;
+END$$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'document_access_level_enum') THEN
+        CREATE TYPE document_access_level_enum AS ENUM ('private', 'shared', 'public', 'confidential');
+    END IF;
+END$$;
+
+-- ============================================
+-- 10. SÉQUENCES (créée avant la table documents car utilisée dans le DEFAULT)
+-- ============================================
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relkind = 'S' AND relname = 'documents_seq') THEN
+        CREATE SEQUENCE documents_seq START 1;
+    END IF;
+END$$;
 
 -- ============================================
 -- 4. TABLES DE BASE - UTILISATEURS & AUTH
 -- ============================================
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
@@ -86,7 +127,7 @@ CREATE TABLE users (
 -- 5. TABLES DE BASE - STRUCTURE FISCALE
 -- ============================================
 
-CREATE TABLE ministries (
+CREATE TABLE IF NOT EXISTS ministries (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     ministry_code VARCHAR(20) UNIQUE NOT NULL,
     is_active BOOLEAN DEFAULT true,
@@ -94,7 +135,7 @@ CREATE TABLE ministries (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE sectors (
+CREATE TABLE IF NOT EXISTS sectors (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     sector_code VARCHAR(20) UNIQUE NOT NULL,
     ministry_id UUID NOT NULL REFERENCES ministries(id) ON DELETE CASCADE,
@@ -103,7 +144,7 @@ CREATE TABLE sectors (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE categories (
+CREATE TABLE IF NOT EXISTS categories (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     category_code VARCHAR(20) UNIQUE NOT NULL,
     sector_id UUID NOT NULL REFERENCES sectors(id) ON DELETE CASCADE,
@@ -112,7 +153,7 @@ CREATE TABLE categories (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE subcategories (
+CREATE TABLE IF NOT EXISTS subcategories (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     subcategory_code VARCHAR(20) UNIQUE NOT NULL,
     category_id UUID NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
@@ -125,7 +166,7 @@ CREATE TABLE subcategories (
 -- 6. TABLES DE BASE - SERVICES FISCAUX
 -- ============================================
 
-CREATE TABLE fiscal_services (
+CREATE TABLE IF NOT EXISTS fiscal_services (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     service_code VARCHAR(50) UNIQUE NOT NULL,
     subcategory_id UUID REFERENCES subcategories(id) ON DELETE SET NULL,
@@ -143,7 +184,7 @@ CREATE TABLE fiscal_services (
 -- 7. TABLES DE BASE - PAIEMENTS
 -- ============================================
 
-CREATE TABLE payments (
+CREATE TABLE IF NOT EXISTS payments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     payment_reference VARCHAR(50) UNIQUE NOT NULL,
     user_id UUID REFERENCES users(id) ON DELETE SET NULL,
@@ -162,7 +203,7 @@ CREATE TABLE payments (
 -- 8. TABLE DOCUMENTS - EXTENSION OCR COMPLÈTE
 -- ============================================
 
-CREATE TABLE documents (
+CREATE TABLE IF NOT EXISTS documents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     -- Références conformes au schéma existant
@@ -206,9 +247,7 @@ CREATE TABLE documents (
     validated_at TIMESTAMPTZ,
 
     -- Form mapping
-    form_mapping_status VARCHAR(20) DEFAULT 'pending' CHECK (form_mapping_status IN (
-        'pending', 'completed', 'failed'
-    )),
+    form_mapping_status VARCHAR(20) DEFAULT 'pending' CHECK (form_mapping_status IN ('pending', 'completed', 'failed')),
     form_auto_fill_data JSONB, -- Données pour pré-remplissage formulaire
     target_form_type VARCHAR(50), -- Type de formulaire cible
 
@@ -241,7 +280,7 @@ CREATE TABLE documents (
 -- 9. TABLE TRADUCTIONS CENTRALISÉE
 -- ============================================
 
-CREATE TABLE translations (
+CREATE TABLE IF NOT EXISTS translations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     entity_type VARCHAR(50) NOT NULL, -- 'ministry', 'sector', 'category', etc.
     entity_id UUID NOT NULL,
@@ -250,213 +289,244 @@ CREATE TABLE translations (
     content TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-
     UNIQUE(entity_type, entity_id, field_name, language_code)
 );
-
--- ============================================
--- 10. SÉQUENCES
--- ============================================
-
-CREATE SEQUENCE documents_seq START 1;
 
 -- ============================================
 -- 11. INDEX POUR PERFORMANCE - BASE
 -- ============================================
 
--- Index utilisateurs
-CREATE INDEX idx_users_email ON users (email);
-CREATE INDEX idx_users_role ON users (role) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users (role) WHERE is_active = true;
 
--- Index structure fiscale
-CREATE INDEX idx_sectors_ministry ON sectors (ministry_id);
-CREATE INDEX idx_categories_sector ON categories (sector_id);
-CREATE INDEX idx_subcategories_category ON subcategories (category_id);
-CREATE INDEX idx_fiscal_services_subcategory ON fiscal_services (subcategory_id);
+CREATE INDEX IF NOT EXISTS idx_sectors_ministry ON sectors (ministry_id);
+CREATE INDEX IF NOT EXISTS idx_categories_sector ON categories (sector_id);
+CREATE INDEX IF NOT EXISTS idx_subcategories_category ON subcategories (category_id);
+CREATE INDEX IF NOT EXISTS idx_fiscal_services_subcategory ON fiscal_services (subcategory_id);
 
--- Index paiements
-CREATE INDEX idx_payments_user ON payments (user_id, created_at DESC);
-CREATE INDEX idx_payments_status ON payments (payment_status, created_at DESC);
-CREATE INDEX idx_payments_reference ON payments (payment_reference);
+CREATE INDEX IF NOT EXISTS idx_payments_user ON payments (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_payments_status ON payments (payment_status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_payments_reference ON payments (payment_reference);
 
--- Index traductions
-CREATE INDEX idx_translations_entity ON translations (entity_type, entity_id);
-CREATE INDEX idx_translations_language ON translations (language_code);
+CREATE INDEX IF NOT EXISTS idx_translations_entity ON translations (entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_translations_language ON translations (language_code);
 
 -- ============================================
 -- 12. INDEX POUR PERFORMANCE - DOCUMENTS
 -- ============================================
 
--- Index principaux pour requêtes fréquentes
-CREATE INDEX idx_documents_user_type ON documents (user_id, document_type, created_at DESC);
-CREATE INDEX idx_documents_processing_pipeline ON documents (processing_mode, ocr_status, extraction_status);
-CREATE INDEX idx_documents_validation ON documents (validation_status) WHERE validation_status IN ('requires_review', 'invalid');
-CREATE INDEX idx_documents_form_mapping ON documents (target_form_type, form_mapping_status);
-CREATE INDEX idx_documents_hash ON documents (file_hash) WHERE file_hash IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_documents_user_type ON documents (user_id, document_type, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_documents_processing_pipeline ON documents (processing_mode, ocr_status, extraction_status);
+CREATE INDEX IF NOT EXISTS idx_documents_validation ON documents (validation_status) WHERE validation_status IN ('requires_review', 'invalid');
+CREATE INDEX IF NOT EXISTS idx_documents_form_mapping ON documents (target_form_type, form_mapping_status);
+CREATE INDEX IF NOT EXISTS idx_documents_hash ON documents (file_hash) WHERE file_hash IS NOT NULL;
 
--- Index pour recherche et filtrage
-CREATE INDEX idx_documents_date_range ON documents (created_at, document_type);
-CREATE INDEX idx_documents_fiscal_service ON documents (fiscal_service_id) WHERE fiscal_service_id IS NOT NULL;
-CREATE INDEX idx_documents_retry ON documents (retry_count, ocr_status) WHERE retry_count > 0;
+CREATE INDEX IF NOT EXISTS idx_documents_date_range ON documents (created_at, document_type);
+CREATE INDEX IF NOT EXISTS idx_documents_fiscal_service ON documents (fiscal_service_id) WHERE fiscal_service_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_documents_retry ON documents (retry_count, ocr_status) WHERE retry_count > 0;
 
 -- Index GIN pour recherche dans JSONB
-CREATE INDEX idx_documents_extracted_data ON documents USING gin(extracted_data) WHERE extracted_data IS NOT NULL;
-CREATE INDEX idx_documents_form_data ON documents USING gin(form_auto_fill_data) WHERE form_auto_fill_data IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_documents_extracted_data ON documents USING gin(extracted_data);
+CREATE INDEX IF NOT EXISTS idx_documents_form_data ON documents USING gin(form_auto_fill_data);
 
 -- ============================================
--- 13. FONCTIONS UTILITAIRES
+-- 13. FONCTIONS UTILITAIRES (créées uniquement si absentes)
 -- ============================================
 
--- Fonction mise à jour timestamp
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
+DO $$
 BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_proc p
+        JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE p.proname = 'update_updated_at_column' AND n.nspname = 'public'
+    ) THEN
+        CREATE FUNCTION update_updated_at_column()
+        RETURNS TRIGGER AS $fn$
+        BEGIN
+            NEW.updated_at = NOW();
+            RETURN NEW;
+        END;
+        $fn$ LANGUAGE plpgsql;
+    END IF;
+END$$;
 
--- Fonction nettoyage documents expirés
-CREATE OR REPLACE FUNCTION cleanup_expired_documents()
-RETURNS INTEGER AS $$
-DECLARE
-    deleted_count INTEGER := 0;
+DO $$
 BEGIN
-    -- Supprimer documents expirés selon retention_until
-    WITH deleted AS (
-        DELETE FROM documents
-        WHERE retention_until IS NOT NULL
-        AND retention_until < CURRENT_DATE
-        RETURNING id
-    )
-    SELECT COUNT(*) INTO deleted_count FROM deleted;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_proc p
+        JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE p.proname = 'cleanup_expired_documents' AND n.nspname = 'public'
+    ) THEN
+        CREATE FUNCTION cleanup_expired_documents()
+        RETURNS INTEGER AS $fn$
+        DECLARE
+            deleted_count INTEGER := 0;
+        BEGIN
+            WITH deleted AS (
+                DELETE FROM documents
+                WHERE retention_until IS NOT NULL
+                AND retention_until < CURRENT_DATE
+                RETURNING id
+            )
+            SELECT COUNT(*) INTO deleted_count FROM deleted;
 
-    RETURN deleted_count;
-END;
-$$ LANGUAGE plpgsql;
+            RETURN deleted_count;
+        END;
+        $fn$ LANGUAGE plpgsql;
+    END IF;
+END$$;
 
--- Fonction calcul score qualité document
-CREATE OR REPLACE FUNCTION calculate_document_quality_score(
-    p_document_id UUID
-)
-RETURNS DECIMAL(4,3) AS $$
-DECLARE
-    v_doc documents%ROWTYPE;
-    v_quality_score DECIMAL(4,3) := 0.0;
+DO $$
 BEGIN
-    SELECT * INTO v_doc FROM documents WHERE id = p_document_id;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_proc p
+        JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE p.proname = 'calculate_document_quality_score' AND n.nspname = 'public'
+    ) THEN
+        CREATE FUNCTION calculate_document_quality_score(p_document_id UUID)
+        RETURNS DECIMAL(4,3) AS $fn$
+        DECLARE
+            v_doc documents%ROWTYPE;
+            v_quality_score DECIMAL(4,3) := 0.0;
+        BEGIN
+            SELECT * INTO v_doc FROM documents WHERE id = p_document_id;
+            IF NOT FOUND THEN
+                RETURN 0.0;
+            END IF;
 
-    IF NOT FOUND THEN
-        RETURN 0.0;
+            -- Score basé sur confiance OCR (30%)
+            IF v_doc.ocr_confidence IS NOT NULL THEN
+                v_quality_score := v_quality_score + (v_doc.ocr_confidence * 0.3);
+            END IF;
+
+            -- Score basé sur confiance extraction (40%)
+            IF v_doc.extraction_confidence IS NOT NULL THEN
+                v_quality_score := v_quality_score + (v_doc.extraction_confidence * 0.4);
+            END IF;
+
+            -- Score basé sur validation (30%)
+            CASE v_doc.validation_status
+                WHEN 'valid' THEN v_quality_score := v_quality_score + 0.3;
+                WHEN 'user_corrected' THEN v_quality_score := v_quality_score + 0.25;
+                WHEN 'requires_review' THEN v_quality_score := v_quality_score + 0.15;
+                WHEN 'invalid' THEN v_quality_score := v_quality_score + 0.0;
+                ELSE v_quality_score := v_quality_score + 0.1;
+            END CASE;
+
+            RETURN LEAST(1.0, GREATEST(0.0, v_quality_score));
+        END;
+        $fn$ LANGUAGE plpgsql;
+    END IF;
+END$$;
+
+-- ============================================
+-- 14. TRIGGERS (créés uniquement si absents)
+-- ============================================
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_users_updated_at') THEN
+        CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
     END IF;
 
-    -- Score basé sur confiance OCR (30%)
-    IF v_doc.ocr_confidence IS NOT NULL THEN
-        v_quality_score := v_quality_score + (v_doc.ocr_confidence * 0.3);
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_ministries_updated_at') THEN
+        CREATE TRIGGER update_ministries_updated_at BEFORE UPDATE ON ministries
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
     END IF;
 
-    -- Score basé sur confiance extraction (40%)
-    IF v_doc.extraction_confidence IS NOT NULL THEN
-        v_quality_score := v_quality_score + (v_doc.extraction_confidence * 0.4);
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_sectors_updated_at') THEN
+        CREATE TRIGGER update_sectors_updated_at BEFORE UPDATE ON sectors
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
     END IF;
 
-    -- Score basé sur validation (30%)
-    CASE v_doc.validation_status
-        WHEN 'valid' THEN v_quality_score := v_quality_score + 0.3;
-        WHEN 'user_corrected' THEN v_quality_score := v_quality_score + 0.25;
-        WHEN 'requires_review' THEN v_quality_score := v_quality_score + 0.15;
-        WHEN 'invalid' THEN v_quality_score := v_quality_score + 0.0;
-        ELSE v_quality_score := v_quality_score + 0.1;
-    END CASE;
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_categories_updated_at') THEN
+        CREATE TRIGGER update_categories_updated_at BEFORE UPDATE ON categories
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
 
-    -- Normaliser entre 0 et 1
-    RETURN LEAST(1.0, GREATEST(0.0, v_quality_score));
-END;
-$$ LANGUAGE plpgsql;
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_subcategories_updated_at') THEN
+        CREATE TRIGGER update_subcategories_updated_at BEFORE UPDATE ON subcategories
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
 
--- ============================================
--- 14. TRIGGERS
--- ============================================
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_fiscal_services_updated_at') THEN
+        CREATE TRIGGER update_fiscal_services_updated_at BEFORE UPDATE ON fiscal_services
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
 
--- Triggers updated_at
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_payments_updated_at') THEN
+        CREATE TRIGGER update_payments_updated_at BEFORE UPDATE ON payments
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
 
-CREATE TRIGGER update_ministries_updated_at BEFORE UPDATE ON ministries
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_documents_updated_at') THEN
+        CREATE TRIGGER update_documents_updated_at BEFORE UPDATE ON documents
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
 
-CREATE TRIGGER update_sectors_updated_at BEFORE UPDATE ON sectors
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_categories_updated_at BEFORE UPDATE ON categories
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_subcategories_updated_at BEFORE UPDATE ON subcategories
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_fiscal_services_updated_at BEFORE UPDATE ON fiscal_services
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_payments_updated_at BEFORE UPDATE ON payments
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_documents_updated_at BEFORE UPDATE ON documents
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_translations_updated_at BEFORE UPDATE ON translations
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_translations_updated_at') THEN
+        CREATE TRIGGER update_translations_updated_at BEFORE UPDATE ON translations
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END$$;
 
 -- ============================================
--- 15. VUES UTILITAIRES
+-- 15. VUES UTILITAIRES (créées uniquement si absentes)
 -- ============================================
 
--- Vue pour monitoring traitement documents
-CREATE VIEW documents_processing_stats AS
-SELECT
-    document_type,
-    processing_mode,
-    COUNT(*) as total_documents,
-    COUNT(*) FILTER (WHERE ocr_status = 'completed') as ocr_completed,
-    COUNT(*) FILTER (WHERE extraction_status = 'completed') as extraction_completed,
-    COUNT(*) FILTER (WHERE validation_status = 'valid') as validated,
-    AVG(ocr_confidence) as avg_ocr_confidence,
-    AVG(extraction_confidence) as avg_extraction_confidence,
-    AVG(ocr_processing_time_ms) as avg_processing_time_ms,
-    COUNT(*) FILTER (WHERE retry_count > 0) as retried_documents
-FROM documents
-WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
-GROUP BY document_type, processing_mode;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.views WHERE table_name = 'documents_processing_stats') THEN
+        CREATE VIEW documents_processing_stats AS
+        SELECT
+            document_type,
+            processing_mode,
+            COUNT(*) as total_documents,
+            COUNT(*) FILTER (WHERE ocr_status = 'completed') as ocr_completed,
+            COUNT(*) FILTER (WHERE extraction_status = 'completed') as extraction_completed,
+            COUNT(*) FILTER (WHERE validation_status = 'valid') as validated,
+            AVG(ocr_confidence) as avg_ocr_confidence,
+            AVG(extraction_confidence) as avg_extraction_confidence,
+            AVG(ocr_processing_time_ms) as avg_processing_time_ms,
+            COUNT(*) FILTER (WHERE retry_count > 0) as retried_documents
+        FROM documents
+        WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+        GROUP BY document_type, processing_mode;
+    END IF;
 
--- Vue pour documents nécessitant attention
-CREATE VIEW documents_requiring_attention AS
-SELECT
-    id,
-    document_number,
-    document_type,
-    user_id,
-    validation_status,
-    retry_count,
-    error_logs,
-    created_at,
-    CASE
-        WHEN retry_count >= 3 THEN 'high'
-        WHEN validation_status = 'requires_review' THEN 'medium'
-        WHEN ocr_status = 'failed' THEN 'medium'
-        ELSE 'low'
-    END as priority_level
-FROM documents
-WHERE validation_status IN ('requires_review', 'invalid')
-   OR ocr_status = 'failed'
-   OR extraction_status = 'failed'
-   OR retry_count > 0
-ORDER BY
-    CASE
-        WHEN retry_count >= 3 THEN 1
-        WHEN validation_status = 'requires_review' THEN 2
-        WHEN ocr_status = 'failed' THEN 3
-        ELSE 4
-    END,
-    created_at DESC;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.views WHERE table_name = 'documents_requiring_attention') THEN
+        CREATE VIEW documents_requiring_attention AS
+        SELECT
+            id,
+            document_number,
+            document_type,
+            user_id,
+            validation_status,
+            retry_count,
+            error_logs,
+            created_at,
+            CASE
+                WHEN retry_count >= 3 THEN 'high'
+                WHEN validation_status = 'requires_review' THEN 'medium'
+                WHEN ocr_status = 'failed' THEN 'medium'
+                ELSE 'low'
+            END as priority_level
+        FROM documents
+        WHERE validation_status IN ('requires_review', 'invalid')
+           OR ocr_status = 'failed'
+           OR extraction_status = 'failed'
+           OR retry_count > 0
+        ORDER BY
+            CASE
+                WHEN retry_count >= 3 THEN 1
+                WHEN validation_status = 'requires_review' THEN 2
+                WHEN ocr_status = 'failed' THEN 3
+                ELSE 4
+            END,
+            created_at DESC;
+    END IF;
+END$$;
 
 -- ============================================
 -- 16. COMMENTAIRES ET DOCUMENTATION
@@ -483,7 +553,7 @@ COMMENT ON COLUMN documents.retention_until IS 'Date suppression automatique (co
 -- 17. FINALISATION TRANSACTION
 -- ============================================
 
--- Mise à jour statistiques tables pour optimisation
+-- Mise à jour statistiques tables pour optimisation (sans effet si vides)
 ANALYZE users;
 ANALYZE ministries;
 ANALYZE sectors;
@@ -494,20 +564,20 @@ ANALYZE payments;
 ANALYZE documents;
 ANALYZE translations;
 
--- Validation finale
+-- Validation finale (non bloquante si tout existe déjà)
 DO $$
 BEGIN
-    -- Vérifier que toutes les tables sont créées
+    -- Vérifier que la table documents existe
     IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'documents') THEN
         RAISE EXCEPTION 'Table documents non créée - migration échouée';
     END IF;
 
-    -- Vérifier que tous les enum sont créés
+    -- Vérifier qu'un enum clé existe
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'document_processing_mode_enum') THEN
         RAISE EXCEPTION 'Enum document_processing_mode_enum non créé - migration échouée';
     END IF;
 
-    RAISE NOTICE 'Migration TaxasGE complète réussie - Schéma unifié créé avec succès';
+    RAISE NOTICE 'Migration TaxasGE complète réussie - Schéma unifié (safe) ok';
 END;
 $$;
 
