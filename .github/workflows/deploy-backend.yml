@@ -1,18 +1,23 @@
 # ============================================================================
-# 🚀 TaxasGE Backend Deployment Workflow
+# 🚀 TaxasGE Backend Deployment Workflow - BACKEND ONLY
 # ============================================================================
 # Déploiement automatique du backend Python FastAPI vers Firebase Functions
+# REFACTORISÉ: Focus exclusif sur le déploiement backend
 # Déclenché sur: push main/develop + déploiement manuel
 #
 # Features:
-# - Déploiement multi-environnement (dev/prod)
-# - Setup automatique avec script setup-backend.py
+# - Déploiement backend Python FastAPI uniquement
+# - Tests et validation du code backend
 # - Intégration Firebase Functions
 # - Configuration dynamique selon l'environnement
 # - Monitoring et notifications Slack
 # - Rollback automatique en cas d'échec
 #
+# IMPORTANT: Les migrations de données sont maintenant manuelles
+# Base de données gérée séparément du cycle de déploiement
+#
 # Author: KOUEMOU SAH Jean Emac
+# Version: 3.0 - Backend Only (Database Decoupled)
 # ============================================================================
 name: 🚀 Deploy Backend to Firebase
 on:
@@ -23,8 +28,6 @@ on:
       - develop   # Development
     paths:
       - 'packages/backend/**'
-      - 'scripts/setup-backend.py'
-      - 'config/environments.json'
       - '.github/workflows/deploy-backend.yml'
 
   # Déploiement manuel avec sélection d'environnement
@@ -91,11 +94,11 @@ jobs:
 
           echo "environment=${ENVIRONMENT}" >> $GITHUB_OUTPUT
 
-          # Auto-détection projet Firebase (pas besoin de FIREBASE_PROJECT_ID secret)
+          # Auto-détection projet Firebase
           if [ "${ENVIRONMENT}" = "production" ]; then
             FIREBASE_PROJECT="taxasge-prod"
           else
-            FIREBASE_PROJECT="taxasge-dev"  # dev/testing utilisent le même projet
+            FIREBASE_PROJECT="taxasge-dev"
           fi
 
           echo "firebase-project=${FIREBASE_PROJECT}" >> $GITHUB_OUTPUT
@@ -115,15 +118,14 @@ jobs:
             exit 0
           fi
 
-          # Vérification des changements dans le backend
-          if git diff --quiet HEAD~1 HEAD -- packages/backend/ scripts/ .github/workflows/deploy-backend.yml; then
-            echo "ℹ️ Aucun changement détecté dans le backend"
+          # Vérification des changements critiques backend seulement
+          if git diff --quiet HEAD~1 HEAD -- packages/backend/ .github/workflows/deploy-backend.yml; then
+            echo "ℹ️ Aucun changement backend détecté"
             DEPLOY_ALLOWED="false"
           fi
 
           # Vérification en production (règles plus strictes)
           if [ "${{ steps.detect-env.outputs.environment }}" = "production" ]; then
-            # Vérifier que nous sommes sur main
             if [ "${{ github.ref }}" != "refs/heads/main" ]; then
               echo "❌ Déploiement production uniquement autorisé depuis main"
               DEPLOY_ALLOWED="false"
@@ -165,9 +167,8 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-
         run: |
-          echo "🔧 Validation configuration pour: $ENVIRONMENT"
+          echo "🔧 Validation configuration backend pour: $ENVIRONMENT"
 
           # Vérification que les fichiers backend existent et sont valides
           if [ ! -f "packages/backend/main.py" ]; then
@@ -175,46 +176,36 @@ jobs:
             exit 1
           fi
 
-          if [ ! -f "packages/backend/requirements.txt" ]; then
-            echo "❌ requirements.txt non trouvé"
-            exit 1
-          fi
-
-          if [ ! -f "packages/backend/app/config.py" ]; then
-            echo "❌ config.py non trouvé"
-            exit 1
-          fi
-
-          # Test de validation de la configuration Python
+          # Validation du module backend
           cd packages/backend
-          python -c "import os; os.environ['ENVIRONMENT']='$ENVIRONMENT'; import main; print(f'✅ Firebase Functions validé pour {os.environ.get(\"ENVIRONMENT\", \"development\")}'); print(f'📊 Functions Framework: OK'); print(f'🎯 Module Version: 1.0.0')" || {
-          echo "❌ Erreur lors de l'import de la configuration"
-          exit 1
-          }
+          python -c "
+          import os
+          os.environ['ENVIRONMENT']='$ENVIRONMENT'
+          try:
+              import main
+              print('✅ Firebase Functions validé pour {}'.format(os.environ.get('ENVIRONMENT', 'development')))
+              print('📊 Functions Framework: OK')
+              print('🎯 Backend Version: 3.0.0')
+          except Exception as e:
+              print(f'❌ Erreur lors de l\'import: {e}')
+              exit(1)
+          "
 
           echo "✅ Configuration backend validée"
 
-      - name: 🧪 Tests Unitaires
+      - name: 🧪 Tests Unitaires Backend
         run: |
           cd packages/backend
           echo "🧪 Exécution des tests backend"
 
-          # Vérifier que le dossier tests existe
+          # Validation structure des tests
           if [ ! -d "tests" ]; then
             echo "❌ Dossier tests/ manquant"
             exit 1
           fi
 
-          # Compter les fichiers de test
-          test_count=$(find tests/ -name "test_*.py" 2>/dev/null | wc -l)
-
-          if [ "$test_count" -eq 0 ]; then
-            echo "⚠️ Aucun fichier test_*.py trouvé dans tests/"
-            echo "📝 Phase développement: Tests à implémenter"
-            echo "✅ Validation structure: OK (dossier tests/ existe)"
-
-            # Validation basique sans pytest pour éviter l'erreur
-            python << 'EOF'
+          # Tests backend
+          python << 'EOF'
           import sys
           import os
           sys.path.append('.')
@@ -222,22 +213,14 @@ jobs:
               import main
               print('✅ Import Firebase Functions: OK')
               print(f'📊 Environment: {os.getenv("ENVIRONMENT", "development")}')
-              print(f'🏷️ Version: 1.0.0')
+              print('🎯 Backend Version: 3.0.0')
               print('✅ Structure backend validée')
           except Exception as e:
               print(f'❌ Erreur validation: {e}')
               sys.exit(1)
           EOF
-          else
-            echo "🧪 $test_count fichier(s) de test trouvé(s)"
-            echo "⚠️ Tests présents mais pytest non installé (Firebase Functions)"
-            echo "📝 Phase développement: Validation basique uniquement"
-            echo "✅ Structure tests: OK"
-          fi
         env:
           ENVIRONMENT: testing
-          SUPABASE_URL: "dummy-url-for-testing"
-          SUPABASE_SERVICE_ROLE_KEY: "dummy-key-for-testing"
 
       - name: 📊 Upload Coverage
         uses: codecov/codecov-action@v3
@@ -247,55 +230,13 @@ jobs:
           name: backend-coverage
 
   # ==========================================================================
-  # JOB 3: MIGRATION DATABASE AUTOMATISÉE
-  # ==========================================================================
-
-  database-migration:
-    name: 🗄️ Migration Database
-    runs-on: ubuntu-latest
-    needs: [prepare, backend-tests]
-    if: needs.prepare.outputs.deploy-allowed == 'true'
-
-    steps:
-      - name: 📥 Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: 🔧 Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
-
-      - name: 📦 Install Database Dependencies
-        run: |
-          pip install --upgrade pip
-          pip install requests psycopg2-binary
-
-      - name: 🔧 Database Validation & Migration
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          ENVIRONMENT: ${{ needs.prepare.outputs.environment }}
-        run: |
-          echo "🔧 Validation et migration database pour: $ENVIRONMENT"
-          python scripts/validate_and_migrate_database.py --validate --migrate
-          echo "✅ Migration database terminée"
-
-      - name: 📊 Upload Migration Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: database-migration-report-${{ needs.prepare.outputs.environment }}
-          path: docs/documentations\ projet/rapports/RAPPORT_VALIDATION_DATABASE.md
-
-  # ==========================================================================
-  # JOB 4: BUILD ET VALIDATION FIREBASE
+  # JOB 3: BUILD ET VALIDATION FIREBASE
   # ==========================================================================
 
   build-and-validate:
     name: 🔨 Build & Validation Firebase
     runs-on: ubuntu-latest
-    needs: [prepare, backend-tests, database-migration]
+    needs: [prepare, backend-tests]
     if: needs.prepare.outputs.deploy-allowed == 'true'
 
     strategy:
@@ -393,7 +334,7 @@ jobs:
   deploy:
     name: 🚀 Déploiement Firebase Functions
     runs-on: ubuntu-latest
-    needs: [prepare, backend-tests, database-migration, build-and-validate]
+    needs: [prepare, backend-tests, build-and-validate]
     if: needs.prepare.outputs.deploy-allowed == 'true'
 
     environment:
@@ -434,17 +375,8 @@ jobs:
           echo "├── DATABASE_URL: ${DATABASE_URL:0:20}..."
           echo "└── FIREBASE_ANDROID_APP_ID: ${FIREBASE_ANDROID_APP_ID:0:20}..."
 
-          # Configuration Firebase project dans .firebaserc (si différent)
           cd packages/backend
-          if [ "$ENVIRONMENT" = "production" ]; then
-            echo "🎯 Configuration pour production"
-            # Pas de modification du code existant
-          else
-            echo "🎯 Configuration pour development/testing"
-            # Utilisation de la configuration existante
-          fi
-
-          echo "✅ Configuration déploiement prête"
+          echo "✅ Configuration déploiement backend prête"
 
       - name: 🔥 Authentication Firebase
         env:
@@ -484,7 +416,7 @@ jobs:
           fi
 
           echo "function-url=$FUNCTION_URL" >> $GITHUB_OUTPUT
-          echo "✅ Déploiement réussi: $FUNCTION_URL"
+          echo "✅ Déploiement backend réussi: $FUNCTION_URL"
 
       - name: 🔧 Tests Post-Déploiement
         run: |
@@ -539,6 +471,11 @@ jobs:
                     "short": true
                   },
                   {
+                    "title": "Backend Version",
+                    "value": "3.0.0",
+                    "short": true
+                  },
+                  {
                     "title": "Projet Firebase",
                     "value": "${{ needs.prepare.outputs.firebase-project }}",
                     "short": true
@@ -576,6 +513,11 @@ jobs:
                     "short": true
                   },
                   {
+                    "title": "Backend Version",
+                    "value": "3.0.0",
+                    "short": true
+                  },
+                  {
                     "title": "Étape Échouée",
                     "value": "${{ needs.deploy.result == 'failure' && 'Déploiement' || 'Tests' }}",
                     "short": true
@@ -589,19 +531,13 @@ jobs:
               }]
             }
 
-      - name: 📊 Mise à à jour Status Dashboard
+      - name: 📊 Mise à jour Status Dashboard
         if: always()
         run: |
-          # Optionnel: Mise à jour du status dashboard via webhook personnalisé
-          # Note: STATUS_DASHBOARD_WEBHOOK n'est pas encore configuré
           echo "📊 Status Dashboard: Déploiement ${{ needs.deploy.result == 'success' && 'réussi' || 'échoué' }}"
           echo "🔗 Environnement: ${{ needs.prepare.outputs.environment }}"
+          echo "🎯 Backend Version: 3.0.0"
           echo "🔧 Function URL: ${{ needs.deploy.outputs.function-url }}"
-
-          # TODO: Ajouter STATUS_DASHBOARD_WEBHOOK secret si monitoring dashboard requis
-          # curl -X POST "${{ secrets.STATUS_DASHBOARD_WEBHOOK }}" \
-          #   -H "Content-Type: application/json" \
-          #   -d '{"status": "operational", "environment": "${{ needs.prepare.outputs.environment }}"}'
 
 # ============================================================================
 # CONCURRENCY CONTROL

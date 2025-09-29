@@ -1,0 +1,4925 @@
+[
+  {
+    "id": "T-001",
+    "category_id": "C-001",
+    "nombre_es": "Legalización de Documentos",
+    "nombre_fr": "Légalisation de documents",
+    "nombre_en": "Document legalization",
+    "tasa_expedicion": 2000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-002",
+    "category_id": "C-001",
+    "nombre_es": "Legalización de Escritos Notariados",
+    "nombre_fr": "Légalisation d'actes notariés",
+    "nombre_en": "Legalization of notarized documents",
+    "tasa_expedicion": 2000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-003",
+    "category_id": "C-001",
+    "nombre_es": "Legalización de Diplomas o Títulos Académicos",
+    "nombre_fr": "Légalisation de diplômes ou titres académiques",
+    "nombre_en": "Legalization of diplomas or academic degrees",
+    "tasa_expedicion": 2000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-004",
+    "category_id": "C-001",
+    "nombre_es": "Legalización de Documentos Mercantiles",
+    "nombre_fr": "Légalisation de documents commerciaux",
+    "nombre_en": "Legalization of Commercial Documents",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-005",
+    "category_id": "C-001",
+    "nombre_es": "Adquisición impreso de pasaporte y su expedición",
+    "nombre_fr": "Acquisition du formulaire de passeport et sa délivrance",
+    "nombre_en": "Passport Form Acquisition and Issuance",
+    "tasa_expedicion": 7500.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-006",
+    "category_id": "C-001",
+    "nombre_es": "Renovación de Pasaporte por expiración de fecha de vigencia",
+    "nombre_fr": "Renouvellement de passeport pour expiration de validité",
+    "nombre_en": "Passport Renewal due to Expiration",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-007",
+    "category_id": "C-001",
+    "nombre_es": "Expedición Salvoconducto",
+    "nombre_fr": "Délivrance de laissez-passer",
+    "nombre_en": "Safe Conduct Issuance",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-008",
+    "category_id": "C-001",
+    "nombre_es": "Legalización de Documentos",
+    "nombre_fr": "Légalisation de documents",
+    "nombre_en": "Legalization of Documents",
+    "tasa_expedicion": 3500.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-009",
+    "category_id": "C-001",
+    "nombre_es": "Legalización de Escritos notariados",
+    "nombre_fr": "Légalisation d'actes notariés",
+    "nombre_en": "Legalization of Notarized Documents",
+    "tasa_expedicion": 15000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-010",
+    "category_id": "C-001",
+    "nombre_es": "legalización de Diplomas o Títulos académicos",
+    "nombre_fr": "Légalisation de diplômes ou titres académiques",
+    "nombre_en": "Legalization of Academic Diplomas or Degrees",
+    "tasa_expedicion": 500.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-011",
+    "category_id": "C-001",
+    "nombre_es": "Legalización de Documentos Mercantiles",
+    "nombre_fr": "Légalisation de documents commerciaux",
+    "nombre_en": "Legalization of Commercial Documents",
+    "tasa_expedicion": 25000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-012",
+    "category_id": "C-001",
+    "nombre_es": "Adquisición impreso de pasaporte y su expedición",
+    "nombre_fr": "Acquisition du formulaire de passeport et sa délivrance",
+    "nombre_en": "Passport Form Acquisition and Issuance",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-013",
+    "category_id": "C-001",
+    "nombre_es": "Renovación de Pasaporte por expiración de fecha de vigencia",
+    "nombre_fr": "Renouvellement de passeport pour expiration de validité",
+    "nombre_en": "Passport Renewal due to Expiration",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-014",
+    "category_id": "C-001",
+    "nombre_es": "Expedición Carnet Consular",
+    "nombre_fr": "Délivrance de la carte consulaire",
+    "nombre_en": "Consular ID Card Issuance",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-015",
+    "category_id": "C-002",
+    "nombre_es": "De 1 hasta 25 Toneladas métricas",
+    "nombre_fr": "De 1 à 25 Tonnes métriques",
+    "nombre_en": "1 to 25 Metric Tons",
+    "tasa_expedicion": 3.503,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-016",
+    "category_id": "C-002",
+    "nombre_es": "De 26 hasta 75 Tm",
+    "nombre_fr": "De 26 à 75 Tonnes métriques",
+    "nombre_en": "26 to 75 Metric Tons",
+    "tasa_expedicion": 5.652,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-017",
+    "category_id": "C-002",
+    "nombre_es": "De 76 hasta 150 Tm",
+    "nombre_fr": "De 76 à 150 Tonnes métriques",
+    "nombre_en": "76 to 150 Metric Tons",
+    "tasa_expedicion": 8.004,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-018",
+    "category_id": "C-002",
+    "nombre_es": "De 151 hasta 300 Tm",
+    "nombre_fr": "De 151 à 300 Tonnes métriques",
+    "nombre_en": "151 to 300 Metric Tons",
+    "tasa_expedicion": 8.124,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-019",
+    "category_id": "C-002",
+    "nombre_es": "Más de 300 Tm",
+    "nombre_fr": "Plus de 300 Tonnes métriques",
+    "nombre_en": "More than 300 Metric Tons",
+    "tasa_expedicion": 8200.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-020",
+    "category_id": "C-002",
+    "nombre_es": "Las aeronaves privadas de turismo, cuyo peso máximo al despegue sea inferior o igual a 2 toneladas, abonar en una tarifa global",
+    "nombre_fr": "Les aéronefs privés de tourisme, dont la masse maximale au décollage est inférieure ou égale à 2 tonnes, payeront un tarif global",
+    "nombre_en": "Private tourism aircraft with a maximum takeoff weight less than or equal to 2 tons, will pay a global rate",
+    "tasa_expedicion": 2.327,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-021",
+    "category_id": "C-002",
+    "nombre_es": "Los helicópteros",
+    "nombre_fr": "Les hélicoptères",
+    "nombre_en": "Helicopters",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-022",
+    "category_id": "C-003",
+    "nombre_es": "De 1 hasta 4 Toneladas métricas",
+    "nombre_fr": "De 1 à 4 Tonnes métriques",
+    "nombre_en": "1 to 4 Metric Tons",
+    "tasa_expedicion": 2.115,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-023",
+    "category_id": "C-003",
+    "nombre_es": "De 5 hasta 14 Tm",
+    "nombre_fr": "De 5 à 14 Tonnes métriques",
+    "nombre_en": "5 to 14 Metric Tons",
+    "tasa_expedicion": 1640.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-024",
+    "category_id": "C-003",
+    "nombre_es": "De 15 hasta 25 Tm",
+    "nombre_fr": "De 15 à 25 Tonnes métriques",
+    "nombre_en": "15 to 25 Metric Tons",
+    "tasa_expedicion": 1690.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-025",
+    "category_id": "C-003",
+    "nombre_es": "De 26 hasta 75 Tm",
+    "nombre_fr": "De 26 à 75 Tonnes métriques",
+    "nombre_en": "26 to 75 Metric Tons",
+    "tasa_expedicion": 3620.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-026",
+    "category_id": "C-003",
+    "nombre_es": "De 76 hasta 150 Tm",
+    "nombre_fr": "De 76 à 150 Tonnes métriques",
+    "nombre_en": "76 to 150 Metric Tons",
+    "tasa_expedicion": 4259.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-027",
+    "category_id": "C-003",
+    "nombre_es": "16+A28:A33",
+    "nombre_fr": "16+A28:A33",
+    "nombre_en": "16+A28:A33",
+    "tasa_expedicion": 4284.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-028",
+    "category_id": "C-003",
+    "nombre_es": "Más de 300 Tm",
+    "nombre_fr": "Plus de 300 Tonnes métriques",
+    "nombre_en": "More than 300 Metric Tons",
+    "tasa_expedicion": 4284.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-029",
+    "category_id": "C-004",
+    "nombre_es": "RUBO",
+    "nombre_fr": "RUBRIQUE",
+    "nombre_en": "CATEGORY",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-030",
+    "category_id": "C-004",
+    "nombre_es": "Certificado de matrícula original",
+    "nombre_fr": "Certificat d'immatriculation original",
+    "nombre_en": "Original Registration Certificate",
+    "tasa_expedicion": 300000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-031",
+    "category_id": "C-004",
+    "nombre_es": "Certificado de matrícula temporal o provisional",
+    "nombre_fr": "Certificat d'immatriculation temporaire ou provisoire",
+    "nombre_en": "Temporary or Provisional Registration Certificate",
+    "tasa_expedicion": 60000.0,
+    "tasa_renovacion": 20000.0
+  },
+  {
+    "id": "T-032",
+    "category_id": "C-004",
+    "nombre_es": "Renovación Certificado matricula temporal o provisional",
+    "nombre_fr": "Renouvellement du certificat d'immatriculation temporaire ou provisoire",
+    "nombre_en": "Renewal of Temporary or Provisional Registration Certificate",
+    "tasa_expedicion": 40000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-033",
+    "category_id": "C-004",
+    "nombre_es": "Certificado de matrícula duplicada",
+    "nombre_fr": "Certificat d'immatriculation en double",
+    "nombre_en": "Duplicate Registration Certificate",
+    "tasa_expedicion": 50000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-034",
+    "category_id": "C-004",
+    "nombre_es": "Mutación de propiedad",
+    "nombre_fr": "Mutation de propriété",
+    "nombre_en": "Change of Ownership",
+    "tasa_expedicion": 100000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-035",
+    "category_id": "C-004",
+    "nombre_es": "Mención de hipoteca (u otros) en el registro de matrícula (inscripción de mano alzada)",
+    "nombre_fr": "Mention d'hypothèque (ou autres) dans le registre d'immatriculation (inscription à main levée)",
+    "nombre_en": "Mortgage Mention (or others) in Registration Registry (Unencumbered Registration)",
+    "tasa_expedicion": 50000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-036",
+    "category_id": "C-004",
+    "nombre_es": "Copia certificada de una mención en el registro",
+    "nombre_fr": "Copie certifiée d'une mention dans le registre",
+    "nombre_en": "Certified Copy of a Registry Mention",
+    "tasa_expedicion": 50000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-037",
+    "category_id": "C-004",
+    "nombre_es": "Certificado de aeronavegabilidad y su convalidación",
+    "nombre_fr": "Certificat de navigabilité et sa convalidation",
+    "nombre_en": "Airworthiness Certificate and its Validation",
+    "tasa_expedicion": 100000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-038",
+    "category_id": "C-004",
+    "nombre_es": "Certificado de aeronavegabilidad especial",
+    "nombre_fr": "Certificat de navigabilité spécial",
+    "nombre_en": "Special Airworthiness Certificate",
+    "tasa_expedicion": 100000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-039",
+    "category_id": "C-004",
+    "nombre_es": "Permiso de vuelo",
+    "nombre_fr": "Autorisation de vol",
+    "nombre_en": "Flight Permit",
+    "tasa_expedicion": 100000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-040",
+    "category_id": "C-004",
+    "nombre_es": "Inscripción registral de contratos de locación de aeronaves inicial y sus renovaciones",
+    "nombre_fr": "Inscription registrale des contrats de location d'aéronefs initial et ses renouvellements",
+    "nombre_en": "Initial Aircraft Leasing Contract Registration and Renewals",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-041",
+    "category_id": "C-004",
+    "nombre_es": "Inscripción registral de hipotecas, prendas u otro acto jurídico que recaiga sobre la propiedad de las aeronaves o componentes de las mismas",
+    "nombre_fr": "Inscription registrale des hypothèques, gages ou autres actes juridiques portant sur la propriété des aéronefs ou de leurs composants",
+    "nombre_en": "Registry Inscription of Mortgages, Pledges, or Other Legal Acts Affecting Aircraft or Aircraft Component Ownership",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-042",
+    "category_id": "C-004",
+    "nombre_es": "Convalidación de certificado aeronavegabilidad extranjero",
+    "nombre_fr": "Convalidation de certificat de navigabilité étranger",
+    "nombre_en": "Validation of Foreign Airworthiness Certificate",
+    "tasa_expedicion": 100000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-043",
+    "category_id": "C-004",
+    "nombre_es": "Certificado de explotación de instalación radioeléctrica de abordo",
+    "nombre_fr": "Certificat d'exploitation d'installation radioélectrique embarquée",
+    "nombre_en": "On-board Radioelectric Installation Operation Certificate",
+    "tasa_expedicion": 100000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-044",
+    "category_id": "C-004",
+    "nombre_es": "Certificado de limitación de ruido",
+    "nombre_fr": "Certificat de limitation du bruit",
+    "nombre_en": "Noise Limitation Certificate",
+    "tasa_expedicion": 100000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-045",
+    "category_id": "C-004",
+    "nombre_es": "Autorizaciones especiales (MNSP, PRNAV, BRNAV, CAT)",
+    "nombre_fr": "Autorisations spéciales (MNSP, PRNAV, BRNAV, CAT)",
+    "nombre_en": "Special Authorizations (MNSP, PRNAV, BRNAV, CAT)",
+    "tasa_expedicion": 100000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-046",
+    "category_id": "C-005",
+    "nombre_es": "Terreno edificado (por metro cuadrado)",
+    "nombre_fr": "Terrain construit (par mètre carré)",
+    "nombre_en": "Developed Land (per square meter)",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-047",
+    "category_id": "C-005",
+    "nombre_es": "Terreno no edificado (por metro cuadrado)",
+    "nombre_fr": "Terrain non construit (par mètre carré)",
+    "nombre_en": "Undeveloped Land (per square meter)",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-048",
+    "category_id": "C-006",
+    "nombre_es": "Autorización de aterrizaje (por aterrizaje)",
+    "nombre_fr": "Autorisation d'atterrissage (par atterrissage)",
+    "nombre_en": "Landing Authorization (per landing)",
+    "tasa_expedicion": 120000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-049",
+    "category_id": "C-006",
+    "nombre_es": "Autorización de sobrevuelo",
+    "nombre_fr": "Autorisation de survol",
+    "nombre_en": "Overflight Authorization",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-050",
+    "category_id": "C-007",
+    "nombre_es": "Inspección del sitio y estudio del expediente",
+    "nombre_fr": "Inspection du site et étude du dossier",
+    "nombre_en": "Site Inspection and File Study",
+    "tasa_expedicion": 250000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-051",
+    "category_id": "C-007",
+    "nombre_es": "Producción de documentos técnicos",
+    "nombre_fr": "Production de documents techniques",
+    "nombre_en": "Technical Document Production",
+    "tasa_expedicion": 500000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-052",
+    "category_id": "C-007",
+    "nombre_es": "Otras validaciones",
+    "nombre_fr": "Autres validations",
+    "nombre_en": "Other Validations",
+    "tasa_expedicion": 200000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-053",
+    "category_id": "C-008",
+    "nombre_es": "Zona de acceso a la Terminal (menos de 10 minutos)",
+    "nombre_fr": "Zone d'accès au Terminal (moins de 10 minutes)",
+    "nombre_en": "Terminal Access Zone (less than 10 minutes)",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-054",
+    "category_id": "C-008",
+    "nombre_es": "Zona de acceso a la Terminal (la primera hora de estacionamiento)",
+    "nombre_fr": "Zone d'accès au Terminal (première heure de stationnement)",
+    "nombre_en": "Terminal Access Zone (first hour of parking)",
+    "tasa_expedicion": 500000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-055",
+    "category_id": "C-008",
+    "nombre_es": "Zona de acceso a la Terminal (después de la primera hora)",
+    "nombre_fr": "Zone d'accès au Terminal (après la première heure)",
+    "nombre_en": "Terminal Access Zone (after the first hour)",
+    "tasa_expedicion": 200000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-056",
+    "category_id": "C-008",
+    "nombre_es": "Zona de acceso a la Terminal (un día)",
+    "nombre_fr": "Zone d'accès au Terminal (une journée)",
+    "nombre_en": "Terminal Access Zone (one day)",
+    "tasa_expedicion": 2000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-057",
+    "category_id": "C-009",
+    "nombre_es": "Aeronaves del Estado (siempre que no realicen vuelos comerciales)",
+    "nombre_fr": "Aéronefs de l'État (ne réalisant pas de vols commerciaux)",
+    "nombre_en": "State Aircraft (not performing commercial flights)",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-058",
+    "category_id": "C-009",
+    "nombre_es": "Aeronaves del Gobierno (siempre que no realicen vuelos comerciales)",
+    "nombre_fr": "Aéronefs du Gouvernement (ne réalisant pas de vols commerciaux)",
+    "nombre_en": "Government Aircraft (not performing commercial flights)",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-059",
+    "category_id": "C-009",
+    "nombre_es": "Aeronaves de los servicios oficiales de la República (siempre que no realicen vuelos comerciales)",
+    "nombre_fr": "Aéronefs des services officiels de la République (ne réalisant pas de vols commerciaux)",
+    "nombre_en": "Aircraft of Official Republic Services (not performing commercial flights)",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-060",
+    "category_id": "C-009",
+    "nombre_es": "Todas las aeronaves militares y gubernamentales de los países amigos (en servicio no aerocomercial)",
+    "nombre_fr": "Tous les aéronefs militaires et gouvernementaux des pays amis (en service non aérocommercial)",
+    "nombre_en": "All Military and Governmental Aircraft from Friendly Countries (in non-commercial service)",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-061",
+    "category_id": "C-010",
+    "nombre_es": "Libretas de motores",
+    "nombre_fr": "Carnets de moteurs",
+    "nombre_en": "Engine Logbooks",
+    "tasa_expedicion": 50000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-062",
+    "category_id": "C-010",
+    "nombre_es": "Libretas de hélices",
+    "nombre_fr": "Carnets d'hélices",
+    "nombre_en": "Propeller Logbooks",
+    "tasa_expedicion": 50000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-063",
+    "category_id": "C-010",
+    "nombre_es": "Libretas de aeronaves",
+    "nombre_fr": "Carnets d'aéronefs",
+    "nombre_en": "Aircraft Logbooks",
+    "tasa_expedicion": 50000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-064",
+    "category_id": "C-010",
+    "nombre_es": "Solicitudes de establecimiento de memoria técnica de reparaciones menores",
+    "nombre_fr": "Demandes d'établissement de mémoire technique pour réparations mineures",
+    "nombre_en": "Minor Repair Technical Memory Establishment Requests",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-065",
+    "category_id": "C-010",
+    "nombre_es": "Solicitudes de establecimiento de memoria técnica de alteraciones mayores",
+    "nombre_fr": "Demandes d'établissement de mémoire technique pour modifications majeures",
+    "nombre_en": "Major Modification Technical Memory Establishment Requests",
+    "tasa_expedicion": 50000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-066",
+    "category_id": "C-010",
+    "nombre_es": "AUTORIZACIONES DE EXPLOTACIÓN",
+    "nombre_fr": "AUTORISATIONS D'EXPLOITATION",
+    "nombre_en": "OPERATING AUTHORIZATIONS",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-067",
+    "category_id": "C-010",
+    "nombre_es": "RUBO",
+    "nombre_fr": "RUBRIQUE",
+    "nombre_en": "CATEGORY",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-068",
+    "category_id": "C-010",
+    "nombre_es": "Inspección operacional relativa al permiso de explotar o a una aceptación",
+    "nombre_fr": "Inspection opérationnelle relative au permis d'exploitation ou à une acceptation",
+    "nombre_en": "Operational Inspection Related to Operating Permit or Acceptance",
+    "tasa_expedicion": 1.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-069",
+    "category_id": "C-010",
+    "nombre_es": "Inspección operacional relativa al permiso de explotar o a una aceptación",
+    "nombre_fr": "Inspection opérationnelle relative au permis d'exploitation ou à une acceptation",
+    "nombre_en": "Operational Inspection Related to Operating Permit or Acceptance",
+    "tasa_expedicion": 2.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-070",
+    "category_id": "C-010",
+    "nombre_es": "Inspección operacional relativa al permiso de explotar o a una aceptación",
+    "nombre_fr": "Inspection opérationnelle relative au permis d'exploitation ou à une acceptation",
+    "nombre_en": "Operational Inspection Related to Operating Permit or Acceptance",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 3.0
+  },
+  {
+    "id": "T-071",
+    "category_id": "C-010",
+    "nombre_es": "Aceptación de transportador extranjero",
+    "nombre_fr": "Acceptation de transporteur étranger",
+    "nombre_en": "Foreign Carrier Acceptance",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 1.0
+  },
+  {
+    "id": "T-072",
+    "category_id": "C-010",
+    "nombre_es": "Aceptación de transportador extranjero",
+    "nombre_fr": "Acceptation de transporteur étranger",
+    "nombre_en": "Foreign Carrier Acceptance",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 2.0
+  },
+  {
+    "id": "T-073",
+    "category_id": "C-010",
+    "nombre_es": "Aceptación de transportador extranjero",
+    "nombre_fr": "Acceptation de transporteur étranger",
+    "nombre_en": "Foreign Carrier Acceptance",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 3.0
+  },
+  {
+    "id": "T-074",
+    "category_id": "C-010",
+    "nombre_es": "Licencia de explotación",
+    "nombre_fr": "Licence d'exploitation",
+    "nombre_en": "Operating License",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 1.0
+  },
+  {
+    "id": "T-075",
+    "category_id": "C-010",
+    "nombre_es": "Licencia de explotación",
+    "nombre_fr": "Licence d'exploitation",
+    "nombre_en": "Operating License",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 2.0
+  },
+  {
+    "id": "T-076",
+    "category_id": "C-010",
+    "nombre_es": "Licencia de explotación",
+    "nombre_fr": "Licence d'exploitation",
+    "nombre_en": "Operating License",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 3.0
+  },
+  {
+    "id": "T-077",
+    "category_id": "C-010",
+    "nombre_es": "Certificado de transportador aéreo (AOC) vuelos regulares de pasajeros",
+    "nombre_fr": "Certificat de transporteur aérien (AOC) vols réguliers de passagers",
+    "nombre_en": "Air Operator Certificate (AOC) for Regular Passenger Flights",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 1.0
+  },
+  {
+    "id": "T-078",
+    "category_id": "C-010",
+    "nombre_es": "Certificado de transportador aéreo (AOC) vuelos regulares de pasajeros",
+    "nombre_fr": "Certificat de transporteur aérien (AOC) vols réguliers de passagers",
+    "nombre_en": "Air Operator Certificate (AOC) for Regular Passenger Flights",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 2.0
+  },
+  {
+    "id": "T-079",
+    "category_id": "C-010",
+    "nombre_es": "Certificado de transportador aéreo (AOC) vuelos regulares de pasajeros",
+    "nombre_fr": "Certificat de transporteur aérien (AOC) vols réguliers de passagers",
+    "nombre_en": "Air Operator Certificate (AOC) for Regular Passenger Flights",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 3.0
+  },
+  {
+    "id": "T-080",
+    "category_id": "C-010",
+    "nombre_es": "Certificado de transportador aéreo (AOC) cargo",
+    "nombre_fr": "Certificat de transporteur aérien (AOC) fret",
+    "nombre_en": "Air Operator Certificate (AOC) for Cargo",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 1.0
+  },
+  {
+    "id": "T-081",
+    "category_id": "C-010",
+    "nombre_es": "Certificado de transportador aéreo (AOC) cargo",
+    "nombre_fr": "Certificat de transporteur aérien (AOC) fret",
+    "nombre_en": "Air Operator Certificate (AOC) for Cargo",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 2.0
+  },
+  {
+    "id": "T-082",
+    "category_id": "C-010",
+    "nombre_es": "Certificado de transportador aéreo (AOC) cargo",
+    "nombre_fr": "Certificat de transporteur aérien (AOC) fret",
+    "nombre_en": "Air Operator Certificate (AOC) for Cargo",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 3.0
+  },
+  {
+    "id": "T-083",
+    "category_id": "C-010",
+    "nombre_es": "Autorización de explotación aéreo (AOC) Aviación General",
+    "nombre_fr": "Autorisation d'exploitation aérienne (AOC) Aviation Générale",
+    "nombre_en": "Air Operator Certificate (AOC) for General Aviation",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 1.0
+  },
+  {
+    "id": "T-084",
+    "category_id": "C-010",
+    "nombre_es": "Autorización de explotación aéreo (AOC) Aviación General",
+    "nombre_fr": "Autorisation d'exploitation aérienne (AOC) Aviation Générale",
+    "nombre_en": "Air Operator Certificate (AOC) for General Aviation",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 2.0
+  },
+  {
+    "id": "T-085",
+    "category_id": "C-010",
+    "nombre_es": "Autorización de explotación aéreo (AOC) Aviación General",
+    "nombre_fr": "Autorisation d'exploitation aérienne (AOC) Aviation Générale",
+    "nombre_en": "Air Operator Certificate (AOC) for General Aviation",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 3.0
+  },
+  {
+    "id": "T-086",
+    "category_id": "C-010",
+    "nombre_es": "Establecimiento de especificaciones de operación",
+    "nombre_fr": "Établissement des spécifications d'exploitation",
+    "nombre_en": "Establishment of Operating Specifications",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 1.0
+  },
+  {
+    "id": "T-087",
+    "category_id": "C-010",
+    "nombre_es": "Establecimiento de especificaciones de operación",
+    "nombre_fr": "Établissement des spécifications d'exploitation",
+    "nombre_en": "Establishment of Operating Specifications",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 2.0
+  },
+  {
+    "id": "T-088",
+    "category_id": "C-010",
+    "nombre_es": "Establecimiento de especificaciones de operación",
+    "nombre_fr": "Établissement des spécifications d'exploitation",
+    "nombre_en": "Establishment of Operating Specifications",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 3.0
+  },
+  {
+    "id": "T-089",
+    "category_id": "C-010",
+    "nombre_es": "Modificación del anexo al certificado de transportador aéreo",
+    "nombre_fr": "Modification de l'annexe au certificat de transporteur aérien",
+    "nombre_en": "Modification of Air Operator Certificate Annex",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 1.0
+  },
+  {
+    "id": "T-090",
+    "category_id": "C-010",
+    "nombre_es": "Modificación del anexo al certificado de transportador aéreo",
+    "nombre_fr": "Modification de l'annexe au certificat de transporteur aérien",
+    "nombre_en": "Modification of Air Operator Certificate Annex",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 2.0
+  },
+  {
+    "id": "T-091",
+    "category_id": "C-010",
+    "nombre_es": "Modificación del anexo al certificado de transportador aéreo",
+    "nombre_fr": "Modification de l'annexe au certificat de transporteur aérien",
+    "nombre_en": "Modification of Air Operator Certificate Annex",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 3.0
+  },
+  {
+    "id": "T-092",
+    "category_id": "C-010",
+    "nombre_es": "Aceptación de un centro de formación (aeroclub)",
+    "nombre_fr": "Acceptation d'un centre de formation (aéroclub)",
+    "nombre_en": "Acceptance of a Training Center (Aeroclub)",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 300000.0
+  },
+  {
+    "id": "T-093",
+    "category_id": "C-010",
+    "nombre_es": "Aceptación de un centro de formación (formación profesional)",
+    "nombre_fr": "Acceptation d'un centre de formation (formation professionnelle)",
+    "nombre_en": "Acceptance of a Training Center (Professional Training)",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 150000.0
+  },
+  {
+    "id": "T-094",
+    "category_id": "C-010",
+    "nombre_es": "Certificado de un proveedor de servicios de navegación aérea",
+    "nombre_fr": "Certificat d'un prestataire de services de navigation aérienne",
+    "nombre_en": "Certificate of an Air Navigation Service Provider",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-095",
+    "category_id": "C-010",
+    "nombre_es": "Certificado de un proveedor de servicios de navegación aérea",
+    "nombre_fr": "Certificat d'un prestataire de services de navigation aérienne",
+    "nombre_en": "Certificate of an Air Navigation Service Provider",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-096",
+    "category_id": "C-010",
+    "nombre_es": "RUBRO AERODROMOS",
+    "nombre_fr": "RUBRIQUE AÉRODROMES",
+    "nombre_en": "AERODROME CATEGORY",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-097",
+    "category_id": "C-010",
+    "nombre_es": "Inspección inicial y opción del sitio",
+    "nombre_fr": "Inspection initiale et choix du site",
+    "nombre_en": "Initial Inspection and Site Selection",
+    "tasa_expedicion": 200000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-098",
+    "category_id": "C-010",
+    "nombre_es": "Autorización/Homologación",
+    "nombre_fr": "Autorisation/Homologation",
+    "nombre_en": "Authorization/Approval",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-099",
+    "category_id": "C-010",
+    "nombre_es": "Certificación AR 5,7",
+    "nombre_fr": "Certification AR 5,7",
+    "nombre_en": "AR 5.7 Certification",
+    "tasa_expedicion": 500000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-100",
+    "category_id": "C-010",
+    "nombre_es": "5,7 T menor que AR 10T",
+    "nombre_fr": "5,7 T inférieure à AR 10T",
+    "nombre_en": "5.7 T less than AR 10T",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-101",
+    "category_id": "C-010",
+    "nombre_es": "10 T menor que AR 30T",
+    "nombre_fr": "10 T inférieure à AR 30T",
+    "nombre_en": "10 T less than AR 30T",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-102",
+    "category_id": "C-010",
+    "nombre_es": "30 T menor que AR 50 T",
+    "nombre_fr": "30 T inférieure à AR 50 T",
+    "nombre_en": "30 T less than AR 50 T",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-103",
+    "category_id": "C-010",
+    "nombre_es": "50 T menor que AR 100 T",
+    "nombre_fr": "50 T inférieure à AR 100 T",
+    "nombre_en": "50 T less than AR 100 T",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-104",
+    "category_id": "C-010",
+    "nombre_es": "100 T menor que AR 200 T",
+    "nombre_fr": "100 T inférieure à AR 200 T",
+    "nombre_en": "100 T less than AR 200 T",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-105",
+    "category_id": "C-010",
+    "nombre_es": "AR mayor que 200 T",
+    "nombre_fr": "AR supérieure à 200 T",
+    "nombre_en": "AR greater than 200 T",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-106",
+    "category_id": "C-010",
+    "nombre_es": "Inspección de época",
+    "nombre_fr": "Inspection périodique",
+    "nombre_en": "Periodic Inspection",
+    "tasa_expedicion": 50000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-107",
+    "category_id": "C-011",
+    "nombre_es": "Licencia de agente de explotación",
+    "nombre_fr": "Licence d'agent d'exploitation",
+    "nombre_en": "Operational Agent License",
+    "tasa_expedicion": 60000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-108",
+    "category_id": "C-011",
+    "nombre_es": "Licencia de mecánico",
+    "nombre_fr": "Licence de mécanicien",
+    "nombre_en": "Mechanic License",
+    "tasa_expedicion": 100000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-109",
+    "category_id": "C-011",
+    "nombre_es": "Licencia de controlador de la navegación aérea",
+    "nombre_fr": "Licence de contrôleur de la navigation aérienne",
+    "nombre_en": "Air Navigation Controller License",
+    "tasa_expedicion": 100000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-110",
+    "category_id": "C-011",
+    "nombre_es": "Calificación de controlador de la navegación aérea",
+    "nombre_fr": "Qualification de contrôleur de la navigation aérienne",
+    "nombre_en": "Air Navigation Controller Qualification",
+    "tasa_expedicion": 50000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-111",
+    "category_id": "C-011",
+    "nombre_es": "Otras licencias",
+    "nombre_fr": "Autres licences",
+    "nombre_en": "Other Licenses",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-112",
+    "category_id": "C-011",
+    "nombre_es": "Tarjeta de alumno",
+    "nombre_fr": "Carte d'étudiant",
+    "nombre_en": "Student Card",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-113",
+    "category_id": "C-012",
+    "nombre_es": "Aeronaves extranjeras (F.CFA/Tm/hora)",
+    "nombre_fr": "Aéronefs étrangers (F.CFA/Tm/heure)",
+    "nombre_en": "Foreign Aircraft (F.CFA/Tm/hour)",
+    "tasa_expedicion": 200000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-114",
+    "category_id": "C-012",
+    "nombre_es": "Aeronaves extranjeras en terreno de base operacional bajo contrato (F.CFA/Tm)",
+    "nombre_fr": "Aéronefs étrangers sur terrain de base opérationnelle sous contrat (F.CFA/Tm)",
+    "nombre_en": "Foreign Aircraft on Operational Base Land under Contract (F.CFA/Tm)",
+    "tasa_expedicion": 40000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-115",
+    "category_id": "C-012",
+    "nombre_es": "Aeronaves nacionales fuera del terreno de base (F.CFA por Tm/hora)",
+    "nombre_fr": "Aéronefs nationaux hors du terrain de base (F.CFA par Tm/heure)",
+    "nombre_en": "National Aircraft outside Base Land (F.CFA per Tm/hour)",
+    "tasa_expedicion": 15000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-116",
+    "category_id": "C-013",
+    "nombre_es": "Pasajeros en vuelos nacionales (F.CFA/pasajero)",
+    "nombre_fr": "Passagers sur vols nationaux (F.CFA/passager)",
+    "nombre_en": "Passengers on National Flights (F.CFA/passenger)",
+    "tasa_expedicion": 300.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-117",
+    "category_id": "C-013",
+    "nombre_es": "Pasajeros en vuelos subregionales (F.CFA/pasajero)",
+    "nombre_fr": "Passagers sur vols sous-régionaux (F.CFA/passager)",
+    "nombre_en": "Passengers on Subregional Flights (F.CFA/passenger)",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-118",
+    "category_id": "C-013",
+    "nombre_es": "Pasajeros en vuelos internacionales (F.CFA/pasajero)",
+    "nombre_fr": "Passagers sur vols internationaux (F.CFA/passager)",
+    "nombre_en": "Passengers on International Flights (F.CFA/passenger)",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-119",
+    "category_id": "C-013",
+    "nombre_es": "Combustible vuelos nacionales F.CFA/litro en vuelos regulares",
+    "nombre_fr": "Carburant vols nationaux F.CFA/litre en vols réguliers",
+    "nombre_en": "Fuel for National Flights F.CFA/liter in Regular Flights",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-120",
+    "category_id": "C-013",
+    "nombre_es": "Combustible vuelos internacionales F.CFA/litro en vuelos regulares",
+    "nombre_fr": "Carburant vols internationaux F.CFA/litre en vols réguliers",
+    "nombre_en": "Fuel for International Flights F.CFA/liter in Regular Flights",
+    "tasa_expedicion": 20000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-121",
+    "category_id": "C-014",
+    "nombre_es": "Baja intensidad por movimiento (aterrizaje o despegue) en Malabo o Bata",
+    "nombre_fr": "Basse intensité par mouvement (atterrissage ou décollage) à Malabo ou Bata",
+    "nombre_en": "Low Intensity per Movement (Landing or Takeoff) in Malabo or Bata",
+    "tasa_expedicion": 6.967,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-122",
+    "category_id": "C-014",
+    "nombre_es": "Baja intensidad por movimiento (Mongomeyen, Corisco y Annobón)",
+    "nombre_fr": "Basse intensité par mouvement (Mongomeyen, Corisco et Annobón)",
+    "nombre_en": "Low Intensity per Movement (Mongomeyen, Corisco and Annobón)",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-123",
+    "category_id": "C-014",
+    "nombre_es": "Alta intensidad por movimiento (en los aeropuertos de Malabo y Bata)",
+    "nombre_fr": "Haute intensité par mouvement (dans les aéroports de Malabo et Bata)",
+    "nombre_en": "High Intensity per Movement (in Malabo and Bata Airports)",
+    "tasa_expedicion": 10.159,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-124",
+    "category_id": "C-014",
+    "nombre_es": "Alta intensidad por movimiento (en los aeropuertos de Mongomeyen, Corisco y Annobón)",
+    "nombre_fr": "Haute intensité par mouvement (dans les aéroports de Mongomeyen, Corisco et Annobón)",
+    "nombre_en": "High Intensity per Movement (in Mongomeyen, Corisco and Annobón Airports)",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-125",
+    "category_id": "C-015",
+    "nombre_es": "",
+    "nombre_fr": "",
+    "nombre_en": "",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-126",
+    "category_id": "C-015",
+    "nombre_es": "Tarjeta de alumno",
+    "nombre_fr": "Carte d'étudiant",
+    "nombre_en": "Student Card",
+    "tasa_expedicion": 25000.0,
+    "tasa_renovacion": 5000.0
+  },
+  {
+    "id": "T-127",
+    "category_id": "C-015",
+    "nombre_es": "Carnet de Vuelo",
+    "nombre_fr": "Carnet de Vol",
+    "nombre_en": "Flight Logbook",
+    "tasa_expedicion": 20000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-128",
+    "category_id": "C-015",
+    "nombre_es": "Licencia",
+    "nombre_fr": "Licence",
+    "nombre_en": "License",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-129",
+    "category_id": "C-015",
+    "nombre_es": "Validación de licencia extranjera",
+    "nombre_fr": "Validation de licence étrangère",
+    "nombre_en": "Foreign License Validation",
+    "tasa_expedicion": 50000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-130",
+    "category_id": "C-015",
+    "nombre_es": "Autorización provisional de instructor",
+    "nombre_fr": "Autorisation provisoire d'instructeur",
+    "nombre_en": "Provisional Instructor Authorization",
+    "tasa_expedicion": 100000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-131",
+    "category_id": "C-015",
+    "nombre_es": "Renovación de la tarjeta de alumno",
+    "nombre_fr": "Renouvellement de la carte d'étudiant",
+    "nombre_en": "Student Card Renewal",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-132",
+    "category_id": "C-015",
+    "nombre_es": "Apertura o cierre de carnet de vuelo",
+    "nombre_fr": "Ouverture ou fermeture du carnet de vol",
+    "nombre_en": "Flight Logbook Opening or Closing",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 5000.0
+  },
+  {
+    "id": "T-133",
+    "category_id": "C-015",
+    "nombre_es": "Renovación de licencia",
+    "nombre_fr": "Renouvellement de licence",
+    "nombre_en": "License Renewal",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-134",
+    "category_id": "C-015",
+    "nombre_es": "Calificación",
+    "nombre_fr": "Qualification",
+    "nombre_en": "Qualification",
+    "tasa_expedicion": 15000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-135",
+    "category_id": "C-015",
+    "nombre_es": "Otras menciones en la licencia",
+    "nombre_fr": "Autres mentions sur la licence",
+    "nombre_en": "Other Endorsements on the License",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-136",
+    "category_id": "C-016",
+    "nombre_es": "Pasajeros con destino a cualquier aeropuerto internacional/ F.CFA por pasajero",
+    "nombre_fr": "Passagers à destination de tout aéroport international / F.CFA par passager",
+    "nombre_en": "Passengers to Any International Airport / F.CFA per Passenger",
+    "tasa_expedicion": 2000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-137",
+    "category_id": "C-017",
+    "nombre_es": "Vuelos nacionales",
+    "nombre_fr": "Vols nationaux",
+    "nombre_en": "National Flights",
+    "tasa_expedicion": 1.892,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-138",
+    "category_id": "C-017",
+    "nombre_es": "Vuelos con destino a los países CEMAC",
+    "nombre_fr": "Vols à destination des pays CEMAC",
+    "nombre_en": "Flights to CEMAC Countries",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-139",
+    "category_id": "C-017",
+    "nombre_es": "Vuelos con destino a otros países",
+    "nombre_fr": "Vols à destination d'autres pays",
+    "nombre_en": "Flights to Other Countries",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-140",
+    "category_id": "C-017",
+    "nombre_es": "Fletes y exceso de equipaje",
+    "nombre_fr": "Fret et excédent de bagages",
+    "nombre_en": "Freight and Excess Baggage",
+    "tasa_expedicion": 20000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-141",
+    "category_id": "C-018",
+    "nombre_es": "Otros aeropuertos (las 3 primeras horas)",
+    "nombre_fr": "Autres aéroports (les 3 premières heures)",
+    "nombre_en": "Other Airports (first 3 hours)",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-142",
+    "category_id": "C-018",
+    "nombre_es": "Otros aeropuertos (después de las 3 primeras horas, en cada fracción de 2 horas suplementarias)",
+    "nombre_fr": "Autres aéroports (après les 3 premières heures, par tranche de 2 heures supplémentaires)",
+    "nombre_en": "Other Airports (after first 3 hours, per 2-hour additional fraction)",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-143",
+    "category_id": "C-019",
+    "nombre_es": "Por las tres (03) primeras horas",
+    "nombre_fr": "Pour les trois (03) premières heures",
+    "nombre_en": "For the first three (03) hours",
+    "tasa_expedicion": 40000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-144",
+    "category_id": "C-019",
+    "nombre_es": "De la 3ª a la 5ª hora",
+    "nombre_fr": "De la 3ème à la 5ème heure",
+    "nombre_en": "From 3rd to 5th hour",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-145",
+    "category_id": "C-019",
+    "nombre_es": "A partir de la 5ª",
+    "nombre_fr": "À partir de la 5ème",
+    "nombre_en": "From the 5th hour onwards",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-146",
+    "category_id": "C-019",
+    "nombre_es": "Aviones de más de 100 Tm",
+    "nombre_fr": "Avions de plus de 100 Tm",
+    "nombre_en": "Aircraft over 100 Metric Tons",
+    "tasa_expedicion": 20000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-147",
+    "category_id": "C-019",
+    "nombre_es": "Por las tres (03) primeras horas",
+    "nombre_fr": "Pour les trois (03) premières heures",
+    "nombre_en": "For the first three (03) hours",
+    "tasa_expedicion": 150000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-148",
+    "category_id": "C-019",
+    "nombre_es": "De la 3ª a la 5ª hora",
+    "nombre_fr": "De la 3ème à la 5ème heure",
+    "nombre_en": "From 3rd to 5th hour",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-149",
+    "category_id": "C-019",
+    "nombre_es": "A partir de la 5ª",
+    "nombre_fr": "À partir de la 5ème",
+    "nombre_en": "From the 5th hour onwards",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-150",
+    "category_id": "C-020",
+    "nombre_es": "Vuelos nacionales (F.CFA por movimiento)",
+    "nombre_fr": "Vols nationaux (F.CFA par mouvement)",
+    "nombre_en": "National Flights (F.CFA per Movement)",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-151",
+    "category_id": "C-020",
+    "nombre_es": "Vuelos regionales (F.CFA por movimiento)",
+    "nombre_fr": "Vols régionaux (F.CFA par mouvement)",
+    "nombre_en": "Regional Flights (F.CFA per Movement)",
+    "tasa_expedicion": 15000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-152",
+    "category_id": "C-020",
+    "nombre_es": "Vuelos internacionales (F.CFA por movimiento)",
+    "nombre_fr": "Vols internationaux (F.CFA par mouvement)",
+    "nombre_en": "International Flights (F.CFA per Movement)",
+    "tasa_expedicion": 25000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-153",
+    "category_id": "C-021",
+    "nombre_es": "Asistencia en tierra a las compañías aéreas y otros usuarios",
+    "nombre_fr": "Assistance au sol pour les compagnies aériennes et autres utilisateurs",
+    "nombre_en": "Ground Assistance for Airlines and Other Users",
+    "tasa_expedicion": 0.23,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-154",
+    "category_id": "C-022",
+    "nombre_es": "Jet A1 vendido (por litro)",
+    "nombre_fr": "Jet A1 vendu (par litre)",
+    "nombre_en": "Jet A1 Sold (per liter)",
+    "tasa_expedicion": 20000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-155",
+    "category_id": "C-023",
+    "nombre_es": "Pasajeros con destino a los aeropuertos de la CEMAC",
+    "nombre_fr": "Passagers à destination des aéroports de la CEMAC",
+    "nombre_en": "Passengers to CEMAC Airports",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-156",
+    "category_id": "C-023",
+    "nombre_es": "Pasajeros con destino a cualquier otro aeropuerto internacional",
+    "nombre_fr": "Passagers à destination de tout autre aéroport international",
+    "nombre_en": "Passengers to Any Other International Airport",
+    "tasa_expedicion": 15000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-157",
+    "category_id": "C-024",
+    "nombre_es": "Pagarán por F.CFA/litro en Vuelos internacionales",
+    "nombre_fr": "Payeront par F.CFA/litre pour les vols internationaux",
+    "nombre_en": "Will Pay F.CFA/liter for International Flights",
+    "tasa_expedicion": 60000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-158",
+    "category_id": "C-024",
+    "nombre_es": "Por KG de flete (carga de procedencia o destino nacional)",
+    "nombre_fr": "Par KG de fret (fret de provenance ou destination nationale)",
+    "nombre_en": "Per KG of Freight (Cargo of National Origin or Destination)",
+    "tasa_expedicion": 50000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-159",
+    "category_id": "C-024",
+    "nombre_es": "Por KG de flete (carga de procedencia o destino CEMAC)",
+    "nombre_fr": "Par KG de fret (fret de provenance ou destination CEMAC)",
+    "nombre_en": "Per KG of Freight (Cargo of CEMAC Origin or Destination)",
+    "tasa_expedicion": 75000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-160",
+    "category_id": "C-024",
+    "nombre_es": "Por KG (carga con procedencia o destino de cualquier aeropuerto internacional)",
+    "nombre_fr": "Par KG (fret avec provenance ou destination de tout aéroport international)",
+    "nombre_en": "Per KG (Cargo with Origin or Destination from Any International Airport)",
+    "tasa_expedicion": 75000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-161",
+    "category_id": "C-024",
+    "nombre_es": "Por bulto del pasajero (equipaje del acompañado), bultos de los pasajeros con destino nacional",
+    "nombre_fr": "Par colis du passager (bagages accompagnés), colis des passagers à destination nationale",
+    "nombre_en": "Per Passenger Package (Accompanied Baggage), Passenger Packages with National Destination",
+    "tasa_expedicion": 50000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-162",
+    "category_id": "C-024",
+    "nombre_es": "Por bulto del pasajero (equipaje del acompañado), bultos de los pasajeros con destino de cualquier aeropuerto internacional",
+    "nombre_fr": "Par colis du passager (bagages accompagnés), colis des passagers à destination de tout aéroport international",
+    "nombre_en": "Per Passenger Package (Accompanied Baggage), Passenger Packages Destined for Any International Airport",
+    "tasa_expedicion": 200000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-163",
+    "category_id": "C-025",
+    "nombre_es": "Aeronaves con peso máximo al despegue inferior a 25 toneladas métricas",
+    "nombre_fr": "Aéronefs avec masse maximale au décollage inférieure à 25 tonnes métriques",
+    "nombre_en": "Aircraft with Maximum Takeoff Weight below 25 Metric Tons",
+    "tasa_expedicion": 2000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-164",
+    "category_id": "C-025",
+    "nombre_es": "Aeronaves con peso máximo al despegue igual o superior a 25 e inferior a 90 toneladas métricas",
+    "nombre_fr": "Aéronefs avec un poids maximal au décollage égal ou supérieur à 25 et inférieur à 90 tonnes métriques",
+    "nombre_en": "Aircraft with maximum takeoff weight equal to or greater than 25 and less than 90 metric tons",
+    "tasa_expedicion": 1500.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-165",
+    "category_id": "C-025",
+    "nombre_es": "Aeronaves con peso máximo al despegue superior a 90 toneladas métricas",
+    "nombre_fr": "Aéronefs avec un poids maximal au décollage supérieur à 90 tonnes métriques",
+    "nombre_en": "Aircraft with maximum takeoff weight exceeding 90 metric tons",
+    "tasa_expedicion": 1500.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-166",
+    "category_id": "C-026",
+    "nombre_es": "Aeronaves con peso máximo al despegue inferior a 25 toneladas métricas:",
+    "nombre_fr": "Aéronefs avec un poids maximal au décollage inférieur à 25 tonnes métriques",
+    "nombre_en": "Aircraft with maximum takeoff weight less than 25 metric tons",
+    "tasa_expedicion": 1000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-167",
+    "category_id": "C-026",
+    "nombre_es": "Aeronaves con peso máximo al despegue igual o superior a 25 e inferior a 90 toneladas métricas",
+    "nombre_fr": "Aéronefs avec un poids maximal au décollage égal ou supérieur à 25 et inférieur à 90 tonnes métriques",
+    "nombre_en": "Aircraft with maximum takeoff weight equal to or greater than 25 and less than 90 metric tons",
+    "tasa_expedicion": 800.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-168",
+    "category_id": "C-026",
+    "nombre_es": "Aeronaves con peso máximo al despegue superior a 90 toneladas métricas",
+    "nombre_fr": "Aéronefs avec un poids maximal au décollage supérieur à 90 tonnes métriques",
+    "nombre_en": "Aircraft with maximum takeoff weight exceeding 90 metric tons",
+    "tasa_expedicion": 600.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-169",
+    "category_id": "C-027",
+    "nombre_es": "Empresas mayoristas",
+    "nombre_fr": "Entreprises de gros",
+    "nombre_en": "Wholesale companies",
+    "tasa_expedicion": 50000.0,
+    "tasa_renovacion": 30000.0
+  },
+  {
+    "id": "T-170",
+    "category_id": "C-027",
+    "nombre_es": "Empresas minoristas",
+    "nombre_fr": "Entreprises de détail",
+    "nombre_en": "Retail companies",
+    "tasa_expedicion": 50000.0,
+    "tasa_renovacion": 40000.0
+  },
+  {
+    "id": "T-171",
+    "category_id": "C-027",
+    "nombre_es": "Comerciantes ambulantes",
+    "nombre_fr": "Commerçants ambulants",
+    "nombre_en": "Street vendors",
+    "tasa_expedicion": 20000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-172",
+    "category_id": "C-027",
+    "nombre_es": "Registro de importador-exportador",
+    "nombre_fr": "Enregistrement importateur-exportateur",
+    "nombre_en": "Importer-exporter registration",
+    "tasa_expedicion": 150000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-173",
+    "category_id": "C-027",
+    "nombre_es": "Lista de precios",
+    "nombre_fr": "Liste des prix",
+    "nombre_en": "Price list",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-174",
+    "category_id": "C-028",
+    "nombre_es": "Autorización de exportación de mercancías",
+    "nombre_fr": "Autorisation d'exportation de marchandises",
+    "nombre_en": "Goods export authorization",
+    "tasa_expedicion": 15000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-175",
+    "category_id": "C-028",
+    "nombre_es": "Autorización de exportación de carne animal",
+    "nombre_fr": "Autorisation d'exportation de viande animale",
+    "nombre_en": "Animal meat export authorization",
+    "tasa_expedicion": 15000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-176",
+    "category_id": "C-028",
+    "nombre_es": "Autorización de exportación de objeto artístico",
+    "nombre_fr": "Autorisation d'exportation d'objet d'art",
+    "nombre_en": "Art object export authorization",
+    "tasa_expedicion": 20000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-177",
+    "category_id": "C-029",
+    "nombre_es": "Proveedores, mercancías, ampliación de plazo",
+    "nombre_fr": "Fournisseurs, marchandises, prolongation de délai",
+    "nombre_en": "Suppliers, goods, deadline extension",
+    "tasa_expedicion": 15000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-178",
+    "category_id": "C-029",
+    "nombre_es": "Empresas mayoristas",
+    "nombre_fr": "Entreprises de gros",
+    "nombre_en": "Wholesale companies",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-179",
+    "category_id": "C-029",
+    "nombre_es": "Empresas minoristas",
+    "nombre_fr": "Entreprises de détail",
+    "nombre_en": "Retail companies",
+    "tasa_expedicion": 20000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-180",
+    "category_id": "C-029",
+    "nombre_es": "Autorización profesional de seis (6) meses",
+    "nombre_fr": "Autorisation professionnelle de six (6) mois",
+    "nombre_en": "Six (6) month professional authorization",
+    "tasa_expedicion": 50000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-181",
+    "category_id": "C-029",
+    "nombre_es": "Autorización de introducción de mercancías llegadas al país en tránsito",
+    "nombre_fr": "Autorisation d'introduction de marchandises arrivées en transit dans le pays",
+    "nombre_en": "Authorization for introduction of goods arrived in transit in the country",
+    "tasa_expedicion": 50000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-182",
+    "category_id": "C-029",
+    "nombre_es": "Autorización de comercialización de mercancías por contrabando",
+    "nombre_fr": "Autorisation de commercialisation de marchandises de contrebande",
+    "nombre_en": "Authorization for commercialization of smuggled goods",
+    "tasa_expedicion": 50000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-183",
+    "category_id": "C-029",
+    "nombre_es": "Licencia general",
+    "nombre_fr": "Licence générale",
+    "nombre_en": "General license",
+    "tasa_expedicion": 100000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-184",
+    "category_id": "C-029",
+    "nombre_es": "Licencia temporal",
+    "nombre_fr": "Licence temporaire",
+    "nombre_en": "Temporary license",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-185",
+    "category_id": "C-029",
+    "nombre_es": "Licencia específica",
+    "nombre_fr": "Licence spécifique",
+    "nombre_en": "Specific license",
+    "tasa_expedicion": 135000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-186",
+    "category_id": "C-029",
+    "nombre_es": "Autorización de distribución de productos en el país",
+    "nombre_fr": "Autorisation de distribution de produits dans le pays",
+    "nombre_en": "Authorization for product distribution in the country",
+    "tasa_expedicion": 400000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-187",
+    "category_id": "C-029",
+    "nombre_es": "Exportación madera rollizo",
+    "nombre_fr": "Exportation de bois rond",
+    "nombre_en": "Round wood export",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-188",
+    "category_id": "C-029",
+    "nombre_es": "Exportación madera aserrada",
+    "nombre_fr": "Exportation de bois scié",
+    "nombre_en": "Sawn wood export",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-189",
+    "category_id": "C-029",
+    "nombre_es": "Hoja comercial",
+    "nombre_fr": "Feuille commerciale",
+    "nombre_en": "Commercial sheet",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-190",
+    "category_id": "C-029",
+    "nombre_es": "Libreta comercial",
+    "nombre_fr": "Carnet commercial",
+    "nombre_en": "Commercial booklet",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-191",
+    "category_id": "C-030",
+    "nombre_es": "Certificado de apertura",
+    "nombre_fr": "Certificat d'ouverture",
+    "nombre_en": "Opening certificate",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-192",
+    "category_id": "C-030",
+    "nombre_es": "Certificado de búsqueda de documentos",
+    "nombre_fr": "Certificat de recherche de documents",
+    "nombre_en": "Document search certificate",
+    "tasa_expedicion": 2000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-193",
+    "category_id": "C-030",
+    "nombre_es": "Certificado de disolución de empresa",
+    "nombre_fr": "Certificat de dissolution d'entreprise",
+    "nombre_en": "Company dissolution certificate",
+    "tasa_expedicion": 2000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-194",
+    "category_id": "C-030",
+    "nombre_es": "Certificado de exportación temporal",
+    "nombre_fr": "Certificat d'exportation temporaire",
+    "nombre_en": "Temporary export certificate",
+    "tasa_expedicion": 2000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-195",
+    "category_id": "C-031",
+    "nombre_es": "1% sobre el valor CIF que se ingresa en la zona única de la aduana",
+    "nombre_fr": "1% sur la valeur CAF entrant dans la zone unique des douanes",
+    "nombre_en": "1% on CIF value entering the single customs zone",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-196",
+    "category_id": "C-031",
+    "nombre_es": "Valoración de bien",
+    "nombre_fr": "Évaluation de bien",
+    "nombre_en": "Asset valuation",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-197",
+    "category_id": "C-031",
+    "nombre_es": "Autorización de importación de mercancía",
+    "nombre_fr": "Autorisation d'importation de marchandises",
+    "nombre_en": "Goods import authorization",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-198",
+    "category_id": "C-031",
+    "nombre_es": "Facturas visadas en las sedes diplomáticas",
+    "nombre_fr": "Factures visées dans les missions diplomatiques",
+    "nombre_en": "Invoices validated at diplomatic missions",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-199",
+    "category_id": "C-031",
+    "nombre_es": "Facturas no visadas en las sedes diplomáticas OK",
+    "nombre_fr": "Factures non visées dans les missions diplomatiques OK",
+    "nombre_en": "Invoices not validated at diplomatic missions OK",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-200",
+    "category_id": "C-031",
+    "nombre_es": "Facturas no visadas en las sedes diplomáticas NOK",
+    "nombre_fr": "Factures non visées dans les missions diplomatiques NOK",
+    "nombre_en": "Invoices not validated at diplomatic missions NOK",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-223",
+    "category_id": "C-039",
+    "nombre_es": "Actuación de circos extranjeros. Por autorización",
+    "nombre_fr": "Représentation de cirques étrangers. Par autorisation",
+    "nombre_en": "Foreign circus performance. Per authorization",
+    "tasa_expedicion": 60000.0,
+    "tasa_renovacion": 40000.0
+  },
+  {
+    "id": "T-224",
+    "category_id": "C-039",
+    "nombre_es": "Actuaciones teatrales extranjeras",
+    "nombre_fr": "Représentations théâtrales étrangères",
+    "nombre_en": "Foreign theatrical performances",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 15000.0
+  },
+  {
+    "id": "T-225",
+    "category_id": "C-039",
+    "nombre_es": "Actuaciones de carnavales. Por actuación",
+    "nombre_fr": "Représentations de carnavals. Par représentation",
+    "nombre_en": "Carnival performances. Per performance",
+    "tasa_expedicion": 70000.0,
+    "tasa_renovacion": 35000.0
+  },
+  {
+    "id": "T-226",
+    "category_id": "C-039",
+    "nombre_es": "Actuaciones de nacionales máximo de 20 personas",
+    "nombre_fr": "Représentations nationales maximum 20 personnes",
+    "nombre_en": "National performances maximum 20 people",
+    "tasa_expedicion": 15000.0,
+    "tasa_renovacion": 10000.0
+  },
+  {
+    "id": "T-227",
+    "category_id": "C-039",
+    "nombre_es": "Actuaciones de nacionales de 20 a 50 personas",
+    "nombre_fr": "Représentations nationales de 20 à 50 personnes",
+    "nombre_en": "National performances from 20 to 50 people",
+    "tasa_expedicion": 20000.0,
+    "tasa_renovacion": 10000.0
+  },
+  {
+    "id": "T-228",
+    "category_id": "C-039",
+    "nombre_es": "Actuaciones de nacionales de 50 a 100 personas",
+    "nombre_fr": "Représentations nationales de 50 à 100 personnes",
+    "nombre_en": "National performances from 50 to 100 people",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 20000.0
+  },
+  {
+    "id": "T-229",
+    "category_id": "C-039",
+    "nombre_es": "Actuaciones extranjeras o internacionales máximo de 20 personas",
+    "nombre_fr": "Représentations étrangères ou internationales maximum 20 personnes",
+    "nombre_en": "Foreign or international performances maximum 20 people",
+    "tasa_expedicion": 60000.0,
+    "tasa_renovacion": 40000.0
+  },
+  {
+    "id": "T-230",
+    "category_id": "C-039",
+    "nombre_es": "Actuaciones extranjeras de 20 a 50 personas",
+    "nombre_fr": "Représentations étrangères de 20 à 50 personnes",
+    "nombre_en": "Foreign performances from 20 to 50 people",
+    "tasa_expedicion": 90000.0,
+    "tasa_renovacion": 50000.0
+  },
+  {
+    "id": "T-231",
+    "category_id": "C-039",
+    "nombre_es": "Actuaciones extranjeras de 50 a 100 personas",
+    "nombre_fr": "Représentations étrangères de 50 à 100 personnes",
+    "nombre_en": "Foreign performances from 50 to 100 people",
+    "tasa_expedicion": 100000.0,
+    "tasa_renovacion": 70000.0
+  },
+  {
+    "id": "T-232",
+    "category_id": "C-039",
+    "nombre_es": "Actuaciones extranjeras de más de 100 personas",
+    "nombre_fr": "Représentations étrangères de plus de 100 personnes",
+    "nombre_en": "Foreign performances of more than 100 people",
+    "tasa_expedicion": 150000.0,
+    "tasa_renovacion": 100000.0
+  },
+  {
+    "id": "T-233",
+    "category_id": "C-039",
+    "nombre_es": "Locales de cine",
+    "nombre_fr": "Salles de cinéma",
+    "nombre_en": "Movie theaters",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 40000.0
+  },
+  {
+    "id": "T-234",
+    "category_id": "C-039",
+    "nombre_es": "Distribuidores de películas",
+    "nombre_fr": "Distributeurs de films",
+    "nombre_en": "Film distributors",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 30000.0
+  },
+  {
+    "id": "T-235",
+    "category_id": "C-039",
+    "nombre_es": "Video-club proyección de ciudad",
+    "nombre_fr": "Vidéo-club projection de ville",
+    "nombre_en": "City video club projection",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 25000.0
+  },
+  {
+    "id": "T-236",
+    "category_id": "C-039",
+    "nombre_es": "Video-club poblado",
+    "nombre_fr": "Vidéo-club village",
+    "nombre_en": "Village video club",
+    "tasa_expedicion": 2000.0,
+    "tasa_renovacion": 1000.0
+  },
+  {
+    "id": "T-237",
+    "category_id": "C-039",
+    "nombre_es": "Video-Club distribución",
+    "nombre_fr": "Vidéo-Club distribution",
+    "nombre_en": "Video Club distribution",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 35000.0
+  },
+  {
+    "id": "T-238",
+    "category_id": "C-039",
+    "nombre_es": "Camarógrafos",
+    "nombre_fr": "Cadreurs",
+    "nombre_en": "Cameramen",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 20000.0
+  },
+  {
+    "id": "T-239",
+    "category_id": "C-039",
+    "nombre_es": "Rodaje de película de 16,35 70 mm. Cada vez",
+    "nombre_fr": "Tournage de film 16,35 70 mm. Chaque fois",
+    "nombre_en": "Film shooting 16,35 70 mm. Each time",
+    "tasa_expedicion": 70000.0,
+    "tasa_renovacion": 50000.0
+  },
+  {
+    "id": "T-240",
+    "category_id": "C-039",
+    "nombre_es": "Venta de casset, CD, DVD",
+    "nombre_fr": "Vente de cassettes, CD, DVD",
+    "nombre_en": "Sale of cassettes, CD, DVD",
+    "tasa_expedicion": 70000.0,
+    "tasa_renovacion": 65000.0
+  },
+  {
+    "id": "T-241",
+    "category_id": "C-039",
+    "nombre_es": "Músicos nacionales (por actuación)",
+    "nombre_fr": "Musiciens nationaux (par représentation)",
+    "nombre_en": "National musicians (per performance)",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 20000.0
+  },
+  {
+    "id": "T-242",
+    "category_id": "C-039",
+    "nombre_es": "Músicos extranjeros (por actuación)",
+    "nombre_fr": "Musiciens étrangers (par représentation)",
+    "nombre_en": "Foreign musicians (per performance)",
+    "tasa_expedicion": 100000.0,
+    "tasa_renovacion": 70000.0
+  },
+  {
+    "id": "T-243",
+    "category_id": "C-039",
+    "nombre_es": "Estudios fotográficos",
+    "nombre_fr": "Studios photographiques",
+    "nombre_en": "Photography studios",
+    "tasa_expedicion": 20000.0,
+    "tasa_renovacion": 20000.0
+  },
+  {
+    "id": "T-244",
+    "category_id": "C-039",
+    "nombre_es": "Fotógrafos Ambulantes",
+    "nombre_fr": "Photographes Ambulants",
+    "nombre_en": "Street Photographers",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 10000.0
+  },
+  {
+    "id": "T-245",
+    "category_id": "C-039",
+    "nombre_es": "Propaganda Imprenta",
+    "nombre_fr": "Propagande Imprimerie",
+    "nombre_en": "Printing Propaganda",
+    "tasa_expedicion": 20000.0,
+    "tasa_renovacion": 20000.0
+  },
+  {
+    "id": "T-246",
+    "category_id": "C-039",
+    "nombre_es": "Publicidad párquines",
+    "nombre_fr": "Publicité parkings",
+    "nombre_en": "Parking advertising",
+    "tasa_expedicion": 70000.0,
+    "tasa_renovacion": 65000.0
+  },
+  {
+    "id": "T-247",
+    "category_id": "C-039",
+    "nombre_es": "Paneles más de 1m de largo por 1 de ancho",
+    "nombre_fr": "Panneaux plus de 1m de long sur 1 de large",
+    "nombre_en": "Panels more than 1m long by 1m wide",
+    "tasa_expedicion": 20000.0,
+    "tasa_renovacion": 15000.0
+  },
+  {
+    "id": "T-248",
+    "category_id": "C-039",
+    "nombre_es": "Paneles de 1m de largo por 1 de ancho",
+    "nombre_fr": "Panneaux de 1m de long sur 1 de large",
+    "nombre_en": "Panels 1m long by 1m wide",
+    "tasa_expedicion": 15000.0,
+    "tasa_renovacion": 15000.0
+  },
+  {
+    "id": "T-249",
+    "category_id": "C-039",
+    "nombre_es": "Paneles de 1m de largo por 0,5m de ancho",
+    "nombre_fr": "Panneaux de 1m de long sur 0,5m de large",
+    "nombre_en": "Panels 1m long by 0.5m wide",
+    "tasa_expedicion": 7000.0,
+    "tasa_renovacion": 6000.0
+  },
+  {
+    "id": "T-250",
+    "category_id": "C-039",
+    "nombre_es": "Paneles de 1m de largo por 0,25m de ancho",
+    "nombre_fr": "Panneaux de 1m de long sur 0,25m de large",
+    "nombre_en": "Panels 1m long by 0.25m wide",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 4000.0
+  },
+  {
+    "id": "T-251",
+    "category_id": "C-039",
+    "nombre_es": "Paneles de 1m de largo por 0,10m de ancho",
+    "nombre_fr": "Panneaux de 1m de long sur 0,10m de large",
+    "nombre_en": "Panels 1m long by 0.10m wide",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 4000.0
+  },
+  {
+    "id": "T-252",
+    "category_id": "C-039",
+    "nombre_es": "Paneles de 0,25m de largo por 0,25m de ancho",
+    "nombre_fr": "Panneaux de 0,25m de long sur 0,25m de large",
+    "nombre_en": "Panels 0.25m long by 0.25m wide",
+    "tasa_expedicion": 6000.0,
+    "tasa_renovacion": 5000.0
+  },
+  {
+    "id": "T-253",
+    "category_id": "C-039",
+    "nombre_es": "Carnet de artista",
+    "nombre_fr": "Carte d'artiste",
+    "nombre_en": "Artist card",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 2500.0
+  },
+  {
+    "id": "T-254",
+    "category_id": "C-039",
+    "nombre_es": "Certificado Censura de película",
+    "nombre_fr": "Certificat Censure de film",
+    "nombre_en": "Movie Censorship Certificate",
+    "tasa_expedicion": 2000.0,
+    "tasa_renovacion": 2000.0
+  },
+  {
+    "id": "T-255",
+    "category_id": "C-039",
+    "nombre_es": "Participación en la actuación de artistas contratados. ( % ) Sobre recaudación",
+    "nombre_fr": "Participation aux représentations d'artistes engagés. ( % ) Sur recettes",
+    "nombre_en": "Participation in contracted artists performance. ( % ) On revenue",
+    "tasa_expedicion": 0.06,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-256",
+    "category_id": "C-039",
+    "nombre_es": "Visita de museo",
+    "nombre_fr": "Visite de musée",
+    "nombre_en": "Museum visit",
+    "tasa_expedicion": 500.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-257",
+    "category_id": "C-039",
+    "nombre_es": "Locales, talleres y tiendas artesanales y renovación",
+    "nombre_fr": "Locaux, ateliers et boutiques artisanales et renouvellement",
+    "nombre_en": "Premises, workshops and craft shops and renewal",
+    "tasa_expedicion": 15000.0,
+    "tasa_renovacion": 15000.0
+  },
+  {
+    "id": "T-258",
+    "category_id": "C-039",
+    "nombre_es": "Apertura de talleres de artesanía y renovaciones",
+    "nombre_fr": "Ouverture d'ateliers d'artisanat et renouvellements",
+    "nombre_en": "Opening of craft workshops and renewals",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 8000.0
+  },
+  {
+    "id": "T-259",
+    "category_id": "C-039",
+    "nombre_es": "Vitrinas de objetos de arte",
+    "nombre_fr": "Vitrines d'objets d'art",
+    "nombre_en": "Art object display cases",
+    "tasa_expedicion": 7000.0,
+    "tasa_renovacion": 6000.0
+  },
+  {
+    "id": "T-260",
+    "category_id": "C-039",
+    "nombre_es": "Rótulos permanentes para hoteles y otros establecimientos semejantes",
+    "nombre_fr": "Enseignes permanentes pour hôtels et autres établissements similaires",
+    "nombre_en": "Permanent signs for hotels and other similar establishments",
+    "tasa_expedicion": 15000.0,
+    "tasa_renovacion": 10000.0
+  },
+  {
+    "id": "T-261",
+    "category_id": "C-039",
+    "nombre_es": "Peluquería categoría A",
+    "nombre_fr": "Salon de coiffure catégorie A",
+    "nombre_en": "Hairdressing salon category A",
+    "tasa_expedicion": 20000.0,
+    "tasa_renovacion": 15000.0
+  },
+  {
+    "id": "T-262",
+    "category_id": "C-039",
+    "nombre_es": "Peluquería categoría B",
+    "nombre_fr": "Salon de coiffure catégorie B",
+    "nombre_en": "Hairdressing salon category B",
+    "tasa_expedicion": 15000.0,
+    "tasa_renovacion": 10000.0
+  },
+  {
+    "id": "T-263",
+    "category_id": "C-039",
+    "nombre_es": "Peluquería categoría C",
+    "nombre_fr": "Salon de coiffure catégorie C",
+    "nombre_en": "Hairdressing salon category C",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 5000.0
+  },
+  {
+    "id": "T-264",
+    "category_id": "C-039",
+    "nombre_es": "Rótulos permanentes en los bares, video-clubs, cines, teatros y salas de fiestas",
+    "nombre_fr": "Enseignes permanentes pour bars, vidéo-clubs, cinémas, théâtres et salles des fêtes",
+    "nombre_en": "Permanent signs for bars, video clubs, cinemas, theaters and party halls",
+    "tasa_expedicion": 15000.0,
+    "tasa_renovacion": 10000.0
+  },
+  {
+    "id": "T-265",
+    "category_id": "C-039",
+    "nombre_es": "Rótulos transitorios",
+    "nombre_fr": "Enseignes temporaires",
+    "nombre_en": "Temporary signs",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 3500.0
+  },
+  {
+    "id": "T-266",
+    "category_id": "C-039",
+    "nombre_es": "Carnet de Artista plástico",
+    "nombre_fr": "Carte d'Artiste plasticien",
+    "nombre_en": "Visual Artist Card",
+    "tasa_expedicion": 2000.0,
+    "tasa_renovacion": 1500.0
+  },
+  {
+    "id": "T-267",
+    "category_id": "C-039",
+    "nombre_es": "Agencias de viajes, mayoristas",
+    "nombre_fr": "Agences de voyages, grossistes",
+    "nombre_en": "Travel agencies, wholesalers",
+    "tasa_expedicion": 500000.0,
+    "tasa_renovacion": 350000.0
+  },
+  {
+    "id": "T-268",
+    "category_id": "C-039",
+    "nombre_es": "Hoteles de cinco estrellas/Aparta-hoteles de cinco llaves Por apertura e inicio de actividades",
+    "nombre_fr": "Hôtels cinq étoiles/Appart-hôtels cinq clés Pour ouverture et début d'activités",
+    "nombre_en": "Five-star hotels/Five-key apart-hotels For opening and start of activities",
+    "tasa_expedicion": 100000.0,
+    "tasa_renovacion": 300000.0
+  },
+  {
+    "id": "T-269",
+    "category_id": "C-039",
+    "nombre_es": "Hoteles de cuatro estrellas/Aparta-hoteles de cuatro llaves Por apertura e inicio de actividades",
+    "nombre_fr": "Hôtels quatre étoiles/Appart-hôtels quatre clés Pour ouverture et début d'activités",
+    "nombre_en": "Four-star hotels/Four-key apart-hotels For opening and start of activities",
+    "tasa_expedicion": 75000.0,
+    "tasa_renovacion": 200000.0
+  },
+  {
+    "id": "T-270",
+    "category_id": "C-039",
+    "nombre_es": "Hoteles de tres estrellas/Aparta-hoteles de tres llaves por apertura e inicio de actividades",
+    "nombre_fr": "Hôtels trois étoiles/Appart-hôtels trois clés pour ouverture et début d'activités",
+    "nombre_en": "Three-star hotels/Three-key apart-hotels for opening and start of activities",
+    "tasa_expedicion": 50000.0,
+    "tasa_renovacion": 100000.0
+  },
+  {
+    "id": "T-271",
+    "category_id": "C-039",
+    "nombre_es": "Hoteles de dos estrellas/Aparta-hoteles de dos llaves por apertura e inicio de actividades",
+    "nombre_fr": "Hôtels deux étoiles/Appart-hôtels deux clés pour ouverture et début d'activités",
+    "nombre_en": "Two-star hotels/Two-key apart-hotels for opening and start of activities",
+    "tasa_expedicion": 35000.0,
+    "tasa_renovacion": 75000.0
+  },
+  {
+    "id": "T-272",
+    "category_id": "C-039",
+    "nombre_es": "Hoteles de una estrella/Aparta-hoteles de una llave/Hostales y Pensiones por apertura e inicio de actividades",
+    "nombre_fr": "Hôtels une étoile/Appart-hôtels une clé/Auberges et Pensions pour ouverture et début d'activités",
+    "nombre_en": "One-star hotels/One-key apart-hotels/Hostels and Guesthouses for opening and start of activities",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 50000.0
+  },
+  {
+    "id": "T-273",
+    "category_id": "C-039",
+    "nombre_es": "Certificado de clasificación de establecimiento",
+    "nombre_fr": "Certificat de classification d'établissement",
+    "nombre_en": "Establishment classification certificate",
+    "tasa_expedicion": 150000.0,
+    "tasa_renovacion": 150000.0
+  },
+  {
+    "id": "T-274",
+    "category_id": "C-039",
+    "nombre_es": "Restaurantes tipo A por apertura e inicio de actividades",
+    "nombre_fr": "Restaurants type A pour ouverture et début d'activités",
+    "nombre_en": "Type A restaurants for opening and start of activities",
+    "tasa_expedicion": 100000.0,
+    "tasa_renovacion": 75000.0
+  },
+  {
+    "id": "T-275",
+    "category_id": "C-039",
+    "nombre_es": "Restaurantes tipo B por apertura e inicio de actividades",
+    "nombre_fr": "Restaurants type B pour ouverture et début d'activités",
+    "nombre_en": "Type B restaurants for opening and start of activities",
+    "tasa_expedicion": 75000.0,
+    "tasa_renovacion": 60000.0
+  },
+  {
+    "id": "T-276",
+    "category_id": "C-039",
+    "nombre_es": "Cafeterías (Snack bar - pastelerías tipo A) Por apertura e inicio de actividades",
+    "nombre_fr": "Cafétérias (Snack bar - pâtisseries type A) Pour ouverture et début d'activités",
+    "nombre_en": "Cafeterias (Snack bar - type A pastry shops) For opening and start of activities",
+    "tasa_expedicion": 150000.0,
+    "tasa_renovacion": 100000.0
+  },
+  {
+    "id": "T-277",
+    "category_id": "C-039",
+    "nombre_es": "Cafeterías (Snack bar - pastelerías tipo B) Por apertura e inicio de actividades",
+    "nombre_fr": "Cafétérias (Snack bar - pâtisseries type B) Pour ouverture et début d'activités",
+    "nombre_en": "Cafeterias (Snack bar - type B pastry shops) For opening and start of activities",
+    "tasa_expedicion": 100000.0,
+    "tasa_renovacion": 75000.0
+  },
+  {
+    "id": "T-278",
+    "category_id": "C-039",
+    "nombre_es": "Bares categoría A Por apertura e inicio de actividades",
+    "nombre_fr": "Bars catégorie A Pour ouverture et début d'activités",
+    "nombre_en": "Category A bars For opening and start of activities",
+    "tasa_expedicion": 100000.0,
+    "tasa_renovacion": 75000.0
+  },
+  {
+    "id": "T-279",
+    "category_id": "C-039",
+    "nombre_es": "Bares tipo B",
+    "nombre_fr": "Bars type B",
+    "nombre_en": "Type B bars",
+    "tasa_expedicion": 75000.0,
+    "tasa_renovacion": 60000.0
+  },
+  {
+    "id": "T-280",
+    "category_id": "C-039",
+    "nombre_es": "Bares tipo C, en Barrios y periferias",
+    "nombre_fr": "Bars type C, dans les Quartiers et périphéries",
+    "nombre_en": "Type C bars, in Neighborhoods and peripheries",
+    "tasa_expedicion": 50000.0,
+    "tasa_renovacion": 30000.0
+  },
+  {
+    "id": "T-281",
+    "category_id": "C-039",
+    "nombre_es": "Discotecas, Pub nocturnos y similares categoría A",
+    "nombre_fr": "Discothèques, Pubs nocturnes et similaires catégorie A",
+    "nombre_en": "Nightclubs, Night pubs and similar category A",
+    "tasa_expedicion": 500000.0,
+    "tasa_renovacion": 300000.0
+  },
+  {
+    "id": "T-282",
+    "category_id": "C-039",
+    "nombre_es": "Discotecas, Pub nocturnos y similares categoría B",
+    "nombre_fr": "Discothèques, Pubs nocturnes et similaires catégorie B",
+    "nombre_en": "Nightclubs, Night pubs and similar category B",
+    "tasa_expedicion": 300000.0,
+    "tasa_renovacion": 200000.0
+  },
+  {
+    "id": "T-283",
+    "category_id": "C-039",
+    "nombre_es": "Casinos Por apertura e inicio de actividades",
+    "nombre_fr": "Casinos Pour ouverture et début d'activités",
+    "nombre_en": "Casinos For opening and start of activities",
+    "tasa_expedicion": 700000.0,
+    "tasa_renovacion": 1000000.0
+  },
+  {
+    "id": "T-284",
+    "category_id": "C-039",
+    "nombre_es": "Tasa mensual por máquina",
+    "nombre_fr": "Taxe mensuelle par machine",
+    "nombre_en": "Monthly fee per machine",
+    "tasa_expedicion": 50000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-285",
+    "category_id": "C-039",
+    "nombre_es": "Tasa mensual por mesa de juego",
+    "nombre_fr": "Taxe mensuelle par table de jeu",
+    "nombre_en": "Monthly fee per gaming table",
+    "tasa_expedicion": 25000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-286",
+    "category_id": "C-039",
+    "nombre_es": "Salas de juego de azar y máquina tragaperras",
+    "nombre_fr": "Salles de jeux de hasard et machines à sous",
+    "nombre_en": "Gambling halls and slot machines",
+    "tasa_expedicion": 700000.0,
+    "tasa_renovacion": 1000000.0
+  },
+  {
+    "id": "T-287",
+    "category_id": "C-039",
+    "nombre_es": "Tasa mensual por máquina tragaperras",
+    "nombre_fr": "Taxe mensuelle par machine à sous",
+    "nombre_en": "Monthly fee per slot machine",
+    "tasa_expedicion": 25000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-288",
+    "category_id": "C-039",
+    "nombre_es": "Loterías",
+    "nombre_fr": "Loteries",
+    "nombre_en": "Lotteries",
+    "tasa_expedicion": 120000.0,
+    "tasa_renovacion": 80000.0
+  },
+  {
+    "id": "T-289",
+    "category_id": "C-039",
+    "nombre_es": "Por cada premio",
+    "nombre_fr": "Par prix",
+    "nombre_en": "Per prize",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-290",
+    "category_id": "C-039",
+    "nombre_es": "Tómbolas",
+    "nombre_fr": "Tombolas",
+    "nombre_en": "Raffles",
+    "tasa_expedicion": 90000.0,
+    "tasa_renovacion": 50000.0
+  },
+  {
+    "id": "T-291",
+    "category_id": "C-039",
+    "nombre_es": "Cineastas profesionales safari",
+    "nombre_fr": "Cinéastes professionnels safari",
+    "nombre_en": "Professional safari filmmakers",
+    "tasa_expedicion": 60000.0,
+    "tasa_renovacion": 40000.0
+  },
+  {
+    "id": "T-292",
+    "category_id": "C-039",
+    "nombre_es": "Cineastas safari",
+    "nombre_fr": "Cinéastes safari",
+    "nombre_en": "Safari filmmakers",
+    "tasa_expedicion": 60000.0,
+    "tasa_renovacion": 40000.0
+  },
+  {
+    "id": "T-293",
+    "category_id": "C-039",
+    "nombre_es": "Autorizaciones para visita turística nativos. Por persona y para 7 días",
+    "nombre_fr": "Autorisations pour visite touristique locaux. Par personne et pour 7 jours",
+    "nombre_en": "Authorizations for native tourist visit. Per person and for 7 days",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-294",
+    "category_id": "C-039",
+    "nombre_es": "Autorizaciones para visita turística Extranjeros. Por persona y para 7 días",
+    "nombre_fr": "Autorisations pour visite touristique Étrangers. Par personne et pour 7 jours",
+    "nombre_en": "Authorizations for foreign tourist visit. Per person and for 7 days",
+    "tasa_expedicion": 15000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-295",
+    "category_id": "C-039",
+    "nombre_es": "Agencias de viajes mayoristas",
+    "nombre_fr": "Agences de voyages grossistes",
+    "nombre_en": "Wholesale travel agencies",
+    "tasa_expedicion": 50000.0,
+    "tasa_renovacion": 40000.0
+  },
+  {
+    "id": "T-296",
+    "category_id": "C-039",
+    "nombre_es": "Agencias de viajes minoristas",
+    "nombre_fr": "Agences de voyages détaillants",
+    "nombre_en": "Retail travel agencies",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 25000.0
+  },
+  {
+    "id": "T-297",
+    "category_id": "C-039",
+    "nombre_es": "Agencias operadores turísticos",
+    "nombre_fr": "Agences opérateurs touristiques",
+    "nombre_en": "Tour operator agencies",
+    "tasa_expedicion": 150000.0,
+    "tasa_renovacion": 90000.0
+  },
+  {
+    "id": "T-298",
+    "category_id": "C-039",
+    "nombre_es": "Agencias de viajes y Alquiler de Vehículos",
+    "nombre_fr": "Agences de voyages et Location de Véhicules",
+    "nombre_en": "Travel agencies and Vehicle Rental",
+    "tasa_expedicion": 80000.0,
+    "tasa_renovacion": 50000.0
+  },
+  {
+    "id": "T-331",
+    "category_id": "C-044",
+    "nombre_es": "Autorización compra de escopeta",
+    "nombre_fr": "Autorisation d'achat de fusil de chasse",
+    "nombre_en": "Shotgun purchase authorization",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-332",
+    "category_id": "C-044",
+    "nombre_es": "Autorización de importación de escopeta",
+    "nombre_fr": "Autorisation d'importation de fusil de chasse",
+    "nombre_en": "Shotgun import authorization",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-333",
+    "category_id": "C-044",
+    "nombre_es": "Autorización de importación de cartuchos de caza (por caja)",
+    "nombre_fr": "Autorisation d'importation de cartouches de chasse (par boîte)",
+    "nombre_en": "Hunting cartridge import authorization (per box)",
+    "tasa_expedicion": 2000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-334",
+    "category_id": "C-044",
+    "nombre_es": "Revisión de armas de caza al año",
+    "nombre_fr": "Révision annuelle des armes de chasse",
+    "nombre_en": "Annual hunting weapons inspection",
+    "tasa_expedicion": 2000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-335",
+    "category_id": "C-044",
+    "nombre_es": "Guía de pertenencias de armas",
+    "nombre_fr": "Guide de possession d'armes",
+    "nombre_en": "Weapons ownership guide",
+    "tasa_expedicion": 7500.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-336",
+    "category_id": "C-045",
+    "nombre_es": "Autorización de construcción de cayucos con tronco abandonado en la playa, por metro de eslora",
+    "nombre_fr": "Autorisation de construction de pirogues avec bois abandonné sur la plage, par mètre de longueur",
+    "nombre_en": "Authorization for dugout canoe construction with abandoned log on beach, per meter of length",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-337",
+    "category_id": "C-045",
+    "nombre_es": "Autorización de construcción de cayucos con tronco apeado, por metro de eslora",
+    "nombre_fr": "Autorisation de construction de pirogues avec bois coupé, par mètre de longueur",
+    "nombre_en": "Authorization for dugout canoe construction with cut wood, per meter of length",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-338",
+    "category_id": "C-045",
+    "nombre_es": "Autorización de cayuco tipo CANOA para pescar o tráfico naval",
+    "nombre_fr": "Autorisation de pirogue type CANOË pour la pêche ou le trafic naval",
+    "nombre_en": "CANOE type dugout canoe authorization for fishing or naval traffic",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-339",
+    "category_id": "C-045",
+    "nombre_es": "Autorización de botadura de embarcaciones (excepto cayucos) por Tm",
+    "nombre_fr": "Autorisation de mise à l'eau des embarcations (sauf pirogues) par tonne",
+    "nombre_en": "Vessel launching authorization (except dugouts) per ton",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-340",
+    "category_id": "C-045",
+    "nombre_es": "Autorización de varada",
+    "nombre_fr": "Autorisation d'échouage",
+    "nombre_en": "Beaching authorization",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-341",
+    "category_id": "C-046",
+    "nombre_es": "Embarcación de recreo",
+    "nombre_fr": "Embarcation de plaisance",
+    "nombre_en": "Recreational vessel",
+    "tasa_expedicion": 50000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-342",
+    "category_id": "C-046",
+    "nombre_es": "Embarcación con motor empotrado",
+    "nombre_fr": "Embarcation avec moteur intégré",
+    "nombre_en": "Vessel with inboard engine",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-343",
+    "category_id": "C-046",
+    "nombre_es": "Embarcaciones con motor fuera-borda o vela",
+    "nombre_fr": "Embarcations avec moteur hors-bord ou voile",
+    "nombre_en": "Vessels with outboard engine or sail",
+    "tasa_expedicion": 25000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-344",
+    "category_id": "C-046",
+    "nombre_es": "Cayuco en motor fuera-borda",
+    "nombre_fr": "Pirogue à moteur hors-bord",
+    "nombre_en": "Dugout canoe with outboard motor",
+    "tasa_expedicion": 20000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-345",
+    "category_id": "C-046",
+    "nombre_es": "Cayuco sin motor",
+    "nombre_fr": "Pirogue sans moteur",
+    "nombre_en": "Non-motorized dugout canoe",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-346",
+    "category_id": "C-046",
+    "nombre_es": "Registro de buques por Tm",
+    "nombre_fr": "Enregistrement des navires par tonne",
+    "nombre_en": "Ship registration per ton",
+    "tasa_expedicion": 15000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-347",
+    "category_id": "C-046",
+    "nombre_es": "Provisional",
+    "nombre_fr": "Provisoire",
+    "nombre_en": "Provisional",
+    "tasa_expedicion": 100000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-348",
+    "category_id": "C-046",
+    "nombre_es": "Definitiva",
+    "nombre_fr": "Définitive",
+    "nombre_en": "Definitive",
+    "tasa_expedicion": 150000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-349",
+    "category_id": "C-046",
+    "nombre_es": "Cambio de dominio de embarcaciones",
+    "nombre_fr": "Changement de domaine des embarcations",
+    "nombre_en": "Vessel domain change",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-350",
+    "category_id": "C-046",
+    "nombre_es": "Inscripción de fusil sub-marino",
+    "nombre_fr": "Inscription de fusil sous-marin",
+    "nombre_en": "Underwater speargun registration",
+    "tasa_expedicion": 6000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-351",
+    "category_id": "C-046",
+    "nombre_es": "Inscripción de motor fuera-borda cada C.V.",
+    "nombre_fr": "Inscription de moteur hors-bord par CV",
+    "nombre_en": "Outboard engine registration per HP",
+    "tasa_expedicion": 2000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-352",
+    "category_id": "C-046",
+    "nombre_es": "Carnet de navegación marítima",
+    "nombre_fr": "Carnet de navigation maritime",
+    "nombre_en": "Maritime navigation card",
+    "tasa_expedicion": 6000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-353",
+    "category_id": "C-046",
+    "nombre_es": "Rol de cayuco",
+    "nombre_fr": "Rôle de pirogue",
+    "nombre_en": "Dugout canoe role",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-354",
+    "category_id": "C-046",
+    "nombre_es": "Rol de despacho embarcaciones de recreo",
+    "nombre_fr": "Rôle d'expédition embarcations de plaisance",
+    "nombre_en": "Recreational vessel dispatch role",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-355",
+    "category_id": "C-046",
+    "nombre_es": "Título de patrón",
+    "nombre_fr": "Titre de patron",
+    "nombre_en": "Skipper's license",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-356",
+    "category_id": "C-046",
+    "nombre_es": "Cambio de dominio de cayuco",
+    "nombre_fr": "Changement de propriété de pirogue",
+    "nombre_en": "Dugout canoe ownership change",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-357",
+    "category_id": "C-046",
+    "nombre_es": "Ocupación zona marítima terrestre fincas urbanas",
+    "nombre_fr": "Occupation zone maritime terrestre propriétés urbaines",
+    "nombre_en": "Urban property maritime-terrestrial zone occupation",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-358",
+    "category_id": "C-047",
+    "nombre_es": "Matricula Enseñanza Primaria",
+    "nombre_fr": "Inscription à l'enseignement primaire",
+    "nombre_en": "Primary Education Enrollment",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-359",
+    "category_id": "C-047",
+    "nombre_es": "Boletín",
+    "nombre_fr": "Bulletin",
+    "nombre_en": "Report Card",
+    "tasa_expedicion": 500.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-360",
+    "category_id": "C-047",
+    "nombre_es": "Carnet",
+    "nombre_fr": "Carnet",
+    "nombre_en": "Student ID Card",
+    "tasa_expedicion": 200.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-361",
+    "category_id": "C-047",
+    "nombre_es": "Hoja Académica",
+    "nombre_fr": "Relevé de notes",
+    "nombre_en": "Transcript",
+    "tasa_expedicion": 2000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-362",
+    "category_id": "C-047",
+    "nombre_es": "Libro de escolaridad",
+    "nombre_fr": "Livret scolaire",
+    "nombre_en": "School Record Book",
+    "tasa_expedicion": 1000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-363",
+    "category_id": "C-047",
+    "nombre_es": "Matricula (ESBA) Bachillerato Elemental",
+    "nombre_fr": "Inscription au baccalauréat élémentaire (ESBA)",
+    "nombre_en": "Elementary Baccalaureate Enrollment (ESBA)",
+    "tasa_expedicion": 3000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-364",
+    "category_id": "C-047",
+    "nombre_es": "Matricula FP1 (Oficialía -  auxiliar Técnico)",
+    "nombre_fr": "Inscription FP1 (Sous-officier - assistant technique)",
+    "nombre_en": "FP1 Enrollment (Sub-officer - Technical Assistant)",
+    "tasa_expedicion": 3000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-365",
+    "category_id": "C-047",
+    "nombre_es": "Matricula Bachillerato (Superior)",
+    "nombre_fr": "Inscription au baccalauréat (supérieur)",
+    "nombre_en": "Baccalaureate Enrollment (Higher)",
+    "tasa_expedicion": 3000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-366",
+    "category_id": "C-047",
+    "nombre_es": "Matricula Nivel Maestría (Oficial Técnico)",
+    "nombre_fr": "Inscription niveau master (Officier technique)",
+    "nombre_en": "Master's Level Enrollment (Technical Officer)",
+    "tasa_expedicion": 3000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-367",
+    "category_id": "C-047",
+    "nombre_es": "Matricula Nivel Diplomados (Magisterios)",
+    "nombre_fr": "Inscription niveau diplôme (professorat)",
+    "nombre_en": "Diploma Level Enrollment (Teaching)",
+    "tasa_expedicion": 7000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-368",
+    "category_id": "C-048",
+    "nombre_es": "Guarderías y Preescolares",
+    "nombre_fr": "Garderies et maternelles",
+    "nombre_en": "Daycare and Preschools",
+    "tasa_expedicion": 25000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-369",
+    "category_id": "C-048",
+    "nombre_es": "Primeria",
+    "nombre_fr": "École primaire",
+    "nombre_en": "Primary School",
+    "tasa_expedicion": 50000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-370",
+    "category_id": "C-048",
+    "nombre_es": "ESBA",
+    "nombre_fr": "ESBA",
+    "nombre_en": "ESBA",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-371",
+    "category_id": "C-048",
+    "nombre_es": "Bachillerato",
+    "nombre_fr": "Baccalauréat",
+    "nombre_en": "Baccalaureate",
+    "tasa_expedicion": 150000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-372",
+    "category_id": "C-049",
+    "nombre_es": "Matrícula ESBA",
+    "nombre_fr": "Inscription ESBA",
+    "nombre_en": "ESBA Enrollment",
+    "tasa_expedicion": 1500.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-373",
+    "category_id": "C-049",
+    "nombre_es": "Matrícula FP1 (Oficialía - auxiliar Técnico)",
+    "nombre_fr": "Inscription FP1 (Sous-officier - assistant technique)",
+    "nombre_en": "FP1 Enrollment (Sub-officer - Technical Assistant)",
+    "tasa_expedicion": 1500.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-374",
+    "category_id": "C-049",
+    "nombre_es": "Matricula Bachillerato (Superior)",
+    "nombre_fr": "Inscription au baccalauréat (supérieur)",
+    "nombre_en": "Baccalaureate Enrollment (Higher)",
+    "tasa_expedicion": 4500.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-375",
+    "category_id": "C-049",
+    "nombre_es": "Matricula FP2 Maestría ( Oficial Técnico)",
+    "nombre_fr": "Inscription FP2 Master (Officier technique)",
+    "nombre_en": "FP2 Master's Enrollment (Technical Officer)",
+    "tasa_expedicion": 4500.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-376",
+    "category_id": "C-050",
+    "nombre_es": "Convalidación estudios primarios",
+    "nombre_fr": "Validation des études primaires",
+    "nombre_en": "Primary studies validation",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-377",
+    "category_id": "C-050",
+    "nombre_es": "Convalidación estudios Secundarios",
+    "nombre_fr": "Validation des études secondaires",
+    "nombre_en": "Secondary studies validation",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-378",
+    "category_id": "C-050",
+    "nombre_es": "Convalidación estudios Universitarios",
+    "nombre_fr": "Validation des études universitaires",
+    "nombre_en": "University studies validation",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-379",
+    "category_id": "C-050",
+    "nombre_es": "Reconocimiento de Estudios",
+    "nombre_fr": "Reconnaissance des études",
+    "nombre_en": "Recognition of Studies",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-380",
+    "category_id": "C-050",
+    "nombre_es": "Duplicados",
+    "nombre_fr": "Duplicata",
+    "nombre_en": "Duplicates",
+    "tasa_expedicion": 20000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-381",
+    "category_id": "C-051",
+    "nombre_es": "Matrícula ESBA",
+    "nombre_fr": "Inscription ESBA",
+    "nombre_en": "ESBA Enrollment",
+    "tasa_expedicion": 2500.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-382",
+    "category_id": "C-051",
+    "nombre_es": "Matrícula Bachillerato Superior",
+    "nombre_fr": "Inscription au baccalauréat supérieur",
+    "nombre_en": "Higher Baccalaureate Enrollment",
+    "tasa_expedicion": 6000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-383",
+    "category_id": "C-052",
+    "nombre_es": "Prueba de selectividad  (curso preuniversitario)",
+    "nombre_fr": "Examen d'entrée à l'université (cours préuniversitaire)",
+    "nombre_en": "University entrance exam (pre-university course)",
+    "tasa_expedicion": 2500.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-384",
+    "category_id": "C-053",
+    "nombre_es": "Hoja académica",
+    "nombre_fr": "Relevé de notes",
+    "nombre_en": "Transcript",
+    "tasa_expedicion": 2000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-385",
+    "category_id": "C-053",
+    "nombre_es": "Diploma paso de nivel",
+    "nombre_fr": "Diplôme de passage de niveau",
+    "nombre_en": "Grade-level diploma",
+    "tasa_expedicion": 3000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-386",
+    "category_id": "C-054",
+    "nombre_es": "Matricula de grado",
+    "nombre_fr": "Inscription en licence",
+    "nombre_en": "Undergraduate enrollment",
+    "tasa_expedicion": 7000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-387",
+    "category_id": "C-054",
+    "nombre_es": "Matriculas otras escuelas Universitarias",
+    "nombre_fr": "Inscriptions dans d'autres écoles universitaires",
+    "nombre_en": "Enrollment in other university schools",
+    "tasa_expedicion": 7000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-398",
+    "category_id": "C-057",
+    "nombre_es": "Alta definitiva, Sociedad Anónima (S.A)",
+    "nombre_fr": "Immatriculation définitive, Société Anonyme (S.A)",
+    "nombre_en": "Permanent registration, Public Limited Company (PLC)",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 125000.0
+  },
+  {
+    "id": "T-399",
+    "category_id": "C-057",
+    "nombre_es": "Alta definitiva, Sociedad Limitada (S.L)",
+    "nombre_fr": "Immatriculation définitive, Société à Responsabilité Limitée (SARL)",
+    "nombre_en": "Permanent registration, Limited Liability Company (LLC)",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 75000.0
+  },
+  {
+    "id": "T-400",
+    "category_id": "C-057",
+    "nombre_es": "Certificado de Inversión",
+    "nombre_fr": "Certificat d'Investissement",
+    "nombre_en": "Investment Certificate",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 350000.0
+  },
+  {
+    "id": "T-401",
+    "category_id": "C-057",
+    "nombre_es": "Empresa individual/Unipersonal/Autónoma",
+    "nombre_fr": "Entreprise individuelle/Unipersonnelle/Autonome",
+    "nombre_en": "Individual/Sole Proprietorship/Self-employed Business",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 25000.0
+  },
+  {
+    "id": "T-402",
+    "category_id": "C-058",
+    "nombre_es": "Certificado de Solvencia Bancaria",
+    "nombre_fr": "Certificat de Solvabilité Bancaire",
+    "nombre_en": "Bank Solvency Certificate",
+    "tasa_expedicion": 27500.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-403",
+    "category_id": "C-059",
+    "nombre_es": "Autorización de envío rápido al exterior",
+    "nombre_fr": "Autorisation de transfert rapide à l'étranger",
+    "nombre_en": "Fast international transfer authorization",
+    "tasa_expedicion": 1000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-404",
+    "category_id": "C-059",
+    "nombre_es": "Tasas de operaciones de transferencia",
+    "nombre_fr": "Frais d'opérations de transfert",
+    "nombre_en": "Transfer operation fees",
+    "tasa_expedicion": 0.4,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-405",
+    "category_id": "C-060",
+    "nombre_es": "Certificado de Haberes",
+    "nombre_fr": "Certificat de Rémunérations",
+    "nombre_en": "Income Certificate",
+    "tasa_expedicion": 2000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-406",
+    "category_id": "C-060",
+    "nombre_es": "Declaración renta al Exterior",
+    "nombre_fr": "Déclaration de Revenus à l'Étranger",
+    "nombre_en": "Foreign Income Declaration",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-407",
+    "category_id": "C-060",
+    "nombre_es": "Célula de Identificación de Vehículo",
+    "nombre_fr": "Certificat d'Identification de Véhicule",
+    "nombre_en": "Vehicle Identification Certificate",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-408",
+    "category_id": "C-060",
+    "nombre_es": "Renovación de documentación Residencia y demás",
+    "nombre_fr": "Renouvellement de documentation de Résidence et autres",
+    "nombre_en": "Residence and Other Documentation Renewal",
+    "tasa_expedicion": 20000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-409",
+    "category_id": "C-061",
+    "nombre_es": "Certificado de Solvencia Tributaria",
+    "nombre_fr": "Certificat de Conformité Fiscale",
+    "nombre_en": "Tax Compliance Certificate",
+    "tasa_expedicion": 2000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-410",
+    "category_id": "C-062",
+    "nombre_es": "Empresas importadoras de material audio visual (canal +, strong...)",
+    "nombre_fr": "Entreprises importatrices de matériel audiovisuel (canal +, strong...)",
+    "nombre_en": "Audiovisual equipment importing companies (canal +, strong...)",
+    "tasa_expedicion": 1500000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-411",
+    "category_id": "C-062",
+    "nombre_es": "Sociedades de atribución de señal de televisión por cable",
+    "nombre_fr": "Sociétés de distribution de télévision par câble",
+    "nombre_en": "Cable television distribution companies",
+    "tasa_expedicion": 600000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-412",
+    "category_id": "C-062",
+    "nombre_es": "Cyber cafés",
+    "nombre_fr": "Cybercafés",
+    "nombre_en": "Internet cafes",
+    "tasa_expedicion": 600000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-413",
+    "category_id": "C-063",
+    "nombre_es": "Categoría 'A'",
+    "nombre_fr": "Catégorie 'A'",
+    "nombre_en": "Category 'A'",
+    "tasa_expedicion": 180000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-414",
+    "category_id": "C-063",
+    "nombre_es": "Categoría 'B'",
+    "nombre_fr": "Catégorie 'B'",
+    "nombre_en": "Category 'B'",
+    "tasa_expedicion": 150000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-415",
+    "category_id": "C-063",
+    "nombre_es": "Categoría 'C'",
+    "nombre_fr": "Catégorie 'C'",
+    "nombre_en": "Category 'C'",
+    "tasa_expedicion": 100000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-416",
+    "category_id": "C-064",
+    "nombre_es": "Afiches o carteles luminosos: 1m",
+    "nombre_fr": "Affiches ou panneaux lumineux : 1m",
+    "nombre_en": "Illuminated posters or billboards: 1m",
+    "tasa_expedicion": 3000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-417",
+    "category_id": "C-064",
+    "nombre_es": "Afiches o carteles luminosos: 3m",
+    "nombre_fr": "Affiches ou panneaux lumineux : 3m",
+    "nombre_en": "Illuminated posters or billboards: 3m",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-418",
+    "category_id": "C-064",
+    "nombre_es": "Pintadas de vehículos y otros medios de transporte: 1m",
+    "nombre_fr": "Marquages publicitaires sur véhicules et autres moyens de transport : 1m",
+    "nombre_en": "Vehicle and transport advertising paintings: 1m",
+    "tasa_expedicion": 8000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-419",
+    "category_id": "C-064",
+    "nombre_es": "Pintadas murales: 1m",
+    "nombre_fr": "Peintures murales publicitaires : 1m",
+    "nombre_en": "Mural advertising paintings: 1m",
+    "tasa_expedicion": 8000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-420",
+    "category_id": "C-064",
+    "nombre_es": "Propaganda estática no publicitaria",
+    "nombre_fr": "Affichage statique non publicitaire",
+    "nombre_en": "Non-commercial static display",
+    "tasa_expedicion": 8000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-421",
+    "category_id": "C-064",
+    "nombre_es": "Propaganda y publicidad en publicaciones: 1m",
+    "nombre_fr": "Publicité dans les publications : 1m",
+    "nombre_en": "Advertising in publications: 1m",
+    "tasa_expedicion": 15000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-422",
+    "category_id": "C-064",
+    "nombre_es": "Pantallas gigantes o publicidades luminosas: 1m",
+    "nombre_fr": "Écrans géants ou publicités lumineuses : 1m",
+    "nombre_en": "Giant screens or illuminated advertising: 1m",
+    "tasa_expedicion": 18000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-423",
+    "category_id": "C-064",
+    "nombre_es": "Pantallas gigantes o publicidades luminosas: 3m",
+    "nombre_fr": "Écrans géants ou publicités lumineuses : 3m",
+    "nombre_en": "Giant screens or illuminated advertising: 3m",
+    "tasa_expedicion": 20000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-424",
+    "category_id": "C-064",
+    "nombre_es": "Medios propagandísticos o publicitarios",
+    "nombre_fr": "Supports promotionnels ou publicitaires",
+    "nombre_en": "Promotional or advertising media",
+    "tasa_expedicion": 15000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-425",
+    "category_id": "C-065",
+    "nombre_es": "1 página en Blanco y Negro",
+    "nombre_fr": "1 page en Noir et Blanc",
+    "nombre_en": "1 page in Black and White",
+    "tasa_expedicion": 250000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-426",
+    "category_id": "C-065",
+    "nombre_es": "1 página a dos colores y fotos a todo color",
+    "nombre_fr": "1 page en bichromie avec photos en couleur",
+    "nombre_en": "1 page in two colors with full color photos",
+    "tasa_expedicion": 500000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-427",
+    "category_id": "C-065",
+    "nombre_es": "1/2 página en Blanco y Negro",
+    "nombre_fr": "1/2 page en Noir et Blanc",
+    "nombre_en": "1/2 page in Black and White",
+    "tasa_expedicion": 150000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-428",
+    "category_id": "C-065",
+    "nombre_es": "1/2 página a dos colores y fotos a todo color",
+    "nombre_fr": "1/2 page en bichromie avec photos en couleur",
+    "nombre_en": "1/2 page in two colors with full color photos",
+    "tasa_expedicion": 300000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-429",
+    "category_id": "C-065",
+    "nombre_es": "1/2 página a todo color",
+    "nombre_fr": "1/2 page en quadrichromie",
+    "nombre_en": "1/2 page in full color",
+    "tasa_expedicion": 350000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-430",
+    "category_id": "C-065",
+    "nombre_es": "1/4 de página en Blanco y Negro",
+    "nombre_fr": "1/4 de page en Noir et Blanc",
+    "nombre_en": "1/4 page in Black and White",
+    "tasa_expedicion": 75000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-431",
+    "category_id": "C-065",
+    "nombre_es": "1/4 de página a dos colores",
+    "nombre_fr": "1/4 de page en bichromie",
+    "nombre_en": "1/4 page in two colors",
+    "tasa_expedicion": 150000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-432",
+    "category_id": "C-065",
+    "nombre_es": "1/4 de página a todo color",
+    "nombre_fr": "1/4 de page en quadrichromie",
+    "nombre_en": "1/4 page in full color",
+    "tasa_expedicion": 200000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-433",
+    "category_id": "C-065",
+    "nombre_es": "1/8 de página en Blanco y Negro",
+    "nombre_fr": "1/8 de page en Noir et Blanc",
+    "nombre_en": "1/8 page in Black and White",
+    "tasa_expedicion": 50000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-434",
+    "category_id": "C-065",
+    "nombre_es": "1/8 de página a dos colores y fotos a todo color",
+    "nombre_fr": "1/8 de page en bichromie avec photos en couleur",
+    "nombre_en": "1/8 page in two colors with full color photos",
+    "tasa_expedicion": 150000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-435",
+    "category_id": "C-065",
+    "nombre_es": "1/8 de página a todo color",
+    "nombre_fr": "1/8 de page en quadrichromie",
+    "nombre_en": "1/8 page in full color",
+    "tasa_expedicion": 200000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-436",
+    "category_id": "C-066",
+    "nombre_es": "Benner Central (595*115)",
+    "nombre_fr": "Bannière Centrale (595*115)",
+    "nombre_en": "Central Banner (595*115)",
+    "tasa_expedicion": 594000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-437",
+    "category_id": "C-066",
+    "nombre_es": "Banner lateral (337*75)",
+    "nombre_fr": "Bannière latérale (337*75)",
+    "nombre_en": "Side Banner (337*75)",
+    "tasa_expedicion": 298000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-438",
+    "category_id": "C-066",
+    "nombre_es": "Mega banner lateral (337*150)",
+    "nombre_fr": "Méga bannière latérale (337*150)",
+    "nombre_en": "Side Mega Banner (337*150)",
+    "tasa_expedicion": 384000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-439",
+    "category_id": "C-066",
+    "nombre_es": "Video central (600*600)",
+    "nombre_fr": "Vidéo centrale (600*600)",
+    "nombre_en": "Central Video (600*600)",
+    "tasa_expedicion": 384000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-440",
+    "category_id": "C-066",
+    "nombre_es": "Benner Central (595*115)",
+    "nombre_fr": "Bannière Centrale (595*115)",
+    "nombre_en": "Central Banner (595*115)",
+    "tasa_expedicion": 1180000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-441",
+    "category_id": "C-066",
+    "nombre_es": "Banner lateral (337*75)",
+    "nombre_fr": "Bannière latérale (337*75)",
+    "nombre_en": "Side Banner (337*75)",
+    "tasa_expedicion": 598000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-442",
+    "category_id": "C-066",
+    "nombre_es": "Mega banner lateral (337*150)",
+    "nombre_fr": "Méga bannière latérale (337*150)",
+    "nombre_en": "Side Mega Banner (337*150)",
+    "tasa_expedicion": 984000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-443",
+    "category_id": "C-066",
+    "nombre_es": "Video central (600*600)",
+    "nombre_fr": "Vidéo centrale (600*600)",
+    "nombre_en": "Central Video (600*600)",
+    "tasa_expedicion": 384000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-444",
+    "category_id": "C-067",
+    "nombre_es": "Categoría 'A'",
+    "nombre_fr": "Catégorie 'A'",
+    "nombre_en": "Category 'A'",
+    "tasa_expedicion": 180000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-445",
+    "category_id": "C-067",
+    "nombre_es": "Categoría 'B'",
+    "nombre_fr": "Catégorie 'B'",
+    "nombre_en": "Category 'B'",
+    "tasa_expedicion": 150000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-446",
+    "category_id": "C-067",
+    "nombre_es": "Categoría 'C'",
+    "nombre_fr": "Catégorie 'C'",
+    "nombre_en": "Category 'C'",
+    "tasa_expedicion": 100000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-447",
+    "category_id": "C-068",
+    "nombre_es": "Dedicatorias",
+    "nombre_fr": "Dédicaces",
+    "nombre_en": "Dedications",
+    "tasa_expedicion": 1000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-448",
+    "category_id": "C-068",
+    "nombre_es": "Comunicados",
+    "nombre_fr": "Communiqués",
+    "nombre_en": "Announcements",
+    "tasa_expedicion": 1000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-449",
+    "category_id": "C-068",
+    "nombre_es": "Publicidad por minuto",
+    "nombre_fr": "Publicité à la minute",
+    "nombre_en": "Advertising per minute",
+    "tasa_expedicion": 1000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-450",
+    "category_id": "C-068",
+    "nombre_es": "Mensaje por una sola vez",
+    "nombre_fr": "Message unique",
+    "nombre_en": "One-time message",
+    "tasa_expedicion": 1000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-451",
+    "category_id": "C-068",
+    "nombre_es": "Mensaje por una sola vez",
+    "nombre_fr": "Message unique",
+    "nombre_en": "One-time message",
+    "tasa_expedicion": 1000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-452",
+    "category_id": "C-069",
+    "nombre_es": "Aviso con foto",
+    "nombre_fr": "Annonce avec photo",
+    "nombre_en": "Photo advertisement",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-453",
+    "category_id": "C-069",
+    "nombre_es": "Aviso y comunicaciones/palabra",
+    "nombre_fr": "Annonces et communications/mot",
+    "nombre_en": "Notices and communications/word",
+    "tasa_expedicion": 1000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-454",
+    "category_id": "C-069",
+    "nombre_es": "Publicidad por minuto",
+    "nombre_fr": "Publicité à la minute",
+    "nombre_en": "Advertising per minute",
+    "tasa_expedicion": 25000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-455",
+    "category_id": "C-069",
+    "nombre_es": "SCROLL",
+    "nombre_fr": "DÉFILEMENT",
+    "nombre_en": "SCROLL",
+    "tasa_expedicion": 20000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-456",
+    "category_id": "C-069",
+    "nombre_es": "Publicidad por año",
+    "nombre_fr": "Publicité annuelle",
+    "nombre_en": "Annual advertising",
+    "tasa_expedicion": 150000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-457",
+    "category_id": "C-069",
+    "nombre_es": "Revistas lucrativas",
+    "nombre_fr": "Magazines commerciaux",
+    "nombre_en": "Commercial magazines",
+    "tasa_expedicion": 150000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-458",
+    "category_id": "C-069",
+    "nombre_es": "Periódicos lucrativos",
+    "nombre_fr": "Journaux commerciaux",
+    "nombre_en": "Commercial newspapers",
+    "tasa_expedicion": 150000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-459",
+    "category_id": "C-069",
+    "nombre_es": "Kioscos para venta de periódicos y revistas",
+    "nombre_fr": "Kiosques de vente de journaux et magazines",
+    "nombre_en": "Newspaper and magazine sales kiosks",
+    "tasa_expedicion": 150000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-460",
+    "category_id": "C-069",
+    "nombre_es": "Distribuidores de periódicos y revistas",
+    "nombre_fr": "Distributeurs de journaux et magazines",
+    "nombre_en": "Newspaper and magazine distributors",
+    "tasa_expedicion": 150000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-461",
+    "category_id": "C-069",
+    "nombre_es": "Empresas de agencias de comunicación y de gestión publicitaria",
+    "nombre_fr": "Agences de communication et de gestion publicitaire",
+    "nombre_en": "Communication and advertising management agencies",
+    "tasa_expedicion": 180000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-462",
+    "category_id": "C-070",
+    "nombre_es": "Matricula temporal",
+    "nombre_fr": "Immatriculation temporaire",
+    "nombre_en": "Temporary registration",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-465",
+    "category_id": "C-070",
+    "nombre_es": "Primera expedición B",
+    "nombre_fr": "Première délivrance B",
+    "nombre_en": "First issuance B",
+    "tasa_expedicion": 20000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-466",
+    "category_id": "C-070",
+    "nombre_es": "Primera expedición B1",
+    "nombre_fr": "Première délivrance B1",
+    "nombre_en": "First issuance B1",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-467",
+    "category_id": "C-070",
+    "nombre_es": "Primera expedición C",
+    "nombre_fr": "Première délivrance C",
+    "nombre_en": "First issuance C",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-468",
+    "category_id": "C-070",
+    "nombre_es": "Primera expedición D",
+    "nombre_fr": "Première délivrance D",
+    "nombre_en": "First issuance D",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-463",
+    "category_id": "C-070",
+    "nombre_es": "Matricula definitiva",
+    "nombre_fr": "Immatriculation définitive",
+    "nombre_en": "Permanent registration",
+    "tasa_expedicion": 15000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-464",
+    "category_id": "C-071",
+    "nombre_es": "Primera expedición A1 - A2",
+    "nombre_fr": "Première délivrance A1 - A2",
+    "nombre_en": "First issuance A1 - A2",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-465",
+    "category_id": "C-071",
+    "nombre_es": "Primera expedición B",
+    "nombre_fr": "Première délivrance B",
+    "nombre_en": "First issuance B",
+    "tasa_expedicion": 20000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-466",
+    "category_id": "C-071",
+    "nombre_es": "Primera expedición B1",
+    "nombre_fr": "Première délivrance B1",
+    "nombre_en": "First issuance B1",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-467",
+    "category_id": "C-071",
+    "nombre_es": "Primera expedición C",
+    "nombre_fr": "Première délivrance C",
+    "nombre_en": "First issuance C",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-468",
+    "category_id": "C-071",
+    "nombre_es": "Primera expedición D",
+    "nombre_fr": "Première délivrance D",
+    "nombre_en": "First issuance D",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-469",
+    "category_id": "C-071",
+    "nombre_es": "Primera expedición E",
+    "nombre_fr": "Première délivrance E",
+    "nombre_en": "First issuance E",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-470",
+    "category_id": "C-071",
+    "nombre_es": "Renovación dentro de plazo",
+    "nombre_fr": "Renouvellement dans les délais",
+    "nombre_en": "On-time renewal",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-471",
+    "category_id": "C-071",
+    "nombre_es": "Duplicados",
+    "nombre_fr": "Duplicatas",
+    "nombre_en": "Duplicates",
+    "tasa_expedicion": 15000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-472",
+    "category_id": "C-072",
+    "nombre_es": "Impreso Carnet",
+    "nombre_fr": "Impression Permis",
+    "nombre_en": "License Printing",
+    "tasa_expedicion": 1500.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-473",
+    "category_id": "C-072",
+    "nombre_es": "Instancia de solicitud",
+    "nombre_fr": "Demande d'instance",
+    "nombre_en": "Application Request",
+    "tasa_expedicion": 1000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-474",
+    "category_id": "C-072",
+    "nombre_es": "Acceso a Examen",
+    "nombre_fr": "Accès à l'Examen",
+    "nombre_en": "Exam Access",
+    "tasa_expedicion": 65000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-475",
+    "category_id": "C-073",
+    "nombre_es": "Hasta 30 días mas recargo de 10%",
+    "nombre_fr": "Jusqu'à 30 jours avec majoration de 10%",
+    "nombre_en": "Up to 30 days with 10% surcharge",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-476",
+    "category_id": "C-073",
+    "nombre_es": "Mas de 30 días mas recargo de 20%",
+    "nombre_fr": "Plus de 30 jours avec majoration de 20%",
+    "nombre_en": "Over 30 days with 20% surcharge",
+    "tasa_expedicion": 50000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-477",
+    "category_id": "C-073",
+    "nombre_es": "Canjes",
+    "nombre_fr": "Échanges",
+    "nombre_en": "Exchanges",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-478",
+    "category_id": "C-073",
+    "nombre_es": "Domiciliaciones",
+    "nombre_fr": "Domiciliations",
+    "nombre_en": "Address Registrations",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-479",
+    "category_id": "C-073",
+    "nombre_es": "Certificado de autenticidad",
+    "nombre_fr": "Certificat d'authenticité",
+    "nombre_en": "Certificate of authenticity",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-480",
+    "category_id": "C-073",
+    "nombre_es": "Certificado de buena Conducta (Entidades Menores)",
+    "nombre_fr": "Certificat de bonne conduite (Entités Mineures)",
+    "nombre_en": "Certificate of Good Conduct (Minor Entities)",
+    "tasa_expedicion": 2500.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-481",
+    "category_id": "C-073",
+    "nombre_es": "Certicado de medicion de terrenos (entidades menores)",
+    "nombre_fr": "Certificat d'arpentage (entités mineures)",
+    "nombre_en": "Land measurement certificate (minor entities)",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-482",
+    "category_id": "C-073",
+    "nombre_es": "Certificado de antecedentes",
+    "nombre_fr": "Certificat de casier judiciaire",
+    "nombre_en": "Background check certificate",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-483",
+    "category_id": "C-074",
+    "nombre_es": "Asociaciones de taxis",
+    "nombre_fr": "Associations de taxis",
+    "nombre_en": "Taxi associations",
+    "tasa_expedicion": 20000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-484",
+    "category_id": "C-074",
+    "nombre_es": "Factoría",
+    "nombre_fr": "Usine",
+    "nombre_en": "Factory",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-485",
+    "category_id": "C-074",
+    "nombre_es": "Pescadería provincias y distritos",
+    "nombre_fr": "Poissonnerie provinces et districts",
+    "nombre_en": "Fish shop provinces and districts",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-486",
+    "category_id": "C-074",
+    "nombre_es": "Establecimientos",
+    "nombre_fr": "Établissements",
+    "nombre_en": "Establishments",
+    "tasa_expedicion": 20000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-487",
+    "category_id": "C-074",
+    "nombre_es": "Puesto fijo poblados",
+    "nombre_fr": "Stand fixe villages",
+    "nombre_en": "Fixed stand villages",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-488",
+    "category_id": "C-074",
+    "nombre_es": "Compra productos 1ª",
+    "nombre_fr": "Achat produits 1ère catégorie",
+    "nombre_en": "Product purchase 1st category",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-489",
+    "category_id": "C-074",
+    "nombre_es": "Compra productos2ª",
+    "nombre_fr": "Achat produits 2ème catégorie",
+    "nombre_en": "Product purchase 2nd category",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-490",
+    "category_id": "C-074",
+    "nombre_es": "Compra productos 3ª",
+    "nombre_fr": "Achat produits 3ème catégorie",
+    "nombre_en": "Product purchase 3rd category",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-491",
+    "category_id": "C-074",
+    "nombre_es": "Abacería",
+    "nombre_fr": "Épicerie",
+    "nombre_en": "Grocery store",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-492",
+    "category_id": "C-075",
+    "nombre_es": "Matriculaciones",
+    "nombre_fr": "Immatriculations",
+    "nombre_en": "Vehicle registrations",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-493",
+    "category_id": "C-075",
+    "nombre_es": "Definitiva",
+    "nombre_fr": "Définitive",
+    "nombre_en": "Permanent",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-494",
+    "category_id": "C-075",
+    "nombre_es": "Definitiva fuera de plazo por cada 7 días",
+    "nombre_fr": "Définitive hors délai par tranche de 7 jours",
+    "nombre_en": "Late permanent registration per 7 days",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-495",
+    "category_id": "C-075",
+    "nombre_es": "Provisional cada 7 días",
+    "nombre_fr": "Provisoire par tranche de 7 jours",
+    "nombre_en": "Provisional per 7 days",
+    "tasa_expedicion": 8000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-496",
+    "category_id": "C-075",
+    "nombre_es": "Vehículos en régimen de prueba por cada 7 días",
+    "nombre_fr": "Véhicules en période d'essai par tranche de 7 jours",
+    "nombre_en": "Test vehicles per 7 days",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-497",
+    "category_id": "C-075",
+    "nombre_es": "Duplicados",
+    "nombre_fr": "Duplicatas",
+    "nombre_en": "Duplicates",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-498",
+    "category_id": "C-075",
+    "nombre_es": "Transferencias de vehículos dentro de plazo",
+    "nombre_fr": "Transferts de véhicules dans les délais",
+    "nombre_en": "On-time vehicle transfers",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-499",
+    "category_id": "C-075",
+    "nombre_es": "Transferencia de vehículos de fuera de plazo recargo",
+    "nombre_fr": "Transfert de véhicules hors délai avec majoration",
+    "nombre_en": "Late vehicle transfer with surcharge",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-500",
+    "category_id": "C-075",
+    "nombre_es": "Duplicados permiso de circulación",
+    "nombre_fr": "Duplicatas carte grise",
+    "nombre_en": "Vehicle registration duplicates",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-501",
+    "category_id": "C-076",
+    "nombre_es": "Minoristas por año",
+    "nombre_fr": "Détaillants par an",
+    "nombre_en": "Retailers per year",
+    "tasa_expedicion": 300000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-502",
+    "category_id": "C-076",
+    "nombre_es": "Mayoristas por año",
+    "nombre_fr": "Grossistes par an",
+    "nombre_en": "Wholesalers per year",
+    "tasa_expedicion": 1500000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-503",
+    "category_id": "C-076",
+    "nombre_es": "Autorización de entrada en las aguas territoriales de Guinea Ecuatorial Plataformas, Remolcadores",
+    "nombre_fr": "Autorisation d'entrée dans les eaux territoriales de Guinée Équatoriale pour Plateformes et Remorqueurs",
+    "nombre_en": "Authorization for entry into Equatorial Guinea territorial waters for Platforms and Tugboats",
+    "tasa_expedicion": 1500000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-504",
+    "category_id": "C-077",
+    "nombre_es": "Minoristas por año",
+    "nombre_fr": "Détaillants par an",
+    "nombre_en": "Retailers per year",
+    "tasa_expedicion": 200000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-505",
+    "category_id": "C-077",
+    "nombre_es": "Mayoristas por año",
+    "nombre_fr": "Grossistes par an",
+    "nombre_en": "Wholesalers per year",
+    "tasa_expedicion": 2500000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-506",
+    "category_id": "C-078",
+    "nombre_es": "Registro de empresas",
+    "nombre_fr": "Enregistrement des entreprises",
+    "nombre_en": "Company registration",
+    "tasa_expedicion": 400000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-507",
+    "category_id": "C-078",
+    "nombre_es": "Certificado de bajas",
+    "nombre_fr": "Certificat de radiation",
+    "nombre_en": "Deregistration certificate",
+    "tasa_expedicion": 500000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-508",
+    "category_id": "C-078",
+    "nombre_es": "Penalizaciones de renovación tardía",
+    "nombre_fr": "Pénalités de renouvellement tardif",
+    "nombre_en": "Late renewal penalties",
+    "tasa_expedicion": 400000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-509",
+    "category_id": "C-078",
+    "nombre_es": "Renovación autorización de venta de gas doméstico por año",
+    "nombre_fr": "Renouvellement autorisation de vente de gaz domestique par an",
+    "nombre_en": "Renewal of domestic gas sales authorization per year",
+    "tasa_expedicion": 400000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-510",
+    "category_id": "C-078",
+    "nombre_es": "Autorización de venta de prod. derivados del crudo inferior a 20.000 L/año",
+    "nombre_fr": "Autorisation de vente de prod. dérivés du pétrole inférieurs à 20.000 L/an",
+    "nombre_en": "Authorization for sale of crude derivatives under 20,000 L/year",
+    "tasa_expedicion": 800000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-511",
+    "category_id": "C-078",
+    "nombre_es": "Autorización de venta de prod. derivados de crudo superior a 20.000 L/año",
+    "nombre_fr": "Autorisation de vente de prod. dérivés du pétrole supérieurs à 20.000 L/an",
+    "nombre_en": "Authorization for sale of crude derivatives over 20,000 L/year",
+    "tasa_expedicion": 500000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-512",
+    "category_id": "C-078",
+    "nombre_es": "Autorización de construcción de Surtidor",
+    "nombre_fr": "Autorisation de construction de Station-service",
+    "nombre_en": "Fuel dispenser construction authorization",
+    "tasa_expedicion": 1600000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-513",
+    "category_id": "C-078",
+    "nombre_es": "Autorización para la explotación de canteras anua",
+    "nombre_fr": "Autorisation pour l'exploitation annuelle de carrières",
+    "nombre_en": "Annual quarry exploitation authorization",
+    "tasa_expedicion": 3000000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-514",
+    "category_id": "C-078",
+    "nombre_es": "Autorización para explotación de arena anual",
+    "nombre_fr": "Autorisation pour l'exploitation annuelle de sable",
+    "nombre_en": "Annual sand exploitation authorization",
+    "tasa_expedicion": 1500000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-515",
+    "category_id": "C-078",
+    "nombre_es": "Regalía sobre el volumen de explotación industrial de canteras por m3",
+    "nombre_fr": "Redevance sur le volume d'exploitation industrielle de carrières par m3",
+    "nombre_en": "Royalty on industrial quarry exploitation volume per m3",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-516",
+    "category_id": "C-078",
+    "nombre_es": "Regalía sobre el volumen de explotación industrial de áridos por m3",
+    "nombre_fr": "Redevance sur le volume d'exploitation industrielle d'agrégats par m3",
+    "nombre_en": "Royalty on industrial aggregate exploitation volume per m3",
+    "tasa_expedicion": 1500.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-517",
+    "category_id": "C-078",
+    "nombre_es": "Canon de arrendamiento de superficie/ exploración",
+    "nombre_fr": "Redevance de location de surface/exploration",
+    "nombre_en": "Surface/exploration lease fee",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-518",
+    "category_id": "C-078",
+    "nombre_es": "Producción",
+    "nombre_fr": "Production",
+    "nombre_en": "Production",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-519",
+    "category_id": "C-079",
+    "nombre_es": "Fondeo de plataforma por barco de (1 - 6 meses)",
+    "nombre_fr": "Ancrage de plateforme par navire de (1 - 6 mois)",
+    "nombre_en": "Platform anchoring by vessel (1 - 6 months)",
+    "tasa_expedicion": 2000000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-520",
+    "category_id": "C-079",
+    "nombre_es": "Fondeo de plataforma por barco de (6 - 12 meses)",
+    "nombre_fr": "Ancrage de plateforme par navire de (6 - 12 mois)",
+    "nombre_en": "Platform anchoring by vessel (6 - 12 months)",
+    "tasa_expedicion": 1500000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-521",
+    "category_id": "C-079",
+    "nombre_es": "Autorización de los barcos de adquisición/apoyo sísmica de (1 - 6 meses)",
+    "nombre_fr": "Autorisation des navires d'acquisition/support sismique de (1 - 6 mois)",
+    "nombre_en": "Authorization for seismic acquisition/support vessels (1 - 6 months)",
+    "tasa_expedicion": 2000000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-522",
+    "category_id": "C-079",
+    "nombre_es": "Autorización de los barcos de adquisición/apoyo sísmica de (6 - 12 meses)",
+    "nombre_fr": "Autorisation des navires d'acquisition/support sismique de (6 - 12 mois)",
+    "nombre_en": "Authorization for seismic acquisition/support vessels (6 - 12 months)",
+    "tasa_expedicion": 2000000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-523",
+    "category_id": "C-079",
+    "nombre_es": "Plataforma o /barco de perforación de (1 - 3 meses)",
+    "nombre_fr": "Plateforme ou navire de forage de (1 - 3 mois)",
+    "nombre_en": "Drilling platform or vessel (1 - 3 months)",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-524",
+    "category_id": "C-079",
+    "nombre_es": "Permiso de investigación en general",
+    "nombre_fr": "Permis de recherche général",
+    "nombre_en": "General research permit",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-525",
+    "category_id": "C-079",
+    "nombre_es": "Bono a la firma del contrato minero",
+    "nombre_fr": "Prime à la signature du contrat minier",
+    "nombre_en": "Mining contract signing bonus",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-526",
+    "category_id": "C-079",
+    "nombre_es": "Bono de declaración",
+    "nombre_fr": "Prime de déclaration",
+    "nombre_en": "Declaration bonus",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-527",
+    "category_id": "C-079",
+    "nombre_es": "Canon de arrendamiento contractual de superficie",
+    "nombre_fr": "Redevance contractuelle de location de surface",
+    "nombre_en": "Contractual surface lease fee",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-528",
+    "category_id": "C-079",
+    "nombre_es": "Durante al periodo de explotación USD/Ha",
+    "nombre_fr": "Pendant la période d'exploitation USD/Ha",
+    "nombre_en": "During exploitation period USD/Ha",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-552",
+    "category_id": "C-080",
+    "nombre_es": "Vehículos uso privado excepto camiones",
+    "nombre_fr": "Véhicules à usage privé sauf camions",
+    "nombre_en": "Private use vehicles except trucks",
+    "tasa_expedicion": 1500.0,
+    "tasa_renovacion": 1500.0
+  },
+  {
+    "id": "T-553",
+    "category_id": "C-080",
+    "nombre_es": "Vehículos uso público excepto camiones",
+    "nombre_fr": "Véhicules à usage public sauf camions",
+    "nombre_en": "Public use vehicles except trucks",
+    "tasa_expedicion": 4000.0,
+    "tasa_renovacion": 1500.0
+  },
+  {
+    "id": "T-554",
+    "category_id": "C-080",
+    "nombre_es": "Vehículos y maquinarias servicios públicos",
+    "nombre_fr": "Véhicules et machines de services publics",
+    "nombre_en": "Public service vehicles and machinery",
+    "tasa_expedicion": 50000.0,
+    "tasa_renovacion": 40000.0
+  },
+  {
+    "id": "T-555",
+    "category_id": "C-080",
+    "nombre_es": "Camiones, autobuses y tractores",
+    "nombre_fr": "Camions, autobus et tracteurs",
+    "nombre_en": "Trucks, buses and tractors",
+    "tasa_expedicion": 50000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-556",
+    "category_id": "C-080",
+    "nombre_es": "Turismo y camionetas",
+    "nombre_fr": "Véhicules de tourisme et camionnettes",
+    "nombre_en": "Tourism vehicles and vans",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-557",
+    "category_id": "C-080",
+    "nombre_es": "Particulares",
+    "nombre_fr": "Particuliers",
+    "nombre_en": "Private individuals",
+    "tasa_expedicion": 500.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-558",
+    "category_id": "C-081",
+    "nombre_es": "Mediciones de terrenos:",
+    "nombre_fr": "Mesures de terrains :",
+    "nombre_en": "Land measurements:",
+    "tasa_expedicion": 50000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-559",
+    "category_id": "C-081",
+    "nombre_es": "Superficies de 100 a 1000 m2",
+    "nombre_fr": "Surfaces de 100 à 1000 m²",
+    "nombre_en": "Areas from 100 to 1000 m²",
+    "tasa_expedicion": 150000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-560",
+    "category_id": "C-081",
+    "nombre_es": "Superficie de 1000 a 10.000 m2",
+    "nombre_fr": "Surface de 1000 à 10.000 m²",
+    "nombre_en": "Area from 1000 to 10,000 m²",
+    "tasa_expedicion": 250000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-561",
+    "category_id": "C-081",
+    "nombre_es": "Superficie de más de 10.000 m2",
+    "nombre_fr": "Surface de plus de 10.000 m²",
+    "nombre_en": "Area over 10,000 m²",
+    "tasa_expedicion": 1000000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-562",
+    "category_id": "C-082",
+    "nombre_es": "Superficies de 10 a 100 m2",
+    "nombre_fr": "Surfaces de 10 à 100 m²",
+    "nombre_en": "Areas from 10 to 100 m²",
+    "tasa_expedicion": 100000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-563",
+    "category_id": "C-082",
+    "nombre_es": "101 a 1000 m2 imponible",
+    "nombre_fr": "101 à 1000 m² imposable",
+    "nombre_en": "101 to 1000 m² taxable",
+    "tasa_expedicion": 200000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-564",
+    "category_id": "C-082",
+    "nombre_es": "1001 a 10.000 m2 imponible",
+    "nombre_fr": "1001 à 10.000 m² imposable",
+    "nombre_en": "1001 to 10,000 m² taxable",
+    "tasa_expedicion": 550000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-565",
+    "category_id": "C-082",
+    "nombre_es": "10.001 a 100.000 m2 imponible",
+    "nombre_fr": "10.001 à 100.000 m² imposable",
+    "nombre_en": "10,001 to 100,000 m² taxable",
+    "tasa_expedicion": 1000000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-566",
+    "category_id": "C-082",
+    "nombre_es": "100.001 a más, imponible",
+    "nombre_fr": "100.001 et plus, imposable",
+    "nombre_en": "100,001 and more, taxable",
+    "tasa_expedicion": 5000000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-567",
+    "category_id": "C-082",
+    "nombre_es": "Terreno de 500 a 1.000 m2",
+    "nombre_fr": "Terrain de 500 à 1.000 m²",
+    "nombre_en": "Land from 500 to 1,000 m²",
+    "tasa_expedicion": 2500.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-568",
+    "category_id": "C-082",
+    "nombre_es": "Terreno de 1.001 a 5.000 m2",
+    "nombre_fr": "Terrain de 1.001 à 5.000 m²",
+    "nombre_en": "Land from 1,001 to 5,000 m²",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-569",
+    "category_id": "C-082",
+    "nombre_es": "Terreno de 5001 en adelante",
+    "nombre_fr": "Terrain de 5001 et plus",
+    "nombre_en": "Land from 5001 and above",
+    "tasa_expedicion": 7500.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-570",
+    "category_id": "C-083",
+    "nombre_es": "A4",
+    "nombre_fr": "A4",
+    "nombre_en": "A4",
+    "tasa_expedicion": 6000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-571",
+    "category_id": "C-083",
+    "nombre_es": "A3",
+    "nombre_fr": "A3",
+    "nombre_en": "A3",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-572",
+    "category_id": "C-084",
+    "nombre_es": "A2",
+    "nombre_fr": "A2",
+    "nombre_en": "A2",
+    "tasa_expedicion": 20000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-573",
+    "category_id": "C-084",
+    "nombre_es": "A1",
+    "nombre_fr": "A1",
+    "nombre_en": "A1",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-574",
+    "category_id": "C-084",
+    "nombre_es": "A0",
+    "nombre_fr": "A0",
+    "nombre_en": "A0",
+    "tasa_expedicion": 20000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-575",
+    "category_id": "C-085",
+    "nombre_es": "De 0 a 500.000 F. CFA",
+    "nombre_fr": "De 0 à 500.000 F. CFA",
+    "nombre_en": "From 0 to 500,000 F. CFA",
+    "tasa_expedicion": 15000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-576",
+    "category_id": "C-085",
+    "nombre_es": "De 500.000 a 1.000.000 F. CFA",
+    "nombre_fr": "De 500.000 à 1.000.000 F. CFA",
+    "nombre_en": "From 500,000 to 1,000,000 F. CFA",
+    "tasa_expedicion": 20000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-577",
+    "category_id": "C-085",
+    "nombre_es": "De 1.000.000 a 3.000.000 F. CFA",
+    "nombre_fr": "De 1.000.000 à 3.000.000 F. CFA",
+    "nombre_en": "From 1,000,000 to 3,000,000 F. CFA",
+    "tasa_expedicion": 15000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-578",
+    "category_id": "C-085",
+    "nombre_es": "De 3.000.000 en adelante",
+    "nombre_fr": "À partir de 3.000.000",
+    "nombre_en": "From 3,000,000 and above",
+    "tasa_expedicion": 20000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-579",
+    "category_id": "C-086",
+    "nombre_es": "Terreno de 1001 a 5000 m2",
+    "nombre_fr": "Terrain de 1001 à 5000 m²",
+    "nombre_en": "Land from 1001 to 5000 m²",
+    "tasa_expedicion": 20000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-580",
+    "category_id": "C-086",
+    "nombre_es": "Terreno de 5001 en adelante",
+    "nombre_fr": "Terrain à partir de 5001",
+    "nombre_en": "Land from 5001 and above",
+    "tasa_expedicion": 15000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-581",
+    "category_id": "C-087",
+    "nombre_es": "Autorización Visado Ordinario",
+    "nombre_fr": "Autorisation Visa Ordinaire",
+    "nombre_en": "Ordinary Visa Authorization",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 40000.0
+  },
+  {
+    "id": "T-582",
+    "category_id": "C-087",
+    "nombre_es": "Visados alternativos 3 Meses",
+    "nombre_fr": "Visas alternatifs 3 Mois",
+    "nombre_en": "Alternative Visas 3 Months",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 20000.0
+  },
+  {
+    "id": "T-583",
+    "category_id": "C-087",
+    "nombre_es": "Visados alternativos 6 Meses",
+    "nombre_fr": "Visas alternatifs 6 Mois",
+    "nombre_en": "Alternative Visas 6 Months",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 40000.0
+  },
+  {
+    "id": "T-584",
+    "category_id": "C-087",
+    "nombre_es": "Visados alternativos 12 Meses",
+    "nombre_fr": "Visas alternatifs 12 Mois",
+    "nombre_en": "Alternative Visas 12 Months",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 80000.0
+  },
+  {
+    "id": "T-585",
+    "category_id": "C-087",
+    "nombre_es": "Prórroga de visado de entrada por 1 mes",
+    "nombre_fr": "Prolongation de visa d'entrée pour 1 mois",
+    "nombre_en": "Entry visa extension for 1 month",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 20000.0
+  },
+  {
+    "id": "T-586",
+    "category_id": "C-087",
+    "nombre_es": "Permanencia/mes",
+    "nombre_fr": "Séjour/mois",
+    "nombre_en": "Stay/month",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 50000.0
+  },
+  {
+    "id": "T-587",
+    "category_id": "C-087",
+    "nombre_es": "Visados alternativos 24 Meses",
+    "nombre_fr": "Visas alternatifs 24 Mois",
+    "nombre_en": "Alternative Visas 24 Months",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 600000.0
+  },
+  {
+    "id": "T-588",
+    "category_id": "C-087",
+    "nombre_es": "Autorización Visados entrada fronteriza",
+    "nombre_fr": "Autorisation Visas d'entrée frontalière",
+    "nombre_en": "Border entry visa authorization",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 50000.0
+  },
+  {
+    "id": "T-589",
+    "category_id": "C-087",
+    "nombre_es": "Salida con visado vencido, por mes",
+    "nombre_fr": "Sortie avec visa expiré, par mois",
+    "nombre_en": "Exit with expired visa, per month",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 30000.0
+  },
+  {
+    "id": "T-590",
+    "category_id": "C-087",
+    "nombre_es": "De nueva emigración (de 1 a 6 meses)",
+    "nombre_fr": "Nouvelle émigration (de 1 à 6 mois)",
+    "nombre_en": "New emigration (1 to 6 months)",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 150000.0
+  },
+  {
+    "id": "T-591",
+    "category_id": "C-088",
+    "nombre_es": "Certificado Buena conducta Nacionales",
+    "nombre_fr": "Certificat de Bonne conduite Nationaux",
+    "nombre_en": "Certificate of Good Conduct for Nationals",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 2000.0
+  },
+  {
+    "id": "T-592",
+    "category_id": "C-088",
+    "nombre_es": "Certificado Buena conducta Extranjeros",
+    "nombre_fr": "Certificat de Bonne conduite Étrangers",
+    "nombre_en": "Certificate of Good Conduct for Foreigners",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 5000.0
+  },
+  {
+    "id": "T-593",
+    "category_id": "C-088",
+    "nombre_es": "Certificado de extravío documentos",
+    "nombre_fr": "Certificat de perte de documents",
+    "nombre_en": "Certificate of lost documents",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 5000.0
+  },
+  {
+    "id": "T-594",
+    "category_id": "C-088",
+    "nombre_es": "Certificado policial de no residente",
+    "nombre_fr": "Certificat de police pour non-résident",
+    "nombre_en": "Police certificate for non-resident",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 15000.0
+  },
+  {
+    "id": "T-595",
+    "category_id": "C-088",
+    "nombre_es": "Fe de autenticidad",
+    "nombre_fr": "Authentification",
+    "nombre_en": "Authentication certificate",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 2000.0
+  },
+  {
+    "id": "T-596",
+    "category_id": "C-088",
+    "nombre_es": "Seguro de expatriación",
+    "nombre_fr": "Assurance d'expatriation",
+    "nombre_en": "Expatriation insurance",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 100000.0
+  },
+  {
+    "id": "T-599",
+    "category_id": "C-089",
+    "nombre_es": "Documento de Identidad Personal",
+    "nombre_fr": "Document d'Identité Personnel",
+    "nombre_en": "Personal Identity Document",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 1000.0
+  },
+  {
+    "id": "T-600",
+    "category_id": "C-089",
+    "nombre_es": "Duplicado por extravío de DIP",
+    "nombre_fr": "Duplicata pour perte de la CNI",
+    "nombre_en": "Duplicate for lost ID",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 1000.0
+  },
+  {
+    "id": "T-601",
+    "category_id": "C-089",
+    "nombre_es": "Pasaporte Ordinario",
+    "nombre_fr": "Passeport Ordinaire",
+    "nombre_en": "Ordinary Passport",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 7500.0
+  },
+  {
+    "id": "T-602",
+    "category_id": "C-089",
+    "nombre_es": "Duplicado por extravío de Pasaporte",
+    "nombre_fr": "Duplicata pour perte de Passeport",
+    "nombre_en": "Duplicate for lost Passport",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 7500.0
+  },
+  {
+    "id": "T-603",
+    "category_id": "C-089",
+    "nombre_es": "Renovación de pasaporte por expiración de fecha de vigencia",
+    "nombre_fr": "Renouvellement de passeport pour expiration de validité",
+    "nombre_en": "Passport renewal due to expiration",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 10000.0
+  },
+  {
+    "id": "T-604",
+    "category_id": "C-089",
+    "nombre_es": "Carnet de Residencia extranjeros (12 meses)",
+    "nombre_fr": "Carte de Séjour étrangers (12 mois)",
+    "nombre_en": "Foreign Residence Card (12 months)",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 200000.0
+  },
+  {
+    "id": "T-605",
+    "category_id": "C-089",
+    "nombre_es": "Carnet de Residencia extranjeros (24 meses)",
+    "nombre_fr": "Carte de Séjour étrangers (24 mois)",
+    "nombre_en": "Foreign Residence Card (24 months)",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 400000.0
+  },
+  {
+    "id": "T-610",
+    "category_id": "C-090",
+    "nombre_es": "Denuncia",
+    "nombre_fr": "Plainte",
+    "nombre_en": "Complaint",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-611",
+    "category_id": "C-090",
+    "nombre_es": "Sanción por alteración de orden público",
+    "nombre_fr": "Sanction pour trouble à l'ordre public",
+    "nombre_en": "Public order disturbance sanction",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 5000.0
+  },
+  {
+    "id": "T-612",
+    "category_id": "C-091",
+    "nombre_es": "Certificado de reconocimiento y homologación de equipos, aparatos",
+    "nombre_fr": "Certificat de reconnaissance et homologation d'équipements et appareils",
+    "nombre_en": "Certificate of recognition and approval of equipment and devices",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-613",
+    "category_id": "C-091",
+    "nombre_es": "Alta y Registros de Empresas",
+    "nombre_fr": "Inscription et Registre des Entreprises",
+    "nombre_en": "Company Registration and Records",
+    "tasa_expedicion": 100000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-614",
+    "category_id": "C-091",
+    "nombre_es": "Certificado de registro alta de empresas importación",
+    "nombre_fr": "Certificat d'enregistrement d'entreprises d'importation",
+    "nombre_en": "Registration certificate for import companies",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-615",
+    "category_id": "C-091",
+    "nombre_es": "Certificado de registro autónomo",
+    "nombre_fr": "Certificat d'enregistrement indépendant",
+    "nombre_en": "Independent registration certificate",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-616",
+    "category_id": "C-091",
+    "nombre_es": "Exportación y reexportación por aparato equipo de sistema",
+    "nombre_fr": "Exportation et réexportation par appareil système",
+    "nombre_en": "Export and re-export per system equipment",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-617",
+    "category_id": "C-091",
+    "nombre_es": "Certificado de importación, exportación y reexportación",
+    "nombre_fr": "Certificat d'importation, exportation et réexportation",
+    "nombre_en": "Import, export and re-export certificate",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-618",
+    "category_id": "C-091",
+    "nombre_es": "Certificado de modificación de dueño, denominación o domicilio",
+    "nombre_fr": "Certificat de modification de propriétaire, dénomination ou domicile",
+    "nombre_en": "Certificate of change of owner, name or address",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-619",
+    "category_id": "C-091",
+    "nombre_es": "Furgonetas de 1 a 2 T",
+    "nombre_fr": "Fourgonnettes de 1 à 2 T",
+    "nombre_en": "Vans from 1 to 2 T",
+    "tasa_expedicion": 5000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-620",
+    "category_id": "C-092",
+    "nombre_es": "Furgoneta de 3 a 5 T",
+    "nombre_fr": "Fourgon de 3 à 5 T",
+    "nombre_en": "Van from 3 to 5 T",
+    "tasa_expedicion": 1000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-621",
+    "category_id": "C-092",
+    "nombre_es": "Microbuses de 10 a 15 plazas",
+    "nombre_fr": "Minibus de 10 à 15 places",
+    "nombre_en": "Minibuses from 10 to 15 seats",
+    "tasa_expedicion": 10000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-622",
+    "category_id": "C-092",
+    "nombre_es": "Microbuses de 15 a 20 plazas",
+    "nombre_fr": "Minibus de 15 à 20 places",
+    "nombre_en": "Minibuses from 15 to 20 seats",
+    "tasa_expedicion": 15000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-623",
+    "category_id": "C-092",
+    "nombre_es": "Microbuses de 23 a 30 plazas",
+    "nombre_fr": "Minibus de 23 à 30 places",
+    "nombre_en": "Minibuses from 23 to 30 seats",
+    "tasa_expedicion": 20000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-624",
+    "category_id": "C-092",
+    "nombre_es": "Autobuses de 40 a 50 plazas",
+    "nombre_fr": "Autobus de 40 à 50 places",
+    "nombre_en": "Buses from 40 to 50 seats",
+    "tasa_expedicion": 30000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-625",
+    "category_id": "C-093",
+    "nombre_es": "Transporte de pasajeros",
+    "nombre_fr": "Transport de passagers",
+    "nombre_en": "Passenger transport",
+    "tasa_expedicion": 250000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-626",
+    "category_id": "C-093",
+    "nombre_es": "Transporte de mercancías",
+    "nombre_fr": "Transport de marchandises",
+    "nombre_en": "Freight transport",
+    "tasa_expedicion": 300000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-627",
+    "category_id": "C-093",
+    "nombre_es": "Transporte mixto",
+    "nombre_fr": "Transport mixte",
+    "nombre_en": "Mixed transport",
+    "tasa_expedicion": 400000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-628",
+    "category_id": "C-093",
+    "nombre_es": "Transporte líquidos y gases a granel",
+    "nombre_fr": "Transport de liquides et gaz en vrac",
+    "nombre_en": "Bulk liquid and gas transport",
+    "tasa_expedicion": 1300000.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-909",
+    "category_id": "C-101",
+    "nombre_es": "Camiones de 10 a 14 Vehículos muy pesados (Camiones cargados)",
+    "nombre_fr": "Camions de 10 à 14 Véhicules très lourds (Camions chargés)",
+    "nombre_en": "Trucks 10 to 14 Very heavy vehicles (Loaded trucks)",
+    "tasa_expedicion": 0.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-910",
+    "category_id": "C-102",
+    "nombre_es": "Vehículos Particulares ligeros (Privado)",
+    "nombre_fr": "Véhicules Particuliers légers (Privé)",
+    "nombre_en": "Light Private Vehicles (Private)",
+    "tasa_expedicion": 500.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-911",
+    "category_id": "C-103",
+    "nombre_es": "(Camiones Medianos de 6 a 8 Ruedas) Vehículos muy pesados (Camiones vacíos)",
+    "nombre_fr": "(Camions Moyens de 6 à 8 Roues) Véhicules très lourds (Camions vides)",
+    "nombre_en": "(Medium Trucks 6 to 8 Wheels) Very heavy vehicles (Empty trucks)",
+    "tasa_expedicion": 2.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-912",
+    "category_id": "C-103",
+    "nombre_es": "Camionetas (Dina 100 y Toyotas) Vehículos pesados (Camionetas)",
+    "nombre_fr": "Camionnettes (Dina 100 et Toyota) Véhicules lourds (Camionnettes)",
+    "nombre_en": "Vans (Dina 100 and Toyota) Heavy vehicles (Vans)",
+    "tasa_expedicion": 1.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-913",
+    "category_id": "C-104",
+    "nombre_es": "Vehículos de transporte público (Taxis, Microbuses, autobuses y otros)",
+    "nombre_fr": "Véhicules de transport public (Taxis, Minibus, autobus et autres)",
+    "nombre_en": "Public transport vehicles (Taxis, Minibuses, buses and others)",
+    "tasa_expedicion": 100.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-914",
+    "category_id": "C-105",
+    "nombre_es": "Camiones Remolques",
+    "nombre_fr": "Camions Remorques",
+    "nombre_en": "Trailer Trucks",
+    "tasa_expedicion": 4.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-915",
+    "category_id": "C-105",
+    "nombre_es": "Camiones Cargados de Contenedores",
+    "nombre_fr": "Camions Chargés de Conteneurs",
+    "nombre_en": "Container Loaded Trucks",
+    "tasa_expedicion": 5.0,
+    "tasa_renovacion": 0.0
+  },
+  {
+    "id": "T-916",
+    "category_id": "C-105",
+    "nombre_es": "Camiones Remolques, Grúas y Máquinas pesadas",
+    "nombre_fr": "Camions Remorques, Grues et Machines lourdes",
+    "nombre_en": "Trailer Trucks, Cranes and Heavy Machinery",
+    "tasa_expedicion": 5.0,
+    "tasa_renovacion": 0.0
+  }
+]

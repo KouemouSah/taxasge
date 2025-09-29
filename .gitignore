@@ -248,3 +248,9 @@ data/exports/
 data/imports/temp/
 scripts/logs/
 config/secrets/
+
+# Archive - Old JSON and Scripts (Pre-Refactoring)
+old-json/
+
+# Documentation Projet - Scripts et Rapports de Migration
+docs/documentations projet/

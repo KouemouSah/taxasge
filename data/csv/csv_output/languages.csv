@@ -1,0 +1,4 @@
+code,name_native,name_english,is_active,display_order
+es,Español,Spanish,true,1
+fr,Français,French,true,2
+en,English,English,true,3
