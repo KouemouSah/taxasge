@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(findstr:*)",
+      "Bash(del required_documents.csv.backup-with-names)",
+      "Bash(dir:*)",
+      "Bash(if exist \"docs\\documentations projet\\source\\screenshot templates\" rd /s /q \"docs\\documentations projet\\source\\screenshot templates\")",
+      "Bash(test:*)",
+      "Bash(tree:*)",
+      "Bash(cat:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git checkout:*)",
+      "Bash(yarn install)",
+      "Bash(npm install)",
+      "Bash(npm audit:*)",
+      "Bash(npx next:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm install:*)",
+      "Bash(git mv:*)",
+      "Bash(git rm:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
