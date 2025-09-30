@@ -253,4 +253,4 @@ config/secrets/
 old-json/
 
 # Documentation Projet - Scripts et Rapports de Migration
-docs/documentations projet/
+# docs/documentations projet/  # Commented out to allow reports
