@@ -1,32 +1,177 @@
 {
-  "name": "taxasge-web",
+  "name": "@taxasge/web",
   "version": "1.0.0",
+  "description": "TaxasGE Web - Interface utilisateur publique Next.js PWA",
   "private": true,
+  "author": {
+    "name": "KOUEMOU SAH Jean Emac",
+    "email": "kouemou.sah@gmail.com"
+  },
+  "license": "MIT",
+  "homepage": "https://taxasge.gq",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/KouemouSah/taxasge.git",
+    "directory": "packages/web"
+  },
+  "bugs": {
+    "url": "https://github.com/KouemouSah/taxasge/issues"
+  },
+  "keywords": [
+    "nextjs",
+    "pwa",
+    "tax-management",
+    "guinea-ecuatorial",
+    "seo",
+    "typescript",
+    "tailwindcss",
+    "shadcn",
+    "fiscal-services"
+  ],
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0",
+    "yarn": ">=1.22.0"
+  },
   "scripts": {
-    "start": "react-native start",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "export": "next export",
+    "analyze": "cross-env ANALYZE=true next build",
+    "lint": "next lint",
+    "lint:fix": "next lint --fix",
+    "type-check": "tsc --noEmit",
+    "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json,css,md}\"",
+    "format:check": "prettier --check \"src/**/*.{js,jsx,ts,tsx,json,css,md}\"",
     "test": "jest",
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx"
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "clean": "rm -rf .next out node_modules/.cache",
+    "sitemap": "next-sitemap",
+    "postbuild": "next-sitemap"
   },
   "dependencies": {
-    "react": "18.2.0",
-    "react-native": "0.73.0"
+    "next": "14.2.5",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "@next/third-parties": "^14.2.5",
+    "next-pwa": "^5.6.0",
+    "next-seo": "^6.5.0",
+    "next-sitemap": "^4.2.3",
+    "next-themes": "^0.3.0",
+    "@radix-ui/react-accordion": "^1.1.2",
+    "@radix-ui/react-alert-dialog": "^1.0.5",
+    "@radix-ui/react-avatar": "^1.0.4",
+    "@radix-ui/react-checkbox": "^1.0.4",
+    "@radix-ui/react-dialog": "^1.0.5",
+    "@radix-ui/react-dropdown-menu": "^2.0.6",
+    "@radix-ui/react-icons": "^1.3.0",
+    "@radix-ui/react-label": "^2.0.2",
+    "@radix-ui/react-navigation-menu": "^1.1.4",
+    "@radix-ui/react-popover": "^1.0.7",
+    "@radix-ui/react-progress": "^1.0.3",
+    "@radix-ui/react-select": "^2.0.0",
+    "@radix-ui/react-separator": "^1.0.3",
+    "@radix-ui/react-slider": "^1.1.2",
+    "@radix-ui/react-switch": "^1.0.3",
+    "@radix-ui/react-tabs": "^1.0.4",
+    "@radix-ui/react-toast": "^1.1.5",
+    "@radix-ui/react-tooltip": "^1.0.7",
+    "@tanstack/react-query": "^5.51.9",
+    "@tanstack/react-query-devtools": "^5.51.9",
+    "zustand": "^4.5.4",
+    "framer-motion": "^11.3.8",
+    "lucide-react": "^0.408.0",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.4.0",
+    "tailwindcss-animate": "^1.0.7",
+    "cmdk": "^1.0.0",
+    "embla-carousel-react": "^8.1.6",
+    "vaul": "^0.9.1",
+    "sonner": "^1.5.0",
+    "react-hook-form": "^7.52.1",
+    "@hookform/resolvers": "^3.9.0",
+    "zod": "^3.23.8",
+    "axios": "^1.7.2",
+    "date-fns": "^3.6.0",
+    "js-cookie": "^3.0.5",
+    "lodash": "^4.17.21",
+    "react-intersection-observer": "^9.13.0",
+    "sharp": "^0.33.4",
+    "use-debounce": "^10.0.1"
   },
   "devDependencies": {
-    "@babel/core": "^7.20.0",
-    "@babel/preset-env": "^7.20.0",
-    "@babel/runtime": "^7.20.0",
-    "@react-native/babel-preset": "0.73.18",
-    "@react-native/eslint-config": "0.73.2",
-    "@react-native/metro-config": "0.73.2",
-    "@react-native/typescript-config": "0.73.1",
-    "babel-jest": "^29.6.3",
-    "eslint": "^8.19.0",
-    "jest": "^29.6.3",
-    "prettier": "2.8.8",
-    "react-test-renderer": "18.2.0",
-    "typescript": "5.0.4"
+    "@types/node": "^20.14.12",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/js-cookie": "^3.0.6",
+    "@types/lodash": "^4.17.7",
+    "typescript": "^5.5.4",
+    "tailwindcss": "^3.4.6",
+    "postcss": "^8.4.39",
+    "autoprefixer": "^10.4.19",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "14.2.5",
+    "@typescript-eslint/eslint-plugin": "^7.16.1",
+    "@typescript-eslint/parser": "^7.16.1",
+    "eslint-plugin-react": "^7.35.0",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "prettier": "^3.3.3",
+    "prettier-plugin-tailwindcss": "^0.6.5",
+    "@next/bundle-analyzer": "^14.2.5",
+    "cross-env": "^7.0.3",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "@testing-library/react": "^16.0.0",
+    "@testing-library/jest-dom": "^6.4.8",
+    "@testing-library/user-event": "^14.5.2",
+    "jest-next-dynamic": "^1.0.1",
+    "@playwright/test": "^1.45.3",
+    "@storybook/addon-essentials": "^8.2.6",
+    "@storybook/addon-interactions": "^8.2.6",
+    "@storybook/addon-links": "^8.2.6",
+    "@storybook/blocks": "^8.2.6",
+    "@storybook/nextjs": "^8.2.6",
+    "@storybook/react": "^8.2.6",
+    "@storybook/test": "^8.2.6",
+    "storybook": "^8.2.6"
   },
-  "engines": {
-    "node": ">=18"
+  "browserslist": {
+    "production": [
+      ">0.3%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "config": {
+    "site": {
+      "name": "TaxasGE",
+      "description": "Plataforma digital de gestión fiscal de Guinea Ecuatorial",
+      "url": "https://taxasge-dev.web.app",
+      "ogImage": "https://taxasge-dev.web.app/og-image.jpg"
+    },
+    "api": {
+      "baseUrl": "https://taxasge-dev.firebase.com",
+      "version": "v1"
+    },
+    "features": {
+      "pwa": true,
+      "offline": true,
+      "analytics": true,
+      "seo": true,
+      "i18n": true,
+      "search": true
+    }
   }
 }

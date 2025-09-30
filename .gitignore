@@ -96,6 +96,7 @@ functions-debug.log
 .vscode/tasks.json
 .vscode/.ropeproject
 .idea/
+.vs/
 *.swp
 *.swo
 *~
