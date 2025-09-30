@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { cn } from '@/lib/utils'
+import { Providers } from '@/components/providers/Providers'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -97,11 +98,13 @@ export default function RootLayout({
         )}
         suppressHydrationWarning
       >
-        <div className="relative flex min-h-screen flex-col">
-          <div className="flex-1">
-            {children}
+        <Providers>
+          <div className="relative flex min-h-screen flex-col">
+            <div className="flex-1">
+              {children}
+            </div>
           </div>
-        </div>
+        </Providers>
       </body>
     </html>
   )
