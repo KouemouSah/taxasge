@@ -340,7 +340,9 @@ async def gateway_configuration(current_user = Depends(get_current_user)):
 # Importer et enregistrer tous les routers
 from gateway.routes.v1.public import public_router
 from gateway.routes.v1.authenticated import authenticated_router
-from gateway.routes.v1.admin import admin_router
+
+# Import admin intégré
+from ..admin.main import admin_app
 
 # Routes publiques (sans authentification)
 app.include_router(
@@ -357,13 +359,8 @@ app.include_router(
     dependencies=[Depends(jwt_manager.verify_token)]
 )
 
-# Routes admin
-app.include_router(
-    admin_router,
-    prefix="/api/v1/admin",
-    tags=["Administration"],
-    dependencies=[Depends(jwt_manager.verify_admin_token)]
-)
+# Admin Dashboard intégré
+app.mount("/admin", admin_app)
 
 # === ERROR HANDLERS ===
 
