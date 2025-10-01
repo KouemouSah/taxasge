@@ -25,7 +25,9 @@
       "Bash(do [ -s \"scripts/$f\" ])",
       "Bash(echo \"$f (vide)\")",
       "Bash(done)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(git push:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

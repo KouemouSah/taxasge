@@ -83,7 +83,7 @@ CREATE INDEX IF NOT EXISTS idx_categories_sector ON categories(sector_id);
 CREATE TABLE IF NOT EXISTS fiscal_services (
   id TEXT PRIMARY KEY,
   code TEXT NOT NULL UNIQUE,
-  category_id TEXT,
+  category_id TEXT NOT NULL,
   name_es TEXT NOT NULL,
   name_fr TEXT,
   name_en TEXT,
@@ -113,7 +113,7 @@ CREATE TABLE IF NOT EXISTS fiscal_services (
   last_updated TEXT,
   created_at TEXT DEFAULT (datetime('now')),
 
-  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
+  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_fiscal_services_code ON fiscal_services(code);
@@ -177,6 +177,49 @@ CREATE TABLE IF NOT EXISTS required_documents (
 );
 
 CREATE INDEX IF NOT EXISTS idx_documents_service ON required_documents(fiscal_service_id);
+
+-- Procédures des services (étapes)
+CREATE TABLE IF NOT EXISTS service_procedures (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  fiscal_service_id TEXT NOT NULL,
+  step_number INTEGER NOT NULL,
+  title_es TEXT NOT NULL,
+  title_fr TEXT,
+  title_en TEXT,
+  description_es TEXT,
+  description_fr TEXT,
+  description_en TEXT,
+  applies_to TEXT CHECK(applies_to IN ('expedition', 'renewal', 'both')),
+  estimated_duration_minutes INTEGER,
+  location_address TEXT,
+  office_hours TEXT,
+  requires_appointment INTEGER DEFAULT 0,
+  can_be_done_online INTEGER DEFAULT 0,
+  additional_cost REAL DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (fiscal_service_id) REFERENCES fiscal_services(id) ON DELETE CASCADE,
+  UNIQUE(fiscal_service_id, step_number, applies_to)
+);
+
+CREATE INDEX IF NOT EXISTS idx_procedures_service ON service_procedures(fiscal_service_id);
+CREATE INDEX IF NOT EXISTS idx_procedures_applies ON service_procedures(applies_to);
+
+-- Mots-clés des services (recherche)
+CREATE TABLE IF NOT EXISTS service_keywords (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  fiscal_service_id TEXT NOT NULL,
+  keyword TEXT NOT NULL,
+  language_code TEXT NOT NULL CHECK(language_code IN ('es', 'fr', 'en')),
+  weight INTEGER DEFAULT 1,
+  is_auto_generated INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (fiscal_service_id) REFERENCES fiscal_services(id) ON DELETE CASCADE,
+  UNIQUE(fiscal_service_id, keyword, language_code)
+);
+
+CREATE INDEX IF NOT EXISTS idx_keywords_service ON service_keywords(fiscal_service_id);
+CREATE INDEX IF NOT EXISTS idx_keywords_keyword ON service_keywords(keyword);
+CREATE INDEX IF NOT EXISTS idx_keywords_language ON service_keywords(language_code);
 
 -- ============================================
 -- 3. TABLES CACHE & SYNC
@@ -384,6 +427,8 @@ export const TABLE_NAMES = {
   SECTORS: 'sectors',
   CATEGORIES: 'categories',
   FISCAL_SERVICES: 'fiscal_services',
+  SERVICE_PROCEDURES: 'service_procedures',
+  SERVICE_KEYWORDS: 'service_keywords',
   USER_FAVORITES: 'user_favorites',
   CALCULATIONS_HISTORY: 'calculations_history',
   REQUIRED_DOCUMENTS: 'required_documents',

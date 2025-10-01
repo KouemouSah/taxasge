@@ -15,7 +15,9 @@ export interface FiscalService {
   service_type?: string;
   expedition_amount: number;
   renewal_amount?: number;
+  category_id?: string;
   category_name?: string;
+  sector_name?: string;
   ministry_name?: string;
   ministry_code?: string;
   is_online_available: number;
@@ -24,6 +26,7 @@ export interface FiscalService {
 
 export interface SearchFilters {
   ministryId?: string;
+  sectorId?: string;
   categoryId?: string;
   serviceType?: string;
   minAmount?: number;

@@ -105,6 +105,15 @@ class SyncService {
       // 4. Sync fiscal services
       await this.syncFiscalServices(result, since);
 
+      // 5. Sync required documents
+      await this.syncTable('required_documents', result, since);
+
+      // 6. Sync service procedures
+      await this.syncTable('service_procedures', result, since);
+
+      // 7. Sync service keywords
+      await this.syncTable('service_keywords', result, since);
+
       // Update last sync timestamp
       await db.setMetadata('last_full_sync', new Date().toISOString());
 
