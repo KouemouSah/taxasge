@@ -177,6 +177,13 @@ class Settings(BaseSettings):
     # VALIDATORS
     # ========================================================================
     
+    @validator("API_PORT", pre=True)
+    def validate_api_port(cls, v):
+        """Convert API_PORT to integer if string"""
+        if isinstance(v, str):
+            return int(v)
+        return v
+
     @validator("ENVIRONMENT")
     def validate_environment(cls, v):
         """Validate environment value"""
