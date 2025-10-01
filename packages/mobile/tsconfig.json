@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "commonjs",
+    "lib": ["es2019", "es2020.promise", "es2020.bigint", "es2020.string"],
+    "jsx": "react-native",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@database/*": ["src/database/*"],
+      "@components/*": ["src/components/*"],
+      "@screens/*": ["src/screens/*"],
+      "@services/*": ["src/services/*"],
+      "@utils/*": ["src/utils/*"],
+      "@hooks/*": ["src/hooks/*"],
+      "@navigation/*": ["src/navigation/*"],
+      "@config/*": ["src/config/*"],
+      "@assets/*": ["src/assets/*"]
+    }
+  },
+  "include": [
+    "src/**/*",
+    "index.js"
+  ],
+  "exclude": [
+    "node_modules",
+    "android",
+    "ios",
+    "**/*.spec.ts",
+    "**/*.test.ts"
+  ]
+}
