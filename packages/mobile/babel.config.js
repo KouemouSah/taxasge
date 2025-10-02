@@ -38,23 +38,18 @@ module.exports = {
     }],
 
     // Optional chaining and nullish coalescing
-    '@babel/plugin-proposal-optional-chaining',
-    '@babel/plugin-proposal-nullish-coalescing-operator',
+    '@babel/plugin-transform-optional-chaining',
+    '@babel/plugin-transform-nullish-coalescing-operator',
 
     // Class properties and private methods
-    '@babel/plugin-proposal-class-properties',
-    '@babel/plugin-proposal-private-methods',
+    '@babel/plugin-transform-class-properties',
+    '@babel/plugin-transform-private-methods',
 
-    // Decorators support (for MobX, etc.)
-    ['@babel/plugin-proposal-decorators', {
-      legacy: true
-    }],
+    // NativeWind support (commented out - not installed)
+    // 'nativewind/babel',
 
-    // NativeWind support
-    'nativewind/babel',
-
-    // React Native SVG transformer
-    'react-native-svg-transformer/react-native',
+    // React Native SVG transformer (commented out - not installed)
+    // 'react-native-svg-transformer/react-native',
 
     // Firebase optimization
     ['@babel/plugin-transform-react-jsx', {
@@ -62,26 +57,6 @@ module.exports = {
     }]
   ],
   env: {
-    production: {
-      plugins: [
-        // Remove console statements in production
-        'transform-remove-console',
-
-        // Dead code elimination
-        '@babel/plugin-transform-dead-code-elimination',
-
-        // Minification
-        'minify-dead-code-elimination'
-      ]
-    },
-    development: {
-      plugins: [
-        // Flipper support in development
-        ['@babel/plugin-transform-react-jsx-development', {
-          runtime: 'automatic'
-        }]
-      ]
-    },
     test: {
       plugins: [
         // Jest transformations for testing

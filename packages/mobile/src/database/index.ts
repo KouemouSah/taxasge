@@ -6,15 +6,23 @@
 // Core
 export {db, DatabaseManager} from './DatabaseManager';
 export {syncService, SyncService} from './SyncService';
+export {offlineQueueService, OfflineQueueService} from './OfflineQueueService';
 export * from './schema';
 
 // Services
 export {fiscalServicesService} from './services/FiscalServicesService';
 export {favoritesService} from './services/FavoritesService';
+export {calculationsService} from './services/CalculationsService';
 
 // Types
 export type {FiscalService, SearchFilters} from './services/FiscalServicesService';
 export type {Favorite} from './services/FavoritesService';
+export type {
+  Calculation,
+  CalculationParams,
+  CalculationBreakdown,
+} from './services/CalculationsService';
+export type {QueueItem, ProcessResult} from './OfflineQueueService';
 
 /**
  * Initialize database on app start
