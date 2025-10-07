@@ -2,18 +2,14 @@ name: Deploy Firebase Security Rules
 
 on:
   push:
-    branches:
-      - main
-      - develop
+    branches: ['**']  # Toutes les branches
     paths:
       - 'firestore.rules'
       - 'storage.rules'
       - 'firestore.indexes.json'
       - '.github/workflows/firebase-rules-deploy.yml'
   pull_request:
-    branches:
-      - main
-      - develop
+    branches: [main, develop]
     paths:
       - 'firestore.rules'
       - 'storage.rules'

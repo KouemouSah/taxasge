@@ -3,14 +3,14 @@
  * Gestionnaire centralisé pour toutes les opérations SQLite
  */
 
-import SQLite, {SQLiteDatabase, ResultSet} from 'react-native-sqlite-storage';
+import SQLite, {SQLiteDatabase, ResultSet, Transaction} from 'react-native-sqlite-storage';
 import {DATABASE_NAME, DATABASE_VERSION, SCHEMA_SQL, QUERIES, TABLE_NAMES} from './schema';
 
 // Enable debug mode in development
 SQLite.DEBUG(__DEV__);
 SQLite.enablePromise(true);
 
-type TransactionCallback = (tx: any) => Promise<any>;
+type TransactionCallback = (tx: Transaction) => Promise<any>;
 
 class DatabaseManager {
   private db: SQLiteDatabase | null = null;
@@ -76,7 +76,7 @@ class DatabaseManager {
     const results: ResultSet[] = [];
 
     return new Promise((resolve, reject) => {
-      db.transaction((tx) => {
+      db.transaction((tx: Transaction) => {
         // Split multiple statements
         const statements = sql
           .split(';')
@@ -87,10 +87,10 @@ class DatabaseManager {
           tx.executeSql(
             statement,
             params,
-            (_, result) => {
+            (_: Transaction, result: ResultSet) => {
               results.push(result);
             },
-            (_, error) => {
+            (_: Transaction, error: any) => {
               console.error('[DB] SQL Error:', error, 'Statement:', statement);
               reject(error);
               return false;
@@ -111,18 +111,18 @@ class DatabaseManager {
     const db = await this.getDB();
 
     return new Promise((resolve, reject) => {
-      db.transaction((tx) => {
+      db.transaction((tx: Transaction) => {
         tx.executeSql(
           sql,
           params,
-          (_, result) => {
+          (_: Transaction, result: ResultSet) => {
             const rows: T[] = [];
             for (let i = 0; i < result.rows.length; i++) {
               rows.push(result.rows.item(i));
             }
             resolve(rows);
           },
-          (_, error) => {
+          (_: Transaction, error: any) => {
             console.error('[DB] Query error:', error, 'SQL:', sql);
             reject(error);
             return false;
@@ -142,12 +142,12 @@ class DatabaseManager {
     const db = await this.getDB();
 
     return new Promise((resolve, reject) => {
-      db.transaction((tx) => {
+      db.transaction((tx: Transaction) => {
         tx.executeSql(
           sql,
           params,
-          (_, result) => resolve(result),
-          (_, error) => {
+          (_: Transaction, result: ResultSet) => resolve(result),
+          (_: Transaction, error: any) => {
             console.error('[DB] Execute error:', error, 'SQL:', sql);
             reject(error);
             return false;
@@ -165,7 +165,7 @@ class DatabaseManager {
 
     return new Promise((resolve, reject) => {
       db.transaction(
-        async (tx) => {
+        async (tx: Transaction) => {
           try {
             const result = await callback(tx);
             resolve(result);
@@ -209,11 +209,11 @@ class DatabaseManager {
     const placeholders = keys.map(() => '?').join(', ');
     const sql = `INSERT OR REPLACE INTO ${table} (${keys.join(', ')}) VALUES (${placeholders})`;
 
-    await this.transaction(async (tx) => {
+    await this.transaction(async (tx: Transaction) => {
       for (const item of items) {
         const values = keys.map(key => item[key]);
         await new Promise((resolve, reject) => {
-          tx.executeSql(sql, values, resolve, (_, error: any) => {
+          tx.executeSql(sql, values, resolve, (_: Transaction, error: any) => {
             reject(error);
             return false;
           });
@@ -294,14 +294,14 @@ class DatabaseManager {
       TABLE_NAMES.SEARCH_CACHE,
     ];
 
-    await this.transaction(async (tx) => {
+    await this.transaction(async (tx: Transaction) => {
       for (const table of tables) {
         await new Promise((resolve, reject) => {
           tx.executeSql(
             `DELETE FROM ${table}`,
             [],
             resolve,
-            (_, error: any) => {
+            (_: Transaction, error: any) => {
               reject(error);
               return false;
             }

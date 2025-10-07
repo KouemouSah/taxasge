@@ -47,7 +47,7 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({
    * Monitor network status
    */
   useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener(state => {
+    const unsubscribe = NetInfo.addEventListener((state: any) => {
       const isOnline = state.isConnected === true && state.isInternetReachable === true;
 
       console.log('[SyncProvider] Network status:', {

@@ -5,7 +5,7 @@ on:
     # Exécute les contrôles de sécurité tous les jours à 2h UTC — auteur : kouemou sah jean emac
     - cron: '0 2 * * *'
   push:
-    branches: [main, develop] # auteur : kouemou sah jean emac
+    branches: ['**'] # Toutes les branches - auteur : kouemou sah jean emac
     paths:
       - 'firestore.rules'
       - 'storage.rules'
