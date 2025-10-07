@@ -52,7 +52,9 @@
       "Bash(./scripts/switch-firebase-env.sh:*)",
       "Bash(git show:*)",
       "Bash(git update-index:*)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(git stash:*)",
+      "Bash(git pull:*)"
     ],
     "deny": [],
     "ask": []
