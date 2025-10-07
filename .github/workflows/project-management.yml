@@ -1095,7 +1095,7 @@ jobs:
               "text": "🎯 TaxasGE Project Management Alert",
               "attachments": [
                 {
-                  "color": "${{ needs.project-analysis.outputs.project-health < 50 && 'danger' || 'warning' }}",
+                  "color": "warning",
                   "fields": [
                     {
                       "title": "Project Health Score",
