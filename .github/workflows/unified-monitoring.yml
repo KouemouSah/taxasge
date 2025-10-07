@@ -33,6 +33,11 @@ on:
         required: false
         default: false
         type: boolean
+  push:
+    branches: ['mobile', 'develop', 'main']
+    paths:
+      - '.github/workflows/unified-monitoring.yml'
+      - 'docs/*.json'
       environment:
         description: "Environment to monitor"
         required: false

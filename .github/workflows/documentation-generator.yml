@@ -25,6 +25,11 @@ on:
   schedule:
     # Mise à jour documentation chaque dimanche à 10:00 UTC
     - cron: '0 10 * * 0'
+  push:
+    branches: ['mobile', 'develop', 'main']
+    paths:
+      - '.github/workflows/documentation-generator.yml'
+      - 'docs/historical-context.json'
 
 permissions:
   contents: write

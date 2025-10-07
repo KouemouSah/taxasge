@@ -35,6 +35,13 @@ on:
     workflows: ["🎯 TaxasGE Milestone Manager", "📊 TaxasGE Historical Context Mapper"]
     types: [completed]
 
+  # Trigger on push to main branches
+  push:
+    branches: ['mobile', 'develop', 'main']
+    paths:
+      - '.github/workflows/project-management.yml'
+      - 'docs/dashboard-metrics.json'
+
   # Manual execution with comprehensive options
   workflow_dispatch:
     inputs:
