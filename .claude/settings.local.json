@@ -44,7 +44,8 @@
       "Bash(if exist package-lock.json del package-lock.json)",
       "WebFetch(domain:firebase.studio)",
       "WebFetch(domain:studio.firebase.google.com)",
-      "WebFetch(domain:firebase.google.com)"
+      "WebFetch(domain:firebase.google.com)",
+      "Bash(git fetch:*)"
     ],
     "deny": [],
     "ask": []

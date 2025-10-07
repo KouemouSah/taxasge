@@ -1,7 +1,9 @@
 module.exports = {
   presets: [
-    ['module:metro-react-native-babel-preset', {
-      unstable_transformProfile: 'hermes-stable'
+    ['@babel/preset-env', {
+      targets: {
+        node: 'current'
+      }
     }],
     ['@babel/preset-typescript', {
       allowNamespaces: true,
@@ -9,9 +11,6 @@ module.exports = {
     }]
   ],
   plugins: [
-    // React Native Reanimated (must be first)
-    'react-native-reanimated/plugin',
-
     // Module alias resolution
     ['module-resolver', {
       root: ['./src'],
@@ -26,8 +25,7 @@ module.exports = {
         '@navigation': './src/navigation',
         '@store': './src/store',
         '@hooks': './src/hooks',
-        '@constants': './src/constants',
-        '@ml': './src/assets/ml'
+        '@constants': './src/constants'
       }
     }],
 
@@ -45,13 +43,7 @@ module.exports = {
     '@babel/plugin-transform-class-properties',
     '@babel/plugin-transform-private-methods',
 
-    // NativeWind support (commented out - not installed)
-    // 'nativewind/babel',
-
-    // React Native SVG transformer (commented out - not installed)
-    // 'react-native-svg-transformer/react-native',
-
-    // Firebase optimization
+    // React JSX optimization
     ['@babel/plugin-transform-react-jsx', {
       runtime: 'automatic'
     }]
@@ -59,7 +51,6 @@ module.exports = {
   env: {
     test: {
       plugins: [
-        // Jest transformations for testing
         '@babel/plugin-transform-modules-commonjs'
       ]
     }

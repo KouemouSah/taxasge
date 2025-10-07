@@ -101,7 +101,6 @@
     }
   },
   "resolutions": {
-    "react": "18.2.0",
-    "react-native": "0.73.0"
+    "react": "18.3.1"
   }
 }
