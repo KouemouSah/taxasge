@@ -49,7 +49,9 @@
       "Bash(npx:*)",
       "Bash(cp:*)",
       "Bash(chmod:*)",
-      "Bash(./scripts/switch-firebase-env.sh:*)"
+      "Bash(./scripts/switch-firebase-env.sh:*)",
+      "Bash(git show:*)",
+      "Bash(git update-index:*)"
     ],
     "deny": [],
     "ask": []

@@ -602,6 +602,7 @@ firebase deploy --only hosting:frontend,functions
 
 #### .github/workflows/deploy-firebase.yml
 
+{% raw %}
 ```yaml
 name: Deploy to Firebase
 
@@ -650,7 +651,7 @@ jobs:
           cd packages/web
           yarn build
         env:
-          NEXT_PUBLIC_API_URL: {% raw %}${{ secrets[format('API_URL_{0}', matrix.environment)] }}{% endraw %}
+          NEXT_PUBLIC_API_URL: ${{ secrets[format('API_URL_{0}', matrix.environment)] }}
 
       - name: Run Tests
         run: |
@@ -660,10 +661,10 @@ jobs:
       - name: Deploy to Firebase
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
-          repoToken: {% raw %}'${{ secrets.GITHUB_TOKEN }}'{% endraw %}
-          firebaseServiceAccount: {% raw %}'${{ secrets[format('FIREBASE_SERVICE_ACCOUNT_{0}', matrix.environment)] }}'{% endraw %}
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets[format('FIREBASE_SERVICE_ACCOUNT_{0}', matrix.environment)] }}'
           channelId: live
-          projectId: {% raw %}taxasge-${{ matrix.environment }}{% endraw %}
+          projectId: taxasge-${{ matrix.environment }}
           target: frontend
 
       - name: Deploy Functions
@@ -683,6 +684,7 @@ jobs:
               "text": "Deployment to ${{ matrix.environment }} successful!"
             }
 ```
+{% endraw %}
 
 ### 5.2 Scripts de Deploiement
 

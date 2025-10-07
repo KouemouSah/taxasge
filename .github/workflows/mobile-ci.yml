@@ -353,9 +353,12 @@ jobs:
         run: |
           cd packages/mobile/android
           echo "🏗️ Build APK Debug pour ${{ needs.setup.outputs.environment }}"
-          
+
+          # Ensure gradlew is executable
+          chmod +x gradlew
+
           ./gradlew clean || echo "⚠️ Clean échoué"
-          
+
           if ./gradlew assembleDebug; then
             echo "✅ APK généré avec succès"
             
