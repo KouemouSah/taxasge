@@ -320,7 +320,8 @@ jobs:
 
             beforeAll(async () => {
               const projectId = process.env.FIREBASE_PROJECT_ID || 'demo-taxasge-security';
-              const rulesPath = path.join(process.cwd(), 'firestore.rules');
+              // Rules file copied to test directory by workflow
+              const rulesPath = path.join(__dirname, '../../firestore.rules');
               testEnv = await initializeTestEnvironment({
                 projectId,
                 firestore: { rules: fs.readFileSync(rulesPath, 'utf8') }
@@ -362,7 +363,8 @@ jobs:
 
             beforeAll(async () => {
               const projectId = process.env.FIREBASE_PROJECT_ID || 'demo-taxasge-storage';
-              const rulesPath = path.join(process.cwd(), 'storage.rules');
+              // Rules file copied to test directory by workflow
+              const rulesPath = path.join(__dirname, '../../storage.rules');
               testEnv = await initializeTestEnvironment({
                 projectId,
                 storage: { rules: fs.readFileSync(rulesPath, 'utf8') }
