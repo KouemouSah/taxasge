@@ -651,7 +651,7 @@ jobs:
           cd packages/web
           yarn build
         env:
-          NEXT_PUBLIC_API_URL: ${{ secrets[format('API_URL_{0}', matrix.environment)] }}
+          NEXT_PUBLIC_API_URL: {% raw %}${{ secrets[format('API_URL_{0}', matrix.environment)] }}{% endraw %}
 
       - name: Run Tests
         run: |
@@ -661,27 +661,27 @@ jobs:
       - name: Deploy to Firebase
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
-          repoToken: '${{ secrets.GITHUB_TOKEN }}'
-          firebaseServiceAccount: '${{ secrets[format('FIREBASE_SERVICE_ACCOUNT_{0}', matrix.environment)] }}'
+          repoToken: {% raw %}'${{ secrets.GITHUB_TOKEN }}'{% endraw %}
+          firebaseServiceAccount: {% raw %}'${{ secrets[format('FIREBASE_SERVICE_ACCOUNT_{0}', matrix.environment)] }}'{% endraw %}
           channelId: live
-          projectId: taxasge-${{ matrix.environment }}
+          projectId: {% raw %}taxasge-${{ matrix.environment }}{% endraw %}
           target: frontend
 
       - name: Deploy Functions
         run: |
-          firebase use ${{ matrix.environment }}
+          firebase use {% raw %}${{ matrix.environment }}{% endraw %}
           firebase deploy --only functions
         env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          FIREBASE_TOKEN: {% raw %}${{ secrets.FIREBASE_TOKEN }}{% endraw %}
 
       - name: Notify Deployment
         if: success()
         uses: slackapi/slack-github-action@v1
         with:
-          webhook-url: ${{ secrets.SLACK_WEBHOOK }}
+          webhook-url: {% raw %}${{ secrets.SLACK_WEBHOOK }}{% endraw %}
           payload: |
             {
-              "text": "Deployment to ${{ matrix.environment }} successful!"
+              "text": "Deployment to {% raw %}${{ matrix.environment }}{% endraw %} successful!"
             }
 ```
 {% endraw %}
