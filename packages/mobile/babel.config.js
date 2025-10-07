@@ -1,15 +1,5 @@
 module.exports = {
-  presets: [
-    ['@babel/preset-env', {
-      targets: {
-        node: 'current'
-      }
-    }],
-    ['@babel/preset-typescript', {
-      allowNamespaces: true,
-      allowDeclareFields: true
-    }]
-  ],
+  presets: ['@react-native/babel-preset'],
   plugins: [
     // Module alias resolution
     ['module-resolver', {
@@ -25,27 +15,10 @@ module.exports = {
         '@navigation': './src/navigation',
         '@store': './src/store',
         '@hooks': './src/hooks',
-        '@constants': './src/constants'
+        '@constants': './src/constants',
+        '@database': './src/database',
+        '@config': './src/config'
       }
-    }],
-
-    // Transform runtime for better tree shaking
-    ['@babel/plugin-transform-runtime', {
-      helpers: true,
-      regenerator: false
-    }],
-
-    // Optional chaining and nullish coalescing
-    '@babel/plugin-transform-optional-chaining',
-    '@babel/plugin-transform-nullish-coalescing-operator',
-
-    // Class properties and private methods
-    '@babel/plugin-transform-class-properties',
-    '@babel/plugin-transform-private-methods',
-
-    // React JSX optimization
-    ['@babel/plugin-transform-react-jsx', {
-      runtime: 'automatic'
     }]
   ],
   env: {

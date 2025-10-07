@@ -45,7 +45,11 @@
       "WebFetch(domain:firebase.studio)",
       "WebFetch(domain:studio.firebase.google.com)",
       "WebFetch(domain:firebase.google.com)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "Bash(npx:*)",
+      "Bash(cp:*)",
+      "Bash(chmod:*)",
+      "Bash(./scripts/switch-firebase-env.sh:*)"
     ],
     "deny": [],
     "ask": []

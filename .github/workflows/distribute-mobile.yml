@@ -187,15 +187,43 @@ jobs:
       - name: 📦 Install dependencies
         run: |
           cd packages/mobile
-          
+
           if [[ ! -f "package.json" ]] || [[ ! -s "package.json" ]]; then
             echo "❌ package.json manquant ou vide"
             echo "📝 Structure mobile non prête pour distribution"
             exit 1
           fi
-          
+
           echo "📦 Installation des dépendances pour distribution..."
           yarn install  --production=false --network-timeout 300000
+
+      - name: 🔥 Setup Firebase Mobile Configs
+        run: |
+          cd packages/mobile
+          echo "🔥 Setting up Firebase configs for: ${{ needs.prepare-distribution.outputs.environment }}"
+
+          if [[ "${{ needs.prepare-distribution.outputs.environment }}" == "production" ]]; then
+            echo "🚀 Copying PRODUCTION Firebase configs..."
+            cp ../../config/google-services.prod.json android/app/google-services.json
+            cp ../../config/GoogleService-Info.pro.plist ios/GoogleService-Info.plist
+            echo "✅ Production configs applied"
+          else
+            echo "📱 Copying DEVELOPMENT Firebase configs..."
+            cp ../../config/google-services.dev.json android/app/google-services.json
+            cp ../../config/GoogleService-Info.dev.plist ios/GoogleService-Info.plist
+            echo "✅ Development configs applied"
+          fi
+
+          # Vérifier que les fichiers ont été copiés
+          if [ -f "android/app/google-services.json" ]; then
+            PROJECT_ID=$(grep -o '"project_id": "[^"]*"' android/app/google-services.json | cut -d'"' -f4)
+            echo "📊 Android Firebase Project: $PROJECT_ID"
+          fi
+
+          if [ -f "ios/GoogleService-Info.plist" ]; then
+            PROJECT_ID=$(grep -A 1 "PROJECT_ID" ios/GoogleService-Info.plist | grep "<string>" | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
+            echo "📊 iOS Firebase Project: $PROJECT_ID"
+          fi
 
       - name: 🔧 Configure build environment
         env:
@@ -325,33 +353,33 @@ jobs:
 
       - name: 🔥 Firebase Authentication
         env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ needs.prepare-distribution.outputs.environment == 'production' && secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_PRO || secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV }}
         run: |
           # Créer le fichier service account
           echo "$FIREBASE_SERVICE_ACCOUNT" > service-account.json
-    
+
           # Vérifier que le service account a été créé correctement
           if [ ! -s "service-account.json" ]; then
             echo "❌ Erreur: Le service account est vide ou n'a pas été créé"
             exit 1
           fi
-    
+
           # Définir la variable d'environnement pour l'authentification automatique
           export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/service-account.json"
-    
+
           # Vérifier le contenu du service account (sans l'afficher pour des raisons de sécurité)
           if ! jq . service-account.json > /dev/null 2>&1; then
             echo "❌ Erreur: Le service account n'est pas un JSON valide"
             exit 1
           fi
-    
-          # Sélectionner le projet Firebase
-          firebase use ${{ env.FIREBASE_PROJECT_DEV }}
-    
+
+          # Sélectionner le projet Firebase selon l'environnement
+          firebase use ${{ needs.prepare-distribution.outputs.firebase-project }}
+
           # Vérifier l'authentification en listant les projets
           firebase projects:list
-    
-          echo "✅ Authentification Firebase réussie"
+
+          echo "✅ Authentification Firebase réussie pour ${{ needs.prepare-distribution.outputs.firebase-project }}"
 
       - name: 📲 Distribute to App Distribution
         env:

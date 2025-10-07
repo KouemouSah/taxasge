@@ -39,7 +39,7 @@ permissions:
   contents: read # principe du moindre privilège — auteur : kouemou sah jean emac
 
 env:
-  NODE_VERSION: '18' # Node LTS — auteur : kouemou sah jean emac
+  NODE_VERSION: '20' # Node LTS — auteur : kouemou sah jean emac
   PYTHON_VERSION: '3.11' # Outils de scan Python — auteur : kouemou sah jean emac
   FIREBASE_CLI_VERSION: '12.4.0' # Version CLI stable — auteur : kouemou sah jean emac
 

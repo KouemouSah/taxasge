@@ -35,7 +35,7 @@ on:
         type: boolean
 
 env:
-  NODE_VERSION: '18'
+  NODE_VERSION: '20'
   FIREBASE_CLI_VERSION: '12.4.0'
 
 jobs:
