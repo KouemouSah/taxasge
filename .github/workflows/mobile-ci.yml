@@ -43,7 +43,7 @@ concurrency:
 env:
   NODE_VERSION: '20'
   JAVA_VERSION: '17'
-  REACT_NATIVE_VERSION: '0.73.0'
+  REACT_NATIVE_VERSION: '0.73.9'
   ENVIRONMENT: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
   FIREBASE_PROJECT_DEV: 'taxasge-dev'
   FIREBASE_PROJECT_PROD: 'taxasge-prod'

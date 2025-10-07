@@ -45,7 +45,7 @@
     "test:coverage": "jest --coverage",
     "clean": "cd android && ./gradlew clean && cd ../ios && xcodebuild clean",
     "clean:node": "rm -rf node_modules && yarn install",
-    "postinstall": "cd ios && pod install && echo 'Mobile package ready'",
+    "postinstall": "if [ \"$CI\" != \"true\" ] && command -v pod >/dev/null 2>&1; then cd ios && pod install && echo 'Mobile package ready'; else echo 'Skipping pod install (CI or pod not available)'; fi",
     "precommit": "lint-staged",
     "prepare": "cd ../.. && husky install packages/mobile/.husky"
   },
@@ -61,7 +61,7 @@
     "jwt-decode": "^3.1.2",
     "lodash": "^4.17.21",
     "react": "18.3.1",
-    "react-native": "^0.81.4",
+    "react-native": "0.73.9",
     "react-native-safe-area-context": "^5.5.2",
     "react-native-sqlite-storage": "^6.0.1",
     "react-i18next": "^13.3.1",
