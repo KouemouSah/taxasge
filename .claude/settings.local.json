@@ -45,7 +45,13 @@
       "WebFetch(domain:firebase.studio)",
       "WebFetch(domain:studio.firebase.google.com)",
       "WebFetch(domain:firebase.google.com)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "Read(//c/**)",
+      "Bash(git pull:*)",
+      "Bash(git stash push:*)",
+      "Bash(git stash:*)",
+      "Bash(git clone:*)",
+      "Bash(git branch:*)"
     ],
     "deny": [],
     "ask": []
