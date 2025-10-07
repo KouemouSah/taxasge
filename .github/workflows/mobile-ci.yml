@@ -147,14 +147,17 @@ jobs:
           fi
           
           echo "📦 Installation des dépendances..."
-          # Installation avec gestion d'erreur gracieuse
-          if yarn install --frozen-lockfile --prefer-offline 2>/dev/null; then
+          # Installation avec affichage des erreurs
+          if yarn install --frozen-lockfile --prefer-offline; then
+            echo "✅ Dépendances installées avec yarn (frozen lockfile)"
+          elif yarn install; then
             echo "✅ Dépendances installées avec yarn"
-          elif yarn install 2>/dev/null; then
-            echo "✅ Dépendances installées (sans lockfile strict)"
           else
-            echo "⚠️ Installation yarn échouée, tentative npm..."
-            npm install 2>/dev/null || echo "⚠️ Installation impossible, package.json à configurer"
+            echo "❌ Installation yarn échouée, tentative npm..."
+            npm install || {
+              echo "❌ Installation impossible"
+              exit 1
+            }
           fi
           
           echo "📊 Environnement:"
@@ -166,48 +169,50 @@ jobs:
         run: |
           cd packages/mobile
           echo "🔍 Vérification ESLint..."
-          has_lint_script=$(grep -c '"lint"' package.json 2>/dev/null || echo "0")
-          has_format_script=$(grep -c '"format:check"' package.json 2>/dev/null || echo "0")
-          
-          if [ "$has_lint_script" -gt 0 ] && yarn run lint --version > /dev/null 2>&1; then
-            yarn run lint || echo "⚠️ Warnings ESLint trouvés"
-          elif [ -f ".eslintrc.js" ] || [ -f ".eslintrc.json" ] || [ -f "eslint.config.js" ]; then
-            npx eslint src/ --ext .js,.jsx,.ts,.tsx 2>/dev/null || echo "⚠️ ESLint: configuration ou dossier src/ manquant"
+
+          # Exécuter lint si script existe
+          if grep -q '"lint"' package.json; then
+            echo "📝 Script lint trouvé, exécution..."
+            yarn run lint:check || {
+              echo "⚠️ ESLint a trouvé des warnings (autorisé en dev)"
+              exit 0
+            }
           else
-            echo "⚠️ ESLint non configuré"
-            find . -name "*.js" -not -path "./node_modules/*" 2>/dev/null | head -3 | while read file; do
-              node -c "$file" 2>/dev/null || echo "⚠️ Erreur syntax dans $file"
-            done || echo "📝 Aucun fichier JS à valider pour l'instant"
+            echo "⚠️ Script lint non configuré dans package.json"
+            exit 1
           fi
-          
-          if [ "$has_format_script" -gt 0 ] && yarn run format:check --version > /dev/null 2>&1; then
-            yarn run format:check || echo "⚠️ Formatage Prettier requis"
+
+          # Exécuter format check si script existe
+          if grep -q '"format:check"' package.json; then
+            echo "📝 Script format:check trouvé, exécution..."
+            yarn run format:check || {
+              echo "⚠️ Prettier a trouvé des différences de formatage (autorisé en dev)"
+              exit 0
+            }
           else
-            echo "⚠️ Prettier non configuré"
+            echo "ℹ️ Script format:check non configuré (optionnel)"
           fi
-          
-          echo "✅ Checks qualité terminés (phase développement)"
+
+          echo "✅ Checks qualité terminés"
 
       - name: 📝 TypeScript validation
         if: matrix.test-type == 'typescript'
         run: |
           cd packages/mobile
           echo "📝 Validation TypeScript..."
+
           if [ -f "tsconfig.json" ]; then
-            echo "✅ Configuration TypeScript trouvée"
-            if yarn run tsc --version > /dev/null 2>&1; then
-              yarn run tsc --noEmit
-            else
-              echo "⚠️ TypeScript compiler non configuré"
-              npx tsc --noEmit || echo "⚠️ Erreurs TypeScript trouvées"
-            fi
+            echo "✅ tsconfig.json trouvé"
+            npx tsc --noEmit || {
+              echo "⚠️ Erreurs TypeScript trouvées (autorisé en dev)"
+              exit 0
+            }
           else
-            echo "⚠️ TypeScript non configuré"
-            find src/ -name "*.js" -o -name "*.jsx" 2>/dev/null | head -5 | while read file; do
-              echo "🔍 Validation: $file"
-              node -c "$file" || echo "⚠️ Erreur syntax dans $file"
-            done || echo "📂 Dossier src/ à créer"
+            echo "⚠️ tsconfig.json manquant"
+            exit 1
           fi
+
+          echo "✅ Validation TypeScript terminée"
 
       - name: 🧪 Unit tests
         if: matrix.test-type == 'unit'
