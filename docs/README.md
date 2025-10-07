@@ -26,11 +26,11 @@ La documentation technique complète est disponible dans le repository:
 └── rapports/             # Rapports migration, analyses
 ```
 
-**Accès direct**:
-- [Architecture Backend](../.github/docs-internal/architecture/ARCHITECTURE_BACKEND_COMPLETE.md)
-- [Guide Déploiement Firebase](../.github/docs-internal/architecture/GUIDE_DEPLOIEMENT_FIREBASE.md)
-- [Schéma Base de Données](../.github/docs-internal/architecture/database-schema.md)
-- [Rapports Supabase](../.github/docs-internal/rapports/)
+**Accès direct** (via GitHub):
+- [Architecture Backend](https://github.com/KouemouSah/taxasge/blob/main/.github/docs-internal/architecture/ARCHITECTURE_BACKEND_COMPLETE.md)
+- [Guide Déploiement Firebase](https://github.com/KouemouSah/taxasge/blob/main/.github/docs-internal/architecture/GUIDE_DEPLOIEMENT_FIREBASE.md)
+- [Schéma Base de Données](https://github.com/KouemouSah/taxasge/blob/main/.github/docs-internal/architecture/database-schema.md)
+- [Tous les Rapports](https://github.com/KouemouSah/taxasge/tree/main/.github/docs-internal/rapports/)
 
 ## 🚀 Démarrage Rapide
 

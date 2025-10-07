@@ -1,0 +1,33 @@
+# Jekyll Configuration - TaxasGE
+# Configuration à la RACINE du repo
+
+# Exclude everything except docs/
+exclude:
+  - .github/
+  - packages/
+  - scripts/
+  - data/
+  - config/
+  - "*.json"
+  - "*.py"
+  - "*.sh"
+  - node_modules/
+  - vendor/
+  - Gemfile
+  - Gemfile.lock
+
+# Include only docs/ for Pages
+include:
+  - docs/
+
+# Source directory for GitHub Pages
+source: docs
+
+# Disable automatic processing
+markdown: kramdown
+kramdown:
+  input: GFM
+  hard_wrap: false
+
+# Theme (minimal pour éviter conflicts)
+theme: jekyll-theme-minimal
