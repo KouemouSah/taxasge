@@ -3,7 +3,12 @@
  * Point d'entrée centralisé pour toutes les fonctionnalités DB
  */
 
-// Core
+// Core imports (pour usage interne)
+import {db, DatabaseManager} from './DatabaseManager';
+import {syncService, SyncService} from './SyncService';
+import {offlineQueueService, OfflineQueueService} from './OfflineQueueService';
+
+// Core exports
 export {db, DatabaseManager} from './DatabaseManager';
 export {syncService, SyncService} from './SyncService';
 export {offlineQueueService, OfflineQueueService} from './OfflineQueueService';

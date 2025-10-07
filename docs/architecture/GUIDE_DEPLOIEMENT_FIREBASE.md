@@ -650,7 +650,7 @@ jobs:
           cd packages/web
           yarn build
         env:
-          NEXT_PUBLIC_API_URL: ${{ secrets[format('API_URL_{0}', matrix.environment)] }}
+          NEXT_PUBLIC_API_URL: {% raw %}${{ secrets[format('API_URL_{0}', matrix.environment)] }}{% endraw %}
 
       - name: Run Tests
         run: |
@@ -660,10 +660,10 @@ jobs:
       - name: Deploy to Firebase
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
-          repoToken: '${{ secrets.GITHUB_TOKEN }}'
-          firebaseServiceAccount: '${{ secrets[format('FIREBASE_SERVICE_ACCOUNT_{0}', matrix.environment)] }}'
+          repoToken: {% raw %}'${{ secrets.GITHUB_TOKEN }}'{% endraw %}
+          firebaseServiceAccount: {% raw %}'${{ secrets[format('FIREBASE_SERVICE_ACCOUNT_{0}', matrix.environment)] }}'{% endraw %}
           channelId: live
-          projectId: taxasge-${{ matrix.environment }}
+          projectId: {% raw %}taxasge-${{ matrix.environment }}{% endraw %}
           target: frontend
 
       - name: Deploy Functions

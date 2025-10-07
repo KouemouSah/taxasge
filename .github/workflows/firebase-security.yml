@@ -276,9 +276,15 @@ jobs:
           jest.setTimeout(30000);
           EOF
 
-          # firebase.json (ports figés) — auteur : kouemou sah jean emac
+          # firebase.json (ports figés + rules files) — auteur : kouemou sah jean emac
           cat > firebase.json << 'EOF'
           {
+            "firestore": {
+              "rules": "firestore.rules"
+            },
+            "storage": {
+              "rules": "storage.rules"
+            },
             "emulators": {
               "firestore": { "port": 8080, "host": "127.0.0.1" },
               "storage":   { "port": 9199, "host": "127.0.0.1" },
