@@ -1,47 +1,604 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TaxasGE - Unified Monitoring Dashboard</title>
+  <title>TaxasGE - Dashboard de Monitoring Complet</title>
   <style>
-    :root { --primary:#2563eb;--success:#16a34a;--warning:#d97706;--danger:#dc2626;--muted:#6b7280;--bg:#f8fafc;--card:#ffffff;--border:#e2e8f0;}
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:system-ui,-apple-system,'Segoe UI',Roboto,Ubuntu,'Helvetica Neue',Arial,'Noto Sans',sans-serif;background:var(--bg);color:#111827}
-    .header{background:linear-gradient(135deg,var(--primary) 0%,#1d4ed8 100%);color:#fff;padding:2rem;text-align:center}
-    .container{max-width:1200px;margin:0 auto;padding:2rem}
-    .status{background:var(--card);border:1px solid var(--border);border-left:6px solid var(--success);border-radius:12px;padding:1rem;margin-bottom:1.5rem}
-    .grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1rem}
-    .muted{color:var(--muted)}
+    :root {
+      --primary: #2563eb;
+      --success: #16a34a;
+      --warning: #d97706;
+      --danger: #dc2626;
+      --muted: #6b7280;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --border: #e2e8f0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg);
+      color: #111827;
+      line-height: 1.6;
+    }
+
+    .header {
+      background: linear-gradient(135deg, var(--primary) 0%, #1d4ed8 100%);
+      color: #fff;
+      padding: 2rem;
+      text-align: center;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .header h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .header p {
+      opacity: 0.9;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    .status-banner {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-left: 6px solid var(--success);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .status-banner.critical {
+      border-left-color: var(--danger);
+    }
+
+    .status-banner.warning {
+      border-left-color: var(--warning);
+    }
+
+    .status-banner h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .status-banner .timestamp {
+      color: var(--muted);
+      font-size: 0.875rem;
+    }
+
+    .alerts {
+      background: #fee;
+      border: 1px solid #fcc;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-top: 1rem;
+      color: #c00;
+    }
+
+    .section {
+      margin-bottom: 3rem;
+    }
+
+    .section-title {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      color: #1f2937;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+
+    .grid-2 {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .card h3 {
+      font-size: 0.875rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+    }
+
+    .card .value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #1f2937;
+    }
+
+    .card .subtext {
+      font-size: 0.875rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge.success {
+      background: #d1fae5;
+      color: var(--success);
+    }
+
+    .badge.warning {
+      background: #fed7aa;
+      color: var(--warning);
+    }
+
+    .badge.danger {
+      background: #fee2e2;
+      color: var(--danger);
+    }
+
+    .badge.info {
+      background: #dbeafe;
+      color: var(--primary);
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #e5e7eb;
+      border-radius: 9999px;
+      overflow: hidden;
+      margin-top: 0.5rem;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), var(--success));
+      transition: width 0.5s ease;
+    }
+
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .metric-row:last-child {
+      border-bottom: none;
+    }
+
+    .metric-label {
+      color: #6b7280;
+      font-size: 0.875rem;
+    }
+
+    .metric-value {
+      font-weight: 600;
+      color: #1f2937;
+    }
+
+    .list-item {
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .list-item:last-child {
+      border-bottom: none;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 2rem;
+      color: var(--muted);
+    }
+
+    @media (max-width: 768px) {
+      .grid, .grid-2 {
+        grid-template-columns: 1fr;
+      }
+
+      .header h1 {
+        font-size: 1.5rem;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="header">
-    <h1>📊 TaxasGE Monitoring</h1>
-    <p class="muted">Unified System Health & Project Dashboard</p>
+    <h1>📊 TaxasGE - Dashboard de Monitoring</h1>
+    <p>Suivi en Temps Réel de la Santé du Système & Progression du Projet</p>
   </div>
+
   <div class="container">
-    <div class="status">
-      <strong id="overall">Loading status…</strong>
-      <div id="updated" class="muted">Last updated: …</div>
+    <!-- Status Banner -->
+    <div id="status-banner" class="status-banner">
+      <h2 id="overall-status">Chargement du statut...</h2>
+      <div id="status-timestamp" class="timestamp">Dernière mise à jour: ...</div>
+      <div id="alerts-container"></div>
     </div>
-    <div class="grid">
-      <div class="card"><h3>API Response Time</h3><div id="metric-rt">—</div></div>
-      <div class="card"><h3>System Uptime</h3><div>99.5%</div></div>
-      <div class="card"><h3>Project Progress</h3><div>67.5%</div></div>
-      <div class="card"><h3>Executions/Day</h3><div>3 (↓ from 96)</div></div>
+
+    <!-- Section: Métriques Système -->
+    <div class="section">
+      <h2 class="section-title">🖥️ Santé du Système</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Uptime 24h</h3>
+          <div id="uptime" class="value">—</div>
+          <div class="subtext">Disponibilité système</div>
+        </div>
+
+        <div class="card">
+          <h3>Temps de Réponse API</h3>
+          <div id="response-time" class="value">—</div>
+          <div class="subtext">Moyenne dernières 24h</div>
+        </div>
+
+        <div class="card">
+          <h3>Taux de Succès API</h3>
+          <div id="api-success" class="value">—</div>
+          <div class="subtext">Requêtes réussies</div>
+        </div>
+
+        <div class="card">
+          <h3>Efficacité Cache</h3>
+          <div id="cache-hit" class="value">—</div>
+          <div class="subtext">Cache hit rate</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section: Composants -->
+    <div class="section">
+      <h2 class="section-title">🔧 Status des Composants</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Backend</h3>
+          <div id="backend-status">—</div>
+        </div>
+
+        <div class="card">
+          <h3>Database</h3>
+          <div id="database-status">—</div>
+        </div>
+
+        <div class="card">
+          <h3>Firebase</h3>
+          <div id="firebase-status">—</div>
+        </div>
+
+        <div class="card">
+          <h3>Build Status</h3>
+          <div id="build-status">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section: Qualité & Sécurité -->
+    <div class="section">
+      <h2 class="section-title">🔒 Qualité & Sécurité</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Couverture Tests</h3>
+          <div id="test-coverage" class="value">—</div>
+          <div class="progress-bar">
+            <div id="coverage-bar" class="progress-fill" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Scan Sécurité</h3>
+          <div id="security-scan" class="value">—</div>
+          <div class="subtext">Dernière analyse</div>
+        </div>
+
+        <div class="card">
+          <h3>SonarQube Gate</h3>
+          <div id="sonar-gate" class="value">—</div>
+          <div class="subtext">Quality gate</div>
+        </div>
+
+        <div class="card">
+          <h3>Issues Ouvertes</h3>
+          <div id="open-issues" class="value">—</div>
+          <div class="subtext">GitHub repository</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section: Projet -->
+    <div class="section">
+      <h2 class="section-title">📈 Progression du Projet</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Progression Globale</h3>
+          <div id="project-progress" class="value">—</div>
+          <div class="progress-bar">
+            <div id="progress-bar" class="progress-fill" style="width: 0%"></div>
+          </div>
+          <div id="project-status" class="subtext"></div>
+        </div>
+
+        <div class="card">
+          <h3>Milestones</h3>
+          <div id="milestones-info"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section: Phases du Projet -->
+    <div class="section">
+      <h2 class="section-title">🎯 Progression par Phase</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Infrastructure</h3>
+          <div id="phase-infrastructure" class="value">—</div>
+          <div class="progress-bar">
+            <div id="bar-infrastructure" class="progress-fill" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Backend</h3>
+          <div id="phase-backend" class="value">—</div>
+          <div class="progress-bar">
+            <div id="bar-backend" class="progress-fill" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Mobile</h3>
+          <div id="phase-mobile" class="value">—</div>
+          <div class="progress-bar">
+            <div id="bar-mobile" class="progress-fill" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Dashboard</h3>
+          <div id="phase-dashboard" class="value">—</div>
+          <div class="progress-bar">
+            <div id="bar-dashboard" class="progress-fill" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Production</h3>
+          <div id="phase-production" class="value">—</div>
+          <div class="progress-bar">
+            <div id="bar-production" class="progress-fill" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Business</h3>
+          <div id="phase-business" class="value">—</div>
+          <div class="progress-bar">
+            <div id="bar-business" class="progress-fill" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section: Recommandations -->
+    <div class="section">
+      <h2 class="section-title">💡 Recommandations</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Actions Immédiates</h3>
+          <div id="recommendations-immediate"></div>
+        </div>
+
+        <div class="card">
+          <h3>Cette Semaine</h3>
+          <div id="recommendations-week"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section: Performance -->
+    <div class="section">
+      <h2 class="section-title">⚡ Performance & Optimisation</h2>
+      <div class="card">
+        <div id="performance-metrics"></div>
+      </div>
     </div>
   </div>
+
   <script>
-    const updated=document.getElementById('updated');
-    const overall=document.getElementById('overall');
-    fetch('unified-metrics.json').then(r=>r.json()).then(d=>{
-      overall.textContent = `Overall: ${d.system_health.overall}`;
-      updated.textContent = `Last updated: ${new Date(d.metadata.timestamp).toLocaleString()}`;
-      const rt=document.getElementById('metric-rt');
-      rt.textContent = d.technical_metrics.average_response_time;
-    }).catch(()=>{updated.textContent='Status file not found'; overall.textContent='Unknown';});
+    // Fonction pour déterminer le badge de statut
+    function getStatusBadge(status) {
+      const statusMap = {
+        'operational': '<span class="badge success">Opérationnel</span>',
+        'down': '<span class="badge danger">Hors Ligne</span>',
+        'degraded': '<span class="badge warning">Dégradé</span>',
+        'passed': '<span class="badge success">Passé</span>',
+        'failed': '<span class="badge danger">Échoué</span>',
+        'no_issues': '<span class="badge success">Aucun Problème</span>',
+        'success': '<span class="badge success">Succès</span>',
+        'critical': '<span class="badge danger">Critique</span>',
+        'warning': '<span class="badge warning">Attention</span>',
+        'healthy': '<span class="badge success">Sain</span>'
+      };
+      return statusMap[status] || `<span class="badge info">${status}</span>`;
+    }
+
+    // Charger unified-metrics.json
+    fetch('unified-metrics.json')
+      .then(r => r.json())
+      .then(unified => {
+        // Status banner
+        const banner = document.getElementById('status-banner');
+        const overallStatus = unified.system_health.overall;
+        banner.className = 'status-banner ' + overallStatus;
+
+        document.getElementById('overall-status').textContent =
+          `Statut Global: ${overallStatus.toUpperCase()}`;
+        document.getElementById('status-timestamp').textContent =
+          `Dernière mise à jour: ${new Date(unified.metadata.timestamp).toLocaleString('fr-FR')}`;
+
+        // Alerts
+        if (unified.system_health.should_alert && unified.system_health.alerts) {
+          const alertsDiv = document.createElement('div');
+          alertsDiv.className = 'alerts';
+          alertsDiv.innerHTML = `<strong>⚠️ Alertes:</strong> ${unified.system_health.alerts}`;
+          document.getElementById('alerts-container').appendChild(alertsDiv);
+        }
+
+        // Métriques système
+        document.getElementById('uptime').textContent = unified.technical_metrics.uptime_24h || '—';
+        document.getElementById('response-time').textContent = unified.technical_metrics.average_response_time || '—';
+        document.getElementById('api-success').textContent = unified.technical_metrics.api_success_rate + '%' || '—';
+        document.getElementById('cache-hit').textContent = unified.performance.cache_hit_rate || '—';
+
+        // Progression projet
+        const progress = unified.project_metrics.overall_progress;
+        document.getElementById('project-progress').textContent = progress + '%';
+        document.getElementById('progress-bar').style.width = progress + '%';
+        document.getElementById('project-status').textContent =
+          `Activité: ${unified.project_metrics.recent_activity}`;
+      })
+      .catch(err => {
+        console.error('Erreur chargement unified-metrics:', err);
+        document.getElementById('overall-status').textContent = 'Erreur de chargement des métriques';
+      });
+
+    // Charger status.json
+    fetch('status.json')
+      .then(r => r.json())
+      .then(status => {
+        // Composants
+        document.getElementById('backend-status').innerHTML =
+          getStatusBadge(status.system_status.components.backend);
+        document.getElementById('database-status').innerHTML =
+          getStatusBadge(status.system_status.components.database);
+        document.getElementById('firebase-status').innerHTML =
+          getStatusBadge(status.system_status.components.firebase);
+
+        // Qualité
+        const coverage = status.quality.test_coverage;
+        document.getElementById('test-coverage').textContent = coverage + '%';
+        document.getElementById('coverage-bar').style.width = coverage + '%';
+        document.getElementById('security-scan').innerHTML =
+          getStatusBadge(status.quality.security_scan);
+        document.getElementById('sonar-gate').innerHTML =
+          getStatusBadge(status.quality.sonarqube_gate);
+
+        // Issues
+        document.getElementById('open-issues').textContent = status.repository.open_issues;
+      })
+      .catch(err => console.error('Erreur chargement status.json:', err));
+
+    // Charger badges.json
+    fetch('badges.json')
+      .then(r => r.json())
+      .then(badges => {
+        document.getElementById('build-status').innerHTML =
+          getStatusBadge(badges.badges.build.message.toLowerCase());
+      })
+      .catch(err => console.error('Erreur chargement badges.json:', err));
+
+    // Charger dashboard-metrics.json
+    fetch('dashboard-metrics.json')
+      .then(r => r.json())
+      .then(metrics => {
+        // Phases
+        const phases = metrics.project_overview.phase_progress;
+        Object.keys(phases).forEach(phase => {
+          const value = phases[phase];
+          const elem = document.getElementById(`phase-${phase}`);
+          const bar = document.getElementById(`bar-${phase}`);
+          if (elem) {
+            elem.textContent = value + '%';
+            bar.style.width = value + '%';
+          }
+        });
+
+        // Milestones
+        const ms = metrics.milestones;
+        document.getElementById('milestones-info').innerHTML = `
+          <div class="metric-row">
+            <span class="metric-label">Total</span>
+            <span class="metric-value">${ms.total}</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">Complétés</span>
+            <span class="metric-value">${ms.completed}</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">Actifs</span>
+            <span class="metric-value">${ms.active}</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">Taux de Complétion</span>
+            <span class="metric-value">${ms.completion_rate}%</span>
+          </div>
+        `;
+
+        // Recommandations
+        const recs = metrics.recommendations;
+        document.getElementById('recommendations-immediate').innerHTML =
+          recs.immediate.map(r => `<div class="list-item">• ${r}</div>`).join('');
+        document.getElementById('recommendations-week').innerHTML =
+          recs.this_week.map(r => `<div class="list-item">• ${r}</div>`).join('');
+
+        // Performance metrics
+        document.getElementById('performance-metrics').innerHTML = `
+          <div class="metric-row">
+            <span class="metric-label">Commits (7 derniers jours)</span>
+            <span class="metric-value">${metrics.activity.commits_last_week}</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">Dernier Commit</span>
+            <span class="metric-value">${new Date(metrics.activity.last_commit).toLocaleString('fr-FR')}</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">Issues Critiques</span>
+            <span class="metric-value">${metrics.issues.critical}</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">Issues Haute Priorité</span>
+            <span class="metric-value">${metrics.issues.high_priority}</span>
+          </div>
+        `;
+      })
+      .catch(err => console.error('Erreur chargement dashboard-metrics.json:', err));
   </script>
 </body>
 </html>
