@@ -1,23 +1,22 @@
 # Jekyll Configuration - TaxasGE Documentation
-# Disable Jekyll processing for docs/ entirely
 
-# Exclude all internal/architecture docs from Jekyll
+# Include only metrics and public docs
+include:
+  - README.md
+  - index.html
+  - "*.json"
+  - monitoring/
+
+# Exclude temp files
 exclude:
-  - architecture/
-  - documentations projet/
-  - rapports/
-  - design/
-  - "*.md.clean"
   - "*.tmp"
+  - "*.bak"
   - Gemfile
   - Gemfile.lock
   - node_modules/
   - vendor/
 
-# Only include user-facing docs
-include:
-  - README.md
-  - API.md
-
-# Theme (optional)
+# Theme
 theme: jekyll-theme-minimal
+
+# All internal docs are now in .github/docs-internal/

@@ -1,29 +1,49 @@
 # TaxasGE - Documentation
 
-Bienvenue dans la documentation TaxasGE.
+Bienvenue dans la documentation TaxasGE - Plateforme de gestion fiscale pour la Guinée Équatoriale.
+
+---
+
+## 📊 Dashboard du Projet
+
+🔗 **[Voir le Dashboard](./index.html)** - Métriques, progression, statut en temps réel
 
 ## 📚 Documentation Utilisateur
 
-- [API Documentation](#) - Documentation API REST
-- [Guide Utilisateur](#) - Guide d'utilisation
-- [FAQ](#) - Questions fréquentes
+- 📖 Guide Utilisateur - *En construction*
+- 🔌 API REST - *En construction*
+- ❓ FAQ - *En construction*
 
 ## 👨‍💻 Documentation Développeur
 
 La documentation technique complète est disponible dans le repository:
-- `.github/docs/` - Architecture, déploiement, guides internes
-- `docs-rapports/` - Rapports de migration et analyses
+
+```
+.github/docs-internal/
+├── architecture/          # Design système, architecture
+├── design/               # Schémas, spécifications
+├── guides/               # Guides développement
+└── rapports/             # Rapports migration, analyses
+```
+
+**Accès direct**:
+- [Architecture Backend](../.github/docs-internal/architecture/ARCHITECTURE_BACKEND_COMPLETE.md)
+- [Guide Déploiement Firebase](../.github/docs-internal/architecture/GUIDE_DEPLOIEMENT_FIREBASE.md)
+- [Schéma Base de Données](../.github/docs-internal/architecture/database-schema.md)
+- [Rapports Supabase](../.github/docs-internal/rapports/)
 
 ## 🚀 Démarrage Rapide
 
 ```bash
 # Cloner le repository
 git clone https://github.com/KouemouSah/taxasge.git
+cd taxasge
 
-# Voir la documentation complète
-cd .github/docs/
+# Voir toute la documentation
+ls -la .github/docs-internal/
 ```
 
 ---
 
-**TaxasGE** - Plateforme de gestion fiscale pour la Guinée Équatoriale
+**Projet maintenu par**: KOUEMOU SAH Jean Emac
+**Status**: Phase développement mobile (React Native)
