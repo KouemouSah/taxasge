@@ -4,30 +4,30 @@
  */
 
 // Core imports (pour usage interne)
-import {db, DatabaseManager} from './DatabaseManager';
-import {syncService, SyncService} from './SyncService';
-import {offlineQueueService, OfflineQueueService} from './OfflineQueueService';
+import { db, DatabaseManager } from './DatabaseManager';
+import { syncService, SyncService } from './SyncService';
+import { offlineQueueService, OfflineQueueService } from './OfflineQueueService';
 
 // Core exports
-export {db, DatabaseManager} from './DatabaseManager';
-export {syncService, SyncService} from './SyncService';
-export {offlineQueueService, OfflineQueueService} from './OfflineQueueService';
+export { db, DatabaseManager } from './DatabaseManager';
+export { syncService, SyncService } from './SyncService';
+export { offlineQueueService, OfflineQueueService } from './OfflineQueueService';
 export * from './schema';
 
 // Services
-export {fiscalServicesService} from './services/FiscalServicesService';
-export {favoritesService} from './services/FavoritesService';
-export {calculationsService} from './services/CalculationsService';
+export { fiscalServicesService } from './services/FiscalServicesService';
+export { favoritesService } from './services/FavoritesService';
+export { calculationsService } from './services/CalculationsService';
 
 // Types
-export type {FiscalService, SearchFilters} from './services/FiscalServicesService';
-export type {Favorite} from './services/FavoritesService';
+export type { FiscalService, SearchFilters } from './services/FiscalServicesService';
+export type { Favorite } from './services/FavoritesService';
 export type {
   Calculation,
   CalculationParams,
   CalculationBreakdown,
 } from './services/CalculationsService';
-export type {QueueItem, ProcessResult} from './OfflineQueueService';
+export type { QueueItem, ProcessResult } from './OfflineQueueService';
 
 /**
  * Initialize database on app start

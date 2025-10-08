@@ -3,10 +3,10 @@
  * Initialise la base de données SQLite au démarrage de l'app
  */
 
-import React, {createContext, useContext, useEffect, useState} from 'react';
-import {ActivityIndicator, View, Text, StyleSheet} from 'react-native';
-import {db} from '../database/DatabaseManager';
-import {syncService} from '../database/SyncService';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { ActivityIndicator, View, Text, StyleSheet } from 'react-native';
+import { db } from '../database/DatabaseManager';
+import { syncService } from '../database/SyncService';
 
 interface DatabaseContextValue {
   initialized: boolean;
@@ -17,9 +17,7 @@ interface DatabaseContextValue {
   resetDatabase: () => Promise<void>;
 }
 
-const DatabaseContext = createContext<DatabaseContextValue | undefined>(
-  undefined
-);
+const DatabaseContext = createContext<DatabaseContextValue | undefined>(undefined);
 
 export interface DatabaseProviderProps {
   children: React.ReactNode;
@@ -73,8 +71,7 @@ export const DatabaseProvider: React.FC<DatabaseProviderProps> = ({
 
       onInitialized?.();
     } catch (err) {
-      const errorMsg =
-        err instanceof Error ? err.message : 'Database initialization failed';
+      const errorMsg = err instanceof Error ? err.message : 'Database initialization failed';
       console.error('[DatabaseProvider] Initialization failed:', err);
       setError(errorMsg);
       onError?.(err instanceof Error ? err : new Error(errorMsg));
@@ -158,9 +155,7 @@ export const DatabaseProvider: React.FC<DatabaseProviderProps> = ({
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
         <Text style={styles.loadingText}>Initialisation de la base de données...</Text>
-        {syncing && (
-          <Text style={styles.syncText}>Synchronisation des données...</Text>
-        )}
+        {syncing && <Text style={styles.syncText}>Synchronisation des données...</Text>}
       </View>
     );
   }
@@ -171,18 +166,12 @@ export const DatabaseProvider: React.FC<DatabaseProviderProps> = ({
       <View style={styles.errorContainer}>
         <Text style={styles.errorTitle}>Erreur d'initialisation</Text>
         <Text style={styles.errorMessage}>{error}</Text>
-        <Text style={styles.errorHint}>
-          Veuillez redémarrer l'application.
-        </Text>
+        <Text style={styles.errorHint}>Veuillez redémarrer l'application.</Text>
       </View>
     );
   }
 
-  return (
-    <DatabaseContext.Provider value={contextValue}>
-      {children}
-    </DatabaseContext.Provider>
-  );
+  return <DatabaseContext.Provider value={contextValue}>{children}</DatabaseContext.Provider>;
 };
 
 /**
@@ -191,9 +180,7 @@ export const DatabaseProvider: React.FC<DatabaseProviderProps> = ({
 export const useDatabaseContext = (): DatabaseContextValue => {
   const context = useContext(DatabaseContext);
   if (!context) {
-    throw new Error(
-      'useDatabaseContext must be used within a DatabaseProvider'
-    );
+    throw new Error('useDatabaseContext must be used within a DatabaseProvider');
   }
   return context;
 };

@@ -3,8 +3,8 @@
  * Gestionnaire centralisé pour toutes les opérations SQLite
  */
 
-import SQLite, {SQLiteDatabase, ResultSet, Transaction} from 'react-native-sqlite-storage';
-import {DATABASE_NAME, DATABASE_VERSION, SCHEMA_SQL, QUERIES, TABLE_NAMES} from './schema';
+import SQLite, { SQLiteDatabase, ResultSet, Transaction } from 'react-native-sqlite-storage';
+import { DATABASE_NAME, DATABASE_VERSION, SCHEMA_SQL, QUERIES, TABLE_NAMES } from './schema';
 
 // Enable debug mode in development
 SQLite.DEBUG(__DEV__);
@@ -76,38 +76,39 @@ class DatabaseManager {
     const results: ResultSet[] = [];
 
     return new Promise((resolve, reject) => {
-      db.transaction((tx: Transaction) => {
-        // Split multiple statements
-        const statements = sql
-          .split(';')
-          .map(s => s.trim())
-          .filter(s => s.length > 0);
+      db.transaction(
+        (tx: Transaction) => {
+          // Split multiple statements
+          const statements = sql
+            .split(';')
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
 
-        statements.forEach((statement) => {
-          tx.executeSql(
-            statement,
-            params,
-            (_: Transaction, result: ResultSet) => {
-              results.push(result);
-            },
-            (_: Transaction, error: any) => {
-              console.error('[DB] SQL Error:', error, 'Statement:', statement);
-              reject(error);
-              return false;
-            }
-          );
-        });
-      }, reject, () => resolve(results));
+          statements.forEach(statement => {
+            tx.executeSql(
+              statement,
+              params,
+              (_: Transaction, result: ResultSet) => {
+                results.push(result);
+              },
+              (_: Transaction, error: any) => {
+                console.error('[DB] SQL Error:', error, 'Statement:', statement);
+                reject(error);
+                return false;
+              }
+            );
+          });
+        },
+        reject,
+        () => resolve(results)
+      );
     });
   }
 
   /**
    * Execute SELECT query
    */
-  async query<T = any>(
-    sql: string,
-    params: any[] = []
-  ): Promise<T[]> {
+  async query<T = any>(sql: string, params: any[] = []): Promise<T[]> {
     const db = await this.getDB();
 
     return new Promise((resolve, reject) => {
@@ -135,10 +136,7 @@ class DatabaseManager {
   /**
    * Execute INSERT/UPDATE/DELETE
    */
-  async execute(
-    sql: string,
-    params: any[] = []
-  ): Promise<ResultSet> {
+  async execute(sql: string, params: any[] = []): Promise<ResultSet> {
     const db = await this.getDB();
 
     return new Promise((resolve, reject) => {
@@ -164,28 +162,22 @@ class DatabaseManager {
     const db = await this.getDB();
 
     return new Promise((resolve, reject) => {
-      db.transaction(
-        async (tx: Transaction) => {
-          try {
-            const result = await callback(tx);
-            resolve(result);
-          } catch (error) {
-            console.error('[DB] Transaction error:', error);
-            reject(error);
-          }
-        },
-        reject
-      );
+      db.transaction(async (tx: Transaction) => {
+        try {
+          const result = await callback(tx);
+          resolve(result);
+        } catch (error) {
+          console.error('[DB] Transaction error:', error);
+          reject(error);
+        }
+      }, reject);
     });
   }
 
   /**
    * Insert single row
    */
-  async insert(
-    table: string,
-    data: Record<string, any>
-  ): Promise<number> {
+  async insert(table: string, data: Record<string, any>): Promise<number> {
     const keys = Object.keys(data);
     const values = Object.values(data);
     const placeholders = keys.map(() => '?').join(', ');
@@ -199,10 +191,7 @@ class DatabaseManager {
   /**
    * Insert multiple rows (batch)
    */
-  async insertBatch(
-    table: string,
-    items: Record<string, any>[]
-  ): Promise<void> {
+  async insertBatch(table: string, items: Record<string, any>[]): Promise<void> {
     if (items.length === 0) return;
 
     const keys = Object.keys(items[0]);
@@ -233,7 +222,9 @@ class DatabaseManager {
     where: string,
     whereParams: any[] = []
   ): Promise<number> {
-    const sets = Object.keys(data).map(key => `${key} = ?`).join(', ');
+    const sets = Object.keys(data)
+      .map(key => `${key} = ?`)
+      .join(', ');
     const values = [...Object.values(data), ...whereParams];
 
     const sql = `UPDATE ${table} SET ${sets} WHERE ${where}`;
@@ -245,11 +236,7 @@ class DatabaseManager {
   /**
    * Delete rows
    */
-  async delete(
-    table: string,
-    where: string,
-    whereParams: any[] = []
-  ): Promise<number> {
+  async delete(table: string, where: string, whereParams: any[] = []): Promise<number> {
     const sql = `DELETE FROM ${table} WHERE ${where}`;
     const result = await this.execute(sql, whereParams);
 
@@ -260,7 +247,7 @@ class DatabaseManager {
    * Get metadata value
    */
   async getMetadata(key: string): Promise<string | null> {
-    const results = await this.query<{value: string}>(
+    const results = await this.query<{ value: string }>(
       'SELECT value FROM sync_metadata WHERE key = ?',
       [key]
     );
@@ -297,15 +284,10 @@ class DatabaseManager {
     await this.transaction(async (tx: Transaction) => {
       for (const table of tables) {
         await new Promise((resolve, reject) => {
-          tx.executeSql(
-            `DELETE FROM ${table}`,
-            [],
-            resolve,
-            (_: Transaction, error: any) => {
-              reject(error);
-              return false;
-            }
-          );
+          tx.executeSql(`DELETE FROM ${table}`, [], resolve, (_: Transaction, error: any) => {
+            reject(error);
+            return false;
+          });
         });
       }
     });
@@ -328,9 +310,7 @@ class DatabaseManager {
     const stats: Record<string, number> = {};
 
     for (const table of tables) {
-      const result = await this.query<{count: number}>(
-        `SELECT COUNT(*) as count FROM ${table}`
-      );
+      const result = await this.query<{ count: number }>(`SELECT COUNT(*) as count FROM ${table}`);
       stats[table] = result[0]?.count || 0;
     }
 
@@ -354,7 +334,7 @@ class DatabaseManager {
    */
   async deleteDatabase(): Promise<void> {
     await this.close();
-    await SQLite.deleteDatabase({name: DATABASE_NAME, location: 'default'});
+    await SQLite.deleteDatabase({ name: DATABASE_NAME, location: 'default' });
     console.log('[DB] Database deleted');
   }
 }
@@ -363,4 +343,4 @@ class DatabaseManager {
 export const db = new DatabaseManager();
 
 // Export for testing
-export {DatabaseManager};
+export { DatabaseManager };

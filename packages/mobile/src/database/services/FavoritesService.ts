@@ -2,8 +2,8 @@
  * TaxasGE Mobile - Favorites Service
  */
 
-import {db} from '../DatabaseManager';
-import {TABLE_NAMES, QUERIES, SYNC_STATUS} from '../schema';
+import { db } from '../DatabaseManager';
+import { TABLE_NAMES, QUERIES, SYNC_STATUS } from '../schema';
 
 export interface Favorite {
   id: number;
@@ -26,10 +26,7 @@ class FavoritesService {
    */
   async getUserFavorites(userId: string): Promise<Favorite[]> {
     try {
-      const results = await db.query<Favorite>(
-        QUERIES.getUserFavorites,
-        [userId]
-      );
+      const results = await db.query<Favorite>(QUERIES.getUserFavorites, [userId]);
 
       return results;
     } catch (error) {
@@ -41,15 +38,12 @@ class FavoritesService {
   /**
    * Check if service is favorited
    */
-  async isFavorite(
-    userId: string,
-    serviceId: string
-  ): Promise<boolean> {
+  async isFavorite(userId: string, serviceId: string): Promise<boolean> {
     try {
-      const results = await db.query<{exists: number}>(
-        QUERIES.checkFavoriteExists,
-        [userId, serviceId]
-      );
+      const results = await db.query<{ exists: number }>(QUERIES.checkFavoriteExists, [
+        userId,
+        serviceId,
+      ]);
 
       return results.length > 0;
     } catch (error) {
@@ -90,10 +84,7 @@ class FavoritesService {
   /**
    * Remove favorite
    */
-  async removeFavorite(
-    userId: string,
-    serviceId: string
-  ): Promise<boolean> {
+  async removeFavorite(userId: string, serviceId: string): Promise<boolean> {
     try {
       const deleted = await db.delete(
         TABLE_NAMES.USER_FAVORITES,
@@ -112,11 +103,7 @@ class FavoritesService {
   /**
    * Update favorite notes
    */
-  async updateNotes(
-    userId: string,
-    serviceId: string,
-    notes: string
-  ): Promise<boolean> {
+  async updateNotes(userId: string, serviceId: string, notes: string): Promise<boolean> {
     try {
       const updated = await db.update(
         TABLE_NAMES.USER_FAVORITES,
@@ -140,7 +127,7 @@ class FavoritesService {
    */
   async getCount(userId: string): Promise<number> {
     try {
-      const results = await db.query<{count: number}>(
+      const results = await db.query<{ count: number }>(
         `SELECT COUNT(*) as count FROM ${TABLE_NAMES.USER_FAVORITES}
          WHERE user_id = ?`,
         [userId]
@@ -158,11 +145,7 @@ class FavoritesService {
    */
   async clearAll(userId: string): Promise<boolean> {
     try {
-      await db.delete(
-        TABLE_NAMES.USER_FAVORITES,
-        'user_id = ?',
-        [userId]
-      );
+      await db.delete(TABLE_NAMES.USER_FAVORITES, 'user_id = ?', [userId]);
 
       console.log('[Favorites] Cleared all favorites for user:', userId);
       return true;

@@ -3,9 +3,9 @@
  * Hook pour gérer l'initialisation et l'état de la base de données
  */
 
-import {useState, useEffect, useCallback} from 'react';
-import {db} from '../database/DatabaseManager';
-import {syncService} from '../database/SyncService';
+import { useState, useEffect, useCallback } from 'react';
+import { db } from '../database/DatabaseManager';
+import { syncService } from '../database/SyncService';
 
 export interface DatabaseState {
   initialized: boolean;
@@ -62,7 +62,7 @@ export function useDatabase() {
    * Perform full sync
    */
   const sync = useCallback(async (userId?: string) => {
-    setState(prev => ({...prev, syncing: true, error: null}));
+    setState(prev => ({ ...prev, syncing: true, error: null }));
 
     try {
       console.log('[useDatabase] Starting sync...');
@@ -102,7 +102,7 @@ export function useDatabase() {
   const refreshStats = useCallback(async () => {
     try {
       const dbStats = await db.getStats();
-      setState(prev => ({...prev, stats: dbStats}));
+      setState(prev => ({ ...prev, stats: dbStats }));
       return dbStats;
     } catch (error) {
       console.error('[useDatabase] Refresh stats failed:', error);
@@ -140,8 +140,7 @@ export function useDatabase() {
 
     const lastSyncDate = new Date(state.lastSync);
     const now = new Date();
-    const hoursSinceSync =
-      (now.getTime() - lastSyncDate.getTime()) / (1000 * 60 * 60);
+    const hoursSinceSync = (now.getTime() - lastSyncDate.getTime()) / (1000 * 60 * 60);
 
     return hoursSinceSync > 24;
   }, [state.lastSync]);

@@ -3,7 +3,7 @@
  * Hook pour rechercher et gérer les services fiscaux
  */
 
-import {useState, useCallback, useEffect} from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   fiscalServicesService,
   FiscalService,
@@ -29,7 +29,7 @@ export function useFiscalServices(initialFilters?: SearchFilters) {
    * Search services by query
    */
   const search = useCallback(async (query: string, limit: number = 20) => {
-    setState(prev => ({...prev, loading: true, error: null}));
+    setState(prev => ({ ...prev, loading: true, error: null }));
 
     try {
       const results = await fiscalServicesService.search(query, limit);
@@ -58,7 +58,7 @@ export function useFiscalServices(initialFilters?: SearchFilters) {
    * Get service by ID
    */
   const getById = useCallback(async (id: string) => {
-    setState(prev => ({...prev, loading: true, error: null}));
+    setState(prev => ({ ...prev, loading: true, error: null }));
 
     try {
       const service = await fiscalServicesService.getById(id);
@@ -84,43 +84,37 @@ export function useFiscalServices(initialFilters?: SearchFilters) {
   /**
    * Get services by category
    */
-  const getByCategory = useCallback(
-    async (categoryId: string, limit: number = 50) => {
-      setState(prev => ({...prev, loading: true, error: null}));
+  const getByCategory = useCallback(async (categoryId: string, limit: number = 50) => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
 
-      try {
-        const results = await fiscalServicesService.getByCategory(
-          categoryId,
-          limit
-        );
+    try {
+      const results = await fiscalServicesService.getByCategory(categoryId, limit);
 
-        setState(prev => ({
-          ...prev,
-          services: results,
-          loading: false,
-          total: results.length,
-          error: null,
-        }));
+      setState(prev => ({
+        ...prev,
+        services: results,
+        loading: false,
+        total: results.length,
+        error: null,
+      }));
 
-        return results;
-      } catch (error) {
-        console.error('[useFiscalServices] Get by category failed:', error);
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          error: error instanceof Error ? error.message : 'Load failed',
-        }));
-        return [];
-      }
-    },
-    []
-  );
+      return results;
+    } catch (error) {
+      console.error('[useFiscalServices] Get by category failed:', error);
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: error instanceof Error ? error.message : 'Load failed',
+      }));
+      return [];
+    }
+  }, []);
 
   /**
    * Get popular services
    */
   const getPopular = useCallback(async (limit: number = 20) => {
-    setState(prev => ({...prev, loading: true, error: null}));
+    setState(prev => ({ ...prev, loading: true, error: null }));
 
     try {
       const results = await fiscalServicesService.getPopular(limit);
@@ -148,44 +142,38 @@ export function useFiscalServices(initialFilters?: SearchFilters) {
   /**
    * Get services with filters
    */
-  const getFiltered = useCallback(
-    async (filters: SearchFilters, limit: number = 50) => {
-      setState(prev => ({...prev, loading: true, error: null}));
+  const getFiltered = useCallback(async (filters: SearchFilters, limit: number = 50) => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
 
-      try {
-        const results = await fiscalServicesService.getFiltered(
-          filters,
-          limit
-        );
-        const total = await fiscalServicesService.getCount(filters);
+    try {
+      const results = await fiscalServicesService.getFiltered(filters, limit);
+      const total = await fiscalServicesService.getCount(filters);
 
-        setState(prev => ({
-          ...prev,
-          services: results,
-          loading: false,
-          total,
-          error: null,
-        }));
+      setState(prev => ({
+        ...prev,
+        services: results,
+        loading: false,
+        total,
+        error: null,
+      }));
 
-        return results;
-      } catch (error) {
-        console.error('[useFiscalServices] Get filtered failed:', error);
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          error: error instanceof Error ? error.message : 'Load failed',
-        }));
-        return [];
-      }
-    },
-    []
-  );
+      return results;
+    } catch (error) {
+      console.error('[useFiscalServices] Get filtered failed:', error);
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: error instanceof Error ? error.message : 'Load failed',
+      }));
+      return [];
+    }
+  }, []);
 
   /**
    * Get recent services
    */
   const getRecent = useCallback(async (limit: number = 10) => {
-    setState(prev => ({...prev, loading: true, error: null}));
+    setState(prev => ({ ...prev, loading: true, error: null }));
 
     try {
       const results = await fiscalServicesService.getRecent(limit);

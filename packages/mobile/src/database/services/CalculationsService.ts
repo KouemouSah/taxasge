@@ -2,9 +2,9 @@
  * TaxasGE Mobile - Calculations History Service
  */
 
-import {db} from '../DatabaseManager';
-import {TABLE_NAMES, QUERIES, SYNC_STATUS} from '../schema';
-import {offlineQueueService} from '../OfflineQueueService';
+import { db } from '../DatabaseManager';
+import { TABLE_NAMES, QUERIES, SYNC_STATUS } from '../schema';
+import { offlineQueueService } from '../OfflineQueueService';
 
 export interface Calculation {
   id?: number;
@@ -52,7 +52,7 @@ class CalculationsService {
     },
     paymentType: 'expedition' | 'renewal' | 'urgent',
     params?: CalculationParams
-  ): {amount: number; breakdown: CalculationBreakdown} {
+  ): { amount: number; breakdown: CalculationBreakdown } {
     let baseAmount = 0;
 
     // Get base amount by payment type
@@ -171,25 +171,15 @@ class CalculationsService {
   /**
    * Get user calculation history
    */
-  async getUserHistory(
-    userId: string,
-    limit: number = 50
-  ): Promise<Calculation[]> {
+  async getUserHistory(userId: string, limit: number = 50): Promise<Calculation[]> {
     try {
-      const results = await db.query<Calculation>(
-        QUERIES.getCalculationsHistory,
-        [userId, limit]
-      );
+      const results = await db.query<Calculation>(QUERIES.getCalculationsHistory, [userId, limit]);
 
       // Parse JSON fields
       return results.map(calc => ({
         ...calc,
-        parameters: calc.parameters
-          ? JSON.parse(calc.parameters as any)
-          : undefined,
-        breakdown: calc.breakdown
-          ? JSON.parse(calc.breakdown as any)
-          : undefined,
+        parameters: calc.parameters ? JSON.parse(calc.parameters as any) : undefined,
+        breakdown: calc.breakdown ? JSON.parse(calc.breakdown as any) : undefined,
       }));
     } catch (error) {
       console.error('[Calculations] Get user history error:', error);
@@ -221,12 +211,8 @@ class CalculationsService {
 
       return results.map(calc => ({
         ...calc,
-        parameters: calc.parameters
-          ? JSON.parse(calc.parameters as any)
-          : undefined,
-        breakdown: calc.breakdown
-          ? JSON.parse(calc.breakdown as any)
-          : undefined,
+        parameters: calc.parameters ? JSON.parse(calc.parameters as any) : undefined,
+        breakdown: calc.breakdown ? JSON.parse(calc.breakdown as any) : undefined,
       }));
     } catch (error) {
       console.error('[Calculations] Get by service error:', error);
@@ -256,12 +242,8 @@ class CalculationsService {
 
       return results.map(calc => ({
         ...calc,
-        parameters: calc.parameters
-          ? JSON.parse(calc.parameters as any)
-          : undefined,
-        breakdown: calc.breakdown
-          ? JSON.parse(calc.breakdown as any)
-          : undefined,
+        parameters: calc.parameters ? JSON.parse(calc.parameters as any) : undefined,
+        breakdown: calc.breakdown ? JSON.parse(calc.breakdown as any) : undefined,
       }));
     } catch (error) {
       console.error('[Calculations] Get recent error:', error);
@@ -274,7 +256,7 @@ class CalculationsService {
    */
   async getTotalCalculated(userId: string): Promise<number> {
     try {
-      const results = await db.query<{total: number}>(
+      const results = await db.query<{ total: number }>(
         `SELECT SUM(calculated_amount) as total
          FROM ${TABLE_NAMES.CALCULATIONS_HISTORY}
          WHERE user_id = ?`,
@@ -293,7 +275,7 @@ class CalculationsService {
    */
   async getCount(userId: string): Promise<number> {
     try {
-      const results = await db.query<{count: number}>(
+      const results = await db.query<{ count: number }>(
         `SELECT COUNT(*) as count
          FROM ${TABLE_NAMES.CALCULATIONS_HISTORY}
          WHERE user_id = ?`,
@@ -311,9 +293,9 @@ class CalculationsService {
    * Get calculations statistics by payment type
    */
   async getStatsByPaymentType(userId: string): Promise<{
-    expedition: {count: number; total: number};
-    renewal: {count: number; total: number};
-    urgent: {count: number; total: number};
+    expedition: { count: number; total: number };
+    renewal: { count: number; total: number };
+    urgent: { count: number; total: number };
   }> {
     try {
       const results = await db.query<{
@@ -332,9 +314,9 @@ class CalculationsService {
       );
 
       const stats = {
-        expedition: {count: 0, total: 0},
-        renewal: {count: 0, total: 0},
-        urgent: {count: 0, total: 0},
+        expedition: { count: 0, total: 0 },
+        renewal: { count: 0, total: 0 },
+        urgent: { count: 0, total: 0 },
       };
 
       results.forEach(row => {
@@ -350,9 +332,9 @@ class CalculationsService {
     } catch (error) {
       console.error('[Calculations] Get stats by payment type error:', error);
       return {
-        expedition: {count: 0, total: 0},
-        renewal: {count: 0, total: 0},
-        urgent: {count: 0, total: 0},
+        expedition: { count: 0, total: 0 },
+        renewal: { count: 0, total: 0 },
+        urgent: { count: 0, total: 0 },
       };
     }
   }
@@ -360,23 +342,14 @@ class CalculationsService {
   /**
    * Delete calculation
    */
-  async deleteCalculation(
-    userId: string,
-    calculationId: number
-  ): Promise<boolean> {
+  async deleteCalculation(userId: string, calculationId: number): Promise<boolean> {
     try {
-      const deleted = await db.delete(
-        TABLE_NAMES.CALCULATIONS_HISTORY,
-        'id = ? AND user_id = ?',
-        [calculationId, userId]
-      );
-
-      console.log(
-        '[Calculations] Deleted calculation:',
+      const deleted = await db.delete(TABLE_NAMES.CALCULATIONS_HISTORY, 'id = ? AND user_id = ?', [
         calculationId,
-        'rows affected:',
-        deleted
-      );
+        userId,
+      ]);
+
+      console.log('[Calculations] Deleted calculation:', calculationId, 'rows affected:', deleted);
       return deleted > 0;
     } catch (error) {
       console.error('[Calculations] Delete calculation error:', error);
@@ -389,11 +362,7 @@ class CalculationsService {
    */
   async clearHistory(userId: string): Promise<boolean> {
     try {
-      await db.delete(
-        TABLE_NAMES.CALCULATIONS_HISTORY,
-        'user_id = ?',
-        [userId]
-      );
+      await db.delete(TABLE_NAMES.CALCULATIONS_HISTORY, 'user_id = ?', [userId]);
 
       console.log('[Calculations] Cleared all history for user:', userId);
       return true;

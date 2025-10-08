@@ -3,7 +3,7 @@
  * Architecture automatique par branches Git:
  * - develop → taxasge-dev (développement)
  * - main → taxasge-prod (production)
- * 
+ *
  * @author KOUEMOU SAH Jean Emac
  * @version 1.0.0
  */
@@ -13,28 +13,26 @@
 // ============================================================================
 const firebaseConfigDev = {
   // 📝 COLLEZ ICI la configuration de taxasge-dev
-  apiKey: "AIzaSyB9xkD3Qv8_p-UV1N-SjaskIfFJDsgFJHg",
-  authDomain: "taxasge-dev.firebaseapp.com",
-  projectId: "taxasge-dev",
-  storageBucket: "taxasge-dev.firebasestorage.app",
-  messagingSenderId: "392159428433",
-  appId: "1:392159428433:web:c2f170a2a220a78eef1d70"
-
+  apiKey: 'AIzaSyB9xkD3Qv8_p-UV1N-SjaskIfFJDsgFJHg',
+  authDomain: 'taxasge-dev.firebaseapp.com',
+  projectId: 'taxasge-dev',
+  storageBucket: 'taxasge-dev.firebasestorage.app',
+  messagingSenderId: '392159428433',
+  appId: '1:392159428433:web:c2f170a2a220a78eef1d70',
 };
 
 // ============================================================================
-// CONFIGURATION TAXASGE-PROD (Production)  
+// CONFIGURATION TAXASGE-PROD (Production)
 // ============================================================================
 const firebaseConfigProd = {
   // 📝 COLLEZ ICI la configuration de taxasge-prod
-  
-  apiKey: "AIzaSyB8gM9M7Z-NOpPIbC3YrzcV6BDCRP7sfNI",
-  authDomain: "taxasge-pro.firebaseapp.com",
-  projectId: "taxasge-pro",
-  storageBucket: "taxasge-pro.firebasestorage.app",
-  messagingSenderId: "430718042574",
-  appId: "1:430718042574:web:4afac31fb15bd5ac162b9f"
 
+  apiKey: 'AIzaSyB8gM9M7Z-NOpPIbC3YrzcV6BDCRP7sfNI',
+  authDomain: 'taxasge-pro.firebaseapp.com',
+  projectId: 'taxasge-pro',
+  storageBucket: 'taxasge-pro.firebasestorage.app',
+  messagingSenderId: '430718042574',
+  appId: '1:430718042574:web:4afac31fb15bd5ac162b9f',
 };
 
 // ============================================================================
@@ -49,13 +47,13 @@ const detectEnvironment = () => {
   if (typeof __DEV__ !== 'undefined') {
     return __DEV__ ? 'development' : 'production';
   }
-  
+
   // 2. Variables d'environnement (CI/CD)
   if (typeof process !== 'undefined' && process.env) {
     if (process.env.NODE_ENV === 'production') return 'production';
     if (process.env.ENVIRONMENT === 'production') return 'production';
   }
-  
+
   // 3. Fallback développement
   return 'development';
 };
@@ -67,9 +65,7 @@ const detectEnvironment = () => {
 const currentEnvironment = detectEnvironment();
 
 // Configuration active selon l'environnement
-const firebaseConfig = currentEnvironment === 'production' 
-  ? firebaseConfigProd 
-  : firebaseConfigDev;
+const firebaseConfig = currentEnvironment === 'production' ? firebaseConfigProd : firebaseConfigDev;
 
 // Informations environnement
 const environment = currentEnvironment;
@@ -94,7 +90,7 @@ const config = {
   environment,
   isProduction,
   isDevelopment,
-  projectId
+  projectId,
 };
 
 // CommonJS (pour Node.js)
@@ -117,8 +113,6 @@ if (typeof exports !== 'undefined') {
   exports.projectId = projectId;
   exports.default = firebaseConfig;
 }
-
-
 
 // ============================================================================
 // TYPES POUR TYPESCRIPT (Optionnel)

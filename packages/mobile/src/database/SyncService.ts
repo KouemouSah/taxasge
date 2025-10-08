@@ -3,10 +3,10 @@
  * Service de synchronisation bidirectionnelle SQLite <-> Supabase
  */
 
-import {createClient, SupabaseClient} from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import NetInfo from '@react-native-community/netinfo';
-import {db} from './DatabaseManager';
-import {TABLE_NAMES, SYNC_STATUS} from './schema';
+import { db } from './DatabaseManager';
+import { TABLE_NAMES, SYNC_STATUS } from './schema';
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = process.env.REACT_APP_SUPABASE_ANON_KEY || '';
@@ -87,9 +87,7 @@ class SyncService {
 
       // Get last sync timestamp
       this.lastSyncTimestamp = await db.getMetadata('last_full_sync');
-      const since = this.lastSyncTimestamp
-        ? new Date(this.lastSyncTimestamp)
-        : null;
+      const since = this.lastSyncTimestamp ? new Date(this.lastSyncTimestamp) : null;
 
       console.log('[Sync] Last sync:', since?.toISOString() || 'never');
 
@@ -146,7 +144,7 @@ class SyncService {
         query = query.gte('updated_at', since.toISOString());
       }
 
-      const {data, error} = await query;
+      const { data, error } = await query;
 
       if (error) {
         throw error;
@@ -177,22 +175,17 @@ class SyncService {
   /**
    * Sync fiscal services with FTS update
    */
-  private async syncFiscalServices(
-    result: SyncResult,
-    since: Date | null
-  ): Promise<void> {
+  private async syncFiscalServices(result: SyncResult, since: Date | null): Promise<void> {
     try {
       console.log('[Sync] Syncing fiscal services...');
 
-      let query = this.supabase
-        .from('fiscal_services')
-        .select('*');
+      let query = this.supabase.from('fiscal_services').select('*');
 
       if (since) {
         query = query.gte('updated_at', since.toISOString());
       }
 
-      const {data, error} = await query;
+      const { data, error } = await query;
 
       if (error) {
         throw error;
@@ -280,15 +273,13 @@ class SyncService {
       // Sync each favorite
       for (const favorite of favorites) {
         try {
-          const {error} = await this.supabase
-            .from('user_favorites')
-            .upsert({
-              user_id: userId,
-              fiscal_service_id: favorite.fiscal_service_id,
-              notes: favorite.notes,
-              tags: favorite.tags,
-              added_at: favorite.added_at,
-            });
+          const { error } = await this.supabase.from('user_favorites').upsert({
+            user_id: userId,
+            fiscal_service_id: favorite.fiscal_service_id,
+            notes: favorite.notes,
+            tags: favorite.tags,
+            added_at: favorite.added_at,
+          });
 
           if (error) {
             throw error;
@@ -308,7 +299,9 @@ class SyncService {
           result.inserted++;
         } catch (error) {
           console.error('[Sync] Error syncing favorite:', error);
-          result.errors.push(`Favorite ${favorite.id}: ${error instanceof Error ? error.message : 'Unknown'}`);
+          result.errors.push(
+            `Favorite ${favorite.id}: ${error instanceof Error ? error.message : 'Unknown'}`
+          );
         }
       }
 
@@ -358,18 +351,16 @@ class SyncService {
       // Sync each calculation
       for (const calc of calculations) {
         try {
-          const {error} = await this.supabase
-            .from('calculations_history')
-            .insert({
-              user_id: userId,
-              fiscal_service_id: calc.fiscal_service_id,
-              calculation_base: calc.calculation_base,
-              calculated_amount: calc.calculated_amount,
-              payment_type: calc.payment_type,
-              parameters: calc.parameters,
-              breakdown: calc.breakdown,
-              calculated_at: calc.calculated_at,
-            });
+          const { error } = await this.supabase.from('calculations_history').insert({
+            user_id: userId,
+            fiscal_service_id: calc.fiscal_service_id,
+            calculation_base: calc.calculation_base,
+            calculated_amount: calc.calculated_amount,
+            payment_type: calc.payment_type,
+            parameters: calc.parameters,
+            breakdown: calc.breakdown,
+            calculated_at: calc.calculated_at,
+          });
 
           if (error) {
             throw error;
@@ -378,7 +369,7 @@ class SyncService {
           // Mark as synced
           await db.update(
             TABLE_NAMES.CALCULATIONS_HISTORY,
-            {synced: SYNC_STATUS.SYNCED},
+            { synced: SYNC_STATUS.SYNCED },
             'id = ?',
             [calc.id]
           );
@@ -386,7 +377,9 @@ class SyncService {
           result.inserted++;
         } catch (error) {
           console.error('[Sync] Error syncing calculation:', error);
-          result.errors.push(`Calculation ${calc.id}: ${error instanceof Error ? error.message : 'Unknown'}`);
+          result.errors.push(
+            `Calculation ${calc.id}: ${error instanceof Error ? error.message : 'Unknown'}`
+          );
         }
       }
 
@@ -431,4 +424,4 @@ class SyncService {
 export const syncService = new SyncService();
 
 // Export for testing
-export {SyncService};
+export { SyncService };
