@@ -43,7 +43,7 @@ concurrency:
 env:
   NODE_VERSION: '20'
   JAVA_VERSION: '17'
-  REACT_NATIVE_VERSION: '0.73.9'
+  REACT_NATIVE_VERSION: '0.80.0'
   ENVIRONMENT: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
   FIREBASE_PROJECT_DEV: 'taxasge-dev'
   FIREBASE_PROJECT_PROD: 'taxasge-prod'
@@ -126,8 +126,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ needs.setup.outputs.node-version }}
-          cache: 'yarn'
-          cache-dependency-path: packages/mobile/yarn.lock
+          cache: 'npm'
+          cache-dependency-path: packages/mobile/package-lock.json
 
       - name: 📦 Install dependencies
         run: |
@@ -148,20 +148,17 @@ jobs:
           
           echo "📦 Installation des dépendances..."
           # Installation avec affichage des erreurs
-          if yarn install --frozen-lockfile --prefer-offline; then
-            echo "✅ Dépendances installées avec yarn (frozen lockfile)"
-          elif yarn install; then
-            echo "✅ Dépendances installées avec yarn"
+          if npm ci; then
+            echo "✅ Dépendances installées avec npm ci (lockfile)"
+          elif npm install; then
+            echo "✅ Dépendances installées avec npm install"
           else
-            echo "❌ Installation yarn échouée, tentative npm..."
-            npm install || {
-              echo "❌ Installation impossible"
-              exit 1
-            }
+            echo "❌ Installation npm échouée"
+            exit 1
           fi
           
           echo "📊 Environnement:"
-          yarn --version 2>/dev/null || echo "Yarn: non disponible"
+          npm --version
           node --version
 
       - name: 🔍 Lint & Format checks
@@ -287,8 +284,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ needs.setup.outputs.node-version }}
-          cache: 'yarn'
-          cache-dependency-path: packages/mobile/yarn.lock
+          cache: 'npm'
+          cache-dependency-path: packages/mobile/package-lock.json
 
       - name: ☕ Setup Java ${{ env.JAVA_VERSION }}
         if: matrix.platform == 'android'
