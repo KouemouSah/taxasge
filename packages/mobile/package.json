@@ -47,7 +47,7 @@
     "clean:node": "rm -rf node_modules && npm install",
     "postinstall": "echo 'Dependencies installed successfully'",
     "precommit": "lint-staged",
-    "prepare": "husky install"
+    "prepare": "node -e \"if (process.env.CI !== 'true') { try { require('husky').install() } catch (e) {} }\""
   },
   "dependencies": {
     "react": "19.1.0",
