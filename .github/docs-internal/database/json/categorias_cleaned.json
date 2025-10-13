@@ -1,0 +1,604 @@
+[
+  {
+    "id": "C-001",
+    "sector_id": "S-001",
+    "nombre_es": "SERVICIO CONSULAR",
+    "nombre_fr": "SERVICE CONSULAIRE",
+    "nombre_en": "CONSULAR SERVICE"
+  },
+  {
+    "id": "C-002",
+    "sector_id": "S-002",
+    "nombre_es": "AERONAVES DE TRÁFICO INTERNACIONAL",
+    "nombre_fr": "AÉRONEFS DE TRAFIC INTERNATIONAL",
+    "nombre_en": "INTERNATIONAL AIRCRAFT TRAFFIC"
+  },
+  {
+    "id": "C-003",
+    "sector_id": "S-002",
+    "nombre_es": "AERONAVES DE TRÁFICO NACIONAL",
+    "nombre_fr": "AÉRONEFS DE TRAFIC NATIONAL",
+    "nombre_en": "NATIONAL AIRCRAFT TRAFFIC"
+  },
+  {
+    "id": "C-004",
+    "sector_id": "S-002",
+    "nombre_es": "AERONAVES: TARIFA DE SUPERVISIÓN DE LA SEGURIDAD OPERACIONAL (MATRICULACIÓN)",
+    "nombre_fr": "AÉRONEFS : TARIF DE SUPERVISION DE LA SÉCURITÉ OPÉRATIONNELLE (IMMATRICULATION)",
+    "nombre_en": "AIRCRAFT: OPERATIONAL SAFETY SUPERVISION FEE (REGISTRATION)"
+  },
+  {
+    "id": "C-005",
+    "sector_id": "S-002",
+    "nombre_es": "ALQUILER DE LOS TERRENOS DE LOS RECINTOS AEROPORTUARIOS",
+    "nombre_fr": "LOCATION DES TERRAINS DES ENCEINTES AÉROPORTUAIRES",
+    "nombre_en": "AIRPORT GROUNDS RENTAL"
+  },
+  {
+    "id": "C-006",
+    "sector_id": "S-002",
+    "nombre_es": "AUTORIZACIONES DE SOBREVUELO Y ATERRIZAJE",
+    "nombre_fr": "AUTORISATIONS DE SURVOL ET D'ATTERRISSAGE",
+    "nombre_en": "OVERFLIGHT AND LANDING AUTHORIZATIONS"
+  },
+  {
+    "id": "C-007",
+    "sector_id": "S-002",
+    "nombre_es": "ELECCION DE OBSTACULOS",
+    "nombre_fr": "DÉTECTION D'OBSTACLES",
+    "nombre_en": "OBSTACLE DETECTION"
+  },
+  {
+    "id": "C-008",
+    "sector_id": "S-002",
+    "nombre_es": "ESTACIONAMIENTO DE VEHÍCULOS",
+    "nombre_fr": "STATIONNEMENT DE VÉHICULES",
+    "nombre_en": "VEHICLE PARKING"
+  },
+  {
+    "id": "C-009",
+    "sector_id": "S-002",
+    "nombre_es": "EXENCIÓN EN EL PAGO DE LOS DERECHOS AERONAÚTICOS",
+    "nombre_fr": "EXEMPTION DU PAIEMENT DES DROITS AÉRONAUTIQUES",
+    "nombre_en": "EXEMPTION FROM AERONAUTICAL FEES PAYMENT"
+  },
+  {
+    "id": "C-010",
+    "sector_id": "S-002",
+    "nombre_es": "II/III, RNP 10, ETOPS, RVSM",
+    "nombre_fr": "II/III, RNP 10, ETOPS, RVSM",
+    "nombre_en": "II/III, RNP 10, ETOPS, RVSM"
+  },
+  {
+    "id": "C-011",
+    "sector_id": "S-002",
+    "nombre_es": "PERSONAL DE TIERRA",
+    "nombre_fr": "PERSONNEL AU SOL",
+    "nombre_en": "GROUND PERSONNEL"
+  },
+  {
+    "id": "C-012",
+    "sector_id": "S-002",
+    "nombre_es": "TARIFA DE ESTACIONAMIENTO",
+    "nombre_fr": "TARIF DE STATIONNEMENT",
+    "nombre_en": "PARKING FEE"
+  },
+  {
+    "id": "C-013",
+    "sector_id": "S-002",
+    "nombre_es": "TARIFA DE SEGURIDAD AEROPORTUARIA",
+    "nombre_fr": "TARIF DE SÉCURITÉ AÉROPORTUAIRE",
+    "nombre_en": "AIRPORT SECURITY FEE"
+  },
+  {
+    "id": "C-014",
+    "sector_id": "S-002",
+    "nombre_es": "TARIFA DEL BALIZAJE LUMINOSO DE PISTA",
+    "nombre_fr": "TARIF DE BALISAGE LUMINEUX DE PISTE",
+    "nombre_en": "RUNWAY LIGHTING BEACON FEE"
+  },
+  {
+    "id": "C-015",
+    "sector_id": "S-002",
+    "nombre_es": "TARIFA PARA EL CONTROL Y SUPERVISIÓN DE LA SEGURIDAD OPERACIONAL",
+    "nombre_fr": "TARIF POUR LE CONTRÔLE ET LA SUPERVISION DE LA SÉCURITÉ OPÉRATIONNELLE",
+    "nombre_en": "OPERATIONAL SAFETY CONTROL AND SUPERVISION FEE"
+  },
+  {
+    "id": "C-016",
+    "sector_id": "S-002",
+    "nombre_es": "TARIFA PARA EL DESARROLLO DE LAS INFRAESTRUCTURAS AERONAUTICAS",
+    "nombre_fr": "TARIF POUR LE DÉVELOPPEMENT DES INFRASTRUCTURES AÉRONAUTIQUES",
+    "nombre_en": "AERONAUTICAL INFRASTRUCTURE DEVELOPMENT FEE"
+  },
+  {
+    "id": "C-017",
+    "sector_id": "S-002",
+    "nombre_es": "TARIFA POR LOS SERVICIOS Y FACILIDADES PRESTADOS A LOS PASAJEROS DURANTE SU TRÁNSITO POR LOS AEROPUERTOS",
+    "nombre_fr": "TARIF POUR LES SERVICES ET FACILITÉS FOURNIS AUX PASSAGERS LORS DE LEUR TRANSIT DANS LES AÉROPORTS",
+    "nombre_en": "FEE FOR PASSENGER SERVICES AND FACILITIES DURING AIRPORT TRANSIT"
+  },
+  {
+    "id": "C-018",
+    "sector_id": "S-002",
+    "nombre_es": "TARIFA POR PROLONGACIÓN DE APERTURA DE SERVICIOS AEROPORTUARIOS (AERÓDROMOS Y AEROPUERTOS)",
+    "nombre_fr": "TARIF POUR LA PROLONGATION D'OUVERTURE DES SERVICES AÉROPORTUAIRES (AÉRODROMES ET AÉROPORTS)",
+    "nombre_en": "FEE FOR EXTENDED AIRPORT SERVICES OPENING (AIRFIELDS AND AIRPORTS)"
+  },
+  {
+    "id": "C-019",
+    "sector_id": "S-002",
+    "nombre_es": "TARIFA POR USO DE LAS PASARELAS TELESCÓPICAS CON FINES DE EMBARQUE Y DESEMBARQUE DE PASAJEROS",
+    "nombre_fr": "TARIF POUR L'UTILISATION DES PASSERELLES TÉLESCOPIQUES POUR L'EMBARQUEMENT ET LE DÉBARQUEMENT DES PASSAGERS",
+    "nombre_en": "FEE FOR TELESCOPIC BOARDING BRIDGE USE FOR PASSENGER BOARDING AND DISEMBARKING"
+  },
+  {
+    "id": "C-020",
+    "sector_id": "S-002",
+    "nombre_es": "TARIFA POR VIGILANCIA, POR RADAR DE LOS VUELOS EN SU TRÁNSITO EN EL ESPACIO AÉREO DE GUINEA ECUATORIAL",
+    "nombre_fr": "TARIF POUR LA SURVEILLANCE RADAR DES VOLS EN TRANSIT DANS L'ESPACE AÉRIEN DE LA GUINÉE ÉQUATORIALE",
+    "nombre_en": "FEE FOR RADAR SURVEILLANCE OF FLIGHTS IN TRANSIT IN EQUATORIAL GUINEA AIRSPACE"
+  },
+  {
+    "id": "C-021",
+    "sector_id": "S-002",
+    "nombre_es": "TARIFAS POR HANDLING",
+    "nombre_fr": "TARIFS DE MANUTENTION",
+    "nombre_en": "HANDLING FEES"
+  },
+  {
+    "id": "C-022",
+    "sector_id": "S-002",
+    "nombre_es": "TASA DE COMBUSTIBLE",
+    "nombre_fr": "TAXE SUR LE CARBURANT",
+    "nombre_en": "FUEL TAX"
+  },
+  {
+    "id": "C-023",
+    "sector_id": "S-002",
+    "nombre_es": "TASA INTERNACIONAL DE TRANSPORTE",
+    "nombre_fr": "TAXE INTERNATIONALE DE TRANSPORT",
+    "nombre_en": "INTERNATIONAL TRANSPORT TAX"
+  },
+  {
+    "id": "C-024",
+    "sector_id": "S-002",
+    "nombre_es": "VUELOS CHARTER",
+    "nombre_fr": "VOLS CHARTER",
+    "nombre_en": "CHARTER FLIGHTS"
+  },
+  {
+    "id": "C-025",
+    "sector_id": "S-002",
+    "nombre_es": "VUELOS INTERNACIONALES",
+    "nombre_fr": "VOLS INTERNATIONAUX",
+    "nombre_en": "INTERNATIONAL FLIGHTS"
+  },
+  {
+    "id": "C-026",
+    "sector_id": "S-002",
+    "nombre_es": "VUELOS NACIONALES",
+    "nombre_fr": "VOLS NATIONAUX",
+    "nombre_en": "DOMESTIC FLIGHTS"
+  },
+  {
+    "id": "C-027",
+    "sector_id": "S-003",
+    "nombre_es": "CUOTA ANUAL",
+    "nombre_fr": "COTISATION ANNUELLE",
+    "nombre_en": "ANNUAL FEE"
+  },
+  {
+    "id": "C-028",
+    "sector_id": "S-003",
+    "nombre_es": "LICENCIA DE EXPORTACIÓN Y REEXPORTACIÓN",
+    "nombre_fr": "LICENCE D'EXPORTATION ET DE RÉEXPORTATION",
+    "nombre_en": "EXPORT AND RE-EXPORT LICENSE"
+  },
+  {
+    "id": "C-029",
+    "sector_id": "S-003",
+    "nombre_es": "SERVICIO DE CAMBIO DE DENOMINACIÓN",
+    "nombre_fr": "SERVICE DE CHANGEMENT DE DÉNOMINATION",
+    "nombre_en": "DENOMINATION CHANGE SERVICE"
+  },
+  {
+    "id": "C-030",
+    "sector_id": "S-003",
+    "nombre_es": "SERVICIO DE COMERCIO",
+    "nombre_fr": "SERVICE DE COMMERCE",
+    "nombre_en": "COMMERCE SERVICE"
+  },
+  {
+    "id": "C-031",
+    "sector_id": "S-003",
+    "nombre_es": "SERVICIO DE IMPORTACIÓN DE MERCANCÍAS",
+    "nombre_fr": "SERVICE D'IMPORTATION DE MARCHANDISES",
+    "nombre_en": "GOODS IMPORT SERVICE"
+  },
+  {
+    "id": "C-032",
+    "sector_id": "S-003",
+    "nombre_es": "SECTOR DE PROMOCIÓN DE PEQUEÑAS Y MEDIANAS EMPRESAS",
+    "nombre_fr": "SECTEUR DE PROMOTION DES PETITES ET MOYENNES ENTREPRISES",
+    "nombre_en": "SMALL AND MEDIUM ENTERPRISES PROMOTION SECTOR"
+  },
+  {
+    "id": "C-039",
+    "sector_id": "S-005",
+    "nombre_es": "ACTUACIONES CULTURALES",
+    "nombre_fr": "ACTIVITÉS CULTURELLES",
+    "nombre_en": "CULTURAL ACTIVITIES"
+  },
+  {
+    "id": "C-044",
+    "sector_id": "S-007",
+    "nombre_es": "OTRAS PRESTACIONES",
+    "nombre_fr": "AUTRES PRESTATIONS",
+    "nombre_en": "OTHER SERVICES"
+  },
+  {
+    "id": "C-045",
+    "sector_id": "S-007",
+    "nombre_es": "SERVICIO DE LA MARINA",
+    "nombre_fr": "SERVICE DE LA MARINE",
+    "nombre_en": "MARINE SERVICE"
+  },
+  {
+    "id": "C-046",
+    "sector_id": "S-007",
+    "nombre_es": "SERVICIO DE REGISTROS DE EMBARCACIONES PEQUEÑAS",
+    "nombre_fr": "SERVICE D'ENREGISTREMENT DES PETITES EMBARCATIONS",
+    "nombre_en": "SMALL VESSEL REGISTRATION SERVICE"
+  },
+  {
+    "id": "C-047",
+    "sector_id": "S-008",
+    "nombre_es": "SERVICIO DE MATRICULAS Y DOCUMENTOS ACADÉMICOS",
+    "nombre_fr": "SERVICE D'INSCRIPTIONS ET DOCUMENTS ACADÉMIQUES",
+    "nombre_en": "ENROLLMENT AND ACADEMIC DOCUMENTS SERVICE"
+  },
+  {
+    "id": "C-048",
+    "sector_id": "S-008",
+    "nombre_es": "AUTORIZACIONES DE CENTROS PRIVADOS",
+    "nombre_fr": "AUTORISATIONS DE CENTRES PRIVÉS",
+    "nombre_en": "PRIVATE CENTER AUTHORIZATIONS"
+  },
+  {
+    "id": "C-049",
+    "sector_id": "S-008",
+    "nombre_es": "ASIGNATURAS PENDIENTES, POR ASIGNATURA",
+    "nombre_fr": "MATIÈRES EN ATTENTE, PAR MATIÈRE",
+    "nombre_en": "PENDING SUBJECTS, PER SUBJECT"
+  },
+  {
+    "id": "C-050",
+    "sector_id": "S-008",
+    "nombre_es": "CONVALIDACIÓN Y OTROS DOCUMENTOS ESPECIALES",
+    "nombre_fr": "VALIDATION ET AUTRES DOCUMENTS SPÉCIAUX",
+    "nombre_en": "VALIDATION AND OTHER SPECIAL DOCUMENTS"
+  },
+  {
+    "id": "C-051",
+    "sector_id": "S-008",
+    "nombre_es": "MATRICULA POR REPETICION DE CURSO",
+    "nombre_fr": "INSCRIPTION POUR REDOUBLEMENT",
+    "nombre_en": "ENROLLMENT FOR GRADE REPETITION"
+  },
+  {
+    "id": "C-052",
+    "sector_id": "S-008",
+    "nombre_es": "MATRICULA PRUEBA DE GRADO",
+    "nombre_fr": "INSCRIPTION À L'EXAMEN DE FIN D'ÉTUDES",
+    "nombre_en": "ENROLLMENT FOR GRADUATION EXAM"
+  },
+  {
+    "id": "C-053",
+    "sector_id": "S-008",
+    "nombre_es": "SERVICIO DE ENSEÑANZA PRIMARIA",
+    "nombre_fr": "SERVICE D'ENSEIGNEMENT PRIMAIRE",
+    "nombre_en": "PRIMARY EDUCATION SERVICE"
+  },
+  {
+    "id": "C-054",
+    "sector_id": "S-008",
+    "nombre_es": "SERVICIO DE ENSEÑANZA UNIVERSITARIA",
+    "nombre_fr": "SERVICE D'ENSEIGNEMENT UNIVERSITAIRE",
+    "nombre_en": "UNIVERSITY EDUCATION SERVICE"
+  },
+  {
+    "id": "C-057",
+    "sector_id": "S-009",
+    "nombre_es": "SECTOR DE ECONOMÍA, PLANIFICACIÓN E INVERSIONES PÚBLICAS",
+    "nombre_fr": "SECTEUR DE L'ÉCONOMIE, DE LA PLANIFICATION ET DES INVESTISSEMENTS PUBLICS",
+    "nombre_en": "ECONOMY, PLANNING AND PUBLIC INVESTMENTS SECTOR"
+  },
+  {
+    "id": "C-058",
+    "sector_id": "S-010",
+    "nombre_es": "SERVICIO DE CERTIFICACIONES BANCARIAS",
+    "nombre_fr": "SERVICE DE CERTIFICATIONS BANCAIRES",
+    "nombre_en": "BANKING CERTIFICATIONS SERVICE"
+  },
+  {
+    "id": "C-059",
+    "sector_id": "S-010",
+    "nombre_es": "SERVICIO DE BANCAS SEGUROS Y REASEGUROS",
+    "nombre_fr": "SERVICE DES BANQUES, ASSURANCES ET RÉASSURANCES",
+    "nombre_en": "BANKING, INSURANCE AND REINSURANCE SERVICE"
+  },
+  {
+    "id": "C-060",
+    "sector_id": "S-010",
+    "nombre_es": "SERVICIO DE IMPUESTOS Y CONTRIBUCIONES",
+    "nombre_fr": "SERVICE DES IMPÔTS ET CONTRIBUTIONS",
+    "nombre_en": "TAX AND CONTRIBUTIONS SERVICE"
+  },
+  {
+    "id": "C-061",
+    "sector_id": "S-010",
+    "nombre_es": "SERVICIO DE RECAUDACIÓN",
+    "nombre_fr": "SERVICE DE RECOUVREMENT",
+    "nombre_en": "COLLECTION SERVICE"
+  },
+  {
+    "id": "C-062",
+    "sector_id": "S-011",
+    "nombre_es": "AGENCIA DE PRENSA INTERNACIONAL",
+    "nombre_fr": "AGENCE DE PRESSE INTERNATIONALE",
+    "nombre_en": "INTERNATIONAL PRESS AGENCY"
+  },
+  {
+    "id": "C-063",
+    "sector_id": "S-011",
+    "nombre_es": "MULTISERVICIOS DE PRODUCCIÓN Y REPRODUCCIÓN DE DOCUMENTOS",
+    "nombre_fr": "MULTISERVICES DE PRODUCTION ET REPRODUCTION DE DOCUMENTS",
+    "nombre_en": "DOCUMENT PRODUCTION AND REPRODUCTION MULTISERVICES"
+  },
+  {
+    "id": "C-064",
+    "sector_id": "S-011",
+    "nombre_es": "PROPAGANDA O PUBLICIDAD EN LUGARES PÚBLICOS Y VÍAS URBANAS",
+    "nombre_fr": "PUBLICITÉ ET AFFICHAGE DANS LES LIEUX PUBLICS ET VOIES URBAINES",
+    "nombre_en": "ADVERTISING AND PROMOTION IN PUBLIC PLACES AND URBAN AREAS"
+  },
+  {
+    "id": "C-065",
+    "sector_id": "S-011",
+    "nombre_es": "PUBLICIDAD EN PERIÓDICOS DE PROPIEDAD ESTATAL",
+    "nombre_fr": "PUBLICITÉ DANS LES JOURNAUX D'ÉTAT",
+    "nombre_en": "ADVERTISING IN STATE-OWNED NEWSPAPERS"
+  },
+  {
+    "id": "C-066",
+    "sector_id": "S-011",
+    "nombre_es": "SERVICIO DE BASE DE INTERNET",
+    "nombre_fr": "SERVICE DE BASE INTERNET",
+    "nombre_en": "INTERNET BASE SERVICE"
+  },
+  {
+    "id": "C-067",
+    "sector_id": "S-011",
+    "nombre_es": "SERVICIO DE PAPELERÍAS",
+    "nombre_fr": "SERVICE DE PAPETERIE",
+    "nombre_en": "STATIONERY SERVICE"
+  },
+  {
+    "id": "C-068",
+    "sector_id": "S-011",
+    "nombre_es": "SERVICIO DE RADIO Y TELEVISIÓN",
+    "nombre_fr": "SERVICE DE RADIO ET TÉLÉVISION",
+    "nombre_en": "RADIO AND TELEVISION SERVICE"
+  },
+  {
+    "id": "C-069",
+    "sector_id": "S-011",
+    "nombre_es": "SERVICIO DE TELE - AVISOS",
+    "nombre_fr": "SERVICE DE TÉLÉ-ANNONCES",
+    "nombre_en": "TELE-ADVERTISING SERVICE"
+  },
+  {
+    "id": "C-070",
+    "sector_id": "S-012",
+    "nombre_es": "BAJAS",
+    "nombre_fr": "RADIATIONS",
+    "nombre_en": "VEHICLE DEREGISTRATION"
+  },
+  {
+    "id": "C-071",
+    "sector_id": "S-012",
+    "nombre_es": "CATEGORIAS",
+    "nombre_fr": "CATÉGORIES",
+    "nombre_en": "CATEGORIES"
+  },
+  {
+    "id": "C-072",
+    "sector_id": "S-012",
+    "nombre_es": "PERMISO DE CONDUCIR",
+    "nombre_fr": "PERMIS DE CONDUIRE",
+    "nombre_en": "DRIVING LICENSE"
+  },
+  {
+    "id": "C-073",
+    "sector_id": "S-012",
+    "nombre_es": "RENOVACIONES FUERA DE PLAZO",
+    "nombre_fr": "RENOUVELLEMENTS HORS DÉLAI",
+    "nombre_en": "LATE RENEWALS"
+  },
+  {
+    "id": "C-074",
+    "sector_id": "S-012",
+    "nombre_es": "SERVICIO DE AUTORIZACIONES",
+    "nombre_fr": "SERVICE DES AUTORISATIONS",
+    "nombre_en": "AUTHORIZATION SERVICE"
+  },
+  {
+    "id": "C-075",
+    "sector_id": "S-012",
+    "nombre_es": "SERVICIO DE TRAFICO RODADO",
+    "nombre_fr": "SERVICE DE CIRCULATION ROUTIÈRE",
+    "nombre_en": "ROAD TRAFFIC SERVICE"
+  },
+  {
+    "id": "C-076",
+    "sector_id": "S-013",
+    "nombre_es": "AUTORIZACIÓN DE VENTA DE GAS",
+    "nombre_fr": "AUTORISATION DE VENTE DE GAZ",
+    "nombre_en": "GAS SALES AUTHORIZATION"
+  },
+  {
+    "id": "C-077",
+    "sector_id": "S-013",
+    "nombre_es": "AUTORIZACIÓN DE VENTA DE PRODUCTOS REFINADOS",
+    "nombre_fr": "AUTORISATION DE VENTE DE PRODUITS RAFFINÉS",
+    "nombre_en": "AUTHORIZATION FOR SALE OF REFINED PRODUCTS"
+  },
+  {
+    "id": "C-078",
+    "sector_id": "S-013",
+    "nombre_es": "SECRETARÍA GENERAL",
+    "nombre_fr": "SECRÉTARIAT GÉNÉRAL",
+    "nombre_en": "GENERAL SECRETARIAT"
+  },
+  {
+    "id": "C-079",
+    "sector_id": "S-013",
+    "nombre_es": "SERVICIO DE MINAS E HIDROCARBUROS",
+    "nombre_fr": "SERVICE DES MINES ET DES HYDROCARBURES",
+    "nombre_en": "MINING AND HYDROCARBONS SERVICE"
+  },
+  {
+    "id": "C-080",
+    "sector_id": "S-014",
+    "nombre_es": "REGISTRO DE VEHÍCULOS",
+    "nombre_fr": "ENREGISTREMENT DES VÉHICULES",
+    "nombre_en": "VEHICLE REGISTRATION"
+  },
+  {
+    "id": "C-081",
+    "sector_id": "S-015",
+    "nombre_es": "ARCHIVOS NUMÉRICOS O ELÉCTRICOS",
+    "nombre_fr": "ARCHIVES NUMÉRIQUES OU ÉLECTRIQUES",
+    "nombre_en": "DIGITAL OR ELECTRICAL ARCHIVES"
+  },
+  {
+    "id": "C-082",
+    "sector_id": "S-015",
+    "nombre_es": "REPLANTEO DE TERRENOS URBANOS",
+    "nombre_fr": "IMPLANTATION DES TERRAINS URBAINS",
+    "nombre_en": "URBAN LAND LAYOUT"
+  },
+  {
+    "id": "C-083",
+    "sector_id": "S-015",
+    "nombre_es": "SERVICIO DE PLANOS EN PAPEL A CUALQUIER ESCALA POR IMPRESORA",
+    "nombre_fr": "SERVICE DE PLANS PAPIER À TOUTE ÉCHELLE PAR IMPRIMANTE",
+    "nombre_en": "PAPER PLAN PRINTING SERVICE AT ANY SCALE BY PRINTER"
+  },
+  {
+    "id": "C-084",
+    "sector_id": "S-015",
+    "nombre_es": "SERVICIO DE POR TRAZADA",
+    "nombre_fr": "SERVICE DE TRAÇAGE",
+    "nombre_en": "PLOTTING SERVICE"
+  },
+  {
+    "id": "C-085",
+    "sector_id": "S-015",
+    "nombre_es": "SERVICIO TECNICA VALORACION PERICIAL DE BIENES MUEBLES E INMUEBLES",
+    "nombre_fr": "SERVICE TECHNIQUE D'EXPERTISE DES BIENS MEUBLES ET IMMEUBLES",
+    "nombre_en": "TECHNICAL APPRAISAL SERVICE FOR MOVABLE AND IMMOVABLE PROPERTY"
+  },
+  {
+    "id": "C-086",
+    "sector_id": "S-015",
+    "nombre_es": "SERVICIOS DE URBANISMO Y TRANSMITACION DE EXPEDIENTES",
+    "nombre_fr": "SERVICES D'URBANISME ET TRAITEMENT DES DOSSIERS",
+    "nombre_en": "URBAN PLANNING AND FILE PROCESSING SERVICES"
+  },
+  {
+    "id": "C-087",
+    "sector_id": "S-016",
+    "nombre_es": "AUTORIZACIONES Y VISADOS",
+    "nombre_fr": "AUTORISATIONS ET VISAS",
+    "nombre_en": "AUTHORIZATIONS AND VISAS"
+  },
+  {
+    "id": "C-088",
+    "sector_id": "S-016",
+    "nombre_es": "CERTIFICADOS Y CONSTANCIAS",
+    "nombre_fr": "CERTIFICATS ET ATTESTATIONS",
+    "nombre_en": "CERTIFICATES AND STATEMENTS"
+  },
+  {
+    "id": "C-089",
+    "sector_id": "S-016",
+    "nombre_es": "DOCUMENTOS DE IDENTIDAD Y VIAJE",
+    "nombre_fr": "DOCUMENTS D'IDENTITÉ ET DE VOYAGE",
+    "nombre_en": "IDENTITY AND TRAVEL DOCUMENTS"
+  },
+  {
+    "id": "C-090",
+    "sector_id": "S-016",
+    "nombre_es": "SANCIONES Y PROCEDIMIENTOS POLICIALES",
+    "nombre_fr": "SANCTIONS ET PROCÉDURES POLICIÈRES",
+    "nombre_en": "POLICE SANCTIONS AND PROCEDURES"
+  },
+  {
+    "id": "C-091",
+    "sector_id": "S-017",
+    "nombre_es": "AUTORIZACIONES",
+    "nombre_fr": "AUTORISATIONS",
+    "nombre_en": "AUTHORIZATIONS"
+  },
+  {
+    "id": "C-092",
+    "sector_id": "S-017",
+    "nombre_es": "AUTORIZACIONES",
+    "nombre_fr": "AUTORISATIONS",
+    "nombre_en": "AUTHORIZATIONS"
+  },
+  {
+    "id": "C-093",
+    "sector_id": "S-017",
+    "nombre_es": "BUQUES DE LINEA REGULAR CON DESTINO A NUESTRO PAÍS EN F. CFA/VIAJE",
+    "nombre_fr": "NAVIRES DE LIGNE RÉGULIÈRE À DESTINATION DE NOTRE PAYS EN F. CFA/VOYAGE",
+    "nombre_en": "REGULAR LINE VESSELS BOUND FOR OUR COUNTRY IN CFA F./TRIP"
+  },
+  {
+    "id": "C-101",
+    "sector_id": "S-018",
+    "nombre_es": "VEHÍCULOS MUY PESADOS",
+    "nombre_fr": "VÉHICULES TRÈS LOURDS",
+    "nombre_en": "VERY HEAVY VEHICLES"
+  },
+  {
+    "id": "C-102",
+    "sector_id": "S-018",
+    "nombre_es": "VEHÍCULOS PARTICULARES",
+    "nombre_fr": "VÉHICULES PARTICULIERS",
+    "nombre_en": "PRIVATE VEHICLES"
+  },
+  {
+    "id": "C-103",
+    "sector_id": "S-018",
+    "nombre_es": "VEHÍCULOS PESO MEDIO",
+    "nombre_fr": "VÉHICULES POIDS MOYEN",
+    "nombre_en": "MEDIUM WEIGHT VEHICLES"
+  },
+  {
+    "id": "C-104",
+    "sector_id": "S-018",
+    "nombre_es": "VEHÍCULOS PÚBLICOS",
+    "nombre_fr": "VÉHICULES PUBLICS",
+    "nombre_en": "PUBLIC VEHICLES"
+  },
+  {
+    "id": "C-105",
+    "sector_id": "S-018",
+    "nombre_es": "VEHÍCULOS REMOLQUES",
+    "nombre_fr": "VÉHICULES REMORQUES",
+    "nombre_en": "TRAILER VEHICLES"
+  }
+]

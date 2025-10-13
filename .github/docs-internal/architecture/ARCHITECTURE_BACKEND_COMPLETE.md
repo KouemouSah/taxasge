@@ -1361,9 +1361,491 @@ Ce document consolide les informations de :
 
 ---
 
-## 12. CONCLUSION
+## 12. BUSINESS LOGIC & DATABASE FUNCTIONS
 
-### 12.1 État Actuel
+### 12.1 Architecture Business Logic
+
+**Principe v4.1**: Business logic déplacée du PostgreSQL vers le Backend
+
+**Rationale**:
+- ❌ **OLD** (v1): Fonctions PL/pgSQL complexes dans DB (15 functions)
+- ✅ **NEW** (v4.1): Helpers DB seulement, business logic dans FastAPI
+
+**Avantages**:
+- Testabilité (unit tests Python vs PL/pgSQL)
+- Maintenabilité (code Python familier)
+- Performance (moins de triggers, moins de complexity DB)
+- Scalabilité (business logic peut être distribué)
+
+### 12.2 Database Functions (8 Helpers Only)
+
+#### Core Helpers
+
+**1. `get_translations()`** - i18n Optimized
+```python
+# Backend usage
+from app.db import get_translations
+
+translations = await get_translations(
+    entity_type='service',
+    entity_code='T-001',
+    language_code='fr'
+)
+# Returns: {"name": "Légalisation documents", "description": "..."}
+```
+
+**2. `lock_payment_for_agent()`** - Pessimistic Locking
+```python
+# Workflow agent locking
+locked = await lock_payment_for_agent(
+    payment_id=payment_id,
+    agent_id=agent_id
+)
+# Returns: True if lock acquired atomically
+```
+
+**3. `unlock_payment_by_agent()`** - Release Lock
+```python
+unlocked = await unlock_payment_by_agent(
+    payment_id=payment_id,
+    agent_id=agent_id
+)
+# Only owner can unlock
+```
+
+**4. `cleanup_expired_locks()`** - Cron Job
+```python
+# Run every 15 minutes (cron)
+await cleanup_expired_locks()
+# Releases locks > 30 minutes
+```
+
+**5. `assign_procedure_template()`** - Template Assignment
+```python
+await assign_procedure_template(
+    service_code='T-001',
+    template_code='PROC_1',
+    applies_to='both'
+)
+```
+
+**6. `assign_document_template()`** - Document Assignment
+```python
+await assign_document_template(
+    service_code='T-001',
+    template_code='DOC_1',
+    is_required_expedition=True,
+    is_required_renewal=False
+)
+```
+
+**7. `calculate_payment_ministry()`** - Payment Calculation
+```python
+# Ministry-specific payment logic
+amount = await calculate_payment_ministry(
+    ministry_id=ministry_id,
+    base_amount=base_amount,
+    calculation_method='percentage_based'
+)
+```
+
+**8. `update_updated_at_column()`** - Trigger Helper
+```sql
+-- Trigger automatique (pas appelé directement)
+CREATE TRIGGER update_fiscal_services_updated_at
+BEFORE UPDATE ON fiscal_services
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+```
+
+### 12.3 Business Logic Patterns (Backend FastAPI)
+
+#### 12.3.1 Service Calculation Logic
+
+**OLD (v1)** - Complex PL/pgSQL Function:
+```sql
+-- ❌ 60 lignes PL/pgSQL difficile à tester
+CREATE FUNCTION calculate_service_amount(...) RETURNS DECIMAL AS $$
+DECLARE
+  -- Complex calculation logic
+  -- Difficile à unit test
+  -- Pas versionable facilement
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**NEW (v4.1)** - Python Business Logic:
+```python
+# ✅ Backend FastAPI - Testable, maintenable
+from decimal import Decimal
+from app.models import CalculationMethod
+
+class PaymentCalculationService:
+    """Business logic for payment calculations"""
+
+    async def calculate_service_amount(
+        self,
+        service_code: str,
+        calculation_method: CalculationMethod,
+        base_amount: Decimal,
+        quantity: int = 1
+    ) -> Decimal:
+        """Calculate final service amount"""
+
+        if calculation_method == CalculationMethod.FIXED_EXPEDITION:
+            return base_amount
+
+        elif calculation_method == CalculationMethod.PERCENTAGE_BASED:
+            percentage = await self.get_percentage_rate(service_code)
+            return base_amount * (percentage / 100)
+
+        elif calculation_method == CalculationMethod.UNIT_BASED:
+            unit_price = await self.get_unit_price(service_code)
+            return unit_price * quantity
+
+        elif calculation_method == CalculationMethod.TIERED_RATES:
+            return await self.calculate_tiered(base_amount)
+
+        # ... autres méthodes
+
+# Unit tests faciles
+def test_fixed_expedition():
+    service = PaymentCalculationService()
+    result = await service.calculate_service_amount(
+        'T-001', 'fixed_expedition', Decimal('1500.00')
+    )
+    assert result == Decimal('1500.00')
+```
+
+#### 12.3.2 Workflow State Machine Logic
+
+**State Machine** - Backend Python:
+```python
+from enum import Enum
+from app.models import PaymentWorkflowStatus
+
+class WorkflowTransitionService:
+    """Workflow state machine logic"""
+
+    VALID_TRANSITIONS = {
+        PaymentWorkflowStatus.SUBMITTED: [
+            PaymentWorkflowStatus.AUTO_PROCESSING,
+            PaymentWorkflowStatus.PENDING_AGENT_REVIEW
+        ],
+        PaymentWorkflowStatus.PENDING_AGENT_REVIEW: [
+            PaymentWorkflowStatus.LOCKED_BY_AGENT,
+            PaymentWorkflowStatus.AUTO_APPROVED
+        ],
+        PaymentWorkflowStatus.LOCKED_BY_AGENT: [
+            PaymentWorkflowStatus.AGENT_REVIEWING,
+            PaymentWorkflowStatus.PENDING_AGENT_REVIEW  # unlock
+        ],
+        # ... toutes les transitions valides
+    }
+
+    async def transition(
+        self,
+        payment_id: UUID,
+        from_status: PaymentWorkflowStatus,
+        to_status: PaymentWorkflowStatus,
+        agent_id: Optional[UUID] = None,
+        reason: Optional[str] = None
+    ) -> bool:
+        """Execute workflow transition with validation"""
+
+        # Validation
+        if to_status not in self.VALID_TRANSITIONS.get(from_status, []):
+            raise InvalidTransitionError(
+                f"Cannot transition from {from_status} to {to_status}"
+            )
+
+        # Update payment
+        async with db.transaction():
+            await db.execute(
+                "UPDATE service_payments SET workflow_status = $1 WHERE id = $2",
+                to_status, payment_id
+            )
+
+            # Audit trail
+            await db.execute(
+                "INSERT INTO workflow_transitions (payment_id, from_status, to_status, agent_id, transition_reason) VALUES ($1, $2, $3, $4, $5)",
+                payment_id, from_status, to_status, agent_id, reason
+            )
+
+        return True
+```
+
+#### 12.3.3 Search Logic (Full-Text + Trigrams)
+
+**Search Service** - Backend:
+```python
+from app.db import get_db
+from app.models import FiscalService
+
+class SearchService:
+    """Full-text search + trigram similarity"""
+
+    async def search_fiscal_services(
+        self,
+        query: str,
+        language: str = 'es',
+        limit: int = 20
+    ) -> List[FiscalService]:
+        """Search services with pg_trgm similarity"""
+
+        # Query avec similarity (pg_trgm)
+        results = await db.fetch(
+            """
+            SELECT
+                fs.*,
+                similarity(fs.service_name_es, $1) as score
+            FROM fiscal_services fs
+            WHERE
+                fs.service_name_es % $1  -- Trigram operator
+                OR fs.service_code ILIKE $2
+            ORDER BY score DESC
+            LIMIT $3
+            """,
+            query, f"%{query}%", limit
+        )
+
+        return [FiscalService(**r) for r in results]
+
+    async def search_keywords(
+        self,
+        query: str,
+        language: str = 'es'
+    ) -> List[str]:
+        """Search via service_keywords"""
+
+        results = await db.fetch(
+            """
+            SELECT DISTINCT sk.service_code
+            FROM service_keywords sk
+            WHERE
+                sk.keyword % $1
+                AND sk.language_code = $2
+            ORDER BY similarity(sk.keyword, $1) DESC
+            LIMIT 10
+            """,
+            query, language
+        )
+
+        return [r['service_code'] for r in results]
+```
+
+### 12.4 Materialized Views Refresh Strategy
+
+**Cron Jobs** - Backend Scheduled Tasks:
+```python
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+scheduler = AsyncIOScheduler()
+
+# Every hour - Performance views
+@scheduler.scheduled_job('cron', minute=0)
+async def refresh_performance_views():
+    """Refresh hourly performance views"""
+    await db.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY v_services_with_preview")
+    await db.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY agent_payments_dashboard")
+
+# On-demand - After data changes
+async def refresh_on_template_change():
+    """Triggered after template update"""
+    await db.execute("REFRESH MATERIALIZED VIEW v_service_procedures_denormalized")
+    await db.execute("REFRESH MATERIALIZED VIEW v_templates_usage_stats")
+
+# Daily - Analytics
+@scheduler.scheduled_job('cron', hour=2)
+async def refresh_analytics_views():
+    """Refresh daily analytics"""
+    await db.execute("REFRESH MATERIALIZED VIEW v_translations_coverage")
+    await db.execute("REFRESH MATERIALIZED VIEW v_agent_performance_summary")
+    await db.execute("REFRESH MATERIALIZED VIEW v_services_by_ministry")
+    await db.execute("REFRESH MATERIALIZED VIEW v_declarations_stats")
+
+scheduler.start()
+```
+
+### 12.5 API Endpoints for Business Logic
+
+#### Calculation Endpoints
+
+**POST /api/v1/payments/calculate**
+```python
+@router.post("/calculate")
+async def calculate_payment(
+    request: PaymentCalculationRequest,
+    calc_service: PaymentCalculationService = Depends()
+):
+    """Calculate payment amount"""
+    amount = await calc_service.calculate_service_amount(
+        service_code=request.service_code,
+        calculation_method=request.calculation_method,
+        base_amount=request.base_amount,
+        quantity=request.quantity
+    )
+
+    return {"calculated_amount": amount}
+```
+
+#### Workflow Endpoints
+
+**POST /api/v1/workflow/transition**
+```python
+@router.post("/transition")
+async def transition_workflow(
+    request: WorkflowTransitionRequest,
+    workflow: WorkflowTransitionService = Depends(),
+    agent: Agent = Depends(get_current_agent)
+):
+    """Execute workflow transition"""
+    success = await workflow.transition(
+        payment_id=request.payment_id,
+        from_status=request.from_status,
+        to_status=request.to_status,
+        agent_id=agent.id,
+        reason=request.reason
+    )
+
+    return {"success": success}
+```
+
+**POST /api/v1/agents/lock-payment**
+```python
+@router.post("/lock-payment")
+async def lock_payment(
+    payment_id: UUID,
+    agent: Agent = Depends(get_current_agent),
+    db: Database = Depends(get_db)
+):
+    """Lock payment for agent review"""
+    locked = await lock_payment_for_agent(payment_id, agent.id)
+
+    if not locked:
+        raise HTTPException(409, "Payment already locked by another agent")
+
+    return {"locked": True, "agent_id": agent.id}
+```
+
+#### Search Endpoints
+
+**GET /api/v1/search/services**
+```python
+@router.get("/services")
+async def search_services(
+    q: str,
+    lang: str = 'es',
+    limit: int = 20,
+    search: SearchService = Depends()
+):
+    """Full-text search services"""
+    results = await search.search_fiscal_services(q, lang, limit)
+    return {"results": results, "total": len(results)}
+```
+
+### 12.6 Integration with Database Schema v4.1
+
+**Database Responsibilities** (Minimal):
+- ✅ Data storage & integrity (FK, constraints, triggers)
+- ✅ Pessimistic locking (atomic functions)
+- ✅ i18n retrieval helper (`get_translations()`)
+- ✅ Materialized views (performance cache)
+- ✅ Audit trail (triggers pour timestamps)
+
+**Backend Responsibilities** (Business Logic):
+- ✅ Payment calculations
+- ✅ Workflow state machine
+- ✅ Search & filtering
+- ✅ Validation business rules
+- ✅ API responses formatting
+- ✅ Authentication & authorization
+- ✅ Scheduled tasks (cron jobs)
+- ✅ Integration externes (Firebase, Stripe, etc.)
+
+**Architecture Separation**:
+```
+┌─────────────────────────────────┐
+│  Backend FastAPI                │
+│  - Business Logic               │
+│  - API Endpoints                │
+│  - Calculations                 │
+│  - Workflow State Machine       │
+│  - Search & Filter              │
+│  - Cron Jobs (refresh views)    │
+└─────────────────────────────────┘
+              ↓
+┌─────────────────────────────────┐
+│  PostgreSQL v4.1                │
+│  - Data Storage                 │
+│  - 8 Helper Functions           │
+│  - 9 Materialized Views         │
+│  - Audit Triggers               │
+│  - FK Constraints               │
+└─────────────────────────────────┘
+```
+
+### 12.7 Testing Strategy
+
+**Unit Tests** (Backend Python):
+```python
+# tests/services/test_payment_calculation.py
+import pytest
+from app.services import PaymentCalculationService
+
+@pytest.mark.asyncio
+async def test_fixed_expedition_calculation():
+    service = PaymentCalculationService()
+    result = await service.calculate_service_amount(
+        'T-001', 'fixed_expedition', Decimal('1500.00')
+    )
+    assert result == Decimal('1500.00')
+
+@pytest.mark.asyncio
+async def test_percentage_based_calculation():
+    service = PaymentCalculationService()
+    result = await service.calculate_service_amount(
+        'T-002', 'percentage_based', Decimal('10000.00')
+    )
+    # Assume 5% rate
+    assert result == Decimal('500.00')
+```
+
+**Integration Tests** (DB + Backend):
+```python
+# tests/integration/test_workflow.py
+@pytest.mark.asyncio
+async def test_workflow_transition():
+    # Setup
+    payment = await create_test_payment()
+    agent = await create_test_agent()
+
+    # Lock payment
+    locked = await lock_payment_for_agent(payment.id, agent.id)
+    assert locked == True
+
+    # Transition
+    workflow = WorkflowTransitionService()
+    success = await workflow.transition(
+        payment.id,
+        'pending_agent_review',
+        'locked_by_agent',
+        agent.id
+    )
+    assert success == True
+
+    # Verify audit trail
+    transitions = await db.fetch(
+        "SELECT * FROM workflow_transitions WHERE payment_id = $1",
+        payment.id
+    )
+    assert len(transitions) == 1
+```
+
+---
+
+## 13. CONCLUSION
+
+### 13.1 État Actuel
 
 L'architecture backend TaxasGE est **production-ready à 95%** avec :
 
@@ -1375,7 +1857,7 @@ L'architecture backend TaxasGE est **production-ready à 95%** avec :
 ✅ **Monitoring** complet Prometheus
 ✅ **Multi-langue** natif (ES/FR/EN)
 
-### 12.2 Métriques de Succès
+### 13.2 Métriques de Succès
 
 ```
 Architecture optimisée:      35% réduction taille (~300MB économisés)
@@ -1386,7 +1868,7 @@ Monitoring:                  90+ métriques suivies en temps réel
 Documentation:               100% endpoints documentés OpenAPI
 ```
 
-### 12.3 Recommandations
+### 13.3 Recommandations
 
 **RECOMMANDATION PRINCIPALE**: **LANCEMENT IMMÉDIAT** du développement frontend possible
 

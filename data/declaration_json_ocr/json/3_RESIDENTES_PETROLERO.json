@@ -1,0 +1,410 @@
+{
+  "name": "3_residentes_petrolero_template",
+  "paper_size": {
+    "width": 2480,
+    "height": 3508
+  },
+  "blocks": {
+    "interesado": {
+      "zones": [
+        {
+          "id": "don_dna",
+          "label": "Don/Dña",
+          "x": 200,
+          "y": 180,
+          "w": 900,
+          "h": 80
+        },
+        {
+          "id": "representacion_empresa",
+          "label": "En nombre y representación de la empresa",
+          "x": 200,
+          "y": 260,
+          "w": 1400,
+          "h": 80
+        },
+        {
+          "id": "cantidad_ingresada",
+          "label": "Ha ingresado al Tesoro Público, la cantidad de",
+          "x": 200,
+          "y": 360,
+          "w": 1000,
+          "h": 80
+        },
+        {
+          "id": "moneda",
+          "label": "Moneda",
+          "x": 1250,
+          "y": 360,
+          "w": 150,
+          "h": 80
+        },
+        {
+          "id": "auto_liquidacion_num",
+          "label": "Auto-liquidación Nº",
+          "x": 1700,
+          "y": 180,
+          "w": 250,
+          "h": 80
+        },
+        {
+          "id": "ejercicio",
+          "label": "Ejercicio",
+          "x": 1700,
+          "y": 260,
+          "w": 250,
+          "h": 80
+        },
+        {
+          "id": "periodo",
+          "label": "Periodo",
+          "x": 2000,
+          "y": 260,
+          "w": 200,
+          "h": 80
+        },
+        {
+          "id": "libro",
+          "label": "Libro",
+          "x": 2150,
+          "y": 180,
+          "w": 200,
+          "h": 80
+        },
+        {
+          "id": "folio",
+          "label": "Folio",
+          "x": 2150,
+          "y": 260,
+          "w": 200,
+          "h": 80
+        },
+        {
+          "id": "fecha",
+          "label": "Fecha",
+          "x": 2150,
+          "y": 340,
+          "w": 200,
+          "h": 80
+        },
+        {
+          "id": "nif",
+          "label": "N.I.F.",
+          "x": 200,
+          "y": 460,
+          "w": 400,
+          "h": 80
+        },
+        {
+          "id": "telefono",
+          "label": "Teléfono",
+          "x": 650,
+          "y": 460,
+          "w": 400,
+          "h": 80
+        },
+        {
+          "id": "apartado",
+          "label": "Apartado",
+          "x": 1100,
+          "y": 460,
+          "w": 400,
+          "h": 80
+        },
+        {
+          "id": "municipio",
+          "label": "Municipio",
+          "x": 1600,
+          "y": 460,
+          "w": 600,
+          "h": 80
+        },
+        {
+          "id": "direccion_fiscal",
+          "label": "Dirección Fiscal",
+          "x": 200,
+          "y": 540,
+          "w": 2000,
+          "h": 80
+        },
+        {
+          "id": "distrito",
+          "label": "Distrito",
+          "x": 200,
+          "y": 620,
+          "w": 900,
+          "h": 80
+        },
+        {
+          "id": "correo_electronico",
+          "label": "Correo Electrónico",
+          "x": 200,
+          "y": 700,
+          "w": 1000,
+          "h": 80
+        },
+        {
+          "id": "provincia",
+          "label": "Provincia",
+          "x": 1250,
+          "y": 700,
+          "w": 800,
+          "h": 80
+        }
+      ]
+    },
+    "proveedores": {
+      "zones": [
+        {
+          "id": "nombre_proveedores",
+          "label": "Nombre o Razón Social de los proveedores de servicios",
+          "x": 200,
+          "y": 900,
+          "w": 600,
+          "h": 120
+        },
+        {
+          "id": "nif_proveedores",
+          "label": "N.I.F. de los proveedores",
+          "x": 850,
+          "y": 900,
+          "w": 400,
+          "h": 120
+        },
+        {
+          "id": "actividad_proveedores",
+          "label": "Actividad de los proveedores",
+          "x": 1300,
+          "y": 900,
+          "w": 400,
+          "h": 120
+        },
+        {
+          "id": "monto_bruto_proveedores",
+          "label": "Monto Bruto de los proveedores",
+          "x": 1750,
+          "y": 900,
+          "w": 400,
+          "h": 120
+        },
+        {
+          "id": "total_facturado",
+          "label": "Total Facturado",
+          "x": 1750,
+          "y": 1200,
+          "w": 400,
+          "h": 80
+        }
+      ]
+    },
+    "auto_liquidacion": {
+      "zones": [
+        {
+          "id": "servicios_sujetos_01_base",
+          "label": "01 Base Imponible (Servicios Sujetos)",
+          "x": 400,
+          "y": 1400,
+          "w": 350,
+          "h": 70
+        },
+        {
+          "id": "servicios_sujetos_tipo",
+          "label": "Tipo (%) Servicios Sujetos",
+          "x": 800,
+          "y": 1400,
+          "w": 150,
+          "h": 70
+        },
+        {
+          "id": "servicios_sujetos_cuota",
+          "label": "Cuota Servicios Sujetos",
+          "x": 1000,
+          "y": 1400,
+          "w": 350,
+          "h": 70
+        },
+        {
+          "id": "gastos_reembolsados_02_base",
+          "label": "02 Base Imponible (Gastos Reembolsados)",
+          "x": 400,
+          "y": 1480,
+          "w": 350,
+          "h": 70
+        },
+        {
+          "id": "gastos_reembolsados_tipo",
+          "label": "Tipo (%) Gastos Reembolsados",
+          "x": 800,
+          "y": 1480,
+          "w": 150,
+          "h": 70
+        },
+        {
+          "id": "gastos_reembolsados_cuota",
+          "label": "Cuota Gastos Reembolsados",
+          "x": 1000,
+          "y": 1480,
+          "w": 350,
+          "h": 70
+        },
+        {
+          "id": "subtotal_03",
+          "label": "03 Sub-total",
+          "x": 1000,
+          "y": 1560,
+          "w": 350,
+          "h": 70
+        },
+        {
+          "id": "recargo_04",
+          "label": "04 Recargo",
+          "x": 1000,
+          "y": 1640,
+          "w": 350,
+          "h": 70
+        },
+        {
+          "id": "interes_demora_05",
+          "label": "05 Interés de demora",
+          "x": 1000,
+          "y": 1720,
+          "w": 350,
+          "h": 70
+        },
+        {
+          "id": "total_a_ingresar_06",
+          "label": "06 Total a ingresar",
+          "x": 1000,
+          "y": 1800,
+          "w": 350,
+          "h": 70
+        }
+      ]
+    },
+    "confirmacion_pago": {
+      "zones": [
+        {
+          "id": "firma_sello_contribuyente",
+          "label": "Firma y Sello del Contribuyente",
+          "x": 180,
+          "y": 180,
+          "w": 600,
+          "h": 120
+        },
+        {
+          "id": "fecha_contribuyente_dia",
+          "label": "Día (Contribuyente)",
+          "x": 200,
+          "y": 330,
+          "w": 150,
+          "h": 70
+        },
+        {
+          "id": "fecha_contribuyente_mes",
+          "label": "Mes (Contribuyente)",
+          "x": 400,
+          "y": 330,
+          "w": 150,
+          "h": 70
+        },
+        {
+          "id": "fecha_contribuyente_ano",
+          "label": "Año (Contribuyente)",
+          "x": 600,
+          "y": 330,
+          "w": 150,
+          "h": 70
+        },
+        {
+          "id": "fecha_administracion_dia",
+          "label": "Día (Administración Tributaria)",
+          "x": 950,
+          "y": 330,
+          "w": 150,
+          "h": 70
+        },
+        {
+          "id": "fecha_administracion_mes",
+          "label": "Mes (Administración Tributaria)",
+          "x": 1150,
+          "y": 330,
+          "w": 150,
+          "h": 70
+        },
+        {
+          "id": "fecha_administracion_ano",
+          "label": "Año (Administración Tributaria)",
+          "x": 1350,
+          "y": 330,
+          "w": 150,
+          "h": 70
+        },
+        {
+          "id": "cuenta_bange",
+          "label": "Cuenta del Tesoro Público (BANGE)",
+          "x": 1600,
+          "y": 180,
+          "w": 700,
+          "h": 70
+        },
+        {
+          "id": "cuenta_bgfi",
+          "label": "Cuenta del Tesoro Público (BGFI)",
+          "x": 1600,
+          "y": 260,
+          "w": 700,
+          "h": 70
+        },
+        {
+          "id": "cuenta_cceibank",
+          "label": "Cuenta del Tesoro Público (CCEIBANK)",
+          "x": 1600,
+          "y": 340,
+          "w": 700,
+          "h": 70
+        },
+        {
+          "id": "cuenta_sgbge",
+          "label": "Cuenta del Tesoro Público (SGBGE)",
+          "x": 1600,
+          "y": 420,
+          "w": 700,
+          "h": 70
+        },
+        {
+          "id": "cuenta_ecobank",
+          "label": "Cuenta del Tesoro Público (ECOBANK)",
+          "x": 1600,
+          "y": 500,
+          "w": 700,
+          "h": 70
+        },
+        {
+          "id": "nota",
+          "label": "Nota",
+          "x": 180,
+          "y": 620,
+          "w": 2100,
+          "h": 150
+        },
+        {
+          "id": "confirmacion_pago_admin",
+          "label": "Confirmación de pago Administración Tributaria",
+          "x": 180,
+          "y": 800,
+          "w": 1000,
+          "h": 150
+        },
+        {
+          "id": "confirmacion_pago_tesoreria",
+          "label": "Confirmación de pago Tesorería General del Estado",
+          "x": 1200,
+          "y": 800,
+          "w": 1000,
+          "h": 150
+        }
+      ]
+    }
+  },
+  "notes": "Toutes les coordonnées sont indicatives et doivent être recalées après homographie de l'image scannée vers le canevas A4 (2480x3508)."
+}
