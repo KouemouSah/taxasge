@@ -109,6 +109,17 @@ export const ChatbotScreen: React.FC<ChatbotScreenProps> = ({ language, onBack, 
 
         // Si session < 30 min, recharger
         if (now - saved.timestamp < SESSION_EXPIRY_MS) {
+          // IMPORTANT: Check if language changed
+          // If user changed language on home screen, start fresh
+          if (saved.language !== language) {
+            console.log(
+              `[ChatbotScreen] Language changed from ${saved.language} to ${language}, starting fresh session`
+            );
+            await AsyncStorage.removeItem(STORAGE_KEY);
+            showWelcomeMessage();
+            return;
+          }
+
           // Convert timestamp strings back to Date objects
           const restoredMessages = saved.messages.map((msg) => ({
             ...msg,
@@ -116,7 +127,7 @@ export const ChatbotScreen: React.FC<ChatbotScreenProps> = ({ language, onBack, 
           }));
 
           setMessages(restoredMessages);
-          setCurrentLanguage(saved.language);
+          setCurrentLanguage(language);
           setIsLoading(false);
           return;
         } else {
