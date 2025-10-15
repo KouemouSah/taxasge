@@ -203,17 +203,12 @@ class ChatbotService {
       // Récupérer toutes les FAQ actives
       const allFAQs = await db.query<ChatbotFAQ>(QUERIES.getAllActiveChatbotFAQ);
 
-      console.log(`[ChatbotService] matchByPattern - normalizedMessage: "${normalizedMessage}"`);
-      console.log(`[ChatbotService] matchByPattern - Found ${allFAQs.length} FAQs`);
-
       const matches: FAQSearchResult[] = [];
 
       for (const faq of allFAQs) {
         try {
-          console.log(`[ChatbotService] Testing FAQ ${faq.id} with pattern: "${faq.question_pattern}"`);
           const regex = new RegExp(faq.question_pattern, 'i');
           const isMatch = regex.test(normalizedMessage);
-          console.log(`[ChatbotService] Pattern match result: ${isMatch}`);
 
           if (isMatch) {
             matches.push({
@@ -226,8 +221,6 @@ class ChatbotService {
           console.warn(`[ChatbotService] Invalid regex pattern for FAQ ${faq.id}:`, error);
         }
       }
-
-      console.log(`[ChatbotService] matchByPattern - Total matches: ${matches.length}`);
 
       // Trier par priorité
       matches.sort((a, b) => b.faq.priority - a.faq.priority);
