@@ -58,9 +58,10 @@ interface SavedSession {
 
 export interface ChatbotScreenProps {
   onBack?: () => void;
+  onNavigate?: (screen: string) => void;
 }
 
-export const ChatbotScreen: React.FC<ChatbotScreenProps> = ({ onBack }) => {
+export const ChatbotScreen: React.FC<ChatbotScreenProps> = ({ onBack, onNavigate }) => {
   // State
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentLanguage, setCurrentLanguage] = useState<ChatbotLanguage>('es');
@@ -250,12 +251,19 @@ export const ChatbotScreen: React.FC<ChatbotScreenProps> = ({ onBack }) => {
   };
 
   const handleActionPress = (action: ChatbotAction) => {
-    // TODO: Implémenter navigation vers les écrans
-    Alert.alert(
-      'Navegación',
-      `Esta función abrirá la pantalla: ${action.screen}`,
-      [{ text: 'OK' }]
-    );
+    if (action.type === 'navigate' && action.screen) {
+      if (onNavigate) {
+        // Vraie navigation
+        onNavigate(action.screen);
+      } else {
+        // Fallback: Alert pour debug
+        Alert.alert(
+          'Navegación',
+          `Esta función abrirá la pantalla: ${action.screen}`,
+          [{ text: 'OK' }]
+        );
+      }
+    }
   };
 
   // ============================================
@@ -324,7 +332,28 @@ export const ChatbotScreen: React.FC<ChatbotScreenProps> = ({ onBack }) => {
 
         <View style={styles.headerLeft}>
           <Text style={styles.headerTitle}>🤖 TaxasBot</Text>
-          <Text style={styles.headerSubtitle}>Asistente Fiscal</Text>
+          <Text style={styles.headerSubtitle}>
+            {currentLanguage === 'es' ? 'Asistente Fiscal' : currentLanguage === 'fr' ? 'Assistant Fiscal' : 'Tax Assistant'}
+          </Text>
+        </View>
+
+        {/* Language Selector */}
+        <View style={styles.languageSelector}>
+          <TouchableOpacity
+            style={[styles.langButton, currentLanguage === 'es' && styles.langButtonActive]}
+            onPress={() => setCurrentLanguage('es')}>
+            <Text style={[styles.langText, currentLanguage === 'es' && styles.langTextActive]}>ES</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.langButton, currentLanguage === 'fr' && styles.langButtonActive]}
+            onPress={() => setCurrentLanguage('fr')}>
+            <Text style={[styles.langText, currentLanguage === 'fr' && styles.langTextActive]}>FR</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.langButton, currentLanguage === 'en' && styles.langButtonActive]}
+            onPress={() => setCurrentLanguage('en')}>
+            <Text style={[styles.langText, currentLanguage === 'en' && styles.langTextActive]}>EN</Text>
+          </TouchableOpacity>
         </View>
 
         <TouchableOpacity style={styles.clearButton} onPress={handleClearChat}>
@@ -413,6 +442,31 @@ const styles = StyleSheet.create({
   },
   clearButtonText: {
     fontSize: 20,
+  },
+
+  // Language Selector
+  languageSelector: {
+    flexDirection: 'row',
+    marginHorizontal: 8,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 8,
+    padding: 2,
+  },
+  langButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  langButtonActive: {
+    backgroundColor: '#007AFF',
+  },
+  langText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+  },
+  langTextActive: {
+    color: '#FFFFFF',
   },
 
   // Messages list

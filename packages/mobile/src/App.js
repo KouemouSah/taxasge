@@ -115,7 +115,15 @@ const App = () => {
   );
 
   const renderChatbotScreen = () => (
-    <ChatbotScreen onBack={() => setCurrentScreen('home')} />
+    <ChatbotScreen
+      onBack={() => setCurrentScreen('home')}
+      onNavigate={(screen) => {
+        // Pour l'instant, retourner à l'accueil avec un message
+        // TODO: Implémenter les vrais écrans Services, Search, Calculator
+        console.log(`[App] Navigation requested to: ${screen}`);
+        setCurrentScreen('home');
+      }}
+    />
   );
 
   return (

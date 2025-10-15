@@ -236,7 +236,7 @@ export const CHATBOT_FAQ_SEED_DATA: Omit<ChatbotFAQ, 'created_at' | 'updated_at'
   {
     id: 'faq-search-001',
     question_pattern:
-      '(buscar|search|recherch|encontrar|find|trouver|servicios|services)',
+      '(buscar servicios|search services|rechercher services|encontrar servicios|buscar|search for|donde busco|where to search|how to search)',
     intent: 'search_service',
     response_es:
       '🔍 **Buscar Servicios Fiscales**\n\nPuedes encontrar servicios de varias formas:\n\n**1️⃣ Búsqueda directa:**\n• Usa la barra de búsqueda principal\n• Escribe palabras clave (pasaporte, licencia, etc.)\n• Resultados instantáneos mientras escribes\n\n**2️⃣ Navegación por categorías:**\n• Explora por Ministerio\n• Filtra por Sector\n• Ordenar por popularidad o precio\n\n**3️⃣ Servicios populares:**\n• Acceso rápido a los más consultados\n• Basado en búsquedas recientes\n\n📊 **547 servicios disponibles** en la base de datos.\n\n¿Qué servicio estás buscando?',
