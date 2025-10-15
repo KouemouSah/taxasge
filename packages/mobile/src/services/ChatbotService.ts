@@ -38,6 +38,85 @@ function generateMessageId(): string {
 }
 
 /**
+ * Dictionnaire de traductions pour les suggestions courantes
+ */
+const SUGGESTION_TRANSLATIONS: Record<string, Record<ChatbotLanguage, string>> = {
+  // Suggestions courantes
+  '¿Cuánto cuesta un servicio?': {
+    es: '¿Cuánto cuesta un servicio?',
+    fr: 'Combien coûte un service ?',
+    en: 'How much does a service cost?',
+  },
+  '¿Qué documentos necesito?': {
+    es: '¿Qué documentos necesito?',
+    fr: 'Quels documents ai-je besoin ?',
+    en: 'What documents do I need?',
+  },
+  'Ver servicios populares': {
+    es: 'Ver servicios populares',
+    fr: 'Voir services populaires',
+    en: 'View popular services',
+  },
+  'Buscar servicios': {
+    es: 'Buscar servicios',
+    fr: 'Rechercher services',
+    en: 'Search services',
+  },
+  'Usar calculadora': {
+    es: 'Usar calculadora',
+    fr: 'Utiliser calculatrice',
+    en: 'Use calculator',
+  },
+  'Ver procedimientos': {
+    es: 'Ver procedimientos',
+    fr: 'Voir procédures',
+    en: 'View procedures',
+  },
+  'Ver documentos requeridos': {
+    es: 'Ver documentos requeridos',
+    fr: 'Voir documents requis',
+    en: 'View required documents',
+  },
+  '¿Cuánto tiempo toma?': {
+    es: '¿Cuánto tiempo toma?',
+    fr: 'Combien de temps cela prend-il ?',
+    en: 'How long does it take?',
+  },
+  'Documentos comunes': {
+    es: 'Documentos comunes',
+    fr: 'Documents communs',
+    en: 'Common documents',
+  },
+  'Buscar otro servicio': {
+    es: 'Buscar otro servicio',
+    fr: 'Rechercher un autre service',
+    en: 'Search another service',
+  },
+  'Ver favoritos': {
+    es: 'Ver favoritos',
+    fr: 'Voir favoris',
+    en: 'View favorites',
+  },
+};
+
+/**
+ * Traduit un array de suggestions vers la langue cible
+ */
+function translateSuggestions(
+  suggestions: string[],
+  targetLanguage: ChatbotLanguage
+): string[] {
+  return suggestions.map((suggestion) => {
+    const translation = SUGGESTION_TRANSLATIONS[suggestion];
+    if (translation) {
+      return translation[targetLanguage];
+    }
+    // Si pas de traduction, retourner tel quel
+    return suggestion;
+  });
+}
+
+/**
  * Parse une FAQ de la DB vers le format parsed
  */
 function parseFAQ(faq: ChatbotFAQ): ChatbotFAQParsed {
@@ -300,6 +379,9 @@ class ChatbotService {
         ? faq.response_en
         : faq.response_es;
 
+    // Traduire les suggestions vers la langue cible
+    const translatedSuggestions = translateSuggestions(faq.follow_up_suggestions, language);
+
     const message: ChatMessage = {
       id: generateMessageId(),
       role: 'bot',
@@ -307,13 +389,13 @@ class ChatbotService {
       timestamp: new Date(),
       intent: faq.intent as ChatbotIntent,
       faqId: faq.id,
-      suggestions: faq.follow_up_suggestions,
+      suggestions: translatedSuggestions,
       actions: faq.actions || undefined,
     };
 
     return {
       message,
-      suggestions: faq.follow_up_suggestions,
+      suggestions: translatedSuggestions,
       actions: faq.actions || undefined,
     };
   }
