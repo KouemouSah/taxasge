@@ -7,6 +7,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { ActivityIndicator, View, Text, StyleSheet } from 'react-native';
 import { db } from '../database/DatabaseManager';
 import { syncService } from '../database/SyncService';
+import { loadChatbotFAQSeed } from '../database/seed/chatbotFaqSeed';
 
 interface DatabaseContextValue {
   initialized: boolean;
@@ -52,6 +53,9 @@ export const DatabaseProvider: React.FC<DatabaseProviderProps> = ({
 
       // Initialize SQLite database
       await db.init();
+
+      // Load chatbot FAQ seed data (if not already loaded)
+      await loadChatbotFAQSeed(db);
 
       // Get initial stats
       const dbStats = await db.getStats();
