@@ -7,7 +7,7 @@
  * @format
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,10 +16,92 @@ import {
   SafeAreaView,
   TouchableOpacity,
   ScrollView,
+  Platform,
+  NativeModules,
 } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DatabaseProvider } from './providers/DatabaseProvider';
 import { ChatbotScreen } from './screens/ChatbotScreen';
+
+/**
+ * Détecte la langue du système Android/iOS
+ * Retourne 'es', 'fr', ou 'en'
+ */
+const getSystemLanguage = () => {
+  let locale;
+
+  try {
+    if (Platform.OS === 'ios') {
+      locale = NativeModules.SettingsManager?.settings?.AppleLocale ||
+               NativeModules.SettingsManager?.settings?.AppleLanguages?.[0];
+    } else {
+      // Android: Try I18nManager first
+      locale = NativeModules.I18nManager?.localeIdentifier;
+
+      // If undefined, try using Intl API (available in modern RN)
+      if (!locale && typeof Intl !== 'undefined' && Intl.DateTimeFormat) {
+        const dtf = new Intl.DateTimeFormat();
+        locale = dtf.resolvedOptions().locale;
+      }
+    }
+  } catch (error) {
+    console.warn('[App] Error detecting system language:', error);
+  }
+
+  console.log('[App] System locale detected:', locale);
+
+  if (!locale) return 'es'; // Fallback
+
+  const lang = locale.toLowerCase();
+  if (lang.startsWith('fr')) return 'fr';
+  if (lang.startsWith('en')) return 'en';
+  return 'es'; // Default pour tout le reste (dont 'es')
+};
+
+/**
+ * Textes multilingues pour toute l'application
+ */
+const TEXTS = {
+  es: {
+    title: 'TaxasGE Mobile',
+    subtitle: 'Gestión Fiscal - Guinea Ecuatorial',
+    menuTitle: 'Menú Principal',
+    chatbotButton: 'Asistente Chatbot',
+    chatbotSubtitle: 'Haz tus preguntas sobre servicios fiscales',
+    searchButton: 'Buscar Servicios',
+    calculatorButton: 'Calculadora',
+    favoritesButton: 'Favoritos',
+    comingSoon: 'Próximamente',
+    footer1: 'Versión MVP1 - Chatbot FAQ',
+    footer2: 'Base de datos: SQLite v3',
+  },
+  fr: {
+    title: 'TaxasGE Mobile',
+    subtitle: 'Gestion Fiscale - Guinée Équatoriale',
+    menuTitle: 'Menu Principal',
+    chatbotButton: 'Assistant Chatbot',
+    chatbotSubtitle: 'Posez vos questions sur les services fiscaux',
+    searchButton: 'Rechercher Services',
+    calculatorButton: 'Calculatrice',
+    favoritesButton: 'Favoris',
+    comingSoon: 'Bientôt disponible',
+    footer1: 'Version MVP1 - Chatbot FAQ',
+    footer2: 'Base de données : SQLite v3',
+  },
+  en: {
+    title: 'TaxasGE Mobile',
+    subtitle: 'Tax Management - Equatorial Guinea',
+    menuTitle: 'Main Menu',
+    chatbotButton: 'Chatbot Assistant',
+    chatbotSubtitle: 'Ask your questions about tax services',
+    searchButton: 'Search Services',
+    calculatorButton: 'Calculator',
+    favoritesButton: 'Favorites',
+    comingSoon: 'Coming soon',
+    footer1: 'Version MVP1 - Chatbot FAQ',
+    footer2: 'Database: SQLite v3',
+  },
+};
 
 /**
  * Composant racine de l'application TaxasGE
@@ -28,21 +110,22 @@ import { ChatbotScreen } from './screens/ChatbotScreen';
  */
 const App = () => {
   const [currentScreen, setCurrentScreen] = useState('home');
-  const [currentLanguage, setCurrentLanguage] = useState('es'); // 'es' | 'fr' | 'en'
+  const [currentLanguage, setCurrentLanguage] = useState('es');
+
+  // Détecter la langue système au démarrage
+  useEffect(() => {
+    const systemLang = getSystemLanguage();
+    console.log('[App] Setting initial language to:', systemLang);
+    setCurrentLanguage(systemLang);
+  }, []);
 
   const renderHomeScreen = () => (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.title}>TaxasGE Mobile</Text>
-          <Text style={styles.subtitle}>
-            {currentLanguage === 'es'
-              ? 'Gestion Fiscale - Guinée Équatoriale'
-              : currentLanguage === 'fr'
-              ? 'Gestion Fiscale - Guinée Équatoriale'
-              : 'Tax Management - Equatorial Guinea'}
-          </Text>
+          <Text style={styles.title}>{TEXTS[currentLanguage].title}</Text>
+          <Text style={styles.subtitle}>{TEXTS[currentLanguage].subtitle}</Text>
           <Text style={styles.version}>React Native 0.80.0</Text>
           <Text style={styles.status}>✅ Migration Phase 5 - Chatbot FAQ intégré</Text>
 
@@ -73,7 +156,7 @@ const App = () => {
         </View>
 
         <View style={styles.menuContainer}>
-          <Text style={styles.menuTitle}>Menu Principal</Text>
+          <Text style={styles.menuTitle}>{TEXTS[currentLanguage].menuTitle}</Text>
 
           <TouchableOpacity
             style={styles.menuButton}
@@ -82,9 +165,9 @@ const App = () => {
             <View style={styles.buttonContent}>
               <Text style={styles.buttonIcon}>💬</Text>
               <View style={styles.buttonTextContainer}>
-                <Text style={styles.buttonTitle}>Chatbot Assistant</Text>
+                <Text style={styles.buttonTitle}>{TEXTS[currentLanguage].chatbotButton}</Text>
                 <Text style={styles.buttonSubtitle}>
-                  Posez vos questions sur les services fiscaux
+                  {TEXTS[currentLanguage].chatbotSubtitle}
                 </Text>
               </View>
             </View>
@@ -98,10 +181,10 @@ const App = () => {
               <Text style={styles.buttonIcon}>🔍</Text>
               <View style={styles.buttonTextContainer}>
                 <Text style={[styles.buttonTitle, styles.disabledText]}>
-                  Rechercher Services
+                  {TEXTS[currentLanguage].searchButton}
                 </Text>
                 <Text style={[styles.buttonSubtitle, styles.disabledText]}>
-                  Bientôt disponible
+                  {TEXTS[currentLanguage].comingSoon}
                 </Text>
               </View>
             </View>
@@ -114,9 +197,11 @@ const App = () => {
             <View style={styles.buttonContent}>
               <Text style={styles.buttonIcon}>🧮</Text>
               <View style={styles.buttonTextContainer}>
-                <Text style={[styles.buttonTitle, styles.disabledText]}>Calculatrice</Text>
+                <Text style={[styles.buttonTitle, styles.disabledText]}>
+                  {TEXTS[currentLanguage].calculatorButton}
+                </Text>
                 <Text style={[styles.buttonSubtitle, styles.disabledText]}>
-                  Bientôt disponible
+                  {TEXTS[currentLanguage].comingSoon}
                 </Text>
               </View>
             </View>
@@ -129,9 +214,11 @@ const App = () => {
             <View style={styles.buttonContent}>
               <Text style={styles.buttonIcon}>⭐</Text>
               <View style={styles.buttonTextContainer}>
-                <Text style={[styles.buttonTitle, styles.disabledText]}>Favoris</Text>
+                <Text style={[styles.buttonTitle, styles.disabledText]}>
+                  {TEXTS[currentLanguage].favoritesButton}
+                </Text>
                 <Text style={[styles.buttonSubtitle, styles.disabledText]}>
-                  Bientôt disponible
+                  {TEXTS[currentLanguage].comingSoon}
                 </Text>
               </View>
             </View>
@@ -139,8 +226,8 @@ const App = () => {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Version MVP1 - Chatbot FAQ</Text>
-          <Text style={styles.footerText}>Base de données: SQLite v3</Text>
+          <Text style={styles.footerText}>{TEXTS[currentLanguage].footer1}</Text>
+          <Text style={styles.footerText}>{TEXTS[currentLanguage].footer2}</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
