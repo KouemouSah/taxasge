@@ -28,6 +28,7 @@ import { ChatbotScreen } from './screens/ChatbotScreen';
  */
 const App = () => {
   const [currentScreen, setCurrentScreen] = useState('home');
+  const [currentLanguage, setCurrentLanguage] = useState('es'); // 'es' | 'fr' | 'en'
 
   const renderHomeScreen = () => (
     <SafeAreaView style={styles.container}>
@@ -35,9 +36,40 @@ const App = () => {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <Text style={styles.title}>TaxasGE Mobile</Text>
-          <Text style={styles.subtitle}>Gestion Fiscale - Guinée Équatoriale</Text>
+          <Text style={styles.subtitle}>
+            {currentLanguage === 'es'
+              ? 'Gestion Fiscale - Guinée Équatoriale'
+              : currentLanguage === 'fr'
+              ? 'Gestion Fiscale - Guinée Équatoriale'
+              : 'Tax Management - Equatorial Guinea'}
+          </Text>
           <Text style={styles.version}>React Native 0.80.0</Text>
           <Text style={styles.status}>✅ Migration Phase 5 - Chatbot FAQ intégré</Text>
+
+          {/* Language Selector */}
+          <View style={styles.languageSelector}>
+            <TouchableOpacity
+              style={[styles.langButton, currentLanguage === 'es' && styles.langButtonActive]}
+              onPress={() => setCurrentLanguage('es')}>
+              <Text style={[styles.langText, currentLanguage === 'es' && styles.langTextActive]}>
+                ES
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.langButton, currentLanguage === 'fr' && styles.langButtonActive]}
+              onPress={() => setCurrentLanguage('fr')}>
+              <Text style={[styles.langText, currentLanguage === 'fr' && styles.langTextActive]}>
+                FR
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.langButton, currentLanguage === 'en' && styles.langButtonActive]}
+              onPress={() => setCurrentLanguage('en')}>
+              <Text style={[styles.langText, currentLanguage === 'en' && styles.langTextActive]}>
+                EN
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.menuContainer}>
@@ -116,6 +148,7 @@ const App = () => {
 
   const renderChatbotScreen = () => (
     <ChatbotScreen
+      language={currentLanguage}
       onBack={() => setCurrentScreen('home')}
       onNavigate={(screen) => {
         // Pour l'instant, retourner à l'accueil avec un message
@@ -233,6 +266,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999999',
     marginBottom: 4,
+  },
+  // Language Selector
+  languageSelector: {
+    flexDirection: 'row',
+    marginTop: 16,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 8,
+    padding: 2,
+    alignSelf: 'center',
+  },
+  langButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+    minWidth: 50,
+    alignItems: 'center',
+  },
+  langButtonActive: {
+    backgroundColor: '#007AFF',
+  },
+  langText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  langTextActive: {
+    color: '#FFFFFF',
   },
 });
 

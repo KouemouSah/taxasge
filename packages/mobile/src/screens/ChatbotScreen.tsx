@@ -57,14 +57,15 @@ interface SavedSession {
 // ============================================
 
 export interface ChatbotScreenProps {
+  language: ChatbotLanguage;
   onBack?: () => void;
   onNavigate?: (screen: string) => void;
 }
 
-export const ChatbotScreen: React.FC<ChatbotScreenProps> = ({ onBack, onNavigate }) => {
+export const ChatbotScreen: React.FC<ChatbotScreenProps> = ({ language, onBack, onNavigate }) => {
   // State
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [currentLanguage, setCurrentLanguage] = useState<ChatbotLanguage>('es');
+  const [currentLanguage, setCurrentLanguage] = useState<ChatbotLanguage>(language);
   const [isTyping, setIsTyping] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -79,6 +80,15 @@ export const ChatbotScreen: React.FC<ChatbotScreenProps> = ({ onBack, onNavigate
   useEffect(() => {
     loadSavedSession();
   }, []);
+
+  useEffect(() => {
+    // Update language when prop changes
+    if (language !== currentLanguage) {
+      setCurrentLanguage(language);
+      // Regenerate welcome message and suggestions in new language
+      showWelcomeMessage();
+    }
+  }, [language]);
 
   useEffect(() => {
     // Set language in service
@@ -337,25 +347,6 @@ export const ChatbotScreen: React.FC<ChatbotScreenProps> = ({ onBack, onNavigate
           </Text>
         </View>
 
-        {/* Language Selector */}
-        <View style={styles.languageSelector}>
-          <TouchableOpacity
-            style={[styles.langButton, currentLanguage === 'es' && styles.langButtonActive]}
-            onPress={() => setCurrentLanguage('es')}>
-            <Text style={[styles.langText, currentLanguage === 'es' && styles.langTextActive]}>ES</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.langButton, currentLanguage === 'fr' && styles.langButtonActive]}
-            onPress={() => setCurrentLanguage('fr')}>
-            <Text style={[styles.langText, currentLanguage === 'fr' && styles.langTextActive]}>FR</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.langButton, currentLanguage === 'en' && styles.langButtonActive]}
-            onPress={() => setCurrentLanguage('en')}>
-            <Text style={[styles.langText, currentLanguage === 'en' && styles.langTextActive]}>EN</Text>
-          </TouchableOpacity>
-        </View>
-
         <TouchableOpacity style={styles.clearButton} onPress={handleClearChat}>
           <Text style={styles.clearButtonText}>🗑️</Text>
         </TouchableOpacity>
@@ -378,7 +369,17 @@ export const ChatbotScreen: React.FC<ChatbotScreenProps> = ({ onBack, onNavigate
       )}
 
       {/* Input */}
-      <ChatInput onSend={handleSend} disabled={isTyping} />
+      <ChatInput
+        onSend={handleSend}
+        disabled={isTyping}
+        placeholder={
+          currentLanguage === 'es'
+            ? 'Escribe tu pregunta...'
+            : currentLanguage === 'fr'
+            ? 'Tapez votre question...'
+            : 'Type your question...'
+        }
+      />
     </SafeAreaView>
   );
 };
@@ -442,31 +443,6 @@ const styles = StyleSheet.create({
   },
   clearButtonText: {
     fontSize: 20,
-  },
-
-  // Language Selector
-  languageSelector: {
-    flexDirection: 'row',
-    marginHorizontal: 8,
-    backgroundColor: '#F0F0F0',
-    borderRadius: 8,
-    padding: 2,
-  },
-  langButton: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  langButtonActive: {
-    backgroundColor: '#007AFF',
-  },
-  langText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#666',
-  },
-  langTextActive: {
-    color: '#FFFFFF',
   },
 
   // Messages list
