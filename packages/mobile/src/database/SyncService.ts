@@ -171,8 +171,8 @@ class SyncService {
       // Define column mappings for each table to match SQLite schema
       // CRITICAL: SELECT only columns that exist in BOTH Supabase and SQLite
       const columnMappings: Record<string, string> = {
-        ministries: 'id,ministry_code,name_es,description_es,display_order,icon,color,is_active,created_at,updated_at',
-        sectors: 'id,ministry_id,sector_code,name_es,description_es,display_order,icon,is_active,created_at,updated_at',
+        ministries: 'id,ministry_code,name_es,description_es,display_order,icon,color,website_url,contact_email,contact_phone,is_active,created_at,updated_at',
+        sectors: 'id,ministry_id,sector_code,name_es,description_es,display_order,icon,color,is_active,created_at,updated_at',
         categories: 'id,sector_id,ministry_id,category_code,name_es,description_es,service_type,display_order,is_active,created_at,updated_at',
         service_keywords: 'id,fiscal_service_id,keyword,language_code,weight,is_auto_generated,created_at',
       };
