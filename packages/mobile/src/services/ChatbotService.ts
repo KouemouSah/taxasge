@@ -584,10 +584,22 @@ class ChatbotService {
           responseText += `🔄 Renovación: ${svc.renewal_amount} XAF\n`;
         }
         responseText += `🏛️ ${svc.ministry_es}\n`;
+
         if (svc.required_documents_es) {
           const docs = svc.required_documents_es.split(',').slice(0, 3).join(', ');
           responseText += `📄 Documentos: ${docs}${svc.required_documents_es.split(',').length > 3 ? '...' : ''}\n`;
         }
+
+        if (svc.procedure_es) {
+          const procedures = svc.procedure_es.split('\n').slice(0, 3);
+          if (procedures.length > 0) {
+            responseText += `📋 Procedimiento:\n${procedures.map(p => `  • ${p}`).join('\n')}\n`;
+            if (svc.procedure_es.split('\n').length > 3) {
+              responseText += `  • ...\n`;
+            }
+          }
+        }
+
         responseText += '\n';
       });
 
@@ -603,11 +615,24 @@ class ChatbotService {
           responseText += `🔄 Renouvellement: ${svc.renewal_amount} XAF\n`;
         }
         responseText += `🏛️ ${svc.ministry_es}\n`;
+
         const docs = svc.required_documents_fr || svc.required_documents_es;
         if (docs) {
           const docList = docs.split(',').slice(0, 3).join(', ');
           responseText += `📄 Documents: ${docList}${docs.split(',').length > 3 ? '...' : ''}\n`;
         }
+
+        const procedureField = svc.procedure_fr || svc.procedure_es;
+        if (procedureField) {
+          const procedures = procedureField.split('\n').slice(0, 3);
+          if (procedures.length > 0) {
+            responseText += `📋 Procédure:\n${procedures.map(p => `  • ${p}`).join('\n')}\n`;
+            if (procedureField.split('\n').length > 3) {
+              responseText += `  • ...\n`;
+            }
+          }
+        }
+
         responseText += '\n';
       });
 
@@ -623,11 +648,24 @@ class ChatbotService {
           responseText += `🔄 Renewal: ${svc.renewal_amount} XAF\n`;
         }
         responseText += `🏛️ ${svc.ministry_es}\n`;
+
         const docs = svc.required_documents_en || svc.required_documents_es;
         if (docs) {
           const docList = docs.split(',').slice(0, 3).join(', ');
           responseText += `📄 Documents: ${docList}${docs.split(',').length > 3 ? '...' : ''}\n`;
         }
+
+        const procedureField = svc.procedure_en || svc.procedure_es;
+        if (procedureField) {
+          const procedures = procedureField.split('\n').slice(0, 3);
+          if (procedures.length > 0) {
+            responseText += `📋 Procedure:\n${procedures.map(p => `  • ${p}`).join('\n')}\n`;
+            if (procedureField.split('\n').length > 3) {
+              responseText += `  • ...\n`;
+            }
+          }
+        }
+
         responseText += '\n';
       });
 
