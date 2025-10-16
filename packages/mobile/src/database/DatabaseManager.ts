@@ -205,29 +205,38 @@ class DatabaseManager {
     const placeholders = keys.map(() => '?').join(', ');
     const sql = `INSERT OR REPLACE INTO ${table} (${keys.join(', ')}) VALUES (${placeholders})`;
 
+    const db = await this.getDB();
     let insertCount = 0;
-    try {
-      await this.transaction(async (tx: Transaction) => {
-        for (const item of items) {
-          const values = keys.map(key => item[key]);
-          await new Promise((resolve, reject) => {
-            tx.executeSql(sql, values, () => {
-              insertCount++;
-              resolve(true);
-            }, (_: Transaction, error: any) => {
-              console.error(`[DB] Insert error for ${table}:`, error);
-              console.error(`[DB] Failed item:`, JSON.stringify(item).substring(0, 200));
-              reject(error);
-              return false;
-            });
+
+    return new Promise((resolve, reject) => {
+      db.transaction(
+        (tx: Transaction) => {
+          items.forEach((item, index) => {
+            const values = keys.map(key => item[key]);
+            tx.executeSql(
+              sql,
+              values,
+              () => {
+                insertCount++;
+              },
+              (_: Transaction, error: any) => {
+                console.error(`[DB] Insert error for ${table}:`, error);
+                console.error(`[DB] Failed item:`, JSON.stringify(item).substring(0, 200));
+                return false;
+              }
+            );
           });
+        },
+        (error) => {
+          console.error(`[DB] insertBatch failed after ${insertCount} inserts:`, error);
+          reject(error);
+        },
+        () => {
+          console.log(`[DB] Successfully inserted ${insertCount} rows into ${table}`);
+          resolve();
         }
-      });
-      console.log(`[DB] Successfully inserted ${insertCount} rows into ${table}`);
-    } catch (error) {
-      console.error(`[DB] insertBatch failed after ${insertCount} inserts:`, error);
-      throw error;
-    }
+      );
+    });
   }
 
   /**
