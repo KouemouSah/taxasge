@@ -38,6 +38,43 @@ function generateMessageId(): string {
 }
 
 /**
+ * Introductions variées pour les réponses (effet humain, non-machine)
+ * 5 variations aléatoires par langue
+ */
+const RESPONSE_INTROS: Record<ChatbotLanguage, string[]> = {
+  es: [
+    'He encontrado la siguiente información:',
+    'Aquí está lo que necesitas saber:',
+    'Según nuestros registros:',
+    'Te puedo ayudar con eso:',
+    'Esto es lo que tengo para ti:',
+  ],
+  fr: [
+    "J'ai trouvé les informations suivantes :",
+    'Voici ce que vous devez savoir :',
+    "D'après nos données :",
+    'Je peux vous aider avec cela :',
+    "Voici ce que j'ai pour vous :",
+  ],
+  en: [
+    'I found the following information:',
+    "Here's what you need to know:",
+    'According to our records:',
+    'I can help you with that:',
+    "Here's what I have for you:",
+  ],
+};
+
+/**
+ * Sélectionne une introduction aléatoire pour la réponse
+ */
+function getRandomIntro(language: ChatbotLanguage): string {
+  const intros = RESPONSE_INTROS[language];
+  const randomIndex = Math.floor(Math.random() * intros.length);
+  return intros[randomIndex];
+}
+
+/**
  * Dictionnaire de traductions pour les suggestions courantes
  */
 const SUGGESTION_TRANSLATIONS: Record<string, Record<ChatbotLanguage, string>> = {
@@ -205,8 +242,8 @@ class ChatbotService {
       // 2. Extraire entités
       const entities = extractEntities(userMessage, detectedIntent.intent);
 
-      // 3. Générer la réponse
-      const response = await this.generateResponse(detectedIntent, entities, language);
+      // 3. Générer la réponse (passer userMessage pour recherche dynamique)
+      const response = await this.generateResponse(detectedIntent, entities, language, userMessage);
 
       // 4. Calculer le temps de traitement
       const processingTime = Date.now() - startTime;
@@ -350,7 +387,8 @@ class ChatbotService {
   private async generateResponse(
     detectedIntent: DetectedIntent,
     entities: Record<string, any>,
-    language: ChatbotLanguage
+    language: ChatbotLanguage,
+    userMessage?: string
   ): Promise<ChatResponse> {
     const { intent, matchedFAQs } = detectedIntent;
 
@@ -358,6 +396,17 @@ class ChatbotService {
     if (matchedFAQs.length > 0) {
       const bestFAQ = matchedFAQs[0].faq;
       return this.generateResponseFromFAQ(bestFAQ, language);
+    }
+
+    // Si intention inconnue ET on a le message utilisateur, chercher en BD
+    if (intent === 'unknown' && userMessage) {
+      console.log('[ChatbotService] No FAQ match, trying dynamic DB search...');
+      const services = await this.searchServicesInDB(userMessage, language, 5);
+
+      if (services.length > 0) {
+        console.log(`[ChatbotService] Found ${services.length} services in DB`);
+        return this.generateDynamicServiceResponse(services, userMessage, language);
+      }
     }
 
     // Sinon, utiliser réponse par défaut
@@ -379,13 +428,17 @@ class ChatbotService {
         ? faq.response_en
         : faq.response_es;
 
+    // Ajouter introduction aléatoire pour effet humain
+    const intro = getRandomIntro(language);
+    const fullResponse = `${intro}\n\n${responseText}`;
+
     // Traduire les suggestions vers la langue cible
     const translatedSuggestions = translateSuggestions(faq.follow_up_suggestions, language);
 
     const message: ChatMessage = {
       id: generateMessageId(),
       role: 'bot',
-      content: responseText,
+      content: fullResponse,
       timestamp: new Date(),
       intent: faq.intent as ChatbotIntent,
       faqId: faq.id,
@@ -455,20 +508,187 @@ class ChatbotService {
   }
 
   /**
-   * Recherche des services fiscaux liés à une query
-   * (pour réponses enrichies avec suggestions de services)
+   * Recherche dynamique de services fiscaux en base de données
+   * Utilisé quand aucune FAQ ne match la question de l'utilisateur
    */
-  async searchRelatedServices(query: string, limit: number = 3) {
+  async searchServicesInDB(
+    query: string,
+    language: ChatbotLanguage,
+    limit: number = 5
+  ): Promise<any[]> {
     try {
-      // Cette méthode sera utilisée pour enrichir les réponses
-      // avec des services fiscaux pertinents
-      // Pour l'instant, on retourne un array vide
-      // TODO: Intégrer avec FiscalServicesService
-      return [];
+      const normalizedQuery = normalizeText(query);
+
+      // Recherche LIKE dans les noms de services (multilingue)
+      const likePattern = `%${normalizedQuery}%`;
+
+      const services = await db.query(
+        `SELECT
+          id,
+          name_es,
+          name_fr,
+          name_en,
+          expedition_amount,
+          renewal_amount,
+          required_documents_es,
+          required_documents_fr,
+          required_documents_en,
+          procedure_es,
+          procedure_fr,
+          procedure_en,
+          ministry_es,
+          sector_es,
+          category_es
+        FROM fiscal_services
+        WHERE
+          name_es LIKE ? OR
+          name_fr LIKE ? OR
+          name_en LIKE ? OR
+          palabras_clave LIKE ?
+        LIMIT ?`,
+        [likePattern, likePattern, likePattern, likePattern, limit]
+      );
+
+      return services;
     } catch (error) {
-      console.error('[ChatbotService] Error searching related services:', error);
+      console.error('[ChatbotService] Error searching services in DB:', error);
       return [];
     }
+  }
+
+  /**
+   * Génère une réponse dynamique à partir des services trouvés en BD
+   */
+  async generateDynamicServiceResponse(
+    services: any[],
+    query: string,
+    language: ChatbotLanguage
+  ): Promise<ChatResponse> {
+    if (services.length === 0) {
+      // Aucun service trouvé
+      return this.generateNoResultsResponse(query, language);
+    }
+
+    // Introduction aléatoire
+    const intro = getRandomIntro(language);
+
+    // Construire la réponse avec les services trouvés
+    let responseText = '';
+
+    if (language === 'es') {
+      responseText = `${intro}\n\n🔍 **Encontré ${services.length} servicio(s) fiscal(es):**\n\n`;
+      services.forEach((svc, idx) => {
+        responseText += `**${idx + 1}. ${svc.name_es}**\n`;
+        responseText += `💰 Expedición: ${svc.expedition_amount ? svc.expedition_amount + ' XAF' : 'Consultar'}\n`;
+        if (svc.renewal_amount) {
+          responseText += `🔄 Renovación: ${svc.renewal_amount} XAF\n`;
+        }
+        responseText += `🏛️ ${svc.ministry_es}\n`;
+        if (svc.required_documents_es) {
+          const docs = svc.required_documents_es.split(',').slice(0, 3).join(', ');
+          responseText += `📄 Documentos: ${docs}${svc.required_documents_es.split(',').length > 3 ? '...' : ''}\n`;
+        }
+        responseText += '\n';
+      });
+
+      if (services.length === 5) {
+        responseText += '💡 _Hay más resultados disponibles. Refina tu búsqueda para ver servicios específicos._';
+      }
+    } else if (language === 'fr') {
+      responseText = `${intro}\n\n🔍 **Trouvé ${services.length} service(s) fiscal(aux):**\n\n`;
+      services.forEach((svc, idx) => {
+        responseText += `**${idx + 1}. ${svc.name_fr || svc.name_es}**\n`;
+        responseText += `💰 Expédition: ${svc.expedition_amount ? svc.expedition_amount + ' XAF' : 'Consulter'}\n`;
+        if (svc.renewal_amount) {
+          responseText += `🔄 Renouvellement: ${svc.renewal_amount} XAF\n`;
+        }
+        responseText += `🏛️ ${svc.ministry_es}\n`;
+        const docs = svc.required_documents_fr || svc.required_documents_es;
+        if (docs) {
+          const docList = docs.split(',').slice(0, 3).join(', ');
+          responseText += `📄 Documents: ${docList}${docs.split(',').length > 3 ? '...' : ''}\n`;
+        }
+        responseText += '\n';
+      });
+
+      if (services.length === 5) {
+        responseText += '💡 _Il y a plus de résultats disponibles. Affinez votre recherche pour voir des services spécifiques._';
+      }
+    } else {
+      responseText = `${intro}\n\n🔍 **Found ${services.length} fiscal service(s):**\n\n`;
+      services.forEach((svc, idx) => {
+        responseText += `**${idx + 1}. ${svc.name_en || svc.name_es}**\n`;
+        responseText += `💰 Expedition: ${svc.expedition_amount ? svc.expedition_amount + ' XAF' : 'Consult'}\n`;
+        if (svc.renewal_amount) {
+          responseText += `🔄 Renewal: ${svc.renewal_amount} XAF\n`;
+        }
+        responseText += `🏛️ ${svc.ministry_es}\n`;
+        const docs = svc.required_documents_en || svc.required_documents_es;
+        if (docs) {
+          const docList = docs.split(',').slice(0, 3).join(', ');
+          responseText += `📄 Documents: ${docList}${docs.split(',').length > 3 ? '...' : ''}\n`;
+        }
+        responseText += '\n';
+      });
+
+      if (services.length === 5) {
+        responseText += '💡 _More results available. Refine your search to see specific services._';
+      }
+    }
+
+    const suggestions: Record<ChatbotLanguage, string[]> = {
+      es: ['Buscar otro servicio', 'Ver servicios populares', 'Usar calculadora'],
+      fr: ['Rechercher un autre service', 'Voir services populaires', 'Utiliser calculatrice'],
+      en: ['Search another service', 'View popular services', 'Use calculator'],
+    };
+
+    const message: ChatMessage = {
+      id: generateMessageId(),
+      role: 'bot',
+      content: responseText,
+      timestamp: new Date(),
+      intent: 'search_service',
+      metadata: {
+        source: 'dynamic_db_search',
+        servicesFound: services.length,
+        serviceIds: services.map((s) => s.id),
+      },
+    };
+
+    return {
+      message,
+      suggestions: suggestions[language],
+    };
+  }
+
+  /**
+   * Génère réponse quand aucun service trouvé
+   */
+  private generateNoResultsResponse(query: string, language: ChatbotLanguage): ChatResponse {
+    const noResultsMessages: Record<ChatbotLanguage, string> = {
+      es: `❌ **No encontré servicios para "${query}"**\n\n💡 **Sugerencias:**\n• Intenta con palabras más generales (ej: "pasaporte" en lugar de "pasaporte biométrico")\n• Verifica la ortografía\n• Usa sinónimos (ej: "licencia" o "permiso")\n• Explora por categorías en el menú principal\n\n📊 Contamos con **547 servicios fiscales** disponibles.`,
+      fr: `❌ **Aucun service trouvé pour "${query}"**\n\n💡 **Suggestions:**\n• Essayez avec des mots plus généraux (ex: "passeport" au lieu de "passeport biométrique")\n• Vérifiez l'orthographe\n• Utilisez des synonymes (ex: "licence" ou "permis")\n• Explorez par catégories dans le menu principal\n\n📊 Nous avons **547 services fiscaux** disponibles.`,
+      en: `❌ **No services found for "${query}"**\n\n💡 **Suggestions:**\n• Try more general words (eg: "passport" instead of "biometric passport")\n• Check spelling\n• Use synonyms (eg: "license" or "permit")\n• Browse by categories in main menu\n\n📊 We have **547 fiscal services** available.`,
+    };
+
+    const suggestions: Record<ChatbotLanguage, string[]> = {
+      es: ['Buscar servicios', 'Ver servicios populares', '¿Qué documentos necesito?'],
+      fr: ['Rechercher services', 'Voir services populaires', 'Quels documents ai-je besoin ?'],
+      en: ['Search services', 'View popular services', 'What documents do I need?'],
+    };
+
+    const message: ChatMessage = {
+      id: generateMessageId(),
+      role: 'bot',
+      content: noResultsMessages[language],
+      timestamp: new Date(),
+      intent: 'unknown',
+    };
+
+    return {
+      message,
+      suggestions: suggestions[language],
+    };
   }
 
   /**
