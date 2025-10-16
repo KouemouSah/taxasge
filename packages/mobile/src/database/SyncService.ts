@@ -139,7 +139,6 @@ class SyncService {
 
       // PHASE 5: TRANSLATIONS (i18n support)
       await this.syncTable('entity_translations', result, since);
-      await this.syncTable('translations', result, since);
 
       // Update last sync timestamp
       await db.setMetadata('last_full_sync', new Date().toISOString());
