@@ -169,11 +169,18 @@ class SyncService {
 
       // Define column mappings for each table to match SQLite schema
       // CRITICAL: SELECT only columns that exist in BOTH Supabase and SQLite
+      // EXCLUDE: created_by, updated_by, assigned_by (backend-only columns)
       const columnMappings: Record<string, string> = {
         ministries: 'id,ministry_code,name_es,description_es,display_order,icon,color,website_url,contact_email,contact_phone,is_active,created_at,updated_at',
         sectors: 'id,ministry_id,sector_code,name_es,description_es,display_order,icon,color,is_active,created_at,updated_at',
         categories: 'id,sector_id,ministry_id,category_code,name_es,description_es,service_type,display_order,is_active,created_at,updated_at',
         service_keywords: 'id,fiscal_service_id,keyword,language_code,weight,is_auto_generated,created_at',
+        procedure_templates: 'id,template_code,name_es,description_es,category,usage_count,is_active,created_at,updated_at',
+        procedure_template_steps: 'id,template_id,step_number,description_es,instructions_es,estimated_duration_minutes,location_address,office_hours,requires_appointment,is_optional,created_at,updated_at',
+        document_templates: 'id,template_code,document_name_es,description_es,category,validity_duration_months,validity_notes,usage_count,is_active,created_at,updated_at',
+        service_procedure_assignments: 'id,fiscal_service_id,template_id,applies_to,display_order,custom_notes,override_steps,assigned_at',
+        service_document_assignments: 'id,fiscal_service_id,document_template_id,is_required_expedition,is_required_renewal,display_order,custom_notes,assigned_at',
+        entity_translations: 'entity_type,entity_code,language_code,field_name,translation_text,translation_source,translation_quality,created_at,updated_at',
       };
 
       const selectColumns = columnMappings[tableName] || '*';
