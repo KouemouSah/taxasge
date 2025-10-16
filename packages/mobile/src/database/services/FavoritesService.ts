@@ -8,15 +8,15 @@ import { TABLE_NAMES, QUERIES, SYNC_STATUS } from '../schema';
 export interface Favorite {
   id: number;
   user_id: string;
-  fiscal_service_id: string;
+  fiscal_service_code: string;  // FIXED: was fiscal_service_id
   notes?: string;
   tags?: string;
-  added_at: string;
+  created_at: string;            // FIXED: was added_at
   synced: number;
   // From join
   name_es?: string;
   service_type?: string;
-  expedition_amount?: number;
+  tasa_expedicion?: number;
   ministry_name?: string;
 }
 
@@ -66,10 +66,10 @@ class FavoritesService {
 
       const insertId = await db.insert(TABLE_NAMES.USER_FAVORITES, {
         user_id: userId,
-        fiscal_service_id: serviceId,
+        fiscal_service_code: serviceId,  // FIXED: was fiscal_service_id
         notes: notes || null,
         tags: tagsJson,
-        added_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),  // FIXED: was added_at
         synced: SYNC_STATUS.PENDING,
       });
 
@@ -88,7 +88,7 @@ class FavoritesService {
     try {
       const deleted = await db.delete(
         TABLE_NAMES.USER_FAVORITES,
-        'user_id = ? AND fiscal_service_id = ?',
+        'user_id = ? AND fiscal_service_code = ?',  // FIXED: was fiscal_service_id
         [userId, serviceId]
       );
 
@@ -111,7 +111,7 @@ class FavoritesService {
           notes,
           synced: SYNC_STATUS.PENDING,
         },
-        'user_id = ? AND fiscal_service_id = ?',
+        'user_id = ? AND fiscal_service_code = ?',  // FIXED: was fiscal_service_id
         [userId, serviceId]
       );
 
