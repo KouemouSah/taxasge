@@ -4,7 +4,7 @@
  */
 
 import SQLite, { SQLiteDatabase, ResultSet, Transaction } from 'react-native-sqlite-storage';
-import { DATABASE_NAME, DATABASE_VERSION, SCHEMA_SQL, QUERIES, TABLE_NAMES } from './schema';
+import { DATABASE_NAME, DATABASE_VERSION, SCHEMA_PARTS, QUERIES, TABLE_NAMES } from './schema';
 
 // Enable debug mode in development
 SQLite.DEBUG(__DEV__);
@@ -39,8 +39,13 @@ class DatabaseManager {
 
       console.log('[DB] Database opened successfully');
 
-      // Execute schema
-      await this.executeSQL(SCHEMA_SQL);
+      // Execute schema parts sequentially to avoid SQLite limitations
+      console.log('[DB] Executing schema in parts...');
+      const parts = Object.entries(SCHEMA_PARTS);
+      for (const [partName, partSQL] of parts) {
+        console.log(`[DB] Executing schema part: ${partName}`);
+        await this.executeSQL(partSQL);
+      }
 
       console.log('[DB] Schema created successfully');
 
@@ -194,23 +199,35 @@ class DatabaseManager {
   async insertBatch(table: string, items: Record<string, any>[]): Promise<void> {
     if (items.length === 0) return;
 
+    console.log(`[DB] insertBatch: Starting batch insert of ${items.length} items into ${table}`);
+
     const keys = Object.keys(items[0]);
     const placeholders = keys.map(() => '?').join(', ');
     const sql = `INSERT OR REPLACE INTO ${table} (${keys.join(', ')}) VALUES (${placeholders})`;
 
-    await this.transaction(async (tx: Transaction) => {
-      for (const item of items) {
-        const values = keys.map(key => item[key]);
-        await new Promise((resolve, reject) => {
-          tx.executeSql(sql, values, resolve, (_: Transaction, error: any) => {
-            reject(error);
-            return false;
+    let insertCount = 0;
+    try {
+      await this.transaction(async (tx: Transaction) => {
+        for (const item of items) {
+          const values = keys.map(key => item[key]);
+          await new Promise((resolve, reject) => {
+            tx.executeSql(sql, values, () => {
+              insertCount++;
+              resolve(true);
+            }, (_: Transaction, error: any) => {
+              console.error(`[DB] Insert error for ${table}:`, error);
+              console.error(`[DB] Failed item:`, JSON.stringify(item).substring(0, 200));
+              reject(error);
+              return false;
+            });
           });
-        });
-      }
-    });
-
-    console.log(`[DB] Inserted ${items.length} rows into ${table}`);
+        }
+      });
+      console.log(`[DB] Successfully inserted ${insertCount} rows into ${table}`);
+    } catch (error) {
+      console.error(`[DB] insertBatch failed after ${insertCount} inserts:`, error);
+      throw error;
+    }
   }
 
   /**
@@ -275,8 +292,8 @@ class DatabaseManager {
       TABLE_NAMES.SECTORS,
       TABLE_NAMES.MINISTRIES,
       TABLE_NAMES.USER_FAVORITES,
-      TABLE_NAMES.CALCULATIONS_HISTORY,
-      TABLE_NAMES.REQUIRED_DOCUMENTS,
+      TABLE_NAMES.CALCULATION_HISTORY,          // FIXED: was CALCULATIONS_HISTORY
+      TABLE_NAMES.SERVICE_DOCUMENT_ASSIGNMENTS, // FIXED: was REQUIRED_DOCUMENTS
       TABLE_NAMES.SYNC_QUEUE,
       TABLE_NAMES.SEARCH_CACHE,
     ];
@@ -304,7 +321,7 @@ class DatabaseManager {
       TABLE_NAMES.MINISTRIES,
       TABLE_NAMES.CATEGORIES,
       TABLE_NAMES.USER_FAVORITES,
-      TABLE_NAMES.CALCULATIONS_HISTORY,
+      TABLE_NAMES.CALCULATION_HISTORY, // FIXED: was CALCULATIONS_HISTORY
     ];
 
     const stats: Record<string, number> = {};
