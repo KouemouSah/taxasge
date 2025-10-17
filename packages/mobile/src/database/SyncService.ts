@@ -311,33 +311,72 @@ class SyncService {
 
       if (data && data.length > 0) {
         console.log(`[Sync] Mapping ${data.length} fiscal services...`);
-        const mapped = data.map((item: FiscalService) => ({
-          id: String(item.id), // INTEGER → TEXT
+        const mapped = data.map((item: any) => ({
+          // IDs (INTEGER → TEXT)
+          id: String(item.id),
           service_code: item.code || null,
-          category_id: String(item.category_id), // INTEGER → TEXT
+          category_id: String(item.category_id),
+
+          // Basic info (SPANISH ONLY)
           name_es: item.name_es,
           description_es: item.description_es || null,
-          // NO multilingual fields (name_fr, name_en, description_fr, description_en)
           service_type: item.service_type || null,
+
+          // Calculation config
           calculation_method: item.calculation_method || 'fixed_expedition',
           tasa_expedicion: item.tasa_expedicion || 0,
+          expedition_formula: item.expedition_formula || null,
+          expedition_unit_measure: item.expedition_unit_measure || null,
           tasa_renovacion: item.tasa_renovacion || 0,
-          urgent_amount: item.urgent_amount || 0,
+          renewal_formula: item.renewal_formula || null,
+          renewal_unit_measure: item.renewal_unit_measure || null,
+          calculation_config: item.calculation_config || null,
+          rate_tiers: item.rate_tiers || null,
           base_percentage: item.base_percentage || null,
           percentage_of: item.percentage_of || null,
-          rate_tiers: item.rate_tiers || null,
           unit_rate: item.unit_rate || null,
           unit_type: item.unit_type || null,
-          is_amount_verified: item.is_amount_verified !== undefined ? (item.is_amount_verified ? 1 : 0) : 1,
-          currency: item.currency || 'XAF',
-          processing_time_days: item.processing_time_days || null,
-          processing_time_text: item.processing_time_text || null,
-          urgent_processing_days: item.urgent_processing_days || null,
-          is_online_available: item.is_online_available ? 1 : 0,
-          is_urgent_available: item.is_urgent_available ? 1 : 0,
-          is_active: item.is_active ? 1 : 0,
-          popularity_score: item.popularity_score || 0,
-          last_updated: item.last_updated || item.updated_at,
+
+          // Consolidation (tier services)
+          parent_service_id: item.parent_service_id ? String(item.parent_service_id) : null,
+          tier_group_name: item.tier_group_name || null,
+          is_tier_component: item.is_tier_component ? 1 : 0,
+
+          // Validity and renewal
+          validity_period_months: item.validity_period_months || null,
+          renewal_frequency_months: item.renewal_frequency_months || null,
+          grace_period_days: item.grace_period_days || 0,
+
+          // Penalties
+          late_penalty_percentage: item.late_penalty_percentage || null,
+          late_penalty_fixed: item.late_penalty_fixed || null,
+          penalty_calculation_rules: item.penalty_calculation_rules || null,
+
+          // Conditions
+          eligibility_criteria: item.eligibility_criteria || null,
+          exemption_conditions: item.exemption_conditions || null,
+
+          // Legal basis
+          legal_reference: item.legal_reference || null,
+          regulatory_articles: item.regulatory_articles || null,
+
+          // Tariff validity dates
+          tariff_effective_from: item.tariff_effective_from || null,
+          tariff_effective_to: item.tariff_effective_to || null,
+
+          // Status and meta
+          status: item.status || 'active',
+          priority: item.priority || 0,
+          complexity_level: item.complexity_level || 1,
+          processing_time_days: item.processing_time_days || 1,
+
+          // Statistics (mobile analytics)
+          view_count: item.view_count || 0,
+          calculation_count: item.calculation_count || 0,
+          payment_count: item.payment_count || 0,
+          favorite_count: item.favorite_count || 0,
+
+          // Audit
           created_at: item.created_at || new Date().toISOString(),
           updated_at: item.updated_at || new Date().toISOString(),
         }));
