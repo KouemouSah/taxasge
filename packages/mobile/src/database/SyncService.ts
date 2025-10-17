@@ -314,7 +314,7 @@ class SyncService {
         const mapped = data.map((item: any) => ({
           // IDs (INTEGER → TEXT)
           id: String(item.id),
-          service_code: item.code || null,
+          service_code: item.code || `SVC-${item.id}`,  // FIXED: Use id as fallback if code is NULL
           category_id: String(item.category_id),
 
           // Basic info (SPANISH ONLY)
