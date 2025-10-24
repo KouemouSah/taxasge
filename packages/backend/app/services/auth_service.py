@@ -12,14 +12,13 @@ from app.repositories.session_repository import SessionRepository
 from app.repositories.refresh_token_repository import RefreshTokenRepository
 from app.services.password_service import get_password_service
 from app.services.jwt_service import get_jwt_service
-from app.models.user import UserCreate, UserResponse
+from app.models.user import UserCreate, UserResponse, UserRole, UserStatus
 from app.models.auth_models import (
     SessionCreate,
     RefreshTokenCreate,
     TokenRefreshResponse,
     LogoutResponse,
 )
-from app.api.v1.auth import UserRole, UserStatus
 
 
 class AuthService:

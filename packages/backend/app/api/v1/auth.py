@@ -13,7 +13,7 @@ from enum import Enum
 from loguru import logger
 
 from app.services.auth_service import get_auth_service
-from app.models.user import UserCreate, UserResponse, UserProfile
+from app.models.user import UserCreate, UserResponse, UserProfile, UserRole, UserStatus
 from app.models.auth_models import (
     TokenRefreshRequest,
     LogoutRequest,
@@ -24,22 +24,6 @@ from app.models.auth_models import (
 # Create router
 router = APIRouter()
 security = HTTPBearer()
-
-# User roles (used by models and repositories)
-class UserRole(str, Enum):
-    citizen = "citizen"
-    business = "business"
-    admin = "admin"
-    operator = "operator"
-    auditor = "auditor"
-    support = "support"
-
-
-class UserStatus(str, Enum):
-    active = "active"
-    inactive = "inactive"
-    suspended = "suspended"
-    pending_verification = "pending_verification"
 
 
 # Request/Response Models

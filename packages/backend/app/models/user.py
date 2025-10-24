@@ -8,8 +8,23 @@ from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field, EmailStr, validator
 from enum import Enum
 
-# Import existing UserRole from auth.py to maintain consistency
-from app.api.v1.auth import UserRole, UserStatus
+# User enums (moved from auth.py to avoid circular imports)
+class UserRole(str, Enum):
+    """User role enumeration"""
+    citizen = "citizen"
+    business = "business"
+    admin = "admin"
+    operator = "operator"
+    auditor = "auditor"
+    support = "support"
+
+
+class UserStatus(str, Enum):
+    """User account status enumeration"""
+    active = "active"
+    inactive = "inactive"
+    suspended = "suspended"
+    pending_verification = "pending_verification"
 
 
 class UserProfile(BaseModel):
