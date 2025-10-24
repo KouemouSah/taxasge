@@ -51,7 +51,8 @@
       "Bash(git stash push:*)",
       "Bash(git stash:*)",
       "Bash(git clone:*)",
-      "Bash(git branch:*)"
+      "Bash(git branch:*)",
+      "Bash(git merge --no-ff feature/ci-cd-pipeline -m \"$(cat <<''EOF''\nfeat: Complete Phase 0 - Infrastructure & CI/CD\n\nPhase 0 Infrastructure & CI/CD Setup completed with full validation:\n\n✅ Backend Staging Deployment\n- Cloud Run service: https://taxasge-backend-staging-xrlbgdr5eq-uc.a.run.app\n- Health check passing (API, Database, Firebase OK)\n- Redis disabled for staging (non-blocking)\n- Docker multi-stage build optimized\n- Environment-aware configuration\n\n✅ CI/CD Pipeline\n- GitHub Actions workflows: Tests + Staging Deploy\n- Automated testing (backend pytest + frontend type-check)\n- Docker build automated (async polling, 6m58s avg)\n- Cloud Run deployment automated\n- Firebase Hosting ready\n\n✅ Infrastructure Configuration\n- GCP Project: taxasge-dev\n- 7 IAM roles configured (Build, Run, Storage, IAM, Logging, Secrets, Artifacts)\n- 7 GitHub secrets configured\n- Service account key secured\n- Database connected (Supabase PostgreSQL)\n\n✅ Documentation & Validation\n- 4 orchestration reports (TASK-P0-001 through P0-005)\n- All 12 Phase 0 criteria met (100%)\n- Total effort: 18 commits, 10h work\n- Decision: GO for Module 1 Authentication\n\nBackend URL: https://taxasge-backend-staging-xrlbgdr5eq-uc.a.run.app\n\nPhase 0 Status: ✅ COMPLETE (100%)\n\nNext: Module 1 - Authentication & User Management\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []
