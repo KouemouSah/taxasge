@@ -1,0 +1,1130 @@
+{
+  "stats": {
+    "total_procedures": 4737,
+    "unique_descriptions": 1049,
+    "duplicates_count": 183,
+    "duplicated_procedures": 713,
+    "savings_potential": 530
+  },
+  "top_duplicates": [
+    {
+      "description": "4. Realizar pago...",
+      "count": 52,
+      "services": [
+        "T-425",
+        "T-426",
+        "T-427",
+        "T-428",
+        "T-429",
+        "T-430",
+        "T-431",
+        "T-432",
+        "T-433",
+        "T-434",
+        "T-435",
+        "T-436",
+        "T-437",
+        "T-438",
+        "T-439",
+        "T-440",
+        "T-441",
+        "T-442",
+        "T-443",
+        "T-448",
+        "T-449",
+        "T-450",
+        "T-451",
+        "T-452",
+        "T-453",
+        "T-454",
+        "T-455",
+        "T-456",
+        "T-457",
+        "T-458",
+        "T-459",
+        "T-460",
+        "T-461",
+        "T-470",
+        "T-471",
+        "T-475",
+        "T-476",
+        "T-477",
+        "T-478",
+        "T-483",
+        "T-484",
+        "T-485",
+        "T-486",
+        "T-487",
+        "T-492",
+        "T-493",
+        "T-495",
+        "T-496",
+        "T-497",
+        "T-498",
+        "T-499",
+        "T-500"
+      ],
+      "step_numbers": [
+        4
+      ]
+    },
+    {
+      "description": "1. Presentar documentación...",
+      "count": 39,
+      "services": [
+        "T-005",
+        "T-012",
+        "T-014",
+        "T-015",
+        "T-016",
+        "T-017",
+        "T-018",
+        "T-021",
+        "T-022",
+        "T-023",
+        "T-024",
+        "T-025",
+        "T-026",
+        "T-027",
+        "T-029",
+        "T-412",
+        "T-458",
+        "T-461",
+        "T-465",
+        "T-548",
+        "T-466",
+        "T-549",
+        "T-467",
+        "T-550",
+        "T-464",
+        "T-469",
+        "T-474",
+        "T-478",
+        "T-483",
+        "T-486",
+        "T-492",
+        "T-498",
+        "T-499"
+      ],
+      "step_numbers": [
+        1
+      ]
+    },
+    {
+      "description": "5. Emisión del permiso...",
+      "count": 18,
+      "services": [
+        "T-465",
+        "T-548",
+        "T-466",
+        "T-549",
+        "T-467",
+        "T-550",
+        "T-468",
+        "T-551",
+        "T-464",
+        "T-469"
+      ],
+      "step_numbers": [
+        5
+      ]
+    },
+    {
+      "description": "4. Aprobar examen práctico...",
+      "count": 16,
+      "services": [
+        "T-465",
+        "T-548",
+        "T-466",
+        "T-549",
+        "T-467",
+        "T-550",
+        "T-468",
+        "T-551"
+      ],
+      "step_numbers": [
+        4
+      ]
+    },
+    {
+      "description": "2. Verificar peso...",
+      "count": 14,
+      "services": [
+        "T-015",
+        "T-016",
+        "T-017",
+        "T-018",
+        "T-019",
+        "T-020",
+        "T-022",
+        "T-023",
+        "T-024",
+        "T-025",
+        "T-026",
+        "T-027",
+        "T-028",
+        "T-029"
+      ],
+      "step_numbers": [
+        2
+      ]
+    },
+    {
+      "description": "4. Pago de tasa...",
+      "count": 14,
+      "services": [
+        "T-410",
+        "T-411",
+        "T-412",
+        "T-415",
+        "T-416",
+        "T-417",
+        "T-418",
+        "T-419",
+        "T-420",
+        "T-421",
+        "T-422",
+        "T-423",
+        "T-424",
+        "T-446"
+      ],
+      "step_numbers": [
+        4
+      ]
+    },
+    {
+      "description": "5. Programar publicación...",
+      "count": 13,
+      "services": [
+        "T-421",
+        "T-425",
+        "T-426",
+        "T-427",
+        "T-428",
+        "T-429",
+        "T-430",
+        "T-431",
+        "T-432",
+        "T-433",
+        "T-434",
+        "T-435",
+        "T-436"
+      ],
+      "step_numbers": [
+        5
+      ]
+    },
+    {
+      "description": "3. Pagar tasa...",
+      "count": 12,
+      "services": [
+        "T-002",
+        "T-005",
+        "T-006",
+        "T-008",
+        "T-009",
+        "T-010",
+        "T-011",
+        "T-013",
+        "T-014",
+        "T-036",
+        "T-462",
+        "T-463"
+      ],
+      "step_numbers": [
+        3
+      ]
+    },
+    {
+      "description": "3. Pagar tarifa...",
+      "count": 11,
+      "services": [
+        "T-015",
+        "T-016",
+        "T-017",
+        "T-018",
+        "T-022",
+        "T-023",
+        "T-024",
+        "T-025",
+        "T-026",
+        "T-027",
+        "T-030"
+      ],
+      "step_numbers": [
+        3
+      ]
+    },
+    {
+      "description": "4. Pagar tasa...",
+      "count": 11,
+      "services": [
+        "T-038",
+        "T-039",
+        "T-048",
+        "T-049",
+        "T-061",
+        "T-062",
+        "T-063",
+        "T-064",
+        "T-065",
+        "T-447",
+        "T-464"
+      ],
+      "step_numbers": [
+        4
+      ]
+    },
+    {
+      "description": "Presentar documentos en la secretaría...",
+      "count": 11,
+      "services": [
+        "T-363",
+        "T-364",
+        "T-365",
+        "T-366",
+        "T-367",
+        "T-372",
+        "T-373",
+        "T-374",
+        "T-375",
+        "T-381",
+        "T-382"
+      ],
+      "step_numbers": [
+        1
+      ]
+    },
+    {
+      "description": "1. Presentar documentación completa...",
+      "count": 9,
+      "services": [
+        "T-019",
+        "T-028",
+        "T-413",
+        "T-444",
+        "T-468",
+        "T-551",
+        "T-463"
+      ],
+      "step_numbers": [
+        1
+      ]
+    },
+    {
+      "description": "3. Completar formación práctica...",
+      "count": 9,
+      "services": [
+        "T-465",
+        "T-548",
+        "T-466",
+        "T-549",
+        "T-469"
+      ],
+      "step_numbers": [
+        3
+      ]
+    },
+    {
+      "description": "1. Presentar material...",
+      "count": 8,
+      "services": [
+        "T-425",
+        "T-427",
+        "T-429",
+        "T-430",
+        "T-432",
+        "T-433",
+        "T-435",
+        "T-449"
+      ],
+      "step_numbers": [
+        1
+      ]
+    },
+    {
+      "description": "4. Recoger documento legalizado...",
+      "count": 6,
+      "services": [
+        "T-002",
+        "T-004",
+        "T-008",
+        "T-009",
+        "T-010",
+        "T-011"
+      ],
+      "step_numbers": [
+        4
+      ]
+    },
+    {
+      "description": "1. Presentar solicitud...",
+      "count": 6,
+      "services": [
+        "T-007",
+        "T-036",
+        "T-447",
+        "T-462",
+        "T-482",
+        "T-495"
+      ],
+      "step_numbers": [
+        1
+      ]
+    },
+    {
+      "description": "2. Verificar documentación técnica...",
+      "count": 6,
+      "services": [
+        "T-037",
+        "T-042",
+        "T-044",
+        "T-064",
+        "T-067",
+        "T-086"
+      ],
+      "step_numbers": [
+        2
+      ]
+    },
+    {
+      "description": "2. Verificar documentación de la aeronave...",
+      "count": 6,
+      "services": [
+        "T-040",
+        "T-114",
+        "T-150",
+        "T-151",
+        "T-153",
+        "T-163"
+      ],
+      "step_numbers": [
+        2
+      ]
+    },
+    {
+      "description": "5. Pagar tasa...",
+      "count": 6,
+      "services": [
+        "T-043",
+        "T-044",
+        "T-045",
+        "T-050",
+        "T-051",
+        "T-052"
+      ],
+      "step_numbers": [
+        5
+      ]
+    },
+    {
+      "description": "1. Presentar documentación histórica completa...",
+      "count": 6,
+      "services": [
+        "T-073",
+        "T-076",
+        "T-079",
+        "T-085",
+        "T-088",
+        "T-091"
+      ],
+      "step_numbers": [
+        1
+      ]
+    },
+    {
+      "description": "2. Verificar informes de seguridad...",
+      "count": 6,
+      "services": [
+        "T-073",
+        "T-079",
+        "T-082",
+        "T-085",
+        "T-088",
+        "T-091"
+      ],
+      "step_numbers": [
+        2
+      ]
+    },
+    {
+      "description": "2. Verificar informes de desempeño...",
+      "count": 6,
+      "services": [
+        "T-075",
+        "T-078",
+        "T-081",
+        "T-084",
+        "T-087",
+        "T-090"
+      ],
+      "step_numbers": [
+        2
+      ]
+    },
+    {
+      "description": "3. Aprobar diseño...",
+      "count": 6,
+      "services": [
+        "T-425",
+        "T-427",
+        "T-430",
+        "T-431",
+        "T-433",
+        "T-452"
+      ],
+      "step_numbers": [
+        3
+      ]
+    },
+    {
+      "description": "1. Entregar material...",
+      "count": 6,
+      "services": [
+        "T-426",
+        "T-428",
+        "T-431",
+        "T-434",
+        "T-452",
+        "T-454"
+      ],
+      "step_numbers": [
+        1
+      ]
+    },
+    {
+      "description": "1. Presentar plan de vuelo...",
+      "count": 5,
+      "services": [
+        "T-039",
+        "T-048",
+        "T-121",
+        "T-122",
+        "T-141"
+      ],
+      "step_numbers": [
+        1
+      ]
+    },
+    {
+      "description": "1. Presentar documentación técnica...",
+      "count": 5,
+      "services": [
+        "T-043",
+        "T-045",
+        "T-050",
+        "T-094",
+        "T-164"
+      ],
+      "step_numbers": [
+        1
+      ]
+    },
+    {
+      "description": "5. Emitir autorización...",
+      "count": 5,
+      "services": [
+        "T-066",
+        "T-457",
+        "T-483",
+        "T-484",
+        "T-486"
+      ],
+      "step_numbers": [
+        5
+      ]
+    },
+    {
+      "description": "1. Presentar documentación actualizada...",
+      "count": 5,
+      "services": [
+        "T-072",
+        "T-075",
+        "T-078",
+        "T-084",
+        "T-087"
+      ],
+      "step_numbers": [
+        1
+      ]
+    },
+    {
+      "description": "4. Analizar historial operativo...",
+      "count": 5,
+      "services": [
+        "T-076",
+        "T-079",
+        "T-082",
+        "T-085",
+        "T-088"
+      ],
+      "step_numbers": [
+        4
+      ]
+    },
+    {
+      "description": "Solicitar en la secretaría...",
+      "count": 5,
+      "services": [
+        "T-359",
+        "T-360",
+        "T-361",
+        "T-362",
+        "T-384"
+      ],
+      "step_numbers": [
+        1
+      ]
+    },
+    {
+      "description": "3. Aprobar contenido...",
+      "count": 5,
+      "services": [
+        "T-424",
+        "T-439",
+        "T-443",
+        "T-453",
+        "T-454"
+      ],
+      "step_numbers": [
+        3
+      ]
+    },
+    {
+      "description": "2. Aprobar examen teórico específico...",
+      "count": 5,
+      "services": [
+        "T-466",
+        "T-549",
+        "T-469"
+      ],
+      "step_numbers": [
+        2
+      ]
+    },
+    {
+      "description": "3. Realizar pago...",
+      "count": 5,
+      "services": [
+        "T-472",
+        "T-473",
+        "T-474",
+        "T-479",
+        "T-480"
+      ],
+      "step_numbers": [
+        3
+      ]
+    },
+    {
+      "description": "2. Completar formulario...",
+      "count": 4,
+      "services": [
+        "T-005",
+        "T-006",
+        "T-012",
+        "T-013"
+      ],
+      "step_numbers": [
+        2
+      ]
+    },
+    {
+      "description": "2. Verificar identidad...",
+      "count": 4,
+      "services": [
+        "T-030",
+        "T-036",
+        "T-471",
+        "T-482"
+      ],
+      "step_numbers": [
+        2
+      ]
+    },
+    {
+      "description": "4. Realizar inspección técnica...",
+      "count": 4,
+      "services": [
+        "T-042",
+        "T-043",
+        "T-045",
+        "T-099"
+      ],
+      "step_numbers": [
+        4
+      ]
+    },
+    {
+      "description": "4. Aplicar exención de tarifa...",
+      "count": 4,
+      "services": [
+        "T-057",
+        "T-058",
+        "T-059",
+        "T-060"
+      ],
+      "step_numbers": [
+        4
+      ]
+    },
+    {
+      "description": "2. Verificar certificado de aeronave...",
+      "count": 4,
+      "services": [
+        "T-100",
+        "T-101",
+        "T-121",
+        "T-123"
+      ],
+      "step_numbers": [
+        2
+      ]
+    },
+    {
+      "description": "2. Verificar documento de identidad...",
+      "count": 4,
+      "services": [
+        "T-112",
+        "T-116",
+        "T-126",
+        "T-137"
+      ],
+      "step_numbers": [
+        2
+      ]
+    },
+    {
+      "description": "3. Confirmar certificado de peso...",
+      "count": 4,
+      "services": [
+        "T-114",
+        "T-158",
+        "T-159",
+        "T-160"
+      ],
+      "step_numbers": [
+        3
+      ]
+    },
+    {
+      "description": "4. Pagar tarifa por pasajero...",
+      "count": 4,
+      "services": [
+        "T-116",
+        "T-117",
+        "T-118",
+        "T-136"
+      ],
+      "step_numbers": [
+        4
+      ]
+    },
+    {
+      "description": "2. Verificar pasaporte...",
+      "count": 4,
+      "services": [
+        "T-117",
+        "T-136",
+        "T-138",
+        "T-139"
+      ],
+      "step_numbers": [
+        2
+      ]
+    },
+    {
+      "description": "4. Calcular tarifa por litro...",
+      "count": 4,
+      "services": [
+        "T-119",
+        "T-120",
+        "T-154",
+        "T-157"
+      ],
+      "step_numbers": [
+        4
+      ]
+    },
+    {
+      "description": "Presentar documentos, inspección local, aprobación proyecto educativo...",
+      "count": 4,
+      "services": [
+        "T-368",
+        "T-369",
+        "T-370",
+        "T-371"
+      ],
+      "step_numbers": [
+        1
+      ]
+    },
+    {
+      "description": "5. Pago de tasa...",
+      "count": 4,
+      "services": [
+        "T-413",
+        "T-414",
+        "T-444",
+        "T-445"
+      ],
+      "step_numbers": [
+        5
+      ]
+    },
+    {
+      "description": "3. Inspección del sitio...",
+      "count": 4,
+      "services": [
+        "T-416",
+        "T-422",
+        "T-459",
+        "T-484"
+      ],
+      "step_numbers": [
+        3
+      ]
+    },
+    {
+      "description": "3. Aprobar prueba final...",
+      "count": 4,
+      "services": [
+        "T-429",
+        "T-432",
+        "T-434",
+        "T-435"
+      ],
+      "step_numbers": [
+        3
+      ]
+    },
+    {
+      "description": "5. Programar emisión...",
+      "count": 4,
+      "services": [
+        "T-447",
+        "T-448",
+        "T-452",
+        "T-455"
+      ],
+      "step_numbers": [
+        5
+      ]
+    },
+    {
+      "description": "2. Aprobar examen teórico...",
+      "count": 4,
+      "services": [
+        "T-465",
+        "T-548"
+      ],
+      "step_numbers": [
+        2
+      ]
+    },
+    {
+      "description": "2. Aprobar examen teórico profesional...",
+      "count": 4,
+      "services": [
+        "T-467",
+        "T-550"
+      ],
+      "step_numbers": [
+        2
+      ]
+    }
+  ],
+  "template_candidates": [
+    {
+      "services": [
+        "T-363",
+        "T-364",
+        "T-365",
+        "T-366",
+        "T-367",
+        "T-372",
+        "T-373",
+        "T-374",
+        "T-375",
+        "T-381",
+        "T-382"
+      ],
+      "steps": [
+        "Presentar documentos en la secretaría"
+      ],
+      "count": 11
+    },
+    {
+      "services": [
+        "T-015",
+        "T-016",
+        "T-017",
+        "T-018",
+        "T-022",
+        "T-023",
+        "T-024",
+        "T-025",
+        "T-026",
+        "T-027"
+      ],
+      "steps": [
+        "1. Presentar documentación",
+        "2. Verificar peso",
+        "3. Pagar tarifa"
+      ],
+      "count": 10
+    },
+    {
+      "services": [
+        "T-359",
+        "T-360",
+        "T-361",
+        "T-362",
+        "T-384"
+      ],
+      "steps": [
+        "Solicitar en la secretaría"
+      ],
+      "count": 5
+    },
+    {
+      "services": [
+        "T-368",
+        "T-369",
+        "T-370",
+        "T-371"
+      ],
+      "steps": [
+        "Presentar documentos, inspección local, aprobación proyecto educativo"
+      ],
+      "count": 4
+    },
+    {
+      "services": [
+        "T-376",
+        "T-377",
+        "T-378"
+      ],
+      "steps": [
+        "Presentar documentos, evaluación equivalencia, emisión certificado"
+      ],
+      "count": 3
+    },
+    {
+      "services": [
+        "T-429",
+        "T-432",
+        "T-435"
+      ],
+      "steps": [
+        "1. Presentar material",
+        "2. Verificar calidad de color",
+        "3. Aprobar prueba final",
+        "4. Realizar pago",
+        "5. Programar publicación"
+      ],
+      "count": 3
+    },
+    {
+      "services": [
+        "T-006",
+        "T-013"
+      ],
+      "steps": [
+        "1. Presentar pasaporte caducado",
+        "2. Completar formulario",
+        "3. Pagar tasa",
+        "4. Recoger nuevo pasaporte"
+      ],
+      "count": 2
+    },
+    {
+      "services": [
+        "T-019",
+        "T-028"
+      ],
+      "steps": [
+        "1. Presentar documentación completa",
+        "2. Verificar peso",
+        "3. Pagar tarifa especial"
+      ],
+      "count": 2
+    },
+    {
+      "services": [
+        "T-261",
+        "T-276"
+      ],
+      "steps": [
+        "Inspección local, control higiene, autorización premium"
+      ],
+      "count": 2
+    },
+    {
+      "services": [
+        "T-262",
+        "T-277"
+      ],
+      "steps": [
+        "Verificación instalaciones, control sanitario, autorización estándar"
+      ],
+      "count": 2
+    },
+    {
+      "services": [
+        "T-386",
+        "T-387"
+      ],
+      "steps": [
+        "Presentar documentos, pago matrícula, inscripción materias"
+      ],
+      "count": 2
+    },
+    {
+      "services": [
+        "T-413",
+        "T-444"
+      ],
+      "steps": [
+        "1. Presentar documentación completa",
+        "2. Inspección de instalaciones",
+        "3. Verificación de equipos",
+        "4. Evaluación del personal",
+        "5. Pago de tasa"
+      ],
+      "count": 2
+    },
+    {
+      "services": [
+        "T-415",
+        "T-446"
+      ],
+      "steps": [
+        "1. Presentar documentos básicos",
+        "2. Inspección básica",
+        "3. Verificación de equipo mínimo",
+        "4. Pago de tasa",
+        "5. Obtención de licencia"
+      ],
+      "count": 2
+    },
+    {
+      "services": [
+        "T-430",
+        "T-433"
+      ],
+      "steps": [
+        "1. Presentar material",
+        "2. Verificar dimensiones",
+        "3. Aprobar diseño",
+        "4. Realizar pago",
+        "5. Programar publicación"
+      ],
+      "count": 2
+    },
+    {
+      "services": [
+        "T-450",
+        "T-451"
+      ],
+      "steps": [
+        "1. Entregar mensaje",
+        "2. Verificar contenido",
+        "3. Elegir fecha",
+        "4. Realizar pago",
+        "5. Confirmar emisión"
+      ],
+      "count": 2
+    },
+    {
+      "services": [
+        "T-465",
+        "T-548"
+      ],
+      "steps": [
+        "1. Presentar documentación",
+        "1. Presentar documentación",
+        "2. Aprobar examen teórico",
+        "2. Aprobar examen teórico",
+        "3. Completar formación práctica",
+        "3. Completar formación práctica",
+        "4. Aprobar examen práctico",
+        "4. Aprobar examen práctico",
+        "5. Emisión del permiso",
+        "5. Emisión del permiso"
+      ],
+      "count": 2
+    },
+    {
+      "services": [
+        "T-466",
+        "T-549"
+      ],
+      "steps": [
+        "1. Presentar documentación",
+        "1. Presentar documentación",
+        "2. Aprobar examen teórico específico",
+        "2. Aprobar examen teórico específico",
+        "3. Completar formación práctica",
+        "3. Completar formación práctica",
+        "4. Aprobar examen práctico",
+        "4. Aprobar examen práctico",
+        "5. Emisión del permiso",
+        "5. Emisión del permiso"
+      ],
+      "count": 2
+    },
+    {
+      "services": [
+        "T-467",
+        "T-550"
+      ],
+      "steps": [
+        "1. Presentar documentación",
+        "1. Presentar documentación",
+        "2. Aprobar examen teórico profesional",
+        "2. Aprobar examen teórico profesional",
+        "3. Realizar formación específica",
+        "3. Realizar formación específica",
+        "4. Aprobar examen práctico",
+        "4. Aprobar examen práctico",
+        "5. Emisión del permiso",
+        "5. Emisión del permiso"
+      ],
+      "count": 2
+    },
+    {
+      "services": [
+        "T-468",
+        "T-551"
+      ],
+      "steps": [
+        "1. Presentar documentación completa",
+        "1. Presentar documentación completa",
+        "2. Aprobar examen teórico especial",
+        "2. Aprobar examen teórico especial",
+        "3. Completar formación de pasajeros",
+        "3. Completar formación de pasajeros",
+        "4. Aprobar examen práctico",
+        "4. Aprobar examen práctico",
+        "5. Emisión del permiso",
+        "5. Emisión del permiso"
+      ],
+      "count": 2
+    },
+    {
+      "services": [
+        "T-497",
+        "T-500"
+      ],
+      "steps": [
+        "1. Presentar denuncia",
+        "2. Verificar datos",
+        "3. Comprobar vigencia",
+        "4. Realizar pago",
+        "5. Emitir duplicado"
+      ],
+      "count": 2
+    }
+  ]
+}

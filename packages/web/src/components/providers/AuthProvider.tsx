@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loadUser()
   }, [])
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, _password: string) => {
     setIsLoading(true)
     setError(null)
 
@@ -87,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (
     email: string,
-    password: string,
+    _password: string,
     firstName: string,
     lastName: string
   ) => {

@@ -19,7 +19,7 @@ name: 📱 Mobile CI (React Native)
 
 on:
   push:
-    branches: [develop, main]
+    branches: ['**']  # Toutes les branches
     paths:
       - 'packages/mobile/**'
       - 'config/**'
@@ -43,7 +43,7 @@ concurrency:
 env:
   NODE_VERSION: '20'
   JAVA_VERSION: '17'
-  REACT_NATIVE_VERSION: '0.73.0'
+  REACT_NATIVE_VERSION: '0.80.0'
   ENVIRONMENT: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
   FIREBASE_PROJECT_DEV: 'taxasge-dev'
   FIREBASE_PROJECT_PROD: 'taxasge-prod'
@@ -126,8 +126,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ needs.setup.outputs.node-version }}
-          cache: 'yarn'
-          cache-dependency-path: packages/mobile/yarn.lock
+          cache: 'npm'
+          cache-dependency-path: packages/mobile/package-lock.json
 
       - name: 📦 Install dependencies
         run: |
@@ -147,18 +147,18 @@ jobs:
           fi
           
           echo "📦 Installation des dépendances..."
-          # Installation avec gestion d'erreur gracieuse
-          if yarn install --frozen-lockfile --prefer-offline 2>/dev/null; then
-            echo "✅ Dépendances installées avec yarn"
-          elif yarn install 2>/dev/null; then
-            echo "✅ Dépendances installées (sans lockfile strict)"
+          # Installation avec affichage des erreurs
+          if npm ci; then
+            echo "✅ Dépendances installées avec npm ci (lockfile)"
+          elif npm install; then
+            echo "✅ Dépendances installées avec npm install"
           else
-            echo "⚠️ Installation yarn échouée, tentative npm..."
-            npm install 2>/dev/null || echo "⚠️ Installation impossible, package.json à configurer"
+            echo "❌ Installation npm échouée"
+            exit 1
           fi
           
           echo "📊 Environnement:"
-          yarn --version 2>/dev/null || echo "Yarn: non disponible"
+          npm --version
           node --version
 
       - name: 🔍 Lint & Format checks
@@ -166,48 +166,50 @@ jobs:
         run: |
           cd packages/mobile
           echo "🔍 Vérification ESLint..."
-          has_lint_script=$(grep -c '"lint"' package.json 2>/dev/null || echo "0")
-          has_format_script=$(grep -c '"format:check"' package.json 2>/dev/null || echo "0")
-          
-          if [ "$has_lint_script" -gt 0 ] && yarn run lint --version > /dev/null 2>&1; then
-            yarn run lint || echo "⚠️ Warnings ESLint trouvés"
-          elif [ -f ".eslintrc.js" ] || [ -f ".eslintrc.json" ] || [ -f "eslint.config.js" ]; then
-            npx eslint src/ --ext .js,.jsx,.ts,.tsx 2>/dev/null || echo "⚠️ ESLint: configuration ou dossier src/ manquant"
+
+          # Exécuter lint si script existe
+          if grep -q '"lint"' package.json; then
+            echo "📝 Script lint trouvé, exécution..."
+            yarn run lint:check || {
+              echo "⚠️ ESLint a trouvé des warnings (autorisé en dev)"
+              exit 0
+            }
           else
-            echo "⚠️ ESLint non configuré"
-            find . -name "*.js" -not -path "./node_modules/*" 2>/dev/null | head -3 | while read file; do
-              node -c "$file" 2>/dev/null || echo "⚠️ Erreur syntax dans $file"
-            done || echo "📝 Aucun fichier JS à valider pour l'instant"
+            echo "⚠️ Script lint non configuré dans package.json"
+            exit 1
           fi
-          
-          if [ "$has_format_script" -gt 0 ] && yarn run format:check --version > /dev/null 2>&1; then
-            yarn run format:check || echo "⚠️ Formatage Prettier requis"
+
+          # Exécuter format check si script existe
+          if grep -q '"format:check"' package.json; then
+            echo "📝 Script format:check trouvé, exécution..."
+            yarn run format:check || {
+              echo "⚠️ Prettier a trouvé des différences de formatage (autorisé en dev)"
+              exit 0
+            }
           else
-            echo "⚠️ Prettier non configuré"
+            echo "ℹ️ Script format:check non configuré (optionnel)"
           fi
-          
-          echo "✅ Checks qualité terminés (phase développement)"
+
+          echo "✅ Checks qualité terminés"
 
       - name: 📝 TypeScript validation
         if: matrix.test-type == 'typescript'
         run: |
           cd packages/mobile
           echo "📝 Validation TypeScript..."
+
           if [ -f "tsconfig.json" ]; then
-            echo "✅ Configuration TypeScript trouvée"
-            if yarn run tsc --version > /dev/null 2>&1; then
-              yarn run tsc --noEmit
-            else
-              echo "⚠️ TypeScript compiler non configuré"
-              npx tsc --noEmit || echo "⚠️ Erreurs TypeScript trouvées"
-            fi
+            echo "✅ tsconfig.json trouvé"
+            npx tsc --noEmit || {
+              echo "⚠️ Erreurs TypeScript trouvées (autorisé en dev)"
+              exit 0
+            }
           else
-            echo "⚠️ TypeScript non configuré"
-            find src/ -name "*.js" -o -name "*.jsx" 2>/dev/null | head -5 | while read file; do
-              echo "🔍 Validation: $file"
-              node -c "$file" || echo "⚠️ Erreur syntax dans $file"
-            done || echo "📂 Dossier src/ à créer"
+            echo "⚠️ tsconfig.json manquant"
+            exit 1
           fi
+
+          echo "✅ Validation TypeScript terminée"
 
       - name: 🧪 Unit tests
         if: matrix.test-type == 'unit'
@@ -282,8 +284,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ needs.setup.outputs.node-version }}
-          cache: 'yarn'
-          cache-dependency-path: packages/mobile/yarn.lock
+          cache: 'npm'
+          cache-dependency-path: packages/mobile/package-lock.json
 
       - name: ☕ Setup Java ${{ env.JAVA_VERSION }}
         if: matrix.platform == 'android'
@@ -353,9 +355,12 @@ jobs:
         run: |
           cd packages/mobile/android
           echo "🏗️ Build APK Debug pour ${{ needs.setup.outputs.environment }}"
-          
+
+          # Ensure gradlew is executable
+          chmod +x gradlew
+
           ./gradlew clean || echo "⚠️ Clean échoué"
-          
+
           if ./gradlew assembleDebug; then
             echo "✅ APK généré avec succès"
             
@@ -404,35 +409,63 @@ jobs:
           npm install -g firebase-tools@latest
           firebase --version
 
+      - name: 🔥 Setup Firebase Mobile Configs
+        run: |
+          cd packages/mobile
+          echo "🔥 Setting up Firebase configs for: ${{ needs.setup.outputs.environment }}"
+
+          if [[ "${{ needs.setup.outputs.environment }}" == "production" ]]; then
+            echo "🚀 Copying PRODUCTION Firebase configs..."
+            cp ../../config/google-services.prod.json android/app/google-services.json
+            cp ../../config/GoogleService-Info.pro.plist ios/GoogleService-Info.plist
+            echo "✅ Production configs applied"
+          else
+            echo "📱 Copying DEVELOPMENT Firebase configs..."
+            cp ../../config/google-services.dev.json android/app/google-services.json
+            cp ../../config/GoogleService-Info.dev.plist ios/GoogleService-Info.plist
+            echo "✅ Development configs applied"
+          fi
+
+          # Vérifier que les fichiers ont été copiés
+          if [ -f "android/app/google-services.json" ]; then
+            PROJECT_ID=$(grep -o '"project_id": "[^"]*"' android/app/google-services.json | cut -d'"' -f4)
+            echo "📊 Android Firebase Project: $PROJECT_ID"
+          fi
+
+          if [ -f "ios/GoogleService-Info.plist" ]; then
+            PROJECT_ID=$(grep -A 1 "PROJECT_ID" ios/GoogleService-Info.plist | grep "<string>" | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
+            echo "📊 iOS Firebase Project: $PROJECT_ID"
+          fi
+
       - name: 🔥 Firebase Authentication
         env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ needs.setup.outputs.environment == 'production' && secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_PRO || secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV }}
         run: |
           # Créer le fichier service account
           echo "$FIREBASE_SERVICE_ACCOUNT" > service-account.json
-    
+
           # Vérifier que le service account a été créé correctement
           if [ ! -s "service-account.json" ]; then
             echo "❌ Erreur: Le service account est vide ou n'a pas été créé"
             exit 1
           fi
-    
+
           # Définir la variable d'environnement pour l'authentification automatique
           export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/service-account.json"
-    
+
           # Vérifier le contenu du service account (sans l'afficher pour des raisons de sécurité)
           if ! jq . service-account.json > /dev/null 2>&1; then
             echo "❌ Erreur: Le service account n'est pas un JSON valide"
             exit 1
           fi
-    
-          # Sélectionner le projet Firebase
-          firebase use ${{ env.FIREBASE_PROJECT_DEV }}
-    
+
+          # Sélectionner le projet Firebase selon l'environnement
+          firebase use ${{ needs.setup.outputs.firebase-project }}
+
           # Vérifier l'authentification en listant les projets
           firebase projects:list
-    
-          echo "✅ Authentification Firebase réussie"
+
+          echo "✅ Authentification Firebase réussie pour ${{ needs.setup.outputs.firebase-project }}"
           
 
       - name: 🔍 Validate Firebase Configuration

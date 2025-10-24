@@ -1,0 +1,125 @@
+/**
+ * 🔥 Configuration Firebase TaxasGE - Multi-environnements
+ * Architecture automatique par branches Git:
+ * - develop → taxasge-dev (développement)
+ * - main → taxasge-prod (production)
+ * 
+ * @author KOUEMOU SAH Jean Emac
+ * @version 1.0.0
+ */
+
+// ============================================================================
+// CONFIGURATION TAXASGE-DEV (Development)
+// ============================================================================
+const firebaseConfigDev = {
+  // Web App
+  apiKey: "AIzaSyB9xkD3Qv8_p-UV1N-SjaskIfFJDsgFJHg",
+  authDomain: "taxasge-dev.firebaseapp.com",
+  projectId: "taxasge-dev",
+  storageBucket: "taxasge-dev.firebasestorage.app",
+  messagingSenderId: "392159428433",
+  appId: "1:392159428433:web:c2f170a2a220a78eef1d70",
+
+  // Mobile Apps (React Native)
+  android: {
+    packageName: "com.taxasge.app",
+    mobileSdkAppId: "1:392159428433:android:877edaeebd6f9558ef1d70",
+    apiKey: "AIzaSyDxIAOgBpn7nhzNFhnsC5wWJWZtHshIy34"
+  },
+  ios: {
+    bundleId: "com.taxasge.app",
+    mobileSdkAppId: "1:392159428433:ios:410597c035579d3fef1d70",
+    apiKey: "AIzaSyALutpU29jDKsWprZZ2_CLv0VBBFO1630o",
+    clientId: "392159428433-c0cm9a9u0mn5cqiuh30j35thqb9vvc81.apps.googleusercontent.com"
+  }
+};
+
+// ============================================================================
+// CONFIGURATION TAXASGE-PROD (Production)
+// ============================================================================
+const firebaseConfigProd = {
+  // Web App
+  apiKey: "AIzaSyB8gM9M7Z-NOpPIbC3YrzcV6BDCRP7sfNI",
+  authDomain: "taxasge-pro.firebaseapp.com",
+  projectId: "taxasge-pro",
+  storageBucket: "taxasge-pro.firebasestorage.app",
+  messagingSenderId: "430718042574",
+  appId: "1:430718042574:web:4afac31fb15bd5ac162b9f",
+
+  // Mobile Apps (React Native)
+  android: {
+    packageName: "com.taxasge.app",
+    mobileSdkAppId: "1:430718042574:android:ae49f5671d0e22b7162b9f",
+    apiKey: "AIzaSyCJjYQ0kd39xC5ZLgOZxvO00HhpjnIhFCk"
+  },
+  ios: {
+    bundleId: "com.taxasge.app",
+    mobileSdkAppId: "1:430718042574:ios:f33e4ebf3ea0680f162b9f",
+    apiKey: "AIzaSyDN1zDgA2tltGric7DZWFawm2vExL1fmro",
+    clientId: "430718042574-im42p7hkju8fjnq7q8ouiet5gl2q55gs.apps.googleusercontent.com"
+  }
+};
+
+// ============================================================================
+// DÉTECTION AUTOMATIQUE ENVIRONNEMENT
+// ============================================================================
+
+/**
+ * Détecte l'environnement selon plusieurs critères
+ */
+const detectEnvironment = () => {
+  // 1. React Native __DEV__ flag (priorité maximale)
+  if (typeof __DEV__ !== 'undefined') {
+    return __DEV__ ? 'development' : 'production';
+  }
+  
+  // 2. Variables d'environnement (CI/CD)
+  if (typeof process !== 'undefined' && process.env) {
+    if (process.env.NODE_ENV === 'production') return 'production';
+    if (process.env.ENVIRONMENT === 'production') return 'production';
+  }
+  
+  // 3. Fallback développement
+  return 'development';
+};
+
+// ============================================================================
+// EXPORTS CONFIGURÉS
+// ============================================================================
+
+const currentEnvironment = detectEnvironment();
+
+// Configuration active selon l'environnement
+export const firebaseConfig = currentEnvironment === 'production' 
+  ? firebaseConfigProd 
+  : firebaseConfigDev;
+
+// Informations environnement
+export const environment = currentEnvironment;
+export const isProduction = currentEnvironment === 'production';
+export const isDevelopment = currentEnvironment === 'development';
+export const projectId = firebaseConfig.projectId;
+
+// Configuration debug
+if (__DEV__) {
+  console.log(`🔥 Firebase Config - Environment: ${currentEnvironment}`);
+  console.log(`📊 Project ID: ${firebaseConfig.projectId}`);
+  console.log(`🌐 Auth Domain: ${firebaseConfig.authDomain}`);
+}
+
+// Export par défaut pour compatibilité
+export default firebaseConfig;
+
+// ============================================================================
+// TYPES POUR TYPESCRIPT (Optionnel)
+// ============================================================================
+
+/**
+ * @typedef {Object} FirebaseConfig
+ * @property {string} apiKey - Clé API Firebase
+ * @property {string} authDomain - Domaine d'authentification
+ * @property {string} projectId - ID du projet Firebase
+ * @property {string} storageBucket - Bucket de stockage
+ * @property {string} messagingSenderId - ID de l'expéditeur de messages
+ * @property {string} appId - ID de l'application
+ */

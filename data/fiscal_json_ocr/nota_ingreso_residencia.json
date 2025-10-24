@@ -1,0 +1,49 @@
+{
+  "formulaire": {
+    "titre": "NOTA DE INGRESO",
+    "champs": [
+      {
+        "nom": "numero_nota",
+        "type": "texte",
+        "libelle": "Numéro de nota",
+        "valeur_par_defaut": "1804/ID"
+      },
+      {
+        "nom": "nom_demandeur",
+        "type": "texte",
+        "libelle": "Don/Dña",
+        "valeur_par_defaut": ""
+      },
+      {
+        "nom": "concepto_pago",
+        "type": "texte",
+        "libelle": "Concepto de Pago de",
+        "valeur_par_defaut": "Por una Renovación de residencia"
+      },
+      {
+        "nom": "periode",
+        "type": "texte",
+        "libelle": "Período",
+        "valeur_par_defaut": "12/meses"
+      },
+      {
+        "nom": "montant_chiffre",
+        "type": "texte",
+        "libelle": "La Cantidad de",
+        "valeur_par_defaut": "#102.000 F"
+      },
+      {
+        "nom": "montant_lettre",
+        "type": "texte",
+        "libelle": "Son",
+        "valeur_par_defaut": "Cien mil Franco"
+      },
+      {
+        "nom": "date_expiration",
+        "type": "texte",
+        "libelle": "Se caduca y los",
+        "valeur_par_defaut": "15 días"
+      }
+    ]
+  }
+}

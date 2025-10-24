@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "generated_at": "2025-09-29T09:14:29Z",
+    "generated_at": "2025-10-07T15:22:56Z",
     "report_type": "weekly_project_management",
     "workflow": "project-management-system"
   },
@@ -25,7 +25,7 @@
   "recommendations": {
     "immediate": "Continue current development;",
     "focus_area": "Mobile AI Integration Critical Path",
-    "next_review": "2025-10-06"
+    "next_review": "2025-10-14"
   },
   "optimization_impact": {
     "execution_frequency": "Weekly (down from daily)",

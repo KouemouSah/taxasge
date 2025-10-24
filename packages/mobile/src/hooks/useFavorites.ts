@@ -3,11 +3,8 @@
  * Hook pour gérer les favoris utilisateur
  */
 
-import {useState, useCallback, useEffect} from 'react';
-import {
-  favoritesService,
-  Favorite,
-} from '../database/services/FavoritesService';
+import { useState, useCallback, useEffect } from 'react';
+import { favoritesService, Favorite } from '../database/services/FavoritesService';
 
 export interface FavoritesState {
   favorites: Favorite[];
@@ -35,7 +32,7 @@ export function useFavorites(userId?: string) {
         return [];
       }
 
-      setState(prev => ({...prev, loading: true, error: null}));
+      setState(prev => ({ ...prev, loading: true, error: null }));
 
       try {
         const results = await favoritesService.getUserFavorites(targetUserId);
@@ -85,26 +82,16 @@ export function useFavorites(userId?: string) {
    * Add service to favorites
    */
   const addFavorite = useCallback(
-    async (
-      serviceId: string,
-      notes?: string,
-      tags?: string[],
-      uid?: string
-    ) => {
+    async (serviceId: string, notes?: string, tags?: string[], uid?: string) => {
       const targetUserId = uid || userId;
       if (!targetUserId) {
         throw new Error('User ID required to add favorite');
       }
 
-      setState(prev => ({...prev, loading: true, error: null}));
+      setState(prev => ({ ...prev, loading: true, error: null }));
 
       try {
-        const insertId = await favoritesService.addFavorite(
-          targetUserId,
-          serviceId,
-          notes,
-          tags
-        );
+        const insertId = await favoritesService.addFavorite(targetUserId, serviceId, notes, tags);
 
         // Reload favorites
         await loadFavorites(targetUserId);
@@ -134,13 +121,10 @@ export function useFavorites(userId?: string) {
         throw new Error('User ID required to remove favorite');
       }
 
-      setState(prev => ({...prev, loading: true, error: null}));
+      setState(prev => ({ ...prev, loading: true, error: null }));
 
       try {
-        const success = await favoritesService.removeFavorite(
-          targetUserId,
-          serviceId
-        );
+        const success = await favoritesService.removeFavorite(targetUserId, serviceId);
 
         if (success) {
           // Reload favorites
@@ -194,11 +178,7 @@ export function useFavorites(userId?: string) {
       }
 
       try {
-        const success = await favoritesService.updateNotes(
-          targetUserId,
-          serviceId,
-          notes
-        );
+        const success = await favoritesService.updateNotes(targetUserId, serviceId, notes);
 
         if (success) {
           // Reload favorites
@@ -225,7 +205,7 @@ export function useFavorites(userId?: string) {
         throw new Error('User ID required to clear favorites');
       }
 
-      setState(prev => ({...prev, loading: true, error: null}));
+      setState(prev => ({ ...prev, loading: true, error: null }));
 
       try {
         const success = await favoritesService.clearAll(targetUserId);

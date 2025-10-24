@@ -1,0 +1,69 @@
+{
+  "generated_at": "2025-10-10T09:52:47.623Z",
+  "total_enums": 15,
+  "total_values": 103,
+  "total_translations": 309,
+  "errors": [],
+  "enums_list": [
+    {
+      "name": "user_role_enum",
+      "value_count": 6
+    },
+    {
+      "name": "user_status_enum",
+      "value_count": 4
+    },
+    {
+      "name": "service_type_enum",
+      "value_count": 8
+    },
+    {
+      "name": "service_status_enum",
+      "value_count": 4
+    },
+    {
+      "name": "calculation_method_enum",
+      "value_count": 7
+    },
+    {
+      "name": "payment_status_enum",
+      "value_count": 6
+    },
+    {
+      "name": "payment_method_enum",
+      "value_count": 5
+    },
+    {
+      "name": "declaration_type_enum",
+      "value_count": 20
+    },
+    {
+      "name": "declaration_status_enum",
+      "value_count": 6
+    },
+    {
+      "name": "document_processing_mode_enum",
+      "value_count": 4
+    },
+    {
+      "name": "document_ocr_status_enum",
+      "value_count": 5
+    },
+    {
+      "name": "document_extraction_status_enum",
+      "value_count": 5
+    },
+    {
+      "name": "document_validation_status_enum",
+      "value_count": 5
+    },
+    {
+      "name": "document_access_level_enum",
+      "value_count": 18
+    },
+    {
+      "name": "✅ Ajouts declaration_type_enum",
+      "value_count": 0
+    }
+  ]
+}

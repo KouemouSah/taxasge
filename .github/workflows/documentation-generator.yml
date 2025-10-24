@@ -25,6 +25,11 @@ on:
   schedule:
     # Mise à jour documentation chaque dimanche à 10:00 UTC
     - cron: '0 10 * * 0'
+  push:
+    branches: ['mobile', 'develop', 'main']
+    paths:
+      - '.github/workflows/documentation-generator.yml'
+      - 'docs/historical-context.json'
 
 permissions:
   contents: write
@@ -859,8 +864,13 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action - Documentation Generator"
           
+          # Copy JSON summary to docs if it exists
+          if [ -f "documentation-summary.json" ]; then
+            cp documentation-summary.json docs/documentation-summary.json
+          fi
+
           # Add all generated documentation
-          git add docs/*.md docs/*.html documentation-summary.json
+          git add docs/*.md docs/*.html docs/*.json 2>/dev/null || true
           
           if ! git diff --cached --quiet; then
             git commit -m "📚 Auto-update TaxasGE project documentation

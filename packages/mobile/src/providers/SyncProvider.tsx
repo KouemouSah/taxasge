@@ -3,10 +3,10 @@
  * Gère la synchronisation automatique et le statut online/offline
  */
 
-import React, {createContext, useContext, useEffect, useState, useCallback} from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import NetInfo from '@react-native-community/netinfo';
-import {syncService} from '../database/SyncService';
-import {offlineQueueService} from '../database/OfflineQueueService';
+import { syncService } from '../database/SyncService';
+import { offlineQueueService } from '../database/OfflineQueueService';
 
 interface SyncContextValue {
   online: boolean;
@@ -47,7 +47,7 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({
    * Monitor network status
    */
   useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener(state => {
+    const unsubscribe = NetInfo.addEventListener((state: any) => {
       const isOnline = state.isConnected === true && state.isInternetReachable === true;
 
       console.log('[SyncProvider] Network status:', {
@@ -113,81 +113,87 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({
   /**
    * Perform sync
    */
-  const performSync = useCallback(async (uid?: string) => {
-    if (syncing) {
-      console.log('[SyncProvider] Sync already in progress');
-      return;
-    }
-
-    setSyncing(true);
-    setError(null);
-
-    try {
-      const isOnline = await syncService.isOnline();
-      if (!isOnline) {
-        console.warn('[SyncProvider] Device is offline, skipping sync');
-        setSyncing(false);
+  const performSync = useCallback(
+    async (uid?: string) => {
+      if (syncing) {
+        console.log('[SyncProvider] Sync already in progress');
         return;
       }
 
-      console.log('[SyncProvider] Starting sync...');
+      setSyncing(true);
+      setError(null);
 
-      const result = await syncService.fullSync(uid);
+      try {
+        const isOnline = await syncService.isOnline();
+        if (!isOnline) {
+          console.warn('[SyncProvider] Device is offline, skipping sync');
+          setSyncing(false);
+          return;
+        }
 
-      if (result.success) {
-        setLastSync(new Date().toISOString());
-        console.log('[SyncProvider] Sync complete:', result);
-        onSyncComplete?.();
-      } else {
-        throw new Error(result.errors.join(', '));
+        console.log('[SyncProvider] Starting sync...');
+
+        const result = await syncService.fullSync(uid);
+
+        if (result.success) {
+          setLastSync(new Date().toISOString());
+          console.log('[SyncProvider] Sync complete:', result);
+          onSyncComplete?.();
+        } else {
+          throw new Error(result.errors.join(', '));
+        }
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Sync failed';
+        console.error('[SyncProvider] Sync failed:', err);
+        setError(errorMsg);
+        onError?.(err instanceof Error ? err : new Error(errorMsg));
+      } finally {
+        setSyncing(false);
       }
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Sync failed';
-      console.error('[SyncProvider] Sync failed:', err);
-      setError(errorMsg);
-      onError?.(err instanceof Error ? err : new Error(errorMsg));
-    } finally {
-      setSyncing(false);
-    }
-  }, [syncing, onSyncComplete, onError]);
+    },
+    [syncing, onSyncComplete, onError]
+  );
 
   /**
    * Process offline queue
    */
-  const processQueue = useCallback(async (uid?: string) => {
-    if (syncing) {
-      console.log('[SyncProvider] Sync already in progress');
-      return;
-    }
-
-    setSyncing(true);
-    setError(null);
-
-    try {
-      const isOnline = await syncService.isOnline();
-      if (!isOnline) {
-        console.warn('[SyncProvider] Device is offline, skipping queue processing');
-        setSyncing(false);
+  const processQueue = useCallback(
+    async (uid?: string) => {
+      if (syncing) {
+        console.log('[SyncProvider] Sync already in progress');
         return;
       }
 
-      console.log('[SyncProvider] Processing offline queue...');
+      setSyncing(true);
+      setError(null);
 
-      const result = await offlineQueueService.processQueue(uid);
+      try {
+        const isOnline = await syncService.isOnline();
+        if (!isOnline) {
+          console.warn('[SyncProvider] Device is offline, skipping queue processing');
+          setSyncing(false);
+          return;
+        }
 
-      console.log('[SyncProvider] Queue processing complete:', result);
+        console.log('[SyncProvider] Processing offline queue...');
 
-      // Refresh stats
-      await refreshQueueStats();
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Queue processing failed';
-      console.error('[SyncProvider] Queue processing failed:', err);
-      setError(errorMsg);
-      onError?.(err instanceof Error ? err : new Error(errorMsg));
-    } finally {
-      setSyncing(false);
-    }
-  }, [syncing, onError]);
+        const result = await offlineQueueService.processQueue(uid);
+
+        console.log('[SyncProvider] Queue processing complete:', result);
+
+        // Refresh stats
+        await refreshQueueStats();
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Queue processing failed';
+        console.error('[SyncProvider] Queue processing failed:', err);
+        setError(errorMsg);
+        onError?.(err instanceof Error ? err : new Error(errorMsg));
+      } finally {
+        setSyncing(false);
+      }
+    },
+    [syncing, onError]
+  );
 
   const contextValue: SyncContextValue = {
     online,
@@ -200,11 +206,7 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({
     processQueue,
   };
 
-  return (
-    <SyncContext.Provider value={contextValue}>
-      {children}
-    </SyncContext.Provider>
-  );
+  return <SyncContext.Provider value={contextValue}>{children}</SyncContext.Provider>;
 };
 
 /**

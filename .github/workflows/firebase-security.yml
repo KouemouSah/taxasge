@@ -5,7 +5,7 @@ on:
     # Exécute les contrôles de sécurité tous les jours à 2h UTC — auteur : kouemou sah jean emac
     - cron: '0 2 * * *'
   push:
-    branches: [main, develop] # auteur : kouemou sah jean emac
+    branches: ['**'] # Toutes les branches - auteur : kouemou sah jean emac
     paths:
       - 'firestore.rules'
       - 'storage.rules'
@@ -39,7 +39,7 @@ permissions:
   contents: read # principe du moindre privilège — auteur : kouemou sah jean emac
 
 env:
-  NODE_VERSION: '18' # Node LTS — auteur : kouemou sah jean emac
+  NODE_VERSION: '20' # Node LTS — auteur : kouemou sah jean emac
   PYTHON_VERSION: '3.11' # Outils de scan Python — auteur : kouemou sah jean emac
   FIREBASE_CLI_VERSION: '12.4.0' # Version CLI stable — auteur : kouemou sah jean emac
 
@@ -276,9 +276,15 @@ jobs:
           jest.setTimeout(30000);
           EOF
 
-          # firebase.json (ports figés) — auteur : kouemou sah jean emac
+          # firebase.json (ports figés + rules files) — auteur : kouemou sah jean emac
           cat > firebase.json << 'EOF'
           {
+            "firestore": {
+              "rules": "firestore.rules"
+            },
+            "storage": {
+              "rules": "storage.rules"
+            },
             "emulators": {
               "firestore": { "port": 8080, "host": "127.0.0.1" },
               "storage":   { "port": 9199, "host": "127.0.0.1" },
@@ -314,7 +320,8 @@ jobs:
 
             beforeAll(async () => {
               const projectId = process.env.FIREBASE_PROJECT_ID || 'demo-taxasge-security';
-              const rulesPath = path.join(process.cwd(), 'firestore.rules');
+              // Rules file copied to test directory by workflow
+              const rulesPath = path.join(__dirname, '../../firestore.rules');
               testEnv = await initializeTestEnvironment({
                 projectId,
                 firestore: { rules: fs.readFileSync(rulesPath, 'utf8') }
@@ -356,7 +363,8 @@ jobs:
 
             beforeAll(async () => {
               const projectId = process.env.FIREBASE_PROJECT_ID || 'demo-taxasge-storage';
-              const rulesPath = path.join(process.cwd(), 'storage.rules');
+              // Rules file copied to test directory by workflow
+              const rulesPath = path.join(__dirname, '../../storage.rules');
               testEnv = await initializeTestEnvironment({
                 projectId,
                 storage: { rules: fs.readFileSync(rulesPath, 'utf8') }

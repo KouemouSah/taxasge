@@ -3,14 +3,14 @@
  * Hook pour gérer les calculs fiscaux et l'historique
  */
 
-import {useState, useCallback, useEffect} from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   calculationsService,
   Calculation,
   CalculationParams,
   CalculationBreakdown,
 } from '../database/services/CalculationsService';
-import {FiscalService} from '../database/services/FiscalServicesService';
+import { FiscalService } from '../database/services/FiscalServicesService';
 
 export interface CalculationsState {
   history: Calculation[];
@@ -39,11 +39,7 @@ export function useCalculations(userId?: string) {
       params?: CalculationParams
     ) => {
       try {
-        const result = calculationsService.calculateAmount(
-          service,
-          paymentType,
-          params
-        );
+        const result = calculationsService.calculateAmount(service, paymentType, params);
 
         return result;
       } catch (error) {
@@ -69,11 +65,11 @@ export function useCalculations(userId?: string) {
         throw new Error('User ID required to save calculation');
       }
 
-      setState(prev => ({...prev, loading: true, error: null}));
+      setState(prev => ({ ...prev, loading: true, error: null }));
 
       try {
         // Calculate amount
-        const {amount, breakdown} = calculationsService.calculateAmount(
+        const { amount, breakdown } = calculationsService.calculateAmount(
           service,
           paymentType,
           params
@@ -105,8 +101,7 @@ export function useCalculations(userId?: string) {
         setState(prev => ({
           ...prev,
           loading: false,
-          error:
-            error instanceof Error ? error.message : 'Calculation save failed',
+          error: error instanceof Error ? error.message : 'Calculation save failed',
         }));
         throw error;
       }
@@ -125,16 +120,11 @@ export function useCalculations(userId?: string) {
         return [];
       }
 
-      setState(prev => ({...prev, loading: true, error: null}));
+      setState(prev => ({ ...prev, loading: true, error: null }));
 
       try {
-        const results = await calculationsService.getUserHistory(
-          targetUserId,
-          limit
-        );
-        const total = await calculationsService.getTotalCalculated(
-          targetUserId
-        );
+        const results = await calculationsService.getUserHistory(targetUserId, limit);
+        const total = await calculationsService.getTotalCalculated(targetUserId);
         const totalCount = await calculationsService.getCount(targetUserId);
 
         setState(prev => ({
@@ -170,14 +160,10 @@ export function useCalculations(userId?: string) {
         return [];
       }
 
-      setState(prev => ({...prev, loading: true, error: null}));
+      setState(prev => ({ ...prev, loading: true, error: null }));
 
       try {
-        const results = await calculationsService.getByService(
-          targetUserId,
-          serviceId,
-          limit
-        );
+        const results = await calculationsService.getByService(targetUserId, serviceId, limit);
 
         setState(prev => ({
           ...prev,
@@ -209,13 +195,10 @@ export function useCalculations(userId?: string) {
         return [];
       }
 
-      setState(prev => ({...prev, loading: true, error: null}));
+      setState(prev => ({ ...prev, loading: true, error: null }));
 
       try {
-        const results = await calculationsService.getRecent(
-          targetUserId,
-          days
-        );
+        const results = await calculationsService.getRecent(targetUserId, days);
 
         setState(prev => ({
           ...prev,
@@ -246,23 +229,21 @@ export function useCalculations(userId?: string) {
       const targetUserId = uid || userId;
       if (!targetUserId) {
         return {
-          expedition: {count: 0, total: 0},
-          renewal: {count: 0, total: 0},
-          urgent: {count: 0, total: 0},
+          expedition: { count: 0, total: 0 },
+          renewal: { count: 0, total: 0 },
+          urgent: { count: 0, total: 0 },
         };
       }
 
       try {
-        const stats = await calculationsService.getStatsByPaymentType(
-          targetUserId
-        );
+        const stats = await calculationsService.getStatsByPaymentType(targetUserId);
         return stats;
       } catch (error) {
         console.error('[useCalculations] Get stats failed:', error);
         return {
-          expedition: {count: 0, total: 0},
-          renewal: {count: 0, total: 0},
-          urgent: {count: 0, total: 0},
+          expedition: { count: 0, total: 0 },
+          renewal: { count: 0, total: 0 },
+          urgent: { count: 0, total: 0 },
         };
       }
     },
@@ -279,13 +260,10 @@ export function useCalculations(userId?: string) {
         throw new Error('User ID required to delete calculation');
       }
 
-      setState(prev => ({...prev, loading: true, error: null}));
+      setState(prev => ({ ...prev, loading: true, error: null }));
 
       try {
-        const success = await calculationsService.deleteCalculation(
-          targetUserId,
-          calculationId
-        );
+        const success = await calculationsService.deleteCalculation(targetUserId, calculationId);
 
         if (success) {
           // Reload history
@@ -317,7 +295,7 @@ export function useCalculations(userId?: string) {
         throw new Error('User ID required to clear history');
       }
 
-      setState(prev => ({...prev, loading: true, error: null}));
+      setState(prev => ({ ...prev, loading: true, error: null }));
 
       try {
         const success = await calculationsService.clearHistory(targetUserId);

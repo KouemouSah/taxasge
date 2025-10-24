@@ -2,21 +2,21 @@
  * TaxasGE Mobile - Favorites Service
  */
 
-import {db} from '../DatabaseManager';
-import {TABLE_NAMES, QUERIES, SYNC_STATUS} from '../schema';
+import { db } from '../DatabaseManager';
+import { TABLE_NAMES, QUERIES, SYNC_STATUS } from '../schema';
 
 export interface Favorite {
   id: number;
   user_id: string;
-  fiscal_service_id: string;
+  fiscal_service_code: string;  // FIXED: was fiscal_service_id
   notes?: string;
   tags?: string;
-  added_at: string;
+  created_at: string;            // FIXED: was added_at
   synced: number;
   // From join
   name_es?: string;
   service_type?: string;
-  expedition_amount?: number;
+  tasa_expedicion?: number;
   ministry_name?: string;
 }
 
@@ -26,10 +26,7 @@ class FavoritesService {
    */
   async getUserFavorites(userId: string): Promise<Favorite[]> {
     try {
-      const results = await db.query<Favorite>(
-        QUERIES.getUserFavorites,
-        [userId]
-      );
+      const results = await db.query<Favorite>(QUERIES.getUserFavorites, [userId]);
 
       return results;
     } catch (error) {
@@ -41,15 +38,12 @@ class FavoritesService {
   /**
    * Check if service is favorited
    */
-  async isFavorite(
-    userId: string,
-    serviceId: string
-  ): Promise<boolean> {
+  async isFavorite(userId: string, serviceId: string): Promise<boolean> {
     try {
-      const results = await db.query<{exists: number}>(
-        QUERIES.checkFavoriteExists,
-        [userId, serviceId]
-      );
+      const results = await db.query<{ exists: number }>(QUERIES.checkFavoriteExists, [
+        userId,
+        serviceId,
+      ]);
 
       return results.length > 0;
     } catch (error) {
@@ -72,10 +66,10 @@ class FavoritesService {
 
       const insertId = await db.insert(TABLE_NAMES.USER_FAVORITES, {
         user_id: userId,
-        fiscal_service_id: serviceId,
+        fiscal_service_code: serviceId,  // FIXED: was fiscal_service_id
         notes: notes || null,
         tags: tagsJson,
-        added_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),  // FIXED: was added_at
         synced: SYNC_STATUS.PENDING,
       });
 
@@ -90,14 +84,11 @@ class FavoritesService {
   /**
    * Remove favorite
    */
-  async removeFavorite(
-    userId: string,
-    serviceId: string
-  ): Promise<boolean> {
+  async removeFavorite(userId: string, serviceId: string): Promise<boolean> {
     try {
       const deleted = await db.delete(
         TABLE_NAMES.USER_FAVORITES,
-        'user_id = ? AND fiscal_service_id = ?',
+        'user_id = ? AND fiscal_service_code = ?',  // FIXED: was fiscal_service_id
         [userId, serviceId]
       );
 
@@ -112,11 +103,7 @@ class FavoritesService {
   /**
    * Update favorite notes
    */
-  async updateNotes(
-    userId: string,
-    serviceId: string,
-    notes: string
-  ): Promise<boolean> {
+  async updateNotes(userId: string, serviceId: string, notes: string): Promise<boolean> {
     try {
       const updated = await db.update(
         TABLE_NAMES.USER_FAVORITES,
@@ -124,7 +111,7 @@ class FavoritesService {
           notes,
           synced: SYNC_STATUS.PENDING,
         },
-        'user_id = ? AND fiscal_service_id = ?',
+        'user_id = ? AND fiscal_service_code = ?',  // FIXED: was fiscal_service_id
         [userId, serviceId]
       );
 
@@ -140,7 +127,7 @@ class FavoritesService {
    */
   async getCount(userId: string): Promise<number> {
     try {
-      const results = await db.query<{count: number}>(
+      const results = await db.query<{ count: number }>(
         `SELECT COUNT(*) as count FROM ${TABLE_NAMES.USER_FAVORITES}
          WHERE user_id = ?`,
         [userId]
@@ -158,11 +145,7 @@ class FavoritesService {
    */
   async clearAll(userId: string): Promise<boolean> {
     try {
-      await db.delete(
-        TABLE_NAMES.USER_FAVORITES,
-        'user_id = ?',
-        [userId]
-      );
+      await db.delete(TABLE_NAMES.USER_FAVORITES, 'user_id = ?', [userId]);
 
       console.log('[Favorites] Cleared all favorites for user:', userId);
       return true;

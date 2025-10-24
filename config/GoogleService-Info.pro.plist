@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>430718042574-im42p7hkju8fjnq7q8ouiet5gl2q55gs.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.430718042574-im42p7hkju8fjnq7q8ouiet5gl2q55gs</string>
+	<key>API_KEY</key>
+	<string>AIzaSyDN1zDgA2tltGric7DZWFawm2vExL1fmro</string>
+	<key>GCM_SENDER_ID</key>
+	<string>430718042574</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.taxasge.app</string>
+	<key>PROJECT_ID</key>
+	<string>taxasge-pro</string>
+	<key>STORAGE_BUCKET</key>
+	<string>taxasge-pro.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:430718042574:ios:f33e4ebf3ea0680f162b9f</string>
+</dict>
+</plist>

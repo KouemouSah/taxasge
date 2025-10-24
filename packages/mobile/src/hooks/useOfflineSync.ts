@@ -3,9 +3,9 @@
  * Hook pour gérer la synchronisation et la queue offline
  */
 
-import {useState, useCallback, useEffect} from 'react';
-import {syncService} from '../database/SyncService';
-import {offlineQueueService} from '../database/OfflineQueueService';
+import { useState, useCallback, useEffect } from 'react';
+import { syncService } from '../database/SyncService';
+import { offlineQueueService } from '../database/OfflineQueueService';
 
 export interface SyncState {
   online: boolean;
@@ -24,7 +24,7 @@ export function useOfflineSync(userId?: string) {
   const [state, setState] = useState<SyncState>({
     online: true,
     syncing: false,
-    queueStats: {total: 0, pending: 0, failed: 0, byTable: {}},
+    queueStats: { total: 0, pending: 0, failed: 0, byTable: {} },
     lastSync: null,
     error: null,
   });
@@ -35,7 +35,7 @@ export function useOfflineSync(userId?: string) {
   const checkOnlineStatus = useCallback(async () => {
     try {
       const isOnline = await syncService.isOnline();
-      setState(prev => ({...prev, online: isOnline}));
+      setState(prev => ({ ...prev, online: isOnline }));
       return isOnline;
     } catch (error) {
       console.error('[useOfflineSync] Check online status failed:', error);
@@ -49,11 +49,11 @@ export function useOfflineSync(userId?: string) {
   const refreshQueueStats = useCallback(async () => {
     try {
       const stats = await offlineQueueService.getStats();
-      setState(prev => ({...prev, queueStats: stats}));
+      setState(prev => ({ ...prev, queueStats: stats }));
       return stats;
     } catch (error) {
       console.error('[useOfflineSync] Refresh queue stats failed:', error);
-      return {total: 0, pending: 0, failed: 0, byTable: {}};
+      return { total: 0, pending: 0, failed: 0, byTable: {} };
     }
   }, []);
 
@@ -64,7 +64,7 @@ export function useOfflineSync(userId?: string) {
     async (uid?: string) => {
       const targetUserId = uid || userId;
 
-      setState(prev => ({...prev, syncing: true, error: null}));
+      setState(prev => ({ ...prev, syncing: true, error: null }));
 
       try {
         // Check if online first
@@ -116,7 +116,7 @@ export function useOfflineSync(userId?: string) {
    * Sync only reference data (no user data)
    */
   const syncReferenceData = useCallback(async () => {
-    setState(prev => ({...prev, syncing: true, error: null}));
+    setState(prev => ({ ...prev, syncing: true, error: null }));
 
     try {
       const isOnline = await syncService.isOnline();
@@ -143,10 +143,7 @@ export function useOfflineSync(userId?: string) {
       setState(prev => ({
         ...prev,
         syncing: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Reference data sync failed',
+        error: error instanceof Error ? error.message : 'Reference data sync failed',
       }));
       throw error;
     }
@@ -159,14 +156,14 @@ export function useOfflineSync(userId?: string) {
     async (uid?: string) => {
       const targetUserId = uid || userId;
 
-      setState(prev => ({...prev, syncing: true, error: null}));
+      setState(prev => ({ ...prev, syncing: true, error: null }));
 
       try {
         const isOnline = await syncService.isOnline();
         if (!isOnline) {
           console.log('[useOfflineSync] Device offline, skipping queue processing');
-          setState(prev => ({...prev, syncing: false, online: false}));
-          return {processed: 0, success: 0, failed: 0, skipped: 0, errors: []};
+          setState(prev => ({ ...prev, syncing: false, online: false }));
+          return { processed: 0, success: 0, failed: 0, skipped: 0, errors: [] };
         }
 
         console.log('[useOfflineSync] Processing offline queue...');
@@ -208,7 +205,7 @@ export function useOfflineSync(userId?: string) {
 
       // Refresh stats
       const stats = await offlineQueueService.getStats();
-      setState(prev => ({...prev, queueStats: stats}));
+      setState(prev => ({ ...prev, queueStats: stats }));
 
       console.log('[useOfflineSync] Cleared failed items:', deleted);
       return deleted;
@@ -227,7 +224,7 @@ export function useOfflineSync(userId?: string) {
 
       // Refresh stats
       const stats = await offlineQueueService.getStats();
-      setState(prev => ({...prev, queueStats: stats}));
+      setState(prev => ({ ...prev, queueStats: stats }));
 
       console.log('[useOfflineSync] Item retry queued:', itemId);
     } catch (error) {

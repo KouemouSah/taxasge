@@ -1,0 +1,342 @@
+{
+  "name": "cuota_min_fiscal_sec_comun_template",
+  "paper_size": {
+    "width": 2480,
+    "height": 3508
+  },
+  "blocks": {
+    "interesado": {
+      "zones": [
+        {
+          "id": "don_dna",
+          "label": "Don/Dña",
+          "x": 200,
+          "y": 180,
+          "w": 900,
+          "h": 80
+        },
+        {
+          "id": "representacion_empresa",
+          "label": "En nombre y representación de la empresa",
+          "x": 200,
+          "y": 260,
+          "w": 1400,
+          "h": 80
+        },
+        {
+          "id": "cantidad_ingresada",
+          "label": "Ha ingresado al Tesoro Público, la cantidad de",
+          "x": 200,
+          "y": 360,
+          "w": 1000,
+          "h": 80
+        },
+        {
+          "id": "moneda",
+          "label": "Moneda",
+          "x": 1250,
+          "y": 360,
+          "w": 150,
+          "h": 80
+        },
+        {
+          "id": "auto_liquidacion_num",
+          "label": "Auto-liquidación Nº",
+          "x": 1700,
+          "y": 180,
+          "w": 250,
+          "h": 80
+        },
+        {
+          "id": "ejercicio",
+          "label": "Ejercicio",
+          "x": 1700,
+          "y": 260,
+          "w": 250,
+          "h": 80
+        },
+        {
+          "id": "periodo",
+          "label": "Periodo",
+          "x": 2000,
+          "y": 260,
+          "w": 200,
+          "h": 80
+        },
+        {
+          "id": "libro",
+          "label": "Libro",
+          "x": 2150,
+          "y": 180,
+          "w": 200,
+          "h": 80
+        },
+        {
+          "id": "folio",
+          "label": "Folio",
+          "x": 2150,
+          "y": 260,
+          "w": 200,
+          "h": 80
+        },
+        {
+          "id": "fecha",
+          "label": "Fecha",
+          "x": 2150,
+          "y": 340,
+          "w": 200,
+          "h": 80
+        },
+        {
+          "id": "nif",
+          "label": "N.I.F.",
+          "x": 200,
+          "y": 460,
+          "w": 400,
+          "h": 80
+        },
+        {
+          "id": "telefono",
+          "label": "Teléfono",
+          "x": 650,
+          "y": 460,
+          "w": 400,
+          "h": 80
+        },
+        {
+          "id": "apartado",
+          "label": "Apartado",
+          "x": 1100,
+          "y": 460,
+          "w": 400,
+          "h": 80
+        },
+        {
+          "id": "municipio",
+          "label": "Municipio",
+          "x": 1600,
+          "y": 460,
+          "w": 600,
+          "h": 80
+        },
+        {
+          "id": "direccion_fiscal",
+          "label": "Dirección Fiscal",
+          "x": 200,
+          "y": 540,
+          "w": 2000,
+          "h": 80
+        },
+        {
+          "id": "correo_electronico",
+          "label": "Correo Electrónico",
+          "x": 200,
+          "y": 700,
+          "w": 1000,
+          "h": 80
+        },
+        {
+          "id": "provincia",
+          "label": "Provincia",
+          "x": 1250,
+          "y": 700,
+          "w": 800,
+          "h": 80
+        }
+      ]
+    },
+    "calculo": {
+      "zones": [
+        {
+          "id": "base_imponible",
+          "label": "Base Imponible",
+          "x": 200,
+          "y": 1000,
+          "w": 800,
+          "h": 80
+        },
+        {
+          "id": "reducciones",
+          "label": "Reducciones",
+          "x": 200,
+          "y": 1100,
+          "w": 800,
+          "h": 80
+        },
+        {
+          "id": "base_liquidable",
+          "label": "Base Liquidable",
+          "x": 200,
+          "y": 1200,
+          "w": 800,
+          "h": 80
+        },
+        {
+          "id": "tipo_de_gravamen",
+          "label": "Tipo de Gravamen",
+          "x": 200,
+          "y": 1300,
+          "w": 800,
+          "h": 80
+        },
+        {
+          "id": "cuota",
+          "label": "Cuota",
+          "x": 200,
+          "y": 1400,
+          "w": 800,
+          "h": 80
+        },
+        {
+          "id": "recargos",
+          "label": "Recargos",
+          "x": 200,
+          "y": 1500,
+          "w": 800,
+          "h": 80
+        },
+        {
+          "id": "interes_de_demora",
+          "label": "Interés de Demora",
+          "x": 200,
+          "y": 1600,
+          "w": 800,
+          "h": 80
+        },
+        {
+          "id": "a_ingresar",
+          "label": "A INGRESAR",
+          "x": 200,
+          "y": 1700,
+          "w": 800,
+          "h": 80
+        }
+      ]
+    },
+    "confirmacion_pago": {
+      "zones": [
+        {
+          "id": "firma_sello_contribuyente",
+          "label": "Firma y Sello del Contribuyente",
+          "x": 180,
+          "y": 180,
+          "w": 600,
+          "h": 120
+        },
+        {
+          "id": "fecha_contribuyente_dia",
+          "label": "Día (Contribuyente)",
+          "x": 200,
+          "y": 330,
+          "w": 150,
+          "h": 70
+        },
+        {
+          "id": "fecha_contribuyente_mes",
+          "label": "Mes (Contribuyente)",
+          "x": 400,
+          "y": 330,
+          "w": 150,
+          "h": 70
+        },
+        {
+          "id": "fecha_contribuyente_ano",
+          "label": "Año (Contribuyente)",
+          "x": 600,
+          "y": 330,
+          "w": 150,
+          "h": 70
+        },
+        {
+          "id": "fecha_administracion_dia",
+          "label": "Día (Administración Tributaria)",
+          "x": 950,
+          "y": 330,
+          "w": 150,
+          "h": 70
+        },
+        {
+          "id": "fecha_administracion_mes",
+          "label": "Mes (Administración Tributaria)",
+          "x": 1150,
+          "y": 330,
+          "w": 150,
+          "h": 70
+        },
+        {
+          "id": "fecha_administracion_ano",
+          "label": "Año (Administración Tributaria)",
+          "x": 1350,
+          "y": 330,
+          "w": 150,
+          "h": 70
+        },
+        {
+          "id": "cuenta_bange",
+          "label": "Cuenta del Tesoro Público (BANGE)",
+          "x": 1600,
+          "y": 180,
+          "w": 700,
+          "h": 70
+        },
+        {
+          "id": "cuenta_bgfi",
+          "label": "Cuenta del Tesoro Público (BGFI)",
+          "x": 1600,
+          "y": 260,
+          "w": 700,
+          "h": 70
+        },
+        {
+          "id": "cuenta_cceibank",
+          "label": "Cuenta del Tesoro Público (CCEIBANK)",
+          "x": 1600,
+          "y": 340,
+          "w": 700,
+          "h": 70
+        },
+        {
+          "id": "cuenta_sgbge",
+          "label": "Cuenta del Tesoro Público (SGBGE)",
+          "x": 1600,
+          "y": 420,
+          "w": 700,
+          "h": 70
+        },
+        {
+          "id": "cuenta_ecobank",
+          "label": "Cuenta del Tesoro Público (ECOBANK)",
+          "x": 1600,
+          "y": 500,
+          "w": 700,
+          "h": 70
+        },
+        {
+          "id": "nota",
+          "label": "Nota",
+          "x": 180,
+          "y": 620,
+          "w": 2100,
+          "h": 150
+        },
+        {
+          "id": "confirmacion_pago_admin",
+          "label": "Confirmación de pago Administración Tributaria",
+          "x": 180,
+          "y": 800,
+          "w": 1000,
+          "h": 150
+        },
+        {
+          "id": "confirmacion_pago_tesoreria",
+          "label": "Confirmación de pago Tesorería General del Estado",
+          "x": 1200,
+          "y": 800,
+          "w": 1000,
+          "h": 150
+        }
+      ]
+    }
+  },
+  "notes": "Toutes les coordonnées sont indicatives et doivent être recalées après homographie de l'image scannée vers le canevas A4 (2480x3508)."
+}

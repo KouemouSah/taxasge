@@ -1,0 +1,371 @@
+{
+  "common": {
+    "don_dna": {
+      "es": "Don/Dña",
+      "fr": "M./Mme",
+      "en": "Mr./Ms."
+    },
+    "en_nombre_y_representacion_de_la_empresa": {
+      "es": "En nombre y representación de la empresa",
+      "fr": "Au nom et pour le compte de l'entreprise",
+      "en": "On behalf of the company"
+    },
+    "ha_ingresado_al_tesoro_publico": {
+      "es": "Ha ingresado al Tesoro Público, la cantidad de",
+      "fr": "A versé au Trésor Public la somme de",
+      "en": "Has paid to the Public Treasury the amount of"
+    },
+    "moneda": {
+      "es": "Moneda",
+      "fr": "Devise",
+      "en": "Currency"
+    },
+    "auto_liquidacion_no": {
+      "es": "Auto-liquidación Nº",
+      "fr": "Auto-liquidation N°",
+      "en": "Self-assessment No."
+    },
+    "ejercicio": {
+      "es": "Ejercicio",
+      "fr": "Exercice",
+      "en": "Fiscal Year"
+    },
+    "periodo": {
+      "es": "Periodo",
+      "fr": "Période",
+      "en": "Period"
+    },
+    "libro": {
+      "es": "Libro",
+      "fr": "Livre",
+      "en": "Book"
+    },
+    "folio": {
+      "es": "Folio",
+      "fr": "Folio",
+      "en": "Page No."
+    },
+    "fecha": {
+      "es": "Fecha",
+      "fr": "Date",
+      "en": "Date"
+    },
+    "nif": {
+      "es": "N.I.F.",
+      "fr": "N.I.F.",
+      "en": "TIN (Tax ID No.)"
+    },
+    "telefono": {
+      "es": "Teléfono",
+      "fr": "Téléphone",
+      "en": "Phone"
+    },
+    "apartado": {
+      "es": "Apartado",
+      "fr": "Boîte Postale",
+      "en": "P.O. Box"
+    },
+    "municipio": {
+      "es": "Municipio",
+      "fr": "Municipalité",
+      "en": "Municipality"
+    },
+    "direccion_fiscal": {
+      "es": "Dirección Fiscal",
+      "fr": "Adresse Fiscale",
+      "en": "Tax Address"
+    },
+    "distrito": {
+      "es": "Distrito",
+      "fr": "District",
+      "en": "District"
+    },
+    "correo_electronico": {
+      "es": "Correo Electrónico",
+      "fr": "Courrier Électronique",
+      "en": "Email"
+    },
+    "provincia": {
+      "es": "Provincia",
+      "fr": "Province",
+      "en": "Province"
+    }
+  },
+  "payment_section": {
+    "firma_y_sello_del_contribuyente": {
+      "es": "Firma y Sello del Contribuyente",
+      "fr": "Signature et Cachet du Contribuable",
+      "en": "Signature and Stamp of the Taxpayer"
+    },
+    "dia_contribuyente": {
+      "es": "Día (Contribuyente)",
+      "fr": "Jour (Contribuable)",
+      "en": "Day (Taxpayer)"
+    },
+    "mes_contribuyente": {
+      "es": "Mes (Contribuyente)",
+      "fr": "Mois (Contribuable)",
+      "en": "Month (Taxpayer)"
+    },
+    "ano_contribuyente": {
+      "es": "Año (Contribuyente)",
+      "fr": "Année (Contribuable)",
+      "en": "Year (Taxpayer)"
+    },
+    "dia_administracion": {
+      "es": "Día (Administración Tributaria)",
+      "fr": "Jour (Administration Fiscale)",
+      "en": "Day (Tax Administration)"
+    },
+    "mes_administracion": {
+      "es": "Mes (Administración Tributaria)",
+      "fr": "Mois (Administration Fiscale)",
+      "en": "Month (Tax Administration)"
+    },
+    "ano_administracion": {
+      "es": "Año (Administración Tributaria)",
+      "fr": "Année (Administration Fiscale)",
+      "en": "Year (Tax Administration)"
+    },
+    "cuenta_bange": {
+      "es": "Cuenta del Tesoro Público (BANGE)",
+      "fr": "Compte du Trésor Public (BANGE)",
+      "en": "Public Treasury Account (BANGE)"
+    },
+    "cuenta_bgfi": {
+      "es": "Cuenta del Tesoro Público (BGFI)",
+      "fr": "Compte du Trésor Public (BGFI)",
+      "en": "Public Treasury Account (BGFI)"
+    },
+    "cuenta_cceibank": {
+      "es": "Cuenta del Tesoro Público (CCEIBANK)",
+      "fr": "Compte du Trésor Public (CCEIBANK)",
+      "en": "Public Treasury Account (CCEIBANK)"
+    },
+    "cuenta_sgbge": {
+      "es": "Cuenta del Tesoro Público (SGBGE)",
+      "fr": "Compte du Trésor Public (SGBGE)",
+      "en": "Public Treasury Account (SGBGE)"
+    },
+    "cuenta_ecobank": {
+      "es": "Cuenta del Tesoro Público (ECOBANK)",
+      "fr": "Compte du Trésor Public (ECOBANK)",
+      "en": "Public Treasury Account (ECOBANK)"
+    },
+    "nota": {
+      "es": "Nota",
+      "fr": "Note",
+      "en": "Note"
+    },
+    "confirmacion_pago_admin": {
+      "es": "Confirmación de pago Administración Tributaria",
+      "fr": "Confirmation de paiement - Administration Fiscale",
+      "en": "Payment Confirmation - Tax Administration"
+    },
+    "confirmacion_pago_tesoreria": {
+      "es": "Confirmación de pago Tesorería General del Estado",
+      "fr": "Confirmation de paiement - Trésor Public",
+      "en": "Payment Confirmation - State Treasury"
+    }
+  },
+  "calculation_section": {
+    "base_imponible": {
+      "es": "Base Imponible",
+      "fr": "Base d'Imposition",
+      "en": "Taxable Base"
+    },
+    "tipo": {
+      "es": "Tipo",
+      "fr": "Taux",
+      "en": "Rate"
+    },
+    "cuota": {
+      "es": "Cuota",
+      "fr": "Montant",
+      "en": "Amount"
+    },
+    "interes_de_demora": {
+      "es": "Interés de Demora",
+      "fr": "Intérêts de Retard",
+      "en": "Late Payment Interest"
+    },
+    "recargos": {
+      "es": "Recargos",
+      "fr": "Majorations",
+      "en": "Surcharges"
+    },
+    "total_a_ingresar": {
+      "es": "Total a ingresar",
+      "fr": "Total à payer",
+      "en": "Total to Pay"
+    },
+    "a_ingresar": {
+      "es": "A INGRESAR",
+      "fr": "À PAYER",
+      "en": "TO BE PAID"
+    },
+    "sub_total": {
+      "es": "Sub-total",
+      "fr": "Sous-total",
+      "en": "Subtotal"
+    },
+    "total_devengado": {
+      "es": "Total Devengado",
+      "fr": "Total Dû",
+      "en": "Total Accrued"
+    }
+  },
+  "vat_section": {
+    "iva_devengado": {
+      "es": "I.V.A. Devengado",
+      "fr": "T.V.A. Due",
+      "en": "Accrued V.A.T."
+    },
+    "regimen_general": {
+      "es": "Régimen General",
+      "fr": "Régime Général",
+      "en": "General Regime"
+    },
+    "regimen_reducido_1": {
+      "es": "Régimen Reducido 1",
+      "fr": "Régime Réduit 1",
+      "en": "Reduced Regime 1"
+    },
+    "regimen_reducido_2": {
+      "es": "Régimen Reducido 2",
+      "fr": "Régime Réduit 2",
+      "en": "Reduced Regime 2"
+    },
+    "total_iva_devengado": {
+      "es": "Total I.V.A. Devengado",
+      "fr": "Total T.V.A. Due",
+      "en": "Total Accrued V.A.T."
+    },
+    "total_iva_a_ingresar": {
+      "es": "Total I.V.A. a Ingresar",
+      "fr": "Total T.V.A. à Payer",
+      "en": "Total V.A.T. to Pay"
+    },
+    "iva_deducible": {
+      "es": "I. V. A Deducible",
+      "fr": "T.V.A. Déductible",
+      "en": "Deductible V.A.T."
+    },
+    "deducible_operaciones_interiores": {
+      "es": "I.V.A. Deducible por cuotas soportadas en operaciones interiores",
+      "fr": "T.V.A. déductible sur les opérations intérieures",
+      "en": "Deductible V.A.T. on domestic operations"
+    },
+    "deducible_importaciones": {
+      "es": "I.V.A. Deducible por cuotas satisfechas por las importaciones",
+      "fr": "T.V.A. déductible sur les importations",
+      "en": "Deductible V.A.T. on imports"
+    },
+    "deducible_adquisiciones_intracomunitarias": {
+      "es": "I.V.A. Deducible en adquisiciones intracomunitarias",
+      "fr": "T.V.A. déductible sur les acquisitions intracommunautaires",
+      "en": "Deductible V.A.T. on intra-community acquisitions"
+    },
+    "deducible_bienes_inversion": {
+      "es": "I.V.A. Deducible en adquisiciones de bienes de inversión",
+      "fr": "T.V.A. déductible sur les acquisitions de biens d'investissement",
+      "en": "Deductible V.A.T. on capital goods acquisitions"
+    },
+    "regularizacion_iva_inversiones": {
+      "es": "Regularización de I.V.A., a compensar para inversiones",
+      "fr": "Régularisation de T.V.A. à compenser pour les investissements",
+      "en": "V.A.T. regularization to be offset for investments"
+    },
+    "creditos_iva_periodos_anteriores": {
+      "es": "Créditos de I.V.A., de periodos anteriores, a compensar",
+      "fr": "Crédits de T.V.A. des périodes précédentes à compenser",
+      "en": "V.A.T. credits from previous periods to be offset"
+    },
+    "total_a_deducir": {
+      "es": "Total a deducir",
+      "fr": "Total à déduire",
+      "en": "Total to deduct"
+    },
+    "adquisiciones_intracomunitarias": {
+      "es": "Adquisiciones Intracomunitarias",
+      "fr": "Acquisitions Intracommunautaires",
+      "en": "Intra-Community Acquisitions"
+    },
+    "base_exonerada": {
+      "es": "Base Exonerada",
+      "fr": "Base Exonérée",
+      "en": "Exempt Base"
+    }
+  },
+  "providers_section": {
+    "nombre_proveedores": {
+      "es": "Nombre o Razón Social de los proveedores de servicios",
+      "fr": "Nom ou Raison Sociale des prestataires de services",
+      "en": "Name or Company Name of the service providers"
+    },
+    "nif_proveedores": {
+      "es": "N.I.F. de los proveedores",
+      "fr": "N.I.F. des prestataires",
+      "en": "TIN of the providers"
+    },
+    "actividad_proveedores": {
+      "es": "Actividad de los proveedores",
+      "fr": "Activité des prestataires",
+      "en": "Activity of the providers"
+    },
+    "monto_bruto_proveedores": {
+      "es": "Monto Bruto de los proveedores",
+      "fr": "Montant Brut des prestataires",
+      "en": "Gross Amount of the providers"
+    },
+    "total_facturado": {
+      "es": "Total Facturado",
+      "fr": "Total Facturé",
+      "en": "Total Invoiced"
+    }
+  },
+  "misc": {
+    "reducciones": {
+      "es": "Reducciones",
+      "fr": "Réductions",
+      "en": "Reductions"
+    },
+    "base_liquidable": {
+      "es": "Base Liquidable",
+      "fr": "Base de Liquidation",
+      "en": "Liquidation Base"
+    },
+    "tipo_de_gravamen": {
+      "es": "Tipo de Gravamen",
+      "fr": "Taux d'Imposition",
+      "en": "Tax Rate"
+    },
+    "importe_total_cuotas_retenidas": {
+      "es": "Importe total de las cuotas retenidas",
+      "fr": "Montant total des retenues",
+      "en": "Total amount of withholdings"
+    },
+    "total_impuestos": {
+      "es": "Total Impuestos",
+      "fr": "Total Impôts",
+      "en": "Total Taxes"
+    },
+    "deducciones_del_periodo": {
+      "es": "Deducciones del periodo",
+      "fr": "Déductions de la période",
+      "en": "Deductions for the period"
+    },
+    "deducciones_de_periodos_anteriores": {
+      "es": "Deducciones de periodos anteriores",
+      "fr": "Déductions des périodes précédentes",
+      "en": "Deductions from previous periods"
+    },
+    "sanciones": {
+      "es": "Sanciones",
+      "fr": "Pénalités",
+      "en": "Penalties"
+    }
+  }
+}
+
+

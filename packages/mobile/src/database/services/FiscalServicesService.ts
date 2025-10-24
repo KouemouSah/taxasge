@@ -2,8 +2,8 @@
  * TaxasGE Mobile - Fiscal Services Data Access
  */
 
-import {db} from '../DatabaseManager';
-import {QUERIES, TABLE_NAMES} from '../schema';
+import { db } from '../DatabaseManager';
+import { QUERIES, TABLE_NAMES } from '../schema';
 
 export interface FiscalService {
   id: string;
@@ -52,10 +52,7 @@ class FiscalServicesService {
         return [];
       }
 
-      const results = await db.query<FiscalService>(
-        QUERIES.searchServices,
-        [ftsQuery, limit]
-      );
+      const results = await db.query<FiscalService>(QUERIES.searchServices, [ftsQuery, limit]);
 
       console.log(`[FiscalServices] Search "${query}" found ${results.length} results`);
       return results;
@@ -85,15 +82,12 @@ class FiscalServicesService {
   /**
    * Get services by category
    */
-  async getByCategory(
-    categoryId: string,
-    limit: number = 50
-  ): Promise<FiscalService[]> {
+  async getByCategory(categoryId: string, limit: number = 50): Promise<FiscalService[]> {
     try {
-      const results = await db.query<FiscalService>(
-        `${QUERIES.getServicesByCategory} LIMIT ?`,
-        [categoryId, limit]
-      );
+      const results = await db.query<FiscalService>(`${QUERIES.getServicesByCategory} LIMIT ?`, [
+        categoryId,
+        limit,
+      ]);
 
       return results;
     } catch (error) {
@@ -107,10 +101,9 @@ class FiscalServicesService {
    */
   async getPopular(limit: number = 20): Promise<FiscalService[]> {
     try {
-      const results = await db.query<FiscalService>(
-        `SELECT * FROM v_popular_services LIMIT ?`,
-        [limit]
-      );
+      const results = await db.query<FiscalService>(`SELECT * FROM v_popular_services LIMIT ?`, [
+        limit,
+      ]);
 
       return results;
     } catch (error) {
@@ -122,10 +115,7 @@ class FiscalServicesService {
   /**
    * Get services with filters
    */
-  async getFiltered(
-    filters: SearchFilters,
-    limit: number = 50
-  ): Promise<FiscalService[]> {
+  async getFiltered(filters: SearchFilters, limit: number = 50): Promise<FiscalService[]> {
     try {
       let sql = 'SELECT * FROM v_fiscal_services_complete WHERE is_active = 1';
       const params: any[] = [];
@@ -212,7 +202,7 @@ class FiscalServicesService {
         params.push(filters.categoryId);
       }
 
-      const results = await db.query<{count: number}>(sql, params);
+      const results = await db.query<{ count: number }>(sql, params);
       return results[0]?.count || 0;
     } catch (error) {
       console.error('[FiscalServices] Get count error:', error);

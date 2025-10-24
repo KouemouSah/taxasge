@@ -1,0 +1,546 @@
+{
+  "user_role_enum": {
+    "citizen": {
+      "es": "Ciudadano",
+      "fr": "Citoyen",
+      "en": "Citizen"
+    },
+    "business": {
+      "es": "Empresa",
+      "fr": "Entreprise",
+      "en": "Business"
+    },
+    "accountant": {
+      "es": "Contable",
+      "fr": "Comptable",
+      "en": "Accountant"
+    },
+    "admin": {
+      "es": "Administrador",
+      "fr": "Administrateur",
+      "en": "Administrator"
+    },
+    "dgi_agent": {
+      "es": "Agente DGI",
+      "fr": "Agent DGI",
+      "en": "DGI Agent"
+    },
+    "ministry_agent": {
+      "es": "Agente Ministerial",
+      "fr": "Agent Ministériel",
+      "en": "Ministry Agent"
+    }
+  },
+  "user_status_enum": {
+    "active": {
+      "es": "Activo",
+      "fr": "Actif",
+      "en": "Active"
+    },
+    "suspended": {
+      "es": "Suspendido",
+      "fr": "Suspendu",
+      "en": "Suspended"
+    },
+    "pending_verification": {
+      "es": "Pendiente de Verificación",
+      "fr": "En Attente de Vérification",
+      "en": "Pending Verification"
+    },
+    "deactivated": {
+      "es": "Desactivado",
+      "fr": "Désactivé",
+      "en": "Deactivated"
+    }
+  },
+  "service_type_enum": {
+    "document_processing": {
+      "es": "Procesamiento de Documentos",
+      "fr": "Traitement de Documents",
+      "en": "Document Processing"
+    },
+    "license_permit": {
+      "es": "Licencias y Permisos",
+      "fr": "Licences et Permis",
+      "en": "License & Permit"
+    },
+    "residence_permit": {
+      "es": "Permiso de Residencia",
+      "fr": "Permis de Séjour",
+      "en": "Residence Permit"
+    },
+    "registration_fee": {
+      "es": "Tasas de Registro",
+      "fr": "Frais d'Enregistrement",
+      "en": "Registration Fee"
+    },
+    "inspection_fee": {
+      "es": "Tasas de Inspección",
+      "fr": "Frais d'Inspection",
+      "en": "Inspection Fee"
+    },
+    "administrative_tax": {
+      "es": "Impuesto Administrativo",
+      "fr": "Taxe Administrative",
+      "en": "Administrative Tax"
+    },
+    "customs_duty": {
+      "es": "Derechos de Aduana",
+      "fr": "Droits de Douane",
+      "en": "Customs Duty"
+    },
+    "declaration_tax": {
+      "es": "Impuesto de Declaración",
+      "fr": "Taxe de Déclaration",
+      "en": "Declaration Tax"
+    }
+  },
+  "service_status_enum": {
+    "active": {
+      "es": "Activo",
+      "fr": "Actif",
+      "en": "Active"
+    },
+    "inactive": {
+      "es": "Inactivo",
+      "fr": "Inactif",
+      "en": "Inactive"
+    },
+    "draft": {
+      "es": "Borrador",
+      "fr": "Brouillon",
+      "en": "Draft"
+    },
+    "deprecated": {
+      "es": "Obsoleto",
+      "fr": "Obsolète",
+      "en": "Deprecated"
+    }
+  },
+  "calculation_method_enum": {
+    "fixed_expedition": {
+      "es": "Tarifa Fija de Expedición",
+      "fr": "Tarif Fixe d'Expédition",
+      "en": "Fixed Expedition Fee"
+    },
+    "fixed_renewal": {
+      "es": "Tarifa Fija de Renovación",
+      "fr": "Tarif Fixe de Renouvellement",
+      "en": "Fixed Renewal Fee"
+    },
+    "fixed_both": {
+      "es": "Tarifas Fijas para Ambos",
+      "fr": "Tarifs Fixes pour les Deux",
+      "en": "Fixed Fees for Both"
+    },
+    "percentage_based": {
+      "es": "Basado en Porcentaje",
+      "fr": "Basé sur Pourcentage",
+      "en": "Percentage Based"
+    },
+    "unit_based": {
+      "es": "Basado en Unidades",
+      "fr": "Basé sur Unités",
+      "en": "Unit Based"
+    },
+    "tiered_rates": {
+      "es": "Tarifas por Tramos",
+      "fr": "Tarifs par Tranches",
+      "en": "Tiered Rates"
+    },
+    "formula_based": {
+      "es": "Basado en Fórmula",
+      "fr": "Basé sur Formule",
+      "en": "Formula Based"
+    }
+  },
+  "payment_status_enum": {
+    "pending": {
+      "es": "Pendiente",
+      "fr": "En Attente",
+      "en": "Pending"
+    },
+    "processing": {
+      "es": "Procesando",
+      "fr": "En Cours de Traitement",
+      "en": "Processing"
+    },
+    "completed": {
+      "es": "Completado",
+      "fr": "Terminé",
+      "en": "Completed"
+    },
+    "failed": {
+      "es": "Fallido",
+      "fr": "Échec",
+      "en": "Failed"
+    },
+    "refunded": {
+      "es": "Reembolsado",
+      "fr": "Remboursé",
+      "en": "Refunded"
+    },
+    "cancelled": {
+      "es": "Cancelado",
+      "fr": "Annulé",
+      "en": "Cancelled"
+    }
+  },
+  "payment_method_enum": {
+    "bank_transfer": {
+      "es": "Transferencia Bancaria",
+      "fr": "Virement Bancaire",
+      "en": "Bank Transfer"
+    },
+    "card": {
+      "es": "Tarjeta",
+      "fr": "Carte",
+      "en": "Card"
+    },
+    "mobile_money": {
+      "es": "Mobile Money",
+      "fr": "Mobile Money",
+      "en": "Mobile Money"
+    },
+    "cash": {
+      "es": "Efectivo",
+      "fr": "Espèces",
+      "en": "Cash"
+    },
+    "bange_wallet": {
+      "es": "Billetera Bange",
+      "fr": "Portefeuille Bange",
+      "en": "Bange Wallet"
+    }
+  },
+  "declaration_type_enum": {
+    "income_tax": {
+      "es": "Impuesto sobre la Renta",
+      "fr": "Impôt sur le Revenu",
+      "en": "Income Tax"
+    },
+    "corporate_tax": {
+      "es": "Impuesto de Sociedades",
+      "fr": "Impôt sur les Sociétés",
+      "en": "Corporate Tax"
+    },
+    "vat_declaration": {
+      "es": "Declaración de IVA",
+      "fr": "Déclaration TVA",
+      "en": "VAT Declaration"
+    },
+    "social_contribution": {
+      "es": "Contribución Social",
+      "fr": "Cotisation Sociale",
+      "en": "Social Contribution"
+    },
+    "property_tax": {
+      "es": "Impuesto Inmobiliario",
+      "fr": "Impôt Foncier",
+      "en": "Property Tax"
+    },
+    "other_tax": {
+      "es": "Otros Impuestos",
+      "fr": "Autres Impôts",
+      "en": "Other Tax"
+    },
+    "settlement_voucher": {
+      "es": "Impreso de Liquidación",
+      "fr": "Bordereau de Liquidation",
+      "en": "Settlement Voucher"
+    },
+    "minimum_fiscal_contribution": {
+      "es": "Cuota Mínima Fiscal",
+      "fr": "Cotisation Minimale Fiscale",
+      "en": "Minimum Fiscal Contribution"
+    },
+    "withheld_vat": {
+      "es": "IVA Destajo",
+      "fr": "TVA à la Source",
+      "en": "Withheld VAT"
+    },
+    "actual_vat": {
+      "es": "IVA Real",
+      "fr": "TVA Réelle",
+      "en": "Actual VAT"
+    },
+    "petroleum_products_tax": {
+      "es": "Impuesto sobre Productos Petroleros",
+      "fr": "Taxe sur les Produits Pétroliers",
+      "en": "Tax on Petroleum Products"
+    },
+    "petroleum_products_tax_ivs": {
+      "es": "Impuesto sobre Productos Petroleros (IVS)",
+      "fr": "Taxe sur les Produits Pétroliers (IVS)",
+      "en": "Tax on Petroleum Products (IVS)"
+    },
+    "wages_tax_oil_mining": {
+      "es": "Impuesto sobre Sueldos y Salarios Sector Petrolero y Minero",
+      "fr": "Impôt sur les Salaires du Secteur Pétrolier et Minier",
+      "en": "Tax on Wages and Salaries in the Oil and Mining Sector"
+    },
+    "wages_tax_common_sector": {
+      "es": "Impuesto sobre Sueldos y Salarios Sector Común",
+      "fr": "Impôt sur les Salaires du Secteur Commun",
+      "en": "Tax on Wages and Salaries in the Common Sector"
+    },
+    "common_voucher": {
+      "es": "Impreso Común",
+      "fr": "Bordereau Commun",
+      "en": "Common Voucher"
+    },
+    "withholding_3pct_oil_mining_residents": {
+      "es": "Retención a la Fuente del 3% de los Residentes Petrolero y Minero",
+      "fr": "Retenue à la Source de 3% pour les Résidents du Secteur Pétrolier et Minier",
+      "en": "3% Withholding Tax for Residents in the Oil and Mining Sector"
+    },
+    "withholding_10pct_common_residents": {
+      "es": "Retención a la Fuente del 10% sobre la Renta de los Residentes Sector Común",
+      "fr": "Retenue à la Source de 10% sur le Revenu des Résidents du Secteur Commun",
+      "en": "10% Withholding Tax on Income for Residents in the Common Sector"
+    },
+    "withholding_5pct_oil_mining_residents": {
+      "es": "Retención a la Fuente del 5% sobre la Renta de los Residentes Petrolero y Minero",
+      "fr": "Retenue à la Source de 5% sur le Revenu des Résidents du Secteur Pétrolier et Minier",
+      "en": "5% Withholding Tax on Income for Residents in the Oil and Mining Sector"
+    },
+    "minimum_fiscal_oil_mining": {
+      "es": "Cuota Mínima Fiscal Petrolera y Minera",
+      "fr": "Cotisation Minimale Fiscale pour le Secteur Pétrolier et Minier",
+      "en": "Minimum Fiscal Contribution for the Oil and Mining Sector"
+    },
+    "withholding_10pct_oil_mining_nonresidents": {
+      "es": "Retención a la Fuente del 10% sobre la Renta de los No Residentes Petrolero y Minero",
+      "fr": "Retenue à la Source de 10% sur le Revenu des Non-Résidents du Secteur Pétrolier et Minier",
+      "en": "10% Withholding Tax on Income for Non-Residents in the Oil and Mining Sector"
+    }
+  },
+  "declaration_status_enum": {
+    "draft": {
+      "es": "Borrador",
+      "fr": "Brouillon",
+      "en": "Draft"
+    },
+    "submitted": {
+      "es": "Enviado",
+      "fr": "Soumis",
+      "en": "Submitted"
+    },
+    "processing": {
+      "es": "Procesando",
+      "fr": "En Cours de Traitement",
+      "en": "Processing"
+    },
+    "accepted": {
+      "es": "Aceptado",
+      "fr": "Accepté",
+      "en": "Accepted"
+    },
+    "rejected": {
+      "es": "Rechazado",
+      "fr": "Rejeté",
+      "en": "Rejected"
+    },
+    "amended": {
+      "es": "Enmendado",
+      "fr": "Modifié",
+      "en": "Amended"
+    }
+  },
+  "document_processing_mode_enum": {
+    "pending": {
+      "es": "Pendiente",
+      "fr": "En Attente",
+      "en": "Pending"
+    },
+    "server_processing": {
+      "es": "Procesamiento del Servidor",
+      "fr": "Traitement Serveur",
+      "en": "Server Processing"
+    },
+    "lite_processing": {
+      "es": "Procesamiento Ligero",
+      "fr": "Traitement Léger",
+      "en": "Lite Processing"
+    },
+    "assisted_manual": {
+      "es": "Manual Asistido",
+      "fr": "Manuel Assisté",
+      "en": "Assisted Manual"
+    }
+  },
+  "document_ocr_status_enum": {
+    "pending": {
+      "es": "Pendiente",
+      "fr": "En Attente",
+      "en": "Pending"
+    },
+    "processing": {
+      "es": "Procesando",
+      "fr": "En Cours de Traitement",
+      "en": "Processing"
+    },
+    "completed": {
+      "es": "Completado",
+      "fr": "Terminé",
+      "en": "Completed"
+    },
+    "failed": {
+      "es": "Fallido",
+      "fr": "Échec",
+      "en": "Failed"
+    },
+    "skipped": {
+      "es": "Omitido",
+      "fr": "Ignoré",
+      "en": "Skipped"
+    }
+  },
+  "document_extraction_status_enum": {
+    "pending": {
+      "es": "Pendiente",
+      "fr": "En Attente",
+      "en": "Pending"
+    },
+    "processing": {
+      "es": "Procesando",
+      "fr": "En Cours de Traitement",
+      "en": "Processing"
+    },
+    "completed": {
+      "es": "Completado",
+      "fr": "Terminé",
+      "en": "Completed"
+    },
+    "failed": {
+      "es": "Fallido",
+      "fr": "Échec",
+      "en": "Failed"
+    },
+    "manual": {
+      "es": "Manual",
+      "fr": "Manuel",
+      "en": "Manual"
+    }
+  },
+  "document_validation_status_enum": {
+    "pending": {
+      "es": "Pendiente",
+      "fr": "En Attente",
+      "en": "Pending"
+    },
+    "valid": {
+      "es": "Válido",
+      "fr": "Valide",
+      "en": "Valid"
+    },
+    "invalid": {
+      "es": "Inválido",
+      "fr": "Invalide",
+      "en": "Invalid"
+    },
+    "requires_review": {
+      "es": "Requiere Revisión",
+      "fr": "Nécessite Révision",
+      "en": "Requires Review"
+    },
+    "user_corrected": {
+      "es": "Corregido por Usuario",
+      "fr": "Corrigé par Utilisateur",
+      "en": "User Corrected"
+    }
+  },
+  "document_access_level_enum": {
+    "private": {
+      "es": "Privado",
+      "fr": "Privé",
+      "en": "Private"
+    },
+    "shared": {
+      "es": "Compartido",
+      "fr": "Partagé",
+      "en": "Shared"
+    },
+    "public": {
+      "es": "Público",
+      "fr": "Public",
+      "en": "Public"
+    },
+    "confidential": {
+      "es": "Confidencial",
+      "fr": "Confidentiel",
+      "en": "Confidential"
+    },
+    "birth_certificate": {
+      "es": "Acta de Nacimiento",
+      "fr": "Acte de Naissance",
+      "en": "Birth Certificate"
+    },
+    "passport": {
+      "es": "Pasaporte",
+      "fr": "Passeport",
+      "en": "Passport"
+    },
+    "national_id": {
+      "es": "Cédula de Identidad Nacional",
+      "fr": "Carte d'Identité Nationale",
+      "en": "National ID Card"
+    },
+    "driver_license": {
+      "es": "Licencia de Conducir",
+      "fr": "Permis de Conduire",
+      "en": "Driver's License"
+    },
+    "residence_permit": {
+      "es": "Permiso de Residencia",
+      "fr": "Titre de Séjour",
+      "en": "Residence Permit"
+    },
+    "invoice": {
+      "es": "Factura",
+      "fr": "Facture",
+      "en": "Invoice"
+    },
+    "receipt": {
+      "es": "Recibo",
+      "fr": "Reçu",
+      "en": "Receipt"
+    },
+    "bank_statement": {
+      "es": "Estado de Cuenta Bancario",
+      "fr": "Relevé Bancaire",
+      "en": "Bank Statement"
+    },
+    "tax_certificate": {
+      "es": "Certificado Fiscal",
+      "fr": "Certificat Fiscal",
+      "en": "Tax Certificate"
+    },
+    "salary_slip": {
+      "es": "Nómina de Salario",
+      "fr": "Bulletin de Salaire",
+      "en": "Salary Slip"
+    },
+    "business_license": {
+      "es": "Licencia Comercial",
+      "fr": "Licence Commerciale",
+      "en": "Business License"
+    },
+    "incorporation_certificate": {
+      "es": "Certificado de Incorporación",
+      "fr": "Certificat d'Incorporation",
+      "en": "Incorporation Certificate"
+    },
+    "tax_registration": {
+      "es": "Registro Fiscal",
+      "fr": "Enregistrement Fiscal",
+      "en": "Tax Registration"
+    },
+    "company_statutes": {
+      "es": "Estatutos de la Empresa",
+      "fr": "Statuts de l'Entreprise",
+      "en": "Company Statutes"
+    }
+  },
+  "✅ Ajouts declaration_type_enum": {}
+}

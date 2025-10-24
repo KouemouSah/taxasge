@@ -3,9 +3,9 @@
  * Gère la queue des opérations offline pour synchronisation différée
  */
 
-import {db} from './DatabaseManager';
-import {TABLE_NAMES, SYNC_STATUS, MAX_SYNC_RETRIES} from './schema';
-import {syncService} from './SyncService';
+import { db } from './DatabaseManager';
+import { TABLE_NAMES, SYNC_STATUS, MAX_SYNC_RETRIES } from './schema';
+import { syncService } from './SyncService';
 
 export type QueueOperation = 'INSERT' | 'UPDATE' | 'DELETE';
 
@@ -25,7 +25,7 @@ export interface ProcessResult {
   success: number;
   failed: number;
   skipped: number;
-  errors: Array<{id: number; error: string}>;
+  errors: Array<{ id: number; error: string }>;
 }
 
 class OfflineQueueService {
@@ -52,9 +52,7 @@ class OfflineQueueService {
         last_error: null,
       });
 
-      console.log(
-        `[OfflineQueue] Enqueued ${operation} for ${tableName}:${recordId}`
-      );
+      console.log(`[OfflineQueue] Enqueued ${operation} for ${tableName}:${recordId}`);
 
       return id;
     } catch (error) {
@@ -93,17 +91,17 @@ class OfflineQueueService {
     byTable: Record<string, number>;
   }> {
     try {
-      const totalResult = await db.query<{count: number}>(
+      const totalResult = await db.query<{ count: number }>(
         `SELECT COUNT(*) as count FROM ${TABLE_NAMES.SYNC_QUEUE}`
       );
 
-      const pendingResult = await db.query<{count: number}>(
+      const pendingResult = await db.query<{ count: number }>(
         `SELECT COUNT(*) as count FROM ${TABLE_NAMES.SYNC_QUEUE}
          WHERE retry_count < ?`,
         [MAX_SYNC_RETRIES]
       );
 
-      const failedResult = await db.query<{count: number}>(
+      const failedResult = await db.query<{ count: number }>(
         `SELECT COUNT(*) as count FROM ${TABLE_NAMES.SYNC_QUEUE}
          WHERE retry_count >= ?`,
         [MAX_SYNC_RETRIES]
@@ -131,7 +129,7 @@ class OfflineQueueService {
       };
     } catch (error) {
       console.error('[OfflineQueue] Get stats failed:', error);
-      return {total: 0, pending: 0, failed: 0, byTable: {}};
+      return { total: 0, pending: 0, failed: 0, byTable: {} };
     }
   }
 
@@ -141,13 +139,13 @@ class OfflineQueueService {
   async processQueue(userId?: string): Promise<ProcessResult> {
     if (this.isProcessing) {
       console.log('[OfflineQueue] Already processing');
-      return {processed: 0, success: 0, failed: 0, skipped: 0, errors: []};
+      return { processed: 0, success: 0, failed: 0, skipped: 0, errors: [] };
     }
 
     const online = await syncService.isOnline();
     if (!online) {
       console.log('[OfflineQueue] Device offline, skipping queue processing');
-      return {processed: 0, success: 0, failed: 0, skipped: 0, errors: []};
+      return { processed: 0, success: 0, failed: 0, skipped: 0, errors: [] };
     }
 
     this.isProcessing = true;
@@ -182,8 +180,7 @@ class OfflineQueueService {
           await db.delete(TABLE_NAMES.SYNC_QUEUE, 'id = ?', [item.id!]);
         } catch (error) {
           result.failed++;
-          const errorMsg =
-            error instanceof Error ? error.message : 'Unknown error';
+          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
 
           result.errors.push({
             id: item.id!,
@@ -201,10 +198,7 @@ class OfflineQueueService {
             [item.id!]
           );
 
-          console.error(
-            `[OfflineQueue] Item ${item.id} failed:`,
-            errorMsg
-          );
+          console.error(`[OfflineQueue] Item ${item.id} failed:`, errorMsg);
         }
       }
 
@@ -221,10 +215,7 @@ class OfflineQueueService {
   /**
    * Process single queue item
    */
-  private async processItem(
-    item: QueueItem,
-    userId?: string
-  ): Promise<void> {
+  private async processItem(item: QueueItem, userId?: string): Promise<void> {
     const data = JSON.parse(item.data);
 
     console.log(
@@ -242,9 +233,7 @@ class OfflineQueueService {
         break;
 
       default:
-        console.warn(
-          `[OfflineQueue] Unknown table for sync: ${item.table_name}`
-        );
+        console.warn(`[OfflineQueue] Unknown table for sync: ${item.table_name}`);
         throw new Error(`Unsupported table: ${item.table_name}`);
     }
   }
@@ -252,11 +241,7 @@ class OfflineQueueService {
   /**
    * Sync favorite to Supabase
    */
-  private async syncFavorite(
-    item: QueueItem,
-    data: any,
-    userId?: string
-  ): Promise<void> {
+  private async syncFavorite(item: QueueItem, data: any, userId?: string): Promise<void> {
     if (!userId) {
       throw new Error('User ID required for favorites sync');
     }
@@ -272,11 +257,7 @@ class OfflineQueueService {
   /**
    * Sync calculation to Supabase
    */
-  private async syncCalculation(
-    item: QueueItem,
-    data: any,
-    userId?: string
-  ): Promise<void> {
+  private async syncCalculation(item: QueueItem, data: any, userId?: string): Promise<void> {
     if (!userId) {
       throw new Error('User ID required for calculations sync');
     }
@@ -294,11 +275,9 @@ class OfflineQueueService {
    */
   async clearFailedItems(): Promise<number> {
     try {
-      const deleted = await db.delete(
-        TABLE_NAMES.SYNC_QUEUE,
-        'retry_count >= ?',
-        [MAX_SYNC_RETRIES]
-      );
+      const deleted = await db.delete(TABLE_NAMES.SYNC_QUEUE, 'retry_count >= ?', [
+        MAX_SYNC_RETRIES,
+      ]);
 
       console.log(`[OfflineQueue] Cleared ${deleted} failed items`);
       return deleted;
@@ -350,4 +329,4 @@ class OfflineQueueService {
 export const offlineQueueService = new OfflineQueueService();
 
 // Export for testing
-export {OfflineQueueService};
+export { OfflineQueueService };
