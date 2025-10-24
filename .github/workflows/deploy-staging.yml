@@ -1,9 +1,8 @@
 name: Deploy to Staging
 
 on:
-  # Disabled auto-deploy until GCP credentials are configured
-  # push:
-  #   branches: [ develop ]
+  push:
+    branches: [ develop ]
   workflow_dispatch:
 
 env:
