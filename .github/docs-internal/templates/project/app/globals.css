@@ -1,0 +1,147 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap');
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+  }
+}
+
+@layer base {
+  :root {
+    /* Couleurs Officielles Guinée Équatoriale (GQ) */
+    --gq-green: 142 100% 30%;        /* #009639 - Vert drapeau */
+    --gq-red: 0 79% 50%;             /* #E11C1C - Rouge drapeau */
+    --gq-blue: 205 100% 39%;         /* #0072C6 - Bleu drapeau */
+    --gq-white: 0 0% 100%;           /* #FFFFFF - Blanc drapeau */
+
+    /* Mapping shadcn/ui variables */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 142 100% 30%;         /* Vert GQ */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 79% 50%;          /* Rouge GQ */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 205 100% 39%;          /* Bleu GQ */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 79% 50%;        /* Rouge GQ pour destructive */
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 142 100% 30%;            /* Vert GQ pour focus ring */
+    --chart-1: 142 100% 30%;         /* Vert GQ */
+    --chart-2: 205 100% 39%;         /* Bleu GQ */
+    --chart-3: 0 79% 50%;            /* Rouge GQ */
+    --chart-4: 142 80% 40%;          /* Vert clair */
+    --chart-5: 205 80% 50%;          /* Bleu clair */
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 142 100% 35%;         /* Vert GQ légèrement plus clair en dark mode */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 79% 60%;          /* Rouge GQ plus clair */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 205 100% 50%;          /* Bleu GQ plus clair */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 79% 60%;        /* Rouge GQ pour destructive */
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 142 100% 35%;            /* Vert GQ pour focus ring */
+    --chart-1: 142 100% 35%;         /* Vert GQ */
+    --chart-2: 205 100% 50%;         /* Bleu GQ */
+    --chart-3: 0 79% 60%;            /* Rouge GQ */
+    --chart-4: 142 80% 45%;          /* Vert clair */
+    --chart-5: 205 80% 60%;          /* Bleu clair */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .animate-fade-up {
+    animation: fade-up 0.6s ease-out;
+  }
+  
+  .animate-slide-in-right {
+    animation: slide-in-right 0.3s ease-out;
+  }
+  
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent;
+  }
+  
+  .glass-effect {
+    @apply bg-white/10 backdrop-blur-lg border border-white/20;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-muted;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-muted-foreground/30 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/50;
+}
+
+/* Loading animations */
+.pulse-animation {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .5;
+  }
+}

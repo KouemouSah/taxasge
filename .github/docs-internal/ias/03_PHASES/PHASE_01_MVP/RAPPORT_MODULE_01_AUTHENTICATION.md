@@ -156,6 +156,39 @@ Un template production-ready COMPLET a été découvert avec :
 
 **Référence :** [DECISION_006_FRONTEND_TEMPLATE.md](../../01_DECISIONS/DECISION_006_FRONTEND_TEMPLATE.md)
 
+### DEC-M01-007 : Design System Guinée Équatoriale ⭐ CORRECTION CRITIQUE
+
+**Décision :** Remplacer la palette couleurs du template (orange + gradient Guinée Conakry) par les couleurs officielles de la **Guinée Équatoriale (GQ)**.
+
+**Contexte :**
+DECISION_006 utilisait par erreur les couleurs de la Guinée (Conakry) :
+- ❌ Orange (#f97316) comme primary
+- ❌ Gradient rouge-jaune-vert (drapeau Guinée Conakry)
+
+**Correction validée (directive utilisateur) :**
+> "Pas de couleurs orange, les codes couleurs a utiliser seront celle du drapeau GQ"
+
+**Palette Officielle Guinée Équatoriale :**
+```css
+/* Couleurs Drapeau GQ */
+--gq-green: #009639;     /* Vert - Bande supérieure (primary) */
+--gq-white: #FFFFFF;     /* Blanc - Bande centrale */
+--gq-red: #E11C1C;       /* Rouge - Bande inférieure (secondary) */
+--gq-blue: #0072C6;      /* Bleu - Triangle gauche (accent) */
+```
+
+**Architecture Frontend :**
+- ✅ **Multi-pages** au lieu de landing page monolithique (directive utilisateur)
+- ✅ **Optimisations performance** : Code splitting, lazy loading, fonts optimisés
+- ✅ **Pages publiques** : /services, /calculators, /ministries, /about, /contact
+- ✅ **Metadata SEO** : locale es_GQ, keywords Guinée Équatoriale
+
+**Impact Timeline :**
+- **Jour 0** : 2h → **3h** (ajout +1h pour modification couleurs globals.css + tailwind.config)
+- **Jour 5** : 6h → **8h** (ajout +2h pour créer 5 pages publiques multi-pages)
+
+**Référence :** [DECISION_007_DESIGN_SYSTEM_GQ.md](../../01_DECISIONS/DECISION_007_DESIGN_SYSTEM_GQ.md)
+
 ---
 
 ## 🏗️ ARCHITECTURE DÉTAILLÉE
@@ -301,20 +334,24 @@ CREATE INDEX idx_verification_codes_user_code ON verification_codes(user_id, cod
 
 ### Jour 0 (2025-10-24 après-midi) : Migration Template Frontend 🆕
 
-**Objectif :** Préparer le frontend en migrant le template existant.
+**Objectif :** Préparer le frontend en migrant le template existant + adapter couleurs GQ.
 
-**Tâches (2 heures) :**
-- [ ] **TASK-M01-000** : Migration template (2h)
+**Tâches (3 heures) :** *(+1h pour design system GQ)*
+- [ ] **TASK-M01-000** : Migration template + Design System GQ (3h)
   - Copier `lib/stores/auth-store.ts` → `packages/web/lib/stores/`
   - Copier `components/layout/header.tsx` + `footer.tsx` → `packages/web/components/layout/`
   - Copier logo `taxasge.png` → `packages/web/public/logo.png`
   - Copier `app/globals.css` + `tailwind.config.ts`
+  - **🆕 Modifier globals.css** : Remplacer couleurs orange par palette GQ (vert #009639, rouge #E11C1C, bleu #0072C6) **(+30min)**
+  - **🆕 Modifier tailwind.config.ts** : Ajouter colors.gq et palette primary verte **(+15min)**
+  - **🆕 Modifier header.tsx** : Remplacer gradient Guinée par logo taxasge.png **(+15min)**
   - Changer URL API : `firebase.app` → `NEXT_PUBLIC_API_URL` (backend staging)
   - Tester compilation `npm run dev`
 
 **Livrables Jour 0 :**
 - ✅ Template migré vers packages/web/
-- ✅ Logo taxasge.png intégré au Header
+- ✅ **Design system GQ** : Vert-Blanc-Rouge-Bleu (pas d'orange)
+- ✅ Logo taxasge.png intégré au Header (au lieu de gradient)
 - ✅ Store auth Zustand fonctionnel
 - ✅ Compilation Next.js sans erreurs
 
@@ -412,11 +449,11 @@ CREATE INDEX idx_verification_codes_user_code ON verification_codes(user_id, cod
 
 ---
 
-### Jour 5 (2025-10-29) : Frontend Pages (Login + Register) - SIMPLIFIÉ ⭐
+### Jour 5 (2025-10-29 matin) : Frontend Pages Auth + Pages Publiques - SIMPLIFIÉ ⭐
 
-**Objectif :** Implémenter 2 pages auth principales (store Zustand déjà fait!).
+**Objectif :** Implémenter pages auth principales + pages publiques multi-pages (directive utilisateur).
 
-**Tâches (2 heures) :**
+**Tâches (4 heures) :** *(+2h pour architecture multi-pages GQ)*
 - [ ] **TASK-M01-013** : Page /login (1h)
   - Créer page simple utilisant `useAuthStore().login()`
   - Form avec email + password (validation Zod)
@@ -425,13 +462,21 @@ CREATE INDEX idx_verification_codes_user_code ON verification_codes(user_id, cod
   - Créer page simple utilisant `useAuthStore().register()`
   - Form avec email + password + name + role
   - Redirect vers /verify-email après succès
+- [ ] **🆕 TASK-M01-014b** : Pages publiques multi-pages (2h)
+  - Créer page /services (liste 547 services fiscaux GQ)
+  - Créer page /calculators (calculateurs taxes placeholder)
+  - Créer page /ministries (liste ministères GQ placeholder)
+  - Créer page /about (À propos TAXASGE placeholder)
+  - Créer page /contact (Formulaire contact DGI placeholder)
+  - Adapter Header.tsx : Navigation multi-pages au lieu de scroll
 
-**Livrables Jour 5 :**
-- ✅ 2 pages (/login, /register) fonctionnelles
+**Livrables Jour 5 matin :**
+- ✅ 2 pages auth (/login, /register) fonctionnelles
+- ✅ **5 pages publiques** : /services, /calculators, /ministries, /about, /contact
 - ✅ Store auth intégré (méthodes déjà codées)
-- ✅ Navigation Header fonctionnelle
+- ✅ **Navigation multi-pages** dans Header (au lieu de landing page)
 
-**Note :** Hooks useAuth déjà dans store Zustand, pas besoin de recréer!
+**Note :** Hooks useAuth déjà dans store Zustand, pas besoin de recréer! Pages publiques sont des placeholders simples pour Module 1.
 
 ---
 
@@ -452,10 +497,10 @@ CREATE INDEX idx_verification_codes_user_code ON verification_codes(user_id, cod
 
 **Livrables Jour 6 :**
 - ✅ 3 pages (/profile, /reset-password, /verify-email) fonctionnelles
-- ✅ 5/5 pages frontend complétées (100%)
+- ✅ 5/5 pages auth + 5/5 pages publiques complétées (100%)
 - ✅ Toutes méthodes store testées
 
-**Total Frontend : 4 heures** (au lieu de 22h!)
+**Total Frontend Jours 5-6 : 6 heures auth** (au lieu de 22h!) **+ 2 heures pages publiques = 8h total**
 
 ---
 

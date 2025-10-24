@@ -107,19 +107,21 @@
 | **Planification & Analyse** | ✅ 100% | 2025-10-24 |
 | **Rapport Module généré** | ✅ TERMINÉ | 2025-10-24 |
 | **Décision Template Frontend** | ✅ TERMINÉ | 2025-10-24 |
-| **Jour 0: Migration Template** | ⚪ 0% | 2025-10-24 PM (2h) |
+| **Décision Design System GQ** | ✅ TERMINÉ | 2025-10-24 |
+| **Jour 0: Migration Template + Colors GQ** | ⚪ 0% | 2025-10-24 PM (3h) |
 | **Backend Endpoints (15)** | ⚪ 0% | 2025-10-25 → 2025-10-28 |
-| **Frontend Pages (5)** | ⚪ 0% | 2025-10-29 (6h au lieu de 22h!) |
+| **Frontend Pages Auth (5) + Publiques (5)** | ⚪ 0% | 2025-10-29 (8h au lieu de 22h!) |
 | **Tests & Validation** | ⚪ 0% | 2025-10-29 |
 
 **Progression Module 1 :** **0% (Planification complétée + GAIN 2 JOURS)**
 
 **Scope :**
 - 15 endpoints backend (13 à implémenter, 2 à refactorer)
-- 5 pages frontend + 6 composants
+- **5 pages auth frontend** + 6 composants + **5 pages publiques multi-pages**
 - 21 tests unitaires + 3 tests E2E
 - Refactoring sécurité (éliminer 3 vulnérabilités Phase 0)
 - **NOUVEAU:** Utilisation template existant (store Zustand complet, layout, 50+ composants UI)
+- **NOUVEAU:** Design system Guinée Équatoriale (GQ) - Vert-Blanc-Rouge-Bleu (pas d'orange)
 
 **Timeline :** ~~7 jours~~ → **5 jours** (2025-10-25 → 2025-10-29)
 
@@ -128,6 +130,7 @@
 **Rapports :**
 - [RAPPORT_MODULE_01_AUTHENTICATION.md](./03_PHASES/PHASE_01_MVP/RAPPORT_MODULE_01_AUTHENTICATION.md)
 - [DECISION_006_FRONTEND_TEMPLATE.md](./01_DECISIONS/DECISION_006_FRONTEND_TEMPLATE.md)
+- [DECISION_007_DESIGN_SYSTEM_GQ.md](./01_DECISIONS/DECISION_007_DESIGN_SYSTEM_GQ.md)
 
 ### MVP Phase 1 : Core Fonctionnel (8 semaines)
 
