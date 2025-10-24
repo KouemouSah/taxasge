@@ -90,7 +90,7 @@ export function QuickActions() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {primaryActions.map((action, index) => (
+            {primaryActions.map((action) => (
               <Card
                 key={action.href}
                 className="group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-2 hover:border-primary/20"

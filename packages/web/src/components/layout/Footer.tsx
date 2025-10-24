@@ -5,7 +5,7 @@ import { Github, Mail, Globe, Shield } from 'lucide-react'
 import { useLanguage } from '@/components/providers/LanguageProvider'
 
 export function Footer() {
-  const { t } = useLanguage()
+  const { t: _t } = useLanguage()
 
   const footerSections = [
     {

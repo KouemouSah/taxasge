@@ -100,7 +100,7 @@ export function StatsSection() {
             TaxasGE en Chiffres
           </h2>
           <p className="text-lg text-muted-foreground">
-            L'impact de la digitalisation des services fiscaux
+            L&apos;impact de la digitalisation des services fiscaux
           </p>
         </div>
 
@@ -145,7 +145,7 @@ export function StatsSection() {
         {/* Call to action */}
         <div className="text-center mt-12">
           <p className="text-muted-foreground mb-4">
-            Rejoignez des milliers d'utilisateurs qui simplifient leurs démarches fiscales
+            Rejoignez des milliers d&apos;utilisateurs qui simplifient leurs démarches fiscales
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Button size="lg" asChild>
