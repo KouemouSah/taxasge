@@ -65,8 +65,7 @@ jobs:
           # Build Docker image for Cloud Run
           gcloud builds submit \
             --tag gcr.io/${{ env.PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:${{ github.sha }} \
-            --tag gcr.io/${{ env.PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:latest \
-            --no-log-streaming
+            --tag gcr.io/${{ env.PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:latest
 
       - name: Deploy to Cloud Run
         run: |
