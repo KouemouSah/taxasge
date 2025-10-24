@@ -100,24 +100,34 @@
 
 **Progression Phase 0 :** **100% ✅ COMPLÈTE** (12/12 critères validés, GO pour Module 1)
 
-### Module 1 : Authentication (EN PLANIFICATION - Semaine 1)
+### Module 1 : Authentication (EN PLANIFICATION - Semaine 1) ⭐ OPTIMISÉ
+
 | Tâche | Statut | Date |
 |-------|--------|------|
 | **Planification & Analyse** | ✅ 100% | 2025-10-24 |
 | **Rapport Module généré** | ✅ TERMINÉ | 2025-10-24 |
+| **Décision Template Frontend** | ✅ TERMINÉ | 2025-10-24 |
+| **Jour 0: Migration Template** | ⚪ 0% | 2025-10-24 PM (2h) |
 | **Backend Endpoints (15)** | ⚪ 0% | 2025-10-25 → 2025-10-28 |
-| **Frontend Pages (5)** | ⚪ 0% | 2025-10-29 → 2025-10-31 |
-| **Tests & Validation** | ⚪ 0% | 2025-11-01 |
+| **Frontend Pages (5)** | ⚪ 0% | 2025-10-29 (6h au lieu de 22h!) |
+| **Tests & Validation** | ⚪ 0% | 2025-10-29 |
 
-**Progression Module 1 :** **0% (Planification complétée)**
+**Progression Module 1 :** **0% (Planification complétée + GAIN 2 JOURS)**
 
 **Scope :**
 - 15 endpoints backend (13 à implémenter, 2 à refactorer)
 - 5 pages frontend + 6 composants
 - 21 tests unitaires + 3 tests E2E
 - Refactoring sécurité (éliminer 3 vulnérabilités Phase 0)
+- **NOUVEAU:** Utilisation template existant (store Zustand complet, layout, 50+ composants UI)
 
-**Rapport :** [RAPPORT_MODULE_01_AUTHENTICATION.md](./03_PHASES/PHASE_01_MVP/RAPPORT_MODULE_01_AUTHENTICATION.md)
+**Timeline :** ~~7 jours~~ → **5 jours** (2025-10-25 → 2025-10-29)
+
+**Gain :** **2 jours économisés** grâce au template frontend production-ready
+
+**Rapports :**
+- [RAPPORT_MODULE_01_AUTHENTICATION.md](./03_PHASES/PHASE_01_MVP/RAPPORT_MODULE_01_AUTHENTICATION.md)
+- [DECISION_006_FRONTEND_TEMPLATE.md](./01_DECISIONS/DECISION_006_FRONTEND_TEMPLATE.md)
 
 ### MVP Phase 1 : Core Fonctionnel (8 semaines)
 
