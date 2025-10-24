@@ -142,7 +142,9 @@ jobs:
           NEXT_PUBLIC_API_URL: ${{ needs.deploy-backend.outputs.url || 'https://taxasge-backend-staging.run.app' }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-        run: npm run build
+        run: |
+          npm run build
+          npm run export
 
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
@@ -151,7 +153,7 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV }}
           projectId: ${{ env.FIREBASE_PROJECT }}
           channelId: staging
-          target: staging
+          entryPoint: packages/web
 
   # Job 4: Post-deployment verification
   verify-deployment:
