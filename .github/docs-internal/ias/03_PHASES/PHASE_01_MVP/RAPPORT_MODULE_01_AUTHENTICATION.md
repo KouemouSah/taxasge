@@ -2,8 +2,8 @@
 
 **Date :** 2025-10-24
 **Statut :** 🔄 EN PLANIFICATION
-**Durée estimée :** 1 semaine (7 jours ouvrés)
-**Dates :** 2025-10-25 → 2025-11-01
+**Durée estimée :** 5 jours ouvrés (au lieu de 7 - gain 2 jours grâce au template)
+**Dates :** 2025-10-25 → 2025-10-29
 
 ---
 
@@ -128,6 +128,33 @@ from app.core.crypto import hash_password_bcrypt, verify_password_bcrypt
 3. Login avec 2FA : temp_token → code 2FA → access_token complet
 
 **Library :** `pyotp` (déjà présent si pas présent, ajouter à requirements.txt)
+
+### DEC-M01-006 : Utilisation Template Frontend Existant ⭐ DÉCOUVERTE MAJEURE
+
+**Décision :** Utiliser le template Next.js complet existant dans `.github/docs-internal/templates/project/`
+
+**Justification :**
+Un template production-ready COMPLET a été découvert avec :
+- ✅ **Store auth Zustand** (195 lignes) avec TOUTES les méthodes (login, register, logout, updateProfile, verifyEmail, resetPassword, updatePassword)
+- ✅ **Layout complet** (Header + Footer) avec navigation + auth buttons
+- ✅ **50+ composants UI shadcn** déjà installés
+- ✅ **Charte graphique** définie (couleurs, fonts, logo gradient drapeau Guinée)
+- ✅ **Dark mode + multilingue** (es/fr/en) déjà implémentés
+- ✅ **Interface User** correspond EXACTEMENT au modèle backend (rôles: citizen, business, admin, dgi_agent)
+
+**Impact Timeline :**
+- **Ancienne estimation frontend** : 22 heures (Jours 5-7)
+- **Nouvelle estimation** : 6 heures (avec réutilisation template)
+- **Gain** : **~16 heures = 2 jours économisés**
+
+**Migration requise (Jour 0 - 2h) :**
+1. Copier store auth → `packages/web/lib/stores/`
+2. Copier layout header/footer → `packages/web/components/layout/`
+3. Copier logo `taxasge.png` → `packages/web/public/logo.png`
+4. Copier globals.css + tailwind.config
+5. Changer URL API (firebase.app → backend staging)
+
+**Référence :** [DECISION_006_FRONTEND_TEMPLATE.md](../../01_DECISIONS/DECISION_006_FRONTEND_TEMPLATE.md)
 
 ---
 
@@ -268,7 +295,30 @@ CREATE INDEX idx_verification_codes_user_code ON verification_codes(user_id, cod
 
 ---
 
-## 📅 TIMELINE DÉTAILLÉE (7 JOURS)
+## 📅 TIMELINE DÉTAILLÉE (5 JOURS) ⭐ OPTIMISÉE
+
+**Gain grâce au template frontend : 2 jours** (7 jours → 5 jours)
+
+### Jour 0 (2025-10-24 après-midi) : Migration Template Frontend 🆕
+
+**Objectif :** Préparer le frontend en migrant le template existant.
+
+**Tâches (2 heures) :**
+- [ ] **TASK-M01-000** : Migration template (2h)
+  - Copier `lib/stores/auth-store.ts` → `packages/web/lib/stores/`
+  - Copier `components/layout/header.tsx` + `footer.tsx` → `packages/web/components/layout/`
+  - Copier logo `taxasge.png` → `packages/web/public/logo.png`
+  - Copier `app/globals.css` + `tailwind.config.ts`
+  - Changer URL API : `firebase.app` → `NEXT_PUBLIC_API_URL` (backend staging)
+  - Tester compilation `npm run dev`
+
+**Livrables Jour 0 :**
+- ✅ Template migré vers packages/web/
+- ✅ Logo taxasge.png intégré au Header
+- ✅ Store auth Zustand fonctionnel
+- ✅ Compilation Next.js sans erreurs
+
+---
 
 ### Jour 1 (2025-10-25) : Backend Core + Refactoring Sécurité
 
@@ -362,75 +412,76 @@ CREATE INDEX idx_verification_codes_user_code ON verification_codes(user_id, cod
 
 ---
 
-### Jour 5 (2025-10-29) : Frontend Pages Core
+### Jour 5 (2025-10-29) : Frontend Pages (Login + Register) - SIMPLIFIÉ ⭐
 
-**Objectif :** Implémenter pages login, register, profile.
+**Objectif :** Implémenter 2 pages auth principales (store Zustand déjà fait!).
 
-**Tâches :**
-- [ ] **TASK-M01-013** : Setup hooks & validations (2h)
-  - Créer `hooks/useAuth.ts` (login, register, logout)
-  - Créer `lib/validations/auth.ts` (Zod schemas)
-- [ ] **TASK-M01-014** : Page /login (3h)
-  - Composant LoginForm avec validation Zod
-  - Gestion erreurs (401, 429)
-  - Support 2FA (redirect si 2fa_required)
-- [ ] **TASK-M01-015** : Page /register (3h)
-  - Composant RegisterForm
-  - Validation temps réel (email unique, password policy)
-  - Redirect vers /verify-email après inscription
+**Tâches (2 heures) :**
+- [ ] **TASK-M01-013** : Page /login (1h)
+  - Créer page simple utilisant `useAuthStore().login()`
+  - Form avec email + password (validation Zod)
+  - Gestion erreurs UI (toast notifications)
+- [ ] **TASK-M01-014** : Page /register (1h)
+  - Créer page simple utilisant `useAuthStore().register()`
+  - Form avec email + password + name + role
+  - Redirect vers /verify-email après succès
 
 **Livrables Jour 5 :**
 - ✅ 2 pages (/login, /register) fonctionnelles
-- ✅ useAuth hook opérationnel
-- ✅ Validations Zod complètes
+- ✅ Store auth intégré (méthodes déjà codées)
+- ✅ Navigation Header fonctionnelle
+
+**Note :** Hooks useAuth déjà dans store Zustand, pas besoin de recréer!
 
 ---
 
-### Jour 6 (2025-10-30) : Frontend Profil + Password Reset
+### Jour 6 (2025-10-29 après-midi) : Frontend Profil + Password Reset - SIMPLIFIÉ ⭐
 
-**Objectif :** Compléter pages profil et reset password.
+**Objectif :** Compléter 3 pages restantes (store gère la logique).
 
-**Tâches :**
-- [ ] **TASK-M01-016** : Page /profile (4h)
-  - Composant ProfileForm (update first_name, last_name, phone)
-  - Composant PasswordChangeForm
-  - Composant SessionsTable (liste + revoke sessions)
-- [ ] **TASK-M01-017** : Page /reset-password (3h)
-  - Form request reset (email)
-  - Form confirm reset (token + nouveau password)
-- [ ] **TASK-M01-018** : Page /verify-email (1h)
-  - Form vérification code 6 chiffres
+**Tâches (2 heures) :**
+- [ ] **TASK-M01-015** : Page /profile (45min)
+  - Affichage user via `useAuthStore().user`
+  - Form update profil utilisant `updateProfile()`
+  - Form change password utilisant `updatePassword()`
+- [ ] **TASK-M01-016** : Page /reset-password (45min)
+  - Form request reset utilisant `resetPassword(email)`
+  - Page confirm reset (token param URL)
+- [ ] **TASK-M01-017** : Page /verify-email (30min)
+  - Form code 6 chiffres utilisant `verifyEmail(token)`
 
 **Livrables Jour 6 :**
 - ✅ 3 pages (/profile, /reset-password, /verify-email) fonctionnelles
 - ✅ 5/5 pages frontend complétées (100%)
-- ✅ 6/6 composants créés
+- ✅ Toutes méthodes store testées
+
+**Total Frontend : 4 heures** (au lieu de 22h!)
 
 ---
 
-### Jour 7 (2025-10-31 → 2025-11-01) : 2FA Frontend + Tests + Go/No-Go
+### Jour 7 (2025-10-29 fin de journée) : 2FA + Tests + Go/No-Go - OPTIMISÉ ⭐
 
-**Objectif :** Finaliser 2FA frontend, tests E2E, validation Go/No-Go.
+**Objectif :** 2FA frontend + tests E2E + validation finale.
 
-**Tâches :**
-- [ ] **TASK-M01-019** : Composant 2FA (4h)
-  - Composant 2FASetup (affichage QR code, backup codes)
-  - Composant 2FAVerifyForm (login avec 2FA)
-  - Créer `hooks/use2FA.ts`
-- [ ] **TASK-M01-020** : Tests E2E Playwright (3h)
-  - Test workflow register → login → profil
-  - Test workflow password reset complet
-  - Test workflow 2FA enable → login avec 2FA
-- [ ] **TASK-M01-021** : Validation Go/No-Go (1h)
+**Tâches (2 heures) :**
+- [ ] **TASK-M01-018** : Composant 2FA (1h)
+  - Composant simple affichage QR code (endpoint backend retourne data URI)
+  - Form verification code 6 chiffres
+  - Intégrer dans page /profile (enable/disable 2FA)
+- [ ] **TASK-M01-019** : Tests E2E essentiels (30min)
+  - Test workflow register → verify email → login (manuel ou Playwright basique)
+  - Test login + navigation vers profile
+- [ ] **TASK-M01-020** : Validation Go/No-Go (30min)
   - Exécuter checklist 12 critères
-  - Générer rapport final module
+  - Tester manuellement tous les endpoints
   - Décision GO/NO-GO
 
 **Livrables Jour 7 :**
-- ✅ 2FA frontend complet
-- ✅ 3 tests E2E Playwright
-- ✅ Coverage backend > 80%
+- ✅ 2FA frontend basique fonctionnel
+- ✅ Tests E2E workflow principal
 - ✅ Décision GO/NO-GO documentée
+
+**Module 1 terminé en 5 jours !** (au lieu de 7)
 
 ---
 
