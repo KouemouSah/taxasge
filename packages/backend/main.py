@@ -59,15 +59,18 @@ async def lifespan(app: FastAPI):
         )
         logger.info("✅ Database connection pool initialized")
 
-        # Initialize Redis connection
-        redis_client = redis.from_url(
-            settings.redis_url,
-            decode_responses=True,
-            socket_connect_timeout=5,
-            socket_timeout=5
-        )
-        await redis_client.ping()
-        logger.info("✅ Redis connection initialized")
+        # Initialize Redis connection (optional in staging)
+        if settings.environment != "staging":
+            redis_client = redis.from_url(
+                settings.redis_url,
+                decode_responses=True,
+                socket_connect_timeout=5,
+                socket_timeout=5
+            )
+            await redis_client.ping()
+            logger.info("✅ Redis connection initialized")
+        else:
+            logger.warning("⚠️ Redis disabled for staging environment")
 
     except Exception as e:
         logger.error(f"❌ Failed to initialize connections: {e}")
