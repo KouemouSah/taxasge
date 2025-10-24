@@ -142,9 +142,7 @@ jobs:
           NEXT_PUBLIC_API_URL: ${{ needs.deploy-backend.outputs.url || 'https://taxasge-backend-staging.run.app' }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-        run: |
-          npm run build
-          npm run export
+        run: npm run build
 
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
