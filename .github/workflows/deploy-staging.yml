@@ -62,10 +62,32 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          # Build Docker image for Cloud Run
-          gcloud builds submit \
+          # Build Docker image for Cloud Run (async to avoid log streaming issues)
+          BUILD_ID=$(gcloud builds submit \
             --tag gcr.io/${{ env.PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:${{ github.sha }} \
-            --tag gcr.io/${{ env.PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:latest
+            --tag gcr.io/${{ env.PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:latest \
+            --async \
+            --format="value(id)")
+
+          echo "Build ID: $BUILD_ID"
+          echo "Waiting for build to complete..."
+
+          # Poll build status every 15 seconds
+          while true; do
+            STATUS=$(gcloud builds describe "$BUILD_ID" --format="value(status)")
+            echo "Current status: $STATUS"
+
+            if [ "$STATUS" = "SUCCESS" ]; then
+              echo "✅ Build completed successfully!"
+              break
+            elif [ "$STATUS" = "FAILURE" ] || [ "$STATUS" = "TIMEOUT" ] || [ "$STATUS" = "CANCELLED" ]; then
+              echo "❌ Build failed with status: $STATUS"
+              echo "View logs at: https://console.cloud.google.com/cloud-build/builds/$BUILD_ID?project=${{ env.PROJECT_ID }}"
+              exit 1
+            fi
+
+            sleep 15
+          done
 
       - name: Deploy to Cloud Run
         run: |
