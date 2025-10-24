@@ -1,9 +1,9 @@
 # 📊 RAPPORT GÉNÉRAL PROJET TAXASGE
 ## Dashboard Exécutif - Vue Consolidée
 
-**Dernière mise à jour :** 2025-10-24 17:30 UTC
-**Version :** 2.0.0
-**Statut global :** 🟢 PHASE 0 TERMINÉE - 100% Complété ✅
+**Dernière mise à jour :** 2025-10-24 20:00 UTC
+**Version :** 2.1.0
+**Statut global :** 🟢 PHASE 0 TERMINÉE - 100% Complété ✅ (VALIDATION FINALE)
 
 ---
 
@@ -96,7 +96,7 @@
 | **Jour 2** | Nettoyage + Baselines + Secret Manager | ✅ 100% | 2025-10-24 |
 | **Jour 3** | Setup environnement dev (TASK-P0-003B) | ✅ 100% | 2025-10-24 |
 | **Jour 4** | CI/CD + Déploiement staging (TASK-P0-004) | ✅ 100% | 2025-10-24 |
-| **Jour 5** | Validation finale + Go/No-Go (TASK-P0-005) | ✅ 100% | 2025-10-24 |
+| **Jour 5** | Validation finale + Go/No-Go (TASK-P0-005/P0-006) | ✅ 100% | 2025-10-24 |
 
 **Progression Phase 0 :** **100% ✅ COMPLÈTE** (12/12 critères validés, GO pour Module 1)
 
@@ -178,8 +178,9 @@ Lighthouse score : Non mesuré
 ```
 Projet : taxasge-dev
 Services activés : 5
-Services déployés : 1 (Backend staging sur Cloud Run)
+Services déployés : 2 (Backend Cloud Run + Frontend Firebase Hosting)
 Backend URL : https://taxasge-backend-staging-xrlbgdr5eq-uc.a.run.app
+Frontend URL : https://taxasge-dev--staging-db8mpjw0.web.app
 Health Check : ✅ OK (API, Database, Firebase)
 CI/CD configuré : Oui (GitHub Actions - 2 workflows opérationnels)
 Secrets GitHub : 7 configurés
@@ -216,8 +217,13 @@ SSL/DNS : Non configuré
 - [📚 Structure Documentation](./00_STRATEGIE/STRUCTURE_DOCUMENTATION.md) - 2025-10-23 - ✅ Complet
 
 ### Rapports Phases
-- **Phase 0 - Préparation :** 🟡 En cours
-  - Aucun rapport encore généré
+- **Phase 0 - Préparation :** ✅ TERMINÉE
+  - [RAPPORT_ORCHESTRATION_2025-10-24.md](./03_PHASES/PHASE_00_PREPARATION/RAPPORT_ORCHESTRATION_2025-10-24.md) - Jour 2
+  - [RAPPORT_ORCHESTRATION_2025-10-24_TASK-P0-003B.md](./03_PHASES/PHASE_00_PREPARATION/RAPPORT_ORCHESTRATION_2025-10-24_TASK-P0-003B.md) - Jour 3
+  - [RAPPORT_ORCHESTRATION_2025-10-24_TASK-P0-004.md](./03_PHASES/PHASE_00_PREPARATION/RAPPORT_ORCHESTRATION_2025-10-24_TASK-P0-004.md) - Jour 4
+  - [RAPPORT_ORCHESTRATION_2025-10-24_TASK-P0-004B.md](./03_PHASES/PHASE_00_PREPARATION/RAPPORT_ORCHESTRATION_2025-10-24_TASK-P0-004B.md) - Jour 4B
+  - [RAPPORT_ORCHESTRATION_2025-10-24_TASK-P0-005.md](./03_PHASES/PHASE_00_PREPARATION/RAPPORT_ORCHESTRATION_2025-10-24_TASK-P0-005.md) - Jour 5
+  - [RAPPORT_ORCHESTRATION_2025-10-24_TASK-P0-006.md](./03_PHASES/PHASE_00_PREPARATION/RAPPORT_ORCHESTRATION_2025-10-24_TASK-P0-006.md) - Validation Finale
 
 ### Décisions Documentées
 - **Total décisions :** 2
@@ -446,15 +452,20 @@ Importants  🟡🟡🟡🟡🟡 (5)
 - ✅ Branch feature/ci-cd-pipeline (19 commits total)
 - ✅ Rapport TASK-P0-004 complet (12/12 critères validés)
 
-**Livrables Jour 5 (TASK-P0-005) - Validation Finale Phase 0 :**
+**Livrables Jour 5 (TASK-P0-005 + TASK-P0-006) - Validation Finale Phase 0 :**
 - ✅ Backend staging déployé sur Cloud Run
   - URL: https://taxasge-backend-staging-xrlbgdr5eq-uc.a.run.app
   - Health check: API ✅ | Database ✅ | Firebase ✅ | Redis disabled (staging)
   - Environment-aware config (Redis optionnel staging)
+- ✅ Frontend staging déployé sur Firebase Hosting
+  - URL: https://taxasge-dev--staging-db8mpjw0.web.app
+  - 5 corrections appliquées (npm cache, Node.js 20, Firebase config, next export, .firebaserc)
+  - Preview channel opérationnel
 - ✅ CI/CD pipeline 100% opérationnel
   - Auto-deploy sur develop → staging
   - Tests automatisés (backend + frontend)
   - Docker build + Cloud Run deployment
+  - Firebase Hosting deployment
 - ✅ All 12 Phase 0 criteria validated
   - Infrastructure: 100%
   - Documentation: 100%
@@ -462,17 +473,18 @@ Importants  🟡🟡🟡🟡🟡 (5)
   - CI/CD: Opérationnel
 - ✅ GO Decision formelle pour Module 1
   - Rapport TASK-P0-005 complet (511 lignes)
+  - Rapport TASK-P0-006 complet (validation finale avec 5 corrections)
   - Timeline: 18 commits, ~10h total effort
   - Merge to develop: ✅ DONE
 
 ---
 
-**FIN DU RAPPORT GÉNÉRAL - VERSION 2.0.0**
+**FIN DU RAPPORT GÉNÉRAL - VERSION 2.1.0**
 
 **Prochaine mise à jour :** 2025-10-25 09:00 UTC (début Module 1)
 
 **Généré par :** Claude Code Expert IA via taxasge-orchestrator skill
-**Validé par :** ✅ Phase 0 validée, GO pour Module 1
+**Validé par :** ✅ Phase 0 100% complétée avec validation finale, GO pour Module 1
 
 ---
 
