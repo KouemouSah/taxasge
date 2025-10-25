@@ -3,6 +3,7 @@ export interface User {
   email: string
   role: 'admin' | 'agent' | 'citizen'
   status?: string
+  country?: string
   profile?: UserProfile
   // Compatibility aliases
   firstName?: string

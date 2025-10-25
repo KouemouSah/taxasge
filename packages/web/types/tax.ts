@@ -1,7 +1,7 @@
 export interface TaxCategory {
   id: string
-  name: string
-  description?: string
+  name: string | { es: string; fr: string; en: string }
+  description?: string | { es: string; fr: string; en: string }
   icon?: string
   color?: string
 }
@@ -64,6 +64,7 @@ export interface TaxCalculation {
   tax_amount: number
   total_amount: number
   currency: string
+  baseAmount?: number
   calculatedAmount?: number
   breakdown?: {
     label: string
