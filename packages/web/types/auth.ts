@@ -4,6 +4,7 @@ export interface User {
   role: 'admin' | 'agent' | 'citizen'
   status?: string
   country?: string
+  language?: string
   profile?: UserProfile
   // Compatibility aliases
   firstName?: string

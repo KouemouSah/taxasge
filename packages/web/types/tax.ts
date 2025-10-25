@@ -12,7 +12,7 @@ export interface TaxService {
   name: string
   description?: string
   category_id: string
-  category?: TaxCategory
+  category?: TaxCategory | string
   amount?: number
   currency?: string
   processing_time?: string
@@ -66,6 +66,7 @@ export interface TaxCalculation {
   currency: string
   baseAmount?: number
   calculatedAmount?: number
+  nextSteps?: string | string[]
   breakdown?: {
     label: string
     amount: number
