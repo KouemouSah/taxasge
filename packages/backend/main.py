@@ -243,18 +243,49 @@ async def api_v1_info():
         }
     }
 
-# Include API routers
+# Include API routers - Import individually to handle partial failures
+routers_loaded = []
+
+# Try to load auth router (Module 1 - Critical)
 try:
-    from app.api.v1 import auth, fiscal_services, users, taxes
+    from app.api.v1 import auth
     app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
-    app.include_router(fiscal_services.router, prefix="/api/v1/fiscal-services", tags=["fiscal-services"])
-    app.include_router(users.router, prefix="/api/v1/users", tags=["user-management"])
-    app.include_router(taxes.router, prefix="/api/v1/taxes", tags=["tax-management"])
-    logger.info("✅ API routers loaded successfully")
+    routers_loaded.append("auth")
+    logger.info("✅ Auth router loaded")
 except ImportError as e:
-    logger.warning(f"⚠️ Some API routers not available: {e}")
-    if settings.environment == "development":
-        logger.info("🔄 Continuing in development mode with limited endpoints")
+    logger.error(f"❌ Failed to load auth router: {e}")
+
+# Try to load fiscal_services router
+try:
+    from app.api.v1 import fiscal_services
+    app.include_router(fiscal_services.router, prefix="/api/v1/fiscal-services", tags=["fiscal-services"])
+    routers_loaded.append("fiscal_services")
+    logger.info("✅ Fiscal services router loaded")
+except ImportError as e:
+    logger.warning(f"⚠️ Fiscal services router not available: {e}")
+
+# Try to load users router
+try:
+    from app.api.v1 import users
+    app.include_router(users.router, prefix="/api/v1/users", tags=["user-management"])
+    routers_loaded.append("users")
+    logger.info("✅ Users router loaded")
+except ImportError as e:
+    logger.warning(f"⚠️ Users router not available: {e}")
+
+# Try to load taxes router (optional - has known issues)
+try:
+    from app.api.v1 import taxes
+    app.include_router(taxes.router, prefix="/api/v1/taxes", tags=["tax-management"])
+    routers_loaded.append("taxes")
+    logger.info("✅ Taxes router loaded")
+except ImportError as e:
+    logger.warning(f"⚠️ Taxes router not available (non-blocking): {e}")
+
+if routers_loaded:
+    logger.info(f"✅ {len(routers_loaded)} API routers loaded: {', '.join(routers_loaded)}")
+else:
+    logger.error("❌ No API routers could be loaded!")
 
 # Firebase Functions wrapper
 @functions_framework.http
