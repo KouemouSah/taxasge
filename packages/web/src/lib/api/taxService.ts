@@ -72,6 +72,11 @@ class TaxService {
       })
 
       return {
+        base_amount: response.data.base_amount || params.baseAmount || 0,
+        tax_rate: response.data.tax_rate || params.taxRate || 0,
+        tax_amount: response.data.tax_amount || 0,
+        total_amount: response.data.total_amount || response.data.calculated_amount || 0,
+        currency: response.data.currency || 'XAF',
         calculatedAmount: response.data.calculated_amount,
         baseAmount: response.data.base_amount,
         breakdown: response.data.breakdown,

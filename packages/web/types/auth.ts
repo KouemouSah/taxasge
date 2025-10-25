@@ -1,3 +1,12 @@
+export interface UserPreferences {
+  emailNotifications?: boolean
+  pushNotifications?: boolean
+  language?: 'es' | 'fr' | 'en'
+  theme?: 'light' | 'dark' | 'system'
+  currency?: string
+  timezone?: string
+}
+
 export interface User {
   id: string
   email: string
@@ -6,6 +15,7 @@ export interface User {
   country?: string
   language?: string
   profile?: UserProfile
+  preferences?: UserPreferences
   // Compatibility aliases
   firstName?: string
   lastName?: string
