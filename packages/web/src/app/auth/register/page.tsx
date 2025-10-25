@@ -88,7 +88,7 @@ export default function RegisterPage() {
             type="submit"
             className="w-full py-3 bg-green-600 text-white rounded hover:bg-green-700"
           >
-            S'inscrire
+            {"S'inscrire"}
           </button>
         </form>
       </div>
