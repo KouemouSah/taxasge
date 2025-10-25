@@ -1,37 +1,38 @@
 /** @type {import('next').NextConfig} */
-const withPWA = require('next-pwa')({
-  dest: 'public',
-  register: true,
-  skipWaiting: true,
-  disable: process.env.NODE_ENV === 'development',
-  runtimeCaching: [
-    {
-      urlPattern: /^https:\/\/taxasge-dev\.firebase\.com\/.*/i,
-      handler: 'NetworkFirst',
-      options: {
-        cacheName: 'api-cache',
-        expiration: {
-          maxEntries: 50,
-          maxAgeSeconds: 5 * 60, // 5 minutes
-        },
-      },
-    },
-    {
-      urlPattern: /^https:\/\/.*\.(?:png|jpg|jpeg|svg|gif|webp)$/i,
-      handler: 'CacheFirst',
-      options: {
-        cacheName: 'image-cache',
-        expiration: {
-          maxEntries: 100,
-          maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
-        },
-      },
-    },
-  ],
-});
+// Temporarily disable PWA to fix Webpack issues in development
+// const withPWA = require('next-pwa')({
+//   dest: 'public',
+//   register: true,
+//   skipWaiting: true,
+//   disable: process.env.NODE_ENV === 'development',
+//   runtimeCaching: [
+//     {
+//       urlPattern: /^https:\/\/taxasge-dev\.firebase\.com\/.*/i,
+//       handler: 'NetworkFirst',
+//       options: {
+//         cacheName: 'api-cache',
+//         expiration: {
+//           maxEntries: 50,
+//           maxAgeSeconds: 5 * 60, // 5 minutes
+//         },
+//       },
+//     },
+//     {
+//       urlPattern: /^https:\/\/.*\.(?:png|jpg|jpeg|svg|gif|webp)$/i,
+//       handler: 'CacheFirst',
+//       options: {
+//         cacheName: 'image-cache',
+//         expiration: {
+//           maxEntries: 100,
+//           maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+//         },
+//       },
+//     },
+//   ],
+// });
 
 const nextConfig = {
-  output: 'export',
+  // output: 'export', // Disabled for dev mode - auth requires SSR
   trailingSlash: true,
   images: {
     unoptimized: true,
@@ -160,4 +161,5 @@ const nextConfig = {
   },
 };
 
-module.exports = withPWA(nextConfig);
+// module.exports = withPWA(nextConfig); // Temporarily disabled
+module.exports = nextConfig;

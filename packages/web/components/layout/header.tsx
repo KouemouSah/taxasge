@@ -36,7 +36,7 @@ export function Header() {
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-3">
             <div className="relative">
-              <div className="w-10 h-10 bg-gradient-to-br from-guinea-red via-guinea-yellow to-guinea-green rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-gq-red via-gq-yellow to-gq-green rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-lg">T</span>
               </div>
             </div>
@@ -71,13 +71,13 @@ export function Header() {
             {/* Auth Buttons */}
             <div className="hidden sm:flex items-center space-x-2">
               <Button variant="ghost" size="sm" asChild>
-                <Link href="/login">
+                <Link href="/auth/login">
                   <LogIn className="w-4 h-4 mr-2" />
                   Iniciar Sesión
                 </Link>
               </Button>
               <Button size="sm" asChild>
-                <Link href="/register">
+                <Link href="/auth/register">
                   <UserPlus className="w-4 h-4 mr-2" />
                   Registrarse
                 </Link>
@@ -120,13 +120,13 @@ export function Header() {
                 
                 <div className="pt-4 space-y-2">
                   <Button variant="outline" className="w-full" asChild>
-                    <Link href="/login">
+                    <Link href="/auth/login">
                       <LogIn className="w-4 h-4 mr-2" />
                       Iniciar Sesión
                     </Link>
                   </Button>
                   <Button className="w-full" asChild>
-                    <Link href="/register">
+                    <Link href="/auth/register">
                       <UserPlus className="w-4 h-4 mr-2" />
                       Registrarse
                     </Link>

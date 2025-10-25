@@ -15,6 +15,7 @@ const config: Config = {
         'gq-white': '#FFFFFF',     // Blanc - Bande centrale
         'gq-red': '#E11C1C',       // Rouge - Bande inférieure
         'gq-blue': '#0072C6',      // Bleu - Triangle gauche
+        'gq-yellow': '#FCD116',    // Jaune - Armoiries
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {
