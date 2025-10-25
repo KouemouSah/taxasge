@@ -161,6 +161,7 @@ class TaxService {
     return [
       {
         id: 'T-001',
+        code: 'DRV-LIC-001',
         name: {
           es: 'Permiso de Conducir',
           fr: 'Permis de Conduire',
@@ -171,21 +172,16 @@ class TaxService {
           fr: 'Permis pour conduire des véhicules motorisés',
           en: 'License to drive motor vehicles'
         },
+        category_id: 'cat-transport',
         category: 'Transporte',
-        subcategory: 'Licencias',
-        serviceType: 'license',
-        prices: {
-          expedition: 15000,
-          renewal: 10000
-        },
-        processingTime: '5-7 días laborables',
-        ministry: 'Ministerio de Transportes',
-        sector: 'Transporte Terrestre',
-        isOnlineAvailable: true,
-        isUrgentAvailable: true,
+        amount: 15000,
+        currency: 'XAF',
+        processing_time: '5-7 días laborables',
+        is_active: true,
       },
       {
         id: 'T-002',
+        code: 'COM-PAT-001',
         name: {
           es: 'Patente Comercial',
           fr: 'Patente Commerciale',
@@ -196,21 +192,15 @@ class TaxService {
           fr: 'Licence pour exercer des activités commerciales',
           en: 'License to conduct commercial activities'
         },
+        category_id: 'cat-commerce',
         category: 'Comercio',
-        subcategory: 'Licencias Comerciales',
-        serviceType: 'license',
-        prices: {
-          expedition: 25000,
-          renewal: 15000
-        },
-        processingTime: '10-15 días laborables',
-        ministry: 'Ministerio de Comercio',
-        sector: 'Comercio Interior',
-        isOnlineAvailable: true,
-        isUrgentAvailable: false,
+        amount: 25000,
+        currency: 'XAF',
+        processing_time: '10-15 días laborables',
+        is_active: true,
       },
       // Ajouter plus de services mock...
-    ]
+    ] as Tax[]
   }
 
   // Gestion du cache offline
@@ -228,12 +218,27 @@ class TaxService {
           
           getAllRequest.onsuccess = () => {
             const allTaxes = getAllRequest.result
-            const filtered = allTaxes.filter((tax: Tax) => 
-              tax.name.es.toLowerCase().includes(query.toLowerCase()) ||
-              tax.name.fr.toLowerCase().includes(query.toLowerCase()) ||
-              tax.name.en.toLowerCase().includes(query.toLowerCase()) ||
-              tax.category.toLowerCase().includes(query.toLowerCase())
-            )
+            const filtered = allTaxes.filter((tax: Tax) => {
+              const queryLower = query.toLowerCase()
+
+              // Handle name search (string or multilingual object)
+              let nameMatch = false
+              if (typeof tax.name === 'string') {
+                nameMatch = tax.name.toLowerCase().includes(queryLower)
+              } else if (tax.name && typeof tax.name === 'object') {
+                nameMatch =
+                  tax.name.es?.toLowerCase().includes(queryLower) ||
+                  tax.name.fr?.toLowerCase().includes(queryLower) ||
+                  tax.name.en?.toLowerCase().includes(queryLower)
+              }
+
+              // Handle category search
+              const categoryMatch = typeof tax.category === 'string'
+                ? tax.category.toLowerCase().includes(queryLower)
+                : false
+
+              return nameMatch || categoryMatch
+            })
             resolve(filtered)
           }
           

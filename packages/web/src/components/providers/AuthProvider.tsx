@@ -57,8 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         status: 'active',
         country: 'GQ',
         language: 'es',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
         preferences: {
           emailNotifications: true,
           pushNotifications: true,
@@ -105,8 +105,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         status: 'pending_verification',
         country: 'GQ',
         language: 'es',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
         preferences: {
           emailNotifications: true,
           pushNotifications: false,

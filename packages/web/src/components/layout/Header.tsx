@@ -147,7 +147,7 @@ export function Header() {
                   <Button variant="ghost" size="sm">
                     <User className="h-4 w-4 mr-1" />
                     <span className="hidden sm:inline">
-                      {user.firstName}
+                      {user.first_name}
                     </span>
                   </Button>
                 </DropdownMenuTrigger>

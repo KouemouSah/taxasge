@@ -9,8 +9,8 @@ export interface TaxCategory {
 export interface TaxService {
   id: string
   code: string
-  name: string
-  description?: string
+  name: string | { es: string; fr: string; en: string }
+  description?: string | { es: string; fr: string; en: string }
   category_id: string
   category?: TaxCategory | string
   amount?: number
@@ -67,6 +67,8 @@ export interface TaxCalculation {
   baseAmount?: number
   calculatedAmount?: number
   nextSteps?: string | string[]
+  paymentOptions?: any
+  calculatedAt?: string
   breakdown?: {
     label: string
     amount: number
