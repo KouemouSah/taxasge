@@ -69,3 +69,20 @@ export interface TaxCalculation {
     amount: number
   }[]
 }
+
+// Aliases for compatibility
+export type Tax = TaxService
+export type CalculationResult = TaxCalculation
+export interface CalculationParams {
+  serviceId: string
+  baseAmount: number
+  taxRate?: number
+}
+
+export interface SearchFilters {
+  category?: string
+  status?: string
+  search?: string
+  minAmount?: number
+  maxAmount?: number
+}

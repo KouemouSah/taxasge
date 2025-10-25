@@ -5,6 +5,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react'
 interface OfflineContextType {
   isOnline: boolean
   wasOffline: boolean
+  syncPending: boolean
 }
 
 const OfflineContext = createContext<OfflineContextType | undefined>(undefined)
@@ -12,6 +13,7 @@ const OfflineContext = createContext<OfflineContextType | undefined>(undefined)
 export function OfflineProvider({ children }: { children: React.ReactNode }) {
   const [isOnline, setIsOnline] = useState(true)
   const [wasOffline, setWasOffline] = useState(false)
+  const [syncPending, setSyncPending] = useState(false)
 
   useEffect(() => {
     // Set initial state
@@ -44,7 +46,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
   }, [wasOffline])
 
   return (
-    <OfflineContext.Provider value={{ isOnline, wasOffline }}>
+    <OfflineContext.Provider value={{ isOnline, wasOffline, syncPending }}>
       {children}
       {!isOnline && (
         <div className="fixed bottom-0 left-0 right-0 bg-yellow-500 text-white p-2 text-center z-50">
