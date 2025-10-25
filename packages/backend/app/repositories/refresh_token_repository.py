@@ -9,7 +9,7 @@ from loguru import logger
 import uuid
 import hashlib
 
-from app.core.supabase import get_supabase_client
+from app.database.supabase_client import get_supabase_client
 from app.models.auth_models import (
     RefreshToken,
     RefreshTokenCreate,

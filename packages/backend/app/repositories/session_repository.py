@@ -8,7 +8,7 @@ from typing import Optional, List, Dict, Any
 from loguru import logger
 import uuid
 
-from app.core.supabase import get_supabase_client
+from app.database.supabase_client import get_supabase_client
 from app.models.auth_models import (
     Session,
     SessionCreate,

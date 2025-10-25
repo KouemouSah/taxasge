@@ -10,10 +10,11 @@ from datetime import datetime
 import hashlib
 from loguru import logger
 
-from app.api.v1.auth import security, UserRole, UserStatus
+from app.api.v1.auth import security
 from app.models.user import (
     UserCreate, UserUpdate, UserResponse, UserListResponse,
-    UserSearchFilter, UserStats, PasswordChange, UserActivity
+    UserSearchFilter, UserStats, PasswordChange, UserActivity,
+    UserRole, UserStatus
 )
 from app.repositories.user_repository import user_repository
 from app.database.connection import get_database

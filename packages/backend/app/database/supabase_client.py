@@ -223,6 +223,12 @@ async def get_supabase() -> SupabaseClient:
     return supabase_client
 
 
+# Alias for compatibility
+async def get_supabase_client() -> SupabaseClient:
+    """Alias for get_supabase() - for backwards compatibility"""
+    return supabase_client
+
+
 # Convenience functions for common operations
 async def supabase_select(table: str, **kwargs) -> List[Dict]:
     """Convenience function for Supabase select"""
