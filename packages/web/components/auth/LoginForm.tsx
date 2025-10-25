@@ -1,106 +1,126 @@
 'use client';
 
 import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/lib/stores/auth-store';
+import Link from 'next/link';
+import { Loader2 } from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useAuthStore } from '@/lib/stores/authStore';
+import { authApi } from '@/lib/api/authApi';
+import { loginSchema, type LoginInput } from '@/lib/validations/auth';
 
 export default function LoginForm() {
   const router = useRouter();
-  const { login, isLoading } = useAuthStore();
-
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    remember_me: false,
-  });
+  const { setAuth, setLoading } = useAuthStore();
   const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginInput>({
+    resolver: zodResolver(loginSchema),
+  });
 
+  const onSubmit = async (data: LoginInput) => {
     try {
-      await login(formData);
+      setError('');
+      setLoading(true);
+
+      const response = await authApi.login(data);
+
+      setAuth(
+        response.user,
+        response.access_token,
+        response.refresh_token
+      );
+
       router.push('/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Login failed. Please check your credentials.');
+      setError(
+        err.response?.data?.detail ||
+        'Error al iniciar sesión. Por favor, verifica tus credenciales.'
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-          {error}
+        <div className="rounded-md bg-red-50 border border-red-200 p-4">
+          <p className="text-sm text-red-800">{error}</p>
         </div>
       )}
 
-      <div>
-        <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-          Email
-        </label>
-        <input
+      <div className="space-y-2">
+        <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+          Correo electrónico
+        </Label>
+        <Input
           id="email"
           type="email"
-          required
-          value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
-          placeholder="correo@ejemplo.com"
+          placeholder="tu@email.com"
+          {...register('email')}
+          className="w-full"
+          disabled={isSubmitting}
         />
+        {errors.email && (
+          <p className="text-sm text-red-600">{errors.email.message}</p>
+        )}
       </div>
 
-      <div>
-        <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+      <div className="space-y-2">
+        <Label htmlFor="password" className="text-sm font-medium text-gray-700">
           Contraseña
-        </label>
-        <input
+        </Label>
+        <Input
           id="password"
           type="password"
-          required
-          value={formData.password}
-          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
           placeholder="••••••••"
+          {...register('password')}
+          className="w-full"
+          disabled={isSubmitting}
         />
+        {errors.password && (
+          <p className="text-sm text-red-600">{errors.password.message}</p>
+        )}
       </div>
 
       <div className="flex items-center justify-between">
-        <div className="flex items-center">
-          <input
-            id="remember_me"
-            type="checkbox"
-            checked={formData.remember_me}
-            onChange={(e) => setFormData({ ...formData, remember_me: e.target.checked })}
-            className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-          />
-          <label htmlFor="remember_me" className="ml-2 block text-sm text-gray-900">
-            Recordarme (30 días)
-          </label>
-        </div>
-
         <div className="text-sm">
-          <a href="/auth/forgot-password" className="font-medium text-green-600 hover:text-green-500">
+          <Link
+            href="/auth/forgot-password"
+            className="font-medium text-[hsl(142,100%,30%)] hover:text-[hsl(142,100%,25%)]"
+          >
             ¿Olvidaste tu contraseña?
-          </a>
+          </Link>
         </div>
       </div>
 
-      <button
+      <Button
         type="submit"
-        disabled={isLoading}
-        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
+        className="w-full bg-[hsl(142,100%,30%)] hover:bg-[hsl(142,100%,25%)] text-white"
+        disabled={isSubmitting}
       >
-        {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
-      </button>
+        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        Iniciar sesión
+      </Button>
 
-      <div className="text-center">
-        <span className="text-sm text-gray-600">
-          ¿No tienes cuenta?{' '}
-          <a href="/auth/register" className="font-medium text-green-600 hover:text-green-500">
-            Regístrate aquí
-          </a>
-        </span>
+      <div className="text-center text-sm text-gray-600">
+        ¿No tienes una cuenta?{' '}
+        <Link
+          href="/auth/register"
+          className="font-medium text-[hsl(142,100%,30%)] hover:text-[hsl(142,100%,25%)]"
+        >
+          Registrarse
+        </Link>
       </div>
     </form>
   );
