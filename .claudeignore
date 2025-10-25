@@ -1,0 +1,63 @@
+# ============================================================================
+# TaxasGE - Exclusions Claude Code pour Optimisation Context
+# Evite fichiers volumineux, temporaires, et archives non pertinents
+# ============================================================================
+
+# Node modules (très volumineux)
+node_modules/
+packages/*/node_modules/
+
+# Builds et distributions
+packages/*/build/
+packages/*/dist/
+packages/*/.next/
+packages/*/out/
+.expo/
+web-build/
+
+# Logs et caches
+*.log
+logs/
+.cache/
+.parcel-cache/
+.eslintcache
+.coverage
+htmlcov/
+.pytest_cache/
+__pycache__/
+
+# IDE et configurations
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Archives et backups
+*.backup.*
+*.bak.*
+*.orig
+
+# Firebase et Supabase locaux
+.firebase/
+.supabase/
+
+# Variables environnement (sécurité)
+.env*
+config/*firebase-adminsdk*.json
+config/bange-*-credentials.json
+
+# Archive - Anciens fichiers pré-refactoring
+old-json/
+
+# Documentation temporaire
+docs/_build/
+docs/site/
+
+# Fichiers volumineux générés
+data/exports/
+data/imports/temp/

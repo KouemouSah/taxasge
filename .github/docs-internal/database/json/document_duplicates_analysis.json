@@ -1,0 +1,368 @@
+{
+  "format": "1_row_per_language",
+  "total_entries": 2901,
+  "es_entries": 967,
+  "unique_content": 652,
+  "duplicates_count": 89,
+  "duplication_rate": "13.7",
+  "savings_potential": "77.5",
+  "top_duplicates": [
+    {
+      "content": "- comprobante de pago",
+      "count": 47,
+      "services": [
+        "T-425",
+        "T-427",
+        "T-430",
+        "T-433",
+        "T-436",
+        "T-437",
+        "T-438",
+        "T-439",
+        "T-440",
+        "T-441",
+        "T-442",
+        "T-443",
+        "T-447",
+        "T-448",
+        "T-449",
+        "T-450",
+        "T-451",
+        "T-452",
+        "T-453",
+        "T-454",
+        "T-455",
+        "T-456",
+        "T-457",
+        "T-458",
+        "T-459",
+        "T-460",
+        "T-461",
+        "T-470",
+        "T-471",
+        "T-472",
+        "T-473",
+        "T-474",
+        "T-477",
+        "T-478",
+        "T-479",
+        "T-480",
+        "T-481",
+        "T-482",
+        "T-492",
+        "T-493",
+        "T-494",
+        "T-495",
+        "T-496",
+        "T-497",
+        "T-498",
+        "T-499",
+        "T-500"
+      ]
+    },
+    {
+      "content": "- documento de identidad",
+      "count": 38,
+      "services": [
+        "T-462",
+        "T-465",
+        "T-548",
+        "T-466",
+        "T-549",
+        "T-467",
+        "T-550",
+        "T-468",
+        "T-551",
+        "T-463",
+        "T-464",
+        "T-465",
+        "T-548",
+        "T-466",
+        "T-549",
+        "T-467",
+        "T-550",
+        "T-468",
+        "T-551",
+        "T-469",
+        "T-470",
+        "T-471",
+        "T-472",
+        "T-473",
+        "T-474",
+        "T-475",
+        "T-476",
+        "T-477",
+        "T-478",
+        "T-479",
+        "T-480",
+        "T-482",
+        "T-487",
+        "T-492",
+        "T-493",
+        "T-495",
+        "T-497",
+        "T-500"
+      ]
+    },
+    {
+      "content": "- formulario de solicitud",
+      "count": 31,
+      "services": [
+        "T-425",
+        "T-426",
+        "T-427",
+        "T-428",
+        "T-429",
+        "T-430",
+        "T-431",
+        "T-432",
+        "T-433",
+        "T-434",
+        "T-435",
+        "T-436",
+        "T-437",
+        "T-438",
+        "T-439",
+        "T-440",
+        "T-441",
+        "T-442",
+        "T-443",
+        "T-447",
+        "T-448",
+        "T-449",
+        "T-450",
+        "T-451",
+        "T-452",
+        "T-453",
+        "T-454",
+        "T-455",
+        "T-472",
+        "T-479",
+        "T-482"
+      ]
+    },
+    {
+      "content": "- fotografías recientes",
+      "count": 21,
+      "services": [
+        "T-465",
+        "T-548",
+        "T-466",
+        "T-549",
+        "T-467",
+        "T-550",
+        "T-468",
+        "T-551",
+        "T-464",
+        "T-465",
+        "T-548",
+        "T-466",
+        "T-549",
+        "T-467",
+        "T-550",
+        "T-468",
+        "T-551",
+        "T-469",
+        "T-470",
+        "T-471",
+        "T-482"
+      ]
+    },
+    {
+      "content": "- especificaciones técnicas",
+      "count": 15,
+      "services": [
+        "T-421",
+        "T-422",
+        "T-425",
+        "T-426",
+        "T-429",
+        "T-431",
+        "T-434",
+        "T-436",
+        "T-437",
+        "T-438",
+        "T-439",
+        "T-440",
+        "T-441",
+        "T-442",
+        "T-443"
+      ]
+    },
+    {
+      "content": "- autorización del anunciante",
+      "count": 11,
+      "services": [
+        "T-425",
+        "T-426",
+        "T-427",
+        "T-428",
+        "T-429",
+        "T-430",
+        "T-431",
+        "T-432",
+        "T-433",
+        "T-434",
+        "T-435"
+      ]
+    },
+    {
+      "content": "documentación de la aeronave, certificado de peso",
+      "count": 10,
+      "services": [
+        "T-015",
+        "T-016",
+        "T-017",
+        "T-018",
+        "T-022",
+        "T-023",
+        "T-024",
+        "T-025",
+        "T-026",
+        "T-027"
+      ]
+    },
+    {
+      "content": "- certificado médico",
+      "count": 10,
+      "services": [
+        "T-465",
+        "T-548",
+        "T-466",
+        "T-549",
+        "T-464",
+        "T-465",
+        "T-548",
+        "T-466",
+        "T-549",
+        "T-474"
+      ]
+    },
+    {
+      "content": "identificación, certificado de notas",
+      "count": 6,
+      "services": [
+        "T-372",
+        "T-373",
+        "T-374",
+        "T-375",
+        "T-381",
+        "T-382"
+      ]
+    },
+    {
+      "content": "identificación, certificado de notas, certificado médico",
+      "count": 5,
+      "services": [
+        "T-363",
+        "T-364",
+        "T-365",
+        "T-366",
+        "T-367"
+      ]
+    },
+    {
+      "content": "- comprobante de formación",
+      "count": 5,
+      "services": [
+        "T-465",
+        "T-548",
+        "T-464",
+        "T-465",
+        "T-548"
+      ]
+    },
+    {
+      "content": "- certificado médico especial",
+      "count": 5,
+      "services": [
+        "T-467",
+        "T-550",
+        "T-467",
+        "T-550",
+        "T-469"
+      ]
+    },
+    {
+      "content": "- seguro vigente",
+      "count": 5,
+      "services": [
+        "T-463",
+        "T-493",
+        "T-494",
+        "T-497",
+        "T-500"
+      ]
+    },
+    {
+      "content": "identificación del estudiante",
+      "count": 4,
+      "services": [
+        "T-359",
+        "T-361",
+        "T-362",
+        "T-384"
+      ]
+    },
+    {
+      "content": "proyecto educativo, certificados educación y salud personal, permiso local",
+      "count": 4,
+      "services": [
+        "T-368",
+        "T-369",
+        "T-370",
+        "T-371"
+      ]
+    },
+    {
+      "content": "- licencia comercial",
+      "count": 4,
+      "services": [
+        "T-412",
+        "T-459",
+        "T-485",
+        "T-491"
+      ]
+    },
+    {
+      "content": "- permiso de ubicación",
+      "count": 4,
+      "services": [
+        "T-416",
+        "T-417",
+        "T-420",
+        "T-459"
+      ]
+    },
+    {
+      "content": "- material publicitario",
+      "count": 4,
+      "services": [
+        "T-421",
+        "T-449",
+        "T-454",
+        "T-456"
+      ]
+    },
+    {
+      "content": "- prueba de color",
+      "count": 4,
+      "services": [
+        "T-426",
+        "T-428",
+        "T-431",
+        "T-434"
+      ]
+    },
+    {
+      "content": "- solicitud de permiso b",
+      "count": 4,
+      "services": [
+        "T-465",
+        "T-548",
+        "T-465",
+        "T-548"
+      ]
+    }
+  ]
+}

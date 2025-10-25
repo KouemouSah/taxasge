@@ -1,0 +1,196 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Helper functions for authentication and authorization
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+             'admin' in request.auth.token &&
+             request.auth.token.admin == true;
+    }
+
+    function isOfficialUser() {
+      return isAuthenticated() &&
+             'role' in request.auth.token &&
+             request.auth.token.role in ['admin', 'official', 'tax_officer'];
+    }
+
+    // File size limits (in bytes)
+    function isValidFileSize() {
+      return request.resource.size <= 10 * 1024 * 1024; // 10MB max
+    }
+
+    function isValidDocumentSize() {
+      return request.resource.size <= 5 * 1024 * 1024; // 5MB max for documents
+    }
+
+    function isValidImageSize() {
+      return request.resource.size <= 2 * 1024 * 1024; // 2MB max for images
+    }
+
+    // Content type validation
+    function isValidDocumentType() {
+      return request.resource.contentType.matches('application/pdf') ||
+             request.resource.contentType.matches('application/msword') ||
+             request.resource.contentType.matches('application/vnd.openxmlformats-officedocument.wordprocessingml.document') ||
+             request.resource.contentType.matches('text/plain') ||
+             request.resource.contentType.matches('application/vnd.ms-excel') ||
+             request.resource.contentType.matches('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    }
+
+    function isValidImageType() {
+      return request.resource.contentType.matches('image/jpeg') ||
+             request.resource.contentType.matches('image/png') ||
+             request.resource.contentType.matches('image/gif') ||
+             request.resource.contentType.matches('image/webp');
+    }
+
+    // Rate limiting helper
+    function hasValidMetadata() {
+      return 'uploadedBy' in resource.metadata &&
+             'uploadedAt' in resource.metadata &&
+             'category' in resource.metadata;
+    }
+
+    // User document uploads (for tax applications)
+    match /user-documents/{userId}/{applicationId}/{fileName} {
+      allow read: if isAuthenticated() &&
+                     (isOwner(userId) || isOfficialUser()) &&
+                     isValidFileSize();
+
+      allow write: if isAuthenticated() &&
+                      isOwner(userId) &&
+                      isValidDocumentSize() &&
+                      isValidDocumentType() &&
+                      request.resource.metadata.keys().hasAll(['uploadedBy', 'uploadedAt', 'applicationId']) &&
+                      request.resource.metadata.uploadedBy == request.auth.uid;
+
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    // Profile pictures
+    match /profile-pictures/{userId}/{fileName} {
+      allow read: if isAuthenticated();
+
+      allow write: if isAuthenticated() &&
+                      isOwner(userId) &&
+                      isValidImageSize() &&
+                      isValidImageType() &&
+                      request.resource.metadata.keys().hasAll(['uploadedBy', 'uploadedAt']) &&
+                      request.resource.metadata.uploadedBy == request.auth.uid;
+
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    // Official documents and forms (read-only for users, writable by officials)
+    match /official-documents/{category}/{fileName} {
+      allow read: if isAuthenticated() && isValidFileSize();
+      allow write: if isOfficialUser() &&
+                      isValidDocumentSize() &&
+                      isValidDocumentType() &&
+                      request.resource.metadata.keys().hasAll(['uploadedBy', 'uploadedAt', 'category', 'version']) &&
+                      request.resource.metadata.uploadedBy == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    // Tax form templates
+    match /tax-forms/{formId}/{fileName} {
+      allow read: if isAuthenticated() && isValidFileSize();
+      allow write: if isOfficialUser() &&
+                      isValidDocumentSize() &&
+                      isValidDocumentType() &&
+                      request.resource.metadata.keys().hasAll(['uploadedBy', 'uploadedAt', 'formVersion']) &&
+                      request.resource.metadata.uploadedBy == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    // Application attachments (supporting documents)
+    match /application-attachments/{applicationId}/{fileName} {
+      allow read: if isAuthenticated() &&
+                     (request.auth.uid in resource.metadata.allowedUsers || isOfficialUser()) &&
+                     isValidFileSize();
+
+      allow write: if isAuthenticated() &&
+                      request.auth.uid in request.resource.metadata.allowedUsers &&
+                      isValidDocumentSize() &&
+                      isValidDocumentType() &&
+                      request.resource.metadata.keys().hasAll(['uploadedBy', 'uploadedAt', 'applicationId', 'allowedUsers']) &&
+                      request.resource.metadata.uploadedBy == request.auth.uid;
+
+      allow delete: if isAuthenticated() &&
+                       (request.auth.uid == resource.metadata.uploadedBy || isAdmin());
+    }
+
+    // System logos and assets
+    match /system-assets/{assetType}/{fileName} {
+      allow read: if true; // Public read access for logos, etc.
+      allow write: if isAdmin() &&
+                      isValidImageSize() &&
+                      (isValidImageType() || isValidDocumentType()) &&
+                      request.resource.metadata.keys().hasAll(['uploadedBy', 'uploadedAt', 'assetType']) &&
+                      request.resource.metadata.uploadedBy == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    // Backup files - admin only
+    match /backups/{backupId}/{fileName} {
+      allow read, write: if isAdmin() && isValidFileSize();
+      allow delete: if isAdmin();
+    }
+
+    // Temporary uploads (expire after processing)
+    match /temp-uploads/{userId}/{sessionId}/{fileName} {
+      allow read, write: if isAuthenticated() &&
+                            isOwner(userId) &&
+                            isValidDocumentSize() &&
+                            (isValidDocumentType() || isValidImageType()) &&
+                            request.resource.metadata.keys().hasAll(['uploadedBy', 'uploadedAt', 'expiresAt']) &&
+                            request.resource.metadata.uploadedBy == request.auth.uid;
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    // Reports and analytics exports - officials only
+    match /reports/{reportType}/{fileName} {
+      allow read: if isOfficialUser() && isValidFileSize();
+      allow write: if isAdmin() &&
+                      isValidDocumentSize() &&
+                      request.resource.metadata.keys().hasAll(['generatedBy', 'generatedAt', 'reportType']) &&
+                      request.resource.metadata.generatedBy == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    // Audit trail documents - admin only
+    match /audit-documents/{year}/{month}/{fileName} {
+      allow read, write: if isAdmin() && isValidFileSize();
+    }
+
+    // Notification attachments
+    match /notification-attachments/{notificationId}/{fileName} {
+      allow read: if isAuthenticated() &&
+                     request.auth.uid in resource.metadata.recipients &&
+                     isValidImageSize();
+
+      allow write: if isOfficialUser() &&
+                      isValidImageSize() &&
+                      isValidImageType() &&
+                      request.resource.metadata.keys().hasAll(['uploadedBy', 'uploadedAt', 'notificationId', 'recipients']) &&
+                      request.resource.metadata.uploadedBy == request.auth.uid;
+
+      allow delete: if isAdmin();
+    }
+
+    // Deny all other requests
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

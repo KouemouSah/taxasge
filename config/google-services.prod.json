@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "430718042574",
+    "project_id": "taxasge-pro",
+    "storage_bucket": "taxasge-pro.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:430718042574:android:ae49f5671d0e22b7162b9f",
+        "android_client_info": {
+          "package_name": "com.taxasge.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "430718042574-npp53n39or5j575hpood5fcbl19ohh0d.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCJjYQ0kd39xC5ZLgOZxvO00HhpjnIhFCk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "430718042574-npp53n39or5j575hpood5fcbl19ohh0d.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "430718042574-im42p7hkju8fjnq7q8ouiet5gl2q55gs.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.taxasge.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

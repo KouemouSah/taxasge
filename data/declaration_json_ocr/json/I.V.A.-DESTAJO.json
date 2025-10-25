@@ -1,0 +1,422 @@
+{
+  "name": "iva_destajo_template",
+  "paper_size": {
+    "width": 2480,
+    "height": 3508
+  },
+  "blocks": {
+    "interesado": {
+      "zones": [
+        {
+          "id": "don_dna",
+          "label": "Don/Dña",
+          "x": 200,
+          "y": 180,
+          "w": 900,
+          "h": 80
+        },
+        {
+          "id": "representacion_empresa",
+          "label": "En nombre y representación de la empresa",
+          "x": 200,
+          "y": 260,
+          "w": 1400,
+          "h": 80
+        },
+        {
+          "id": "cantidad_ingresada",
+          "label": "Ha ingresado al Tesoro Público, la cantidad de",
+          "x": 200,
+          "y": 360,
+          "w": 1000,
+          "h": 80
+        },
+        {
+          "id": "moneda",
+          "label": "Moneda",
+          "x": 1250,
+          "y": 360,
+          "w": 150,
+          "h": 80
+        },
+        {
+          "id": "auto_liquidacion_num",
+          "label": "Auto-liquidación Nº",
+          "x": 1700,
+          "y": 180,
+          "w": 250,
+          "h": 80
+        },
+        {
+          "id": "ejercicio",
+          "label": "Ejercicio",
+          "x": 1700,
+          "y": 260,
+          "w": 250,
+          "h": 80
+        },
+        {
+          "id": "periodo",
+          "label": "Periodo",
+          "x": 2000,
+          "y": 260,
+          "w": 200,
+          "h": 80
+        },
+        {
+          "id": "libro",
+          "label": "Libro",
+          "x": 2150,
+          "y": 180,
+          "w": 200,
+          "h": 80
+        },
+        {
+          "id": "folio",
+          "label": "Folio",
+          "x": 2150,
+          "y": 260,
+          "w": 200,
+          "h": 80
+        },
+        {
+          "id": "fecha",
+          "label": "Fecha",
+          "x": 2150,
+          "y": 340,
+          "w": 200,
+          "h": 80
+        },
+        {
+          "id": "nif",
+          "label": "N.I.F.",
+          "x": 200,
+          "y": 460,
+          "w": 400,
+          "h": 80
+        },
+        {
+          "id": "telefono",
+          "label": "Teléfono",
+          "x": 650,
+          "y": 460,
+          "w": 400,
+          "h": 80
+        },
+        {
+          "id": "apartado",
+          "label": "Apartado",
+          "x": 1100,
+          "y": 460,
+          "w": 400,
+          "h": 80
+        },
+        {
+          "id": "municipio",
+          "label": "Municipio",
+          "x": 1600,
+          "y": 460,
+          "w": 600,
+          "h": 80
+        },
+        {
+          "id": "direccion_fiscal",
+          "label": "Dirección Fiscal",
+          "x": 200,
+          "y": 540,
+          "w": 2000,
+          "h": 80
+        },
+        {
+          "id": "distrito",
+          "label": "Distrito",
+          "x": 200,
+          "y": 620,
+          "w": 900,
+          "h": 80
+        },
+        {
+          "id": "correo_electronico",
+          "label": "Correo Electrónico",
+          "x": 200,
+          "y": 700,
+          "w": 1000,
+          "h": 80
+        },
+        {
+          "id": "provincia",
+          "label": "Provincia",
+          "x": 1250,
+          "y": 700,
+          "w": 800,
+          "h": 80
+        }
+      ]
+    },
+    "auto_liquidacion": {
+      "zones": [
+        {
+          "id": "iva_dev_01_base",
+          "label": "01 Base Imponible (Régimen General)",
+          "x": 400,
+          "y": 220,
+          "w": 350,
+          "h": 70
+        },
+        {
+          "id": "iva_dev_02_tipo",
+          "label": "02 Tipo (%)",
+          "x": 800,
+          "y": 220,
+          "w": 150,
+          "h": 70
+        },
+        {
+          "id": "iva_dev_03_cuota",
+          "label": "03 Cuota",
+          "x": 1000,
+          "y": 220,
+          "w": 350,
+          "h": 70
+        },
+        {
+          "id": "iva_dev_04_base",
+          "label": "04 Base Imponible (Régimen Reducido 1)",
+          "x": 400,
+          "y": 300,
+          "w": 350,
+          "h": 70
+        },
+        {
+          "id": "iva_dev_05_tipo",
+          "label": "05 Tipo (%)",
+          "x": 800,
+          "y": 300,
+          "w": 150,
+          "h": 70
+        },
+        {
+          "id": "iva_dev_06_cuota",
+          "label": "06 Cuota",
+          "x": 1000,
+          "y": 300,
+          "w": 350,
+          "h": 70
+        },
+        {
+          "id": "iva_dev_07_base",
+          "label": "07 Base Imponible (Régimen Reducido 2)",
+          "x": 400,
+          "y": 380,
+          "w": 350,
+          "h": 70
+        },
+        {
+          "id": "iva_dev_08_tipo",
+          "label": "08 Tipo (%)",
+          "x": 800,
+          "y": 380,
+          "w": 150,
+          "h": 70
+        },
+        {
+          "id": "iva_dev_09_cuota",
+          "label": "09 Cuota",
+          "x": 1000,
+          "y": 380,
+          "w": 350,
+          "h": 70
+        },
+        {
+          "id": "iva_dev_010_base",
+          "label": "010 Base Interés Demora",
+          "x": 400,
+          "y": 500,
+          "w": 350,
+          "h": 70
+        },
+        {
+          "id": "iva_dev_011_tipo",
+          "label": "011 Tipo (%) Demora",
+          "x": 800,
+          "y": 500,
+          "w": 150,
+          "h": 70
+        },
+        {
+          "id": "iva_dev_012_cuota",
+          "label": "012 Cuota Demora",
+          "x": 1000,
+          "y": 500,
+          "w": 350,
+          "h": 70
+        },
+        {
+          "id": "iva_dev_013_base",
+          "label": "013 Base Recargos",
+          "x": 400,
+          "y": 580,
+          "w": 350,
+          "h": 70
+        },
+        {
+          "id": "iva_dev_014_tipo",
+          "label": "014 Tipo (%) Recargos",
+          "x": 800,
+          "y": 580,
+          "w": 150,
+          "h": 70
+        },
+        {
+          "id": "iva_dev_015_cuota",
+          "label": "015 Cuota Recargos",
+          "x": 1000,
+          "y": 580,
+          "w": 350,
+          "h": 70
+        },
+        {
+          "id": "iva_dev_016_total",
+          "label": "016 Total I.V.A. Devengado",
+          "x": 1000,
+          "y": 680,
+          "w": 350,
+          "h": 70
+        },
+        {
+          "id": "iva_a_ingresar_017",
+          "label": "017 Total I.V.A. a Ingresar",
+          "x": 1000,
+          "y": 760,
+          "w": 350,
+          "h": 70
+        }
+      ]
+    },
+    "confirmacion_pago": {
+      "zones": [
+        {
+          "id": "firma_sello_contribuyente",
+          "label": "Firma y Sello del Contribuyente",
+          "x": 180,
+          "y": 180,
+          "w": 600,
+          "h": 120
+        },
+        {
+          "id": "fecha_contribuyente_dia",
+          "label": "Día (Contribuyente)",
+          "x": 200,
+          "y": 330,
+          "w": 150,
+          "h": 70
+        },
+        {
+          "id": "fecha_contribuyente_mes",
+          "label": "Mes (Contribuyente)",
+          "x": 400,
+          "y": 330,
+          "w": 150,
+          "h": 70
+        },
+        {
+          "id": "fecha_contribuyente_ano",
+          "label": "Año (Contribuyente)",
+          "x": 600,
+          "y": 330,
+          "w": 150,
+          "h": 70
+        },
+        {
+          "id": "fecha_administracion_dia",
+          "label": "Día (Administración Tributaria)",
+          "x": 950,
+          "y": 330,
+          "w": 150,
+          "h": 70
+        },
+        {
+          "id": "fecha_administracion_mes",
+          "label": "Mes (Administración Tributaria)",
+          "x": 1150,
+          "y": 330,
+          "w": 150,
+          "h": 70
+        },
+        {
+          "id": "fecha_administracion_ano",
+          "label": "Año (Administración Tributaria)",
+          "x": 1350,
+          "y": 330,
+          "w": 150,
+          "h": 70
+        },
+        {
+          "id": "cuenta_bange",
+          "label": "Cuenta del Tesoro Público (BANGE)",
+          "x": 1600,
+          "y": 180,
+          "w": 700,
+          "h": 70
+        },
+        {
+          "id": "cuenta_bgfi",
+          "label": "Cuenta del Tesoro Público (BGFI)",
+          "x": 1600,
+          "y": 260,
+          "w": 700,
+          "h": 70
+        },
+        {
+          "id": "cuenta_cceibank",
+          "label": "Cuenta del Tesoro Público (CCEIBANK)",
+          "x": 1600,
+          "y": 340,
+          "w": 700,
+          "h": 70
+        },
+        {
+          "id": "cuenta_sgbge",
+          "label": "Cuenta del Tesoro Público (SGBGE)",
+          "x": 1600,
+          "y": 420,
+          "w": 700,
+          "h": 70
+        },
+        {
+          "id": "cuenta_ecobank",
+          "label": "Cuenta del Tesoro Público (ECOBANK)",
+          "x": 1600,
+          "y": 500,
+          "w": 700,
+          "h": 70
+        },
+        {
+          "id": "nota",
+          "label": "Nota",
+          "x": 180,
+          "y": 620,
+          "w": 2100,
+          "h": 150
+        },
+        {
+          "id": "confirmacion_pago_admin",
+          "label": "Confirmación de pago Administración Tributaria",
+          "x": 180,
+          "y": 800,
+          "w": 1000,
+          "h": 150
+        },
+        {
+          "id": "confirmacion_pago_tesoreria",
+          "label": "Confirmación de pago Tesorería General del Estado",
+          "x": 1200,
+          "y": 800,
+          "w": 1000,
+          "h": 150
+        }
+      ]
+    }
+  },
+  "notes": "Toutes les coordonnées sont indicatives et doivent être recalées après homographie de l'image scannée vers le canevas A4 (2480x3508)."
+}

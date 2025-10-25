@@ -1,0 +1,220 @@
+{
+  "description": "Configuration dynamique TaxasGE par environnement",
+  "version": "1.0.0",
+  "last_updated": "2025-07-25",
+  "environments": {
+    "development": {
+      "name": "Development",
+      "description": "Environnement de développement local et CI/CD",
+      "firebase": {
+        "project_id": "taxasge-dev",
+        "hosting_url": "https://taxasge-dev.web.app",
+        "functions_url": "https://taxasge-dev.cloudfunctions.net",
+        "storage_bucket": "taxasge-dev.firebasestorage.app",
+        "auth_domain": "taxasge-dev.firebaseapp.com",     
+        "api_key": "MANAGED_BY_FIREBASE_CONFIG_JS",
+        "messaging_sender_id": "MANAGED_BY_FIREBASE_CONFIG_JS"
+      },
+      "supabase": {
+        "project_ref": "taxasge-prod",
+        "url_ref": "SUPABASE_URL",
+        "service_role_key_ref": "SUPABASE_SERVICE_ROLE_KEY", 
+        "anon_key_ref": "SUPABASE_ANON_KEY",
+        "region": "eu-west-3",
+        "database_name": "taxasge-db",
+        "schema": "public"
+      },
+	  "database": {
+        "url_ref": "DATABASE_URL",
+        "type": "postgresql",
+        "provider": "supabase"
+      },
+      "api": {
+        "base_url": "http://localhost:8000",
+        "version": "v1",
+        "timeout": 30000,
+        "rate_limit": {
+          "requests_per_minute": 100,
+          "burst_limit": 20
+        }
+      },
+      "mobile": {
+        "bundle_id": "com.taxasge.app",
+        "app_name": "TaxasGE Dev",
+        "deep_link_scheme": "taxasge-dev",
+        "update_check_interval": 300,
+        "offline_sync_interval": 600
+      },
+      "ai": {
+        "model_version": "1.0.0",
+        "confidence_threshold": 0.6,
+        "max_response_length": 500,
+        "fallback_enabled": true,
+        "debug_mode": true
+      },
+      "features": {
+        "chatbot_enabled": true,
+        "offline_mode": true,
+        "payments_enabled": false,
+        "analytics_enabled": true,
+        "crash_reporting": true,
+        "performance_monitoring": true,
+        "debug_tools": true
+      },
+      "logging": {
+        "level": "DEBUG",
+        "structured_logging": true,
+        "console_output": true,
+        "file_output": false,
+        "remote_logging": false
+      },
+      "security": {
+        "jwt_expiry_minutes": 30,
+        "refresh_token_days": 7,
+        "rate_limiting_enabled": true,
+        "cors_strict": false,
+        "https_only": false
+      }
+    },
+    "production": {
+      "name": "Production",
+      "description": "Environnement de production pour les utilisateurs finaux",
+      "firebase": {
+        "project_id": "taxasge-pro",
+        "hosting_url": "https://taxasge-pro.web.app",
+        "functions_url": "https://taxasge-pro.cloudfunctions.net",
+        "storage_bucket": "taxasge-pro.firebasestorage.app",
+        "auth_domain": "taxasge-pro.firebaseapp.com",
+        "api_key": "MANAGED_BY_FIREBASE_CONFIG_JS",
+        "messaging_sender_id": "MANAGED_BY_FIREBASE_CONFIG_JS"
+      },
+      "supabase": {
+        "project_ref": "taxasge-prod",
+        "url_ref": "SUPABASE_URL",
+        "service_role_key_ref": "SUPABASE_SERVICE_ROLE_KEY", 
+        "anon_key_ref": "SUPABASE_ANON_KEY",
+        "region": "eu-west-3",
+        "database_name": "taxasge-db",
+        "schema": "public"
+      },
+	  "database": {
+        "url_ref": "DATABASE_URL",
+        "type": "postgresql",
+        "provider": "supabase"
+      },
+      "api": {
+        "base_url": "https://taxasge.app/api",
+        "version": "v1",
+        "timeout": 10000,
+        "rate_limit": {
+          "requests_per_minute": 60,
+          "burst_limit": 10
+        }
+      },
+      "mobile": {
+        "bundle_id": "com.taxasge.app",
+        "app_name": "TaxasGE",
+        "deep_link_scheme": "taxasge",
+        "update_check_interval": 86400,
+        "offline_sync_interval": 3600
+      },
+      "ai": {
+        "model_version": "1.0.0",
+        "confidence_threshold": 0.8,
+        "max_response_length": 400,
+        "fallback_enabled": true,
+        "debug_mode": false
+      },
+      "features": {
+        "chatbot_enabled": true,
+        "offline_mode": true,
+        "payments_enabled": true,
+        "analytics_enabled": true,
+        "crash_reporting": true,
+        "performance_monitoring": true,
+        "debug_tools": false
+      },
+      "logging": {
+        "level": "WARNING",
+        "structured_logging": true,
+        "console_output": false,
+        "file_output": true,
+        "remote_logging": true
+      },
+      "security": {
+        "jwt_expiry_minutes": 60,
+        "refresh_token_days": 30,
+        "rate_limiting_enabled": true,
+        "cors_strict": true,
+        "https_only": true
+      }
+    }
+  },
+  "shared": {
+    "app_info": {
+      "name": "TaxasGE",
+      "description": "Application de gestion fiscale pour la Guinée Équatoriale",
+      "version": "1.0.0",
+      "author": "KOUEMOU SAH Jean Emac",
+      "contact_email": "kouemou.sah@gmail.com"
+    },
+    "supported_languages": [
+      "es",
+      "fr", 
+      "en"
+    ],
+    "tax_data": {
+      "total_taxes": 547,
+      "ministries": 8,
+      "categories_count": 45,
+      "last_update": "2025-07-25"
+    },
+    "ai_model": {
+      "name": "TaxasGE Chatbot",
+      "size_mb": 0.41,
+      "training_questions": 62000,
+      "accuracy": "100%",
+      "supported_languages": ["es", "fr", "en"]
+    },
+    "external_services": {
+      "bange_payments": {
+        "name": "Bange",
+        "description": "Service de paiement pour la Guinée Équatoriale",
+        "api_version": "1.0",
+        "supported_currencies": ["XAF"],
+        "test_mode_available": true
+      },
+      "government_apis": {
+        "ministry_of_finance": {
+          "enabled": false,
+          "description": "API du Ministère des Finances"
+        }
+      }
+    },
+    "compliance": {
+      "data_retention_days": 2555,
+      "gdpr_compliant": true,
+      "local_regulations": "Guinée Équatoriale",
+      "encryption_standard": "AES-256"
+    }
+  },
+  "deployment": {
+    "development": {
+      "auto_deploy": true,
+      "branch": "develop",
+      "notifications": {
+        "slack_enabled": true,
+        "email_enabled": false
+      }
+    },
+    "production": {
+      "auto_deploy": false,
+      "branch": "main",
+      "approval_required": true,
+      "notifications": {
+        "slack_enabled": true,
+        "email_enabled": true
+      }
+    }
+  }
+}

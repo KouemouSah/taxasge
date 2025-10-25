@@ -1,0 +1,32 @@
+{
+  "timestamp": "2025-09-24T18:33:29Z",
+  "badges": {
+    "status": {
+      "label": "Status",
+      "message": "Critical",
+      "color": "red"
+    },
+    "backend": {
+      "label": "Backend", 
+      "message": "down",
+      "color": "red"
+    },
+    "database": {
+      "label": "Database",
+      "message": "operational", 
+      "color": "brightgreen
+yellow"
+    },
+    "firebase": {
+      "label": "Firebase",
+      "message": "operational",
+      "color": "brightgreen
+yellow"
+    },
+    "build": {
+      "label": "Build",
+      "message": "Failing",
+      "color": "red"
+    }
+  }
+}

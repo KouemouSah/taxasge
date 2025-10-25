@@ -1,0 +1,1148 @@
+# ============================================================================
+# 🎯 TaxasGE Project Management System
+# ============================================================================
+# Consolidated project management workflow that replaces and consolidates:
+# - project-automation.yml (daily automation)
+# - milestones.yml (milestone management)
+# - Multiple redundant project workflows
+#
+# OPTIMIZATION: Weekly execution instead of daily = 85% reduction
+# - Intelligent milestone tracking and updates
+# - Critical path analysis and risk assessment
+# - Automated issue organization and prioritization
+# - Project health monitoring and reporting
+#
+# Features:
+# - Smart milestone date calculations based on project velocity
+# - Critical path identification and monitoring
+# - Automated issue assignment to milestones
+# - Project health scoring and trend analysis
+# - Weekly executive summary reports
+# - Risk assessment and mitigation recommendations
+#
+# Author: KOUEMOU SAH Jean Emac
+# ============================================================================
+
+name: 🎯 Project Management System
+
+on:
+  # Weekly execution on Mondays at 09:00 UTC
+  schedule:
+    - cron: '0 9 * * 1'
+
+  # Trigger on important project events
+  workflow_run:
+    workflows: ["🎯 TaxasGE Milestone Manager", "📊 TaxasGE Historical Context Mapper"]
+    types: [completed]
+
+  # Trigger on push to main branches
+  push:
+    branches: ['mobile', 'develop', 'main']
+    paths:
+      - '.github/workflows/project-management.yml'
+      - 'docs/dashboard-metrics.json'
+
+  # Manual execution with comprehensive options
+  workflow_dispatch:
+    inputs:
+      operation_mode:
+        description: 'Project management operation to perform'
+        required: true
+        default: 'full_analysis'
+        type: choice
+        options:
+          - full_analysis
+          - milestone_update
+          - critical_path_check
+          - issue_organization
+          - health_report
+          - executive_summary
+      update_milestones:
+        description: 'Update milestone dates and status'
+        required: false
+        default: true
+        type: boolean
+      organize_issues:
+        description: 'Organize and prioritize issues'
+        required: false
+        default: true
+        type: boolean
+      generate_reports:
+        description: 'Generate project reports'
+        required: false
+        default: true
+        type: boolean
+
+# Required permissions
+permissions:
+  contents: write
+  issues: write
+  repository-projects: write
+
+# Environment variables
+env:
+  PROJECT_HEALTH_THRESHOLD: '70'
+  CRITICAL_PATH_ALERT_DAYS: '7'
+  VELOCITY_CALCULATION_WEEKS: '4'
+
+jobs:
+  # ============================================================================
+  # JOB 1: PROJECT ANALYSIS & HEALTH CHECK
+  # ============================================================================
+
+  project-analysis:
+    name: 📊 Project Analysis & Health Assessment
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    outputs:
+      project-health: ${{ steps.health-calculation.outputs.health_score }}
+      critical-path-status: ${{ steps.critical-path.outputs.status }}
+      velocity-trend: ${{ steps.velocity.outputs.trend }}
+      risk-level: ${{ steps.risk-assessment.outputs.level }}
+      recommendations: ${{ steps.recommendations.outputs.actions }}
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for velocity calculations
+
+      - name: 🐍 Setup Python environment
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: 📦 Install dependencies
+        run: |
+          pip install requests python-dateutil numpy pandas
+
+      - name: 🔍 Create Project Analysis Engine
+        run: |
+          cat > project_analysis_engine.py << 'EOF'
+          import os
+          import json
+          import requests
+          import subprocess
+          from datetime import datetime, timedelta
+          from collections import defaultdict
+          import re
+
+          class TaxasGEProjectAnalysisEngine:
+              def __init__(self, token, repo_owner, repo_name):
+                  self.token = token
+                  self.repo_owner = repo_owner
+                  self.repo_name = repo_name
+                  self.headers = {
+                      "Authorization": f"token {token}",
+                      "Accept": "application/vnd.github.v3+json",
+                      "User-Agent": "TaxasGE-Project-Analysis/2.0"
+                  }
+                  self.base_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}"
+
+              def load_historical_context(self):
+                  """Load existing project context for analysis"""
+                  context_files = [
+                      "docs/historical-context.json",
+                      "docs/project-summary.json",
+                      "docs/milestone-summary.json"
+                  ]
+
+                  context = {}
+                  for file_path in context_files:
+                      try:
+                          with open(file_path, 'r', encoding='utf-8') as f:
+                              context[file_path.split('/')[-1].replace('.json', '')] = json.load(f)
+                      except FileNotFoundError:
+                          print(f"⚠️ Context file not found: {file_path}")
+                          continue
+                      except json.JSONDecodeError:
+                          print(f"⚠️ Invalid JSON in: {file_path}")
+                          continue
+
+                  return context
+
+              def analyze_project_velocity(self):
+                  """Calculate project velocity based on recent activity"""
+                  print("📈 Analyzing project velocity...")
+
+                  # Get commits from last 4 weeks
+                  four_weeks_ago = (datetime.utcnow() - timedelta(weeks=4)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+                  try:
+                      response = requests.get(
+                          f"{self.base_url}/commits",
+                          headers=self.headers,
+                          params={"since": four_weeks_ago, "per_page": 100}
+                      )
+
+                      if response.status_code != 200:
+                          return {"error": "api_error", "trend": "unknown"}
+
+                      commits = response.json()
+
+                      # Analyze commit patterns by week
+                      weekly_commits = defaultdict(list)
+                      for commit in commits:
+                          commit_date = datetime.fromisoformat(commit["commit"]["author"]["date"].replace('Z', '+00:00'))
+                          week = commit_date.strftime("%Y-W%U")
+                          weekly_commits[week].append(commit)
+
+                      # Calculate velocity metrics
+                      weeks = list(weekly_commits.keys())[-4:]  # Last 4 weeks
+                      weekly_counts = [len(weekly_commits[week]) for week in weeks]
+
+                      if len(weekly_counts) >= 2:
+                          recent_avg = sum(weekly_counts[-2:]) / 2
+                          older_avg = sum(weekly_counts[:-2]) / max(1, len(weekly_counts[:-2]))
+
+                          if recent_avg > older_avg * 1.2:
+                              trend = "accelerating"
+                          elif recent_avg < older_avg * 0.8:
+                              trend = "decelerating"
+                          else:
+                              trend = "stable"
+                      else:
+                          trend = "insufficient_data"
+
+                      # Analyze commit quality
+                      feature_commits = 0
+                      fix_commits = 0
+                      for commit in commits:
+                          message = commit["commit"]["message"].lower()
+                          if any(keyword in message for keyword in ["feat:", "feature", "add", "implement"]):
+                              feature_commits += 1
+                          elif any(keyword in message for keyword in ["fix:", "bug", "hotfix", "patch"]):
+                              fix_commits += 1
+
+                      velocity_score = min(100, len(commits) * 2.5)  # Scale based on activity
+
+                      return {
+                          "total_commits": len(commits),
+                          "weekly_average": sum(weekly_counts) / max(1, len(weekly_counts)),
+                          "trend": trend,
+                          "feature_commits": feature_commits,
+                          "fix_commits": fix_commits,
+                          "velocity_score": round(velocity_score, 1),
+                          "quality_ratio": round((feature_commits / max(1, len(commits))) * 100, 1)
+                      }
+
+                  except Exception as e:
+                      print(f"❌ Error analyzing velocity: {e}")
+                      return {"error": str(e), "trend": "unknown"}
+
+              def identify_critical_path(self):
+                  """Identify and analyze the critical path"""
+                  print("🚨 Identifying critical path...")
+
+                  try:
+                      # Get milestones
+                      response = requests.get(f"{self.base_url}/milestones", headers=self.headers)
+                      if response.status_code != 200:
+                          return {"error": "Cannot fetch milestones"}
+
+                      milestones = response.json()
+
+                      # Find critical path milestone
+                      critical_milestone = None
+                      critical_indicators = ["critical", "mobile", "path", "blocking", "essential"]
+
+                      for milestone in milestones:
+                          if milestone["state"] == "open":
+                              title_lower = milestone["title"].lower()
+                              if any(indicator in title_lower for indicator in critical_indicators):
+                                  critical_milestone = milestone
+                                  break
+
+                      if not critical_milestone:
+                          # If no explicit critical path, find the most blocking milestone
+                          open_milestones = [m for m in milestones if m["state"] == "open"]
+                          if open_milestones:
+                              # Sort by due date and issue count
+                              critical_milestone = sorted(
+                                  open_milestones,
+                                  key=lambda m: (
+                                      datetime.fromisoformat(m["due_on"].replace('Z', '+00:00')) if m.get("due_on") else datetime.max.replace(tzinfo=None),
+                                      -m.get("open_issues", 0)
+                                  )
+                              )[0]
+
+                      if not critical_milestone:
+                          return {"status": "no_critical_path", "health": "unknown"}
+
+                      # Analyze critical path health
+                      analysis = {
+                          "milestone_title": critical_milestone["title"],
+                          "milestone_number": critical_milestone["number"],
+                          "due_date": critical_milestone.get("due_on"),
+                          "open_issues": critical_milestone.get("open_issues", 0),
+                          "closed_issues": critical_milestone.get("closed_issues", 0)
+                      }
+
+                      # Calculate risk assessment
+                      risk_factors = []
+
+                      if critical_milestone.get("due_on"):
+                          due_date = datetime.fromisoformat(critical_milestone["due_on"].replace('Z', '+00:00'))
+                          days_until_due = (due_date - datetime.utcnow().replace(tzinfo=due_date.tzinfo)).days
+
+                          if days_until_due < 0:
+                              analysis["status"] = "overdue"
+                              risk_factors.append(f"Overdue by {abs(days_until_due)} days")
+                          elif days_until_due < 7:
+                              analysis["status"] = "urgent"
+                              risk_factors.append(f"Due in {days_until_due} days")
+                          elif days_until_due < 14:
+                              analysis["status"] = "attention_needed"
+                              risk_factors.append(f"Due in {days_until_due} days")
+                          else:
+                              analysis["status"] = "on_track"
+
+                          analysis["days_until_due"] = days_until_due
+                      else:
+                          analysis["status"] = "no_due_date"
+                          risk_factors.append("No due date set")
+
+                      # Analyze completion rate
+                      total_issues = analysis["open_issues"] + analysis["closed_issues"]
+                      if total_issues > 0:
+                          completion_rate = (analysis["closed_issues"] / total_issues) * 100
+                          analysis["completion_rate"] = round(completion_rate, 1)
+
+                          if completion_rate < 25 and analysis["status"] in ["urgent", "overdue"]:
+                              risk_factors.append(f"Low completion rate: {completion_rate:.1f}%")
+                      else:
+                          analysis["completion_rate"] = 0
+                          risk_factors.append("No issues defined for milestone")
+
+                      # Check for recent activity
+                      if analysis["open_issues"] > 10:
+                          risk_factors.append(f"High issue count: {analysis['open_issues']}")
+
+                      analysis["risk_factors"] = risk_factors
+                      analysis["risk_score"] = min(100, len(risk_factors) * 25)
+
+                      return analysis
+
+                  except Exception as e:
+                      print(f"❌ Error analyzing critical path: {e}")
+                      return {"error": str(e), "status": "unknown"}
+
+              def calculate_project_health(self, context, velocity, critical_path):
+                  """Calculate overall project health score"""
+                  print("🏥 Calculating project health score...")
+
+                  base_score = 100
+                  health_factors = []
+
+                  # Velocity impact (30% weight)
+                  if velocity.get("trend") == "accelerating":
+                      velocity_bonus = 10
+                      health_factors.append("Accelerating development velocity (+10)")
+                  elif velocity.get("trend") == "decelerating":
+                      velocity_penalty = -15
+                      base_score += velocity_penalty
+                      health_factors.append(f"Decelerating velocity ({velocity_penalty})")
+
+                  if velocity.get("velocity_score", 0) < 50:
+                      low_activity_penalty = -10
+                      base_score += low_activity_penalty
+                      health_factors.append(f"Low development activity ({low_activity_penalty})")
+
+                  # Critical path impact (40% weight)
+                  critical_status = critical_path.get("status", "unknown")
+                  if critical_status == "overdue":
+                      critical_penalty = -30
+                      base_score += critical_penalty
+                      health_factors.append(f"Critical path overdue ({critical_penalty})")
+                  elif critical_status == "urgent":
+                      critical_penalty = -20
+                      base_score += critical_penalty
+                      health_factors.append(f"Critical path urgent ({critical_penalty})")
+                  elif critical_status == "attention_needed":
+                      critical_penalty = -10
+                      base_score += critical_penalty
+                      health_factors.append(f"Critical path needs attention ({critical_penalty})")
+
+                  if critical_path.get("completion_rate", 0) < 30:
+                      completion_penalty = -15
+                      base_score += completion_penalty
+                      health_factors.append(f"Low critical path completion ({completion_penalty})")
+
+                  # Issue management impact (20% weight)
+                  try:
+                      # Get critical issues
+                      response = requests.get(
+                          f"{self.base_url}/issues",
+                          headers=self.headers,
+                          params={"state": "open", "labels": "critical", "per_page": 10}
+                      )
+
+                      if response.status_code == 200:
+                          critical_issues = response.json()
+                          if len(critical_issues) > 3:
+                              critical_issues_penalty = -len(critical_issues) * 3
+                              base_score += critical_issues_penalty
+                              health_factors.append(f"Multiple critical issues ({critical_issues_penalty})")
+                  except Exception:
+                      pass
+
+                  # Context-based adjustments (10% weight)
+                  if context.get("historical-context"):
+                      historical = context["historical-context"]
+                      overall_progress = historical.get("metadata", {}).get("overall_progress", 0)
+
+                      if overall_progress > 70:
+                          progress_bonus = 5
+                          base_score += progress_bonus
+                          health_factors.append(f"Strong overall progress (+{progress_bonus})")
+                      elif overall_progress < 40:
+                          progress_penalty = -10
+                          base_score += progress_penalty
+                          health_factors.append(f"Low overall progress ({progress_penalty})")
+
+                  # Ensure score is within bounds
+                  final_score = max(0, min(100, base_score))
+
+                  # Determine health status
+                  if final_score >= 85:
+                      health_status = "excellent"
+                  elif final_score >= 70:
+                      health_status = "good"
+                  elif final_score >= 55:
+                      health_status = "fair"
+                  elif final_score >= 40:
+                      health_status = "concerning"
+                  else:
+                      health_status = "critical"
+
+                  return {
+                      "score": final_score,
+                      "status": health_status,
+                      "factors": health_factors,
+                      "calculation_base": base_score
+                  }
+
+              def assess_project_risks(self, velocity, critical_path, health):
+                  """Assess project risks and generate mitigation strategies"""
+                  print("⚠️ Assessing project risks...")
+
+                  risks = []
+                  mitigations = []
+
+                  # Critical path risks
+                  if critical_path.get("status") == "overdue":
+                      risks.append({
+                          "type": "schedule",
+                          "severity": "high",
+                          "description": f"Critical path milestone '{critical_path.get('milestone_title', 'Unknown')}' is overdue",
+                          "impact": "Blocks all subsequent phases"
+                      })
+                      mitigations.append("Immediately prioritize critical path issues")
+                      mitigations.append("Consider scope reduction or timeline adjustment")
+
+                  elif critical_path.get("status") == "urgent":
+                      risks.append({
+                          "type": "schedule",
+                          "severity": "medium",
+                          "description": f"Critical path milestone due in {critical_path.get('days_until_due', 'unknown')} days",
+                          "impact": "Tight timeline for completion"
+                      })
+                      mitigations.append("Focus team resources on critical path")
+                      mitigations.append("Daily progress monitoring required")
+
+                  # Velocity risks
+                  if velocity.get("trend") == "decelerating":
+                      risks.append({
+                          "type": "productivity",
+                          "severity": "medium",
+                          "description": "Development velocity is decreasing",
+                          "impact": "May cause timeline slippage"
+                      })
+                      mitigations.append("Identify and remove development blockers")
+                      mitigations.append("Consider additional resources or tools")
+
+                  if velocity.get("velocity_score", 100) < 30:
+                      risks.append({
+                          "type": "activity",
+                          "severity": "high",
+                          "description": "Very low development activity",
+                          "impact": "Project may be stalled"
+                      })
+                      mitigations.append("Urgent team check-in required")
+                      mitigations.append("Identify and resolve blockers immediately")
+
+                  # Health-based risks
+                  if health.get("score", 100) < 40:
+                      risks.append({
+                          "type": "overall_health",
+                          "severity": "high",
+                          "description": "Project health score is critically low",
+                          "impact": "Project success at risk"
+                      })
+                      mitigations.append("Comprehensive project review needed")
+                      mitigations.append("Consider project rescue plan")
+
+                  # Determine overall risk level
+                  high_severity_count = len([r for r in risks if r["severity"] == "high"])
+                  medium_severity_count = len([r for r in risks if r["severity"] == "medium"])
+
+                  if high_severity_count > 0:
+                      risk_level = "high"
+                  elif medium_severity_count > 1:
+                      risk_level = "medium"
+                  elif medium_severity_count > 0 or len(risks) > 0:
+                      risk_level = "low"
+                  else:
+                      risk_level = "minimal"
+
+                  return {
+                      "level": risk_level,
+                      "risks": risks,
+                      "mitigations": mitigations,
+                      "risk_count": {
+                          "high": high_severity_count,
+                          "medium": medium_severity_count,
+                          "low": len(risks) - high_severity_count - medium_severity_count
+                      }
+                  }
+
+              def generate_recommendations(self, context, velocity, critical_path, health, risks):
+                  """Generate actionable recommendations"""
+                  print("💡 Generating project recommendations...")
+
+                  immediate_actions = []
+                  short_term_actions = []
+                  long_term_actions = []
+
+                  # Critical path recommendations
+                  if critical_path.get("status") in ["overdue", "urgent"]:
+                      immediate_actions.append(f"🚨 URGENT: Address critical path milestone '{critical_path.get('milestone_title', 'Unknown')}'")
+                      immediate_actions.append("🔄 Daily standup focused on critical path progress")
+
+                  # Velocity-based recommendations
+                  if velocity.get("trend") == "decelerating":
+                      short_term_actions.append("📈 Investigate and address velocity decline")
+                      short_term_actions.append("🛠️ Review development tools and processes")
+
+                  if velocity.get("quality_ratio", 0) < 30:
+                      short_term_actions.append("🔍 Focus on feature development over bug fixes")
+                      short_term_actions.append("📋 Review and prioritize feature backlog")
+
+                  # Health-based recommendations
+                  if health.get("score", 100) < 70:
+                      immediate_actions.append("🏥 Project health intervention required")
+                      short_term_actions.append("📊 Weekly health monitoring and reporting")
+
+                  # Risk mitigation recommendations
+                  for mitigation in risks.get("mitigations", [])[:3]:  # Top 3 mitigations
+                      if "immediate" in mitigation.lower() or "urgent" in mitigation.lower():
+                          immediate_actions.append(f"⚠️ {mitigation}")
+                      else:
+                          short_term_actions.append(f"🎯 {mitigation}")
+
+                  # Long-term strategic recommendations
+                  if context.get("historical-context"):
+                      progress = context["historical-context"].get("metadata", {}).get("overall_progress", 0)
+                      if progress > 60:
+                          long_term_actions.append("🚀 Begin production readiness planning")
+                          long_term_actions.append("📋 Prepare business integration roadmap")
+                      else:
+                          long_term_actions.append("🔧 Strengthen development foundation")
+                          long_term_actions.append("📈 Establish consistent delivery rhythm")
+
+                  # Always include some standard recommendations
+                  if not short_term_actions:
+                      short_term_actions.append("📊 Continue regular project health monitoring")
+
+                  if not long_term_actions:
+                      long_term_actions.append("🎯 Maintain focus on project milestones")
+                      long_term_actions.append("📈 Plan for sustainable growth")
+
+                  return {
+                      "immediate": immediate_actions[:5],  # Max 5 immediate actions
+                      "short_term": short_term_actions[:5],  # Max 5 short-term actions
+                      "long_term": long_term_actions[:3],  # Max 3 long-term actions
+                      "priority_focus": critical_path.get("milestone_title", "Mobile AI Integration")
+                  }
+
+              def generate_comprehensive_analysis(self):
+                  """Generate comprehensive project analysis"""
+                  print("🔍 Generating comprehensive project analysis...")
+
+                  # Load context
+                  context = self.load_historical_context()
+
+                  # Perform analyses
+                  velocity = self.analyze_project_velocity()
+                  critical_path = self.identify_critical_path()
+                  health = self.calculate_project_health(context, velocity, critical_path)
+                  risks = self.assess_project_risks(velocity, critical_path, health)
+                  recommendations = self.generate_recommendations(context, velocity, critical_path, health, risks)
+
+                  # Create comprehensive report
+                  analysis_report = {
+                      "metadata": {
+                          "generated_at": datetime.now().isoformat(),
+                          "repository": f"{self.repo_owner}/{self.repo_name}",
+                          "analysis_type": "comprehensive_project_analysis",
+                          "version": "2.0"
+                      },
+                      "project_health": {
+                          "score": health.get("score", 0),
+                          "status": health.get("status", "unknown"),
+                          "factors": health.get("factors", [])
+                      },
+                      "velocity_analysis": velocity,
+                      "critical_path": critical_path,
+                      "risk_assessment": risks,
+                      "recommendations": recommendations,
+                      "executive_summary": {
+                          "overall_status": health.get("status", "unknown"),
+                          "critical_path_health": critical_path.get("status", "unknown"),
+                          "velocity_trend": velocity.get("trend", "unknown"),
+                          "risk_level": risks.get("level", "unknown"),
+                          "immediate_attention_required": len(recommendations.get("immediate", [])) > 0
+                      }
+                  }
+
+                  # Save report
+                  with open("project-analysis-report.json", "w", encoding='utf-8') as f:
+                      json.dump(analysis_report, f, indent=2, ensure_ascii=False)
+
+                  return analysis_report
+
+          def main():
+              print("🎯 TaxasGE Project Analysis Engine")
+              print("==================================")
+
+              # Configuration
+              token = os.getenv("GITHUB_TOKEN")
+              repo_owner = os.getenv("REPO_OWNER")
+              repo_name = os.getenv("REPO_NAME")
+
+              if not all([token, repo_owner, repo_name]):
+                  print("❌ Required environment variables missing")
+                  return
+
+              # Initialize engine
+              engine = TaxasGEProjectAnalysisEngine(token, repo_owner, repo_name)
+
+              # Generate comprehensive analysis
+              report = engine.generate_comprehensive_analysis()
+
+              # Output key metrics for GitHub Actions
+              print(f"\n📊 Project Analysis Results:")
+              print(f"Health Score: {report['project_health']['score']}/100")
+              print(f"Health Status: {report['project_health']['status']}")
+              print(f"Critical Path: {report['critical_path'].get('status', 'unknown')}")
+              print(f"Velocity Trend: {report['velocity_analysis'].get('trend', 'unknown')}")
+              print(f"Risk Level: {report['risk_assessment'].get('level', 'unknown')}")
+
+              return report
+
+          if __name__ == "__main__":
+              main()
+          EOF
+
+      - name: 📊 Execute Project Analysis
+        id: analysis
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: |
+          python project_analysis_engine.py
+
+      - name: 📈 Extract Analysis Results
+        id: health-calculation
+        run: |
+          if [ -f "project-analysis-report.json" ]; then
+            health_score=$(jq -r '.project_health.score' project-analysis-report.json)
+            echo "health_score=$health_score" >> $GITHUB_OUTPUT
+          else
+            echo "health_score=50" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 🚨 Extract Critical Path Status
+        id: critical-path
+        run: |
+          if [ -f "project-analysis-report.json" ]; then
+            status=$(jq -r '.critical_path.status // "unknown"' project-analysis-report.json)
+            echo "status=$status" >> $GITHUB_OUTPUT
+          else
+            echo "status=unknown" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 📈 Extract Velocity Trend
+        id: velocity
+        run: |
+          if [ -f "project-analysis-report.json" ]; then
+            trend=$(jq -r '.velocity_analysis.trend // "unknown"' project-analysis-report.json)
+            echo "trend=$trend" >> $GITHUB_OUTPUT
+          else
+            echo "trend=unknown" >> $GITHUB_OUTPUT
+          fi
+
+      - name: ⚠️ Extract Risk Assessment
+        id: risk-assessment
+        run: |
+          if [ -f "project-analysis-report.json" ]; then
+            level=$(jq -r '.risk_assessment.level // "unknown"' project-analysis-report.json)
+            echo "level=$level" >> $GITHUB_OUTPUT
+          else
+            echo "level=unknown" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 💡 Extract Recommendations
+        id: recommendations
+        run: |
+          if [ -f "project-analysis-report.json" ]; then
+            actions=$(jq -r '.recommendations.immediate[]? // "Continue current development"' project-analysis-report.json | head -3 | tr '\n' ';')
+            echo "actions=$actions" >> $GITHUB_OUTPUT
+          else
+            echo "actions=Continue current development" >> $GITHUB_OUTPUT
+          fi
+
+  # ============================================================================
+  # JOB 2: MILESTONE MANAGEMENT & OPTIMIZATION
+  # ============================================================================
+
+  milestone-management:
+    name: 🎯 Intelligent Milestone Management
+    runs-on: ubuntu-latest
+    needs: project-analysis
+    if: github.event.inputs.update_milestones != 'false'
+    timeout-minutes: 15
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python environment
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: 📦 Install dependencies
+        run: |
+          pip install requests python-dateutil
+
+      - name: 🎯 Intelligent Milestone Update
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PROJECT_HEALTH: ${{ needs.project-analysis.outputs.project-health }}
+          CRITICAL_PATH_STATUS: ${{ needs.project-analysis.outputs.critical-path-status }}
+          VELOCITY_TREND: ${{ needs.project-analysis.outputs.velocity-trend }}
+        run: |
+          echo "🎯 Updating milestones based on project analysis..."
+
+          # Create milestone update script
+          cat > update_milestones.py << 'EOF'
+          import os
+          import json
+          import requests
+          from datetime import datetime, timedelta
+
+          def update_milestones_intelligently():
+              token = os.getenv("GITHUB_TOKEN")
+              repo = os.getenv("GITHUB_REPOSITORY")
+
+              headers = {
+                  "Authorization": f"token {token}",
+                  "Accept": "application/vnd.github.v3+json"
+              }
+
+              base_url = f"https://api.github.com/repos/{repo}"
+
+              # Get current milestones
+              response = requests.get(f"{base_url}/milestones", headers=headers)
+              if response.status_code != 200:
+                  print(f"❌ Failed to fetch milestones: {response.status_code}")
+                  return
+
+              milestones = response.json()
+              print(f"📋 Found {len(milestones)} milestones")
+
+              # Adjust dates based on project health and velocity
+              project_health = int(os.getenv("PROJECT_HEALTH", "70"))
+              velocity_trend = os.getenv("VELOCITY_TREND", "stable")
+              critical_status = os.getenv("CRITICAL_PATH_STATUS", "on_track")
+
+              # Calculate adjustment factor
+              adjustment_days = 0
+              if critical_status == "overdue":
+                  adjustment_days = 14  # Push back 2 weeks
+              elif critical_status == "urgent":
+                  adjustment_days = 7   # Push back 1 week
+              elif velocity_trend == "decelerating":
+                  adjustment_days = 7   # Push back 1 week
+              elif project_health < 50:
+                  adjustment_days = 10  # Push back 1.5 weeks
+
+              updated_count = 0
+
+              for milestone in milestones:
+                  if milestone["state"] == "closed":
+                      continue
+
+                  # Only adjust milestones that need it
+                  if milestone.get("due_on") and adjustment_days > 0:
+                      current_due = datetime.fromisoformat(milestone["due_on"].replace('Z', '+00:00'))
+                      new_due = current_due + timedelta(days=adjustment_days)
+
+                      update_data = {
+                          "due_on": new_due.strftime("%Y-%m-%dT%H:%M:%SZ")
+                      }
+
+                      response = requests.patch(
+                          f"{base_url}/milestones/{milestone['number']}",
+                          headers=headers,
+                          json=update_data
+                      )
+
+                      if response.status_code == 200:
+                          print(f"📅 Updated milestone '{milestone['title']}' due date")
+                          updated_count += 1
+
+              print(f"✅ Updated {updated_count} milestone dates")
+
+              # Create milestone summary
+              milestone_summary = {
+                  "updated_at": datetime.now().isoformat(),
+                  "milestones_adjusted": updated_count,
+                  "adjustment_reason": f"Health: {project_health}, Velocity: {velocity_trend}, Critical: {critical_status}",
+                  "adjustment_days": adjustment_days
+              }
+
+              with open("milestone-update-summary.json", "w") as f:
+                  json.dump(milestone_summary, f, indent=2)
+
+          if __name__ == "__main__":
+              update_milestones_intelligently()
+          EOF
+
+          python update_milestones.py
+
+  # ============================================================================
+  # JOB 3: ISSUE ORGANIZATION & PRIORITIZATION
+  # ============================================================================
+
+  issue-organization:
+    name: 📋 Intelligent Issue Organization
+    runs-on: ubuntu-latest
+    needs: project-analysis
+    if: github.event.inputs.organize_issues != 'false'
+    timeout-minutes: 10
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python environment
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: 📦 Install dependencies
+        run: |
+          pip install requests
+
+      - name: 📋 Smart Issue Organization
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CRITICAL_PATH_STATUS: ${{ needs.project-analysis.outputs.critical-path-status }}
+          RECOMMENDATIONS: ${{ needs.project-analysis.outputs.recommendations }}
+        run: |
+          echo "📋 Organizing issues intelligently..."
+
+          # Create issue organization script
+          cat > organize_issues.py << 'EOF'
+          import os
+          import json
+          import requests
+          import re
+
+          def organize_issues_by_priority():
+              token = os.getenv("GITHUB_TOKEN")
+              repo = os.getenv("GITHUB_REPOSITORY")
+
+              headers = {
+                  "Authorization": f"token {token}",
+                  "Accept": "application/vnd.github.v3+json"
+              }
+
+              base_url = f"https://api.github.com/repos/{repo}"
+
+              # Get open issues
+              response = requests.get(f"{base_url}/issues", headers=headers, params={"state": "open", "per_page": 100})
+              if response.status_code != 200:
+                  print(f"❌ Failed to fetch issues: {response.status_code}")
+                  return
+
+              issues = [i for i in response.json() if "pull_request" not in i]
+              print(f"📋 Found {len(issues)} open issues")
+
+              # Priority keywords mapping
+              priority_keywords = {
+                  "critical": ["critical", "urgent", "blocker", "security", "production", "crash"],
+                  "high": ["important", "high", "feature", "enhancement", "performance"],
+                  "medium": ["medium", "improvement", "refactor", "documentation"],
+                  "low": ["low", "nice-to-have", "future", "suggestion"]
+              }
+
+              # Component keywords
+              component_keywords = {
+                  "mobile": ["mobile", "react-native", "app", "android", "ios", "tflite", "ai"],
+                  "backend": ["backend", "api", "fastapi", "database", "server"],
+                  "infrastructure": ["ci", "cd", "deploy", "infrastructure", "github", "workflow"],
+                  "dashboard": ["dashboard", "monitoring", "ui", "frontend", "web"]
+              }
+
+              organized_count = 0
+
+              for issue in issues:
+                  current_labels = [label["name"] for label in issue.get("labels", [])]
+
+                  # Skip if already has priority label
+                  if any("priority" in label.lower() or label.lower() in ["critical", "high", "medium", "low"] for label in current_labels):
+                      continue
+
+                  issue_text = (issue["title"] + " " + (issue.get("body") or "")).lower()
+
+                  # Determine priority
+                  priority = None
+                  for priority_level, keywords in priority_keywords.items():
+                      if any(keyword in issue_text for keyword in keywords):
+                          priority = f"priority-{priority_level}" if priority_level != "critical" else "critical"
+                          break
+
+                  # Determine component
+                  component = None
+                  for comp, keywords in component_keywords.items():
+                      if any(keyword in issue_text for keyword in keywords):
+                          component = f"component-{comp}"
+                          break
+
+                  # Add labels if determined
+                  new_labels = current_labels.copy()
+                  if priority:
+                      new_labels.append(priority)
+                  if component:
+                      new_labels.append(component)
+
+                  if len(new_labels) > len(current_labels):
+                      # Update issue with new labels
+                      response = requests.patch(
+                          f"{base_url}/issues/{issue['number']}",
+                          headers=headers,
+                          json={"labels": new_labels}
+                      )
+
+                      if response.status_code == 200:
+                          added_labels = [l for l in new_labels if l not in current_labels]
+                          print(f"🏷️ Issue #{issue['number']}: Added {', '.join(added_labels)}")
+                          organized_count += 1
+
+              print(f"✅ Organized {organized_count} issues")
+
+              # Create organization summary
+              org_summary = {
+                  "organized_issues": organized_count,
+                  "total_issues": len(issues),
+                  "organization_rate": round((organized_count / max(1, len(issues))) * 100, 1)
+              }
+
+              with open("issue-organization-summary.json", "w") as f:
+                  json.dump(org_summary, f, indent=2)
+
+          if __name__ == "__main__":
+              organize_issues_by_priority()
+          EOF
+
+          python organize_issues.py
+
+  # ============================================================================
+  # JOB 4: REPORT GENERATION & COMMIT
+  # ============================================================================
+
+  generate-reports:
+    name: 📊 Generate Project Reports
+    runs-on: ubuntu-latest
+    needs: [project-analysis, milestone-management, issue-organization]
+    if: always() && github.event.inputs.generate_reports != 'false'
+    timeout-minutes: 10
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📊 Generate Executive Summary
+        run: |
+          echo "📊 Generating executive summary report..."
+
+          timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          # Create executive summary
+          cat << EOF > project-management-report.json
+          {
+            "metadata": {
+              "generated_at": "$timestamp",
+              "report_type": "weekly_project_management",
+              "workflow": "project-management-system"
+            },
+            "executive_summary": {
+              "project_health_score": "${{ needs.project-analysis.outputs.project-health }}",
+              "critical_path_status": "${{ needs.project-analysis.outputs.critical-path-status }}",
+              "velocity_trend": "${{ needs.project-analysis.outputs.velocity-trend }}",
+              "risk_level": "${{ needs.project-analysis.outputs.risk-level }}",
+              "overall_status": "$([ "${{ needs.project-analysis.outputs.project-health }}" -gt "70" ] && echo "healthy" || echo "needs_attention")"
+            },
+            "key_metrics": {
+              "monitoring_optimization": "Weekly execution (85% reduction from daily)",
+              "milestone_management": "Intelligent date adjustments based on velocity",
+              "issue_organization": "Automated prioritization and categorization",
+              "risk_assessment": "Proactive identification and mitigation"
+            },
+            "actions_taken": {
+              "milestones_updated": "${{ needs.milestone-management.result == 'success' && 'true' || 'false' }}",
+              "issues_organized": "${{ needs.issue-organization.result == 'success' && 'true' || 'false' }}",
+              "analysis_completed": "${{ needs.project-analysis.result == 'success' && 'true' || 'false' }}"
+            },
+            "recommendations": {
+              "immediate": "${{ needs.project-analysis.outputs.recommendations }}",
+              "focus_area": "Mobile AI Integration Critical Path",
+              "next_review": "$(date -u -d '+7 days' +%Y-%m-%d)"
+            },
+            "optimization_impact": {
+              "execution_frequency": "Weekly (down from daily)",
+              "resource_efficiency": "85% reduction in workflow runs",
+              "intelligent_automation": "Smart milestone and issue management"
+            }
+          }
+          EOF
+
+          echo "✅ Executive summary generated"
+
+      - name: 💾 Commit Project Reports
+        run: |
+          echo "💾 Committing project management reports..."
+
+          # Create docs directory
+          mkdir -p docs
+
+          # Copy reports to docs
+          [ -f "project-analysis-report.json" ] && cp project-analysis-report.json docs/
+          [ -f "milestone-update-summary.json" ] && cp milestone-update-summary.json docs/
+          [ -f "issue-organization-summary.json" ] && cp issue-organization-summary.json docs/
+          cp project-management-report.json docs/
+
+          # Configure Git
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action - Project Management"
+
+          # Add files
+          git add docs/
+
+          # Check for changes
+          if git diff --staged --quiet; then
+            echo "ℹ️ No changes to commit"
+          else
+            # Commit changes
+            git commit -m "🎯 Weekly project management system update - $(date -u +%Y-%m-%d)
+
+            📊 Project Health: ${{ needs.project-analysis.outputs.project-health }}/100
+            🚨 Critical Path: ${{ needs.project-analysis.outputs.critical-path-status }}
+            📈 Velocity: ${{ needs.project-analysis.outputs.velocity-trend }}
+            ⚠️ Risk Level: ${{ needs.project-analysis.outputs.risk-level }}
+
+            ✅ Intelligent milestone management
+            📋 Automated issue organization
+            📊 Comprehensive project analysis
+            ⚡ 85% reduction in workflow executions
+
+            Auto-generated by Project Management System"
+
+            # Push changes
+            git push
+            echo "✅ Project reports committed and pushed"
+          fi
+
+  # ============================================================================
+  # JOB 5: NOTIFICATIONS & ALERTS
+  # ============================================================================
+
+  project-notifications:
+    name: 📢 Project Status Notifications
+    runs-on: ubuntu-latest
+    needs: project-analysis
+    if: needs.project-analysis.outputs.project-health < 70 || needs.project-analysis.outputs.critical-path-status == 'overdue'
+    timeout-minutes: 5
+
+    steps:
+      - name: 📢 Send Project Alert
+        if: ${{ env.SLACK_WEBHOOK_URL }}
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              "text": "🎯 TaxasGE Project Management Alert",
+              "attachments": [
+                {
+                  "color": "warning",
+                  "fields": [
+                    {
+                      "title": "Project Health Score",
+                      "value": "${{ needs.project-analysis.outputs.project-health }}/100",
+                      "short": true
+                    },
+                    {
+                      "title": "Critical Path Status",
+                      "value": "${{ needs.project-analysis.outputs.critical-path-status }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Velocity Trend",
+                      "value": "${{ needs.project-analysis.outputs.velocity-trend }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Risk Level",
+                      "value": "${{ needs.project-analysis.outputs.risk-level }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Recommendations",
+                      "value": "${{ needs.project-analysis.outputs.recommendations }}",
+                      "short": false
+                    }
+                  ],
+                  "footer": "Project Management System",
+                  "ts": $(date +%s)
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+# ============================================================================
+# CONCURRENCY CONTROL
+# ============================================================================
+concurrency:
+  group: project-management
+  cancel-in-progress: true
+
+# ============================================================================
+# OPTIMIZATION SUMMARY
+# ============================================================================
+# Before: Daily executions across multiple workflows
+# After: Weekly intelligent execution with smart analysis
+# Reduction: 85% fewer workflow executions
+# Enhanced: Intelligent automation with comprehensive analysis
+# ============================================================================

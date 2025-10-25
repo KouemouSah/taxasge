@@ -1,0 +1,318 @@
+{
+  "name": "impreso_de_liquidacion_template",
+  "paper_size": {
+    "width": 2480,
+    "height": 3508
+  },
+  "blocks": {
+    "interesado": {
+      "zones": [
+        {
+          "id": "don_dna",
+          "label": "Don/Dña",
+          "x": 200,
+          "y": 250,
+          "w": 900,
+          "h": 80
+        },
+        {
+          "id": "representacion_empresa",
+          "label": "En nombre y representación de la empresa",
+          "x": 200,
+          "y": 330,
+          "w": 1400,
+          "h": 80
+        },
+        {
+          "id": "cantidad_ingresada",
+          "label": "Ha ingresado al Tesoro Público, la cantidad de",
+          "x": 200,
+          "y": 410,
+          "w": 1000,
+          "h": 80
+        },
+        {
+          "id": "moneda",
+          "label": "Moneda",
+          "x": 1250,
+          "y": 410,
+          "w": 150,
+          "h": 80
+        },
+        {
+          "id": "auto_liquidacion_num",
+          "label": "Auto-liquidación Nº",
+          "x": 1700,
+          "y": 250,
+          "w": 350,
+          "h": 80
+        },
+        {
+          "id": "ejercicio",
+          "label": "Ejercicio",
+          "x": 1700,
+          "y": 330,
+          "w": 250,
+          "h": 80
+        },
+        {
+          "id": "periodo",
+          "label": "Periodo",
+          "x": 2000,
+          "y": 330,
+          "w": 200,
+          "h": 80
+        },
+        {
+          "id": "libro",
+          "label": "Libro",
+          "x": 2150,
+          "y": 250,
+          "w": 200,
+          "h": 80
+        },
+        {
+          "id": "folio",
+          "label": "Folio",
+          "x": 2150,
+          "y": 330,
+          "w": 200,
+          "h": 80
+        },
+        {
+          "id": "fecha",
+          "label": "Fecha",
+          "x": 2150,
+          "y": 410,
+          "w": 200,
+          "h": 80
+        },
+        {
+          "id": "nif",
+          "label": "N.I.F.",
+          "x": 200,
+          "y": 510,
+          "w": 400,
+          "h": 80
+        },
+        {
+          "id": "telefono",
+          "label": "Teléfono",
+          "x": 650,
+          "y": 510,
+          "w": 400,
+          "h": 80
+        },
+        {
+          "id": "apartado",
+          "label": "Apartado",
+          "x": 1100,
+          "y": 510,
+          "w": 400,
+          "h": 80
+        },
+        {
+          "id": "municipio",
+          "label": "Municipio",
+          "x": 1600,
+          "y": 510,
+          "w": 600,
+          "h": 80
+        },
+        {
+          "id": "direccion_fiscal",
+          "label": "Dirección Fiscal",
+          "x": 200,
+          "y": 590,
+          "w": 2000,
+          "h": 80
+        },
+        {
+          "id": "provincia",
+          "label": "Provincia",
+          "x": 1250,
+          "y": 670,
+          "w": 800,
+          "h": 80
+        }
+      ]
+    },
+    "liquidacion": {
+        "zones": [
+            {
+                "id": "base_imponible",
+                "label": "Base Imponible",
+                "x": 200,
+                "y": 900,
+                "w": 400,
+                "h": 80
+            },
+            {
+                "id": "tipo_gravamen",
+                "label": "Tipo de gravamen",
+                "x": 650,
+                "y": 900,
+                "w": 300,
+                "h": 80
+            },
+            {
+                "id": "cuota",
+                "label": "Cuota",
+                "x": 1000,
+                "y": 900,
+                "w": 300,
+                "h": 80
+            },
+            {
+                "id": "deducciones_periodo",
+                "label": "Deducciones del periodo",
+                "x": 200,
+                "y": 1000,
+                "w": 400,
+                "h": 80
+            },
+            {
+                "id": "deducciones_anteriores",
+                "label": "Deducciones de periodos anteriores",
+                "x": 200,
+                "y": 1100,
+                "w": 400,
+                "h": 80
+            },
+            {
+                "id": "recargo",
+                "label": "Recargo",
+                "x": 200,
+                "y": 1200,
+                "w": 400,
+                "h": 80
+            },
+            {
+                "id": "interes_demora",
+                "label": "Interés de demora",
+                "x": 200,
+                "y": 1300,
+                "w": 400,
+                "h": 80
+            },
+            {
+                "id": "sanciones",
+                "label": "Sanciones",
+                "x": 200,
+                "y": 1400,
+                "w": 400,
+                "h": 80
+            },
+            {
+                "id": "total_a_ingresar",
+                "label": "Total a ingresar",
+                "x": 200,
+                "y": 1500,
+                "w": 400,
+                "h": 80
+            }
+        ]
+    },
+    "confirmacion_pago": {
+      "zones": [
+        {
+          "id": "firma_sello_contribuyente",
+          "label": "Firma y Sello del Contribuyente",
+          "x": 180,
+          "y": 2000,
+          "w": 600,
+          "h": 120
+        },
+        {
+          "id": "fecha_contribuyente",
+          "label": "Fecha (Contribuyente)",
+          "x": 200,
+          "y": 2150,
+          "w": 400,
+          "h": 70
+        },
+        {
+          "id": "firma_sello_administrador",
+          "label": "Firma y Sello del Administrador",
+          "x": 800,
+          "y": 2000,
+          "w": 600,
+          "h": 120
+        },
+        {
+          "id": "fecha_administrador",
+          "label": "Fecha (Administrador)",
+          "x": 800,
+          "y": 2150,
+          "w": 400,
+          "h": 70
+        },
+        {
+          "id": "firma_sello_contable",
+          "label": "Firma y Sello del Contable",
+          "x": 1400,
+          "y": 2000,
+          "w": 600,
+          "h": 120
+        },
+        {
+          "id": "fecha_contable",
+          "label": "Fecha (Contable)",
+          "x": 1400,
+          "y": 2150,
+          "w": 400,
+          "h": 70
+        },
+        {
+          "id": "cuenta_bange",
+          "label": "Cuenta del Tesoro Público (BANGE)",
+          "x": 1600,
+          "y": 2300,
+          "w": 700,
+          "h": 70
+        },
+        {
+          "id": "cuenta_bgfi",
+          "label": "Cuenta del Tesoro Público (BGFI)",
+          "x": 1600,
+          "y": 2380,
+          "w": 700,
+          "h": 70
+        },
+        {
+          "id": "cuenta_cceibank",
+          "label": "Cuenta del Tesoro Público (CCEIBANK)",
+          "x": 1600,
+          "y": 2460,
+          "w": 700,
+          "h": 70
+        },
+        {
+          "id": "cuenta_sgbge",
+          "label": "Cuenta del Tesoro Público (SGBGE)",
+          "x": 1600,
+          "y": 2540,
+          "w": 700,
+          "h": 70
+        },
+        {
+          "id": "cuenta_ecobank",
+          "label": "Cuenta del Tesoro Público (ECOBANK)",
+          "x": 1600,
+          "y": 2620,
+          "w": 700,
+          "h": 70
+        },
+        {
+          "id": "nota",
+          "label": "Nota",
+          "x": 180,
+          "y": 2720,
+          "w": 2100,
+          "h": 150
+        }
+      ]
+    }
+  },
+  "notes": "Toutes les coordonnées sont indicatives et doivent être recalées après homographie de l'image scannée vers le canevas A4 (2480x3508)."
+}

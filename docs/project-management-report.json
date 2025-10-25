@@ -1,0 +1,35 @@
+{
+  "metadata": {
+    "generated_at": "2025-10-07T15:22:56Z",
+    "report_type": "weekly_project_management",
+    "workflow": "project-management-system"
+  },
+  "executive_summary": {
+    "project_health_score": "75",
+    "critical_path_status": "attention_needed",
+    "velocity_trend": "accelerating",
+    "risk_level": "minimal",
+    "overall_status": "healthy"
+  },
+  "key_metrics": {
+    "monitoring_optimization": "Weekly execution (85% reduction from daily)",
+    "milestone_management": "Intelligent date adjustments based on velocity",
+    "issue_organization": "Automated prioritization and categorization",
+    "risk_assessment": "Proactive identification and mitigation"
+  },
+  "actions_taken": {
+    "milestones_updated": "true",
+    "issues_organized": "true",
+    "analysis_completed": "true"
+  },
+  "recommendations": {
+    "immediate": "Continue current development;",
+    "focus_area": "Mobile AI Integration Critical Path",
+    "next_review": "2025-10-14"
+  },
+  "optimization_impact": {
+    "execution_frequency": "Weekly (down from daily)",
+    "resource_efficiency": "85% reduction in workflow runs",
+    "intelligent_automation": "Smart milestone and issue management"
+  }
+}
