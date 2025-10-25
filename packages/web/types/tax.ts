@@ -64,6 +64,7 @@ export interface TaxCalculation {
   tax_amount: number
   total_amount: number
   currency: string
+  calculatedAmount?: number
   breakdown?: {
     label: string
     amount: number
@@ -77,6 +78,9 @@ export interface CalculationParams {
   serviceId: string
   baseAmount: number
   taxRate?: number
+  paymentType?: string
+  calculationBase?: string
+  parameters?: Record<string, any>
 }
 
 export interface SearchFilters {

@@ -2,6 +2,7 @@ export interface User {
   id: string
   email: string
   role: 'admin' | 'agent' | 'citizen'
+  status?: string
   profile?: UserProfile
   // Compatibility aliases
   firstName?: string
