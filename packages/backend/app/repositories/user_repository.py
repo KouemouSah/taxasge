@@ -24,7 +24,7 @@ class UserRepository(BaseRepository[UserResponse]):
     def _map_to_model(self, data: Dict[str, Any]) -> UserResponse:
         """Map database row to UserResponse model"""
         return UserResponse(
-            id=data["id"],
+            id=str(data["id"]),  # Convert UUID to string
             email=data["email"],
             role=UserRole(data["role"]),
             status=UserStatus(data["status"]),
@@ -97,15 +97,13 @@ class UserRepository(BaseRepository[UserResponse]):
             now = datetime.utcnow()
 
             # Prepare data for insertion (using REAL Supabase columns)
-            full_name = f"{user_data.profile.first_name} {user_data.profile.last_name}"
-
             data = {
                 "id": user_id,
                 "email": user_data.email,
                 "password_hash": password_hash,
                 "first_name": user_data.profile.first_name,
                 "last_name": user_data.profile.last_name,
-                "full_name": full_name,
+                # full_name is a GENERATED column in Supabase, don't insert
                 "phone_number": user_data.profile.phone,  # Note: phone -> phone_number
                 "role": user_data.role.value,
                 "status": UserStatus.active.value,
