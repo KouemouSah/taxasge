@@ -10,9 +10,9 @@ from loguru import logger
 from app.repositories.base import BaseRepository
 from app.models.user import (
     UserResponse, UserCreate, UserUpdate, UserSearchFilter,
-    UserStats, UserActivity, UserNotificationPreferences
+    UserStats, UserActivity, UserNotificationPreferences,
+    UserRole, UserStatus
 )
-from app.api.v1.auth import UserRole, UserStatus
 
 
 class UserRepository(BaseRepository[UserResponse]):

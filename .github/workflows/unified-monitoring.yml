@@ -34,16 +34,10 @@ on:
         default: false
         type: boolean
   push:
-    branches: ['mobile', 'develop', 'main']
+    branches: ['mobile', 'develop', 'main', 'feature/module-1-auth']
     paths:
       - '.github/workflows/unified-monitoring.yml'
       - 'docs/*.json'
-      environment:
-        description: "Environment to monitor"
-        required: false
-        default: "auto"
-        type: choice
-        options: [auto, development, production]
 env:
   FIREBASE_PROJECT_DEV: "taxasge-dev"
   FIREBASE_PROJECT_PROD: "taxasge-prod"
