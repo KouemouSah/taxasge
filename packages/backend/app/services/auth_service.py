@@ -70,19 +70,10 @@ class AuthService:
             # Hash password
             hashed_password = self.password_service.hash_password(user_data.password)
 
-            # Create user
+            # Create user with UserCreate object
             user = await self.user_repo.create_user(
-                email=user_data.email,
-                password_hash=hashed_password,
-                first_name=user_data.profile.first_name,
-                last_name=user_data.profile.last_name,
-                role=user_data.role,
-                phone=user_data.profile.phone,
-                address=user_data.profile.address,
-                city=user_data.profile.city,
-                country=user_data.profile.country,
-                language=user_data.profile.language,
-                avatar_url=user_data.profile.avatar_url,
+                user_data=user_data,
+                password_hash=hashed_password
             )
 
             if not user:
