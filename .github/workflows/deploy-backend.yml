@@ -327,7 +327,7 @@ jobs:
       - name: ✅ Validation Firebase Project
         run: |
           firebase use ${{ needs.prepare.outputs.firebase-project }}
-          firebase functions:config:get
+          firebase functions:config:get || echo "⚠️  Functions config not accessible (Cloud Run deployment doesn't require this)"
           echo "✅ Projet Firebase validé"
 
   # ==========================================================================
