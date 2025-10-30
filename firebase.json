@@ -3,36 +3,11 @@
     "public": "public",
     "rewrites": [
       {
-        "source": "/api/**",
-        "function": "main"
-      },
-      {
         "source": "**",
         "destination": "/index.html"
       }
     ],
     "headers": [
-      {
-        "source": "/api/**",
-        "headers": [
-          {
-            "key": "Access-Control-Allow-Origin",
-            "value": "*"
-          },
-          {
-            "key": "Access-Control-Allow-Methods",
-            "value": "GET, POST, PUT, DELETE, OPTIONS"
-          },
-          {
-            "key": "Access-Control-Allow-Headers",
-            "value": "Content-Type, Authorization"
-          },
-          {
-            "key": "Cache-Control",
-            "value": "no-cache, no-store, must-revalidate"
-          }
-        ]
-      },
       {
         "source": "**/*.@(jpg|jpeg|gif|png|svg|webp|css|js)",
         "headers": [
@@ -56,31 +31,6 @@
     "cleanUrls": true,
     "trailingSlash": false
   },
-  "functions": [
-    {
-      "source": "packages/backend",
-      "codebase": "default",
-      "runtime": "python311",
-      "predeploy": [
-        "cd packages/backend && pip install -r requirements.txt"
-      ],
-      "ignore": [
-        "venv",
-        "__pycache__",
-        ".pytest_cache",
-        "*.pyc",
-        "*.pyo",
-        "*.pyd",
-        ".env",
-        ".env.*",
-        "*.log",
-        "*.backup.*",
-        "tests/",
-        "app/",
-        "main_temp.py"
-      ]
-    }
-  ],
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
@@ -91,9 +41,6 @@
   "emulators": {
     "auth": {
       "port": 9099
-    },
-    "functions": {
-      "port": 5001
     },
     "firestore": {
       "port": 8080

@@ -76,6 +76,10 @@ class Settings(BaseSettings):
     DB_POOL_SIZE: int = Field(default=5, env="DB_POOL_SIZE")
     DB_MAX_OVERFLOW: int = Field(default=10, env="DB_MAX_OVERFLOW")
     DB_POOL_TIMEOUT: int = Field(default=30, env="DB_POOL_TIMEOUT")
+
+    # Connection Pool Settings (for asyncpg)
+    DATABASE_MIN_CONNECTIONS: int = Field(default=10, env="DATABASE_MIN_CONNECTIONS")
+    DATABASE_MAX_CONNECTIONS: int = Field(default=50, env="DATABASE_MAX_CONNECTIONS")
     
     # ========================================================================
     # FIREBASE SETTINGS (Using actual GitHub Secrets names)

@@ -24,7 +24,7 @@ class UserRepository(BaseRepository[UserResponse]):
     def _map_to_model(self, data: Dict[str, Any]) -> UserResponse:
         """Map database row to UserResponse model"""
         return UserResponse(
-            id=data["id"],
+            id=str(data["id"]),  # Convert UUID to string
             email=data["email"],
             role=UserRole(data["role"]),
             status=UserStatus(data["status"]),
@@ -89,24 +89,44 @@ class UserRepository(BaseRepository[UserResponse]):
     async def create_user(self, user_data: UserCreate, password_hash: str) -> Optional[UserResponse]:
         """Create new user with password hash"""
         try:
+            from uuid import uuid4
+            from datetime import datetime
+
+            # Generate ID and timestamps
+            user_id = str(uuid4())
+            now = datetime.utcnow()
+
+            # Prepare data for insertion (using REAL Supabase columns)
             data = {
+                "id": user_id,
                 "email": user_data.email,
                 "password_hash": password_hash,
-                "role": user_data.role.value,
-                "status": UserStatus.active.value,
                 "first_name": user_data.profile.first_name,
                 "last_name": user_data.profile.last_name,
-                "phone": user_data.profile.phone,
-                "address": user_data.profile.address,
-                "city": user_data.profile.city,
-                "country": user_data.profile.country,
-                "language": user_data.profile.language,
-                "avatar_url": user_data.profile.avatar_url,
-                "citizen_profile": user_data.citizen_profile.dict() if user_data.citizen_profile else None,
-                "business_profile": user_data.business_profile.dict() if user_data.business_profile else None
+                # full_name is a GENERATED column in Supabase, don't insert
+                "phone_number": user_data.profile.phone,  # Note: phone -> phone_number
+                "role": user_data.role.value,
+                "status": UserStatus.active.value,
+                "preferred_language": user_data.profile.language if user_data.profile.language else "es",  # Note: language -> preferred_language
+                # created_at, updated_at have DB defaults, no need to insert
             }
 
-            return await self.create(self._map_to_model(data))
+            # Insert user directly using db_manager
+            columns = list(data.keys())
+            placeholders = [f"${i+1}" for i in range(len(columns))]
+            values = list(data.values())
+
+            query = f"""
+                INSERT INTO {self.table_name} ({', '.join(columns)})
+                VALUES ({', '.join(placeholders)})
+                RETURNING *
+            """
+
+            result = await self.db_manager.execute_single(query, *values)
+            if result:
+                return self._map_to_model(dict(result))
+
+            return None
 
         except Exception as e:
             logger.error(f"❌ Error creating user: {e}")

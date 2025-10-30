@@ -32,7 +32,7 @@
 // });
 
 const nextConfig = {
-  // output: 'export', // Disabled for dev mode - auth requires SSR
+  output: 'export', // Enable static export for Firebase Hosting
   trailingSlash: true,
   images: {
     unoptimized: true,
