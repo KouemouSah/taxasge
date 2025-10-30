@@ -9,7 +9,7 @@ from loguru import logger
 import uuid
 import hashlib
 
-from app.database.supabase_client import get_supabase_client
+from app.database.supabase_client import supabase_client
 from app.models.auth_models import (
     RefreshToken,
     RefreshTokenCreate,
@@ -22,7 +22,7 @@ class RefreshTokenRepository:
 
     def __init__(self):
         """Initialize refresh token repository with Supabase client"""
-        self.supabase = get_supabase_client()
+        self.supabase = supabase_client
         self.table = "refresh_tokens"
 
     def _hash_token(self, token: str) -> str:

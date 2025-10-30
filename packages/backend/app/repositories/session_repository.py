@@ -8,7 +8,7 @@ from typing import Optional, List, Dict, Any
 from loguru import logger
 import uuid
 
-from app.database.supabase_client import get_supabase_client
+from app.database.supabase_client import supabase_client
 from app.models.auth_models import (
     Session,
     SessionCreate,
@@ -22,7 +22,7 @@ class SessionRepository:
 
     def __init__(self):
         """Initialize session repository with Supabase client"""
-        self.supabase = get_supabase_client()
+        self.supabase = supabase_client
         self.table = "sessions"
 
     async def create_session(self, session_data: SessionCreate) -> Session:
