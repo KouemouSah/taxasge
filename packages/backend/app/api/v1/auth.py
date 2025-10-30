@@ -146,7 +146,6 @@ async def register(
             first_name=request.first_name,
             last_name=request.last_name,
             phone=request.phone,
-            country="GQ",  # Default to Equatorial Guinea
             language="es",  # Default to Spanish
         )
 

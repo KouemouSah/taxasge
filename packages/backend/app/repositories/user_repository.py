@@ -30,11 +30,10 @@ class UserRepository(BaseRepository[UserResponse]):
             status=UserStatus(data["status"]),
             first_name=data["first_name"],
             last_name=data["last_name"],
-            phone=data.get("phone"),
+            phone=data.get("phone_number"),  # Note: DB column is phone_number
             address=data.get("address"),
             city=data.get("city"),
-            country=data.get("country", "GQ"),
-            language=data.get("language", "es"),
+            language=data.get("preferred_language", "es"),  # Note: DB column is preferred_language
             avatar_url=data.get("avatar_url"),
             created_at=data["created_at"],
             updated_at=data["updated_at"],
@@ -105,6 +104,9 @@ class UserRepository(BaseRepository[UserResponse]):
                 "last_name": user_data.profile.last_name,
                 # full_name is a GENERATED column in Supabase, don't insert
                 "phone_number": user_data.profile.phone,  # Note: phone -> phone_number
+                "address": user_data.profile.address,  # Profile field
+                "city": user_data.profile.city,  # Profile field
+                "avatar_url": user_data.profile.avatar_url,  # Profile field
                 "role": user_data.role.value,
                 "status": UserStatus.active.value,
                 "preferred_language": user_data.profile.language if user_data.profile.language else "es",  # Note: language -> preferred_language
