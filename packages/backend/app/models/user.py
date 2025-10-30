@@ -33,8 +33,7 @@ class UserProfile(BaseModel):
     last_name: str = Field(..., min_length=2, max_length=50, description="User last name")
     phone: Optional[str] = Field(None, pattern=r"^\+[1-9]\d{1,14}$", description="International phone number")
     address: Optional[str] = Field(None, max_length=200, description="User address")
-    city: Optional[str] = Field(None, max_length=50, description="City")
-    country: str = Field(default="GQ", description="Country code (ISO 3166-1 alpha-2)")
+    city: Optional[str] = Field(None, max_length=100, description="City")
     language: str = Field(default="es", pattern="^(es|fr|en)$", description="Preferred language")
     avatar_url: Optional[str] = Field(None, description="Profile picture URL")
 
@@ -100,7 +99,7 @@ class UserUpdate(BaseModel):
     last_name: Optional[str] = Field(None, min_length=2, max_length=50)
     phone: Optional[str] = Field(None, pattern=r"^\+[1-9]\d{1,14}$")
     address: Optional[str] = Field(None, max_length=200)
-    city: Optional[str] = Field(None, max_length=50)
+    city: Optional[str] = Field(None, max_length=100)
     language: Optional[str] = Field(None, pattern="^(es|fr|en)$")
     avatar_url: Optional[str] = None
 
@@ -133,7 +132,6 @@ class UserResponse(BaseModel):
     phone: Optional[str] = Field(None, description="Phone number")
     address: Optional[str] = Field(None, description="Address")
     city: Optional[str] = Field(None, description="City")
-    country: str = Field(..., description="Country code")
     language: str = Field(..., description="Preferred language")
     avatar_url: Optional[str] = Field(None, description="Profile picture URL")
     created_at: datetime = Field(..., description="Account creation date")
@@ -159,7 +157,6 @@ class UserSearchFilter(BaseModel):
     email: Optional[str] = Field(None, description="Filter by email (partial match)")
     role: Optional[UserRole] = Field(None, description="Filter by user role")
     status: Optional[UserStatus] = Field(None, description="Filter by user status")
-    country: Optional[str] = Field(None, description="Filter by country")
     city: Optional[str] = Field(None, description="Filter by city")
     language: Optional[str] = Field(None, description="Filter by language")
     created_after: Optional[datetime] = Field(None, description="Filter by creation date (after)")
@@ -174,7 +171,7 @@ class UserStats(BaseModel):
     new_users_this_month: int = Field(..., description="New users this month")
     users_by_role: Dict[str, int] = Field(..., description="User count by role")
     users_by_status: Dict[str, int] = Field(..., description="User count by status")
-    users_by_country: Dict[str, int] = Field(..., description="User count by country")
+    users_by_city: Dict[str, int] = Field(..., description="User count by city")
 
 
 class UserActivity(BaseModel):
