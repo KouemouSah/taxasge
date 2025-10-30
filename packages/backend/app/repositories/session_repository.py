@@ -59,13 +59,13 @@ class SessionRepository:
             }
 
             # Insert into database
-            result = self.supabase.table(self.table).insert(session_record).execute()
+            result = await self.supabase.insert(self.table, session_record)
 
-            if not result.data or len(result.data) == 0:
+            if not result:
                 raise Exception("Failed to create session")
 
             logger.info(f"Session created: {session_id} for user {session_data.user_id}")
-            return Session(**result.data[0])
+            return Session(**result)
 
         except Exception as e:
             logger.error(f"Error creating session: {str(e)}")
@@ -82,15 +82,15 @@ class SessionRepository:
             Optional[Session]: Session if found, None otherwise
         """
         try:
-            result = (
-                self.supabase.table(self.table)
-                .select("*")
-                .eq("id", session_id)
-                .execute()
+            results = await self.supabase.select(
+                self.table,
+                columns="*",
+                filters={"id": session_id},
+                limit=1
             )
 
-            if result.data and len(result.data) > 0:
-                return Session(**result.data[0])
+            if results and len(results) > 0:
+                return Session(**results[0])
 
             return None
 
@@ -109,16 +109,18 @@ class SessionRepository:
             Optional[Session]: Session if found, None otherwise
         """
         try:
-            result = (
-                self.supabase.table(self.table)
-                .select("*")
-                .eq("access_token", access_token)
-                .eq("status", SessionStatus.active.value)
-                .execute()
+            results = await self.supabase.select(
+                self.table,
+                columns="*",
+                filters={
+                    "access_token": access_token,
+                    "status": SessionStatus.active.value
+                },
+                limit=1
             )
 
-            if result.data and len(result.data) > 0:
-                return Session(**result.data[0])
+            if results and len(results) > 0:
+                return Session(**results[0])
 
             return None
 
@@ -137,16 +139,18 @@ class SessionRepository:
             Optional[Session]: Session if found, None otherwise
         """
         try:
-            result = (
-                self.supabase.table(self.table)
-                .select("*")
-                .eq("refresh_token", refresh_token)
-                .eq("status", SessionStatus.active.value)
-                .execute()
+            results = await self.supabase.select(
+                self.table,
+                columns="*",
+                filters={
+                    "refresh_token": refresh_token,
+                    "status": SessionStatus.active.value
+                },
+                limit=1
             )
 
-            if result.data and len(result.data) > 0:
-                return Session(**result.data[0])
+            if results and len(results) > 0:
+                return Session(**results[0])
 
             return None
 
@@ -168,15 +172,19 @@ class SessionRepository:
             List[SessionResponse]: List of user sessions
         """
         try:
-            query = self.supabase.table(self.table).select("*").eq("user_id", user_id)
-
+            filters = {"user_id": user_id}
             if active_only:
-                query = query.eq("status", SessionStatus.active.value)
+                filters["status"] = SessionStatus.active.value
 
-            result = query.order("created_at", desc=True).execute()
+            results = await self.supabase.select(
+                self.table,
+                columns="*",
+                filters=filters,
+                order="created_at.desc"
+            )
 
-            if result.data:
-                return [SessionResponse(**session) for session in result.data]
+            if results:
+                return [SessionResponse(**session) for session in results]
 
             return []
 
@@ -195,14 +203,13 @@ class SessionRepository:
             bool: True if updated successfully
         """
         try:
-            result = (
-                self.supabase.table(self.table)
-                .update({"last_activity": datetime.utcnow().isoformat()})
-                .eq("id", session_id)
-                .execute()
+            result = await self.supabase.update(
+                self.table,
+                filters={"id": session_id},
+                data={"last_activity": datetime.utcnow().isoformat()}
             )
 
-            return bool(result.data and len(result.data) > 0)
+            return result is not None
 
         except Exception as e:
             logger.error(f"Error updating session activity: {str(e)}")
@@ -220,17 +227,16 @@ class SessionRepository:
         """
         try:
             now = datetime.utcnow()
-            result = (
-                self.supabase.table(self.table)
-                .update({
+            result = await self.supabase.update(
+                self.table,
+                filters={"id": session_id},
+                data={
                     "status": SessionStatus.revoked.value,
                     "revoked_at": now.isoformat(),
-                })
-                .eq("id", session_id)
-                .execute()
+                }
             )
 
-            success = bool(result.data and len(result.data) > 0)
+            success = result is not None
             if success:
                 logger.info(f"Session revoked: {session_id}")
 
@@ -252,18 +258,32 @@ class SessionRepository:
         """
         try:
             now = datetime.utcnow()
-            result = (
-                self.supabase.table(self.table)
-                .update({
-                    "status": SessionStatus.revoked.value,
-                    "revoked_at": now.isoformat(),
-                })
-                .eq("user_id", user_id)
-                .eq("status", SessionStatus.active.value)
-                .execute()
+
+            # First get all active sessions for the user
+            sessions = await self.supabase.select(
+                self.table,
+                columns="id",
+                filters={
+                    "user_id": user_id,
+                    "status": SessionStatus.active.value
+                }
             )
 
-            count = len(result.data) if result.data else 0
+            count = 0
+            if sessions:
+                # Update each session individually
+                for session in sessions:
+                    result = await self.supabase.update(
+                        self.table,
+                        filters={"id": session["id"]},
+                        data={
+                            "status": SessionStatus.revoked.value,
+                            "revoked_at": now.isoformat(),
+                        }
+                    )
+                    if result:
+                        count += 1
+
             logger.info(f"Revoked {count} sessions for user {user_id}")
             return count
 
@@ -280,17 +300,28 @@ class SessionRepository:
         """
         try:
             now = datetime.utcnow()
-            result = (
-                self.supabase.table(self.table)
-                .update({
-                    "status": SessionStatus.expired.value,
-                })
-                .eq("status", SessionStatus.active.value)
-                .lt("expires_at", now.isoformat())
-                .execute()
+
+            # Get expired sessions
+            sessions = await self.supabase.select(
+                self.table,
+                columns="id,expires_at",
+                filters={"status": SessionStatus.active.value}
             )
 
-            count = len(result.data) if result.data else 0
+            count = 0
+            if sessions:
+                for session in sessions:
+                    if session.get("expires_at"):
+                        expires_at = datetime.fromisoformat(session["expires_at"].replace("Z", "+00:00"))
+                        if expires_at < now:
+                            result = await self.supabase.update(
+                                self.table,
+                                filters={"id": session["id"]},
+                                data={"status": SessionStatus.expired.value}
+                            )
+                            if result:
+                                count += 1
+
             if count > 0:
                 logger.info(f"Cleaned up {count} expired sessions")
 
@@ -312,15 +343,30 @@ class SessionRepository:
         """
         try:
             cutoff_date = datetime.utcnow() - timedelta(days=days)
-            result = (
-                self.supabase.table(self.table)
-                .delete()
-                .in_("status", [SessionStatus.expired.value, SessionStatus.revoked.value])
-                .lt("created_at", cutoff_date.isoformat())
-                .execute()
+
+            # Get old sessions to delete
+            sessions = await self.supabase.select(
+                self.table,
+                columns="id,created_at,status",
+                filters={}
             )
 
-            count = len(result.data) if result.data else 0
+            count = 0
+            if sessions:
+                for session in sessions:
+                    status = session.get("status")
+                    created_at = session.get("created_at")
+
+                    if status in [SessionStatus.expired.value, SessionStatus.revoked.value] and created_at:
+                        created_datetime = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+                        if created_datetime < cutoff_date:
+                            result = await self.supabase.delete(
+                                self.table,
+                                filters={"id": session["id"]}
+                            )
+                            if result:
+                                count += 1
+
             if count > 0:
                 logger.info(f"Deleted {count} old sessions")
 
@@ -341,14 +387,17 @@ class SessionRepository:
             Dict: Session statistics
         """
         try:
-            query = self.supabase.table(self.table).select("*")
-
+            filters = {}
             if user_id:
-                query = query.eq("user_id", user_id)
+                filters["user_id"] = user_id
 
-            result = query.execute()
+            sessions = await self.supabase.select(
+                self.table,
+                columns="*",
+                filters=filters
+            )
 
-            if not result.data:
+            if not sessions:
                 return {
                     "total_sessions": 0,
                     "active_sessions": 0,
@@ -356,7 +405,6 @@ class SessionRepository:
                     "revoked_sessions": 0,
                 }
 
-            sessions = result.data
             return {
                 "total_sessions": len(sessions),
                 "active_sessions": len([s for s in sessions if s["status"] == SessionStatus.active.value]),
@@ -372,3 +420,22 @@ class SessionRepository:
                 "expired_sessions": 0,
                 "revoked_sessions": 0,
             }
+
+
+# Singleton instance
+_session_repository_instance: Optional[SessionRepository] = None
+
+
+def get_session_repository() -> SessionRepository:
+    """
+    Get session repository singleton instance
+
+    Returns:
+        SessionRepository: Session repository instance
+    """
+    global _session_repository_instance
+
+    if _session_repository_instance is None:
+        _session_repository_instance = SessionRepository()
+
+    return _session_repository_instance
