@@ -71,13 +71,13 @@ class RefreshTokenRepository:
             }
 
             # Insert into database
-            result = self.supabase.table(self.table).insert(token_record).execute()
+            result = await self.supabase.insert(self.table, token_record)
 
-            if not result.data or len(result.data) == 0:
+            if not result:
                 raise Exception("Failed to create refresh token")
 
             logger.info(f"Refresh token created: {token_id} for user {token_data.user_id}")
-            return RefreshToken(**result.data[0])
+            return RefreshToken(**result)
 
         except Exception as e:
             logger.error(f"Error creating refresh token: {str(e)}")
@@ -95,16 +95,17 @@ class RefreshTokenRepository:
         """
         try:
             hashed_token = self._hash_token(token)
-            result = (
-                self.supabase.table(self.table)
-                .select("*")
-                .eq("token", hashed_token)
-                .eq("is_revoked", False)
-                .execute()
+            results = await self.supabase.select(
+                self.table,
+                columns="*",
+                filters={
+                    "token": hashed_token,
+                    "is_revoked": False
+                }
             )
 
-            if result.data and len(result.data) > 0:
-                token_data = result.data[0]
+            if results and len(results) > 0:
+                token_data = results[0]
 
                 # Check if token is expired
                 expires_at = datetime.fromisoformat(token_data["expires_at"])
@@ -131,16 +132,17 @@ class RefreshTokenRepository:
             Optional[RefreshToken]: Token if found, None otherwise
         """
         try:
-            result = (
-                self.supabase.table(self.table)
-                .select("*")
-                .eq("session_id", session_id)
-                .eq("is_revoked", False)
-                .execute()
+            results = await self.supabase.select(
+                self.table,
+                columns="*",
+                filters={
+                    "session_id": session_id,
+                    "is_revoked": False
+                }
             )
 
-            if result.data and len(result.data) > 0:
-                return RefreshToken(**result.data[0])
+            if results and len(results) > 0:
+                return RefreshToken(**results[0])
 
             return None
 
@@ -162,15 +164,19 @@ class RefreshTokenRepository:
             List[RefreshTokenResponse]: List of user refresh tokens
         """
         try:
-            query = self.supabase.table(self.table).select("*").eq("user_id", user_id)
-
+            filters = {"user_id": user_id}
             if valid_only:
-                query = query.eq("is_revoked", False)
+                filters["is_revoked"] = False
 
-            result = query.order("created_at", desc=True).execute()
+            results = await self.supabase.select(
+                self.table,
+                columns="*",
+                filters=filters,
+                order="created_at.desc"
+            )
 
-            if result.data:
-                return [RefreshTokenResponse(**token) for token in result.data]
+            if results:
+                return [RefreshTokenResponse(**token) for token in results]
 
             return []
 
@@ -189,14 +195,13 @@ class RefreshTokenRepository:
             bool: True if updated successfully
         """
         try:
-            result = (
-                self.supabase.table(self.table)
-                .update({"last_used_at": datetime.utcnow().isoformat()})
-                .eq("id", token_id)
-                .execute()
+            result = await self.supabase.update(
+                self.table,
+                filters={"id": token_id},
+                data={"last_used_at": datetime.utcnow().isoformat()}
             )
 
-            return bool(result.data and len(result.data) > 0)
+            return result is not None
 
         except Exception as e:
             logger.error(f"Error updating token last used: {str(e)}")
@@ -214,17 +219,16 @@ class RefreshTokenRepository:
         """
         try:
             now = datetime.utcnow()
-            result = (
-                self.supabase.table(self.table)
-                .update({
+            result = await self.supabase.update(
+                self.table,
+                filters={"id": token_id},
+                data={
                     "is_revoked": True,
                     "revoked_at": now.isoformat(),
-                })
-                .eq("id", token_id)
-                .execute()
+                }
             )
 
-            success = bool(result.data and len(result.data) > 0)
+            success = result is not None
             if success:
                 logger.info(f"Refresh token revoked: {token_id}")
 
@@ -247,17 +251,16 @@ class RefreshTokenRepository:
         try:
             hashed_token = self._hash_token(token)
             now = datetime.utcnow()
-            result = (
-                self.supabase.table(self.table)
-                .update({
+            result = await self.supabase.update(
+                self.table,
+                filters={"token": hashed_token},
+                data={
                     "is_revoked": True,
                     "revoked_at": now.isoformat(),
-                })
-                .eq("token", hashed_token)
-                .execute()
+                }
             )
 
-            success = bool(result.data and len(result.data) > 0)
+            success = result is not None
             if success:
                 logger.info(f"Refresh token revoked by value")
 
@@ -279,17 +282,16 @@ class RefreshTokenRepository:
         """
         try:
             now = datetime.utcnow()
-            result = (
-                self.supabase.table(self.table)
-                .update({
+            result = await self.supabase.update(
+                self.table,
+                filters={"session_id": session_id},
+                data={
                     "is_revoked": True,
                     "revoked_at": now.isoformat(),
-                })
-                .eq("session_id", session_id)
-                .execute()
+                }
             )
 
-            success = bool(result.data and len(result.data) > 0)
+            success = result is not None
             if success:
                 logger.info(f"Refresh tokens revoked for session: {session_id}")
 
@@ -311,18 +313,32 @@ class RefreshTokenRepository:
         """
         try:
             now = datetime.utcnow()
-            result = (
-                self.supabase.table(self.table)
-                .update({
-                    "is_revoked": True,
-                    "revoked_at": now.isoformat(),
-                })
-                .eq("user_id", user_id)
-                .eq("is_revoked", False)
-                .execute()
+
+            # First get all non-revoked tokens for the user
+            tokens = await self.supabase.select(
+                self.table,
+                columns="id",
+                filters={
+                    "user_id": user_id,
+                    "is_revoked": False
+                }
             )
 
-            count = len(result.data) if result.data else 0
+            count = 0
+            if tokens:
+                # Update each token individually
+                for token in tokens:
+                    result = await self.supabase.update(
+                        self.table,
+                        filters={"id": token["id"]},
+                        data={
+                            "is_revoked": True,
+                            "revoked_at": now.isoformat(),
+                        }
+                    )
+                    if result:
+                        count += 1
+
             logger.info(f"Revoked {count} refresh tokens for user {user_id}")
             return count
 
@@ -339,18 +355,31 @@ class RefreshTokenRepository:
         """
         try:
             now = datetime.utcnow()
-            result = (
-                self.supabase.table(self.table)
-                .update({
-                    "is_revoked": True,
-                    "revoked_at": now.isoformat(),
-                })
-                .eq("is_revoked", False)
-                .lt("expires_at", now.isoformat())
-                .execute()
+
+            # Get all non-revoked tokens
+            tokens = await self.supabase.select(
+                self.table,
+                columns="id,expires_at",
+                filters={"is_revoked": False}
             )
 
-            count = len(result.data) if result.data else 0
+            count = 0
+            if tokens:
+                for token in tokens:
+                    if token.get("expires_at"):
+                        expires_at = datetime.fromisoformat(token["expires_at"].replace("Z", "+00:00"))
+                        if expires_at < now:
+                            result = await self.supabase.update(
+                                self.table,
+                                filters={"id": token["id"]},
+                                data={
+                                    "is_revoked": True,
+                                    "revoked_at": now.isoformat(),
+                                }
+                            )
+                            if result:
+                                count += 1
+
             if count > 0:
                 logger.info(f"Cleaned up {count} expired refresh tokens")
 
@@ -372,15 +401,28 @@ class RefreshTokenRepository:
         """
         try:
             cutoff_date = datetime.utcnow() - timedelta(days=days)
-            result = (
-                self.supabase.table(self.table)
-                .delete()
-                .eq("is_revoked", True)
-                .lt("created_at", cutoff_date.isoformat())
-                .execute()
+
+            # Get old revoked tokens to delete
+            tokens = await self.supabase.select(
+                self.table,
+                columns="id,created_at",
+                filters={"is_revoked": True}
             )
 
-            count = len(result.data) if result.data else 0
+            count = 0
+            if tokens:
+                for token in tokens:
+                    created_at = token.get("created_at")
+                    if created_at:
+                        created_datetime = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+                        if created_datetime < cutoff_date:
+                            result = await self.supabase.delete(
+                                self.table,
+                                filters={"id": token["id"]}
+                            )
+                            if result:
+                                count += 1
+
             if count > 0:
                 logger.info(f"Deleted {count} old refresh tokens")
 
