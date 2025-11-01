@@ -70,3 +70,45 @@ def mock_env(monkeypatch):
 def backend_root_path():
     """Retourne le chemin racine du backend"""
     return backend_root
+
+
+# =========================================================================
+# TASK-M01-005 STEP 3: Test Fixtures for Password Security & Validation
+# =========================================================================
+
+@pytest.fixture
+def password_service():
+    """
+    Fixture: Password service instance for testing
+    TASK-M01-005 STEP 1: Password security fixes
+    """
+    from app.services.password_service import PasswordService
+    return PasswordService()
+
+
+@pytest.fixture
+def mock_user_data():
+    """
+    Fixture: Mock user data for testing
+    TASK-M01-005 STEP 2: User validation fixes
+    """
+    from uuid import uuid4
+    from datetime import datetime
+    from app.models.user import UserRole, UserStatus
+
+    return {
+        "id": str(uuid4()),
+        "email": "testuser@example.com",
+        "role": UserRole.citizen,
+        "status": UserStatus.active,
+        "first_name": "Test",
+        "last_name": "User",
+        "phone": "+240222123456",
+        "address": "Test Address",
+        "city": "Malabo",
+        "language": "es",
+        "avatar_url": None,
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow(),
+        "last_login": None
+    }
