@@ -1,17 +1,17 @@
 # 📊 RAPPORT GÉNÉRAL PROJET TAXASGE
 ## Dashboard Exécutif - Vue Consolidée
 
-**Dernière mise à jour :** 2025-11-01 19:00 UTC
-**Version :** 2.5.0
-**Statut global :** 🟡 MODULE 1 VALIDÉ ✅ - MODULE 2 DAY 1 TERMINÉ ⚡
+**Dernière mise à jour :** 2025-11-01 22:00 UTC
+**Version :** 2.6.0
+**Statut global :** 🟡 MODULE 1 VALIDÉ ✅ - MODULE 2 DAY 2 BACKEND P1 TERMINÉ ⚡
 
 ---
 
 ## 🎯 VUE D'ENSEMBLE
 
-**Phase actuelle :** **Module 2 - Authentication Advanced + Tests (🟡 DAY 1/6 TERMINÉ)**
-**Progression globale :** **32%** (Phase 0 100% ✅, Module 1 100% ✅, Module 2 Day 1 terminé 2/4 endpoints P1)
-**Timeline :** ⏱️ **DANS LES TEMPS** - Module 2 Day 1: +0 jours (workflow orchestré respecté)
+**Phase actuelle :** **Module 2 - Authentication Advanced + Tests (🟡 DAY 2/6 BACKEND P1 TERMINÉ)**
+**Progression globale :** **35%** (Phase 0 100% ✅, Module 1 100% ✅, Module 2 Backend P1 100% - 4/4 endpoints ✅)
+**Timeline :** ⏱️ **DANS LES TEMPS** - Module 2 Day 2: +0 jours (workflow orchestré respecté)
 **Budget :** 💰 **VALIDÉ** - $30-50/mois production + $0.30/mois Secret Manager
 
 ---
@@ -142,16 +142,16 @@
 
 ---
 
-### Module 2 : Authentication Advanced + Tests (🟡 DAY 1/6 TERMINÉ - 50% P1 Backend)
+### Module 2 : Authentication Advanced + Tests (🟡 DAY 2/6 TERMINÉ - 100% P1 Backend ✅)
 
 **Objectif :** Résorber 100% dette technique MODULE_01 (endpoints auth avancés + tests automatisés)
 
 **Scope Approuvé :** ✅ **P1 + P2 COMPLET** (5-6 jours) - Approuvé par utilisateur 2025-11-01
 
-**Backend (Priority 1 - MUST HAVE) - 50% COMPLETE:**
-- ✅ 2/4 endpoints P1 : **Password reset (request ✅ + confirm ✅)**
-- ⏳ 2/4 endpoints P1 : Email verification (verify + resend) - **Jour 2**
+**Backend (Priority 1 - MUST HAVE) - 100% COMPLETE ✅:**
+- ✅ 4/4 endpoints P1 : **Password reset (request ✅ + confirm ✅) + Email verification (verify ✅ + resend ✅)**
 - ✅ EmailService : SMTP Gmail créé (388 lignes) - **send_password_reset_email, send_verification_code, send_2fa_code, send_password_reset_confirmation**
+- ✅ pytest.ini : Configuration pytest-cov créée (target coverage >80%)
 - ⏳ Tests backend : >80% coverage (pytest-cov) - **Jour 2-3**
 
 **Backend (Priority 2 - NICE TO HAVE) - 0% COMPLETE:**
@@ -164,7 +164,7 @@
 **Frontend (Priority 2 - NICE TO HAVE) - 0% COMPLETE:**
 - ⏳ 2 pages P2 : Verify Email + Settings/Security - **Jour 6**
 
-**Durée Réelle Day 1 :** **1 jour** (planifié : 1 jour) ✅ **DANS LES TEMPS**
+**Durée Réelle Day 1-2 :** **2 jours** (planifié : 2 jours) ✅ **DANS LES TEMPS**
 
 **Réalisations Day 1 (2025-11-01) :**
 - ✅ Database migration appliquée (7 colonnes + 3 indexes)
@@ -174,6 +174,22 @@
 - ✅ Business rules : Token 32 chars, validity 1h, email enumeration protection, password strength validation
 - ✅ 2 commits pushés (migration + password reset)
 - ✅ Workflow orchestré (Orchestrator → Backend-Dev → Claude DEV_AGENT)
+
+**Réalisations Day 2 (2025-11-01) :**
+- ✅ Repository Layer : 3 méthodes email verification (+108 lignes user_repository.py)
+  - `update_email_verification_code(user_id, code, expires_at)` - 6-digit code storage
+  - `find_by_verification_code(code)` - Find user by code with expiry check
+  - `mark_email_verified(user_id)` - Mark verified, clear code
+- ✅ Service Layer : 2 méthodes email verification (+118 lignes auth_service.py)
+  - `send_verification_email(user_id, email)` - Generate 6-digit code, send email
+  - `verify_email_code(code)` - Verify code, mark email verified
+- ✅ Routes Layer : 2 endpoints email verification (+108 lignes auth.py)
+  - POST /auth/email/verify - Public endpoint, verify with 6-digit code
+  - POST /auth/email/resend - Authenticated endpoint, resend code
+- ✅ pytest.ini créé : Configuration pytest-cov (target >80% coverage)
+- ✅ Business rules : 6-digit code (100000-999999), 15min validity, auto-clear after verification
+- ✅ 1 commit pushé (email verification 3-tier)
+- ✅ API version : 2.1.0 → 2.2.0
 
 **Prérequis :**
 - [x] MODULE_01 validé GO CONDITIONNEL ✅
@@ -188,11 +204,14 @@
 - ⏳ Playwright instable (Score 70) → Jour 4
 - ✅ Scope creep P2 (Score 65) → **ACCEPTÉ** : P1+P2 approuvé
 
-**Décision :** ✅ **DAY 1 VALIDÉ** - Progression normale, Day 2 peut démarrer
+**Décision :** ✅ **DAY 1-2 VALIDÉ** - Backend P1 100% complete, Day 3 peut démarrer (Tests backend)
 
 **Commits Day 1 :**
 - `21ed09b` - feat(module-02): Add database migration, EmailService, and SMTP config
 - `b099b7d` - feat(module-02): Implement password reset endpoints (3-tier architecture)
+
+**Commits Day 2 :**
+- `3adb2d7` - feat(module-02): Implement email verification endpoints (3-tier architecture)
 
 **Rapports :**
 - [RAPPORT_PLANIFICATION_MODULE_02.md](./03_PHASES/MODULE_02_AUTH_ADVANCED/RAPPORT_PLANIFICATION_MODULE_02.md) - Planification (534 lignes)
