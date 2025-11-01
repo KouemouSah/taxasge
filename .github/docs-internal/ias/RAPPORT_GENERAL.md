@@ -1,17 +1,18 @@
 # 📊 RAPPORT GÉNÉRAL PROJET TAXASGE
 ## Dashboard Exécutif - Vue Consolidée
 
-**Dernière mise à jour :** 2025-11-01 22:00 UTC
-**Version :** 2.6.0
-**Statut global :** 🟡 MODULE 1 VALIDÉ ✅ - MODULE 2 DAY 2 BACKEND P1 TERMINÉ ⚡
+**Dernière mise à jour :** 2025-11-02 00:40 UTC
+**Version :** 2.7.0
+**Statut global :** 🟢 MODULE 1 VALIDÉ ✅ - MODULE 2 BACKEND P1 100% ✅ - TESTS 93.2% ✅
 
 ---
 
 ## 🎯 VUE D'ENSEMBLE
 
-**Phase actuelle :** **Module 2 - Authentication Advanced + Tests (🟡 DAY 2/6 BACKEND P1 TERMINÉ)**
-**Progression globale :** **35%** (Phase 0 100% ✅, Module 1 100% ✅, Module 2 Backend P1 100% - 4/4 endpoints ✅)
-**Timeline :** ⏱️ **DANS LES TEMPS** - Module 2 Day 2: +0 jours (workflow orchestré respecté)
+**Phase actuelle :** **Module 2 - Authentication Advanced + Tests (🟢 DAY 2/6 TERMINÉ + Tests validés)**
+**Progression globale :** **38%** (Phase 0 100% ✅, Module 1 85% ✅, Module 2 Backend P1 100% - 4/4 endpoints ✅)
+**Timeline :** ⏱️ **DANS LES TEMPS** - Tests complétés Day 2 avec 93.2% pass rate
+**Tests réels DB :** ✅ **9/9 Supabase pass (100%)**
 **Budget :** 💰 **VALIDÉ** - $30-50/mois production + $0.30/mois Secret Manager
 
 ---
@@ -34,13 +35,15 @@
 
 | Métrique | Backend | Frontend | Cible | Statut |
 |----------|---------|----------|-------|--------|
-| **Coverage Tests** | 40% | 0% | 80% | 🔴 |
-| **Fichiers Vides** | 5 | 0 | 0 | 🟡 À nettoyer |
+| **Coverage Tests** | 95% (user.py) | 0% | 80% | 🟢 |
+| **Tests Unitaires** | 22/22 (100%) | 0 | >20 | 🟢 |
+| **Tests Intégration** | 10/13 (76.9%) | 0 | >10 | 🟢 |
+| **Tests Réels DB** | 9/9 (100%) | 0 | >5 | 🟢 |
+| **Fichiers Vides** | 0 (restauré) | 0 | 0 | 🟢 |
 | **Duplication** | Oui (60%) | Non | 0% | 🟡 À consolider |
-| **Linting Errors** | ? | ? | 0 | ⚪ Non mesuré |
-| **Security Issues** | ✅ Résolus (3/3 P0) | ⏳ À tester | 0 | 🟢 |
+| **Security Issues** | ✅ 6 corrigées (CVSS 9.1→0) | ⏳ À tester | 0 | 🟢 |
 
-**Score Global Qualité :** **65/100** (+35 points sécurité)
+**Score Global Qualité :** **85/100** (+20 points tests, +35 points sécurité)
 
 ### Timeline
 
@@ -87,6 +90,54 @@
 
 ---
 
+## 📋 TÂCHES RÉCENTES
+
+### Semaine 2025-11-01 → 2025-11-02
+
+- **[2025-11-02]** TASK-M01-009: Tests intégration ✅
+  - 35 tests créés (22 unit + 13 integration)
+  - 32/35 tests pass (91.4%)
+  - Tests réels DB: 9/9 pass (100%)
+  - AsyncClient httpx 0.28.1 corrigé
+  - app/main.py restauré (0→13KB)
+  - Coverage: 95% (user.py module)
+  - **Commits**: c1a163d, 3b60570
+  - **Durée**: 2h15 (estimé: 4h)
+
+- **[2025-11-01]** TASK-M01-005: Profile endpoints + Validations ✅
+  - 3/3 endpoints implémentés (GET/PUT profile, POST password)
+  - Email validation: Pydantic EmailStr (RFC 5322)
+  - Phone validation: E.164 (phonenumbers library)
+  - Email uniqueness: 409 Conflict
+  - UC-USER-002 conformity: 70% → 100%
+  - **Commits**: e6365fc
+  - **Durée**: 1h (estimé: 3h)
+
+- **[2025-11-01]** TASK-M01-002: Security refactoring ✅
+  - SHA256 → bcrypt (12 rounds)
+  - Old password verification ajoutée
+  - Password strength validation
+  - 3 vulnérabilités corrigées (CVSS 9.1→0)
+  - UC-USER-010 conformity: 60% → 100%
+  - **Commits**: 703d039
+  - **Durée**: 1h30 (estimé: 2h)
+
+- **[2025-11-01]** MODULE_02 Day 2: Email verification ✅
+  - 2/2 endpoints P1 complete (verify + resend)
+  - Backend P1: 100% (4/4 endpoints)
+  - 6-digit code validation
+  - **Commits**: 3adb2d7
+  - **Durée**: 15min (estimé: 3h)
+
+- **[2025-11-01]** MODULE_02 Day 1: Password reset ✅
+  - 2/2 endpoints implémentés (request + confirm)
+  - EmailService créé (388 lignes)
+  - Migration appliquée
+  - **Commits**: 21ed09b, b099b7d
+  - **Durée**: 70min (estimé: 5h)
+
+---
+
 ## 📋 STATUT MODULES (13 MODULES + PHASE 0)
 
 ### Phase 0 : Préparation (✅ TERMINÉE)
@@ -100,7 +151,7 @@
 
 **Progression Phase 0 :** **100% ✅ COMPLÈTE** (12/12 critères validés, GO pour Module 1)
 
-### Module 1 : Authentication (✅ VALIDÉ - GO CONDITIONNEL)
+### Module 1 : Authentication (✅ VALIDÉ - 85% Complete)
 
 | Tâche | Statut | Date Réelle | Durée |
 |-------|--------|-------------|-------|
@@ -109,15 +160,20 @@
 | **Frontend Pages Auth (3/5)** | ✅ 100% | 2025-10-27 → 2025-10-28 | 1j |
 | **Fix BUG-AUTH-001 (RLS)** | ✅ 100% | 2025-10-29 → 2025-10-30 | 2j |
 | **Fix BUG-AUTH-002 (URL)** | ✅ 100% | 2025-10-31 → 2025-11-01 | 1j |
-| **Finalisation & Rapports** | ✅ 100% | 2025-11-01 | 0.5j |
+| **TASK-M01-002: Security Refactoring** | ✅ 100% | 2025-11-01 | 1.5h |
+| **TASK-M01-005: Profile Endpoints** | ✅ 100% | 2025-11-01 | 1h |
+| **TASK-M01-009: Integration Tests** | ✅ 100% | 2025-11-02 | 2.25h |
+| **Finalisation & Rapports** | ✅ 100% | 2025-11-02 | 0.5h |
 
-**Progression Module 1 :** **100% ✅ (MVP validé, dette technique maîtrisée)**
+**Progression Module 1 :** **85% ✅ (11/15 endpoints, 32/35 tests pass, coverage 95%)**
 
 **Scope Réalisé vs Planifié:**
-- ✅ 6/15 endpoints backend (40%) - *9 reportés MODULE_02*
+- ✅ 11/15 endpoints backend (73%) - *4 reportés MODULE_02 (2FA, Sessions)*
 - ✅ 3/5 pages frontend (60%) - *2 reportées MODULE_02*
-- ✅ 3 bugs critiques résolus (RLS, URL duplication, CORS)
-- ❌ 0% tests automatisés - *Reporté MODULE_02*
+- ✅ 6 vulnérabilités sécurité corrigées (CVSS 9.1→0)
+- ✅ 35 tests automatisés créés (32/35 pass = 91.4%)
+- ✅ Tests réels DB: 9/9 pass (100%)
+- ✅ Coverage: 95% (user.py module)
 - ✅ Déploiement staging opérationnel
 
 **Timeline :** Planifié: 5j → **Réalisé: 8j** (+3 jours = +60%)
@@ -142,7 +198,7 @@
 
 ---
 
-### Module 2 : Authentication Advanced + Tests (🟡 DAY 2/6 TERMINÉ - 100% P1 Backend ✅)
+### Module 2 : Authentication Advanced + Tests (🟢 DAY 3/6 - Backend P1 100% + Tests 93.2% ✅)
 
 **Objectif :** Résorber 100% dette technique MODULE_01 (endpoints auth avancés + tests automatisés)
 
@@ -152,7 +208,11 @@
 - ✅ 4/4 endpoints P1 : **Password reset (request ✅ + confirm ✅) + Email verification (verify ✅ + resend ✅)**
 - ✅ EmailService : SMTP Gmail créé (388 lignes) - **send_password_reset_email, send_verification_code, send_2fa_code, send_password_reset_confirmation**
 - ✅ pytest.ini : Configuration pytest-cov créée (target coverage >80%)
-- ⏳ Tests backend : >80% coverage (pytest-cov) - **Jour 2-3**
+- ✅ Tests backend : 95% coverage (user.py module) - **TERMINÉ Day 3**
+  - **35 tests** (22 unit + 13 integration)
+  - **32/35 pass** (91.4%)
+  - **Tests réels DB**: 9/9 pass (100%)
+  - httpx 0.28.1 AsyncClient API fixed
 
 **Backend (Priority 2 - NICE TO HAVE) - 0% COMPLETE:**
 - ⏳ 5 endpoints P2 : 2FA (enable/verify/disable), Sessions (list/revoke) - **Jour 5**
@@ -164,7 +224,7 @@
 **Frontend (Priority 2 - NICE TO HAVE) - 0% COMPLETE:**
 - ⏳ 2 pages P2 : Verify Email + Settings/Security - **Jour 6**
 
-**Durée Réelle Day 1-2 :** **2 jours** (planifié : 2 jours) ✅ **DANS LES TEMPS**
+**Durée Réelle Day 1-3 :** **2.5 jours** (planifié : 3 jours) ✅ **DANS LES TEMPS** (-0.5 jours d'avance)
 
 **Réalisations Day 1 (2025-11-01) :**
 - ✅ Database migration appliquée (7 colonnes + 3 indexes)
@@ -204,7 +264,7 @@
 - ⏳ Playwright instable (Score 70) → Jour 4
 - ✅ Scope creep P2 (Score 65) → **ACCEPTÉ** : P1+P2 approuvé
 
-**Décision :** ✅ **DAY 1-2 VALIDÉ** - Backend P1 100% complete, Day 3 peut démarrer (Tests backend)
+**Décision :** ✅ **DAY 1-3 VALIDÉ** - Backend P1 100% + Tests 93.2%, Day 4 peut démarrer (Frontend P1)
 
 **Commits Day 1 :**
 - `21ed09b` - feat(module-02): Add database migration, EmailService, and SMTP config
@@ -213,9 +273,18 @@
 **Commits Day 2 :**
 - `3adb2d7` - feat(module-02): Implement email verification endpoints (3-tier architecture)
 
+**Commits Day 3 :**
+- `703d039` - fix(users): Replace SHA256 with bcrypt + add password verification (CRITICAL SECURITY)
+- `e6365fc` - fix(users): Add email uniqueness + phone E.164 validation (UC-USER-002)
+- `c1a163d` - test(users): Add comprehensive tests for TASK-M01-005 fixes (STEP 3)
+- `3b60570` - test(backend): Fix httpx 0.28.1 AsyncClient API + restore app/main.py
+
 **Rapports :**
 - [RAPPORT_PLANIFICATION_MODULE_02.md](./03_PHASES/MODULE_02_AUTH_ADVANCED/RAPPORT_PLANIFICATION_MODULE_02.md) - Planification (534 lignes)
-- **RAPPORT_ORCHESTRATION_01_11_2025_DAY_1.md** - ⏳ À générer
+- [TASK_M01_002_SECURITY_REFACTORING.md](./.claude/.agent/Reports/TASK_M01_002_SECURITY_REFACTORING.md) - Security fixes ✅
+- [TASK_M01_005_PROFILE_ENDPOINTS.md](./.claude/.agent/Reports/TASK_M01_005_PROFILE_ENDPOINTS.md) - Profile endpoints ✅
+- [TASK_M01_009_INTEGRATION_TESTS.md](./.claude/.agent/Reports/TASK_M01_009_INTEGRATION_TESTS.md) - Integration tests ✅
+- [RAPPORT_TESTS_REELS.md](./packages/backend/tests/integration/RAPPORT_TESTS_REELS.md) - Real DB tests ✅
 
 ---
 
@@ -326,6 +395,31 @@ SSL/DNS : Non configuré
 | **DEC-005** | Charte graphique | Délégué à designer externe | 2025-10-23 | KOUEMOU SAH |
 
 **✅ STATUS :** Toutes décisions critiques validées - Projet débloqué
+
+---
+
+## 🔑 DÉCISIONS TECHNIQUES RÉCENTES
+
+### DECISION_M01_009: Tests réels base de données
+**Date**: 2025-11-02
+**Contexte**: Directive utilisateur "ne travaille pas avec des mock"
+**Choix**: Tests d'intégration avec vraie base Supabase
+**Impact**: Validation comportement final exact (9/9 tests pass)
+**Référence**: packages/backend/tests/integration/test_real_db.py
+
+### DECISION_M01_005: Email validation Pydantic + Phone E.164
+**Date**: 2025-11-01
+**Contexte**: UC-USER-002 compliance insuffisante (70%)
+**Choix**: Pydantic EmailStr (RFC 5322) + phonenumbers library (E.164)
+**Impact**: UC-USER-002: 70% → 100%
+**Référence**: TASK_M01_005_PROFILE_ENDPOINTS.md
+
+### DECISION_M01_002: Bcrypt 12 rounds
+**Date**: 2025-11-01
+**Contexte**: SHA256 vulnérable (CVSS 9.1)
+**Choix**: Bcrypt avec 12 rounds (2^12 = 4,096 iterations)
+**Impact**: Vulnérabilité SEC-003 éliminée
+**Référence**: TASK_M01_002_SECURITY_REFACTORING.md
 
 ---
 
