@@ -79,7 +79,7 @@ app/
 app/
 ├── page.tsx                    (Home minimaliste ~50 lignes)
 ├── services/
-│   └── page.tsx                (Liste 547 services fiscaux)
+│   └── page.tsx                (Liste 850 services fiscaux)
 ├── calculators/
 │   └── page.tsx                (Calculateurs taxes)
 ├── ministries/
@@ -434,7 +434,7 @@ packages/web/
 │   ├── providers.tsx                   (React Query + Zustand)
 │   │
 │   ├── services/
-│   │   └── page.tsx                    (Liste 547 services)
+│   │   └── page.tsx                    (Liste services)
 │   ├── calculators/
 │   │   └── page.tsx                    (Calculateurs taxes)
 │   ├── ministries/
