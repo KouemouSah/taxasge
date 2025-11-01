@@ -27,7 +27,8 @@ class SupabaseClient:
             "apikey": settings.SUPABASE_SERVICE_ROLE_KEY,
             "Authorization": f"Bearer {settings.SUPABASE_SERVICE_ROLE_KEY}",
             "Content-Type": "application/json",
-            "Prefer": "return=representation"
+            "Prefer": "return=representation",
+            "X-Client-Info": "supabase-py/0.0.1"
         }
         self.client = httpx.AsyncClient(
             timeout=30.0,
