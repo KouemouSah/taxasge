@@ -7,10 +7,10 @@ import axios from 'axios';
 import type { LoginInput, RegisterInput } from '../validations/auth';
 
 // URL du backend staging (override .env.local)
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://taxasge-backend-staging-xrlbgdr5eq-uc.a.run.app/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://taxasge-backend-staging-xrlbgdr5eq-uc.a.run.app';
 
 const authClient = axios.create({
-  baseURL: `${API_URL}/auth`,
+  baseURL: `${API_BASE_URL}/api/v1/auth`,
   headers: {
     'Content-Type': 'application/json',
   },

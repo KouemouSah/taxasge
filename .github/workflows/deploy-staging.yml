@@ -140,7 +140,7 @@ jobs:
         env:
           NODE_ENV: production
           NEXT_PUBLIC_ENV: staging
-          NEXT_PUBLIC_API_URL: ${{ needs.deploy-backend.outputs.url || 'https://taxasge-backend-staging-xrlbgdr5eq-uc.a.run.app/api/v1' }}
+          NEXT_PUBLIC_API_URL: ${{ needs.deploy-backend.outputs.url || 'https://taxasge-backend-staging-xrlbgdr5eq-uc.a.run.app' }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: npm run build
