@@ -19,12 +19,13 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"],
-      "@/components/*": ["./components/*"],
+      "@/*": ["./src/*"],
+      "@/components/*": ["./src/components/*"],
       "@/lib/*": ["./lib/*"],
-      "@/types/*": ["./types/*"],
+      "@/hooks/*": ["./src/hooks/*"],
+      "@/types/*": ["./src/types/*"],
       "@/styles/*": ["./styles/*"],
-      "@/app/*": ["./app/*"],
+      "@/app/*": ["./src/app/*"],
       "@/shared/*": ["../shared/*"]
     },
     "target": "es5",
