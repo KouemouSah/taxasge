@@ -142,15 +142,18 @@ class AuthService:
             Exception: If login fails
         """
         try:
-            # Find user by email
-            user = await self.user_repo.find_by_email(email)
-            if not user:
+            # Find user by email WITH password hash (for authentication)
+            user_data = await self.user_repo.find_by_email_with_password(email)
+            if not user_data:
                 raise Exception("Invalid email or password")
 
             # Verify password
-            if not self.password_service.verify_password(password, user.password_hash):
+            if not self.password_service.verify_password(password, user_data["password_hash"]):
                 logger.warning(f"Failed login attempt for {email}")
                 raise Exception("Invalid email or password")
+
+            # Map user data to UserResponse model (excluding password_hash)
+            user = self.user_repo._map_to_model(user_data)
 
             # Check user status
             if user.status == UserStatus.suspended:

@@ -85,6 +85,37 @@ class UserRepository(BaseRepository[UserResponse]):
 
         return None
 
+    async def find_by_email_with_password(self, email: str) -> Optional[Dict[str, Any]]:
+        """
+        Find user by email and return raw data including password_hash
+        Used for authentication purposes only
+
+        Args:
+            email: User email address
+
+        Returns:
+            Optional[Dict]: Raw user data with password_hash, or None if not found
+        """
+        try:
+            if self.supabase.enabled:
+                results = await self.supabase.select(
+                    self.table_name,
+                    columns="id,email,password_hash,role,status,first_name,last_name,phone_number,address,city,preferred_language,avatar_url,created_at,updated_at,last_login",
+                    filters={"email": email}
+                )
+                if results:
+                    return results[0]
+            else:
+                query = f"SELECT * FROM {self.table_name} WHERE email = $1"
+                result = await self.db_manager.execute_single(query, email)
+                if result:
+                    return dict(result)
+
+        except Exception as e:
+            logger.error(f"❌ Error finding user by email with password {email}: {e}")
+
+        return None
+
     async def create_user(self, user_data: UserCreate, password_hash: str) -> Optional[UserResponse]:
         """Create new user with password hash"""
         try:
