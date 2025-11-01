@@ -68,6 +68,23 @@ class PasswordResetConfirmResponse(BaseModel):
     message: str
 
 
+class EmailVerifyRequest(BaseModel):
+    verification_code: str = Field(..., min_length=6, max_length=6, description="6-digit verification code")
+
+
+class EmailVerifyResponse(BaseModel):
+    message: str
+
+
+class EmailResendRequest(BaseModel):
+    pass  # No body needed, use current_user from token
+
+
+class EmailResendResponse(BaseModel):
+    message: str
+    email: EmailStr
+
+
 # Dependency to get client info from request
 def get_client_info(request: Request) -> tuple[Optional[str], Optional[str]]:
     """Extract client IP and user agent from request"""
@@ -120,7 +137,7 @@ async def get_auth_info():
     """Get authentication API information"""
     return {
         "message": "TaxasGE Authentication API",
-        "version": "2.1.0",  # MODULE_02: Password reset added
+        "version": "2.2.0",  # MODULE_02: Password reset + Email verification added
         "endpoints": {
             "register": "POST /register - Register new user",
             "login": "POST /login - User login",
@@ -129,6 +146,8 @@ async def get_auth_info():
             "profile": "GET /profile - Get current user profile",
             "password_reset_request": "POST /password/reset/request - Request password reset email",
             "password_reset_confirm": "POST /password/reset/confirm - Confirm password reset with token",
+            "email_verify": "POST /email/verify - Verify email with 6-digit code",
+            "email_resend": "POST /email/resend - Resend email verification code",
         },
         "security": {
             "token_type": "JWT Bearer",
@@ -136,6 +155,7 @@ async def get_auth_info():
             "refresh_token_duration": "7 days",
             "password_hashing": "bcrypt (12 rounds)",
             "password_reset_token_validity": "1 hour",
+            "email_verification_code_validity": "15 minutes",
         },
     }
 
@@ -466,6 +486,114 @@ async def confirm_password_reset(request: PasswordResetConfirmRequest):
 
     except Exception as e:
         logger.error(f"Password reset confirm error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+
+# =============================================================================
+# EMAIL VERIFICATION ENDPOINTS (MODULE_02)
+# =============================================================================
+
+@router.post("/email/verify", response_model=EmailVerifyResponse)
+async def verify_email(request: EmailVerifyRequest):
+    """
+    Verify email address with 6-digit code
+
+    **Public endpoint** (no authentication required)
+
+    Args:
+        request: Email verification code (6 digits)
+
+    Returns:
+        EmailVerifyResponse: Confirmation message
+
+    Raises:
+        HTTPException: If code invalid/expired or verification fails
+
+    Business Rules:
+        - Code must be valid and not expired (15 minutes validity)
+        - Email marked as verified in database
+        - Code cleared after successful verification
+
+    Source: .github/docs-internal/Documentations/Backend/API_REFERENCE.md
+    """
+    try:
+        # Verify email via AuthService
+        auth_service = get_auth_service()
+        success = await auth_service.verify_email_code(
+            verification_code=request.verification_code
+        )
+
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email verification failed",
+            )
+
+        return EmailVerifyResponse(
+            message="Email verified successfully."
+        )
+
+    except Exception as e:
+        logger.error(f"Email verification error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+
+@router.post("/email/resend", response_model=EmailResendResponse)
+async def resend_verification_email(
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """
+    Resend email verification code
+
+    **Authenticated endpoint** (requires valid access token)
+
+    Args:
+        current_user: Current authenticated user
+
+    Returns:
+        EmailResendResponse: Confirmation message with email
+
+    Raises:
+        HTTPException: If email sending fails
+
+    Business Rules:
+        - User must be authenticated
+        - New 6-digit code generated
+        - Code valid for 15 minutes
+        - Email sent with verification code
+
+    Source: .github/docs-internal/Documentations/Backend/API_REFERENCE.md
+    """
+    try:
+        user_id = current_user["sub"]
+        email = current_user["email"]
+
+        # Resend verification email via AuthService
+        auth_service = get_auth_service()
+        success = await auth_service.send_verification_email(
+            user_id=user_id,
+            email=email
+        )
+
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Failed to send verification email",
+            )
+
+        return EmailResendResponse(
+            message="Verification code sent successfully.",
+            email=email
+        )
+
+    except Exception as e:
+        logger.error(f"Email resend error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),

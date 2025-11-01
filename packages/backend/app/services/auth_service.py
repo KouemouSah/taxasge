@@ -648,6 +648,128 @@ class AuthService:
             logger.error(f"Password reset confirmation failed: {str(e)}")
             raise
 
+    # =========================================================================
+    # EMAIL VERIFICATION METHODS (MODULE_02)
+    # =========================================================================
+
+    async def send_verification_email(self, user_id: str, email: str) -> bool:
+        """
+        Generate verification code and send verification email
+
+        Business Rules:
+            1. User must exist and be active
+            2. Code valid for 15 minutes
+            3. Code is 6-digit random number
+            4. Email sent with verification code
+
+        Args:
+            user_id: User UUID
+            email: User email address
+
+        Returns:
+            bool: True if email sent successfully, False otherwise
+
+        Source: .github/docs-internal/Documentations/Backend/API_REFERENCE.md
+        """
+        try:
+            # Find user by ID
+            user = await self.user_repo.find_by_id(user_id)
+            if not user:
+                logger.warning(f"Verification email requested for non-existent user: {user_id}")
+                return False
+
+            # Check user status
+            if user.status != UserStatus.active:
+                logger.warning(f"Verification email requested for inactive user: {email}")
+                return False
+
+            # Generate 6-digit verification code
+            import random
+            verification_code = str(random.randint(100000, 999999))
+
+            # Set expiration (15 minutes from now)
+            expires_at = datetime.utcnow() + timedelta(minutes=15)
+
+            # Save code to database
+            success = await self.user_repo.update_email_verification_code(
+                user_id=user_id,
+                verification_code=verification_code,
+                expires_at=expires_at
+            )
+
+            if not success:
+                raise Exception("Failed to generate email verification code")
+
+            # Send verification email
+            from app.config import get_settings
+            settings = get_settings()
+
+            email_service = EmailService(
+                smtp_host=settings.SMTP_HOST,
+                smtp_port=settings.SMTP_PORT,
+                smtp_username=settings.SMTP_USERNAME,
+                smtp_password=settings.SMTP_PASSWORD,
+                smtp_use_tls=settings.SMTP_USE_TLS,
+                smtp_from_email=settings.SMTP_FROM_EMAIL,
+                smtp_from_name=settings.SMTP_FROM_NAME
+            )
+
+            email_sent = email_service.send_verification_code(
+                to_email=email,
+                verification_code=verification_code,
+                user_name=user.first_name
+            )
+
+            if not email_sent:
+                logger.error(f"Failed to send verification email to {email}")
+                return False
+
+            logger.info(f"Verification email sent successfully to {email}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Send verification email failed for {email}: {str(e)}")
+            raise
+
+    async def verify_email_code(self, verification_code: str) -> bool:
+        """
+        Verify email with 6-digit code
+
+        Business Rules:
+            1. Code must be valid and not expired (15 minutes)
+            2. Email marked as verified
+            3. Code cleared after successful verification
+
+        Args:
+            verification_code: 6-digit verification code
+
+        Returns:
+            bool: True if verification successful, False otherwise
+
+        Source: .github/docs-internal/Documentations/Backend/API_REFERENCE.md
+        """
+        try:
+            # Find user by verification code (with expiration check)
+            user_data = await self.user_repo.find_by_verification_code(verification_code)
+            if not user_data:
+                raise Exception("Invalid or expired verification code")
+
+            user_id = user_data["id"]
+            email = user_data["email"]
+
+            # Mark email as verified
+            success = await self.user_repo.mark_email_verified(user_id)
+
+            if not success:
+                raise Exception("Failed to verify email")
+
+            logger.info(f"Email verified successfully for user {user_id}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Email verification failed: {str(e)}")
+            raise
+
 
 # Singleton instance
 _auth_service_instance: Optional[AuthService] = None

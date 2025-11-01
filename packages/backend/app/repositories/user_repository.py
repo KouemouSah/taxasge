@@ -526,6 +526,114 @@ class UserRepository(BaseRepository[UserResponse]):
             logger.error(f"❌ Error clearing password reset token for user {user_id}: {e}")
             return False
 
+    # =========================================================================
+    # EMAIL VERIFICATION METHODS (MODULE_02)
+    # =========================================================================
+
+    async def update_email_verification_code(
+        self,
+        user_id: str,
+        verification_code: str,
+        expires_at: datetime
+    ) -> bool:
+        """
+        Update user's email verification code and expiration
+
+        Args:
+            user_id: User UUID
+            verification_code: 6-digit verification code
+            expires_at: Code expiration timestamp (15 minutes)
+
+        Returns:
+            bool: True if update successful, False otherwise
+
+        Source: migrations/module_02/001_add_auth_advanced_columns.sql
+        """
+        try:
+            now = datetime.utcnow()
+            query = """
+                UPDATE users
+                SET email_verification_code = $1,
+                    email_verification_expires_at = $2,
+                    updated_at = $3
+                WHERE id = $4
+            """
+            result = await self.db_manager.execute_command(
+                query, verification_code, expires_at, now, user_id
+            )
+            success = "UPDATE 1" in result
+            if success:
+                logger.info(f"✅ Email verification code set for user {user_id}")
+            return success
+
+        except Exception as e:
+            logger.error(f"❌ Error setting email verification code for user {user_id}: {e}")
+            return False
+
+    async def find_by_verification_code(self, verification_code: str) -> Optional[Dict[str, Any]]:
+        """
+        Find user by email verification code (with expiration check)
+
+        Args:
+            verification_code: 6-digit verification code
+
+        Returns:
+            Optional[Dict]: User data if code valid and not expired, None otherwise
+
+        Source: migrations/module_02/001_add_auth_advanced_columns.sql
+        """
+        try:
+            now = datetime.utcnow()
+            query = """
+                SELECT *
+                FROM users
+                WHERE email_verification_code = $1
+                AND email_verification_expires_at > $2
+            """
+            result = await self.db_manager.execute_single(query, verification_code, now)
+            if result:
+                logger.info(f"✅ Valid email verification code found")
+                return dict(result)
+            else:
+                logger.warning(f"⚠️ Email verification code not found or expired")
+                return None
+
+        except Exception as e:
+            logger.error(f"❌ Error finding user by verification code: {e}")
+            return None
+
+    async def mark_email_verified(self, user_id: str) -> bool:
+        """
+        Mark user's email as verified and clear verification code
+
+        Args:
+            user_id: User UUID
+
+        Returns:
+            bool: True if marked successfully, False otherwise
+
+        Source: migrations/module_02/001_add_auth_advanced_columns.sql
+        """
+        try:
+            now = datetime.utcnow()
+            query = """
+                UPDATE users
+                SET email_verified = TRUE,
+                    email_verification_code = NULL,
+                    email_verification_expires_at = NULL,
+                    updated_at = $1
+                WHERE id = $2
+            """
+            result = await self.db_manager.execute_command(query, now, user_id)
+            success = "UPDATE 1" in result
+            if success:
+                logger.info(f"✅ Email marked as verified for user {user_id}")
+            return success
+
+        except Exception as e:
+            logger.error(f"❌ Error marking email as verified for user {user_id}: {e}")
+            return False
+
 
 # Global user repository instance
 user_repository = UserRepository()
