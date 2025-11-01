@@ -17,7 +17,18 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(git rm:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(gh run:*)",
+      "Bash(git log:*)",
+      "Bash(cat:*)",
+      "Bash(npx shadcn@latest:*)",
+      "Bash(npm run type-check:*)",
+      "Bash(timeout 15 npm run dev:*)",
+      "Bash(git -C /c/taxasge branch --show-current)",
+      "Bash(git -C /c/taxasge checkout feature/module-1-auth)",
+      "Bash(git -C /c/taxasge diff .claude/settings.local.json)",
+      "Bash(git -C /c/taxasge stash push -m \"temp: settings.local.json auto-permissions\" .claude/settings.local.json)",
+      "Bash(git -C /c/taxasge stash pop)"
     ],
     "deny": [],
     "ask": []
