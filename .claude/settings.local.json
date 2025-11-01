@@ -19,7 +19,9 @@
       "Bash(git rm:*)",
       "Bash(git checkout:*)",
       "Bash(gh run:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(git -C /c/taxasge merge feature/module-1-auth --no-edit)",
+      "Bash(git -C /c/taxasge commit -m \"chore: Update settings.local.json permissions\")"
     ],
     "deny": [],
     "ask": []
