@@ -51,9 +51,24 @@ class SupabaseClient:
 
     async def select(self, table: str, columns: str = "*", filters: Optional[Dict] = None,
                     order: Optional[str] = None, limit: Optional[int] = None) -> List[Dict]:
-        """Select data from Supabase table"""
+        """
+        Select data from Supabase table
+
+        Args:
+            table: Table name
+            columns: Columns to select (default: "*")
+            filters: Filter conditions
+            order: Order by clause
+            limit: Limit results
+
+        Returns:
+            List[Dict]: Query results
+
+        Raises:
+            Exception: If Supabase not enabled or query fails
+        """
         if not self.enabled:
-            return []
+            raise Exception("Supabase client not enabled - check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY configuration")
 
         try:
             url = self._get_table_url(table)
@@ -83,14 +98,30 @@ class SupabaseClient:
             response.raise_for_status()
             return response.json()
 
+        except httpx.HTTPStatusError as e:
+            error_detail = f"{e.response.status_code} - {e.response.text}"
+            logger.error(f"Supabase select error on {table}: {error_detail}")
+            raise Exception(f"Database select failed on {table}: {error_detail}")
         except Exception as e:
-            logger.error(f"L Supabase select error on {table}: {e}")
-            return []
+            logger.error(f"Supabase select error on {table}: {e}")
+            raise Exception(f"Database select failed on {table}: {str(e)}")
 
     async def insert(self, table: str, data: Dict[str, Any]) -> Optional[Dict]:
-        """Insert data into Supabase table"""
+        """
+        Insert data into Supabase table
+
+        Args:
+            table: Table name
+            data: Data to insert
+
+        Returns:
+            Dict: Inserted record
+
+        Raises:
+            Exception: If Supabase not enabled or insert fails
+        """
         if not self.enabled:
-            return None
+            raise Exception("Supabase client not enabled - check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY configuration")
 
         try:
             url = self._get_table_url(table)
@@ -110,14 +141,31 @@ class SupabaseClient:
                 return result[0]
             return result
 
+        except httpx.HTTPStatusError as e:
+            error_detail = f"{e.response.status_code} - {e.response.text}"
+            logger.error(f"Supabase insert error on {table}: {error_detail}")
+            raise Exception(f"Database insert failed on {table}: {error_detail}")
         except Exception as e:
-            logger.error(f"L Supabase insert error on {table}: {e}")
-            return None
+            logger.error(f"Supabase insert error on {table}: {e}")
+            raise Exception(f"Database insert failed on {table}: {str(e)}")
 
     async def update(self, table: str, filters: Dict[str, Any], data: Dict[str, Any]) -> List[Dict]:
-        """Update data in Supabase table"""
+        """
+        Update data in Supabase table
+
+        Args:
+            table: Table name
+            filters: Filter conditions
+            data: Data to update
+
+        Returns:
+            List[Dict]: Updated records
+
+        Raises:
+            Exception: If Supabase not enabled or update fails
+        """
         if not self.enabled:
-            return []
+            raise Exception("Supabase client not enabled - check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY configuration")
 
         try:
             url = self._get_table_url(table)
@@ -134,14 +182,30 @@ class SupabaseClient:
             response.raise_for_status()
             return response.json()
 
+        except httpx.HTTPStatusError as e:
+            error_detail = f"{e.response.status_code} - {e.response.text}"
+            logger.error(f"Supabase update error on {table}: {error_detail}")
+            raise Exception(f"Database update failed on {table}: {error_detail}")
         except Exception as e:
-            logger.error(f"L Supabase update error on {table}: {e}")
-            return []
+            logger.error(f"Supabase update error on {table}: {e}")
+            raise Exception(f"Database update failed on {table}: {str(e)}")
 
     async def delete(self, table: str, filters: Dict[str, Any]) -> List[Dict]:
-        """Delete data from Supabase table"""
+        """
+        Delete data from Supabase table
+
+        Args:
+            table: Table name
+            filters: Filter conditions
+
+        Returns:
+            List[Dict]: Deleted records
+
+        Raises:
+            Exception: If Supabase not enabled or delete fails
+        """
         if not self.enabled:
-            return []
+            raise Exception("Supabase client not enabled - check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY configuration")
 
         try:
             url = self._get_table_url(table)
@@ -155,9 +219,13 @@ class SupabaseClient:
             response.raise_for_status()
             return response.json()
 
+        except httpx.HTTPStatusError as e:
+            error_detail = f"{e.response.status_code} - {e.response.text}"
+            logger.error(f"Supabase delete error on {table}: {error_detail}")
+            raise Exception(f"Database delete failed on {table}: {error_detail}")
         except Exception as e:
-            logger.error(f"L Supabase delete error on {table}: {e}")
-            return []
+            logger.error(f"Supabase delete error on {table}: {e}")
+            raise Exception(f"Database delete failed on {table}: {str(e)}")
 
     async def rpc(self, function_name: str, params: Optional[Dict] = None) -> Any:
         """Call Supabase stored procedure/function"""
