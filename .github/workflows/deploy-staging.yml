@@ -100,6 +100,7 @@ jobs:
             --set-env-vars="JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" \
             --set-env-vars="SUPABASE_URL=${{ secrets.SUPABASE_URL }}" \
             --set-env-vars="SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" \
+            --set-env-vars="SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
             --min-instances=0 \
             --max-instances=10 \
             --memory=512Mi \
