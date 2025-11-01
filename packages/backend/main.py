@@ -117,6 +117,7 @@ app.add_middleware(
 )
 
 # CORS middleware - Aligned with firebase.json configuration
+# Note: Firebase Hosting staging channels use pattern: https://PROJECT--CHANNEL-ID.web.app
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"] if settings.debug else [
@@ -125,6 +126,7 @@ app.add_middleware(
         "https://taxasge-dev.firebaseapp.com",
         "https://taxasge-pro.firebaseapp.com"
     ],
+    allow_origin_regex=r"https://taxasge-dev--[\w-]+\.web\.app",  # Allow staging channels
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"]
