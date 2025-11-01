@@ -148,12 +148,14 @@ class Settings(BaseSettings):
     BANGE_API_KEY: Optional[str] = Field(default=None, env="BANGE_API_KEY")
     BANGE_MERCHANT_ID: Optional[str] = Field(default=None, env="BANGE_MERCHANT_ID")
     
-    # Email Service
+    # Email Service (MODULE_02)
     SMTP_HOST: Optional[str] = Field(default=None, env="SMTP_HOST")
     SMTP_PORT: int = Field(default=587, env="SMTP_PORT")
     SMTP_USERNAME: Optional[str] = Field(default=None, env="SMTP_USERNAME")
     SMTP_PASSWORD: Optional[str] = Field(default=None, env="SMTP_PASSWORD")
     SMTP_USE_TLS: bool = Field(default=True, env="SMTP_USE_TLS")
+    SMTP_FROM_EMAIL: Optional[str] = Field(default=None, env="SMTP_FROM_EMAIL")
+    SMTP_FROM_NAME: str = Field(default="TaxasGE Platform", env="SMTP_FROM_NAME")
     
     # ========================================================================
     # CACHE SETTINGS
