@@ -7,7 +7,6 @@ from fastapi import APIRouter, HTTPException, Depends, status, Query, Path
 from fastapi.security import HTTPAuthorizationCredentials
 from typing import Optional, List
 from datetime import datetime
-import hashlib
 from loguru import logger
 
 from app.api.v1.auth import security
@@ -172,11 +171,57 @@ async def change_password(
     password_change: PasswordChange,
     current_user: UserResponse = Depends(get_current_user)
 ):
-    """Change user password"""
-    try:
-        # For now, we'll use a simple hash - in production, use proper password hashing
-        new_password_hash = hashlib.sha256(password_change.new_password.encode()).hexdigest()
+    """
+    Change user password
 
+    **SECURITY:**
+    - Requires old password verification
+    - Validates new password strength
+    - Uses bcrypt hashing (12 rounds)
+
+    **Source:** UC-USER-010 (.github/docs-internal/Documentations/Backend/use_cases/02_USERS.md)
+    """
+    try:
+        from app.services.password_service import PasswordService
+        password_service = PasswordService()
+
+        # 1. Get current password hash from DB
+        try:
+            current_password_hash = await user_repository.get_password_hash(current_user.id)
+        except ValueError as e:
+            logger.error(f"L Error getting password hash: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+
+        # 2. Verify old password
+        if not password_service.verify_password(
+            password_change.old_password,
+            current_password_hash
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password is incorrect"
+            )
+
+        # 3. Validate new password strength
+        strength_check = password_service.check_password_strength(password_change.new_password)
+        if not strength_check["valid"]:
+            error_details = {
+                "message": "Password does not meet security requirements",
+                "issues": strength_check["issues"],
+                "suggestions": strength_check["suggestions"]
+            }
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_details
+            )
+
+        # 4. Hash new password (bcrypt)
+        new_password_hash = password_service.hash_password(password_change.new_password)
+
+        # 5. Update password
         success = await user_repository.update_password(current_user.id, new_password_hash)
         if not success:
             raise HTTPException(
@@ -184,7 +229,7 @@ async def change_password(
                 detail="Failed to update password"
             )
 
-        # Log activity
+        # 6. Log activity
         activity = UserActivity(
             user_id=current_user.id,
             action="change_password",
@@ -198,7 +243,7 @@ async def change_password(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"L Error changing password: {e}")
+        logger.error(f"L Error changing password: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error changing password"
@@ -269,6 +314,9 @@ async def create_user(
 ):
     """Create new user (admin only)"""
     try:
+        from app.services.password_service import PasswordService
+        password_service = PasswordService()
+
         # Check if user already exists
         existing_user = await user_repository.find_by_email(user_create.email)
         if existing_user:
@@ -277,8 +325,8 @@ async def create_user(
                 detail="User with this email already exists"
             )
 
-        # Hash password
-        password_hash = hashlib.sha256(user_create.password.encode()).hexdigest()
+        # Hash password using bcrypt
+        password_hash = password_service.hash_password(user_create.password)
 
         # Create user
         new_user = await user_repository.create_user(user_create, password_hash)

@@ -109,15 +109,14 @@ class UserUpdate(BaseModel):
 
 class PasswordChange(BaseModel):
     """Model for password change"""
-    current_password: str = Field(..., description="Current password")
+    old_password: str = Field(..., min_length=8, description="Current password")
     new_password: str = Field(..., min_length=8, max_length=100, description="New password")
-    confirm_password: str = Field(..., description="Confirm new password")
 
-    @validator('confirm_password')
-    def passwords_match(cls, v, values):
-        """Validate password confirmation"""
-        if 'new_password' in values and v != values['new_password']:
-            raise ValueError('Passwords do not match')
+    @validator('new_password')
+    def validate_new_password(cls, v, values):
+        """Validate new password is different from old password"""
+        if 'old_password' in values and v == values['old_password']:
+            raise ValueError('New password must be different from current password')
         return v
 
 

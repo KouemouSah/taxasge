@@ -161,6 +161,42 @@ class UserRepository(BaseRepository[UserResponse]):
             logger.error(f"❌ Error creating user: {e}")
             return None
 
+    async def get_password_hash(self, user_id: str) -> str:
+        """
+        Get password hash for user (for verification during password change).
+
+        Args:
+            user_id: User ID
+
+        Returns:
+            str: Password hash
+
+        Raises:
+            ValueError: If user not found
+
+        Source: UC-USER-010
+        """
+        try:
+            # Always use direct PostgreSQL for password_hash retrieval
+            # Supabase REST API may hide password_hash due to RLS policies
+            query = """
+                SELECT password_hash
+                FROM users
+                WHERE id = $1
+            """
+            result = await self.db_manager.execute_single(query, user_id)
+
+            if not result:
+                raise ValueError(f"User {user_id} not found")
+
+            return result['password_hash']
+
+        except ValueError:
+            raise
+        except Exception as e:
+            logger.error(f"❌ Error getting password hash for user {user_id}: {e}")
+            raise ValueError(f"Error retrieving user password")
+
     async def update_password(self, user_id: str, password_hash: str) -> bool:
         """Update user password hash"""
         try:
