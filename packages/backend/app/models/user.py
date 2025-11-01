@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field, EmailStr, validator
 from enum import Enum
+import phonenumbers
 
 # User enums (moved from auth.py to avoid circular imports)
 class UserRole(str, Enum):
@@ -97,7 +98,8 @@ class UserUpdate(BaseModel):
     """Model for user updates"""
     first_name: Optional[str] = Field(None, min_length=2, max_length=50)
     last_name: Optional[str] = Field(None, min_length=2, max_length=50)
-    phone: Optional[str] = Field(None, pattern=r"^\+[1-9]\d{1,14}$")
+    email: Optional[EmailStr] = Field(None, description="User email address")
+    phone: Optional[str] = Field(None, description="Phone number in E.164 format")
     address: Optional[str] = Field(None, max_length=200)
     city: Optional[str] = Field(None, max_length=100)
     language: Optional[str] = Field(None, pattern="^(es|fr|en)$")
@@ -105,6 +107,20 @@ class UserUpdate(BaseModel):
 
     # Allow status updates for admins
     status: Optional[UserStatus] = None
+
+    @validator('phone')
+    def validate_phone_e164(cls, v):
+        """Validate phone number in E.164 format (+240XXXXXXXXX)"""
+        if v is None:
+            return v
+        try:
+            parsed = phonenumbers.parse(v, None)
+            if not phonenumbers.is_valid_number(parsed):
+                raise ValueError('Invalid phone number')
+            # Return formatted E.164 number
+            return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
+        except phonenumbers.NumberParseException:
+            raise ValueError('Phone number must be in E.164 format (e.g., +240XXXXXXXXX)')
 
 
 class PasswordChange(BaseModel):

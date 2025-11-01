@@ -122,13 +122,32 @@ async def update_user_profile(
     user_update: UserUpdate,
     current_user: UserResponse = Depends(get_current_user)
 ):
-    """Update current user profile"""
+    """
+    Update current user profile
+
+    **VALIDATION:**
+    - Email format: EmailStr (RFC 5322)
+    - Email uniqueness: 409 Conflict if duplicate
+    - Phone E.164 format: +240XXXXXXXXX
+    - Protected fields: status (admin only)
+
+    **Source:** UC-USER-002 (.github/docs-internal/Documentations/Backend/use_cases/02_USERS.md)
+    """
     try:
         # Convert update model to dict, excluding None values
         update_data = {
             k: v for k, v in user_update.dict(exclude_unset=True).items()
             if v is not None
         }
+
+        # Email uniqueness check (UC-USER-002 requirement)
+        if "email" in update_data and update_data["email"] != current_user.email:
+            existing_user = await user_repository.find_by_email(update_data["email"])
+            if existing_user:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Email already in use"
+                )
 
         # Non-admin users cannot update status
         if current_user.role not in [UserRole.admin, UserRole.operator] and "status" in update_data:
@@ -407,7 +426,17 @@ async def update_user(
     user_update: UserUpdate = ...,
     current_user: UserResponse = Depends(get_current_user)
 ):
-    """Update user by ID"""
+    """
+    Update user by ID
+
+    **VALIDATION:**
+    - Email format: EmailStr (RFC 5322)
+    - Email uniqueness: 409 Conflict if duplicate
+    - Phone E.164 format: +240XXXXXXXXX
+    - Protected fields: status (admin only)
+
+    **Source:** UC-USER-002 (.github/docs-internal/Documentations/Backend/use_cases/02_USERS.md)
+    """
     try:
         # Users can only update their own profile unless they're admin
         if current_user.id != user_id and current_user.role not in [UserRole.admin, UserRole.operator]:
@@ -422,17 +451,28 @@ async def update_user(
             if v is not None
         }
 
+        # Get target user for email comparison
+        target_user = await user_repository.find_by_id(user_id)
+        if not target_user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+
+        # Email uniqueness check (UC-USER-002 requirement)
+        if "email" in update_data and update_data["email"] != target_user.email:
+            existing_user = await user_repository.find_by_email(update_data["email"])
+            if existing_user:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Email already in use"
+                )
+
         if current_user.role not in [UserRole.admin, UserRole.operator] and "status" in update_data:
             del update_data["status"]
 
         if not update_data:
-            user = await user_repository.find_by_id(user_id)
-            if not user:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="User not found"
-                )
-            return user
+            return target_user
 
         updated_user = await user_repository.update(user_id, update_data)
         if not updated_user:

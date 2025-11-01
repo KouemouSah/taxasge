@@ -36,6 +36,7 @@ aiofiles>=23.2.1
 email-validator>=2.1.0
 python-slugify>=8.0.1
 pytz>=2023.3
+phonenumbers>=8.13.47
 
 # Monitoring & Logging
 loguru>=0.7.2
