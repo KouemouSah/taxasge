@@ -1,15 +1,15 @@
 # 📊 RAPPORT GÉNÉRAL PROJET TAXASGE
 ## Dashboard Exécutif - Vue Consolidée
 
-**Dernière mise à jour :** 2025-11-01 15:45 UTC
-**Version :** 2.3.0
-**Statut global :** 🟢 MODULE 1 VALIDÉ - En attente validation MODULE 2 ✅
+**Dernière mise à jour :** 2025-11-01 16:15 UTC
+**Version :** 2.4.0
+**Statut global :** 🟡 MODULE 1 VALIDÉ GO CONDITIONNEL - MODULE 2 EN PLANIFICATION ⚡
 
 ---
 
 ## 🎯 VUE D'ENSEMBLE
 
-**Phase actuelle :** **Module 1 - Authentication (✅ VALIDÉ GO CONDITIONNEL)**
+**Phase actuelle :** **Module 2 - Authentication Advanced + Tests (🟡 EN PLANIFICATION)**
 **Progression globale :** **30%** (Phase 0 100% ✅, Module 1 100% ✅ conditionnel, 1/13 modules validés)
 **Timeline :** ⚠️ **RETARD +3 JOURS** - Module 1: 8j vs 5j planifiés (+60%)
 **Budget :** 💰 **VALIDÉ** - $30-50/mois production + $0.30/mois Secret Manager
@@ -140,12 +140,59 @@
 - [RAPPORT_ORCHESTRATION_01_11_2025_MODULE_01.md](./RAPPORT_ORCHESTRATION_01_11_2025_MODULE_01.md) - Orchestration
 - [RAPPORT_MODULE_01_AUTHENTICATION.md](./03_PHASES/MODULE_01_AUTH/RAPPORT_MODULE_01_AUTHENTICATION.md) - Planification
 
+---
+
+### Module 2 : Authentication Advanced + Tests (🟡 EN PLANIFICATION)
+
+**Objectif :** Résorber 100% dette technique MODULE_01 (endpoints auth avancés + tests automatisés)
+
+**Scope Planifié :**
+
+**Backend (Priority 1 - MUST HAVE):**
+- 4 endpoints P1 : Password reset (request + confirm), Email verification (verify + resend)
+- EmailService : SMTP Gmail pour envoi emails
+- Tests backend : >80% coverage (pytest-cov)
+
+**Backend (Priority 2 - NICE TO HAVE):**
+- 5 endpoints P2 : 2FA (enable/verify/disable), Sessions (list/revoke)
+
+**Frontend (Priority 1 - MUST HAVE):**
+- 2 pages P1 : Profile + Reset Password
+- Tests Jest unitaires + Playwright E2E (auth-flow, password-reset-flow)
+
+**Frontend (Priority 2 - NICE TO HAVE):**
+- 2 pages P2 : Verify Email + Settings/Security
+
+**Durée Estimée :**
+- Scénario P1 only (RECOMMANDÉ) : **3-4 jours**
+- Scénario P1 + P2 (Complet) : 5-6 jours
+
+**Prérequis :**
+- [x] MODULE_01 validé GO CONDITIONNEL ✅
+- [x] Infrastructure staging opérationnelle ✅
+- [x] CI/CD workflow configuré ✅
+- [ ] Gmail SMTP App Password créé ❌ **ACTION UTILISATEUR REQUISE**
+- [ ] Utilisateur approuve planning MODULE_02 ❌ **EN ATTENTE VALIDATION**
+
+**Risques Identifiés :**
+- SMTP Gmail bloqué (Score 90) → Mitigation : App Password Gmail + test Jour 1
+- Coverage 80% difficile (Score 75) → Focus tests services (facile)
+- Playwright instable (Score 70) → Tests locaux d'abord
+- Scope creep P2 (Score 65) → Prioriser P1 strictement
+
+**Décision :** ⚠️ **EN ATTENTE VALIDATION UTILISATEUR**
+
+**Rapports :**
+- [RAPPORT_PLANIFICATION_MODULE_02.md](./03_PHASES/MODULE_02_AUTH_ADVANCED/RAPPORT_PLANIFICATION_MODULE_02.md) - Planification (534 lignes)
+
+---
+
 ### MVP Phase 1 : Core Fonctionnel (8 semaines)
 
 | # | Module | Endpoints | Durée Planifiée | Durée Réelle | Date Début | Date Fin | Écart | Statut |
 |---|--------|-----------|-----------------|--------------|------------|----------|-------|--------|
 | **1** | Authentication | 15 (6 réalisés) | 5j | 8j | 2025-10-24 | 2025-11-01 | +3j | ✅ 100% GO CONDITIONNEL |
-| **2** | Auth Avancé + Tests | 9 (dette M01) | 3j | TBD | 2025-11-04 | TBD | TBD | ⚪ 0% EN ATTENTE |
+| **2** | Auth Avancé + Tests | 9 (dette M01) | 3-4j | TBD | 2025-11-04 | TBD | TBD | 🟡 0% EN PLANIFICATION |
 | **3** | Fiscal Services | 12 | 0.5 sem | TBD | TBD | TBD | TBD | ⚪ 0% |
 | **4** | Declarations | 25 | 2 sem | TBD | TBD | TBD | TBD | ⚪ 0% |
 | **5** | Payments BANGE | 18 | 1.5 sem | TBD | TBD | TBD | TBD | ⚪ 0% |
