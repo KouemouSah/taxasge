@@ -50,6 +50,24 @@ class TokenResponse(BaseModel):
     user: Dict[str, Any]
 
 
+class PasswordResetRequestRequest(BaseModel):
+    email: EmailStr = Field(..., description="User email address")
+
+
+class PasswordResetRequestResponse(BaseModel):
+    message: str
+    email: EmailStr
+
+
+class PasswordResetConfirmRequest(BaseModel):
+    token: str = Field(..., min_length=32, max_length=64, description="Password reset token")
+    new_password: str = Field(..., min_length=8, description="New password (min 8 characters)")
+
+
+class PasswordResetConfirmResponse(BaseModel):
+    message: str
+
+
 # Dependency to get client info from request
 def get_client_info(request: Request) -> tuple[Optional[str], Optional[str]]:
     """Extract client IP and user agent from request"""
@@ -102,19 +120,22 @@ async def get_auth_info():
     """Get authentication API information"""
     return {
         "message": "TaxasGE Authentication API",
-        "version": "2.0.0",
+        "version": "2.1.0",  # MODULE_02: Password reset added
         "endpoints": {
             "register": "POST /register - Register new user",
             "login": "POST /login - User login",
             "refresh": "POST /refresh - Refresh access token",
             "logout": "POST /logout - Logout user",
             "profile": "GET /profile - Get current user profile",
+            "password_reset_request": "POST /password/reset/request - Request password reset email",
+            "password_reset_confirm": "POST /password/reset/confirm - Confirm password reset with token",
         },
         "security": {
             "token_type": "JWT Bearer",
             "access_token_duration": "60 minutes",
             "refresh_token_duration": "7 days",
             "password_hashing": "bcrypt (12 rounds)",
+            "password_reset_token_validity": "1 hour",
         },
     }
 
@@ -351,4 +372,101 @@ async def get_profile(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch user profile",
+        )
+
+
+# =============================================================================
+# PASSWORD RESET ENDPOINTS (MODULE_02)
+# =============================================================================
+
+@router.post("/password/reset/request", response_model=PasswordResetRequestResponse)
+async def request_password_reset(request: PasswordResetRequestRequest):
+    """
+    Request password reset - Send reset email with token
+
+    **Public endpoint** (no authentication required)
+
+    Args:
+        request: Email address
+
+    Returns:
+        PasswordResetRequestResponse: Confirmation message
+
+    Raises:
+        HTTPException: If email sending fails
+
+    Business Rules:
+        - For security, always returns success (even if email doesn't exist)
+        - Token valid for 1 hour
+        - Email sent with reset link containing token
+
+    Source: .github/docs-internal/Documentations/Backend/API_REFERENCE.md
+    """
+    try:
+        # Request password reset via AuthService
+        auth_service = get_auth_service()
+        await auth_service.request_password_reset(email=request.email)
+
+        # Always return success (don't reveal if email exists)
+        return PasswordResetRequestResponse(
+            message="If your email exists in our system, you will receive a password reset link shortly.",
+            email=request.email
+        )
+
+    except Exception as e:
+        logger.error(f"Password reset request error: {str(e)}")
+        # Still return success to avoid revealing internal errors
+        return PasswordResetRequestResponse(
+            message="If your email exists in our system, you will receive a password reset link shortly.",
+            email=request.email
+        )
+
+
+@router.post("/password/reset/confirm", response_model=PasswordResetConfirmResponse)
+async def confirm_password_reset(request: PasswordResetConfirmRequest):
+    """
+    Confirm password reset - Validate token and update password
+
+    **Public endpoint** (no authentication required)
+
+    Args:
+        request: Reset token and new password
+
+    Returns:
+        PasswordResetConfirmResponse: Confirmation message
+
+    Raises:
+        HTTPException: If token invalid/expired or password update fails
+
+    Business Rules:
+        - Token must be valid and not expired (1 hour validity)
+        - New password must meet strength requirements (min 8 chars)
+        - Token cleared after successful reset
+        - Confirmation email sent
+
+    Source: .github/docs-internal/Documentations/Backend/API_REFERENCE.md
+    """
+    try:
+        # Confirm password reset via AuthService
+        auth_service = get_auth_service()
+        success = await auth_service.confirm_password_reset(
+            reset_token=request.token,
+            new_password=request.new_password
+        )
+
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password reset failed",
+            )
+
+        return PasswordResetConfirmResponse(
+            message="Password reset successful. You can now login with your new password."
+        )
+
+    except Exception as e:
+        logger.error(f"Password reset confirm error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
         )

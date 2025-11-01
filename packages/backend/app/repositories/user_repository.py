@@ -419,6 +419,113 @@ class UserRepository(BaseRepository[UserResponse]):
             logger.error(f"❌ Error getting user activities for {user_id}: {e}")
             return []
 
+    # =========================================================================
+    # PASSWORD RESET METHODS (MODULE_02)
+    # =========================================================================
+
+    async def update_password_reset_token(
+        self,
+        user_id: str,
+        reset_token: str,
+        expires_at: datetime
+    ) -> bool:
+        """
+        Update user's password reset token and expiration
+
+        Args:
+            user_id: User UUID
+            reset_token: Password reset token (32 chars random)
+            expires_at: Token expiration timestamp (1 hour)
+
+        Returns:
+            bool: True if update successful, False otherwise
+
+        Source: migrations/module_02/001_add_auth_advanced_columns.sql
+        """
+        try:
+            now = datetime.utcnow()
+            query = """
+                UPDATE users
+                SET password_reset_token = $1,
+                    password_reset_expires_at = $2,
+                    updated_at = $3
+                WHERE id = $4
+            """
+            result = await self.db_manager.execute_command(
+                query, reset_token, expires_at, now, user_id
+            )
+            success = "UPDATE 1" in result
+            if success:
+                logger.info(f"✅ Password reset token set for user {user_id}")
+            return success
+
+        except Exception as e:
+            logger.error(f"❌ Error setting password reset token for user {user_id}: {e}")
+            return False
+
+    async def find_by_reset_token(self, reset_token: str) -> Optional[Dict[str, Any]]:
+        """
+        Find user by password reset token (with expiration check)
+
+        Args:
+            reset_token: Password reset token
+
+        Returns:
+            Optional[Dict]: User data if token valid and not expired, None otherwise
+
+        Source: migrations/module_02/001_add_auth_advanced_columns.sql
+        """
+        try:
+            now = datetime.utcnow()
+            query = """
+                SELECT *
+                FROM users
+                WHERE password_reset_token = $1
+                AND password_reset_expires_at > $2
+            """
+            result = await self.db_manager.execute_single(query, reset_token, now)
+            if result:
+                logger.info(f"✅ Valid password reset token found")
+                return dict(result)
+            else:
+                logger.warning(f"⚠️ Password reset token not found or expired")
+                return None
+
+        except Exception as e:
+            logger.error(f"❌ Error finding user by reset token: {e}")
+            return None
+
+    async def clear_password_reset_token(self, user_id: str) -> bool:
+        """
+        Clear password reset token after successful password reset
+
+        Args:
+            user_id: User UUID
+
+        Returns:
+            bool: True if cleared successfully, False otherwise
+
+        Source: migrations/module_02/001_add_auth_advanced_columns.sql
+        """
+        try:
+            now = datetime.utcnow()
+            query = """
+                UPDATE users
+                SET password_reset_token = NULL,
+                    password_reset_expires_at = NULL,
+                    updated_at = $1
+                WHERE id = $2
+            """
+            result = await self.db_manager.execute_command(query, now, user_id)
+            success = "UPDATE 1" in result
+            if success:
+                logger.info(f"✅ Password reset token cleared for user {user_id}")
+            return success
+
+        except Exception as e:
+            logger.error(f"❌ Error clearing password reset token for user {user_id}: {e}")
+            return False
+
 
 # Global user repository instance
 user_repository = UserRepository()

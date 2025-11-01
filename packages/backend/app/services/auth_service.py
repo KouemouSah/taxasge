@@ -12,6 +12,7 @@ from app.repositories.session_repository import SessionRepository
 from app.repositories.refresh_token_repository import RefreshTokenRepository
 from app.services.password_service import get_password_service
 from app.services.jwt_service import get_jwt_service
+from app.services.email_service import EmailService
 from app.models.user import UserCreate, UserResponse, UserRole, UserStatus
 from app.models.auth_models import (
     SessionCreate,
@@ -470,6 +471,182 @@ class AuthService:
         await self.token_repo.create_token(token_data)
 
         return tokens
+
+    # =========================================================================
+    # PASSWORD RESET METHODS (MODULE_02)
+    # =========================================================================
+
+    async def request_password_reset(self, email: str) -> bool:
+        """
+        Request password reset - Generate token and send email
+
+        Args:
+            email: User email address
+
+        Returns:
+            bool: True if email sent successfully, False otherwise
+
+        Raises:
+            Exception: If user not found or email sending fails
+
+        Business Rules:
+            1. User must exist and be active
+            2. Token valid for 1 hour
+            3. Token is 32 characters random string
+            4. Email sent with reset link
+
+        Source: .github/docs-internal/Documentations/Backend/API_REFERENCE.md
+        """
+        try:
+            # Find user by email
+            user = await self.user_repo.find_by_email(email)
+            if not user:
+                # For security, don't reveal if email exists
+                logger.warning(f"Password reset requested for non-existent email: {email}")
+                return True  # Pretend success to avoid email enumeration
+
+            # Check user status
+            if user.status != UserStatus.active:
+                logger.warning(f"Password reset requested for inactive user: {email}")
+                return True  # Pretend success to avoid status enumeration
+
+            # Generate reset token (32 chars random)
+            import secrets
+            reset_token = secrets.token_urlsafe(32)
+
+            # Set expiration (1 hour from now)
+            expires_at = datetime.utcnow() + timedelta(hours=1)
+
+            # Save token to database
+            success = await self.user_repo.update_password_reset_token(
+                user_id=user.id,
+                reset_token=reset_token,
+                expires_at=expires_at
+            )
+
+            if not success:
+                logger.error(f"Failed to save password reset token for {email}")
+                raise Exception("Failed to generate password reset token")
+
+            # Send reset email
+            from app.config import get_settings
+            settings = get_settings()
+
+            # Initialize EmailService with config
+            email_service = EmailService(
+                smtp_host=settings.SMTP_HOST,
+                smtp_port=settings.SMTP_PORT,
+                smtp_username=settings.SMTP_USERNAME,
+                smtp_password=settings.SMTP_PASSWORD,
+                smtp_use_tls=settings.SMTP_USE_TLS,
+                smtp_from_email=settings.SMTP_FROM_EMAIL,
+                smtp_from_name=settings.SMTP_FROM_NAME
+            )
+
+            email_sent = email_service.send_password_reset_email(
+                to_email=email,
+                reset_token=reset_token,
+                user_name=user.first_name
+            )
+
+            if not email_sent:
+                logger.error(f"Failed to send password reset email to {email}")
+                # Don't raise exception - token is saved, user can retry
+                return False
+
+            logger.info(f"Password reset email sent successfully to {email}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Password reset request failed for {email}: {str(e)}")
+            raise
+
+    async def confirm_password_reset(
+        self,
+        reset_token: str,
+        new_password: str
+    ) -> bool:
+        """
+        Confirm password reset - Validate token and update password
+
+        Args:
+            reset_token: Password reset token (32 chars)
+            new_password: New password (min 8 chars)
+
+        Returns:
+            bool: True if password reset successful, False otherwise
+
+        Raises:
+            Exception: If token invalid/expired or password update fails
+
+        Business Rules:
+            1. Token must be valid and not expired
+            2. New password must meet strength requirements
+            3. Password hashed with bcrypt (12 rounds)
+            4. Token cleared after successful reset
+            5. Confirmation email sent
+
+        Source: .github/docs-internal/Documentations/Backend/API_REFERENCE.md
+        """
+        try:
+            # Find user by reset token (with expiration check)
+            user_data = await self.user_repo.find_by_reset_token(reset_token)
+            if not user_data:
+                logger.warning(f"Invalid or expired password reset token")
+                raise Exception("Invalid or expired password reset token")
+
+            user_id = user_data["id"]
+            email = user_data["email"]
+            first_name = user_data.get("first_name")
+
+            # Validate new password strength
+            password_check = self.password_service.check_password_strength(new_password)
+            if not password_check["valid"]:
+                raise Exception(
+                    f"Password is too weak: {', '.join(password_check['issues'])}"
+                )
+
+            # Hash new password
+            new_password_hash = self.password_service.hash_password(new_password)
+
+            # Update password
+            password_updated = await self.user_repo.update_password(
+                user_id=user_id,
+                password_hash=new_password_hash
+            )
+
+            if not password_updated:
+                logger.error(f"Failed to update password for user {user_id}")
+                raise Exception("Failed to update password")
+
+            # Clear reset token
+            await self.user_repo.clear_password_reset_token(user_id)
+
+            # Send confirmation email
+            from app.config import get_settings
+            settings = get_settings()
+
+            email_service = EmailService(
+                smtp_host=settings.SMTP_HOST,
+                smtp_port=settings.SMTP_PORT,
+                smtp_username=settings.SMTP_USERNAME,
+                smtp_password=settings.SMTP_PASSWORD,
+                smtp_use_tls=settings.SMTP_USE_TLS,
+                smtp_from_email=settings.SMTP_FROM_EMAIL,
+                smtp_from_name=settings.SMTP_FROM_NAME
+            )
+
+            email_service.send_password_reset_confirmation(
+                to_email=email,
+                user_name=first_name
+            )
+
+            logger.info(f"Password reset successful for user {user_id}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Password reset confirmation failed: {str(e)}")
+            raise
 
 
 # Singleton instance
