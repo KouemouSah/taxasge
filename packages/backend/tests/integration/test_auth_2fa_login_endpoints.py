@@ -200,12 +200,12 @@ Expected result: All tests should pass with real Supabase database.
 # ==============================================================================
 # Test Constants (Update with your real test user data)
 # ==============================================================================
-TEST_2FA_USER_EMAIL = "test_2fa_user@example.com"
-TEST_2FA_USER_PASSWORD = "Test1234!"
-TEST_2FA_USER_SECRET = "JBSWY3DPEHPK3PXP"  # Update with real secret from database
+TEST_2FA_USER_EMAIL = "test_2fa_user@taxasge.com"
+TEST_2FA_USER_PASSWORD = "TestPass2FA123!"
+TEST_2FA_USER_SECRET = "JBSWY3DPEHPK3PXP"  # TOTP secret from setup script
 
-TEST_NO2FA_USER_EMAIL = "test_no2fa_user@example.com"
-TEST_NO2FA_USER_PASSWORD = "Test1234!"
+TEST_NO2FA_USER_EMAIL = "test_no2fa_user@taxasge.com"
+TEST_NO2FA_USER_PASSWORD = "TestPassNo2FA456!"
 
 
 # ==============================================================================
