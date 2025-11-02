@@ -670,6 +670,125 @@ class UserRepository(BaseRepository[UserResponse]):
             logger.error(f"❌ Error marking email as verified for user {user_id}: {e}")
             return False
 
+    # =========================================================================
+    # TWO-FACTOR AUTHENTICATION METHODS (TASK-M01-011)
+    # =========================================================================
+
+    async def enable_two_factor(
+        self,
+        user_id: str,
+        secret: str,
+        backup_codes: List[str]
+    ) -> bool:
+        """
+        Enable 2FA for user and save TOTP secret + backup codes.
+
+        Args:
+            user_id: User UUID
+            secret: TOTP secret (base32 encoded, 32 chars)
+            backup_codes: List of hashed backup codes
+
+        Returns:
+            bool: True if enabled successfully, False otherwise
+
+        Source: TASK-M01-011
+        Database: users.two_factor_enabled, two_factor_secret, two_factor_backup_codes
+        """
+        try:
+            import json
+            now = datetime.utcnow()
+            query = """
+                UPDATE users
+                SET two_factor_enabled = TRUE,
+                    two_factor_secret = $1,
+                    two_factor_backup_codes = $2,
+                    two_factor_enabled_at = $3,
+                    updated_at = $3
+                WHERE id = $4
+            """
+            result = await self.db_manager.execute_command(
+                query, secret, json.dumps(backup_codes), now, user_id
+            )
+            success = "UPDATE 1" in result
+            if success:
+                logger.info(f"✅ 2FA enabled for user {user_id}")
+            return success
+
+        except Exception as e:
+            logger.error(f"❌ Error enabling 2FA for user {user_id}: {e}")
+            return False
+
+    async def disable_two_factor(self, user_id: str) -> bool:
+        """
+        Disable 2FA for user and clear secret + backup codes.
+
+        Args:
+            user_id: User UUID
+
+        Returns:
+            bool: True if disabled successfully, False otherwise
+
+        Source: TASK-M01-011
+        """
+        try:
+            now = datetime.utcnow()
+            query = """
+                UPDATE users
+                SET two_factor_enabled = FALSE,
+                    two_factor_secret = NULL,
+                    two_factor_backup_codes = NULL,
+                    two_factor_enabled_at = NULL,
+                    updated_at = $1
+                WHERE id = $2
+            """
+            result = await self.db_manager.execute_command(query, now, user_id)
+            success = "UPDATE 1" in result
+            if success:
+                logger.info(f"✅ 2FA disabled for user {user_id}")
+            return success
+
+        except Exception as e:
+            logger.error(f"❌ Error disabling 2FA for user {user_id}: {e}")
+            return False
+
+    async def update_backup_codes(
+        self,
+        user_id: str,
+        backup_codes: List[str]
+    ) -> bool:
+        """
+        Update user's 2FA backup codes (after one is used).
+
+        Args:
+            user_id: User UUID
+            backup_codes: Updated list of hashed backup codes
+
+        Returns:
+            bool: True if updated successfully, False otherwise
+
+        Source: TASK-M01-011
+        """
+        try:
+            import json
+            now = datetime.utcnow()
+            query = """
+                UPDATE users
+                SET two_factor_backup_codes = $1,
+                    updated_at = $2
+                WHERE id = $3
+            """
+            result = await self.db_manager.execute_command(
+                query, json.dumps(backup_codes), now, user_id
+            )
+            success = "UPDATE 1" in result
+            if success:
+                logger.info(f"✅ Backup codes updated for user {user_id}")
+            return success
+
+        except Exception as e:
+            logger.error(f"❌ Error updating backup codes for user {user_id}: {e}")
+            return False
+
 
 # Global user repository instance
 user_repository = UserRepository()

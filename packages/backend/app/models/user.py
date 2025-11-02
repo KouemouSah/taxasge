@@ -153,6 +153,12 @@ class UserResponse(BaseModel):
     updated_at: datetime = Field(..., description="Last update date")
     last_login: Optional[datetime] = Field(None, description="Last login date")
 
+    # Two-Factor Authentication fields (TASK-M01-011)
+    two_factor_enabled: Optional[bool] = Field(default=False, description="Whether 2FA is enabled")
+    two_factor_secret: Optional[str] = Field(None, description="TOTP secret (base32 encoded)")
+    two_factor_backup_codes: Optional[List[str]] = Field(None, description="Hashed backup codes")
+    two_factor_enabled_at: Optional[datetime] = Field(None, description="When 2FA was enabled")
+
     # Extended profile data based on role
     citizen_profile: Optional[CitizenProfile] = None
     business_profile: Optional[BusinessProfile] = None
