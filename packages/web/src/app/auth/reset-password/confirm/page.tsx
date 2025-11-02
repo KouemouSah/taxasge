@@ -7,7 +7,7 @@
  * URL: /auth/reset-password/confirm?token=xxx
  */
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -20,7 +20,7 @@ import Header from "@/components/layout/Header"
 import Footer from "@/components/layout/Footer"
 import { authApi } from "@/lib/api/auth"
 
-export default function ResetPasswordConfirmPage() {
+function ResetPasswordConfirmContent() {
   const router = useRouter()
   const { toast } = useToast()
   const searchParams = useSearchParams()
@@ -247,5 +247,17 @@ export default function ResetPasswordConfirmPage() {
 
       <Footer />
     </div>
+  )
+}
+
+export default function ResetPasswordConfirmPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <ResetPasswordConfirmContent />
+    </Suspense>
   )
 }

@@ -6,7 +6,7 @@
  * Backend: POST /auth/email/verify
  */
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,12 +26,25 @@ export default function VerifyEmailPage() {
   const [verificationCode, setVerificationCode] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isResending, setIsResending] = useState(false)
+  const [userEmail, setUserEmail] = useState<string | undefined>(undefined)
+  const [isMounted, setIsMounted] = useState(false)
 
-  const authData = getAuthData()
-  const userEmail = authData?.user?.email
+  useEffect(() => {
+    setIsMounted(true)
+    const authData = getAuthData()
+
+    if (!authData) {
+      router.push("/auth")
+      return
+    }
+
+    setUserEmail(authData.user?.email)
+  }, [router])
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    const authData = getAuthData()
 
     if (!authData?.access_token) {
       toast({
@@ -77,6 +90,8 @@ export default function VerifyEmailPage() {
   }
 
   const handleResend = async () => {
+    const authData = getAuthData()
+
     if (!authData?.access_token) {
       toast({
         variant: "destructive",
@@ -106,10 +121,13 @@ export default function VerifyEmailPage() {
     }
   }
 
-  // Redirect if not authenticated
-  if (!authData) {
-    router.push("/auth")
-    return null
+  // Show loading state during SSR
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
   }
 
   return (
