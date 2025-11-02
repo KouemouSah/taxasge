@@ -53,7 +53,7 @@ export const authApi = {
         remember_me: data.remember_me || false,
       });
       return response.data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (axios.isAxiosError(error) && error.response) {
         const authError: AuthError = error.response.data;
         throw new Error(authError.detail || 'Erreur de connexion');
@@ -77,7 +77,7 @@ export const authApi = {
         role: data.role || 'citizen',
       });
       return response.data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (axios.isAxiosError(error) && error.response) {
         const authError: AuthError = error.response.data;
         throw new Error(authError.detail || "Erreur lors de l'inscription");

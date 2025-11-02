@@ -1,211 +1,179 @@
-// Types pour l'authentification TaxasGE
+/**
+ * Authentication Types
+ * 100% aligned with TaxasGE Backend Pydantic models
+ * Source: packages/backend/app/models/user.py & auth_models.py
+ */
 
-export interface User {
-  id: string
-  email: string
-  firstName: string
-  lastName: string
-  role: UserRole
-  status: UserStatus
-  phone?: string
-  address?: string
-  city?: string
-  country: string
-  language: 'es' | 'fr' | 'en'
-  avatarUrl?: string
-  createdAt: string
-  updatedAt: string
-  lastLogin?: string
-  preferences: UserPreferences
-  profile: UserProfile
-}
+// User Role Enum (aligned with backend UserRole)
+export type UserRole = 'citizen' | 'business' | 'admin' | 'operator' | 'auditor' | 'support';
 
-export type UserRole = 'citizen' | 'business' | 'admin' | 'operator' | 'auditor' | 'support'
+// User Status Enum (aligned with backend UserStatus)
+export type UserStatus = 'active' | 'inactive' | 'suspended' | 'pending_verification';
 
-export type UserStatus = 'active' | 'inactive' | 'suspended' | 'pending_verification'
-
-export interface UserPreferences {
-  emailNotifications: boolean
-  pushNotifications: boolean
-  language: 'es' | 'fr' | 'en'
-  theme: 'light' | 'dark' | 'system'
-  currency: 'XAF' | 'EUR' | 'USD'
-  timezone: string
-}
-
+// User Profile (aligned with backend UserProfile)
 export interface UserProfile {
-  // Profil citoyen
-  nationalId?: string
-  birthDate?: string
-  gender?: 'M' | 'F' | 'O'
-  maritalStatus?: 'single' | 'married' | 'divorced' | 'widowed'
-  occupation?: string
-  
-  // Profil entreprise (si role = 'business')
-  businessName?: string
-  businessType?: 'sole_proprietor' | 'corporation' | 'partnership' | 'cooperative' | 'ngo'
-  taxId?: string
-  registrationNumber?: string
-  industry?: string
-  employeeCount?: number
-  annualRevenue?: number
-  website?: string
+  first_name: string;
+  last_name: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  language: 'es' | 'fr' | 'en';
+  avatar_url?: string;
 }
 
-export interface LoginCredentials {
-  email: string
-  password: string
-  rememberMe?: boolean
+// Citizen Profile (aligned with backend CitizenProfile)
+export interface CitizenProfile extends UserProfile {
+  national_id?: string;
+  birth_date?: string;
+  gender?: 'M' | 'F' | 'O';
+  marital_status?: 'single' | 'married' | 'divorced' | 'widowed';
+  occupation?: string;
 }
 
-export interface RegisterData {
-  email: string
-  password: string
-  confirmPassword: string
-  firstName: string
-  lastName: string
-  phone?: string
-  role: UserRole
-  acceptTerms: boolean
-  profile?: Partial<UserProfile>
+// Business Profile (aligned with backend BusinessProfile)
+export interface BusinessProfile extends UserProfile {
+  business_name: string;
+  business_type: 'sole_proprietor' | 'corporation' | 'partnership' | 'cooperative' | 'ngo';
+  tax_id?: string;
+  registration_number?: string;
+  industry?: string;
+  employee_count?: number;
+  annual_revenue?: number;
+  website?: string;
 }
 
-export interface AuthResponse {
-  user: User
-  accessToken: string
-  refreshToken: string
-  expiresIn: number
+// User object returned from backend
+export interface User {
+  id: string;
+  email: string;
+  role: UserRole;
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
+  is_active: boolean;
+  email_verified: boolean;
+  two_factor_enabled: boolean;
+  created_at: string;
+  updated_at?: string;
+  last_login?: string;
 }
 
-export interface PasswordResetRequest {
-  email: string
+// Login Request
+export interface LoginRequest {
+  email: string;
+  password: string;
+  remember_me?: boolean;
 }
 
-export interface PasswordReset {
-  token: string
-  newPassword: string
-  confirmPassword: string
+// Register Request
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  first_name: string;
+  last_name: string;
+  phone?: string;
+  role?: UserRole;
 }
 
-export interface UpdateProfileData {
-  firstName?: string
-  lastName?: string
-  phone?: string
-  address?: string
-  city?: string
-  preferences?: Partial<UserPreferences>
-  profile?: Partial<UserProfile>
+// Token Response (when 2FA disabled)
+export interface TokenResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
+  user: User;
 }
 
-export interface ChangePasswordData {
-  currentPassword: string
-  newPassword: string
-  confirmPassword: string
+// 2FA Login Response (when 2FA enabled)
+export interface TwoFactorLoginResponse {
+  requires_2fa: boolean;
+  temp_token: string;
+  message: string;
 }
 
-// Types pour les sessions et sécurité
+// 2FA Verify Request
+export interface TwoFactorVerifyRequest {
+  temp_token: string;
+  code: string;
+}
+
+// Session (aligned with backend Session)
 export interface Session {
-  id: string
-  userId: string
-  deviceInfo: DeviceInfo
-  ipAddress: string
-  userAgent: string
-  createdAt: string
-  lastActivity: string
-  isActive: boolean
+  id: string;
+  user_id: string;
+  device_info: Record<string, string>;
+  ip_address: string;
+  user_agent: string;
+  created_at: string;
+  last_activity: string;
+  is_current: boolean;
 }
 
-export interface DeviceInfo {
-  type: 'desktop' | 'mobile' | 'tablet'
-  os: string
-  browser: string
-  location?: string
+// Password Reset Request
+export interface PasswordResetRequest {
+  email: string;
 }
 
-export interface SecurityEvent {
-  id: string
-  userId: string
-  eventType: 'login' | 'logout' | 'password_change' | 'failed_login' | 'suspicious_activity'
-  details: Record<string, any>
-  ipAddress: string
-  userAgent: string
-  timestamp: string
-  riskLevel: 'low' | 'medium' | 'high'
+export interface PasswordResetResponse {
+  message: string;
+  email: string;
 }
 
-// Types pour les permissions et rôles
-export interface Permission {
-  id: string
-  name: string
-  description: string
-  resource: string
-  action: 'create' | 'read' | 'update' | 'delete' | 'admin'
+// Password Reset Confirm
+export interface PasswordResetConfirm {
+  token: string;
+  new_password: string;
 }
 
-export interface Role {
-  id: string
-  name: UserRole
-  displayName: string
-  description: string
-  permissions: Permission[]
-  isDefault: boolean
+export interface PasswordResetConfirmResponse {
+  message: string;
 }
 
-// Types pour l'audit et logs
-export interface AuditLog {
-  id: string
-  userId: string
-  action: string
-  resource: string
-  resourceId?: string
-  oldValues?: Record<string, any>
-  newValues?: Record<string, any>
-  ipAddress: string
-  userAgent: string
-  timestamp: string
-  success: boolean
-  errorMessage?: string
+// Email Verification
+export interface EmailVerifyRequest {
+  verification_code: string;
 }
 
-// Types pour les notifications
-export interface Notification {
-  id: string
-  userId: string
-  type: 'info' | 'success' | 'warning' | 'error'
-  title: string
-  message: string
-  data?: Record<string, any>
-  read: boolean
-  readAt?: string
-  createdAt: string
-  expiresAt?: string
-  actions?: NotificationAction[]
+export interface EmailVerifyResponse {
+  message: string;
 }
 
-export interface NotificationAction {
-  id: string
-  label: string
-  action: string
-  url?: string
-  style: 'primary' | 'secondary' | 'destructive'
+export interface EmailResendResponse {
+  message: string;
+  email: string;
 }
 
-// Types pour l'authentification externe
-export interface ExternalAuthProvider {
-  id: string
-  name: string
-  type: 'oauth' | 'saml' | 'ldap'
-  enabled: boolean
-  config: Record<string, any>
+// Logout Request
+export interface LogoutRequest {
+  access_token: string;
+  refresh_token: string;
 }
 
-export interface ExternalAuthResponse {
-  provider: string
-  externalId: string
-  email: string
-  firstName?: string
-  lastName?: string
-  avatarUrl?: string
-  accessToken: string
-  refreshToken?: string
+export interface LogoutResponse {
+  message: string;
+}
+
+// Profile Update
+export interface ProfileUpdateRequest {
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  language?: 'es' | 'fr' | 'en';
+}
+
+// Auth Data stored in localStorage
+export interface AuthData {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
+  user: User;
+}
+
+// API Error Response
+export interface ApiError {
+  detail: string;
+  status_code?: number;
 }

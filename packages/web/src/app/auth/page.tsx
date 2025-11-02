@@ -18,9 +18,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/hooks/use-toast"
 import { User, Building2 } from "lucide-react"
-import Header from "@/components/Header"
-import Footer from "@/components/Footer"
-import { authApi } from "@/lib/api/authApi"
+import Header from "@/components/layout/Header"
+import Footer from "@/components/layout/Footer"
+import { authApi } from "@/lib/api/auth"
 import { setAuthData } from "@/lib/auth/storage"
 import { loginSchema, registerSchema } from "@/lib/validations/auth"
 import { z } from "zod"
@@ -66,7 +66,18 @@ export default function AuthPage() {
       const response = await authApi.login(validated)
 
       // Stockage tokens + user
-      setAuthData(response.access_token, response.refresh_token, response.user)
+      // Check if 2FA is required
+      if ('requires_2fa' in response) {
+        // TODO: Handle 2FA flow
+        toast({
+          title: "2FA requis",
+          description: response.message,
+        })
+        return
+      }
+
+      // Standard login (no 2FA)
+      setAuthData(response)
 
       // Toast succès
       toast({
@@ -93,7 +104,7 @@ export default function AuthPage() {
         toast({
           variant: "destructive",
           title: "Erreur de connexion",
-          description: error.message || "Email ou mot de passe invalide",
+          description: error instanceof Error ? error.message : "Email ou mot de passe invalide",
         })
       }
     } finally {
@@ -122,7 +133,7 @@ export default function AuthPage() {
       const response = await authApi.register(validated)
 
       // Stockage tokens + user
-      setAuthData(response.access_token, response.refresh_token, response.user)
+      setAuthData(response)
 
       // Toast succès
       toast({
@@ -149,7 +160,7 @@ export default function AuthPage() {
         toast({
           variant: "destructive",
           title: "Erreur d'inscription",
-          description: error.message || "Une erreur est survenue lors de l'inscription",
+          description: error instanceof Error ? error.message : "Une erreur est survenue lors de l'inscription",
         })
       }
     } finally {

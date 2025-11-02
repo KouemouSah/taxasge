@@ -1,10 +1,10 @@
-import Header from "@/components/Header"
-import Footer from "@/components/Footer"
+import Header from "@/components/layout/Header"
+import Footer from "@/components/layout/Footer"
 import Hero from "@/components/Hero"
 import StatsSection from "@/components/StatsSection"
 import FeaturesSection from "@/components/FeaturesSection"
 import PopularServices from "@/components/PopularServices"
-import FloatingChatbot from "@/components/FloatingChatbot"
+import FloatingChatbot from "@/components/shared/FloatingChatbot"
 
 /**
  * Page d'accueil TaxasGE
