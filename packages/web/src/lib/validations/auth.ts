@@ -22,7 +22,7 @@ export const loginSchema = z.object({
 
 /**
  * Schéma de validation pour l'inscription
- * Phone format E.164: +33..., +221..., +240... (Guinée Équatoriale)
+ * Phone: Guinée Équatoriale format (222|555|551 + 6 chiffres = 9 total)
  * Role: citizen (défaut) ou business
  */
 export const registerSchema = z.object({
@@ -47,9 +47,8 @@ export const registerSchema = z.object({
     .max(50, 'Maximum 50 caractères'),
   phone: z
     .string()
-    .regex(/^\+[1-9]\d{1,14}$/, 'Format E.164 requis: +33..., +221..., +240...')
-    .min(8, 'Numéro trop court')
-    .max(16, 'Numéro trop long'),
+    .regex(/^(222|555|551)\d{6}$/, 'Le numéro doit commencer par 222, 555 ou 551 et contenir 9 chiffres au total')
+    .length(9, 'Le numéro doit contenir exactement 9 chiffres'),
   role: z.enum(['citizen', 'business'], {
     errorMap: () => ({ message: 'Rôle invalide' }),
   }).default('citizen'),

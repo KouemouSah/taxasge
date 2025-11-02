@@ -81,6 +81,18 @@ class AuthService:
                 raise Exception("Failed to create user")
 
             logger.info(f"User registered: {user.email} (ID: {user.id})")
+            # Send verification email (non-blocking, log errors but dont fail registration)
+            try:
+                await self.send_verification_email(
+                    user_id=user.id,
+                    email=user.email
+                )
+                logger.info(f"Verification email sent to: {user.email}")
+            except Exception as email_error:
+                logger.error(f"Failed to send verification email to {user.email}: {email_error}")
+                # Continue registration even if email fails
+                # User can request resend later via /email/resend
+
 
             # Create tokens and session
             tokens = await self._create_session(
@@ -107,6 +119,7 @@ class AuthService:
                 created_at=user.created_at,
                 updated_at=user.updated_at,
                 last_login=user.last_login,
+                email_verified=user.email_verified,  # Important: include verification status
             )
 
             return {

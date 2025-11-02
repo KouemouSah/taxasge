@@ -87,7 +87,7 @@ export default function AuthPage() {
 
       // Redirection dashboard
       setTimeout(() => {
-        router.push("/dashboard")
+        router.push("/auth/verify-email")
       }, 500)
     } catch (error: unknown) {
       if (error instanceof z.ZodError) {
@@ -143,7 +143,7 @@ export default function AuthPage() {
 
       // Redirection dashboard
       setTimeout(() => {
-        router.push("/dashboard")
+        router.push("/auth/verify-email")
       }, 500)
     } catch (error: unknown) {
       if (error instanceof z.ZodError) {
