@@ -166,6 +166,33 @@ class AuthService:
 
             logger.info(f"User logged in: {user.email} (ID: {user.id})")
 
+            # Check if 2FA is enabled for this user
+            if user.two_factor_enabled:
+                logger.info(f"2FA required for user {user.email}")
+
+                # Generate temporary token for 2FA verification (short-lived: 5 minutes)
+                temp_token_payload = {
+                    "sub": user.id,
+                    "email": user.email,
+                    "role": user.role.value,
+                    "type": "2fa_temp",
+                    "remember_me": remember_me,
+                    "ip_address": ip_address,
+                    "user_agent": user_agent,
+                }
+                temp_token = self.jwt_service.create_access_token(
+                    data=temp_token_payload,
+                    expires_delta=timedelta(minutes=5),  # Short-lived temp token
+                )
+
+                # Return temp token and 2FA requirement flag
+                return {
+                    "requires_2fa": True,
+                    "temp_token": temp_token,
+                    "message": "2FA verification required. Please provide your 2FA code.",
+                }
+
+            # Standard login flow (no 2FA)
             # Update last login
             await self.user_repo.update_last_login(user.id)
 
@@ -768,6 +795,98 @@ class AuthService:
 
         except Exception as e:
             logger.error(f"Email verification failed: {str(e)}")
+            raise
+
+    async def verify_2fa_login(
+        self,
+        temp_token: str,
+        code: str,
+    ) -> Dict[str, Any]:
+        """
+        Verify 2FA code and complete login process
+
+        Args:
+            temp_token: Temporary token from initial login
+            code: 6-digit TOTP code or 8-char backup code (XXXX-XXXX)
+
+        Returns:
+            Dict: Login response with user data and tokens
+
+        Raises:
+            Exception: If 2FA verification fails
+
+        Source: TASK-M01-013 (Login 2FA Integration)
+        """
+        try:
+            # Validate temp token
+            token_data = self.jwt_service.verify_token(temp_token)
+            if not token_data or token_data.get("type") != "2fa_temp":
+                raise Exception("Invalid or expired temporary token")
+
+            user_id = token_data["sub"]
+            email = token_data["email"]
+            role = token_data["role"]
+            remember_me = token_data.get("remember_me", False)
+            ip_address = token_data.get("ip_address")
+            user_agent = token_data.get("user_agent")
+
+            logger.info(f"Verifying 2FA code for user {email}")
+
+            # Get user to verify 2FA is enabled and get secret
+            user = await self.user_repo.get_by_id(user_id)
+            if not user.two_factor_enabled:
+                raise Exception("2FA is not enabled for this account")
+
+            # Verify 2FA code (TOTP or backup code)
+            from app.services.two_factor_service import get_two_factor_service
+
+            two_factor_service = get_two_factor_service()
+            is_valid = await two_factor_service.verify_login_code(user_id, code)
+
+            if not is_valid:
+                logger.warning(f"Invalid 2FA code for user {email}")
+                raise Exception("Invalid or expired 2FA code")
+
+            logger.info(f"2FA verification successful for user {email}")
+
+            # Update last login
+            await self.user_repo.update_last_login(user_id)
+
+            # Create tokens and session (with extended expiry if remember_me)
+            tokens = await self._create_session(
+                user_id=user_id,
+                email=email,
+                role=UserRole(role),
+                ip_address=ip_address,
+                user_agent=user_agent,
+                remember_me=remember_me,
+            )
+
+            # Prepare user response
+            user_response = UserResponse(
+                id=user.id,
+                email=user.email,
+                role=user.role,
+                status=user.status,
+                first_name=user.first_name,
+                last_name=user.last_name,
+                phone=user.phone,
+                address=user.address,
+                city=user.city,
+                language=user.language,
+                avatar_url=user.avatar_url,
+                created_at=user.created_at,
+                updated_at=user.updated_at,
+                last_login=datetime.utcnow(),
+            )
+
+            return {
+                **tokens,
+                "user": user_response.dict(),
+            }
+
+        except Exception as e:
+            logger.error(f"2FA login verification failed: {str(e)}")
             raise
 
 

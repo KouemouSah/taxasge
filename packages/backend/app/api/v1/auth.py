@@ -7,7 +7,7 @@ Updated to use AuthService, PasswordService, and JWTService
 from fastapi import APIRouter, HTTPException, Depends, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field, EmailStr
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Union
 from datetime import datetime
 from enum import Enum
 from loguru import logger
@@ -86,6 +86,29 @@ class EmailResendResponse(BaseModel):
     email: EmailStr
 
 
+class TwoFactorLoginResponse(BaseModel):
+    """Response when 2FA is required after login"""
+
+    requires_2fa: bool = Field(True, description="Indicates 2FA verification is required")
+    temp_token: str = Field(..., description="Temporary token for 2FA verification (5 min validity)")
+    message: str = Field(
+        default="2FA verification required. Please provide your 2FA code.",
+        description="User-facing message",
+    )
+
+
+class TwoFactorVerifyRequest(BaseModel):
+    """Request to verify 2FA code and complete login"""
+
+    temp_token: str = Field(..., description="Temporary token from login response")
+    code: str = Field(..., description="6-digit TOTP code or 8-char backup code (XXXX-XXXX)")
+
+    class Config:
+        schema_extra = {
+            "example": {"temp_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...", "code": "123456"}
+        }
+
+
 # Dependency to get client info from request
 def get_client_info(request: Request) -> tuple[Optional[str], Optional[str]]:
     """Extract client IP and user agent from request"""
@@ -138,10 +161,11 @@ async def get_auth_info():
     """Get authentication API information"""
     return {
         "message": "TaxasGE Authentication API",
-        "version": "2.3.0",  # TASK-M01-008: Sessions management added
+        "version": "2.4.0",  # TASK-M01-013: 2FA login integration added
         "endpoints": {
             "register": "POST /register - Register new user",
-            "login": "POST /login - User login",
+            "login": "POST /login - User login (returns temp_token if 2FA enabled)",
+            "login_2fa_verify": "POST /login/2fa-verify - Verify 2FA code and complete login",
             "refresh": "POST /refresh - Refresh access token",
             "logout": "POST /logout - Logout user",
             "profile": "GET /profile - Get current user profile",
@@ -218,7 +242,7 @@ async def register(
         )
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", response_model=Union[TokenResponse, TwoFactorLoginResponse])
 async def login(
     request: LoginRequest,
     req: Request,
@@ -226,15 +250,26 @@ async def login(
     """
     Login user and create session
 
+    **Workflow**:
+    1. Validate email and password
+    2. Check if user has 2FA enabled:
+       - If 2FA enabled: Return temp_token + requires_2fa=true
+       - If 2FA disabled: Return access/refresh tokens immediately
+    3. If 2FA required, client calls /login/2fa-verify with code
+
     Args:
         request: Login credentials
         req: FastAPI request object
 
     Returns:
-        TokenResponse: Access/refresh tokens and user data
+        Union[TokenResponse, TwoFactorLoginResponse]:
+            - TokenResponse: If 2FA disabled (access/refresh tokens + user data)
+            - TwoFactorLoginResponse: If 2FA enabled (temp_token + requires_2fa flag)
 
     Raises:
         HTTPException: If login fails
+
+    Source: TASK-M01-013 (Login 2FA Integration)
     """
     try:
         # Get client info
@@ -250,11 +285,64 @@ async def login(
             user_agent=user_agent,
         )
 
+        # Check if 2FA is required
+        if result.get("requires_2fa"):
+            logger.info(f"User logged in, 2FA verification required: {request.email}")
+            return TwoFactorLoginResponse(**result)
+
         logger.info(f"User logged in successfully: {request.email}")
         return TokenResponse(**result)
 
     except Exception as e:
         logger.error(f"Login error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e),
+        )
+
+
+@router.post("/login/2fa-verify", response_model=TokenResponse)
+async def verify_2fa_login(
+    request: TwoFactorVerifyRequest,
+):
+    """
+    Verify 2FA code and complete login process
+
+    **Workflow**:
+    1. User calls /login with email + password
+    2. If user has 2FA enabled, receives temp_token + requires_2fa=true
+    3. User provides 2FA code (from authenticator app or backup code)
+    4. This endpoint verifies code and returns real access/refresh tokens
+
+    Args:
+        request: Temp token + 2FA code (TOTP or backup)
+
+    Returns:
+        TokenResponse: Access/refresh tokens and user data
+
+    Raises:
+        HTTPException: If 2FA verification fails
+
+    **Security**:
+    - Temp token is short-lived (5 minutes)
+    - Invalid code = authentication failure
+    - Backup codes are one-time use
+
+    Source: TASK-M01-013 (Login 2FA Integration)
+    """
+    try:
+        # Verify 2FA code via AuthService
+        auth_service = get_auth_service()
+        result = await auth_service.verify_2fa_login(
+            temp_token=request.temp_token,
+            code=request.code,
+        )
+
+        logger.info("2FA login verification successful")
+        return TokenResponse(**result)
+
+    except Exception as e:
+        logger.error(f"2FA login verification error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e),
