@@ -242,7 +242,7 @@ export default function TwoFactorToggle({ initialEnabled, onStatusChange }: TwoF
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5" />
-              Activer l'authentification à deux facteurs
+              Activer l&apos;authentification à deux facteurs
             </DialogTitle>
             <DialogDescription>
               {step === 'qr' && 'Scannez le code QR avec votre application d\'authentification'}
@@ -271,7 +271,7 @@ export default function TwoFactorToggle({ initialEnabled, onStatusChange }: TwoF
               </div>
 
               <Button className="w-full" onClick={() => setStep('verify')}>
-                J'ai scanné le QR code
+                J&apos;ai scanné le QR code
               </Button>
             </div>
           )}
@@ -311,7 +311,7 @@ export default function TwoFactorToggle({ initialEnabled, onStatusChange }: TwoF
                 <CheckCircle2 className="h-4 w-4" />
                 <AlertTitle>2FA activé avec succès!</AlertTitle>
                 <AlertDescription>
-                  Sauvegardez ces codes de secours. Vous pouvez les utiliser si vous perdez l'accès à votre application d'authentification.
+                  Sauvegardez ces codes de secours. Vous pouvez les utiliser si vous perdez l&apos;accès à votre application d&apos;authentification.
                 </AlertDescription>
               </Alert>
 
@@ -327,7 +327,7 @@ export default function TwoFactorToggle({ initialEnabled, onStatusChange }: TwoF
               </Button>
 
               <Button onClick={closeEnableModal} className="w-full">
-                J'ai sauvegardé mes codes
+                J&apos;ai sauvegardé mes codes
               </Button>
             </div>
           )}
@@ -338,7 +338,7 @@ export default function TwoFactorToggle({ initialEnabled, onStatusChange }: TwoF
       <Dialog open={showDisableModal} onOpenChange={setShowDisableModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Désactiver l'authentification à deux facteurs</DialogTitle>
+            <DialogTitle>Désactiver l&apos;authentification à deux facteurs</DialogTitle>
             <DialogDescription>
               Entrez votre mot de passe pour confirmer la désactivation. Cela réduira la sécurité de votre compte.
             </DialogDescription>
