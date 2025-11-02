@@ -81,8 +81,8 @@ export const FloatingChatbot = () => {
         <div className="fixed bottom-6 right-6 w-96 h-[500px] bg-card border border-border rounded-lg shadow-2xl flex flex-col z-50">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-border bg-primary rounded-t-lg">
+            <div className="flex items-center space-x-2">
               <Image src="/logo.png" alt="TaxasGE" width={32} height={32} className="h-8 w-8 rounded-lg bg-white/20 p-1" />
-              </div>
               <div>
                 <h3 className="font-semibold text-white">Assistant TaxasGE</h3>
                 <p className="text-xs text-white/80">En ligne</p>
@@ -97,7 +97,6 @@ export const FloatingChatbot = () => {
               <X className="h-5 w-5" />
             </Button>
           </div>
-
           {/* Messages */}
           <ScrollArea className="flex-1 p-4" ref={scrollRef}>
             <div className="space-y-4">
