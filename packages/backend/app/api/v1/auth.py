@@ -7,12 +7,13 @@ Updated to use AuthService, PasswordService, and JWTService
 from fastapi import APIRouter, HTTPException, Depends, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field, EmailStr
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime
 from enum import Enum
 from loguru import logger
 
 from app.services.auth_service import get_auth_service
+from app.services.session_service import get_session_service
 from app.models.user import UserCreate, UserResponse, UserProfile, UserRole, UserStatus
 from app.models.auth_models import (
     TokenRefreshRequest,
@@ -137,7 +138,7 @@ async def get_auth_info():
     """Get authentication API information"""
     return {
         "message": "TaxasGE Authentication API",
-        "version": "2.2.0",  # MODULE_02: Password reset + Email verification added
+        "version": "2.3.0",  # TASK-M01-008: Sessions management added
         "endpoints": {
             "register": "POST /register - Register new user",
             "login": "POST /login - User login",
@@ -148,6 +149,7 @@ async def get_auth_info():
             "password_reset_confirm": "POST /password/reset/confirm - Confirm password reset with token",
             "email_verify": "POST /email/verify - Verify email with 6-digit code",
             "email_resend": "POST /email/resend - Resend email verification code",
+            "sessions": "GET /sessions - Get active sessions for current user",
         },
         "security": {
             "token_type": "JWT Bearer",
@@ -597,4 +599,96 @@ async def resend_verification_email(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
+        )
+
+
+# === TASK-M01-008: Sessions Management ===
+
+class SessionInfoResponse(BaseModel):
+    """Model for session information response"""
+    id: str = Field(..., description="Session ID")
+    device: str = Field(..., description="Device type (Desktop/Mobile/Tablet)")
+    browser: str = Field(..., description="Browser name")
+    location: str = Field(..., description="Location (IP address or City, Country)")
+    ip_address: Optional[str] = Field(None, description="IP address")
+    created_at: datetime = Field(..., description="Session creation time")
+    last_activity: datetime = Field(..., description="Last activity time")
+    expires_at: datetime = Field(..., description="Session expiration time")
+    is_current: bool = Field(..., description="True if this is the current session")
+
+
+class SessionsListResponse(BaseModel):
+    """Model for sessions list response"""
+    sessions: List[SessionInfoResponse] = Field(..., description="List of active sessions")
+    total: int = Field(..., description="Total number of active sessions")
+
+
+@router.get("/sessions", response_model=SessionsListResponse)
+async def get_sessions(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """
+    Get all active sessions for the current user
+
+    **Authenticated endpoint** (requires valid access token)
+
+    Args:
+        credentials: Bearer token from Authorization header
+        current_user: Current authenticated user
+
+    Returns:
+        SessionsListResponse: List of active sessions with metadata
+
+    Raises:
+        HTTPException: If retrieval fails
+
+    Business Rules:
+        - Only return non-expired sessions (expires_at > now)
+        - Mark current session (matching access_token)
+        - Verify user owns all returned sessions (security check)
+        - Enrich with device, browser, location metadata
+        - Order by created_at desc (most recent first)
+
+    Source: .github/docs-internal/Documentations/Backend/RAPPORT_MODULE_01_AUTHENTICATION.md line 414-417
+    """
+    try:
+        user_id = current_user["sub"]
+        access_token = credentials.credentials
+
+        # Get active sessions via SessionService
+        session_service = get_session_service()
+        sessions_data = await session_service.get_active_sessions(
+            user_id=user_id,
+            current_token=access_token
+        )
+
+        # Convert to response models
+        sessions_list = [
+            SessionInfoResponse(
+                id=session["id"],
+                device=session["device"],
+                browser=session["browser"],
+                location=session["location"],
+                ip_address=session.get("ip_address"),
+                created_at=session["created_at"],
+                last_activity=session["last_activity"],
+                expires_at=session["expires_at"],
+                is_current=session["is_current"]
+            )
+            for session in sessions_data
+        ]
+
+        logger.info(f"Retrieved {len(sessions_list)} active sessions for user {user_id}")
+
+        return SessionsListResponse(
+            sessions=sessions_list,
+            total=len(sessions_list)
+        )
+
+    except Exception as e:
+        logger.error(f"Get sessions error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve sessions: {str(e)}",
         )

@@ -53,6 +53,7 @@ class SessionResponse(BaseModel):
     """Model for session response"""
     id: str = Field(..., description="Session ID")
     user_id: str = Field(..., description="User ID")
+    access_token: str = Field(..., description="Access token (for current session identification)")
     status: SessionStatus = Field(..., description="Session status")
     ip_address: Optional[str] = Field(None, description="Client IP address")
     user_agent: Optional[str] = Field(None, description="Client user agent")
