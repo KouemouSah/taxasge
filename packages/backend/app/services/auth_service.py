@@ -171,8 +171,7 @@ class AuthService:
                 logger.info(f"2FA required for user {user.email}")
 
                 # Generate temporary token for 2FA verification (short-lived: 5 minutes)
-                temp_token_payload = {
-                    "sub": user.id,
+                temp_token_user_data = {
                     "email": user.email,
                     "role": user.role.value,
                     "type": "2fa_temp",
@@ -181,7 +180,8 @@ class AuthService:
                     "user_agent": user_agent,
                 }
                 temp_token = self.jwt_service.create_access_token(
-                    data=temp_token_payload,
+                    subject=user.id,
+                    user_data=temp_token_user_data,
                     expires_delta=timedelta(minutes=5),  # Short-lived temp token
                 )
 
@@ -819,7 +819,7 @@ class AuthService:
         """
         try:
             # Validate temp token
-            token_data = self.jwt_service.verify_token(temp_token)
+            token_data = self.jwt_service.verify_access_token(temp_token)
             if not token_data or token_data.get("type") != "2fa_temp":
                 raise Exception("Invalid or expired temporary token")
 
