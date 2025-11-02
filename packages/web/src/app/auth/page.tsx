@@ -85,9 +85,16 @@ export default function AuthPage() {
         description: `Bienvenue ${response.user.first_name || response.user.email}`,
       })
 
-      // Redirection dashboard
+      // CRITICAL: Check email_verified status (OWASP: Proper session management)
+      // Only redirect to verify-email if email NOT verified
       setTimeout(() => {
-        router.push("/auth/verify-email")
+        if (response.user.email_verified) {
+          // Email verified → Dashboard
+          router.push("/dashboard")
+        } else {
+          // Email NOT verified → Verification page
+          router.push("/auth/verify-email")
+        }
       }, 500)
     } catch (error: unknown) {
       if (error instanceof z.ZodError) {

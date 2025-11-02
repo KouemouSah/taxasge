@@ -361,3 +361,106 @@ export type {
   EmailVerifyRequest,
   EmailVerifyResponse,
 }
+
+/**
+ * Enable 2FA - POST /auth/2fa/enable
+ * Returns QR code and backup codes for setup
+ */
+async function enable2FA(accessToken: string): Promise<{
+  secret: string
+  qr_code_svg: string
+  backup_codes: string[]
+}> {
+  const response = await fetch(`${AUTH_API_URL}/2fa/enable`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || 'Failed to enable 2FA')
+  }
+
+  return response.json()
+}
+
+/**
+ * Verify 2FA setup - POST /auth/2fa/verify
+ * Confirms 2FA setup with TOTP code
+ */
+async function verify2FASetup(accessToken: string, data: { secret: string; code: string }): Promise<{
+  message: string
+  backup_codes: string[]
+}> {
+  const response = await fetch(`${AUTH_API_URL}/2fa/verify`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || 'Failed to verify 2FA setup')
+  }
+
+  return response.json()
+}
+
+/**
+ * Disable 2FA - POST /auth/2fa/disable
+ * Requires password confirmation
+ */
+async function disable2FA(accessToken: string, password: string): Promise<{ message: string }> {
+  const response = await fetch(`${AUTH_API_URL}/2fa/disable`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ password }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || 'Failed to disable 2FA')
+  }
+
+  return response.json()
+}
+
+/**
+ * Get 2FA status - GET /auth/2fa/status
+ */
+async function get2FAStatus(accessToken: string): Promise<{
+  two_factor_enabled: boolean
+  enabled_at: string | null
+}> {
+  const response = await fetch(`${AUTH_API_URL}/2fa/status`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || 'Failed to fetch 2FA status')
+  }
+
+  return response.json()
+}
+
+// Update exports
+export const authApi2FA = {
+  enable: enable2FA,
+  verifySetup: verify2FASetup,
+  disable: disable2FA,
+  getStatus: get2FAStatus,
+}

@@ -28,6 +28,7 @@ import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import { getAuthData, clearAuthData } from '@/lib/auth/storage'
 import { authApi } from '@/lib/api/auth'
+import TwoFactorToggle from '@/components/security/TwoFactorToggle'
 import type { User as UserType } from '@/types/auth'
 
 export default function DashboardPage() {
@@ -168,6 +169,15 @@ export default function DashboardPage() {
                   </Link>
                 </div>
               )}
+              {/* 2FA Security Section */}
+              <div className="pt-4 border-t">
+                <TwoFactorToggle
+                  initialEnabled={user.two_factor_enabled || false}
+                  onStatusChange={(enabled) => {
+                    setUser(prev => prev ? { ...prev, two_factor_enabled: enabled } : null)
+                  }}
+                />
+              </div>
             </CardContent>
           </Card>
 
