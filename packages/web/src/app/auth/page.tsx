@@ -350,11 +350,11 @@ export default function AuthPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="phone">Téléphone (E.164)</Label>
+                      <Label htmlFor="phone">Téléphone</Label>
                       <Input
                         id="phone"
                         type="tel"
-                        placeholder="+240222123456"
+                        placeholder="222123456 ou 555123456"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         required

@@ -789,6 +789,34 @@ class UserRepository(BaseRepository[UserResponse]):
             logger.error(f"❌ Error updating backup codes for user {user_id}: {e}")
             return False
 
+    async def delete_user(self, user_id: str) -> bool:
+        """
+        Delete user by ID (used for rollback when email verification fails).
+
+        Args:
+            user_id: User UUID
+
+        Returns:
+            bool: True if deleted successfully, False otherwise
+
+        Source: Email verification rollback (BLOCKING registration)
+        """
+        try:
+            query = """
+                DELETE FROM users
+                WHERE id = $1
+            """
+            result = await self.db_manager.execute_command(query, user_id)
+            success = "DELETE 1" in result
+            if success:
+                logger.info(f"✅ User {user_id} deleted (rollback)")
+            return success
+
+        except Exception as e:
+            logger.error(f"❌ Error deleting user {user_id}: {e}")
+            return False
+
+
 
 # Global user repository instance
 user_repository = UserRepository()

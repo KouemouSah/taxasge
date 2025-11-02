@@ -81,17 +81,43 @@ class AuthService:
                 raise Exception("Failed to create user")
 
             logger.info(f"User registered: {user.email} (ID: {user.id})")
-            # Send verification email (non-blocking, log errors but dont fail registration)
+
+            # Send verification email (BLOCKING - email must succeed for registration to complete)
             try:
-                await self.send_verification_email(
+                email_sent = await self.send_verification_email(
                     user_id=user.id,
                     email=user.email
                 )
-                logger.info(f"Verification email sent to: {user.email}")
+                
+                if not email_sent:
+                    # Rollback: Delete user if email failed
+                    await self.user_repo.delete_user(user.id)
+                    raise Exception(
+                        "Impossible d'envoyer l'email de vérification. "
+                        "Vérifiez que votre adresse email est valide et accessible."
+                    )
+                
+                logger.info(f"Verification email sent successfully to: {user.email}")
+                
             except Exception as email_error:
-                logger.error(f"Failed to send verification email to {user.email}: {email_error}")
-                # Continue registration even if email fails
-                # User can request resend later via /email/resend
+                # Rollback: Delete user if email failed
+                try:
+                    await self.user_repo.delete_user(user.id)
+                    logger.info(f"Rolled back user creation for {user.email} due to email failure")
+                except Exception as rollback_error:
+                    logger.error(f"Failed to rollback user {user.id}: {rollback_error}")
+                
+                # Re-raise with user-friendly message
+                error_msg = str(email_error)
+                if "SMTPAuthenticationError" in error_msg or "authentication" in error_msg.lower():
+                    raise Exception("Erreur de configuration email du serveur. Contactez l'administrateur.")
+                elif "SMTPConnectError" in error_msg or "connection" in error_msg.lower():
+                    raise Exception("Impossible de se connecter au serveur email. Réessayez plus tard.")
+                elif "invalid" in error_msg.lower() or "not exist" in error_msg.lower():
+                    raise Exception(f"Adresse email invalide ou inexistante: {user.email}")
+                else:
+                    raise Exception(f"Erreur lors de l'envoi de l'email de vérification: {error_msg}")
+
 
 
             # Create tokens and session
