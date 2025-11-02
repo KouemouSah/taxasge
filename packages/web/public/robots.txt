@@ -1,0 +1,14 @@
+# *
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /auth/
+Disallow: /_next/
+
+# Host
+Host: https://taxasge-dev.web.app
+
+# Sitemaps
+Sitemap: https://taxasge-dev.web.app/sitemap.xml
