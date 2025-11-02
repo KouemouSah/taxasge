@@ -75,8 +75,27 @@ interface EmailVerifyResponse {
   message: string
 }
 
-interface TokenRefreshRequest {
-  refresh_token: string
+interface UserProfile {
+  id: string
+  email: string
+  role: string
+  email_verified: boolean
+  two_factor_enabled: boolean
+  profile: {
+    first_name: string
+    last_name: string
+    phone?: string
+  }
+}
+
+interface Session {
+  id: string
+  user_id: string
+  device_info: string
+  ip_address: string
+  created_at: string
+  last_activity: string
+  is_current: boolean
 }
 
 interface LogoutRequest {
@@ -193,7 +212,7 @@ async function logout(data: LogoutRequest): Promise<LogoutResponse> {
 /**
  * Get current user profile - GET /auth/profile
  */
-async function getProfile(accessToken: string): Promise<any> {
+async function getProfile(accessToken: string): Promise<UserProfile> {
   const response = await fetch(`${AUTH_API_URL}/profile`, {
     method: 'GET',
     headers: {
@@ -294,7 +313,7 @@ async function resendEmailVerification(accessToken: string): Promise<{ message: 
 /**
  * Get active sessions - GET /auth/sessions
  */
-async function getSessions(accessToken: string): Promise<any> {
+async function getSessions(accessToken: string): Promise<Session[]> {
   const response = await fetch(`${AUTH_API_URL}/sessions`, {
     method: 'GET',
     headers: {
@@ -323,4 +342,22 @@ export const authApi = {
   verifyEmail,
   resendEmailVerification,
   getSessions,
+}
+
+export type {
+  LoginRequest,
+  RegisterRequest,
+  TokenResponse,
+  TwoFactorLoginResponse,
+  TwoFactorVerifyRequest,
+  UserProfile,
+  Session,
+  LogoutRequest,
+  LogoutResponse,
+  PasswordResetRequestRequest,
+  PasswordResetRequestResponse,
+  PasswordResetConfirmRequest,
+  PasswordResetConfirmResponse,
+  EmailVerifyRequest,
+  EmailVerifyResponse,
 }

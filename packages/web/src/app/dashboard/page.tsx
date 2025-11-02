@@ -3,9 +3,14 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
+interface DashboardUser {
+  email: string
+  name: string
+}
+
 export default function DashboardPage() {
   const router = useRouter()
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<DashboardUser | null>(null)
 
   useEffect(() => {
     const token = localStorage.getItem('token')
