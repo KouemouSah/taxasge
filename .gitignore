@@ -124,3 +124,9 @@ config/*.json
 # Environment examples (keep templates)
 !**/.env.example
 !**/.env.*.example
+
+# Firebase Admin SDK Backups (local only)
+.firebase-backup-*/
+
+# SQL Migrations Archives
+**/.github-docs-migrations-archive/

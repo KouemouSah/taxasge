@@ -360,8 +360,8 @@ echo -n "redis://default:YOUR_PASSWORD@redis-12345.cloud.redislabs.com:12345" | 
 | 1 | `database-url` | 🔴 Critique | ✅ Valeur disponible | P0 | PostgreSQL connection |
 | 2 | `supabase-url` | 🟡 Moyenne | ✅ Valeur disponible | P0 | Supabase client |
 | 3 | `supabase-anon-key` | 🔴 Critique | ✅ Valeur disponible | P0 | Supabase auth |
-| 4 | `jwt-secret-key` | 🔴 Critique | ❌ À générer | P0 | JWT signing |
-| 5 | `smtp-password` | 🔴 Critique | ❌ À fournir | P0 | Email notifications |
+| 4 | `jwt-secret-key` | 🔴 Critique | ✅ Valeur disponible | P0 | JWT signing |
+| 5 | `smtp-password` | 🔴 Critique | ✅ Valeur disponible | P0 | Email notifications |
 | 6 | `firebase-service-account-dev` | 🔴 Critique | ⚠️ Fichier à vérifier | P0 | Firebase Admin |
 | 7 | `firebase-service-account-prod` | 🔴 Critique | ⚠️ Fichier à vérifier | P1 | Firebase Admin Prod |
 | 8 | `bange-api-key` | 🔴 Critique | ⏳ Future | P2 | Payment gateway |

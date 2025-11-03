@@ -51,29 +51,6 @@ class Settings(BaseSettings):
             except Exception as e:
                 logger.error(f"❌ Failed to load SMTP password from Secret Manager: {e}")
                 self.SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-        
-        # Load Firebase Admin Keys from Secret Manager
-        try:
-            from app.core.secrets import get_secret
-            
-            # Load Dev Firebase Key
-            firebase_key_dev = get_secret("firebase-admin-key-dev")
-            if firebase_key_dev:
-                self.FIREBASE_ADMIN_KEY_DEV = firebase_key_dev
-                logger.info("✅ Firebase Admin Key (DEV) loaded from Secret Manager")
-            else:
-                logger.warning("⚠️ Firebase Admin Key (DEV) not found in Secret Manager")
-            
-            # Load Pro Firebase Key
-            firebase_key_pro = get_secret("firebase-admin-key-pro")
-            if firebase_key_pro:
-                self.FIREBASE_ADMIN_KEY_PRO = firebase_key_pro
-                logger.info("✅ Firebase Admin Key (PRO) loaded from Secret Manager")
-            else:
-                logger.warning("⚠️ Firebase Admin Key (PRO) not found in Secret Manager")
-                
-        except Exception as e:
-            logger.error(f"❌ Failed to load Firebase Admin Keys from Secret Manager: {e}")
 
     # ========================================================================
     # APPLICATION SETTINGS
@@ -206,15 +183,6 @@ class Settings(BaseSettings):
     # SMTP_PASSWORD: Load from Secret Manager at startup
     # Will be set by __init__ method below
     SMTP_PASSWORD: Optional[str] = None
-    
-    # ========================================================================
-    # FIREBASE ADMIN SDK
-    # ========================================================================
-    
-    # Firebase Admin SDK Keys: Load from Secret Manager at startup
-    # Will be set by __init__ method below
-    FIREBASE_ADMIN_KEY_DEV: Optional[str] = None
-    FIREBASE_ADMIN_KEY_PRO: Optional[str] = None
     
     # ========================================================================
     # CACHE SETTINGS

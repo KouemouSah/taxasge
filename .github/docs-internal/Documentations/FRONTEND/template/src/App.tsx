@@ -19,6 +19,8 @@ import ServiceManagement from "./pages/ServiceManagement";
 import UsersManagement from "./pages/admin/UsersManagement";
 import Analytics from "./pages/admin/Analytics";
 import Guide from "./pages/Guide";
+import ResetPassword from "./pages/ResetPassword";
+import EmailVerification from "./pages/EmailVerification";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +46,9 @@ const App = () => (
           <Route path="/admin/users" element={<UsersManagement />} />
           <Route path="/admin/analytics" element={<Analytics />} />
           <Route path="/guide" element={<Guide />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/forgot-password" element={<ResetPassword />} />
+          <Route path="/verify-email" element={<EmailVerification />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

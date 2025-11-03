@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -7,7 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
+import { User, Building2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -18,31 +21,78 @@ const Auth = () => {
   const [signupPassword, setSignupPassword] = useState("");
   const [signupFirstName, setSignupFirstName] = useState("");
   const [signupLastName, setSignupLastName] = useState("");
+  const [userRole, setUserRole] = useState<"citoyen" | "entreprise">("citoyen");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  useEffect(() => {
+    // Check if user is already logged in
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        navigate("/dashboard");
+      }
+    });
+  }, [navigate]);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulation de connexion
+    setLoading(true);
+    
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: loginEmail,
+      password: loginPassword,
+    });
+
+    setLoading(false);
+
+    if (error) {
+      toast({
+        title: "Erreur de connexion",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     toast({
       title: "Connexion réussie !",
       description: "Bienvenue sur votre dashboard",
     });
-    // Redirection vers le dashboard
-    setTimeout(() => {
-      navigate("/dashboard");
-    }, 500);
+    navigate("/dashboard");
   };
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulation d'inscription
+    setLoading(true);
+
+    const { data, error } = await supabase.auth.signUp({
+      email: signupEmail,
+      password: signupPassword,
+      options: {
+        emailRedirectTo: `${window.location.origin}/`,
+        data: {
+          first_name: signupFirstName,
+          last_name: signupLastName,
+          role: userRole,
+        },
+      },
+    });
+
+    setLoading(false);
+
+    if (error) {
+      toast({
+        title: "Erreur d'inscription",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     toast({
       title: "Compte créé avec succès !",
       description: "Vous pouvez maintenant vous connecter",
     });
-    // Redirection vers le profil après inscription
-    setTimeout(() => {
-      navigate("/profile");
-    }, 500);
+    navigate("/dashboard");
   };
 
   return (
@@ -96,8 +146,8 @@ const Auth = () => {
                         required
                       />
                     </div>
-                    <Button type="submit" className="w-full">
-                      Se connecter
+                    <Button type="submit" className="w-full" disabled={loading}>
+                      {loading ? "Connexion..." : "Se connecter"}
                     </Button>
                     <div className="text-center">
                       <Link to="/forgot-password" className="text-sm text-primary hover:underline">
@@ -109,6 +159,43 @@ const Auth = () => {
 
                 <TabsContent value="signup">
                   <form onSubmit={handleSignup} className="space-y-4">
+                    <div className="space-y-3">
+                      <Label>Type de compte</Label>
+                      <RadioGroup
+                        value={userRole}
+                        onValueChange={(value) => setUserRole(value as "citoyen" | "entreprise")}
+                        className="grid grid-cols-2 gap-4"
+                      >
+                        <div>
+                          <RadioGroupItem
+                            value="citoyen"
+                            id="citoyen"
+                            className="peer sr-only"
+                          />
+                          <Label
+                            htmlFor="citoyen"
+                            className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-card p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 cursor-pointer transition-all"
+                          >
+                            <User className="mb-2 h-8 w-8" />
+                            <span className="font-medium">Citoyen</span>
+                          </Label>
+                        </div>
+                        <div>
+                          <RadioGroupItem
+                            value="entreprise"
+                            id="entreprise"
+                            className="peer sr-only"
+                          />
+                          <Label
+                            htmlFor="entreprise"
+                            className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-card p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 cursor-pointer transition-all"
+                          >
+                            <Building2 className="mb-2 h-8 w-8" />
+                            <span className="font-medium">Entreprise</span>
+                          </Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
                     <div className="space-y-2">
                       <Label htmlFor="signup-firstname">Prénom</Label>
                       <Input
@@ -153,8 +240,8 @@ const Auth = () => {
                         required
                       />
                     </div>
-                    <Button type="submit" className="w-full">
-                      Créer un compte
+                    <Button type="submit" className="w-full" disabled={loading}>
+                      {loading ? "Création..." : "Créer un compte"}
                     </Button>
                   </form>
                 </TabsContent>

@@ -173,11 +173,11 @@ lib/validations/
 #### ✅ Checklist Implémentation
 
 **Structure (30 min)** :
-- [ ] Créer `app/auth/layout.tsx` (layout simple, centré)
-- [ ] Créer `app/auth/login/page.tsx`
-- [ ] Créer `components/auth/LoginForm.tsx` (client component)
-- [ ] Créer `lib/api/endpoints/auth.ts`
-- [ ] Créer `lib/validations/auth.ts`
+- [ ] update `app/auth/layout.tsx` (layout simple, centré)
+- [ ] update `app/auth/login/page.tsx`
+- [ ] update `components/auth/LoginForm.tsx` (client component)
+- [ ] update `lib/api/endpoints/auth.ts`
+- [ ] update `lib/validations/auth.ts`
 
 **Formulaire (1h)** :
 - [ ] Champs : email (type email) + password (type password)

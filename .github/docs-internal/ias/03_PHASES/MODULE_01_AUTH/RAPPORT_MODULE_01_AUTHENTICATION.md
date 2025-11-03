@@ -181,7 +181,7 @@ DECISION_006 utilisait par erreur les couleurs de la Guinée (Conakry) :
 **Architecture Frontend :**
 - ✅ **Multi-pages** au lieu de landing page monolithique (directive utilisateur)
 - ✅ **Optimisations performance** : Code splitting, lazy loading, fonts optimisés
-- ✅ **Pages publiques** : /services, /calculators, /ministries, /about, /contact
+- ✅ **Pages publiques** : /services, /calculators, /ministries, /Guide, /Connexion
 - ✅ **Metadata SEO** : locale es_GQ, keywords Guinée Équatoriale
 
 **Impact Timeline :**
@@ -352,7 +352,7 @@ CREATE INDEX idx_verification_codes_user_code ON verification_codes(user_id, cod
 **Livrables Jour 0 :**
 - ✅ Template migré vers packages/web/
 - ✅ **Design system GQ** : Vert-Blanc-Rouge-Bleu (pas d'orange)
-- ✅ Logo taxasge.png intégré au Header (au lieu de gradient)
+- ✅ Logo taxasge.png intégré au Header 
 - ✅ Store auth Zustand fonctionnel
 - ✅ Compilation Next.js sans erreurs
 
@@ -459,25 +459,59 @@ CREATE INDEX idx_verification_codes_user_code ON verification_codes(user_id, cod
   - Créer page simple utilisant `useAuthStore().login()`
   - Form avec email + password (validation Zod)
   - Gestion erreurs UI (toast notifications)
+- [ ] **TASK-M01-013-UPDATE** : Mettre à jour design page /login (30min)
+  - **📂 Template référence** : `C:\taxasge\.github\docs-internal\Documentations\FRONTEND\template\src\pages\Auth.tsx` (TabsContent value="login")
+  - **📖 Méthodologie** : Suivre `Documentations\FRONTEND\FRONTEND_MIGRATION_WORKFLOW.md`
+  - **🎨 Actions** :
+    - analyser le template source et page actuelle côte à côte
+    - Comparer visuellement (layout, couleurs, espacements, composants)
+    - Identifier différences (noter classes Tailwind manquantes/différentes)
+    - Appliquer corrections pour aligner design
+  - **🧪 Validation** : 
+    - Captures écran template vs actuel identiques
+    - Aucune différence visuelle détectable
 - [ ] **TASK-M01-014** : Page /register (1h)
-  - Créer page simple utilisant `useAuthStore().register()`
-  - Form avec email + password + name + role
+  **📂 Template source** : `C:\taxasge\.github\docs-internal\Documentations\FRONTEND\template\src\pages\Auth.tsx` (TabsContent value="signup")
+  - **📖 Méthodologie** : Suivre `FRONTEND_MIGRATION_WORKFLOW.md`
+  - **🎨 Design** : Mettre à jour le design à l'identique du template
+    - Layout Card centré identique à template
+    - Champs formulaire (type de compte, firstName, lastName, email, password) avec même style
+    - Boutons et liens avec mêmes classes Tailwind
+  - update et adapter page utilisant `useAuthStore().register()`
+  - Ajouter validation Zod multi-champs
+  - Form avec email + password + name + surname + role
   - Redirect vers /verify-email après succès
-- [ ] **🆕 TASK-M01-014b** : Pages publiques multi-pages (2h)
-  - Créer page /services (liste 547 services fiscaux GQ)
-  - Créer page /calculators (calculateurs taxes placeholder)
-  - Créer page /ministries (liste ministères GQ placeholder)
-  - Créer page /about (À propos TAXASGE placeholder)
-  - Créer page /contact (Formulaire contact DGI placeholder)
-  - Adapter Header.tsx : Navigation multi-pages au lieu de scroll
+   - **🧪 Validation** : Register fonctionnel + Design identique + Redirect /verify-email
+-[ ] **TASK-M01-014b** : Page / (landing) (1h)
+  - **📂 Template source** : `C:\taxasge\.github\docs-internal\Documentations\FRONTEND\template\Index.tsx`
+  - **📖 Méthodologie** : Suivre `FRONTEND_MIGRATION_WORKFLOW.md`
+  - **🎨 Design** : Mettre à jour le design à l'identique du template
+    - Migrer Hero section
+    - Migrer StatsSection
+    - Migrer FeaturesSection
+    - Migrer PopularServices
+    - Conserver tous styles et espacements
+  - **⚙️ Configuration** :
+    - Adapter navigation links (Header/Footer)
+    - Aucun appel API (page statique)
+  - **🧪 Validation** : Design identique + Navigation fonctionnelle + Responsive
+- [ ] **🆕 TASK-M01-014C** : Pages publiques multi-pages (2h) 
+  - migrer et adapter page /services (liste services fiscaux GQ)
+  - migrer et adapter page /calculators (calculateurs taxes placeholder)
+  - migrer et adapter  page /ministries (liste ministères GQ placeholder)
+  - migrer et adapter page /Guide 
+  - migrer et adapter  page /contact (Formulaire contact DGI placeholder)
+  - migrer et Adapter la page principale index
+  
 
 **Livrables Jour 5 matin :**
 - ✅ 2 pages auth (/login, /register) fonctionnelles
-- ✅ **5 pages publiques** : /services, /calculators, /ministries, /about, /contact
+- ✅ **6 pages publiques** : /services, /ministries, /calculators, /Guide,  /Contact
 - ✅ Store auth intégré (méthodes déjà codées)
-- ✅ **Navigation multi-pages** dans Header (au lieu de landing page)
+- ✅ **Navigation multi-pages** dans Header
 
-**Note :** Hooks useAuth déjà dans store Zustand, pas besoin de recréer! Pages publiques sont des placeholders simples pour Module 1.
+**Note :** Hooks useAuth déjà dans store Zustand, pas besoin de recréer juste adapter! les designs des pages doivent être idenetiques aux pages templates/project/`
+           dans leur ensemble. les pages doivent êtres fonctionnelles et affichées les informations 
 
 ---
 
@@ -487,9 +521,51 @@ CREATE INDEX idx_verification_codes_user_code ON verification_codes(user_id, cod
 
 **Tâches (2 heures) :**
 - [ ] **TASK-M01-015** : Page /profile (45min)
+  - **📂 Template source** : `C:\taxasge\.github\docs-internal\Documentations\FRONTEND\template\src\pages\Profile.tsx`
+  - **📖 Méthodologie** : Suivre `FRONTEND_MIGRATION_WORKFLOW.md`
+  - **🎨 Design** : Mettre à jour le design à l'identique du template
+    - Layout avec Tabs : Information Personnelle / Notifications / Sécurité
+    - Section "Information Personnelle" (tous comptes)
+    - Section "Informations Entreprise" (uniquement si `user.role === 'business'`)
+    - **⚙️ Adaptation Formulaire Entreprise** :
+    **IMPORTANT** : adapte Les champs entreprise du template selon ceux de la base de données
+	**✅ Champs Entreprise à Adapter** (selon base de données) :
+    
+    | Template (à remplacer) | Base de données | Label UI | Obligatoire si business |
+    |------------------------|-----------------|----------|------------------------|
+    | ??? | `legal_name` | "Nom de l'entreprise *" | ✅ OUI |
+    | ??? | `trade_name` | "Nom commercial" | ❌ Non |
+    | ??? | `tax_id` | "NIF ou RC *" | ✅ OUI |
+    | ??? | `primary_sector` | "Secteur d'activité" | ❌ Non |
+    | ??? | `address` | "Adresse *" | ✅ OUI |
+    | ??? | `city` | "Ville *" | ✅ OUI |
+    | ??? | `phone` | "Téléphone entreprise" |✅ OUI |
+    | ??? | `email` | "Email entreprise" | ✅ OUI |
+    **❌ À SUPPRIMER du template** :
+    - Bouton "Sauvegarder les informations entreprise" (supprimer complètement)
+    **✅ À CONSERVER** :
+    - Un SEUL bouton "Sauvegarder les changements" (sauvegarde tout : info perso + entreprise)
+    **✅ Champs Entreprise à Adapter** (selon base de données) :
   - Affichage user via `useAuthStore().user`
   - Form update profil utilisant `updateProfile()`
   - Form change password utilisant `updatePassword()`
+  - **🔄 Workflow Sauvegarde** :
+    1. User modifie champs (info perso et/ou entreprise)
+    2. Clic unique sur "Sauvegarder les changements"
+    3. Validation Zod selon `user.role` :
+       - Si `role === 'citizen'` : valider uniquement `personalInfoSchema`
+       - Si `role === 'business'` : valider `personalInfoSchema` + `businessInfoSchema` (champs obligatoires)
+    4. Appel API PATCH avec payload complet
+    5. Toast success "Profil mis à jour" ou error
+    
+  - **🧪 Validation** :
+    - ✅ Compte citoyen : Formulaire info perso uniquement
+    - ✅ Compte entreprise : Formulaire info perso + info entreprise
+    - ✅ Champs obligatoires entreprise : legal_name, tax_id, address, city (validation Zod)
+    - ✅ Un SEUL bouton "Sauvegarder les changements" (pas de bouton entreprise séparé)
+    - ✅ Design identique au template (Card, layout, espacements)
+    - ✅ Toast success après sauvegarde
+    - ✅ Responsive mobile/tablet/desktop
 - [ ] **TASK-M01-016** : Page /reset-password (45min)
   - Form request reset utilisant `resetPassword(email)`
   - Page confirm reset (token param URL)
