@@ -82,17 +82,19 @@ class UserCreate(BaseModel):
     @validator('citizen_profile')
     def validate_citizen_profile(cls, v, values):
         """Validate citizen profile based on role"""
-        # NOTE: citizen_profile is OPTIONAL for MODULE_01 (basic registration)
-        # Will be completed in MODULE_03 (User Profile Management)
-        # Validators disabled to allow registration without extended profiles
+        # CitizenProfile is required when registering as citizen
+        # Will be provided by auth.py registration endpoint
+        if values.get('role') == UserRole.citizen and not v:
+            raise ValueError("Citizen profile is required for citizen role")
         return v
 
     @validator('business_profile')
     def validate_business_profile(cls, v, values):
         """Validate business profile based on role"""
-        # NOTE: business_profile is OPTIONAL for MODULE_01 (basic registration)
-        # Will be completed in MODULE_03 (User Profile Management)
-        # Validators disabled to allow registration without extended profiles
+        # BusinessProfile is required when registering as business
+        # Will be provided by auth.py registration endpoint
+        if values.get('role') == UserRole.business and not v:
+            raise ValueError("Business profile is required for business role")
         return v
 
 

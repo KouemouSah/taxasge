@@ -14,7 +14,15 @@ from loguru import logger
 
 from app.services.auth_service import get_auth_service
 from app.services.session_service import get_session_service
-from app.models.user import UserCreate, UserResponse, UserProfile, UserRole, UserStatus
+from app.models.user import (
+    UserCreate,
+    UserResponse,
+    UserProfile,
+    CitizenProfile,
+    BusinessProfile,
+    UserRole,
+    UserStatus,
+)
 from app.models.auth_models import (
     TokenRefreshRequest,
     LogoutRequest,
@@ -41,6 +49,37 @@ class RegisterRequest(BaseModel):
     last_name: str = Field(..., min_length=2, max_length=50, description="Last name")
     phone: Optional[str] = Field(None, description="Phone number")
     role: UserRole = Field(default=UserRole.citizen, description="User role")
+
+    # Citizen-specific fields (optional, only for role=citizen)
+    national_id: Optional[str] = Field(None, max_length=20, description="National ID number (citizen only)")
+    birth_date: Optional[str] = Field(None, description="Date of birth YYYY-MM-DD (citizen only)")
+    gender: Optional[str] = Field(None, pattern="^(M|F|O)$", description="Gender M/F/O (citizen only)")
+    marital_status: Optional[str] = Field(None, pattern="^(single|married|divorced|widowed)$", description="Marital status (citizen only)")
+    occupation: Optional[str] = Field(None, max_length=100, description="Professional occupation (citizen only)")
+
+    # Business-specific fields (required for role=business)
+    business_name: Optional[str] = Field(None, min_length=2, max_length=100, description="Business name (required for business)")
+    business_type: Optional[str] = Field(None, pattern="^(sole_proprietor|corporation|partnership|cooperative|ngo)$", description="Business entity type (required for business)")
+    tax_id: Optional[str] = Field(None, max_length=20, description="Business tax ID (business only)")
+    registration_number: Optional[str] = Field(None, max_length=30, description="Business registration number (business only)")
+    industry: Optional[str] = Field(None, max_length=100, description="Industry sector (business only)")
+    employee_count: Optional[int] = Field(None, ge=0, le=10000, description="Number of employees (business only)")
+    annual_revenue: Optional[float] = Field(None, ge=0, description="Annual revenue in XAF (business only)")
+    website: Optional[str] = Field(None, description="Business website URL (business only)")
+
+    @validator('business_name')
+    def validate_business_name(cls, v, values):
+        """Require business_name for business role"""
+        if values.get('role') == UserRole.business and not v:
+            raise ValueError("Business name is required for business registration")
+        return v
+
+    @validator('business_type')
+    def validate_business_type(cls, v, values):
+        """Require business_type for business role"""
+        if values.get('role') == UserRole.business and not v:
+            raise ValueError("Business type is required for business registration")
+        return v
 
 
 class TokenResponse(BaseModel):
@@ -208,7 +247,7 @@ async def register(
         # Get client info
         ip_address, user_agent = get_client_info(req)
 
-        # Create UserCreate model
+        # Create base UserProfile
         user_profile = UserProfile(
             first_name=request.first_name,
             last_name=request.last_name,
@@ -216,11 +255,49 @@ async def register(
             language="es",  # Default to Spanish
         )
 
+        # Create role-specific profiles
+        citizen_profile = None
+        business_profile = None
+
+        if request.role == UserRole.citizen:
+            # Create CitizenProfile with extended fields
+            citizen_profile = CitizenProfile(
+                first_name=request.first_name,
+                last_name=request.last_name,
+                phone=request.phone,
+                language="es",
+                national_id=request.national_id,
+                birth_date=datetime.fromisoformat(request.birth_date) if request.birth_date else None,
+                gender=request.gender,
+                marital_status=request.marital_status,
+                occupation=request.occupation,
+            )
+
+        elif request.role == UserRole.business:
+            # Create BusinessProfile with extended fields
+            business_profile = BusinessProfile(
+                first_name=request.first_name,
+                last_name=request.last_name,
+                phone=request.phone,
+                language="es",
+                business_name=request.business_name,
+                business_type=request.business_type,
+                tax_id=request.tax_id,
+                registration_number=request.registration_number,
+                industry=request.industry,
+                employee_count=request.employee_count,
+                annual_revenue=request.annual_revenue,
+                website=request.website,
+            )
+
+        # Create UserCreate model with role-specific profiles
         user_data = UserCreate(
             email=request.email,
             password=request.password,
             role=request.role,
             profile=user_profile,
+            citizen_profile=citizen_profile,
+            business_profile=business_profile,
         )
 
         # Register user via AuthService
