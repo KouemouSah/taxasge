@@ -762,8 +762,8 @@ class AuthService:
         Source: .github/docs-internal/Documentations/Backend/API_REFERENCE.md
         """
         try:
-            # Find user by ID
-            user = await self.user_repo.find_by_id(user_id)
+            # Find user by ID (use direct PostgreSQL to bypass Supabase RLS)
+            user = await self.user_repo.find_by_id(user_id, use_supabase=False)
             if not user:
                 logger.warning(f"Verification email requested for non-existent user: {user_id}")
                 return False
