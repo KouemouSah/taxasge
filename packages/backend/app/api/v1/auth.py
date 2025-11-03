@@ -6,7 +6,7 @@ Updated to use AuthService, PasswordService, and JWTService
 
 from fastapi import APIRouter, HTTPException, Depends, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel, Field, EmailStr, validator
+from pydantic import BaseModel, Field, EmailStr, validator, root_validator
 from typing import Optional, Dict, Any, List, Union
 from datetime import datetime
 from enum import Enum
@@ -67,19 +67,16 @@ class RegisterRequest(BaseModel):
     annual_revenue: Optional[float] = Field(None, ge=0, description="Annual revenue in XAF (business only)")
     website: Optional[str] = Field(None, description="Business website URL (business only)")
 
-    @validator('business_name')
-    def validate_business_name(cls, v, values):
-        """Require business_name for business role"""
-        if values.get('role') == UserRole.business and not v:
-            raise ValueError("Business name is required for business registration")
-        return v
-
-    @validator('business_type')
-    def validate_business_type(cls, v, values):
-        """Require business_type for business role"""
-        if values.get('role') == UserRole.business and not v:
-            raise ValueError("Business type is required for business registration")
-        return v
+    @root_validator
+    def validate_business_fields(cls, values):
+        """Validate business fields are provided for business role"""
+        role = values.get('role')
+        if role == UserRole.business:
+            if not values.get('business_name'):
+                raise ValueError("Business name is required for business registration")
+            if not values.get('business_type'):
+                raise ValueError("Business type is required for business registration")
+        return values
 
 
 class TokenResponse(BaseModel):
