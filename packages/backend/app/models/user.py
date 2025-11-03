@@ -156,6 +156,7 @@ class UserResponse(BaseModel):
     created_at: datetime = Field(..., description="Account creation date")
     updated_at: datetime = Field(..., description="Last update date")
     last_login: Optional[datetime] = Field(None, description="Last login date")
+    email_verified: Optional[bool] = Field(default=False, description="Email verification status")
 
     # Two-Factor Authentication fields (TASK-M01-011)
     two_factor_enabled: Optional[bool] = Field(default=False, description="Whether 2FA is enabled")
