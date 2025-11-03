@@ -4,6 +4,13 @@
 
 Le backend TaxasGE utilise Gmail SMTP pour envoyer des emails de vérification. **Sans cette configuration, l'inscription utilisateur ÉCHOUERA.**
 
+## 🔑 Secret Manager
+
+**NOM DU SECRET**: `smtp-password` (lowercase avec tiret)
+**IMPORTANT**: Le code charge depuis Google Cloud Secret Manager avec ce nom exact.
+
+Le backend récupère automatiquement le secret via `app/core/secrets.py` qui appelle `get_secret("smtp-password")`.
+
 ---
 
 ## 🔴 Symptômes si SMTP non configuré
@@ -32,10 +39,9 @@ Rolled back user creation due to email failure
 
 ---
 
-## 🔧 Étape 1: Créer un Mot de Passe d'Application Gmail
+## 🔧 Étape 1: Obtenir le Mot de Passe Gmail
 
-### Pourquoi?
-Gmail ne permet plus l'authentification avec le mot de passe du compte pour les applications tierces. Il faut générer un **App Password** spécifique.
+Vous utilisez votre mot de passe Gmail standard (pas App Password).
 
 ### Procédure:
 
@@ -66,7 +72,7 @@ Gmail ne permet plus l'authentification avec le mot de passe du compte pour les 
 
 2. **Créez un nouveau secret**:
    - Cliquez sur "CREATE SECRET"
-   - **Name**: `SMTP_PASSWORD_GMAIL`
+   - **Name**: `smtp-password`
    - **Secret value**: Collez le mot de passe d'application Gmail (16 caractères)
    - Cliquez sur "CREATE SECRET"
 
@@ -83,19 +89,19 @@ gcloud config set project taxasge-dev
 
 # Créer le secret
 echo -n "votre-mot-de-passe-app-gmail-16-chars" | \
-  gcloud secrets create SMTP_PASSWORD_GMAIL \
+  gcloud secrets create smtp-password \
   --data-file=- \
   --replication-policy="automatic"
 
 # Vérifier
-gcloud secrets versions access latest --secret="SMTP_PASSWORD_GMAIL"
+gcloud secrets versions access latest --secret="smtp-password"
 ```
 
 ---
 
 ## 🔄 Étape 3: Redéployer le Backend
 
-Le backend charge les secrets au démarrage. Après avoir ajouté `SMTP_PASSWORD_GMAIL`:
+Le backend charge les secrets au démarrage. Après avoir ajouté `smtp-password`:
 
 ### Pour Staging (Cloud Run):
 ```bash
@@ -108,7 +114,7 @@ git push origin develop
 ```bash
 # Mettre à jour .env
 cd packages/backend
-echo "SMTP_PASSWORD=$(gcloud secrets versions access latest --secret='SMTP_PASSWORD_GMAIL')" >> .env
+echo "SMTP_PASSWORD=$(gcloud secrets versions access latest --secret='smtp-password')" >> .env
 
 # Redémarrer le serveur
 uvicorn main:app --reload
@@ -148,7 +154,7 @@ L'administrateur doit ajouter SMTP_PASSWORD dans Google Cloud Secret Manager.
 
 **Solution**:
 1. Régénérez un nouveau mot de passe d'application Gmail
-2. Mettez à jour le secret `SMTP_PASSWORD_GMAIL` dans Secret Manager
+2. Mettez à jour le secret `smtp-password` dans Secret Manager
 3. Redéployez le backend
 
 ### Problème: "Connection refused"
@@ -161,7 +167,7 @@ L'administrateur doit ajouter SMTP_PASSWORD dans Google Cloud Secret Manager.
 
 ### Problème: "Secret not found"
 
-**Cause**: Le secret `SMTP_PASSWORD_GMAIL` n'existe pas dans Secret Manager
+**Cause**: Le secret `smtp-password` n'existe pas dans Secret Manager
 
 **Solution**:
 ```bash
@@ -176,7 +182,7 @@ gcloud secrets list --project=taxasge-dev | grep SMTP
 **Solution**:
 ```bash
 # Donner accès au service account
-gcloud secrets add-iam-policy-binding SMTP_PASSWORD_GMAIL \
+gcloud secrets add-iam-policy-binding smtp-password \
   --member="serviceAccount:backend-service@taxasge-dev.iam.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor"
 ```
@@ -190,7 +196,7 @@ gcloud secrets add-iam-policy-binding SMTP_PASSWORD_GMAIL \
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USERNAME=libressai@gmail.com
-SMTP_PASSWORD=<from Google Cloud Secret Manager: SMTP_PASSWORD_GMAIL>
+SMTP_PASSWORD=<from Google Cloud Secret Manager: smtp-password>
 SMTP_USE_TLS=true
 ```
 
@@ -209,7 +215,7 @@ SMTP_PASSWORD=from_secret_manager  # ← REMPLACER par accès Secret Manager
 
 ## 🔗 Ressources
 
-- [Gmail App Passwords](https://support.google.com/accounts/answer/185833)
+- [mot de passe Gmails](https://support.google.com/accounts/answer/185833)
 - [Google Cloud Secret Manager](https://cloud.google.com/secret-manager/docs)
 - [FastAPI Email Sending](https://fastapi.tiangolo.com/)
 - [Python smtplib Documentation](https://docs.python.org/3/library/smtplib.html)

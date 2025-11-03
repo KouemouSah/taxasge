@@ -152,10 +152,26 @@ class Settings(BaseSettings):
     SMTP_HOST: Optional[str] = Field(default=None, env="SMTP_HOST")
     SMTP_PORT: int = Field(default=587, env="SMTP_PORT")
     SMTP_USERNAME: Optional[str] = Field(default=None, env="SMTP_USERNAME")
-    SMTP_PASSWORD: Optional[str] = Field(default=None, env="SMTP_PASSWORD")
     SMTP_USE_TLS: bool = Field(default=True, env="SMTP_USE_TLS")
     SMTP_FROM_EMAIL: Optional[str] = Field(default=None, env="SMTP_FROM_EMAIL")
     SMTP_FROM_NAME: str = Field(default="TaxasGE Platform", env="SMTP_FROM_NAME")
+
+    # SMTP_PASSWORD loaded from Google Secret Manager (secret: smtp-password)
+    # Fallback to env var for local development
+    @property
+    def SMTP_PASSWORD(self) -> Optional[str]:
+        """Load SMTP password from Google Cloud Secret Manager (secret: smtp-password)"""
+        try:
+            from app.core.secrets import get_smtp_password
+            secret_pass = get_smtp_password()
+            if secret_pass:
+                return secret_pass
+        except Exception:
+            pass  # Fallback to env var
+
+        # Fallback for local development
+        import os
+        return os.getenv("SMTP_PASSWORD")
     
     # ========================================================================
     # CACHE SETTINGS
