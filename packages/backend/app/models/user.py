@@ -32,7 +32,7 @@ class UserProfile(BaseModel):
     """Base user profile information"""
     first_name: str = Field(..., min_length=2, max_length=50, description="User first name")
     last_name: str = Field(..., min_length=2, max_length=50, description="User last name")
-    phone: Optional[str] = Field(None, pattern=r"^\+[1-9]\d{1,14}$", description="International phone number")
+    phone: Optional[str] = Field(None, pattern=r"^(222|555|551)\d{6}$", description="Guinée Équatoriale phone (9 digits: 222/555/551 + 6 digits)")
     address: Optional[str] = Field(None, max_length=200, description="User address")
     city: Optional[str] = Field(None, max_length=100, description="City")
     language: str = Field(default="es", pattern="^(es|fr|en)$", description="Preferred language")
