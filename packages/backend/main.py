@@ -275,6 +275,24 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ Users router not available: {e}")
 
+# Try to load two_factor router (CRITICAL - MODULE_02)
+try:
+    from app.api.v1 import two_factor
+    app.include_router(two_factor.router, prefix="/api/v1/auth", tags=["two-factor-authentication"])
+    routers_loaded.append("two_factor")
+    logger.info("✅ Two-Factor Authentication router loaded")
+except ImportError as e:
+    logger.error(f"❌ Two-Factor Authentication router not available: {e}")
+
+# Try to load admin router (migrations, maintenance)
+try:
+    from app.api.v1 import admin
+    app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
+    routers_loaded.append("admin")
+    logger.info("✅ Admin router loaded")
+except ImportError as e:
+    logger.warning(f"⚠️ Admin router not available: {e}")
+
 # Try to load taxes router (optional - has known issues)
 try:
     from app.api.v1 import taxes

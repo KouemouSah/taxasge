@@ -10,6 +10,7 @@ import os
 import secrets
 from typing import List, Optional, Dict, Any
 from functools import lru_cache
+from loguru import logger
 
 from pydantic_settings import BaseSettings
 from pydantic import validator, Field
@@ -27,7 +28,30 @@ class Settings(BaseSettings):
     Configuration de base pour TaxasGE Backend
     Utilise Pydantic pour validation et gestion des types
     """
-    
+
+    def __init__(self, **kwargs):
+        """Initialize settings and load secrets from Google Cloud Secret Manager"""
+        super().__init__(**kwargs)
+
+        # Load SMTP_PASSWORD from Secret Manager (secret: smtp-password)
+        if not self.SMTP_PASSWORD:
+            try:
+                from app.core.secrets import get_smtp_password
+                secret_pass = get_smtp_password()
+                if secret_pass:
+                    self.SMTP_PASSWORD = secret_pass
+                    logger.info("✅ SMTP password loaded from Secret Manager")
+                else:
+                    # Fallback to env var
+                    self.SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+                    if self.SMTP_PASSWORD:
+                        logger.warning("⚠️ SMTP password loaded from env var (local dev)")
+                    else:
+                        logger.error("❌ SMTP_PASSWORD not configured (emails will fail)")
+            except Exception as e:
+                logger.error(f"❌ Failed to load SMTP password from Secret Manager: {e}")
+                self.SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+
     # ========================================================================
     # APPLICATION SETTINGS
     # ========================================================================
@@ -156,22 +180,9 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: Optional[str] = Field(default=None, env="SMTP_FROM_EMAIL")
     SMTP_FROM_NAME: str = Field(default="TaxasGE Platform", env="SMTP_FROM_NAME")
 
-    # SMTP_PASSWORD loaded from Google Secret Manager (secret: smtp-password)
-    # Fallback to env var for local development
-    @property
-    def SMTP_PASSWORD(self) -> Optional[str]:
-        """Load SMTP password from Google Cloud Secret Manager (secret: smtp-password)"""
-        try:
-            from app.core.secrets import get_smtp_password
-            secret_pass = get_smtp_password()
-            if secret_pass:
-                return secret_pass
-        except Exception:
-            pass  # Fallback to env var
-
-        # Fallback for local development
-        import os
-        return os.getenv("SMTP_PASSWORD")
+    # SMTP_PASSWORD: Load from Secret Manager at startup
+    # Will be set by __init__ method below
+    SMTP_PASSWORD: Optional[str] = None
     
     # ========================================================================
     # CACHE SETTINGS
