@@ -11,6 +11,8 @@ import asyncpg
 
 from app.core.auth import get_current_user
 from app.core.database import get_db
+from app.core.secrets import validate_secrets_available
+from app.config import get_settings
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 security = HTTPBearer()
@@ -63,4 +65,50 @@ async def migrate_grandfather_users(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Migration failed: {str(e)}"
+        )
+
+
+@router.get("/diagnostic/secrets", response_model=Dict[str, Any])
+async def check_secrets_configuration(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Diagnostic endpoint: Check secrets configuration status
+
+    SECURITY NOTE: Does NOT expose secret values, only status
+    ADMIN ONLY - Requires authentication
+    """
+    try:
+        user_id = current_user["sub"]
+        logger.info(f"Secrets diagnostic requested by user {user_id}")
+
+        # Validate secrets availability
+        secrets_status = validate_secrets_available()
+
+        # Get SMTP configuration (without password)
+        settings = get_settings()
+        smtp_config = {
+            "smtp_host": settings.SMTP_HOST,
+            "smtp_port": settings.SMTP_PORT,
+            "smtp_username": settings.SMTP_USERNAME,
+            "smtp_from_email": settings.SMTP_FROM_EMAIL,
+            "smtp_from_name": settings.SMTP_FROM_NAME,
+            "smtp_use_tls": settings.SMTP_USE_TLS,
+            "smtp_password_configured": bool(settings.SMTP_PASSWORD and len(settings.SMTP_PASSWORD) > 0),
+            "smtp_password_length": len(settings.SMTP_PASSWORD) if settings.SMTP_PASSWORD else 0
+        }
+
+        return {
+            "success": True,
+            "secrets_status": secrets_status,
+            "smtp_configuration": smtp_config,
+            "message": "Secrets diagnostic completed successfully"
+        }
+
+    except Exception as e:
+        logger.error(f"Secrets diagnostic failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Diagnostic failed: {str(e)}"
         )
