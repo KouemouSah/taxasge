@@ -6,7 +6,7 @@ Updated to use AuthService, PasswordService, and JWTService
 
 from fastapi import APIRouter, HTTPException, Depends, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, validator
 from typing import Optional, Dict, Any, List, Union
 from datetime import datetime
 from enum import Enum
