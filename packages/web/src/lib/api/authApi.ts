@@ -6,6 +6,37 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const AUTH_API_URL = `${API_BASE_URL}/api/v1/auth`
 
+/**
+ * Extract user-friendly error message from API response
+ * Handles FastAPI error formats (detail string or object)
+ */
+function extractErrorMessage(error: any, fallback: string): string {
+  // FastAPI returns errors in multiple formats:
+  // 1. { detail: "Error message" }
+  // 2. { detail: [{ msg: "Error", type: "..." }] }
+  // 3. { message: "Error message" }
+
+  if (typeof error.detail === 'string') {
+    return error.detail
+  }
+
+  if (Array.isArray(error.detail) && error.detail.length > 0) {
+    // Pydantic validation errors
+    const firstError = error.detail[0]
+    return firstError.msg || firstError.message || fallback
+  }
+
+  if (typeof error.detail === 'object' && error.detail.message) {
+    return error.detail.message
+  }
+
+  if (error.message) {
+    return error.message
+  }
+
+  return fallback
+}
+
 interface LoginRequest {
   email: string
   password: string
@@ -122,7 +153,7 @@ async function login(data: LoginRequest): Promise<TokenResponse | TwoFactorLogin
 
   if (!response.ok) {
     const error = await response.json()
-    throw new Error(error.detail || 'Login failed')
+    throw new Error(extractErrorMessage(error, 'Échec de la connexion'))
   }
 
   return response.json()
@@ -143,7 +174,7 @@ async function verify2FA(data: TwoFactorVerifyRequest): Promise<TokenResponse> {
 
   if (!response.ok) {
     const error = await response.json()
-    throw new Error(error.detail || '2FA verification failed')
+    throw new Error(extractErrorMessage(error, 'Échec de la vérification 2FA'))
   }
 
   return response.json()
@@ -163,7 +194,7 @@ async function register(data: RegisterRequest): Promise<TokenResponse> {
 
   if (!response.ok) {
     const error = await response.json()
-    throw new Error(error.detail || 'Registration failed')
+    throw new Error(extractErrorMessage(error, 'Échec de l\'inscription'))
   }
 
   return response.json()
@@ -183,7 +214,7 @@ async function refreshToken(refreshToken: string): Promise<TokenResponse> {
 
   if (!response.ok) {
     const error = await response.json()
-    throw new Error(error.detail || 'Token refresh failed')
+    throw new Error(extractErrorMessage(error, 'Échec du rafraîchissement du token'))
   }
 
   return response.json()
@@ -203,7 +234,7 @@ async function logout(data: LogoutRequest): Promise<LogoutResponse> {
 
   if (!response.ok) {
     const error = await response.json()
-    throw new Error(error.detail || 'Logout failed')
+    throw new Error(extractErrorMessage(error, 'Échec de la déconnexion'))
   }
 
   return response.json()
@@ -223,7 +254,7 @@ async function getProfile(accessToken: string): Promise<UserProfile> {
 
   if (!response.ok) {
     const error = await response.json()
-    throw new Error(error.detail || 'Failed to fetch profile')
+    throw new Error(extractErrorMessage(error, 'Échec du chargement du profil'))
   }
 
   return response.json()
@@ -243,7 +274,7 @@ async function requestPasswordReset(data: PasswordResetRequestRequest): Promise<
 
   if (!response.ok) {
     const error = await response.json()
-    throw new Error(error.detail || 'Password reset request failed')
+    throw new Error(extractErrorMessage(error, 'Échec de la demande de réinitialisation'))
   }
 
   return response.json()
@@ -263,7 +294,7 @@ async function confirmPasswordReset(data: PasswordResetConfirmRequest): Promise<
 
   if (!response.ok) {
     const error = await response.json()
-    throw new Error(error.detail || 'Password reset confirmation failed')
+    throw new Error(extractErrorMessage(error, 'Échec de la réinitialisation du mot de passe'))
   }
 
   return response.json()
@@ -284,7 +315,7 @@ async function verifyEmail(data: EmailVerifyRequest, accessToken: string): Promi
 
   if (!response.ok) {
     const error = await response.json()
-    throw new Error(error.detail || 'Email verification failed')
+    throw new Error(extractErrorMessage(error, 'Échec de la vérification de l\'email'))
   }
 
   return response.json()
@@ -304,7 +335,7 @@ async function resendEmailVerification(accessToken: string): Promise<{ message: 
 
   if (!response.ok) {
     const error = await response.json()
-    throw new Error(error.detail || 'Resend email verification failed')
+    throw new Error(extractErrorMessage(error, 'Échec du renvoi de l\'email de vérification'))
   }
 
   return response.json()
@@ -324,7 +355,7 @@ async function getSessions(accessToken: string): Promise<Session[]> {
 
   if (!response.ok) {
     const error = await response.json()
-    throw new Error(error.detail || 'Failed to fetch sessions')
+    throw new Error(extractErrorMessage(error, 'Échec du chargement des sessions'))
   }
 
   return response.json()
@@ -381,7 +412,7 @@ async function enable2FA(accessToken: string): Promise<{
 
   if (!response.ok) {
     const error = await response.json()
-    throw new Error(error.detail || 'Failed to enable 2FA')
+    throw new Error(extractErrorMessage(error, 'Impossible d\'activer la 2FA'))
   }
 
   return response.json()
@@ -406,7 +437,7 @@ async function verify2FASetup(accessToken: string, data: { secret: string; code:
 
   if (!response.ok) {
     const error = await response.json()
-    throw new Error(error.detail || 'Failed to verify 2FA setup')
+    throw new Error(extractErrorMessage(error, 'Échec de la vérification de la configuration 2FA'))
   }
 
   return response.json()
@@ -428,7 +459,7 @@ async function disable2FA(accessToken: string, password: string): Promise<{ mess
 
   if (!response.ok) {
     const error = await response.json()
-    throw new Error(error.detail || 'Failed to disable 2FA')
+    throw new Error(extractErrorMessage(error, 'Impossible de désactiver la 2FA'))
   }
 
   return response.json()
@@ -451,7 +482,7 @@ async function get2FAStatus(accessToken: string): Promise<{
 
   if (!response.ok) {
     const error = await response.json()
-    throw new Error(error.detail || 'Failed to fetch 2FA status')
+    throw new Error(extractErrorMessage(error, 'Échec du chargement du statut 2FA'))
   }
 
   return response.json()

@@ -59,7 +59,10 @@ class AuthService:
             # Check if user already exists
             existing_user = await self.user_repo.find_by_email(user_data.email)
             if existing_user:
-                raise Exception("User with this email already exists")
+                raise Exception(
+                    f"Un compte existe déjà avec l'adresse email {user_data.email}. "
+                    "Utilisez 'Mot de passe oublié' pour récupérer votre accès."
+                )
 
             # Validate password strength
             password_check = self.password_service.check_password_strength(user_data.password)
@@ -110,13 +113,34 @@ class AuthService:
                 # Re-raise with user-friendly message
                 error_msg = str(email_error)
                 if "SMTPAuthenticationError" in error_msg or "authentication" in error_msg.lower():
-                    raise Exception("Erreur de configuration email du serveur. Contactez l'administrateur.")
+                    raise Exception(
+                        "Erreur de configuration du serveur email. "
+                        "L'administrateur doit configurer le mot de passe SMTP dans les secrets Google Cloud. "
+                        "Contactez le support technique."
+                    )
                 elif "SMTPConnectError" in error_msg or "connection" in error_msg.lower():
-                    raise Exception("Impossible de se connecter au serveur email. Réessayez plus tard.")
+                    raise Exception(
+                        "Impossible de se connecter au serveur email. "
+                        "Le service d'envoi d'emails est temporairement indisponible. "
+                        "Réessayez dans quelques minutes."
+                    )
                 elif "invalid" in error_msg.lower() or "not exist" in error_msg.lower():
-                    raise Exception(f"Adresse email invalide ou inexistante: {user.email}")
+                    raise Exception(
+                        f"L'adresse email {user.email} semble invalide ou inexistante. "
+                        "Vérifiez que vous avez bien saisi votre email."
+                    )
+                elif "535" in error_msg or "password" in error_msg.lower():
+                    # Gmail App Password not configured
+                    raise Exception(
+                        "Le mot de passe d'application Gmail n'est pas configuré. "
+                        "L'administrateur doit ajouter SMTP_PASSWORD dans Google Cloud Secret Manager. "
+                        "Contactez le support technique."
+                    )
                 else:
-                    raise Exception(f"Erreur lors de l'envoi de l'email de vérification: {error_msg}")
+                    raise Exception(
+                        f"Erreur lors de l'envoi de l'email de vérification: {error_msg}. "
+                        "Vérifiez votre adresse email ou contactez le support."
+                    )
 
 
 
