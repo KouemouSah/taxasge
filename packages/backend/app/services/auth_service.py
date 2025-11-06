@@ -13,7 +13,7 @@ from app.repositories.refresh_token_repository import RefreshTokenRepository
 from app.services.password_service import get_password_service
 from app.services.jwt_service import get_jwt_service
 from app.services.email_service import EmailService
-from app.models.user import User, UserCreate, UserResponse, UserRole, UserStatus
+from app.models.user import UserCreate, UserResponse, UserRole, UserStatus
 from app.models.auth_models import (
     SessionCreate,
     RefreshTokenCreate,
@@ -86,12 +86,10 @@ class AuthService:
             logger.info(f"User registered: {user.email} (ID: {user.id})")
 
             # Send verification email (BLOCKING - email must succeed for registration to complete)
-            # Pass user object directly to avoid transaction timing issues
             try:
                 email_sent = await self.send_verification_email(
                     user_id=user.id,
-                    email=user.email,
-                    user=user
+                    email=user.email
                 )
 
                 if not email_sent:
@@ -744,7 +742,7 @@ class AuthService:
     # EMAIL VERIFICATION METHODS (MODULE_02)
     # =========================================================================
 
-    async def send_verification_email(self, user_id: str, email: str, user: Optional[User] = None) -> bool:
+    async def send_verification_email(self, user_id: str, email: str) -> bool:
         """
         Generate verification code and send verification email
 
@@ -757,7 +755,6 @@ class AuthService:
         Args:
             user_id: User UUID
             email: User email address
-            user: Optional User object (if not provided, will lookup by user_id)
 
         Returns:
             bool: True if email sent successfully, False otherwise
@@ -767,17 +764,14 @@ class AuthService:
         try:
             logger.info(f"[EMAIL_DEBUG] Starting send_verification_email for user_id={user_id}, email={email}")
 
-            # Use provided user object or find by ID (use direct PostgreSQL to bypass Supabase RLS)
-            if user is None:
-                logger.info(f"[EMAIL_DEBUG] No user object provided, calling find_by_id(user_id={user_id}, use_supabase=False)")
-                user = await self.user_repo.find_by_id(user_id, use_supabase=False)
+            # Find user by ID (use direct PostgreSQL to bypass Supabase RLS)
+            logger.info(f"[EMAIL_DEBUG] Calling find_by_id(user_id={user_id}, use_supabase=False)")
+            user = await self.user_repo.find_by_id(user_id, use_supabase=False)
 
-                if not user:
-                    logger.error(f"[EMAIL_DEBUG] User NOT FOUND in database: user_id={user_id}")
-                    logger.warning(f"Verification email requested for non-existent user: {user_id}")
-                    return False
-            else:
-                logger.info(f"[EMAIL_DEBUG] User object provided directly, skipping database lookup")
+            if not user:
+                logger.error(f"[EMAIL_DEBUG] User NOT FOUND in database: user_id={user_id}")
+                logger.warning(f"Verification email requested for non-existent user: {user_id}")
+                return False
 
             logger.info(f"[EMAIL_DEBUG] User found: id={user.id}, email={user.email}, status={user.status}")
 
