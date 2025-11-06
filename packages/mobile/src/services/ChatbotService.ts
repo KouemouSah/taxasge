@@ -2,16 +2,24 @@
  * TaxasGE Mobile - Chatbot Service
  * Service pour gérer le chatbot FAQ local (MVP1)
  * Date: 2025-10-13
+ * Updated: 2025-11-06 - Fixed SQL queries to use TranslationService
+ *
+ * CRITICAL FIXES:
+ * - fiscal_services only has name_es (Spanish) - name_fr/name_en DON'T EXIST
+ * - FR/EN translations are in entity_translations table
+ * - Use TranslationService for all multilingual content
+ * - Use proper JOINs for related data (ministries, categories, etc.)
  *
  * Stratégie:
  * - Matching par regex patterns (rapide, 10-50ms)
  * - Recherche FTS5 en fallback (si aucun pattern match)
  * - Stateless (pas de sauvegarde conversations en MVP1)
- * - Support multilingue (ES/FR/EN)
+ * - Support multilingue (ES/FR/EN via TranslationService)
  */
 
 import { db } from '../database/DatabaseManager';
 import { QUERIES, TABLE_NAMES } from '../database/schema';
+import TranslationService from './TranslationService';
 import {
   ChatbotFAQ,
   ChatbotFAQParsed,
@@ -519,34 +527,46 @@ class ChatbotService {
     try {
       const normalizedQuery = normalizeText(query);
 
-      // Recherche LIKE dans les noms de services (multilingue)
+      // Recherche LIKE dans les noms de services (Spanish only) + keywords
       const likePattern = `%${normalizedQuery}%`;
 
+      // CORRECTED QUERY: Only select columns that actually exist
+      // fiscal_services has: id, service_code, name_es, description_es, tasa_expedicion, tasa_renovacion
+      // Related data comes from JOINs
       const services = await db.query(
         `SELECT
-          id,
-          name_es,
-          name_fr,
-          name_en,
-          expedition_amount,
-          renewal_amount,
-          required_documents_es,
-          required_documents_fr,
-          required_documents_en,
-          procedure_es,
-          procedure_fr,
-          procedure_en,
-          ministry_es,
-          sector_es,
-          category_es
-        FROM fiscal_services
-        WHERE
-          name_es LIKE ? OR
-          name_fr LIKE ? OR
-          name_en LIKE ? OR
-          palabras_clave LIKE ?
+          fs.id,
+          fs.service_code,
+          fs.name_es,
+          fs.description_es,
+          fs.tasa_expedicion,
+          fs.tasa_renovacion,
+          fs.processing_time_days,
+          fs.service_type,
+          c.name_es as category_name,
+          c.category_code,
+          m.name_es as ministry_name,
+          m.ministry_code
+        FROM fiscal_services fs
+        LEFT JOIN categories c ON fs.category_id = c.id
+        LEFT JOIN sectors s ON c.sector_id = s.id
+        LEFT JOIN ministries m ON (s.ministry_id = m.id OR c.ministry_id = m.id)
+        WHERE fs.status = 'active'
+          AND (
+            fs.name_es LIKE ? OR
+            fs.description_es LIKE ? OR
+            fs.service_code LIKE ? OR
+            c.name_es LIKE ? OR
+            m.name_es LIKE ? OR
+            fs.id IN (
+              SELECT fiscal_service_id
+              FROM service_keywords
+              WHERE keyword LIKE ?
+              LIMIT 50
+            )
+          )
         LIMIT ?`,
-        [likePattern, likePattern, likePattern, likePattern, limit]
+        [likePattern, likePattern, likePattern, likePattern, likePattern, likePattern, limit]
       );
 
       return services;
@@ -558,6 +578,7 @@ class ChatbotService {
 
   /**
    * Génère une réponse dynamique à partir des services trouvés en BD
+   * UPDATED: 2025-11-06 - Uses TranslationService for multilingual support
    */
   async generateDynamicServiceResponse(
     services: any[],
@@ -572,106 +593,127 @@ class ChatbotService {
     // Introduction aléatoire
     const intro = getRandomIntro(language);
 
-    // Construire la réponse avec les services trouvés
+    // Translate all service names in parallel for performance
+    const translatedServices = await Promise.all(
+      services.map(async (svc) => {
+        const serviceName = await TranslationService.translate(
+          'service',
+          svc.service_code,
+          'name',
+          language,
+          svc.name_es
+        );
+
+        const ministryName = svc.ministry_name
+          ? await TranslationService.translate(
+              'ministry',
+              svc.ministry_code,
+              'name',
+              language,
+              svc.ministry_name
+            )
+          : '';
+
+        const categoryName = svc.category_name
+          ? await TranslationService.translate(
+              'category',
+              svc.category_code,
+              'name',
+              language,
+              svc.category_name
+            )
+          : '';
+
+        return {
+          ...svc,
+          translatedName: serviceName,
+          translatedMinistry: ministryName,
+          translatedCategory: categoryName,
+        };
+      })
+    );
+
+    // Build response text based on language
     let responseText = '';
 
-    if (language === 'es') {
-      responseText = `${intro}\n\n🔍 **Encontré ${services.length} servicio(s) fiscal(es):**\n\n`;
-      services.forEach((svc, idx) => {
-        responseText += `**${idx + 1}. ${svc.name_es}**\n`;
-        responseText += `💰 Expedición: ${svc.expedition_amount ? svc.expedition_amount + ' XAF' : 'Consultar'}\n`;
-        if (svc.renewal_amount) {
-          responseText += `🔄 Renovación: ${svc.renewal_amount} XAF\n`;
-        }
-        responseText += `🏛️ ${svc.ministry_es}\n`;
+    const translations = {
+      es: {
+        found: 'Encontré',
+        services: 'servicio(s) fiscal(es)',
+        expedition: 'Expedición',
+        renewal: 'Renovación',
+        consult: 'Consultar',
+        processing: 'Plazo',
+        days: 'días',
+        category: 'Categoría',
+        viewDetails: 'Ver detalles',
+        moreResults: 'Hay más resultados disponibles. Refina tu búsqueda para ver servicios específicos.',
+      },
+      fr: {
+        found: 'Trouvé',
+        services: 'service(s) fiscal(aux)',
+        expedition: 'Expédition',
+        renewal: 'Renouvellement',
+        consult: 'Consulter',
+        processing: 'Délai',
+        days: 'jours',
+        category: 'Catégorie',
+        viewDetails: 'Voir détails',
+        moreResults: 'Il y a plus de résultats disponibles. Affinez votre recherche pour voir des services spécifiques.',
+      },
+      en: {
+        found: 'Found',
+        services: 'fiscal service(s)',
+        expedition: 'Expedition',
+        renewal: 'Renewal',
+        consult: 'Consult',
+        processing: 'Processing',
+        days: 'days',
+        category: 'Category',
+        viewDetails: 'View details',
+        moreResults: 'There are more results available. Refine your search to see specific services.',
+      },
+    };
 
-        if (svc.required_documents_es) {
-          const docs = svc.required_documents_es.split(',').slice(0, 3).join(', ');
-          responseText += `📄 Documentos: ${docs}${svc.required_documents_es.split(',').length > 3 ? '...' : ''}\n`;
-        }
+    const t = translations[language];
 
-        if (svc.procedure_es) {
-          const procedures = svc.procedure_es.split('\n').slice(0, 3);
-          if (procedures.length > 0) {
-            responseText += `📋 Procedimiento:\n${procedures.map(p => `  • ${p}`).join('\n')}\n`;
-            if (svc.procedure_es.split('\n').length > 3) {
-              responseText += `  • ...\n`;
-            }
-          }
-        }
+    responseText = `${intro}\n\n🔍 **${t.found} ${services.length} ${t.services}:**\n\n`;
 
-        responseText += '\n';
-      });
+    translatedServices.forEach((svc, idx) => {
+      // Service name with link
+      responseText += `**${idx + 1}. ${svc.translatedName}**\n`;
 
-      if (services.length === 5) {
-        responseText += '💡 _Hay más resultados disponibles. Refina tu búsqueda para ver servicios específicos._';
+      // Costs (use correct field names: tasa_expedicion/tasa_renovacion)
+      if (svc.tasa_expedicion !== null && svc.tasa_expedicion !== undefined) {
+        responseText += `💰 ${t.expedition}: ${svc.tasa_expedicion > 0 ? svc.tasa_expedicion + ' XAF' : t.consult}\n`;
       }
-    } else if (language === 'fr') {
-      responseText = `${intro}\n\n🔍 **Trouvé ${services.length} service(s) fiscal(aux):**\n\n`;
-      services.forEach((svc, idx) => {
-        responseText += `**${idx + 1}. ${svc.name_fr || svc.name_es}**\n`;
-        responseText += `💰 Expédition: ${svc.expedition_amount ? svc.expedition_amount + ' XAF' : 'Consulter'}\n`;
-        if (svc.renewal_amount) {
-          responseText += `🔄 Renouvellement: ${svc.renewal_amount} XAF\n`;
-        }
-        responseText += `🏛️ ${svc.ministry_es}\n`;
 
-        const docs = svc.required_documents_fr || svc.required_documents_es;
-        if (docs) {
-          const docList = docs.split(',').slice(0, 3).join(', ');
-          responseText += `📄 Documents: ${docList}${docs.split(',').length > 3 ? '...' : ''}\n`;
-        }
-
-        const procedureField = svc.procedure_fr || svc.procedure_es;
-        if (procedureField) {
-          const procedures = procedureField.split('\n').slice(0, 3);
-          if (procedures.length > 0) {
-            responseText += `📋 Procédure:\n${procedures.map(p => `  • ${p}`).join('\n')}\n`;
-            if (procedureField.split('\n').length > 3) {
-              responseText += `  • ...\n`;
-            }
-          }
-        }
-
-        responseText += '\n';
-      });
-
-      if (services.length === 5) {
-        responseText += '💡 _Il y a plus de résultats disponibles. Affinez votre recherche pour voir des services spécifiques._';
+      if (svc.tasa_renovacion && svc.tasa_renovacion > 0) {
+        responseText += `🔄 ${t.renewal}: ${svc.tasa_renovacion} XAF\n`;
       }
-    } else {
-      responseText = `${intro}\n\n🔍 **Found ${services.length} fiscal service(s):**\n\n`;
-      services.forEach((svc, idx) => {
-        responseText += `**${idx + 1}. ${svc.name_en || svc.name_es}**\n`;
-        responseText += `💰 Expedition: ${svc.expedition_amount ? svc.expedition_amount + ' XAF' : 'Consult'}\n`;
-        if (svc.renewal_amount) {
-          responseText += `🔄 Renewal: ${svc.renewal_amount} XAF\n`;
-        }
-        responseText += `🏛️ ${svc.ministry_es}\n`;
 
-        const docs = svc.required_documents_en || svc.required_documents_es;
-        if (docs) {
-          const docList = docs.split(',').slice(0, 3).join(', ');
-          responseText += `📄 Documents: ${docList}${docs.split(',').length > 3 ? '...' : ''}\n`;
-        }
-
-        const procedureField = svc.procedure_en || svc.procedure_es;
-        if (procedureField) {
-          const procedures = procedureField.split('\n').slice(0, 3);
-          if (procedures.length > 0) {
-            responseText += `📋 Procedure:\n${procedures.map(p => `  • ${p}`).join('\n')}\n`;
-            if (procedureField.split('\n').length > 3) {
-              responseText += `  • ...\n`;
-            }
-          }
-        }
-
-        responseText += '\n';
-      });
-
-      if (services.length === 5) {
-        responseText += '💡 _More results available. Refine your search to see specific services._';
+      // Ministry and Category
+      if (svc.translatedMinistry) {
+        responseText += `🏛️ ${svc.translatedMinistry}\n`;
       }
+
+      if (svc.translatedCategory) {
+        responseText += `📂 ${t.category}: ${svc.translatedCategory}\n`;
+      }
+
+      // Processing time
+      if (svc.processing_time_days && svc.processing_time_days > 0) {
+        responseText += `⏱️ ${t.processing}: ${svc.processing_time_days} ${t.days}\n`;
+      }
+
+      // Navigation link (clickable in UI)
+      responseText += `🔗 [${t.viewDetails}](/service/${svc.service_code})\n`;
+
+      responseText += '\n';
+    });
+
+    if (services.length === 5) {
+      responseText += `💡 _${t.moreResults}_`;
     }
 
     const suggestions: Record<ChatbotLanguage, string[]> = {

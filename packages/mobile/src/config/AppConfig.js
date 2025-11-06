@@ -77,22 +77,61 @@ export const APP_CONFIG = {
 
 /**
  * Tables to sync based on app version
- * Offline: Only 4 public reference tables
- * Pro: All 8+ tables including user data
+ *
+ * UPDATED: 2025-11-06 - Corrected based on Supabase inspection
+ *
+ * Offline: 11 public reference tables (~15,154 records, ~1.4 MB)
+ *   - Core hierarchy: ministries (14), sectors (16), categories (98)
+ *   - Fiscal services: fiscal_services (850)
+ *   - Keywords: service_keywords (100 filtered from 7,014)
+ *   - Templates: procedure_templates (703), procedure_template_steps (2,077),
+ *                document_templates (792)
+ *   - Assignments: service_procedure_assignments (850),
+ *                  service_document_assignments (1,234)
+ *   - Translations: entity_translations (~8,420 filtered from 8,486)
+ *
+ * Pro: All 11 offline tables + user-specific tables
  */
 export const SYNC_TABLES = {
   offline: [
-    'fiscal_services',
-    'entity_translations',
-    'ministries',
-    'categories',
+    // Administrative hierarchy (128 records)
+    'ministries',              // 14 records
+    'sectors',                 // 16 records
+    'categories',              // 98 records
+
+    // Fiscal services (850 records)
+    'fiscal_services',         // 850 records
+
+    // Keywords (100 records - FILTERED from 7,014)
+    'service_keywords',        // Top 100 keywords by weight
+
+    // Procedure templates (2,780 records)
+    'procedure_templates',     // 703 records
+    'procedure_template_steps', // 2,077 records
+
+    // Document templates (792 records)
+    'document_templates',      // 792 records
+
+    // Service assignments (2,084 records)
+    'service_procedure_assignments', // 850 records
+    'service_document_assignments',  // 1,234 records
+
+    // Translations (~8,420 records - FILTERED from 8,486)
+    'entity_translations',     // FR/EN translations for ES-only entities
   ],
   pro: [
     // Public reference tables (same as offline)
-    'fiscal_services',
-    'entity_translations',
     'ministries',
+    'sectors',
     'categories',
+    'fiscal_services',
+    'service_keywords',
+    'procedure_templates',
+    'procedure_template_steps',
+    'document_templates',
+    'service_procedure_assignments',
+    'service_document_assignments',
+    'entity_translations',
 
     // User-specific tables (Pro only)
     'user_favorites',
