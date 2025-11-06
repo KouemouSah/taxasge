@@ -5,6 +5,10 @@
  * @author KOUEMOU SAH Jean Emac
  * @version 1.0.0 (RN 0.80.0)
  * @format
+ *
+ * DUAL-VERSION ARCHITECTURE:
+ * - Offline: No auth, monthly sync, 4 tables
+ * - Pro: Auth required, instant sync, 8+ tables
  */
 
 import React, { useState, useEffect } from 'react';
@@ -22,6 +26,7 @@ import {
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DatabaseProvider } from './providers/DatabaseProvider';
 import { ChatbotScreen } from './screens/ChatbotScreen';
+import { APP_CONFIG, logConfiguration } from './config/AppConfig';
 
 /**
  * Détecte la langue du système Android/iOS
@@ -112,11 +117,23 @@ const App = () => {
   const [currentScreen, setCurrentScreen] = useState('home');
   const [currentLanguage, setCurrentLanguage] = useState('es');
 
-  // Détecter la langue système au démarrage
+  // Détecter la langue système et logger la configuration au démarrage
   useEffect(() => {
+    // Log app configuration (version, features, sync strategy)
+    logConfiguration();
+
+    // Detect system language
     const systemLang = getSystemLanguage();
     console.log('[App] Setting initial language to:', systemLang);
     setCurrentLanguage(systemLang);
+
+    // Log active version info
+    console.log('[App] ========================================');
+    console.log('[App] Active Version:', APP_CONFIG.version.toUpperCase());
+    console.log('[App] App Name:', APP_CONFIG.appName);
+    console.log('[App] Require Auth:', APP_CONFIG.requireAuth);
+    console.log('[App] Enable Declarations:', APP_CONFIG.enableDeclarations);
+    console.log('[App] ========================================');
   }, []);
 
   const renderHomeScreen = () => (
@@ -124,10 +141,14 @@ const App = () => {
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.title}>{TEXTS[currentLanguage].title}</Text>
+          <Text style={styles.title}>{APP_CONFIG.appName}</Text>
           <Text style={styles.subtitle}>{TEXTS[currentLanguage].subtitle}</Text>
           <Text style={styles.version}>React Native 0.80.0</Text>
-          <Text style={styles.status}>✅ Migration Phase 5 - Chatbot FAQ intégré</Text>
+          <Text style={styles.status}>
+            {APP_CONFIG.version === 'offline' ? '📱 Offline Version' : '🌐 Pro Version'}
+            {' | '}
+            {APP_CONFIG.requireAuth ? '🔒 Auth Required' : '🔓 No Auth'}
+          </Text>
 
           {/* Language Selector */}
           <View style={styles.languageSelector}>

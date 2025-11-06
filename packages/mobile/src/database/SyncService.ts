@@ -1,17 +1,21 @@
 /**
  * TaxasGE Mobile - Sync Service
  * Service de synchronisation bidirectionnelle SQLite <-> Supabase
+ *
+ * DUAL-VERSION SUPPORT:
+ * - Offline: Syncs only 4 public tables (download-only)
+ * - Pro: Syncs 8+ tables including user data (bidirectional)
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import NetInfo from '@react-native-community/netinfo';
 import { db } from './DatabaseManager';
 import { TABLE_NAMES, SYNC_STATUS } from './schema';
+import { APP_CONFIG, getSyncTables, getSyncStrategy } from '../config/AppConfig';
 
-// Supabase credentials - fallback values from .env
-// TODO: Configure react-native-dotenv properly for production
-const SUPABASE_URL = 'https://bpdzfkymgydjxxwlctam.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJwZHpma3ltZ3lkanh4d2xjdGFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMyNzg4NjksImV4cCI6MjA2ODg1NDg2OX0.M0d8r-0fxkwEQYyYfERExRj8sMwmda2UBoHPabgqbFg';
+// Supabase credentials from AppConfig (configured via .env.offline or .env.pro)
+const SUPABASE_URL = APP_CONFIG.supabaseUrl || 'https://bpdzfkymgydjxxwlctam.supabase.co';
+const SUPABASE_ANON_KEY = APP_CONFIG.supabaseAnonKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJwZHpma3ltZ3lkanh4d2xjdGFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMyNzg4NjksImV4cCI6MjA2ODg1NDg2OX0.M0d8r-0fxkwEQYyYfERExRj8sMwmda2UBoHPabgqbFg';
 
 interface SyncResult {
   success: boolean;
@@ -65,7 +69,9 @@ class SyncService {
   }
 
   /**
-   * Sync all reference data (ministries, services, etc.)
+   * Sync reference data based on app version configuration
+   * Offline: Syncs only 4 public tables
+   * Pro: Syncs all tables including user data
    */
   async syncReferenceData(): Promise<SyncResult> {
     if (this.isSyncing) {
@@ -99,7 +105,16 @@ class SyncService {
     };
 
     try {
-      console.log('[Sync] Starting reference data sync...');
+      const syncStrategy = getSyncStrategy();
+      const tablesToSync = getSyncTables();
+
+      console.log('[Sync] ========================================');
+      console.log('[Sync] Starting sync with configuration:');
+      console.log('[Sync] Version:', APP_CONFIG.version);
+      console.log('[Sync] Direction:', syncStrategy.direction);
+      console.log('[Sync] Frequency:', syncStrategy.frequency);
+      console.log('[Sync] Tables to sync:', tablesToSync);
+      console.log('[Sync] ========================================');
 
       // Get last sync timestamp
       this.lastSyncTimestamp = await db.getMetadata('last_full_sync');
@@ -119,32 +134,80 @@ class SyncService {
       console.log('[Sync] Last sync:', since?.toISOString() || 'never');
       console.log('[Sync] Fresh sync mode:', isFreshSync);
 
-      // PHASE 1: HIERARCHY (116 records)
-      await this.syncTable('ministries', result, since);
-      await this.syncTable('sectors', result, since);
-      await this.syncTable('categories', result, since);
+      // DYNAMIC TABLE SYNC based on configuration
+      // Always sync: ministries, categories, fiscal_services, entity_translations
+      // Pro only: user_favorites, calculation_history, declarations, user_profiles
 
-      // PHASE 2: FISCAL SERVICES (7,561 records)
-      await this.syncFiscalServices(result, since);
-      await this.syncTable('service_keywords', result, since);
+      // PHASE 1: HIERARCHY (if needed)
+      if (tablesToSync.includes('ministries')) {
+        await this.syncTable('ministries', result, since);
+      }
+      if (tablesToSync.includes('sectors')) {
+        await this.syncTable('sectors', result, since);
+      }
+      if (tablesToSync.includes('categories')) {
+        await this.syncTable('categories', result, since);
+      }
 
-      // PHASE 3: TEMPLATES (4,814 records)
-      await this.syncTable('procedure_templates', result, since);
-      await this.syncTable('procedure_template_steps', result, since);
-      await this.syncTable('document_templates', result, since);
+      // PHASE 2: FISCAL SERVICES (main data)
+      if (tablesToSync.includes('fiscal_services')) {
+        await this.syncFiscalServices(result, since);
+      }
+      if (tablesToSync.includes('service_keywords')) {
+        await this.syncTable('service_keywords', result, since);
+      }
 
-      // PHASE 4: ASSIGNMENTS (5,547 records)
-      await this.syncTable('service_procedure_assignments', result, since);
-      await this.syncTable('service_document_assignments', result, since);
+      // PHASE 3: TEMPLATES (Pro version or explicit)
+      if (tablesToSync.includes('procedure_templates')) {
+        await this.syncTable('procedure_templates', result, since);
+      }
+      if (tablesToSync.includes('procedure_template_steps')) {
+        await this.syncTable('procedure_template_steps', result, since);
+      }
+      if (tablesToSync.includes('document_templates')) {
+        await this.syncTable('document_templates', result, since);
+      }
+
+      // PHASE 4: ASSIGNMENTS (Pro version or explicit)
+      if (tablesToSync.includes('service_procedure_assignments')) {
+        await this.syncTable('service_procedure_assignments', result, since);
+      }
+      if (tablesToSync.includes('service_document_assignments')) {
+        await this.syncTable('service_document_assignments', result, since);
+      }
 
       // PHASE 5: TRANSLATIONS (i18n support)
-      await this.syncTable('entity_translations', result, since);
+      if (tablesToSync.includes('entity_translations')) {
+        await this.syncTable('entity_translations', result, since);
+      }
+
+      // PHASE 6: USER DATA (Pro version only)
+      if (tablesToSync.includes('user_favorites')) {
+        console.log('[Sync] Syncing user_favorites (Pro version only)...');
+        await this.syncTable('user_favorites', result, since);
+      }
+      if (tablesToSync.includes('calculation_history')) {
+        console.log('[Sync] Syncing calculation_history (Pro version only)...');
+        await this.syncTable('calculation_history', result, since);
+      }
+      if (tablesToSync.includes('declarations')) {
+        console.log('[Sync] Syncing declarations (Pro version only)...');
+        await this.syncTable('declarations', result, since);
+      }
+      if (tablesToSync.includes('user_profiles')) {
+        console.log('[Sync] Syncing user_profiles (Pro version only)...');
+        await this.syncTable('user_profiles', result, since);
+      }
 
       // Update last sync timestamp
       await db.setMetadata('last_full_sync', new Date().toISOString());
 
-      console.log('[Sync] Reference data sync complete:', result);
-      console.log('[Sync] Total records synced:', result.inserted);
+      console.log('[Sync] ========================================');
+      console.log('[Sync] Sync complete!');
+      console.log('[Sync] Total inserted:', result.inserted);
+      console.log('[Sync] Total updated:', result.updated);
+      console.log('[Sync] Version:', APP_CONFIG.version);
+      console.log('[Sync] ========================================');
     } catch (error) {
       console.error('[Sync] Reference data sync failed:', error);
       result.success = false;

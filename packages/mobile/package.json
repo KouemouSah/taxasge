@@ -36,6 +36,20 @@
     "start": "react-native start",
     "build:android": "cd android && ./gradlew assembleRelease",
     "build:ios": "cd ios && xcodebuild -workspace TaxasGE.xcworkspace -scheme TaxasGE -configuration Release",
+
+    "android:offline": "ENVFILE=.env.offline react-native run-android",
+    "android:pro": "ENVFILE=.env.pro react-native run-android",
+    "ios:offline": "ENVFILE=.env.offline react-native run-ios",
+    "ios:pro": "ENVFILE=.env.pro react-native run-ios",
+
+    "build:android:offline": "ENVFILE=.env.offline cd android && ./gradlew assembleRelease",
+    "build:android:pro": "ENVFILE=.env.pro cd android && ./gradlew assembleRelease",
+    "build:ios:offline": "ENVFILE=.env.offline cd ios && xcodebuild -workspace TaxasGE.xcworkspace -scheme TaxasGE -configuration Release",
+    "build:ios:pro": "ENVFILE=.env.pro cd ios && xcodebuild -workspace TaxasGE.xcworkspace -scheme TaxasGE -configuration Release",
+
+    "start:offline": "ENVFILE=.env.offline react-native start",
+    "start:pro": "ENVFILE=.env.pro react-native start",
+
     "lint": "eslint src/ --ext .js,.jsx,.ts,.tsx --fix",
     "lint:check": "eslint src/ --ext .js,.jsx,.ts,.tsx",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json}\"",
