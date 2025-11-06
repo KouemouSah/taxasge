@@ -180,7 +180,7 @@ jobs:
           # Exécuter lint si script existe
           if grep -q '"lint"' package.json; then
             echo "📝 Script lint trouvé, exécution..."
-            yarn run lint:check || {
+            npm run lint:check || {
               echo "⚠️ ESLint a trouvé des warnings (autorisé en dev)"
               exit 0
             }
@@ -192,7 +192,7 @@ jobs:
           # Exécuter format check si script existe
           if grep -q '"format:check"' package.json; then
             echo "📝 Script format:check trouvé, exécution..."
-            yarn run format:check || {
+            npm run format:check || {
               echo "⚠️ Prettier a trouvé des différences de formatage (autorisé en dev)"
               exit 0
             }
@@ -242,7 +242,7 @@ jobs:
             if [ "$test_count" -gt 0 ]; then
               echo "🧪 $test_count test(s)/dossier(s) trouvé(s)"
               if [ "$has_test_script" -gt 0 ]; then
-                yarn test --watchAll=false --coverage=false 2>/dev/null || echo "⚠️ Tests non fonctionnels"
+                npm test -- --watchAll=false --coverage=false 2>/dev/null || echo "⚠️ Tests non fonctionnels"
               else
                 npx jest --watchAll=false 2>/dev/null || echo "⚠️ Jest non configuré correctement"
               fi
@@ -260,7 +260,7 @@ jobs:
           
           if [ "$has_start_script" -gt 0 ]; then
             echo "✅ Script start trouvé, test Metro..."
-            timeout 15s yarn run start --reset-cache > /dev/null 2>&1 &
+            timeout 15s npm run start -- --reset-cache > /dev/null 2>&1 &
             METRO_PID=$!
             sleep 5
             kill $METRO_PID 2>/dev/null || true
