@@ -180,10 +180,17 @@ jobs:
           # Exécuter lint si script existe
           if grep -q '"lint"' package.json; then
             echo "📝 Script lint trouvé, exécution..."
-            npm run lint:check || {
-              echo "⚠️ ESLint a trouvé des warnings (autorisé en dev)"
-              exit 0
-            }
+            set +e  # Disable exit on error temporarily
+            npm run lint:check
+            LINT_EXIT_CODE=$?
+            set -e  # Re-enable exit on error
+
+            if [ $LINT_EXIT_CODE -eq 0 ]; then
+              echo "✅ ESLint: Aucun problème trouvé"
+            else
+              echo "⚠️ ESLint: Warnings/erreurs trouvés (autorisé en dev)"
+              echo "Exit code: $LINT_EXIT_CODE"
+            fi
           else
             echo "⚠️ Script lint non configuré dans package.json"
             exit 1
@@ -192,15 +199,22 @@ jobs:
           # Exécuter format check si script existe
           if grep -q '"format:check"' package.json; then
             echo "📝 Script format:check trouvé, exécution..."
-            npm run format:check || {
-              echo "⚠️ Prettier a trouvé des différences de formatage (autorisé en dev)"
-              exit 0
-            }
+            set +e  # Disable exit on error temporarily
+            npm run format:check
+            FORMAT_EXIT_CODE=$?
+            set -e  # Re-enable exit on error
+
+            if [ $FORMAT_EXIT_CODE -eq 0 ]; then
+              echo "✅ Prettier: Formatage correct"
+            else
+              echo "⚠️ Prettier: Différences de formatage trouvées (autorisé en dev)"
+              echo "Exit code: $FORMAT_EXIT_CODE"
+            fi
           else
             echo "ℹ️ Script format:check non configuré (optionnel)"
           fi
 
-          echo "✅ Checks qualité terminés"
+          echo "✅ Checks qualité terminés (warnings autorisés)"
 
       - name: 📝 TypeScript validation
         if: matrix.test-type == 'typescript'
@@ -210,21 +224,26 @@ jobs:
 
           if [ -f "tsconfig.json" ]; then
             echo "✅ tsconfig.json trouvé"
-            # TEMPORARY: Skip TypeScript errors for non-MVP files
-            # These files (Calculator, ServiceDetail) use old data structure
-            # Will be fixed in next iteration, chatbot (MVP1) is production-ready
-            npx tsc --noEmit || {
+
+            set +e  # Disable exit on error temporarily
+            npx tsc --noEmit
+            TSC_EXIT_CODE=$?
+            set -e  # Re-enable exit on error
+
+            if [ $TSC_EXIT_CODE -eq 0 ]; then
+              echo "✅ TypeScript: Aucune erreur"
+            else
               echo "⚠️ Erreurs TypeScript trouvées (autorisé temporairement pour MVP1)"
               echo "📝 Fichiers non-MVP (Calculator, ServiceDetail) à mettre à jour"
               echo "✅ Chatbot offline (MVP1) est production-ready"
-              exit 0
-            }
+              echo "Exit code: $TSC_EXIT_CODE"
+            fi
           else
             echo "⚠️ tsconfig.json manquant"
             exit 1
           fi
 
-          echo "✅ Validation TypeScript terminée"
+          echo "✅ Validation TypeScript terminée (erreurs non-MVP autorisées)"
 
       - name: 🧪 Unit tests
         if: matrix.test-type == 'unit'
