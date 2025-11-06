@@ -722,25 +722,35 @@ class AuthService:
         Source: .github/docs-internal/Documentations/Backend/API_REFERENCE.md
         """
         try:
+            logger.info(f"[EMAIL_DEBUG] Starting send_verification_email for user_id={user_id}, email={email}")
+
             # Find user by ID (use direct PostgreSQL to bypass Supabase RLS)
+            logger.info(f"[EMAIL_DEBUG] Calling find_by_id(user_id={user_id}, use_supabase=False)")
             user = await self.user_repo.find_by_id(user_id, use_supabase=False)
+
             if not user:
+                logger.error(f"[EMAIL_DEBUG] User NOT FOUND in database: user_id={user_id}")
                 logger.warning(f"Verification email requested for non-existent user: {user_id}")
                 return False
 
+            logger.info(f"[EMAIL_DEBUG] User found: id={user.id}, email={user.email}, status={user.status}")
+
             # Check user status
             if user.status != UserStatus.active:
+                logger.error(f"[EMAIL_DEBUG] User status is NOT active: status={user.status}")
                 logger.warning(f"Verification email requested for inactive user: {email}")
                 return False
 
             # Generate 6-digit verification code
             import random
             verification_code = str(random.randint(100000, 999999))
+            logger.info(f"[EMAIL_DEBUG] Generated verification code: {verification_code}")
 
             # Set expiration (15 minutes from now)
             expires_at = datetime.utcnow() + timedelta(minutes=15)
 
             # Save code to database
+            logger.info(f"[EMAIL_DEBUG] Saving verification code to database...")
             success = await self.user_repo.update_email_verification_code(
                 user_id=user_id,
                 verification_code=verification_code,
@@ -748,11 +758,16 @@ class AuthService:
             )
 
             if not success:
+                logger.error(f"[EMAIL_DEBUG] Failed to save verification code to database")
                 raise Exception("Failed to generate email verification code")
+
+            logger.info(f"[EMAIL_DEBUG] Verification code saved successfully")
 
             # Send verification email
             from app.config import get_settings
             settings = get_settings()
+
+            logger.info(f"[EMAIL_DEBUG] Initializing EmailService with SMTP_HOST={settings.SMTP_HOST}")
 
             email_service = EmailService(
                 smtp_host=settings.SMTP_HOST,
@@ -764,6 +779,8 @@ class AuthService:
                 smtp_from_name=settings.SMTP_FROM_NAME
             )
 
+            logger.info(f"[EMAIL_DEBUG] Calling email_service.send_verification_code to {email}")
+
             email_sent = email_service.send_verification_code(
                 to_email=email,
                 verification_code=verification_code,
@@ -771,13 +788,16 @@ class AuthService:
             )
 
             if not email_sent:
+                logger.error(f"[EMAIL_DEBUG] email_service.send_verification_code returned False")
                 logger.error(f"Failed to send verification email to {email}")
                 return False
 
+            logger.info(f"[EMAIL_DEBUG] Email sent successfully!")
             logger.info(f"Verification email sent successfully to {email}")
             return True
 
         except Exception as e:
+            logger.error(f"[EMAIL_DEBUG] Exception caught: {type(e).__name__}: {str(e)}")
             logger.error(f"Send verification email failed for {email}: {str(e)}")
             raise
 
