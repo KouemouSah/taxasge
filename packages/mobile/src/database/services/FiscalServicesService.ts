@@ -8,6 +8,7 @@ import { QUERIES, TABLE_NAMES } from '../schema';
 export interface FiscalService {
   id: string;
   code: string;
+  service_code?: string;
   name_es: string;
   name_fr?: string;
   name_en?: string;
@@ -16,6 +17,14 @@ export interface FiscalService {
   calculation_method?: string;
   expedition_amount: number;
   renewal_amount?: number;
+  tasa_expedicion?: number;
+  tasa_renovacion?: number;
+  urgent_amount?: number;
+  base_percentage?: number;
+  percentage_of?: string;
+  rate_tiers?: string;
+  unit_rate?: number;
+  expedition_formula?: string;
   category_id?: string;
   category_name?: string;
   sector_name?: string;
