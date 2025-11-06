@@ -255,6 +255,7 @@ class SyncService {
         service_procedure_assignments: 'id,fiscal_service_id,template_id,applies_to,display_order,custom_notes,override_steps,assigned_at',
         service_document_assignments: 'id,fiscal_service_id,document_template_id,is_required_expedition,is_required_renewal,display_order,custom_notes,assigned_at',
         entity_translations: 'entity_type,entity_code,language_code,field_name,translation_text,translation_source,translation_quality,created_at,updated_at',
+        chatbot_faq: 'id,question_pattern,intent,response_es,response_fr,response_en,follow_up_suggestions,actions,keywords,priority,is_active,created_at,updated_at',
       };
 
       const selectColumns = columnMappings[tableName] || '*';

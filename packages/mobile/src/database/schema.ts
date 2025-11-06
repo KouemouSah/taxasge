@@ -699,6 +699,12 @@ export const QUERIES = {
   `,
 
   // Chatbot FAQ queries
+  getAllActiveChatbotFAQ: `
+    SELECT * FROM chatbot_faq
+    WHERE is_active = 1
+    ORDER BY priority DESC
+  `,
+
   searchChatbotFAQ: `
     SELECT * FROM chatbot_faq
     WHERE is_active = 1
