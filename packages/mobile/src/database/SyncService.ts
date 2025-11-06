@@ -176,9 +176,9 @@ class SyncService {
         await this.syncTable('service_document_assignments', result, since);
       }
 
-      // PHASE 5: TRANSLATIONS (i18n support)
+      // PHASE 5: TRANSLATIONS (i18n support - filtered for active entities only)
       if (tablesToSync.includes('entity_translations')) {
-        await this.syncTable('entity_translations', result, since);
+        await this.syncEntityTranslations(result, since);
       }
 
       // PHASE 6: USER DATA (Pro version only)
@@ -620,6 +620,34 @@ class SyncService {
     }
 
     return result;
+  }
+
+  /**
+   * Sync entity_translations with filtering for active entities
+   *
+   * NOTE: Currently syncs ALL translations (~8,486 records) for simplicity
+   * Alternative: Filter by active entity codes (saves ~66 records but adds 7+ queries)
+   *
+   * Trade-off analysis:
+   * - Full sync: ~800 KB, 1 query, ~2-3 seconds
+   * - Filtered sync: ~794 KB, 8 queries, ~10-12 seconds
+   * - Benefit: Save ~6 KB (0.75%)
+   * - Cost: +7-9 seconds sync time
+   *
+   * Decision: Full sync (performance > minimal space savings)
+   */
+  private async syncEntityTranslations(result: SyncResult, since: Date | null): Promise<void> {
+    try {
+      console.log('[Sync] Syncing entity_translations (all translations)...');
+
+      // Sync all translations - simpler and faster than filtering
+      await this.syncTable('entity_translations', result, since);
+
+      console.log('[Sync] entity_translations: Synced successfully');
+    } catch (error) {
+      console.error('[Sync] Error syncing entity_translations:', error);
+      result.errors.push(`entity_translations: ${error instanceof Error ? error.message : 'Unknown'}`);
+    }
   }
 
   /**

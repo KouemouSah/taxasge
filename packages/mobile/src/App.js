@@ -269,7 +269,10 @@ const App = () => {
 
   return (
     <SafeAreaProvider>
-      <DatabaseProvider autoSync={false}>
+      <DatabaseProvider
+        autoSync={true}
+        userId={APP_CONFIG.defaultUserId}
+      >
         {currentScreen === 'home' ? renderHomeScreen() : renderChatbotScreen()}
       </DatabaseProvider>
     </SafeAreaProvider>
