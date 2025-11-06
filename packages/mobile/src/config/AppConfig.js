@@ -78,9 +78,9 @@ export const APP_CONFIG = {
 /**
  * Tables to sync based on app version
  *
- * UPDATED: 2025-11-06 - Corrected based on Supabase inspection
+ * UPDATED: 2025-11-06 - Added chatbot_faq for MVP1 chatbot functionality
  *
- * Offline: 11 public reference tables (~15,154 records, ~1.4 MB)
+ * Offline: 12 public reference tables (~15,200+ records, ~1.5 MB)
  *   - Core hierarchy: ministries (14), sectors (16), categories (98)
  *   - Fiscal services: fiscal_services (850)
  *   - Keywords: service_keywords (100 filtered from 7,014)
@@ -89,8 +89,9 @@ export const APP_CONFIG = {
  *   - Assignments: service_procedure_assignments (850),
  *                  service_document_assignments (1,234)
  *   - Translations: entity_translations (~8,420 filtered from 8,486)
+ *   - Chatbot: chatbot_faq (~50 FAQ entries for TaxaBot)
  *
- * Pro: All 11 offline tables + user-specific tables
+ * Pro: All 12 offline tables + user-specific tables
  */
 export const SYNC_TABLES = {
   offline: [
@@ -118,6 +119,9 @@ export const SYNC_TABLES = {
 
     // Translations (~8,420 records - FILTERED from 8,486)
     'entity_translations',     // FR/EN translations for ES-only entities
+
+    // Chatbot FAQ (MVP1 - ~50 records)
+    'chatbot_faq',             // FAQ entries for TaxaBot assistant
   ],
   pro: [
     // Public reference tables (same as offline)
@@ -132,6 +136,7 @@ export const SYNC_TABLES = {
     'service_procedure_assignments',
     'service_document_assignments',
     'entity_translations',
+    'chatbot_faq',              // Chatbot FAQ
 
     // User-specific tables (Pro only)
     'user_favorites',

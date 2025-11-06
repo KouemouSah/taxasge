@@ -345,7 +345,7 @@ export const ChatbotScreen: React.FC<ChatbotScreenProps> = ({ language, onBack, 
 
   const renderFooter = () => {
     if (!isTyping) return null;
-    return <TypingIndicator />;
+    return <TypingIndicator language={currentLanguage} />;
   };
 
   if (isLoading) {

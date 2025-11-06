@@ -29,6 +29,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DatabaseProvider } from './providers/DatabaseProvider';
 import { ChatbotScreen } from './screens/ChatbotScreen';
 import { OnboardingScreen } from './screens/OnboardingScreen';
+import { PlaceholderScreen } from './screens/PlaceholderScreen';
 import { APP_CONFIG, logConfiguration } from './config/AppConfig';
 
 /**
@@ -268,16 +269,16 @@ const App = () => {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.menuButton, styles.disabledButton]}
-            disabled={true}
+            style={styles.menuButton}
+            onPress={() => setCurrentScreen('search')}
             activeOpacity={0.7}>
             <View style={styles.buttonContent}>
               <Text style={styles.buttonIcon}>🔍</Text>
               <View style={styles.buttonTextContainer}>
-                <Text style={[styles.buttonTitle, styles.disabledText]}>
+                <Text style={styles.buttonTitle}>
                   {TEXTS[currentLanguage].searchButton}
                 </Text>
-                <Text style={[styles.buttonSubtitle, styles.disabledText]}>
+                <Text style={styles.buttonSubtitle}>
                   {TEXTS[currentLanguage].comingSoon}
                 </Text>
               </View>
@@ -285,16 +286,16 @@ const App = () => {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.menuButton, styles.disabledButton]}
-            disabled={true}
+            style={styles.menuButton}
+            onPress={() => setCurrentScreen('calculator')}
             activeOpacity={0.7}>
             <View style={styles.buttonContent}>
               <Text style={styles.buttonIcon}>🧮</Text>
               <View style={styles.buttonTextContainer}>
-                <Text style={[styles.buttonTitle, styles.disabledText]}>
+                <Text style={styles.buttonTitle}>
                   {TEXTS[currentLanguage].calculatorButton}
                 </Text>
-                <Text style={[styles.buttonSubtitle, styles.disabledText]}>
+                <Text style={styles.buttonSubtitle}>
                   {TEXTS[currentLanguage].comingSoon}
                 </Text>
               </View>
@@ -302,16 +303,16 @@ const App = () => {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.menuButton, styles.disabledButton]}
-            disabled={true}
+            style={styles.menuButton}
+            onPress={() => setCurrentScreen('favorites')}
             activeOpacity={0.7}>
             <View style={styles.buttonContent}>
               <Text style={styles.buttonIcon}>⭐</Text>
               <View style={styles.buttonTextContainer}>
-                <Text style={[styles.buttonTitle, styles.disabledText]}>
+                <Text style={styles.buttonTitle}>
                   {TEXTS[currentLanguage].favoritesButton}
                 </Text>
-                <Text style={[styles.buttonSubtitle, styles.disabledText]}>
+                <Text style={styles.buttonSubtitle}>
                   {TEXTS[currentLanguage].comingSoon}
                 </Text>
               </View>
@@ -332,13 +333,181 @@ const App = () => {
       language={currentLanguage}
       onBack={() => setCurrentScreen('home')}
       onNavigate={(screen) => {
-        // Pour l'instant, retourner à l'accueil avec un message
-        // TODO: Implémenter les vrais écrans Services, Search, Calculator
+        // Navigation vers les écrans disponibles
         console.log(`[App] Navigation requested to: ${screen}`);
-        setCurrentScreen('home');
+        if (['search', 'calculator', 'favorites'].includes(screen)) {
+          setCurrentScreen(screen);
+        } else {
+          setCurrentScreen('home');
+        }
       }}
     />
   );
+
+  const renderSearchScreen = () => {
+    const translations = {
+      es: {
+        title: 'Buscar Servicios',
+        subtitle: 'Encuentra servicios fiscales rápidamente',
+        back: 'Volver',
+        comingSoon: 'Próximamente',
+        features: [
+          'Búsqueda por nombre de servicio',
+          'Filtros por categoría y ministerio',
+          'Ver detalles completos del servicio',
+          'Guardar servicios en favoritos',
+        ],
+      },
+      fr: {
+        title: 'Rechercher Services',
+        subtitle: 'Trouvez des services fiscaux rapidement',
+        back: 'Retour',
+        comingSoon: 'Bientôt disponible',
+        features: [
+          'Recherche par nom de service',
+          'Filtres par catégorie et ministère',
+          'Voir les détails complets du service',
+          'Enregistrer les services en favoris',
+        ],
+      },
+      en: {
+        title: 'Search Services',
+        subtitle: 'Find tax services quickly',
+        back: 'Back',
+        comingSoon: 'Coming soon',
+        features: [
+          'Search by service name',
+          'Filter by category and ministry',
+          'View complete service details',
+          'Save services to favorites',
+        ],
+      },
+    };
+
+    const t = translations[currentLanguage];
+
+    return (
+      <PlaceholderScreen
+        title={t.title}
+        subtitle={t.subtitle}
+        icon="🔍"
+        comingSoonText={t.comingSoon}
+        backButtonText={t.back}
+        onBack={() => setCurrentScreen('home')}
+        features={t.features}
+      />
+    );
+  };
+
+  const renderCalculatorScreen = () => {
+    const translations = {
+      es: {
+        title: 'Calculadora Fiscal',
+        subtitle: 'Calcula el costo exacto de tus trámites',
+        back: 'Volver',
+        comingSoon: 'Próximamente',
+        features: [
+          'Calcular tasas de expedición y renovación',
+          'Aplicar urgencias automáticamente',
+          'Guardar cálculos en historial',
+          'Exportar resultados',
+        ],
+      },
+      fr: {
+        title: 'Calculatrice Fiscale',
+        subtitle: 'Calculez le coût exact de vos démarches',
+        back: 'Retour',
+        comingSoon: 'Bientôt disponible',
+        features: [
+          'Calculer les frais d\'expédition et de renouvellement',
+          'Appliquer les urgences automatiquement',
+          'Enregistrer les calculs dans l\'historique',
+          'Exporter les résultats',
+        ],
+      },
+      en: {
+        title: 'Tax Calculator',
+        subtitle: 'Calculate the exact cost of your procedures',
+        back: 'Back',
+        comingSoon: 'Coming soon',
+        features: [
+          'Calculate expedition and renewal fees',
+          'Apply urgencies automatically',
+          'Save calculations to history',
+          'Export results',
+        ],
+      },
+    };
+
+    const t = translations[currentLanguage];
+
+    return (
+      <PlaceholderScreen
+        title={t.title}
+        subtitle={t.subtitle}
+        icon="🧮"
+        comingSoonText={t.comingSoon}
+        backButtonText={t.back}
+        onBack={() => setCurrentScreen('home')}
+        features={t.features}
+      />
+    );
+  };
+
+  const renderFavoritesScreen = () => {
+    const translations = {
+      es: {
+        title: 'Favoritos',
+        subtitle: 'Tus servicios guardados',
+        back: 'Volver',
+        comingSoon: 'Próximamente',
+        features: [
+          'Guardar servicios frecuentes',
+          'Acceso rápido a tus servicios',
+          'Organizar por carpetas',
+          'Sincronización en la nube (versión Pro)',
+        ],
+      },
+      fr: {
+        title: 'Favoris',
+        subtitle: 'Vos services enregistrés',
+        back: 'Retour',
+        comingSoon: 'Bientôt disponible',
+        features: [
+          'Enregistrer les services fréquents',
+          'Accès rapide à vos services',
+          'Organiser par dossiers',
+          'Synchronisation cloud (version Pro)',
+        ],
+      },
+      en: {
+        title: 'Favorites',
+        subtitle: 'Your saved services',
+        back: 'Back',
+        comingSoon: 'Coming soon',
+        features: [
+          'Save frequent services',
+          'Quick access to your services',
+          'Organize by folders',
+          'Cloud sync (Pro version)',
+        ],
+      },
+    };
+
+    const t = translations[currentLanguage];
+
+    return (
+      <PlaceholderScreen
+        title={t.title}
+        subtitle={t.subtitle}
+        icon="⭐"
+        comingSoonText={t.comingSoon}
+        backButtonText={t.back}
+        onBack={() => setCurrentScreen('home')}
+        features={t.features}
+      />
+    );
+  };
 
   // Show loading while checking onboarding status
   if (checkingOnboarding) {
@@ -374,6 +543,24 @@ const App = () => {
     );
   }
 
+  // Render current screen based on state
+  const renderCurrentScreen = () => {
+    switch (currentScreen) {
+      case 'home':
+        return renderHomeScreen();
+      case 'chatbot':
+        return renderChatbotScreen();
+      case 'search':
+        return renderSearchScreen();
+      case 'calculator':
+        return renderCalculatorScreen();
+      case 'favorites':
+        return renderFavoritesScreen();
+      default:
+        return renderHomeScreen();
+    }
+  };
+
   // Show main app screens
   return (
     <SafeAreaProvider>
@@ -386,7 +573,7 @@ const App = () => {
         onSyncComplete={handleSyncComplete}
         onError={handleSyncError}
       >
-        {currentScreen === 'home' ? renderHomeScreen() : renderChatbotScreen()}
+        {renderCurrentScreen()}
       </DatabaseProvider>
     </SafeAreaProvider>
   );
