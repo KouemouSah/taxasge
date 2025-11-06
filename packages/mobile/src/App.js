@@ -22,10 +22,13 @@ import {
   ScrollView,
   Platform,
   NativeModules,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DatabaseProvider } from './providers/DatabaseProvider';
 import { ChatbotScreen } from './screens/ChatbotScreen';
+import { OnboardingScreen } from './screens/OnboardingScreen';
 import { APP_CONFIG, logConfiguration } from './config/AppConfig';
 
 /**
@@ -109,15 +112,26 @@ const TEXTS = {
 };
 
 /**
+ * Storage keys for app state
+ */
+const STORAGE_KEYS = {
+  ONBOARDING_COMPLETED: '@taxasge_onboarding_completed',
+};
+
+/**
  * Composant racine de l'application TaxasGE
  *
  * Phase actuelle: Intégration Chatbot FAQ (MVP1)
+ * NEW: Progressive sync during onboarding (Phase 1-3)
  */
 const App = () => {
   const [currentScreen, setCurrentScreen] = useState('home');
   const [currentLanguage, setCurrentLanguage] = useState('es');
+  const [showOnboarding, setShowOnboarding] = useState(true);
+  const [checkingOnboarding, setCheckingOnboarding] = useState(true);
+  const [syncPhase, setSyncPhase] = useState(0);
 
-  // Détecter la langue système et logger la configuration au démarrage
+  // Détecter la langue système et vérifier si onboarding déjà complété
   useEffect(() => {
     // Log app configuration (version, features, sync strategy)
     logConfiguration();
@@ -134,7 +148,66 @@ const App = () => {
     console.log('[App] Require Auth:', APP_CONFIG.requireAuth);
     console.log('[App] Enable Declarations:', APP_CONFIG.enableDeclarations);
     console.log('[App] ========================================');
+
+    // Check if onboarding already completed
+    checkOnboardingStatus();
   }, []);
+
+  /**
+   * Check if user has already completed onboarding
+   */
+  const checkOnboardingStatus = async () => {
+    try {
+      const onboardingCompleted = await AsyncStorage.getItem(STORAGE_KEYS.ONBOARDING_COMPLETED);
+      console.log('[App] Onboarding completed:', onboardingCompleted);
+
+      if (onboardingCompleted === 'true') {
+        setShowOnboarding(false);
+      }
+    } catch (error) {
+      console.error('[App] Error checking onboarding status:', error);
+      // On error, show onboarding to be safe
+      setShowOnboarding(true);
+    } finally {
+      setCheckingOnboarding(false);
+    }
+  };
+
+  /**
+   * Handle onboarding completion
+   */
+  const handleOnboardingComplete = async () => {
+    try {
+      console.log('[App] Onboarding completed by user');
+      await AsyncStorage.setItem(STORAGE_KEYS.ONBOARDING_COMPLETED, 'true');
+      setShowOnboarding(false);
+    } catch (error) {
+      console.error('[App] Error saving onboarding status:', error);
+      // Still proceed even if save fails
+      setShowOnboarding(false);
+    }
+  };
+
+  /**
+   * DatabaseProvider callbacks
+   */
+  const handleDatabaseInitialized = () => {
+    console.log('[App] Database initialized successfully');
+  };
+
+  const handleSyncPhaseComplete = (phase) => {
+    console.log(`[App] ✅ Sync Phase ${phase} completed`);
+    setSyncPhase(phase);
+  };
+
+  const handleSyncComplete = () => {
+    console.log('[App] 🎉 All sync phases complete!');
+    setSyncPhase(3);
+  };
+
+  const handleSyncError = (error) => {
+    console.error('[App] ❌ Sync error:', error);
+  };
 
   const renderHomeScreen = () => (
     <SafeAreaView style={styles.container}>
@@ -267,11 +340,51 @@ const App = () => {
     />
   );
 
+  // Show loading while checking onboarding status
+  if (checkingOnboarding) {
+    return (
+      <SafeAreaProvider>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#004aad" />
+          <Text style={styles.loadingText}>Chargement...</Text>
+        </View>
+      </SafeAreaProvider>
+    );
+  }
+
+  // Show onboarding on first launch
+  if (showOnboarding) {
+    return (
+      <SafeAreaProvider>
+        <DatabaseProvider
+          autoSync={true}
+          progressive={true}
+          userId={APP_CONFIG.defaultUserId}
+          onInitialized={handleDatabaseInitialized}
+          onSyncPhaseComplete={handleSyncPhaseComplete}
+          onSyncComplete={handleSyncComplete}
+          onError={handleSyncError}
+        >
+          <OnboardingScreen
+            language={currentLanguage}
+            onComplete={handleOnboardingComplete}
+          />
+        </DatabaseProvider>
+      </SafeAreaProvider>
+    );
+  }
+
+  // Show main app screens
   return (
     <SafeAreaProvider>
       <DatabaseProvider
         autoSync={true}
+        progressive={true}
         userId={APP_CONFIG.defaultUserId}
+        onInitialized={handleDatabaseInitialized}
+        onSyncPhaseComplete={handleSyncPhaseComplete}
+        onSyncComplete={handleSyncComplete}
+        onError={handleSyncError}
       >
         {currentScreen === 'home' ? renderHomeScreen() : renderChatbotScreen()}
       </DatabaseProvider>
@@ -287,6 +400,18 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     padding: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#333333',
+    fontWeight: '500',
   },
   header: {
     alignItems: 'center',
