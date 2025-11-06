@@ -5,6 +5,11 @@
  * DUAL-VERSION SUPPORT:
  * - Offline: Syncs only 4 public tables (download-only)
  * - Pro: Syncs 8+ tables including user data (bidirectional)
+ *
+ * PROGRESSIVE SYNC (2025-11-06):
+ * - Phase 1 (CRITICAL - 5s): Core data for immediate app usage
+ * - Phase 2 (BACKGROUND - 20s): Translations for multilingual support
+ * - Phase 3 (DEFERRED - 30s): Extended features (keywords, procedures, documents)
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
@@ -23,6 +28,12 @@ interface SyncResult {
   updated: number;
   deleted: number;
   errors: string[];
+}
+
+interface ProgressiveSyncResult extends SyncResult {
+  phase: 1 | 2 | 3;
+  phaseName: string;
+  tablesSync: string[];
 }
 
 interface FiscalService {
@@ -675,10 +686,205 @@ class SyncService {
       errors: [...refResult.errors, ...favResult.errors, ...calcResult.errors],
     };
   }
+
+  /**
+   * PROGRESSIVE SYNC - Phase 1 (CRITICAL - ~5 seconds)
+   * Core data needed for immediate app usage
+   *
+   * Tables: ministries, sectors, categories, fiscal_services (850)
+   * Total: ~1,000 records (~150 KB)
+   * Use case: Chatbot functional in Spanish only
+   */
+  async syncPhase1(): Promise<ProgressiveSyncResult> {
+    const result: ProgressiveSyncResult = {
+      success: true,
+      inserted: 0,
+      updated: 0,
+      deleted: 0,
+      errors: [],
+      phase: 1,
+      phaseName: 'CRITICAL',
+      tablesSync: ['ministries', 'sectors', 'categories', 'fiscal_services'],
+    };
+
+    try {
+      console.log('[Sync Phase 1] Starting CRITICAL sync...');
+      const startTime = Date.now();
+
+      await this.syncTable('ministries', result, null);
+      await this.syncTable('sectors', result, null);
+      await this.syncTable('categories', result, null);
+      await this.syncFiscalServices(result, null);
+
+      const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+      console.log(`[Sync Phase 1] ✅ Complete in ${duration}s`);
+      console.log(`[Sync Phase 1] Inserted: ${result.inserted} records`);
+
+      await db.setMetadata('sync_phase_1_complete', new Date().toISOString());
+    } catch (error) {
+      console.error('[Sync Phase 1] ❌ Failed:', error);
+      result.success = false;
+      result.errors.push(error instanceof Error ? error.message : 'Unknown error');
+    }
+
+    return result;
+  }
+
+  /**
+   * PROGRESSIVE SYNC - Phase 2 (BACKGROUND - ~20 seconds)
+   * Translations for multilingual support
+   *
+   * Tables: entity_translations (8,486)
+   * Use case: Chatbot functional in FR/EN
+   */
+  async syncPhase2(): Promise<ProgressiveSyncResult> {
+    const result: ProgressiveSyncResult = {
+      success: true,
+      inserted: 0,
+      updated: 0,
+      deleted: 0,
+      errors: [],
+      phase: 2,
+      phaseName: 'BACKGROUND',
+      tablesSync: ['entity_translations'],
+    };
+
+    try {
+      console.log('[Sync Phase 2] Starting BACKGROUND sync...');
+      const startTime = Date.now();
+
+      await this.syncEntityTranslations(result, null);
+
+      const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+      console.log(`[Sync Phase 2] ✅ Complete in ${duration}s`);
+
+      await db.setMetadata('sync_phase_2_complete', new Date().toISOString());
+    } catch (error) {
+      console.error('[Sync Phase 2] ❌ Failed:', error);
+      result.success = false;
+      result.errors.push(error instanceof Error ? error.message : 'Unknown error');
+    }
+
+    return result;
+  }
+
+  /**
+   * PROGRESSIVE SYNC - Phase 3 (DEFERRED - ~30 seconds)
+   * Extended features (keywords, procedures, documents)
+   *
+   * Tables: service_keywords (7,014), procedure_templates (703),
+   *         procedure_template_steps (2,077), document_templates (792),
+   *         service_procedure_assignments (850), service_document_assignments (1,234)
+   * Use case: Advanced search, procedures, documents available
+   */
+  async syncPhase3(): Promise<ProgressiveSyncResult> {
+    const result: ProgressiveSyncResult = {
+      success: true,
+      inserted: 0,
+      updated: 0,
+      deleted: 0,
+      errors: [],
+      phase: 3,
+      phaseName: 'DEFERRED',
+      tablesSync: [
+        'service_keywords',
+        'procedure_templates',
+        'procedure_template_steps',
+        'document_templates',
+        'service_procedure_assignments',
+        'service_document_assignments',
+      ],
+    };
+
+    try {
+      console.log('[Sync Phase 3] Starting DEFERRED sync...');
+      const startTime = Date.now();
+
+      await this.syncTable('service_keywords', result, null);
+      await this.syncTable('procedure_templates', result, null);
+      await this.syncTable('procedure_template_steps', result, null);
+      await this.syncTable('document_templates', result, null);
+      await this.syncTable('service_procedure_assignments', result, null);
+      await this.syncTable('service_document_assignments', result, null);
+
+      const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+      console.log(`[Sync Phase 3] ✅ Complete in ${duration}s`);
+
+      await db.setMetadata('sync_phase_3_complete', new Date().toISOString());
+      await db.setMetadata('last_full_sync', new Date().toISOString());
+    } catch (error) {
+      console.error('[Sync Phase 3] ❌ Failed:', error);
+      result.success = false;
+      result.errors.push(error instanceof Error ? error.message : 'Unknown error');
+    }
+
+    return result;
+  }
+
+  /**
+   * Progressive Sync - Full workflow
+   * Executes all 3 phases sequentially with callbacks
+   */
+  async progressiveSync(
+    onPhaseComplete?: (phase: 1 | 2 | 3, result: ProgressiveSyncResult) => void
+  ): Promise<SyncResult> {
+    console.log('[Progressive Sync] ========================================');
+    console.log('[Progressive Sync] Starting 3-phase progressive sync...');
+    console.log('[Progressive Sync] ========================================');
+
+    const totalResult: SyncResult = {
+      success: true,
+      inserted: 0,
+      updated: 0,
+      deleted: 0,
+      errors: [],
+    };
+
+    const startTime = Date.now();
+
+    // Phase 1: CRITICAL
+    const phase1 = await this.syncPhase1();
+    totalResult.inserted += phase1.inserted;
+    totalResult.updated += phase1.updated;
+    totalResult.errors.push(...phase1.errors);
+    onPhaseComplete?.(1, phase1);
+
+    if (!phase1.success) {
+      totalResult.success = false;
+      console.error('[Progressive Sync] Phase 1 failed, aborting remaining phases');
+      return totalResult;
+    }
+
+    // Phase 2: BACKGROUND
+    const phase2 = await this.syncPhase2();
+    totalResult.inserted += phase2.inserted;
+    totalResult.updated += phase2.updated;
+    totalResult.errors.push(...phase2.errors);
+    onPhaseComplete?.(2, phase2);
+
+    // Phase 3: DEFERRED
+    const phase3 = await this.syncPhase3();
+    totalResult.inserted += phase3.inserted;
+    totalResult.updated += phase3.updated;
+    totalResult.errors.push(...phase3.errors);
+    onPhaseComplete?.(3, phase3);
+
+    const totalDuration = ((Date.now() - startTime) / 1000).toFixed(1);
+
+    console.log('[Progressive Sync] ========================================');
+    console.log('[Progressive Sync] ✅ ALL PHASES COMPLETE');
+    console.log(`[Progressive Sync] Total time: ${totalDuration}s`);
+    console.log(`[Progressive Sync] Total records: ${totalResult.inserted}`);
+    console.log('[Progressive Sync] ========================================');
+
+    totalResult.success = phase1.success && phase2.success && phase3.success;
+    return totalResult;
+  }
 }
 
 // Export singleton instance
 export const syncService = new SyncService();
+export type { ProgressiveSyncResult };
 
 // Export for testing
 export { SyncService };
