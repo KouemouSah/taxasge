@@ -13,6 +13,7 @@ export interface FiscalService {
   name_en?: string;
   description_es?: string;
   service_type?: string;
+  calculation_method?: string;
   expedition_amount: number;
   renewal_amount?: number;
   category_id?: string;
@@ -32,6 +33,36 @@ export interface SearchFilters {
   minAmount?: number;
   maxAmount?: number;
   onlineOnly?: boolean;
+}
+
+/**
+ * Get localized service name based on current language
+ */
+export function getServiceName(
+  service: FiscalService,
+  language: 'es' | 'fr' | 'en'
+): string {
+  switch (language) {
+    case 'fr':
+      return service.name_fr || service.name_es;
+    case 'en':
+      return service.name_en || service.name_es;
+    case 'es':
+    default:
+      return service.name_es;
+  }
+}
+
+/**
+ * Get localized service description based on current language
+ */
+export function getServiceDescription(
+  service: FiscalService,
+  language: 'es' | 'fr' | 'en'
+): string | undefined {
+  // Currently only Spanish descriptions are available
+  // Will return description_fr and description_en when available
+  return service.description_es;
 }
 
 class FiscalServicesService {
