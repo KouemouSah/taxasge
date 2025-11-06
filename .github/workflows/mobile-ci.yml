@@ -417,20 +417,21 @@ jobs:
           # Ensure gradlew is executable
           chmod +x gradlew
 
-          ./gradlew clean || echo "⚠️ Clean échoué"
-
-          if ./gradlew assembleDebug; then
+          # Run clean and assembleDebug in single Gradle invocation to reuse daemon
+          echo "📦 Starting Gradle build (clean + assembleDebug)..."
+          if ./gradlew clean assembleDebug --no-daemon --stacktrace; then
             echo "✅ APK généré avec succès"
-            
+
             if [ -f "app/build/outputs/apk/debug/app-debug.apk" ]; then
               APK_SIZE=$(du -h app/build/outputs/apk/debug/app-debug.apk | cut -f1)
               echo "📱 APK généré: $APK_SIZE"
             else
               echo "❌ APK non trouvé à l'emplacement attendu"
+              ls -la app/build/outputs/apk/debug/ || echo "Directory not found"
             fi
           else
             echo "❌ Échec build Android"
-            echo "📝 Configuration ou dépendances Android à corriger"
+            echo "📝 Vérifiez les logs ci-dessus pour les erreurs"
             exit 1
           fi
 
