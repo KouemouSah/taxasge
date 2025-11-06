@@ -33,6 +33,14 @@ import {
   ChatbotAction,
   DEFAULT_RESPONSES,
 } from '../types/chatbot.types';
+import {
+  getRandomIntro,
+  getSuggestion,
+  getError,
+  getServiceLabel,
+  buildDynamicResponse,
+  CHATBOT_I18N,
+} from './chatbot/chatbot.i18n';
 
 // ============================================
 // HELPER FUNCTIONS
@@ -46,122 +54,6 @@ function generateMessageId(): string {
 }
 
 /**
- * Introductions variées pour les réponses (effet humain, non-machine)
- * 5 variations aléatoires par langue
- */
-const RESPONSE_INTROS: Record<ChatbotLanguage, string[]> = {
-  es: [
-    'He encontrado la siguiente información:',
-    'Aquí está lo que necesitas saber:',
-    'Según nuestros registros:',
-    'Te puedo ayudar con eso:',
-    'Esto es lo que tengo para ti:',
-  ],
-  fr: [
-    "J'ai trouvé les informations suivantes :",
-    'Voici ce que vous devez savoir :',
-    "D'après nos données :",
-    'Je peux vous aider avec cela :',
-    "Voici ce que j'ai pour vous :",
-  ],
-  en: [
-    'I found the following information:',
-    "Here's what you need to know:",
-    'According to our records:',
-    'I can help you with that:',
-    "Here's what I have for you:",
-  ],
-};
-
-/**
- * Sélectionne une introduction aléatoire pour la réponse
- */
-function getRandomIntro(language: ChatbotLanguage): string {
-  const intros = RESPONSE_INTROS[language];
-  const randomIndex = Math.floor(Math.random() * intros.length);
-  return intros[randomIndex];
-}
-
-/**
- * Dictionnaire de traductions pour les suggestions courantes
- */
-const SUGGESTION_TRANSLATIONS: Record<string, Record<ChatbotLanguage, string>> = {
-  // Suggestions courantes
-  '¿Cuánto cuesta un servicio?': {
-    es: '¿Cuánto cuesta un servicio?',
-    fr: 'Combien coûte un service ?',
-    en: 'How much does a service cost?',
-  },
-  '¿Qué documentos necesito?': {
-    es: '¿Qué documentos necesito?',
-    fr: 'Quels documents ai-je besoin ?',
-    en: 'What documents do I need?',
-  },
-  'Ver servicios populares': {
-    es: 'Ver servicios populares',
-    fr: 'Voir services populaires',
-    en: 'View popular services',
-  },
-  'Buscar servicios': {
-    es: 'Buscar servicios',
-    fr: 'Rechercher services',
-    en: 'Search services',
-  },
-  'Usar calculadora': {
-    es: 'Usar calculadora',
-    fr: 'Utiliser calculatrice',
-    en: 'Use calculator',
-  },
-  'Ver procedimientos': {
-    es: 'Ver procedimientos',
-    fr: 'Voir procédures',
-    en: 'View procedures',
-  },
-  'Ver documentos requeridos': {
-    es: 'Ver documentos requeridos',
-    fr: 'Voir documents requis',
-    en: 'View required documents',
-  },
-  '¿Cuánto tiempo toma?': {
-    es: '¿Cuánto tiempo toma?',
-    fr: 'Combien de temps cela prend-il ?',
-    en: 'How long does it take?',
-  },
-  'Documentos comunes': {
-    es: 'Documentos comunes',
-    fr: 'Documents communs',
-    en: 'Common documents',
-  },
-  'Buscar otro servicio': {
-    es: 'Buscar otro servicio',
-    fr: 'Rechercher un autre service',
-    en: 'Search another service',
-  },
-  'Ver favoritos': {
-    es: 'Ver favoritos',
-    fr: 'Voir favoris',
-    en: 'View favorites',
-  },
-};
-
-/**
- * Traduit un array de suggestions vers la langue cible
- */
-function translateSuggestions(
-  suggestions: string[],
-  targetLanguage: ChatbotLanguage
-): string[] {
-  return suggestions.map((suggestion) => {
-    const translation = SUGGESTION_TRANSLATIONS[suggestion];
-    if (translation) {
-      return translation[targetLanguage];
-    }
-    // Si pas de traduction, retourner tel quel
-    return suggestion;
-  });
-}
-
-/**
  * Parse une FAQ de la DB vers le format parsed
  */
 function parseFAQ(faq: ChatbotFAQ): ChatbotFAQParsed {
@@ -172,6 +64,38 @@ function parseFAQ(faq: ChatbotFAQ): ChatbotFAQParsed {
     keywords: JSON.parse(faq.keywords),
     is_active: faq.is_active === 1,
   };
+}
+
+/**
+ * Convert suggestion keys to localized text
+ * Uses CHATBOT_I18N for translations
+ */
+function localizeSuggestions(
+  suggestionKeys: string[],
+  language: ChatbotLanguage
+): string[] {
+  const suggestionMap: Record<string, keyof typeof CHATBOT_I18N.suggestions> = {
+    'Buscar servicios': 'searchServices',
+    'Ver servicios populares': 'viewPopular',
+    'Usar calculadora': 'useCalculator',
+    '¿Cuánto cuesta un servicio?': 'getPrice',
+    '¿Qué documentos necesito?': 'getDocuments',
+    'Ver procedimientos': 'viewProcedures',
+    'Ver documentos requeridos': 'viewDocuments',
+    '¿Cuánto tiempo toma?': 'getProcessingTime',
+    'Documentos comunes': 'commonDocuments',
+    'Buscar otro servicio': 'searchAnother',
+    'Ver favoritos': 'viewFavorites',
+  };
+
+  return suggestionKeys.map((key) => {
+    const mappedKey = suggestionMap[key];
+    if (mappedKey) {
+      return getSuggestion(mappedKey, language);
+    }
+    // If no mapping, return as-is (for custom suggestions)
+    return key;
+  });
 }
 
 /**
@@ -440,8 +364,8 @@ class ChatbotService {
     const intro = getRandomIntro(language);
     const fullResponse = `${intro}\n\n${responseText}`;
 
-    // Traduire les suggestions vers la langue cible
-    const translatedSuggestions = translateSuggestions(faq.follow_up_suggestions, language);
+    // Localiser les suggestions vers la langue cible
+    const localizedSuggestions = localizeSuggestions(faq.follow_up_suggestions, language);
 
     const message: ChatMessage = {
       id: generateMessageId(),
@@ -450,13 +374,13 @@ class ChatbotService {
       timestamp: new Date(),
       intent: faq.intent as ChatbotIntent,
       faqId: faq.id,
-      suggestions: translatedSuggestions,
+      suggestions: localizedSuggestions,
       actions: faq.actions || undefined,
     };
 
     return {
       message,
-      suggestions: translatedSuggestions,
+      suggestions: localizedSuggestions,
       actions: faq.actions || undefined,
     };
   }
@@ -478,16 +402,16 @@ class ChatbotService {
       intent,
     };
 
-    // Suggestions génériques
-    const genericSuggestions: Record<ChatbotLanguage, string[]> = {
-      es: ['Buscar servicios', 'Ver servicios populares', 'Usar calculadora'],
-      fr: ['Rechercher services', 'Voir services populaires', 'Utiliser calculatrice'],
-      en: ['Search services', 'View popular services', 'Use calculator'],
-    };
+    // Suggestions génériques utilisant i18n
+    const genericSuggestions = [
+      getSuggestion('searchServices', language),
+      getSuggestion('viewPopular', language),
+      getSuggestion('useCalculator', language),
+    ];
 
     return {
       message,
-      suggestions: genericSuggestions[language],
+      suggestions: genericSuggestions,
     };
   }
 
@@ -495,16 +419,10 @@ class ChatbotService {
    * Génère réponse d'erreur
    */
   private generateErrorResponse(language: ChatbotLanguage): ChatResponse {
-    const errorMessages: Record<ChatbotLanguage, string> = {
-      es: 'Disculpa, ocurrió un error. Por favor, intenta de nuevo.',
-      fr: "Désolé, une erreur s'est produite. Veuillez réessayer.",
-      en: 'Sorry, an error occurred. Please try again.',
-    };
-
     const message: ChatMessage = {
       id: generateMessageId(),
       role: 'bot',
-      content: errorMessages[language],
+      content: getError('general', language),
       timestamp: new Date(),
       intent: 'unknown',
     };
@@ -633,51 +551,15 @@ class ChatbotService {
       })
     );
 
-    // Build response text based on language
+    // Build response text using i18n system
     let responseText = '';
 
-    const translations = {
-      es: {
-        found: 'Encontré',
-        services: 'servicio(s) fiscal(es)',
-        expedition: 'Expedición',
-        renewal: 'Renovación',
-        consult: 'Consultar',
-        processing: 'Plazo',
-        days: 'días',
-        category: 'Categoría',
-        viewDetails: 'Ver detalles',
-        moreResults: 'Hay más resultados disponibles. Refina tu búsqueda para ver servicios específicos.',
-      },
-      fr: {
-        found: 'Trouvé',
-        services: 'service(s) fiscal(aux)',
-        expedition: 'Expédition',
-        renewal: 'Renouvellement',
-        consult: 'Consulter',
-        processing: 'Délai',
-        days: 'jours',
-        category: 'Catégorie',
-        viewDetails: 'Voir détails',
-        moreResults: 'Il y a plus de résultats disponibles. Affinez votre recherche pour voir des services spécifiques.',
-      },
-      en: {
-        found: 'Found',
-        services: 'fiscal service(s)',
-        expedition: 'Expedition',
-        renewal: 'Renewal',
-        consult: 'Consult',
-        processing: 'Processing',
-        days: 'days',
-        category: 'Category',
-        viewDetails: 'View details',
-        moreResults: 'There are more results available. Refine your search to see specific services.',
-      },
-    };
+    const servicesFoundText = buildDynamicResponse(
+      CHATBOT_I18N.dynamicResponses.servicesFound[language],
+      { count: services.length }
+    );
 
-    const t = translations[language];
-
-    responseText = `${intro}\n\n🔍 **${t.found} ${services.length} ${t.services}:**\n\n`;
+    responseText = `${intro}\n\n🔍 **${servicesFoundText}**\n\n`;
 
     translatedServices.forEach((svc, idx) => {
       // Service name with link
@@ -685,11 +567,14 @@ class ChatbotService {
 
       // Costs (use correct field names: tasa_expedicion/tasa_renovacion)
       if (svc.tasa_expedicion !== null && svc.tasa_expedicion !== undefined) {
-        responseText += `💰 ${t.expedition}: ${svc.tasa_expedicion > 0 ? svc.tasa_expedicion + ' XAF' : t.consult}\n`;
+        const expeditionLabel = getServiceLabel('expedition', language);
+        const consultLabel = getServiceLabel('consult', language);
+        responseText += `💰 ${expeditionLabel}: ${svc.tasa_expedicion > 0 ? svc.tasa_expedicion + ' XAF' : consultLabel}\n`;
       }
 
       if (svc.tasa_renovacion && svc.tasa_renovacion > 0) {
-        responseText += `🔄 ${t.renewal}: ${svc.tasa_renovacion} XAF\n`;
+        const renewalLabel = getServiceLabel('renewal', language);
+        responseText += `🔄 ${renewalLabel}: ${svc.tasa_renovacion} XAF\n`;
       }
 
       // Ministry and Category
@@ -698,29 +583,35 @@ class ChatbotService {
       }
 
       if (svc.translatedCategory) {
-        responseText += `📂 ${t.category}: ${svc.translatedCategory}\n`;
+        const categoryLabel = getServiceLabel('category', language);
+        responseText += `📂 ${categoryLabel}: ${svc.translatedCategory}\n`;
       }
 
       // Processing time
       if (svc.processing_time_days && svc.processing_time_days > 0) {
-        responseText += `⏱️ ${t.processing}: ${svc.processing_time_days} ${t.days}\n`;
+        const processingLabel = getServiceLabel('processing', language);
+        const daysLabel = getServiceLabel('days', language);
+        responseText += `⏱️ ${processingLabel}: ${svc.processing_time_days} ${daysLabel}\n`;
       }
 
       // Navigation link (clickable in UI)
-      responseText += `🔗 [${t.viewDetails}](/service/${svc.service_code})\n`;
+      const viewDetailsLabel = getServiceLabel('viewDetails', language);
+      responseText += `🔗 [${viewDetailsLabel}](/service/${svc.service_code})\n`;
 
       responseText += '\n';
     });
 
     if (services.length === 5) {
-      responseText += `💡 _${t.moreResults}_`;
+      const moreResultsText = CHATBOT_I18N.dynamicResponses.moreResults[language];
+      responseText += `💡 _${moreResultsText}_`;
     }
 
-    const suggestions: Record<ChatbotLanguage, string[]> = {
-      es: ['Buscar otro servicio', 'Ver servicios populares', 'Usar calculadora'],
-      fr: ['Rechercher un autre service', 'Voir services populaires', 'Utiliser calculatrice'],
-      en: ['Search another service', 'View popular services', 'Use calculator'],
-    };
+    // Suggestions using i18n
+    const suggestions = [
+      getSuggestion('searchAnother', language),
+      getSuggestion('viewPopular', language),
+      getSuggestion('useCalculator', language),
+    ];
 
     const message: ChatMessage = {
       id: generateMessageId(),
@@ -729,15 +620,19 @@ class ChatbotService {
       timestamp: new Date(),
       intent: 'search_service',
       metadata: {
-        source: 'dynamic_db_search',
-        servicesFound: services.length,
-        serviceIds: services.map((s) => s.id),
+        language,
+        fallback: false,
+        entities: {
+          source: 'dynamic_db_search',
+          servicesFound: services.length,
+          serviceIds: services.map((s) => s.id),
+        },
       },
     };
 
     return {
       message,
-      suggestions: suggestions[language],
+      suggestions,
     };
   }
 
@@ -745,29 +640,28 @@ class ChatbotService {
    * Génère réponse quand aucun service trouvé
    */
   private generateNoResultsResponse(query: string, language: ChatbotLanguage): ChatResponse {
-    const noResultsMessages: Record<ChatbotLanguage, string> = {
-      es: `❌ **No encontré servicios para "${query}"**\n\n💡 **Sugerencias:**\n• Intenta con palabras más generales (ej: "pasaporte" en lugar de "pasaporte biométrico")\n• Verifica la ortografía\n• Usa sinónimos (ej: "licencia" o "permiso")\n• Explora por categorías en el menú principal\n\n📊 Contamos con **547 servicios fiscales** disponibles.`,
-      fr: `❌ **Aucun service trouvé pour "${query}"**\n\n💡 **Suggestions:**\n• Essayez avec des mots plus généraux (ex: "passeport" au lieu de "passeport biométrique")\n• Vérifiez l'orthographe\n• Utilisez des synonymes (ex: "licence" ou "permis")\n• Explorez par catégories dans le menu principal\n\n📊 Nous avons **547 services fiscaux** disponibles.`,
-      en: `❌ **No services found for "${query}"**\n\n💡 **Suggestions:**\n• Try more general words (eg: "passport" instead of "biometric passport")\n• Check spelling\n• Use synonyms (eg: "license" or "permit")\n• Browse by categories in main menu\n\n📊 We have **547 fiscal services** available.`,
-    };
+    const noResultsHeader = getError('noResults', language, { query });
+    const suggestionsTips = CHATBOT_I18N.noResultsSuggestions[language];
+    const fullMessage = `❌ **${noResultsHeader}**\n\n${suggestionsTips}`;
 
-    const suggestions: Record<ChatbotLanguage, string[]> = {
-      es: ['Buscar servicios', 'Ver servicios populares', '¿Qué documentos necesito?'],
-      fr: ['Rechercher services', 'Voir services populaires', 'Quels documents ai-je besoin ?'],
-      en: ['Search services', 'View popular services', 'What documents do I need?'],
-    };
+    // Suggestions using i18n
+    const suggestions = [
+      getSuggestion('searchServices', language),
+      getSuggestion('viewPopular', language),
+      getSuggestion('getDocuments', language),
+    ];
 
     const message: ChatMessage = {
       id: generateMessageId(),
       role: 'bot',
-      content: noResultsMessages[language],
+      content: fullMessage,
       timestamp: new Date(),
       intent: 'unknown',
     };
 
     return {
       message,
-      suggestions: suggestions[language],
+      suggestions,
     };
   }
 
