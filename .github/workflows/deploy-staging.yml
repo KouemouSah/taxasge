@@ -101,6 +101,12 @@ jobs:
             --set-env-vars="SUPABASE_URL=${{ secrets.SUPABASE_URL }}" \
             --set-env-vars="SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" \
             --set-env-vars="SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            --set-env-vars="SMTP_HOST=smtp.gmail.com" \
+            --set-env-vars="SMTP_PORT=587" \
+            --set-env-vars="SMTP_USERNAME=libressai@gmail.com" \
+            --set-env-vars="SMTP_FROM_EMAIL=libressai@gmail.com" \
+            --set-env-vars="SMTP_FROM_NAME=TaxasGE Platform" \
+            --set-env-vars="SMTP_USE_TLS=true" \
             --min-instances=0 \
             --max-instances=10 \
             --memory=512Mi \
