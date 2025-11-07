@@ -2,7 +2,7 @@
 Repository for pending_registrations table (minimal 6-column version)
 Handles email verification codes with expiration
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from loguru import logger
 
@@ -36,7 +36,7 @@ class PendingRegistrationRepository:
             Exception: If email already has pending verification
         """
         try:
-            expires_at = datetime.utcnow() + timedelta(minutes=expires_in_minutes)
+            expires_at = datetime.now(timezone.utc) + timedelta(minutes=expires_in_minutes)
 
             query = """
                 INSERT INTO pending_registrations (email, verification_code, expires_at)
@@ -101,10 +101,12 @@ class PendingRegistrationRepository:
                 logger.warning(f"No pending registration found for {email}")
                 return False
 
-            logger.info(f"Verifying code for {email}: stored='{pending['verification_code']}', received='{code}', expires_at={pending['expires_at']}, now={datetime.utcnow()}")
+            # Use timezone-aware datetime for comparison
+            now_utc = datetime.now(timezone.utc)
+            logger.info(f"Verifying code for {email}: stored='{pending['verification_code']}', received='{code}', expires_at={pending['expires_at']}, now={now_utc}")
 
             # Check if expired
-            if datetime.utcnow() > pending['expires_at']:
+            if now_utc > pending['expires_at']:
                 await self.delete_by_email(email)
                 logger.info(f"Verification code expired for {email}")
                 return False
