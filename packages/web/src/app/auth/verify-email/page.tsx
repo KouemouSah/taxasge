@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Loader2, CheckCircle, Mail } from "lucide-react"
 import Header from "@/components/layout/Header"
 import Footer from "@/components/layout/Footer"
-import { authApi } from "@/lib/api/auth"
+import { authApi } from "@/lib/api/authApi"
 import { getAuthData } from "@/lib/auth/storage"
 
 export default function VerifyEmailPage() {
@@ -31,30 +31,30 @@ export default function VerifyEmailPage() {
 
   useEffect(() => {
     setIsMounted(true)
-    const authData = getAuthData()
 
-    if (!authData) {
-      router.push("/auth")
-      return
+    // Check if we have pending registration data
+    const pendingData = localStorage.getItem('pending_registration')
+    if (!pendingData) {
+      // No pending registration - check if user is already authenticated
+      const authData = getAuthData()
+      if (!authData) {
+        router.push("/auth")
+        return
+      }
+      setUserEmail(authData.user?.email)
+    } else {
+      // Has pending registration data - parse and set email
+      try {
+        const data = JSON.parse(pendingData)
+        setUserEmail(data.email)
+      } catch {
+        router.push("/auth")
+      }
     }
-
-    setUserEmail(authData.user?.email)
   }, [router])
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    const authData = getAuthData()
-
-    if (!authData?.access_token) {
-      toast({
-        variant: "destructive",
-        title: "Non authentifié",
-        description: "Veuillez vous connecter d'abord",
-      })
-      router.push("/auth")
-      return
-    }
 
     if (verificationCode.length !== 6) {
       toast({
@@ -68,16 +68,63 @@ export default function VerifyEmailPage() {
     setIsLoading(true)
 
     try {
-      await authApi.verifyEmail({ verification_code: verificationCode })
+      // Check if this is from registration or from existing user email verification
+      const pendingData = localStorage.getItem('pending_registration')
 
-      toast({
-        title: "Email vérifié !",
-        description: "Votre adresse email a été vérifiée avec succès.",
-      })
+      if (pendingData) {
+        // NEW USER REGISTRATION - Complete registration with verification code
+        const registrationData = JSON.parse(pendingData)
 
-      setTimeout(() => {
-        router.push("/dashboard")
-      }, 1500)
+        const response = await authApi.register({
+          email: registrationData.email,
+          verification_code: verificationCode,
+          password: registrationData.password,
+          first_name: registrationData.first_name,
+          last_name: registrationData.last_name,
+          phone: registrationData.phone,
+          role: registrationData.role,
+        })
+
+        // Store auth tokens
+        const { setAuthData } = await import("@/lib/auth/storage")
+        setAuthData(response)
+
+        // Clear pending registration data
+        localStorage.removeItem('pending_registration')
+
+        toast({
+          title: "Compte créé !",
+          description: `Bienvenue ${registrationData.first_name} ${registrationData.last_name}`,
+        })
+
+        setTimeout(() => {
+          router.push("/dashboard")
+        }, 1500)
+      } else {
+        // EXISTING USER - Email verification only
+        const authData = getAuthData()
+
+        if (!authData?.access_token) {
+          toast({
+            variant: "destructive",
+            title: "Non authentifié",
+            description: "Veuillez vous connecter d'abord",
+          })
+          router.push("/auth")
+          return
+        }
+
+        await authApi.verifyEmail({ verification_code: verificationCode }, authData.access_token)
+
+        toast({
+          title: "Email vérifié !",
+          description: "Votre adresse email a été vérifiée avec succès.",
+        })
+
+        setTimeout(() => {
+          router.push("/dashboard")
+        }, 1500)
+      }
     } catch (error: unknown) {
       toast({
         variant: "destructive",
@@ -90,26 +137,41 @@ export default function VerifyEmailPage() {
   }
 
   const handleResend = async () => {
-    const authData = getAuthData()
-
-    if (!authData?.access_token) {
-      toast({
-        variant: "destructive",
-        title: "Non authentifié",
-        description: "Veuillez vous connecter d'abord",
-      })
-      return
-    }
-
     setIsResending(true)
 
     try {
-      const result = await authApi.resendEmailVerification()
+      // Check if this is from registration or existing user
+      const pendingData = localStorage.getItem('pending_registration')
 
-      toast({
-        title: "Email renvoyé !",
-        description: `Un nouveau code a été envoyé à ${result.email}`,
-      })
+      if (pendingData) {
+        // NEW USER - Resend verification code for registration
+        const registrationData = JSON.parse(pendingData)
+        await authApi.requestVerificationCode(registrationData.email)
+
+        toast({
+          title: "Code renvoyé !",
+          description: `Un nouveau code a été envoyé à ${registrationData.email}`,
+        })
+      } else {
+        // EXISTING USER - Resend email verification
+        const authData = getAuthData()
+
+        if (!authData?.access_token) {
+          toast({
+            variant: "destructive",
+            title: "Non authentifié",
+            description: "Veuillez vous connecter d'abord",
+          })
+          return
+        }
+
+        const result = await authApi.resendEmailVerification(authData.access_token)
+
+        toast({
+          title: "Email renvoyé !",
+          description: `Un nouveau code a été envoyé à ${result.email}`,
+        })
+      }
     } catch (error: unknown) {
       toast({
         variant: "destructive",

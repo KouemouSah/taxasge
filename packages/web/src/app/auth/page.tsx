@@ -34,18 +34,18 @@ export default function AuthPage() {
   const [rememberMe, setRememberMe] = useState(false)
   const [loginLoading, setLoginLoading] = useState(false)
 
-  // État Register (simple form, pas two-step UI pour l'instant)
+  // État Register
   const [registerEmail, setRegisterEmail] = useState("")
   const [registerPassword, setRegisterPassword] = useState("")
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
   const [phone, setPhone] = useState("")
   const [role, setRole] = useState<"citizen" | "business">("citizen")
-  const [_registerLoading, _setRegisterLoading] = useState(false)
+  const [registerLoading, setRegisterLoading] = useState(false)
 
   // État erreurs
   const [loginErrors, setLoginErrors] = useState<Record<string, string>>({})
-  const [_registerErrors, _setRegisterErrors] = useState<Record<string, string>>({})
+  const [registerErrors, setRegisterErrors] = useState<Record<string, string>>({})
 
   // Handler Login
   const handleLogin = async (e: React.FormEvent) => {
@@ -118,19 +118,105 @@ export default function AuthPage() {
     }
   }
 
-  // Handler Register
-  // NOTE: Backend utilise two-step (verification_code requis)
-  // Pour l'instant, formulaire simple - two-step UI sera ajouté plus tard
+  // Handler Register: Send verification code and redirect to verify-email page
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
+    setRegisterErrors({})
+    setRegisterLoading(true)
 
-    toast({
-      variant: "destructive",
-      title: "Fonctionnalité en développement",
-      description: "Le formulaire d'inscription two-step est en cours d'implémentation. Utilisez TwoStepRegisterForm component.",
-    })
+    try {
+      // Validate all required fields
+      if (!registerEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registerEmail)) {
+        setRegisterErrors({ email: "Email invalide" })
+        setRegisterLoading(false)
+        return
+      }
+      if (!firstName || firstName.length < 2) {
+        setRegisterErrors({ first_name: "Prénom requis (min 2 caractères)" })
+        setRegisterLoading(false)
+        return
+      }
+      if (!lastName || lastName.length < 2) {
+        setRegisterErrors({ last_name: "Nom requis (min 2 caractères)" })
+        setRegisterLoading(false)
+        return
+      }
+      if (!phone || !/^(222|555|551|333)\d{6}$/.test(phone)) {
+        setRegisterErrors({ phone: "Téléphone invalide (222/555/551/333 + 6 chiffres)" })
+        setRegisterLoading(false)
+        return
+      }
+      if (!registerPassword || registerPassword.length < 8) {
+        setRegisterErrors({ password: "Mot de passe invalide (min 8 caractères)" })
+        setRegisterLoading(false)
+        return
+      }
 
-    // TODO: Implémenter formulaire two-step complet ou utiliser TwoStepRegisterForm
+      // Password strength validation
+      if (!/[A-Z]/.test(registerPassword)) {
+        setRegisterErrors({ password: "Le mot de passe doit contenir au moins une majuscule" })
+        setRegisterLoading(false)
+        return
+      }
+      if (!/[a-z]/.test(registerPassword)) {
+        setRegisterErrors({ password: "Le mot de passe doit contenir au moins une minuscule" })
+        setRegisterLoading(false)
+        return
+      }
+      if (!/[0-9]/.test(registerPassword)) {
+        setRegisterErrors({ password: "Le mot de passe doit contenir au moins un chiffre" })
+        setRegisterLoading(false)
+        return
+      }
+      if (!/[^A-Za-z0-9]/.test(registerPassword)) {
+        setRegisterErrors({ password: "Le mot de passe doit contenir au moins un caractère spécial" })
+        setRegisterLoading(false)
+        return
+      }
+
+      // Store registration data in localStorage for use on verify-email page
+      localStorage.setItem('pending_registration', JSON.stringify({
+        email: registerEmail,
+        password: registerPassword,
+        first_name: firstName,
+        last_name: lastName,
+        phone: phone,
+        role: role,
+      }))
+
+      // Request verification code (automatically sends email)
+      await authApi.requestVerificationCode(registerEmail)
+
+      toast({
+        title: "Code envoyé !",
+        description: `Un code de vérification a été envoyé à ${registerEmail}`,
+      })
+
+      // Redirect to verify-email page
+      setTimeout(() => {
+        router.push("/auth/verify-email")
+      }, 500)
+    } catch (error: unknown) {
+      // If email sending fails, show appropriate error message
+      const errorMsg = error instanceof Error ? error.message : "Échec de l'inscription"
+
+      // Check if error is email-related
+      if (errorMsg.includes('email') || errorMsg.includes('SMTP') || errorMsg.includes('envoi')) {
+        toast({
+          variant: "destructive",
+          title: "Impossible de vérifier votre email",
+          description: "Consultez votre support pour accepter les emails et revenez.",
+        })
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Erreur d'inscription",
+          description: errorMsg,
+        })
+      }
+    } finally {
+      setRegisterLoading(false)
+    }
   }
 
   return (
@@ -278,8 +364,8 @@ export default function AuthPage() {
                           onChange={(e) => setFirstName(e.target.value)}
                           required
                         />
-                        {({} as any).first_name && (
-                          <p className="text-sm text-destructive">{({} as any).first_name}</p>
+                        {registerErrors.first_name && (
+                          <p className="text-sm text-destructive">{registerErrors.first_name}</p>
                         )}
                       </div>
 
@@ -293,8 +379,8 @@ export default function AuthPage() {
                           onChange={(e) => setLastName(e.target.value)}
                           required
                         />
-                        {({} as any).last_name && (
-                          <p className="text-sm text-destructive">{({} as any).last_name}</p>
+                        {registerErrors.last_name && (
+                          <p className="text-sm text-destructive">{registerErrors.last_name}</p>
                         )}
                       </div>
                     </div>
@@ -309,8 +395,8 @@ export default function AuthPage() {
                         onChange={(e) => setRegisterEmail(e.target.value)}
                         required
                       />
-                      {({} as any).email && (
-                        <p className="text-sm text-destructive">{({} as any).email}</p>
+                      {registerErrors.email && (
+                        <p className="text-sm text-destructive">{registerErrors.email}</p>
                       )}
                     </div>
 
@@ -319,13 +405,13 @@ export default function AuthPage() {
                       <Input
                         id="phone"
                         type="tel"
-                        placeholder="222123456 ou 555123456"
+                        placeholder="222123456, 555123456, 551123456 ou 333123456"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         required
                       />
-                      {({} as any).phone && (
-                        <p className="text-sm text-destructive">{({} as any).phone}</p>
+                      {registerErrors.phone && (
+                        <p className="text-sm text-destructive">{registerErrors.phone}</p>
                       )}
                     </div>
 
@@ -339,13 +425,16 @@ export default function AuthPage() {
                         onChange={(e) => setRegisterPassword(e.target.value)}
                         required
                       />
-                      {({} as any).password && (
-                        <p className="text-sm text-destructive">{({} as any).password}</p>
+                      {registerErrors.password && (
+                        <p className="text-sm text-destructive">{registerErrors.password}</p>
                       )}
+                      <p className="text-xs text-muted-foreground">
+                        Min 8 caractères, 1 majuscule, 1 minuscule, 1 chiffre, 1 caractère spécial
+                      </p>
                     </div>
 
-                    <Button type="submit" className="w-full">
-                      Créer un compte
+                    <Button type="submit" className="w-full" disabled={registerLoading}>
+                      {registerLoading ? "Création..." : "Créer un compte"}
                     </Button>
                   </form>
                 </TabsContent>

@@ -54,11 +54,14 @@ interface LoginRequest {
 
 interface RegisterRequest {
   email: string
+  verification_code: string
   password: string
   first_name: string
   last_name: string
-  phone?: string
+  phone: string
   role: 'citizen' | 'business'
+  address?: string
+  city?: string
 }
 
 interface TokenResponse {

@@ -47,7 +47,7 @@ export const registerSchema = z.object({
     .max(50, 'Maximum 50 caractères'),
   phone: z
     .string()
-    .regex(/^(222|555|551)\d{6}$/, 'Le numéro doit commencer par 222, 555 ou 551 et contenir 9 chiffres au total')
+    .regex(/^(222|555|551|333)\d{6}$/, 'Le numéro doit commencer par 222, 555, 551 ou 333 et contenir 9 chiffres au total')
     .length(9, 'Le numéro doit contenir exactement 9 chiffres'),
   role: z.enum(['citizen', 'business'], {
     errorMap: () => ({ message: 'Rôle invalide' }),
