@@ -1,0 +1,12 @@
+id: number
+template_code: string
+document_name_es: string
+description_es: null
+category: string
+validity_duration_months: null
+validity_notes: null
+usage_count: number
+is_active: boolean
+created_at: string
+updated_at: string
+created_by: null
