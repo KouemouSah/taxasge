@@ -187,15 +187,14 @@ export default function AuthPage() {
       // Request verification code (automatically sends email)
       await authApi.requestVerificationCode(registerEmail)
 
+      // Redirect to verify-email page immediately
+      router.push("/auth/verify-email")
+
+      // Show success toast after redirect starts
       toast({
         title: "Code envoyé !",
         description: `Un code de vérification a été envoyé à ${registerEmail}`,
       })
-
-      // Redirect to verify-email page
-      setTimeout(() => {
-        router.push("/auth/verify-email")
-      }, 500)
     } catch (error: unknown) {
       // If email sending fails, show appropriate error message
       const errorMsg = error instanceof Error ? error.message : "Échec de l'inscription"
