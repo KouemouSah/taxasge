@@ -69,7 +69,7 @@ interface TokenResponse {
   user: {
     id: string
     email: string
-    role: 'citizen' | 'business' | 'admin' | 'operator' | 'auditor' | 'support'
+    role: 'citizen' | 'business' | 'accountant' | 'admin' | 'dgi_agent'
     status: 'active' | 'inactive' | 'suspended' | 'pending_verification'
     first_name: string
     last_name: string

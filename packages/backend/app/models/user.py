@@ -9,15 +9,14 @@ from pydantic import BaseModel, Field, EmailStr, validator
 from enum import Enum
 import phonenumbers
 
-# User enums (moved from auth.py to avoid circular imports)
+# User enums (aligned with user_role_enum from schema_taxage.sql)
 class UserRole(str, Enum):
-    """User role enumeration"""
+    """User role enumeration - MUST match user_role_enum in database"""
     citizen = "citizen"
     business = "business"
+    accountant = "accountant"
     admin = "admin"
-    operator = "operator"
-    auditor = "auditor"
-    support = "support"
+    dgi_agent = "dgi_agent"
 
 
 class UserStatus(str, Enum):

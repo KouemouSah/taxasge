@@ -4,8 +4,8 @@
  * Source: packages/backend/app/models/user.py & auth_models.py
  */
 
-// User Role Enum (aligned with backend UserRole)
-export type UserRole = 'citizen' | 'business' | 'admin' | 'operator' | 'auditor' | 'support';
+// User Role Enum (aligned with user_role_enum from schema_taxage.sql)
+export type UserRole = 'citizen' | 'business' | 'accountant' | 'admin' | 'dgi_agent';
 
 // User Status Enum (aligned with backend UserStatus)
 export type UserStatus = 'active' | 'inactive' | 'suspended' | 'pending_verification';
@@ -42,7 +42,7 @@ export interface BusinessProfile extends UserProfile {
   website?: string;
 }
 
-// User object returned from backend (aligned with UserResponse model)
+// User object returned from backend (aligned with users table in schema_taxage.sql)
 export interface User {
   id: string;
   email: string;
