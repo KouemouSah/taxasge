@@ -1,3 +1,4 @@
+# Clean deployment after troubleshooting - only GitHub Actions builds from now on
 name: Deploy to Staging
 
 on:
