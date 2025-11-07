@@ -57,7 +57,8 @@ class AuthService:
         """
         try:
             # Check if user already exists
-            existing_user = await self.user_repo.find_by_email(user_data.email)
+            # IMPORTANT: use_supabase=False to bypass RLS policies and use direct PostgreSQL
+            existing_user = await self.user_repo.find_by_email(user_data.email, use_supabase=False)
             if existing_user:
                 raise Exception(
                     f"Un compte existe déjà avec l'adresse email {user_data.email}. "

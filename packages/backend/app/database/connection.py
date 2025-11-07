@@ -48,7 +48,9 @@ class DatabaseManager:
                     connection_string,
                     min_size=settings.DATABASE_MIN_CONNECTIONS,
                     max_size=settings.DATABASE_MAX_CONNECTIONS,
-                    command_timeout=60,
+                    command_timeout=30,  # Reduced from 60s for faster failure detection
+                    max_queries=50000,  # Recycle connections after 50k queries
+                    max_inactive_connection_lifetime=300,  # Close idle connections after 5min
                     server_settings={
                         'jit': 'off',  # Disable JIT for faster connection
                         'application_name': f'taxasge-{settings.ENVIRONMENT}'
