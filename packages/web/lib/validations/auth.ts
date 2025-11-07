@@ -21,15 +21,25 @@ export const loginSchema = z.object({
 });
 
 /**
- * Schéma de validation pour l'inscription
- * Phone format E.164: +33..., +221..., +240... (Guinée Équatoriale)
- * Role: citizen (défaut) ou business
+ * Schéma de validation pour l'inscription (Two-step process)
+ *
+ * IMPORTANT: Aligned with schema_taxage.sql users table (lines 1044-1078)
+ * All fields map to REAL database columns only.
+ *
+ * Contraintes:
+ * - Téléphone: OBLIGATOIRE, préfixes autorisés (222, 555, 551, 333), 9 chiffres total
+ * - Mot de passe: Min 8 chars, avec majuscule, minuscule, chiffre, caractère spécial
+ * - Role: OBLIGATOIRE, défaut = citizen
  */
 export const registerSchema = z.object({
   email: z
     .string()
     .min(1, 'Email requis')
     .email('Email invalide'),
+  verification_code: z
+    .string()
+    .length(6, 'Le code doit contenir 6 chiffres')
+    .regex(/^\d{6}$/, 'Le code doit contenir uniquement des chiffres'),
   password: z
     .string()
     .min(8, 'Minimum 8 caractères')
@@ -47,12 +57,14 @@ export const registerSchema = z.object({
     .max(50, 'Maximum 50 caractères'),
   phone: z
     .string()
-    .regex(/^\+[1-9]\d{1,14}$/, 'Format E.164 requis: +33..., +221..., +240...')
-    .min(8, 'Numéro trop court')
-    .max(16, 'Numéro trop long'),
+    .regex(/^(222|555|551|333)\d{6}$/, 'Format: 222/555/551/333 + 6 chiffres (ex: 222123456)'),
   role: z.enum(['citizen', 'business'], {
     errorMap: () => ({ message: 'Rôle invalide' }),
   }).default('citizen'),
+
+  // Optional: Basic contact info (exist in users table)
+  address: z.string().max(200).optional().or(z.literal('')),
+  city: z.string().max(100).optional().or(z.literal('')),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;

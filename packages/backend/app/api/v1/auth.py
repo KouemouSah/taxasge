@@ -43,42 +43,52 @@ class LoginRequest(BaseModel):
 
 
 class RegisterRequest(BaseModel):
+    """
+    Registration request model (Step 2 of two-step registration)
+
+    IMPORTANT: Aligned with schema_taxage.sql users table (lines 1044-1078)
+    All fields map to REAL database columns only.
+    """
     email: EmailStr = Field(..., description="User email address")
-    verification_code: str = Field(..., min_length=6, max_length=6, pattern="^\\d{6}$", description="6-digit verification code sent to email")
-    password: str = Field(..., min_length=8, description="User password (min 8 characters)")
+    verification_code: str = Field(
+        ...,
+        min_length=6,
+        max_length=6,
+        pattern="^\\d{6}$",
+        description="6-digit verification code sent to email"
+    )
+    password: str = Field(
+        ...,
+        min_length=8,
+        max_length=100,
+        description="Password (min 8 chars, must contain: uppercase, lowercase, digit, special char)"
+    )
     first_name: str = Field(..., min_length=2, max_length=50, description="First name")
     last_name: str = Field(..., min_length=2, max_length=50, description="Last name")
-    phone: Optional[str] = Field(None, description="Phone number")
-    role: UserRole = Field(default=UserRole.citizen, description="User role")
+    phone: str = Field(
+        ...,
+        pattern="^(222|555|551|333)\\d{6}$",
+        description="Phone number (9 digits: 222/555/551/333 + 6 digits). Example: 222123456"
+    )
+    role: UserRole = Field(default=UserRole.citizen, description="User role (citizen or business)")
 
-    # Citizen-specific fields (optional, only for role=citizen)
-    national_id: Optional[str] = Field(None, max_length=20, description="National ID number (citizen only)")
-    birth_date: Optional[str] = Field(None, description="Date of birth YYYY-MM-DD (citizen only)")
-    gender: Optional[str] = Field(None, pattern="^(M|F|O)$", description="Gender M/F/O (citizen only)")
-    marital_status: Optional[str] = Field(None, pattern="^(single|married|divorced|widowed)$", description="Marital status (citizen only)")
-    occupation: Optional[str] = Field(None, max_length=100, description="Professional occupation (citizen only)")
+    # Optional: Basic contact info (exist in users table)
+    address: Optional[str] = Field(None, max_length=200, description="User address")
+    city: Optional[str] = Field(None, max_length=100, description="City")
 
-    # Business-specific fields (required for role=business)
-    business_name: Optional[str] = Field(None, min_length=2, max_length=100, description="Business name (required for business)")
-    business_type: Optional[str] = Field(None, pattern="^(sole_proprietor|corporation|partnership|cooperative|ngo)$", description="Business entity type (required for business)")
-    tax_id: Optional[str] = Field(None, max_length=20, description="Business tax ID (business only)")
-    registration_number: Optional[str] = Field(None, max_length=30, description="Business registration number (business only)")
-    industry: Optional[str] = Field(None, max_length=100, description="Industry sector (business only)")
-    employee_count: Optional[int] = Field(None, ge=0, le=10000, description="Number of employees (business only)")
-    annual_revenue: Optional[float] = Field(None, ge=0, description="Annual revenue in XAF (business only)")
-    website: Optional[str] = Field(None, description="Business website URL (business only)")
-
-    @model_validator(mode='before')
-    @classmethod
-    def validate_business_fields(cls, values):
-        """Validate business fields are provided for business role"""
-        role = values.get('role')
-        if role == UserRole.business:
-            if not values.get('business_name'):
-                raise ValueError("Business name is required for business registration")
-            if not values.get('business_type'):
-                raise ValueError("Business type is required for business registration")
-        return values
+    @model_validator(mode='after')
+    def validate_password_strength(self):
+        """Validate password contains: uppercase, lowercase, digit, special character"""
+        password = self.password
+        if not any(c.isupper() for c in password):
+            raise ValueError("Password must contain at least one uppercase letter")
+        if not any(c.islower() for c in password):
+            raise ValueError("Password must contain at least one lowercase letter")
+        if not any(c.isdigit() for c in password):
+            raise ValueError("Password must contain at least one digit")
+        if not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?/" for c in password):
+            raise ValueError("Password must contain at least one special character")
+        return self
 
 
 class TokenResponse(BaseModel):
@@ -382,57 +392,24 @@ async def register(
         # Get client info
         ip_address, user_agent = get_client_info(req)
 
-        # Create base UserProfile
+        # Create UserProfile with ONLY fields that exist in users table
+        # NOTE: Extended profiles (citizen/business specific) will be in MODULE_03
         user_profile = UserProfile(
             first_name=request.first_name,
             last_name=request.last_name,
             phone=request.phone,
+            address=request.address,
+            city=request.city,
             language="es",  # Default to Spanish
         )
 
-        # Create role-specific profiles
-        citizen_profile = None
-        business_profile = None
-
-        if request.role == UserRole.citizen:
-            # Create CitizenProfile with extended fields
-            citizen_profile = CitizenProfile(
-                first_name=request.first_name,
-                last_name=request.last_name,
-                phone=request.phone,
-                language="es",
-                national_id=request.national_id,
-                birth_date=datetime.fromisoformat(request.birth_date) if request.birth_date else None,
-                gender=request.gender,
-                marital_status=request.marital_status,
-                occupation=request.occupation,
-            )
-
-        elif request.role == UserRole.business:
-            # Create BusinessProfile with extended fields
-            business_profile = BusinessProfile(
-                first_name=request.first_name,
-                last_name=request.last_name,
-                phone=request.phone,
-                language="es",
-                business_name=request.business_name,
-                business_type=request.business_type,
-                tax_id=request.tax_id,
-                registration_number=request.registration_number,
-                industry=request.industry,
-                employee_count=request.employee_count,
-                annual_revenue=request.annual_revenue,
-                website=request.website,
-            )
-
-        # Create UserCreate model with role-specific profiles
+        # Create UserCreate model (NO citizen_profile/business_profile for now)
         user_data = UserCreate(
             email=request.email,
             password=request.password,
             role=request.role,
             profile=user_profile,
-            citizen_profile=citizen_profile,
-            business_profile=business_profile,
+            email_verified=True,  # Already verified via two-step registration
         )
 
         # STEP 2: Register user via AuthService

@@ -40,7 +40,33 @@ export interface AuthError {
   status_code?: number;
 }
 
+// Interface pour la demande de code de vérification
+export interface RequestVerificationCodeResponse {
+  message: string;
+  email: string;
+  expires_in: number;
+}
+
 export const authApi = {
+  /**
+   * Demande de code de vérification (Step 1 of 2-step registration)
+   * POST /auth/request-verification-code
+   */
+  requestVerificationCode: async (email: string): Promise<RequestVerificationCodeResponse> => {
+    try {
+      const response = await authClient.post<RequestVerificationCodeResponse>('/request-verification-code', {
+        email,
+      });
+      return response.data;
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error) && error.response) {
+        const authError: AuthError = error.response.data;
+        throw new Error(authError.detail || "Erreur lors de l'envoi du code de vérification");
+      }
+      throw new Error('Erreur réseau - Impossible de contacter le serveur');
+    }
+  },
+
   /**
    * Connexion utilisateur
    * POST /auth/login
@@ -63,19 +89,30 @@ export const authApi = {
   },
 
   /**
-   * Inscription utilisateur
+   * Inscription utilisateur (Step 2 of 2-step registration)
    * POST /auth/register
+   *
+   * IMPORTANT: Aligned with schema_taxage.sql users table
+   * All required fields per specification:
+   * - phone: REQUIRED (222/555/551/333 + 6 digits)
+   * - password: REQUIRED (min 8, uppercase, lowercase, digit, special char)
+   * - role: REQUIRED (default: citizen)
    */
   register: async (data: RegisterInput): Promise<AuthResponse> => {
     try {
-      const response = await authClient.post<AuthResponse>('/register', {
+      const payload = {
         email: data.email,
+        verification_code: data.verification_code,
         password: data.password,
         first_name: data.first_name,
         last_name: data.last_name,
-        phone: data.phone,
-        role: data.role || 'citizen',
-      });
+        phone: data.phone,  // REQUIRED
+        role: data.role || 'citizen',  // REQUIRED (default)
+        address: data.address || undefined,  // Optional
+        city: data.city || undefined,  // Optional
+      };
+
+      const response = await authClient.post<AuthResponse>('/register', payload);
       return response.data;
     } catch (error: unknown) {
       if (axios.isAxiosError(error) && error.response) {

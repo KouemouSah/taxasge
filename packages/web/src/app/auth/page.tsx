@@ -20,10 +20,11 @@ import { useToast } from "@/hooks/use-toast"
 import { User, Building2 } from "lucide-react"
 import Header from "@/components/layout/Header"
 import Footer from "@/components/layout/Footer"
-import { authApi } from "@/lib/api/auth"
+import { authApi } from "@/lib/api/authApi"
 import { setAuthData } from "@/lib/auth/storage"
-import { loginSchema, registerSchema } from "@/lib/validations/auth"
+import { loginSchema } from "@/lib/validations/auth"
 import { z } from "zod"
+import TwoStepRegisterForm from "@/components/auth/TwoStepRegisterForm"
 
 export default function AuthPage() {
   const router = useRouter()
@@ -35,14 +36,19 @@ export default function AuthPage() {
   const [rememberMe, setRememberMe] = useState(false)
   const [loginLoading, setLoginLoading] = useState(false)
 
-  // État Register
+  // État Register (Two-step process)
+  const [registerStep, setRegisterStep] = useState<1 | 2>(1)  // Step 1: Request code, Step 2: Register
   const [registerEmail, setRegisterEmail] = useState("")
+  const [verificationCode, setVerificationCode] = useState("")
   const [registerPassword, setRegisterPassword] = useState("")
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
   const [phone, setPhone] = useState("")
+  const [address, setAddress] = useState("")
+  const [city, setCity] = useState("")
   const [role, setRole] = useState<"citizen" | "business">("citizen")
   const [registerLoading, setRegisterLoading] = useState(false)
+  const [codeRequestLoading, setCodeRequestLoading] = useState(false)
 
   // État erreurs
   const [loginErrors, setLoginErrors] = useState<Record<string, string>>({})
@@ -119,7 +125,35 @@ export default function AuthPage() {
     }
   }
 
-  // Handler Register
+  // Handler Step 1: Request verification code
+  const handleRequestCode = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setRegisterErrors({})
+    setCodeRequestLoading(true)
+
+    try {
+      // Call API to request verification code
+      await authApi.requestVerificationCode(registerEmail)
+
+      toast({
+        title: "Code envoyé",
+        description: `Un code de vérification a été envoyé à ${registerEmail}`,
+      })
+
+      // Move to step 2
+      setRegisterStep(2)
+    } catch (error: unknown) {
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: error instanceof Error ? error.message : "Impossible d'envoyer le code de vérification",
+      })
+    } finally {
+      setCodeRequestLoading(false)
+    }
+  }
+
+  // Handler Step 2: Complete registration
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setRegisterErrors({})
@@ -129,10 +163,13 @@ export default function AuthPage() {
       // Validation Zod
       const validated = registerSchema.parse({
         email: registerEmail,
+        verification_code: verificationCode,
         password: registerPassword,
         first_name: firstName,
         last_name: lastName,
-        phone: phone,
+        phone: phone || undefined,
+        address: address || undefined,
+        city: city || undefined,
         role: role,
       })
 

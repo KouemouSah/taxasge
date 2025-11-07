@@ -29,13 +29,27 @@ class UserStatus(str, Enum):
 
 
 class UserProfile(BaseModel):
-    """Base user profile information"""
+    """
+    Base user profile information
+
+    IMPORTANT: Aligned with schema_taxage.sql users table (lines 1044-1078)
+    phone → maps to phone_number in database
+    language → maps to preferred_language in database
+    """
     first_name: str = Field(..., min_length=2, max_length=50, description="User first name")
     last_name: str = Field(..., min_length=2, max_length=50, description="User last name")
-    phone: Optional[str] = Field(None, pattern=r"^(222|555|551)\d{6}$", description="Guinée Équatoriale phone (9 digits: 222/555/551 + 6 digits)")
+    phone: Optional[str] = Field(
+        None,
+        pattern=r"^(222|555|551|333)\d{6}$",
+        description="Guinée Équatoriale phone (9 digits: 222/555/551/333 + 6 digits)"
+    )
     address: Optional[str] = Field(None, max_length=200, description="User address")
     city: Optional[str] = Field(None, max_length=100, description="City")
-    language: str = Field(default="es", pattern="^(es|fr|en)$", description="Preferred language")
+    language: str = Field(
+        default="es",
+        pattern="^(es|fr|en)$",
+        description="Preferred language (maps to preferred_language in DB)"
+    )
     avatar_url: Optional[str] = Field(None, description="Profile picture URL")
 
 
@@ -75,30 +89,12 @@ class UserCreate(BaseModel):
     role: UserRole = Field(default=UserRole.citizen, description="User role")
     profile: UserProfile = Field(..., description="User profile information")
 
-    # Additional fields for specific roles
-    citizen_profile: Optional[CitizenProfile] = Field(None, description="Citizen-specific profile")
-    business_profile: Optional[BusinessProfile] = Field(None, description="Business-specific profile")
-
     # Email verification (for two-step registration)
     email_verified: bool = Field(default=True, description="Email verification status (True for verified emails)")
 
-    @validator('citizen_profile')
-    def validate_citizen_profile(cls, v, values):
-        """Validate citizen profile based on role"""
-        # CitizenProfile is required when registering as citizen
-        # Will be provided by auth.py registration endpoint
-        if values.get('role') == UserRole.citizen and not v:
-            raise ValueError("Citizen profile is required for citizen role")
-        return v
-
-    @validator('business_profile')
-    def validate_business_profile(cls, v, values):
-        """Validate business profile based on role"""
-        # BusinessProfile is required when registering as business
-        # Will be provided by auth.py registration endpoint
-        if values.get('role') == UserRole.business and not v:
-            raise ValueError("Business profile is required for business role")
-        return v
+    # NOTE: CitizenProfile and BusinessProfile fields removed
+    # Extended profiles will be implemented in MODULE_03 (User Profile Management)
+    # For now, only basic user fields exist in the database
 
 
 class UserUpdate(BaseModel):
