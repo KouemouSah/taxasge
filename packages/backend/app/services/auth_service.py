@@ -86,69 +86,65 @@ class AuthService:
 
             logger.info(f"[REGISTRATION_STEP_3] Utilisateur créé avec succès: {user.email} (ID: {user.id})")
 
-            # TEMPORARY TEST: Email verification disabled to test registration without email
-            # TODO: Re-enable email verification after testing
-            logger.warning(f"[TEST MODE] Email verification DISABLED for testing - User {user.email} created without email verification")
+            # Send verification email (BLOCKING - email must succeed for registration to complete)
+            # IMPORTANT: Pass user object directly to avoid transaction timing issues
+            try:
+                logger.info(f"[REGISTRATION_STEP_4] Envoi de l'email de vérification à {user.email}")
+                email_sent = await self.send_verification_email(
+                    user_id=user.id,
+                    email=user.email,
+                    user_obj=user  # Pass user object to avoid database lookup race condition
+                )
 
-            # # Send verification email (BLOCKING - email must succeed for registration to complete)
-            # # IMPORTANT: Pass user object directly to avoid transaction timing issues
-            # try:
-            #     logger.info(f"[REGISTRATION_STEP_4] Envoi de l'email de vérification à {user.email}")
-            #     email_sent = await self.send_verification_email(
-            #         user_id=user.id,
-            #         email=user.email,
-            #         user_obj=user  # Pass user object to avoid database lookup race condition
-            #     )
-            #
-            #     if not email_sent:
-            #         # Rollback: Delete user if email failed
-            #         await self.user_repo.delete_user(user.id)
-            #         raise Exception(
-            #             "Impossible d'envoyer l'email de vérification. "
-            #             "Vérifiez que votre adresse email est valide et accessible."
-            #         )
-            #
-            #     logger.info(f"Verification email sent successfully to: {user.email}")
-            #
-            # except Exception as email_error:
-            #     # Rollback: Delete user if email failed
-            #     try:
-            #         await self.user_repo.delete_user(user.id)
-            #         logger.info(f"Rolled back user creation for {user.email} due to email failure")
-            #     except Exception as rollback_error:
-            #         logger.error(f"Failed to rollback user {user.id}: {rollback_error}")
-            #
-            #     # Re-raise with user-friendly message
-            #     error_msg = str(email_error)
-            #     if "SMTPAuthenticationError" in error_msg or "authentication" in error_msg.lower():
-            #         raise Exception(
-            #             "Erreur de configuration du serveur email. "
-            #             "L'administrateur doit configurer le mot de passe SMTP dans les secrets Google Cloud. "
-            #             "Contactez le support technique."
-            #         )
-            #     elif "SMTPConnectError" in error_msg or "connection" in error_msg.lower():
-            #         raise Exception(
-            #             "Impossible de se connecter au serveur email. "
-            #             "Le service d'envoi d'emails est temporairement indisponible. "
-            #             "Réessayez dans quelques minutes."
-            #         )
-            #     elif "invalid" in error_msg.lower() or "not exist" in error_msg.lower():
-            #         raise Exception(
-            #             f"L'adresse email {user.email} semble invalide ou inexistante. "
-            #             "Vérifiez que vous avez bien saisi votre email."
-            #         )
-            #     elif "535" in error_msg or "password" in error_msg.lower():
-            #         # Gmail App Password not configured
-            #         raise Exception(
-            #             "Le mot de passe d'application Gmail n'est pas configuré. "
-            #             "L'administrateur doit ajouter SMTP_PASSWORD dans Google Cloud Secret Manager. "
-            #             "Contactez le support technique."
-            #         )
-            #     else:
-            #         raise Exception(
-            #             f"Erreur lors de l'envoi de l'email de vérification: {error_msg}. "
-            #             "Vérifiez votre adresse email ou contactez le support."
-            #         )
+                if not email_sent:
+                    # Rollback: Delete user if email failed
+                    await self.user_repo.delete_user(user.id)
+                    raise Exception(
+                        "Impossible d'envoyer l'email de vérification. "
+                        "Vérifiez que votre adresse email est valide et accessible."
+                    )
+
+                logger.info(f"Verification email sent successfully to: {user.email}")
+
+            except Exception as email_error:
+                # Rollback: Delete user if email failed
+                try:
+                    await self.user_repo.delete_user(user.id)
+                    logger.info(f"Rolled back user creation for {user.email} due to email failure")
+                except Exception as rollback_error:
+                    logger.error(f"Failed to rollback user {user.id}: {rollback_error}")
+
+                # Re-raise with user-friendly message
+                error_msg = str(email_error)
+                if "SMTPAuthenticationError" in error_msg or "authentication" in error_msg.lower():
+                    raise Exception(
+                        "Erreur de configuration du serveur email. "
+                        "L'administrateur doit configurer le mot de passe SMTP dans les secrets Google Cloud. "
+                        "Contactez le support technique."
+                    )
+                elif "SMTPConnectError" in error_msg or "connection" in error_msg.lower():
+                    raise Exception(
+                        "Impossible de se connecter au serveur email. "
+                        "Le service d'envoi d'emails est temporairement indisponible. "
+                        "Réessayez dans quelques minutes."
+                    )
+                elif "invalid" in error_msg.lower() or "not exist" in error_msg.lower():
+                    raise Exception(
+                        f"L'adresse email {user.email} semble invalide ou inexistante. "
+                        "Vérifiez que vous avez bien saisi votre email."
+                    )
+                elif "535" in error_msg or "password" in error_msg.lower():
+                    # Gmail App Password not configured
+                    raise Exception(
+                        "Le mot de passe d'application Gmail n'est pas configuré. "
+                        "L'administrateur doit ajouter SMTP_PASSWORD dans Google Cloud Secret Manager. "
+                        "Contactez le support technique."
+                    )
+                else:
+                    raise Exception(
+                        f"Erreur lors de l'envoi de l'email de vérification: {error_msg}. "
+                        "Vérifiez votre adresse email ou contactez le support."
+                    )
 
 
 
