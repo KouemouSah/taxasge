@@ -86,67 +86,9 @@ class AuthService:
 
             logger.info(f"[REGISTRATION_STEP_3] Utilisateur créé avec succès: {user.email} (ID: {user.id})")
 
-            # Send verification email (BLOCKING - email must succeed for registration to complete)
-            # IMPORTANT: Pass user object directly to avoid transaction timing issues
-            try:
-                logger.info(f"[REGISTRATION_STEP_4] Envoi de l'email de vérification à {user.email}")
-                email_sent = await self.send_verification_email(
-                    user_id=user.id,
-                    email=user.email,
-                    user_obj=user  # Pass user object to avoid database lookup race condition
-                )
-
-                if not email_sent:
-                    # Rollback: Delete user if email failed
-                    await self.user_repo.delete_user(user.id)
-                    raise Exception(
-                        "Impossible d'envoyer l'email de vérification. "
-                        "Vérifiez que votre adresse email est valide et accessible."
-                    )
-
-                logger.info(f"Verification email sent successfully to: {user.email}")
-
-            except Exception as email_error:
-                # Rollback: Delete user if email failed
-                try:
-                    await self.user_repo.delete_user(user.id)
-                    logger.info(f"Rolled back user creation for {user.email} due to email failure")
-                except Exception as rollback_error:
-                    logger.error(f"Failed to rollback user {user.id}: {rollback_error}")
-
-                # Re-raise with user-friendly message
-                error_msg = str(email_error)
-                if "SMTPAuthenticationError" in error_msg or "authentication" in error_msg.lower():
-                    raise Exception(
-                        "Erreur de configuration du serveur email. "
-                        "L'administrateur doit configurer le mot de passe SMTP dans les secrets Google Cloud. "
-                        "Contactez le support technique."
-                    )
-                elif "SMTPConnectError" in error_msg or "connection" in error_msg.lower():
-                    raise Exception(
-                        "Impossible de se connecter au serveur email. "
-                        "Le service d'envoi d'emails est temporairement indisponible. "
-                        "Réessayez dans quelques minutes."
-                    )
-                elif "invalid" in error_msg.lower() or "not exist" in error_msg.lower():
-                    raise Exception(
-                        f"L'adresse email {user.email} semble invalide ou inexistante. "
-                        "Vérifiez que vous avez bien saisi votre email."
-                    )
-                elif "535" in error_msg or "password" in error_msg.lower():
-                    # Gmail App Password not configured
-                    raise Exception(
-                        "Le mot de passe d'application Gmail n'est pas configuré. "
-                        "L'administrateur doit ajouter SMTP_PASSWORD dans Google Cloud Secret Manager. "
-                        "Contactez le support technique."
-                    )
-                else:
-                    raise Exception(
-                        f"Erreur lors de l'envoi de l'email de vérification: {error_msg}. "
-                        "Vérifiez votre adresse email ou contactez le support."
-                    )
-
-
+            # NOTE: Email verification is now done BEFORE user creation in two-step registration flow
+            # User is created with email_verified=True by default
+            logger.info(f"[REGISTRATION_STEP_4] Email déjà vérifié via le code de vérification")
 
             # Create tokens and session
             tokens = await self._create_session(
@@ -744,123 +686,9 @@ class AuthService:
 
     # =========================================================================
     # EMAIL VERIFICATION METHODS (MODULE_02)
+    # NOTE: send_verification_email() method removed - email verification now handled
+    # BEFORE user creation in two-step registration flow (pending_registrations table)
     # =========================================================================
-
-    async def send_verification_email(self, user_id: str, email: str, user_obj: Optional["User"] = None) -> bool:
-        """
-        Generate verification code and send verification email
-
-        Business Rules:
-            1. User must exist and be active
-            2. Code valid for 15 minutes
-            3. Code is 6-digit random number
-            4. Email sent with verification code
-
-        Args:
-            user_id: User UUID
-            email: User email address
-            user_obj: Optional User object (if provided, skips database lookup to avoid transaction timing issues)
-
-        Returns:
-            bool: True if email sent successfully, False otherwise
-
-        Source: .github/docs-internal/Documentations/Backend/API_REFERENCE.md
-        """
-        try:
-            logger.info(f"[EMAIL_STEP_1] Démarrage de l'envoi d'email de vérification pour user_id={user_id}, email={email}")
-
-            # Use provided user object or fetch from database
-            if user_obj is not None:
-                logger.info(f"[EMAIL_STEP_2] Objet utilisateur fourni directement, pas besoin de requête base de données")
-                user = user_obj
-            else:
-                # Find user by ID (use direct PostgreSQL to bypass Supabase RLS)
-                logger.info(f"[EMAIL_STEP_2] Recherche de l'utilisateur dans la base de données: user_id={user_id}")
-                user = await self.user_repo.find_by_id(user_id, use_supabase=False)
-
-                if not user:
-                    logger.error(f"[EMAIL_ERROR] Utilisateur NON TROUVÉ dans la base de données: user_id={user_id}")
-                    raise Exception(
-                        f"Utilisateur {user_id} introuvable dans la base de données. "
-                        "Ceci est une erreur système. Contactez le support technique."
-                    )
-
-            logger.info(f"[EMAIL_STEP_3] Utilisateur trouvé: id={user.id}, email={user.email}, status={user.status}")
-
-            # Check user status
-            if user.status != UserStatus.active:
-                logger.error(f"[EMAIL_ERROR] Statut utilisateur n'est pas actif: status={user.status}")
-                raise Exception(
-                    f"Le compte utilisateur n'est pas actif (statut: {user.status}). "
-                    "Ceci est une erreur système. Contactez le support technique."
-                )
-
-            # Generate 6-digit verification code
-            logger.info(f"[EMAIL_STEP_4] Génération du code de vérification à 6 chiffres")
-            import random
-            verification_code = str(random.randint(100000, 999999))
-            logger.info(f"[EMAIL_STEP_5] Code de vérification généré: {verification_code}")
-
-            # Set expiration (15 minutes from now)
-            expires_at = datetime.utcnow() + timedelta(minutes=15)
-
-            # Save code to database
-            logger.info(f"[EMAIL_STEP_6] Sauvegarde du code de vérification dans la base de données...")
-            success = await self.user_repo.update_email_verification_code(
-                user_id=user_id,
-                verification_code=verification_code,
-                expires_at=expires_at
-            )
-
-            if not success:
-                logger.error(f"[EMAIL_ERROR] Échec de la sauvegarde du code de vérification dans la base de données")
-                raise Exception(
-                    "Impossible de sauvegarder le code de vérification dans la base de données. "
-                    "Ceci est une erreur système. Contactez le support technique."
-                )
-
-            logger.info(f"[EMAIL_STEP_7] Code de vérification sauvegardé avec succès")
-
-            # Send verification email
-            from app.config import get_settings
-            settings = get_settings()
-
-            logger.info(f"[EMAIL_STEP_8] Initialisation du service d'email SMTP (host={settings.SMTP_HOST}, port={settings.SMTP_PORT})")
-
-            email_service = EmailService(
-                smtp_host=settings.SMTP_HOST,
-                smtp_port=settings.SMTP_PORT,
-                smtp_username=settings.SMTP_USERNAME,
-                smtp_password=settings.SMTP_PASSWORD,
-                smtp_use_tls=settings.SMTP_USE_TLS,
-                smtp_from_email=settings.SMTP_FROM_EMAIL,
-                smtp_from_name=settings.SMTP_FROM_NAME
-            )
-
-            logger.info(f"[EMAIL_STEP_9] Envoi de l'email de vérification à {email} avec le code {verification_code}")
-
-            email_sent = email_service.send_verification_code(
-                to_email=email,
-                verification_code=verification_code,
-                user_name=user.first_name
-            )
-
-            if not email_sent:
-                logger.error(f"[EMAIL_ERROR] Le service d'email a retourné False - l'envoi a échoué")
-                raise Exception(
-                    f"L'envoi de l'email de vérification à {email} a échoué. "
-                    "Vérifiez que votre adresse email est correcte et accessible. "
-                    "Si le problème persiste, contactez le support technique."
-                )
-
-            logger.info(f"[EMAIL_STEP_10] ✅ Email de vérification envoyé avec succès!")
-            logger.info(f"[EMAIL_SUCCESS] Email de vérification envoyé à {email} avec le code {verification_code}")
-            return True
-
-        except Exception as e:
-            logger.error(f"[EMAIL_ERROR] Exception capturée: {type(e).__name__}: {str(e)}")
-            logger.error(f"[EMAIL_ERROR] Échec de l'envoi de l'email de vérification pour {email}: {str(e)}")
-            raise
 
     async def verify_email_code(self, verification_code: str) -> bool:
         """

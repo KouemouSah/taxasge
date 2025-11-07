@@ -6,13 +6,13 @@ from datetime import datetime, timedelta
 from typing import Optional
 from loguru import logger
 
-from app.database.connection import DatabaseManager
+from app.database.connection import db_manager
 
 
 class PendingRegistrationRepository:
     """Repository for managing pending email verifications"""
 
-    def __init__(self, db_manager: DatabaseManager):
+    def __init__(self):
         self.db_manager = db_manager
 
     async def create(

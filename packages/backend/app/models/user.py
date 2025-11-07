@@ -79,6 +79,9 @@ class UserCreate(BaseModel):
     citizen_profile: Optional[CitizenProfile] = Field(None, description="Citizen-specific profile")
     business_profile: Optional[BusinessProfile] = Field(None, description="Business-specific profile")
 
+    # Email verification (for two-step registration)
+    email_verified: bool = Field(default=True, description="Email verification status (True for verified emails)")
+
     @validator('citizen_profile')
     def validate_citizen_profile(cls, v, values):
         """Validate citizen profile based on role"""

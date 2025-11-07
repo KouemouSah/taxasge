@@ -44,6 +44,7 @@ class LoginRequest(BaseModel):
 
 class RegisterRequest(BaseModel):
     email: EmailStr = Field(..., description="User email address")
+    verification_code: str = Field(..., min_length=6, max_length=6, pattern="^\\d{6}$", description="6-digit verification code sent to email")
     password: str = Field(..., min_length=8, description="User password (min 8 characters)")
     first_name: str = Field(..., min_length=2, max_length=50, description="First name")
     last_name: str = Field(..., min_length=2, max_length=50, description="Last name")
@@ -86,6 +87,18 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     expires_in: int
     user: Dict[str, Any]
+
+
+class RequestVerificationRequest(BaseModel):
+    """Request to send verification code to email"""
+    email: EmailStr = Field(..., description="Email address to verify")
+
+
+class RequestVerificationResponse(BaseModel):
+    """Response after requesting verification code"""
+    message: str = Field(..., description="Success message")
+    email: str = Field(..., description="Email where code was sent")
+    expires_in: int = Field(..., description="Code validity duration in seconds")
 
 
 class PasswordResetRequestRequest(BaseModel):
@@ -223,25 +236,149 @@ async def get_auth_info():
     }
 
 
+@router.post(
+    "/request-verification-code",
+    response_model=RequestVerificationResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def request_verification_code(request: RequestVerificationRequest):
+    """
+    Step 1 of 2-step registration: Send verification code to email
+
+    Flow:
+    1. Validate email syntax and DNS
+    2. Check if email already registered
+    3. Generate 6-digit code
+    4. Store in pending_registrations
+    5. Send email with code
+    6. Return success
+
+    Args:
+        request: Email to verify
+
+    Returns:
+        RequestVerificationResponse: Success message with expiration time
+
+    Raises:
+        HTTPException 400: Invalid email or already registered
+        HTTPException 500: Failed to send email
+    """
+    try:
+        from app.utils.email_validator import EmailValidator
+        from app.repositories.pending_registration_repository import PendingRegistrationRepository
+        from app.services.email_service import EmailService
+        from app.config import get_settings
+        from app.repositories.user_repository import UserRepository
+        import random
+
+        settings = get_settings()
+
+        # 1. Validate email (syntax + DNS)
+        is_valid, error_msg = EmailValidator.validate_email(request.email)
+        if not is_valid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Email invalide: {error_msg}"
+            )
+
+        # 2. Check if email already registered
+        user_repo = UserRepository()
+        existing = await user_repo.find_by_email(request.email, use_supabase=False)
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cet email est déjà enregistré"
+            )
+
+        # 3. Generate 6-digit code
+        code = str(random.randint(100000, 999999))
+
+        # 4. Store in pending_registrations (replaces existing if any)
+        pending_repo = PendingRegistrationRepository()
+        await pending_repo.create(request.email, code, expires_in_minutes=15)
+
+        # 5. Send email
+        email_service = EmailService(
+            smtp_host=settings.SMTP_HOST,
+            smtp_port=settings.SMTP_PORT,
+            smtp_username=settings.SMTP_USERNAME,
+            smtp_password=settings.SMTP_PASSWORD,
+            smtp_use_tls=settings.SMTP_USE_TLS,
+            smtp_from_email=settings.SMTP_FROM_EMAIL,
+            smtp_from_name=settings.SMTP_FROM_NAME,
+        )
+
+        email_sent = email_service.send_verification_code(
+            to_email=request.email,
+            verification_code=code,
+            user_name=request.email.split('@')[0]  # Temporary name until full registration
+        )
+
+        if not email_sent:
+            # Clean up pending registration if email failed
+            await pending_repo.delete_by_email(request.email)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Impossible d'envoyer l'email de vérification"
+            )
+
+        # 6. Return success
+        logger.info(f"Verification code sent to {request.email}")
+        return RequestVerificationResponse(
+            message="Code de vérification envoyé à votre email",
+            email=request.email,
+            expires_in=900  # 15 minutes
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in request_verification_code: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erreur lors de l'envoi du code: {str(e)}"
+        )
+
+
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def register(
     request: RegisterRequest,
     req: Request,
 ):
     """
-    Register a new user
+    Step 2 of 2-step registration: Verify code and create user
+
+    Flow:
+    1. Verify code in pending_registrations
+    2. Check not expired and attempts < 5
+    3. Create user with email_verified=True
+    4. Delete from pending_registrations
+    5. Generate JWT tokens
+    6. Return TokenResponse
 
     Args:
-        request: Registration data
+        request: Registration data with verification code
         req: FastAPI request object
 
     Returns:
         TokenResponse: Access/refresh tokens and user data
 
     Raises:
-        HTTPException: If registration fails
+        HTTPException 400: Invalid/expired code or registration fails
     """
     try:
+        from app.repositories.pending_registration_repository import PendingRegistrationRepository
+
+        # STEP 1: Verify email verification code
+        pending_repo = PendingRegistrationRepository()
+        is_valid = await pending_repo.verify_code(request.email, request.verification_code)
+
+        if not is_valid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Code de vérification invalide ou expiré"
+            )
+
         # Get client info
         ip_address, user_agent = get_client_info(req)
 
@@ -298,7 +435,8 @@ async def register(
             business_profile=business_profile,
         )
 
-        # Register user via AuthService
+        # STEP 2: Register user via AuthService
+        # Note: Email is already verified, so user will be created with email_verified=True
         auth_service = get_auth_service()
         result = await auth_service.register(
             user_data=user_data,
@@ -306,7 +444,10 @@ async def register(
             user_agent=user_agent,
         )
 
-        logger.info(f"User registered successfully: {request.email}")
+        # STEP 3: Delete pending registration (cleanup)
+        await pending_repo.delete_by_email(request.email)
+
+        logger.info(f"User registered successfully with verified email: {request.email}")
         return TokenResponse(**result)
 
     except Exception as e:
