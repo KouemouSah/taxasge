@@ -33,11 +33,19 @@ jobs:
 
       - name: Run tests with pytest
         env:
+          ENVIRONMENT: test
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          ENV: test
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SMTP_HOST: smtp.gmail.com
+          SMTP_PORT: 587
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_FROM_EMAIL: ${{ secrets.SMTP_FROM_EMAIL }}
+          SMTP_FROM_NAME: TaxasGE Platform
+          SMTP_USE_TLS: true
         run: |
           pytest tests/test_config.py -v --tb=short
 
