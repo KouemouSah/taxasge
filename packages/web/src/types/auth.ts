@@ -42,20 +42,25 @@ export interface BusinessProfile extends UserProfile {
   website?: string;
 }
 
-// User object returned from backend
+// User object returned from backend (aligned with UserResponse model)
 export interface User {
   id: string;
   email: string;
   role: UserRole;
-  first_name?: string;
-  last_name?: string;
+  status: UserStatus;
+  first_name: string;
+  last_name: string;
   phone?: string;
-  is_active: boolean;
-  email_verified: boolean;
-  two_factor_enabled: boolean;
+  address?: string;
+  city?: string;
+  language: string;
+  avatar_url?: string;
   created_at: string;
-  updated_at?: string;
+  updated_at: string;
   last_login?: string;
+  email_verified?: boolean;
+  two_factor_enabled?: boolean;
+  is_active: boolean;
 }
 
 // Login Request

@@ -10,12 +10,21 @@ const USER_KEY = 'taxasge_user';
 export interface StoredUser {
   id: string;
   email: string;
-  role: 'admin' | 'agent' | 'citizen' | 'business';
-  first_name?: string;
-  last_name?: string;
+  role: 'admin' | 'operator' | 'auditor' | 'support' | 'citizen' | 'business';
+  status: 'active' | 'inactive' | 'suspended' | 'pending_verification';
+  first_name: string;
+  last_name: string;
   phone?: string;
-  is_active: boolean;
+  address?: string;
+  city?: string;
+  language: string;
+  avatar_url?: string;
   created_at: string;
+  updated_at: string;
+  last_login?: string;
+  email_verified?: boolean;
+  two_factor_enabled?: boolean;
+  is_active: boolean;
 }
 
 /**

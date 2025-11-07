@@ -703,6 +703,15 @@ CREATE TABLE public.payments (
   CONSTRAINT payments_installment_id_fkey FOREIGN KEY (installment_id) REFERENCES public.payment_installments(id),
   CONSTRAINT payments_bank_transaction_id_fkey FOREIGN KEY (bank_transaction_id) REFERENCES public.bank_transactions(id)
 );
+CREATE TABLE public.pending_registrations (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  email character varying NOT NULL UNIQUE,
+  verification_code character varying NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  expires_at timestamp with time zone NOT NULL,
+  verification_attempts integer DEFAULT 0,
+  CONSTRAINT pending_registrations_pkey PRIMARY KEY (id)
+);
 CREATE TABLE public.procedure_template_steps (
   id integer NOT NULL DEFAULT nextval('procedure_template_steps_id_seq'::regclass),
   template_id integer,
@@ -756,6 +765,7 @@ CREATE TABLE public.refresh_tokens (
   created_at timestamp with time zone DEFAULT now(),
   revoked_at timestamp with time zone,
   last_used_at timestamp with time zone,
+  updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT refresh_tokens_pkey PRIMARY KEY (id),
   CONSTRAINT refresh_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
   CONSTRAINT refresh_tokens_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.sessions(id)
@@ -894,6 +904,7 @@ CREATE TABLE public.sessions (
   created_at timestamp with time zone DEFAULT now(),
   last_activity timestamp with time zone DEFAULT now(),
   revoked_at timestamp with time zone,
+  updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT sessions_pkey PRIMARY KEY (id),
   CONSTRAINT sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
@@ -1056,6 +1067,13 @@ CREATE TABLE public.users (
   address text,
   city character varying,
   avatar_url text,
+  email_verification_code character varying,
+  email_verification_expires_at timestamp with time zone,
+  password_reset_token character varying,
+  password_reset_expires_at timestamp with time zone,
+  two_factor_enabled boolean DEFAULT false,
+  two_factor_secret character varying,
+  two_factor_backup_codes jsonb,
   CONSTRAINT users_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.workflow_transitions (

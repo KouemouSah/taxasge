@@ -17,20 +17,30 @@ const authClient = axios.create({
   timeout: 10000, // 10 secondes timeout
 });
 
-// Interface réponse backend (basée sur TASK-AUTH-FIX-003)
+// Interface réponse backend (basée sur UserResponse from backend/app/models/user.py)
 export interface AuthResponse {
   access_token: string;
   refresh_token: string;
   token_type: string;
+  expires_in: number;
   user: {
     id: string;
     email: string;
-    role: 'admin' | 'agent' | 'citizen' | 'business';
-    first_name?: string;
-    last_name?: string;
+    role: 'admin' | 'operator' | 'auditor' | 'support' | 'citizen' | 'business';
+    status: 'active' | 'inactive' | 'suspended' | 'pending_verification';
+    first_name: string;
+    last_name: string;
     phone?: string;
-    is_active: boolean;
+    address?: string;
+    city?: string;
+    language: string;
+    avatar_url?: string;
     created_at: string;
+    updated_at: string;
+    last_login?: string;
+    email_verified?: boolean;
+    two_factor_enabled?: boolean;
+    is_active: boolean;
   };
 }
 

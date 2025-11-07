@@ -10,28 +10,37 @@ const AUTH_API_URL = `${API_BASE_URL}/api/v1/auth`
  * Extract user-friendly error message from API response
  * Handles FastAPI error formats (detail string or object)
  */
-function extractErrorMessage(error: any, fallback: string): string {
+function extractErrorMessage(error: unknown, fallback: string): string {
   // FastAPI returns errors in multiple formats:
   // 1. { detail: "Error message" }
   // 2. { detail: [{ msg: "Error", type: "..." }] }
   // 3. { message: "Error message" }
 
-  if (typeof error.detail === 'string') {
-    return error.detail
+  if (typeof error !== 'object' || error === null) {
+    return fallback
   }
 
-  if (Array.isArray(error.detail) && error.detail.length > 0) {
+  const errorObj = error as Record<string, unknown>
+
+  if (typeof errorObj.detail === 'string') {
+    return errorObj.detail
+  }
+
+  if (Array.isArray(errorObj.detail) && errorObj.detail.length > 0) {
     // Pydantic validation errors
-    const firstError = error.detail[0]
-    return firstError.msg || firstError.message || fallback
+    const firstError = errorObj.detail[0] as Record<string, unknown>
+    return (firstError.msg as string) || (firstError.message as string) || fallback
   }
 
-  if (typeof error.detail === 'object' && error.detail.message) {
-    return error.detail.message
+  if (typeof errorObj.detail === 'object' && errorObj.detail !== null) {
+    const detailObj = errorObj.detail as Record<string, unknown>
+    if (typeof detailObj.message === 'string') {
+      return detailObj.message
+    }
   }
 
-  if (error.message) {
-    return error.message
+  if (typeof errorObj.message === 'string') {
+    return errorObj.message
   }
 
   return fallback
@@ -60,12 +69,21 @@ interface TokenResponse {
   user: {
     id: string
     email: string
-    role: string
-    profile: {
-      first_name: string
-      last_name: string
-      phone?: string
-    }
+    role: 'citizen' | 'business' | 'admin' | 'operator' | 'auditor' | 'support'
+    status: 'active' | 'inactive' | 'suspended' | 'pending_verification'
+    first_name: string
+    last_name: string
+    phone?: string
+    address?: string
+    city?: string
+    language: string
+    avatar_url?: string
+    created_at: string
+    updated_at: string
+    last_login?: string
+    email_verified?: boolean
+    two_factor_enabled?: boolean
+    is_active: boolean
   }
 }
 
@@ -361,10 +379,32 @@ async function getSessions(accessToken: string): Promise<Session[]> {
   return response.json()
 }
 
+/**
+ * Request verification code - POST /auth/request-verification-code
+ * Step 1 of two-step registration
+ */
+async function requestVerificationCode(email: string): Promise<{ message: string; email: string; expires_in: number }> {
+  const response = await fetch(`${AUTH_API_URL}/request-verification-code`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(extractErrorMessage(error, "Échec de l'envoi du code de vérification"))
+  }
+
+  return response.json()
+}
+
 export const authApi = {
   login,
   verify2FA,
   register,
+  requestVerificationCode,
   refreshToken,
   logout,
   getProfile,

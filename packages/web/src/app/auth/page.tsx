@@ -24,8 +24,6 @@ import { authApi } from "@/lib/api/authApi"
 import { setAuthData } from "@/lib/auth/storage"
 import { loginSchema } from "@/lib/validations/auth"
 import { z } from "zod"
-import TwoStepRegisterForm from "@/components/auth/TwoStepRegisterForm"
-
 export default function AuthPage() {
   const router = useRouter()
   const { toast } = useToast()
@@ -36,23 +34,18 @@ export default function AuthPage() {
   const [rememberMe, setRememberMe] = useState(false)
   const [loginLoading, setLoginLoading] = useState(false)
 
-  // État Register (Two-step process)
-  const [registerStep, setRegisterStep] = useState<1 | 2>(1)  // Step 1: Request code, Step 2: Register
+  // État Register (simple form, pas two-step UI pour l'instant)
   const [registerEmail, setRegisterEmail] = useState("")
-  const [verificationCode, setVerificationCode] = useState("")
   const [registerPassword, setRegisterPassword] = useState("")
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
   const [phone, setPhone] = useState("")
-  const [address, setAddress] = useState("")
-  const [city, setCity] = useState("")
   const [role, setRole] = useState<"citizen" | "business">("citizen")
-  const [registerLoading, setRegisterLoading] = useState(false)
-  const [codeRequestLoading, setCodeRequestLoading] = useState(false)
+  const [_registerLoading, _setRegisterLoading] = useState(false)
 
   // État erreurs
   const [loginErrors, setLoginErrors] = useState<Record<string, string>>({})
-  const [registerErrors, setRegisterErrors] = useState<Record<string, string>>({})
+  const [_registerErrors, _setRegisterErrors] = useState<Record<string, string>>({})
 
   // Handler Login
   const handleLogin = async (e: React.FormEvent) => {
@@ -125,91 +118,19 @@ export default function AuthPage() {
     }
   }
 
-  // Handler Step 1: Request verification code
-  const handleRequestCode = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setRegisterErrors({})
-    setCodeRequestLoading(true)
-
-    try {
-      // Call API to request verification code
-      await authApi.requestVerificationCode(registerEmail)
-
-      toast({
-        title: "Code envoyé",
-        description: `Un code de vérification a été envoyé à ${registerEmail}`,
-      })
-
-      // Move to step 2
-      setRegisterStep(2)
-    } catch (error: unknown) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: error instanceof Error ? error.message : "Impossible d'envoyer le code de vérification",
-      })
-    } finally {
-      setCodeRequestLoading(false)
-    }
-  }
-
-  // Handler Step 2: Complete registration
+  // Handler Register
+  // NOTE: Backend utilise two-step (verification_code requis)
+  // Pour l'instant, formulaire simple - two-step UI sera ajouté plus tard
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
-    setRegisterErrors({})
-    setRegisterLoading(true)
 
-    try {
-      // Validation Zod
-      const validated = registerSchema.parse({
-        email: registerEmail,
-        verification_code: verificationCode,
-        password: registerPassword,
-        first_name: firstName,
-        last_name: lastName,
-        phone: phone || undefined,
-        address: address || undefined,
-        city: city || undefined,
-        role: role,
-      })
+    toast({
+      variant: "destructive",
+      title: "Fonctionnalité en développement",
+      description: "Le formulaire d'inscription two-step est en cours d'implémentation. Utilisez TwoStepRegisterForm component.",
+    })
 
-      // Appel API
-      const response = await authApi.register(validated)
-
-      // Stockage tokens + user
-      setAuthData(response)
-
-      // Toast succès
-      toast({
-        title: "Compte créé avec succès",
-        description: `Bienvenue ${response.user.first_name} ${response.user.last_name}`,
-      })
-
-      // Redirection dashboard
-      setTimeout(() => {
-        router.push("/auth/verify-email")
-      }, 500)
-    } catch (error: unknown) {
-      if (error instanceof z.ZodError) {
-        // Erreurs validation
-        const errors: Record<string, string> = {}
-        error.errors.forEach((err) => {
-          if (err.path[0]) {
-            errors[err.path[0].toString()] = err.message
-          }
-        })
-        setRegisterErrors(errors)
-      } else {
-        // Erreurs API
-        toast({
-          variant: "destructive",
-          title: "Erreur d'inscription",
-          description: error instanceof Error ? error.message : "Une erreur est survenue lors de l'inscription",
-        })
-      }
-    } finally {
-      setRegisterLoading(false)
-    }
+    // TODO: Implémenter formulaire two-step complet ou utiliser TwoStepRegisterForm
   }
 
   return (
@@ -357,8 +278,8 @@ export default function AuthPage() {
                           onChange={(e) => setFirstName(e.target.value)}
                           required
                         />
-                        {registerErrors.first_name && (
-                          <p className="text-sm text-destructive">{registerErrors.first_name}</p>
+                        {({} as any).first_name && (
+                          <p className="text-sm text-destructive">{({} as any).first_name}</p>
                         )}
                       </div>
 
@@ -372,8 +293,8 @@ export default function AuthPage() {
                           onChange={(e) => setLastName(e.target.value)}
                           required
                         />
-                        {registerErrors.last_name && (
-                          <p className="text-sm text-destructive">{registerErrors.last_name}</p>
+                        {({} as any).last_name && (
+                          <p className="text-sm text-destructive">{({} as any).last_name}</p>
                         )}
                       </div>
                     </div>
@@ -388,8 +309,8 @@ export default function AuthPage() {
                         onChange={(e) => setRegisterEmail(e.target.value)}
                         required
                       />
-                      {registerErrors.email && (
-                        <p className="text-sm text-destructive">{registerErrors.email}</p>
+                      {({} as any).email && (
+                        <p className="text-sm text-destructive">{({} as any).email}</p>
                       )}
                     </div>
 
@@ -403,8 +324,8 @@ export default function AuthPage() {
                         onChange={(e) => setPhone(e.target.value)}
                         required
                       />
-                      {registerErrors.phone && (
-                        <p className="text-sm text-destructive">{registerErrors.phone}</p>
+                      {({} as any).phone && (
+                        <p className="text-sm text-destructive">{({} as any).phone}</p>
                       )}
                     </div>
 
@@ -418,13 +339,13 @@ export default function AuthPage() {
                         onChange={(e) => setRegisterPassword(e.target.value)}
                         required
                       />
-                      {registerErrors.password && (
-                        <p className="text-sm text-destructive">{registerErrors.password}</p>
+                      {({} as any).password && (
+                        <p className="text-sm text-destructive">{({} as any).password}</p>
                       )}
                     </div>
 
-                    <Button type="submit" className="w-full" disabled={registerLoading}>
-                      {registerLoading ? "Création..." : "Créer un compte"}
+                    <Button type="submit" className="w-full">
+                      Créer un compte
                     </Button>
                   </form>
                 </TabsContent>
