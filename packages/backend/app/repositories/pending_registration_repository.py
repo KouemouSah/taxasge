@@ -98,7 +98,10 @@ class PendingRegistrationRepository:
             pending = await self.find_by_email(email)
 
             if not pending:
+                logger.warning(f"No pending registration found for {email}")
                 return False
+
+            logger.info(f"Verifying code for {email}: stored='{pending['verification_code']}', received='{code}', expires_at={pending['expires_at']}, now={datetime.utcnow()}")
 
             # Check if expired
             if datetime.utcnow() > pending['expires_at']:
@@ -115,10 +118,11 @@ class PendingRegistrationRepository:
             # Check code
             if pending['verification_code'] != code:
                 await self.increment_attempts(email)
-                logger.warning(f"Wrong verification code for {email} (attempt {pending['verification_attempts'] + 1}/5)")
+                logger.warning(f"Wrong verification code for {email} (attempt {pending['verification_attempts'] + 1}/5) - stored:'{pending['verification_code']}' != received:'{code}'")
                 return False
 
             # Success
+            logger.info(f"Verification code valid for {email}")
             return True
 
         except Exception as e:
