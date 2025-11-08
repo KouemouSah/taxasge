@@ -107,27 +107,30 @@ export default function SecuritySettingsPage() {
     setPasswordChangeLoading(true)
 
     try {
-      // TODO: Implement password change with verification code
-      // 1. Call API to change password
-      // 2. API sends verification code to email
-      // 3. Redirect to /auth/verify-email with context='password_change'
-
-      toast({
-        title: 'Fonctionnalité en développement',
-        description: 'Le changement de mot de passe sera bientôt disponible',
+      // Step 1: Request password change (sends verification code)
+      const { authApi } = await import('@/lib/api/auth')
+      const response = await authApi.requestPasswordChange({
+        current_password: currentPassword,
       })
 
-      // Clear form
-      setCurrentPassword('')
-      setNewPassword('')
-      setConfirmPassword('')
+      // Step 2: Store new password and email in sessionStorage for verification step
+      sessionStorage.setItem('password_change_email', response.email)
+      sessionStorage.setItem('password_change_new_password', newPassword)
+
+      toast({
+        title: 'Code de vérification envoyé',
+        description: `Un code de vérification a été envoyé à ${response.email}`,
+      })
+
+      // Step 3: Redirect to verify-email page with password_change context
+      router.push('/auth/verify-email?context=password_change')
+
     } catch (error: unknown) {
       toast({
         variant: 'destructive',
         title: 'Erreur',
         description: error instanceof Error ? error.message : 'Échec du changement de mot de passe',
       })
-    } finally {
       setPasswordChangeLoading(false)
     }
   }

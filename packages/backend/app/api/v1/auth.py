@@ -129,6 +129,39 @@ class PasswordResetConfirmResponse(BaseModel):
     message: str
 
 
+class PasswordChangeRequest(BaseModel):
+    current_password: str = Field(..., min_length=6, description="Current password")
+
+
+class PasswordChangeResponse(BaseModel):
+    message: str
+    email: str
+
+
+class PasswordChangeVerifyRequest(BaseModel):
+    email: str = Field(..., description="User email")
+    verification_code: str = Field(..., min_length=6, max_length=6, description="6-digit verification code")
+    new_password: str = Field(..., min_length=8, description="New password (min 8 characters)")
+
+    @model_validator(mode='after')
+    def validate_password_strength(self):
+        """Validate new password contains: uppercase, lowercase, digit, special character"""
+        password = self.new_password
+        if not any(c.isupper() for c in password):
+            raise ValueError("Password must contain at least one uppercase letter")
+        if not any(c.islower() for c in password):
+            raise ValueError("Password must contain at least one lowercase letter")
+        if not any(c.isdigit() for c in password):
+            raise ValueError("Password must contain at least one digit")
+        if not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?/" for c in password):
+            raise ValueError("Password must contain at least one special character")
+        return self
+
+
+class PasswordChangeVerifyResponse(BaseModel):
+    message: str
+
+
 class EmailVerifyRequest(BaseModel):
     verification_code: str = Field(..., min_length=6, max_length=6, description="6-digit verification code")
 
@@ -772,6 +805,197 @@ async def confirm_password_reset(request: PasswordResetConfirmRequest):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
+        )
+
+
+# =============================================================================
+# PASSWORD CHANGE ENDPOINT (AUTHENTICATED USERS)
+# =============================================================================
+
+@router.post("/password/change", response_model=PasswordChangeResponse)
+async def change_password(
+    request: PasswordChangeRequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """
+    Request password change - Validates current password and sends verification code
+
+    **Requires authentication** (Bearer token)
+
+    Args:
+        request: Current password only
+        credentials: Bearer token from Authorization header
+        current_user: Current authenticated user from token
+
+    Returns:
+        PasswordChangeResponse: Success message and email
+
+    Raises:
+        HTTPException: If current password incorrect
+
+    Workflow (SIMPLIFIED):
+        1. Validate current password
+        2. Generate 6-digit verification code
+        3. Store code in pending_registrations (NO password hash stored!)
+        4. Send verification code to email
+        5. User calls /password/change/verify with code + new password
+    """
+    try:
+        # Get user from database
+        from app.repositories.user_repository import UserRepository
+        user_repo = UserRepository()
+        user = await user_repo.get_by_id(current_user["id"])
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+
+        # Verify current password
+        from app.services.password_service import PasswordService
+        password_service = PasswordService()
+        is_valid = await password_service.verify_password(
+            plain_password=request.current_password,
+            hashed_password=user["hashed_password"]
+        )
+
+        if not is_valid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password is incorrect",
+            )
+
+        # Generate verification code
+        import secrets
+        verification_code = ''.join([str(secrets.randbelow(10)) for _ in range(6)])
+
+        # Store ONLY the verification code (no password hash!)
+        from app.repositories.pending_registration_repository import PendingRegistrationRepository
+        pending_repo = PendingRegistrationRepository()
+        await pending_repo.create(
+            email=user["email"],
+            verification_code=verification_code,
+            expires_in_minutes=10
+        )
+
+        # Send verification email
+        from app.services.email_service import EmailService
+        email_service = EmailService()
+        await email_service.send_verification_email(
+            email=user["email"],
+            verification_code=verification_code,
+            context="password_change"
+        )
+
+        logger.info(f"Password change verification code sent to {user['email']}")
+
+        return PasswordChangeResponse(
+            message="Verification code sent to your email. Please enter the code and your new password to complete the change.",
+            email=user["email"]
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Password change error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Password change failed: {str(e)}",
+        )
+
+
+@router.post("/password/change/verify", response_model=PasswordChangeVerifyResponse)
+async def verify_password_change(request: PasswordChangeVerifyRequest):
+    """
+    Verify password change with code and apply new password (SIMPLIFIED APPROACH)
+
+    **Public endpoint** (no authentication required - code validates identity)
+
+    Args:
+        request: Email, verification code (6 digits), and new password
+
+    Returns:
+        PasswordChangeVerifyResponse: Confirmation message
+
+    Raises:
+        HTTPException: If code invalid/expired or password update fails
+
+    Business Rules:
+        - Code must be valid and not expired (10 minutes validity)
+        - New password validated for strength (upper, lower, digit, special)
+        - New password hash applied to user account immediately
+        - Code cleared after successful verification
+
+    Workflow (SIMPLIFIED):
+        1. Find pending record by email
+        2. Verify code matches and not expired
+        3. Hash the new password from request
+        4. Get user by email
+        5. Update user's password in database
+        6. Delete pending record
+        7. Return success message
+
+    Source: SECURITY_SETTINGS_README.md lines 88-95
+    """
+    try:
+        # Get pending registration by email
+        from app.repositories.pending_registration_repository import PendingRegistrationRepository
+        pending_repo = PendingRegistrationRepository()
+
+        # Verify code using existing method (handles expiration, attempts, etc.)
+        is_valid = await pending_repo.verify_code(request.email, request.verification_code)
+
+        if not is_valid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired verification code",
+            )
+
+        # Get user by email
+        from app.repositories.user_repository import UserRepository
+        user_repo = UserRepository()
+        user = await user_repo.find_by_email(request.email)
+
+        if not user:
+            # Clean up pending record even if user not found
+            await pending_repo.delete_by_email(request.email)
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+
+        # Hash the new password
+        from app.services.password_service import PasswordService
+        password_service = PasswordService()
+        new_password_hash = password_service.hash_password(request.new_password)
+
+        # Update user password in database
+        success = await user_repo.update_password(user["id"], new_password_hash)
+
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update password",
+            )
+
+        # Delete pending record
+        await pending_repo.delete_by_email(request.email)
+
+        logger.info(f"Password changed successfully for user {request.email}")
+
+        return PasswordChangeVerifyResponse(
+            message="Password changed successfully. You can now login with your new password."
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Password change verification error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Password change verification failed: {str(e)}",
         )
 
 

@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -21,6 +21,7 @@ import { getAuthData } from "@/lib/auth/storage"
 
 export default function VerifyEmailPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
 
   const [verificationCode, setVerificationCode] = useState("")
@@ -28,30 +29,51 @@ export default function VerifyEmailPage() {
   const [isResending, setIsResending] = useState(false)
   const [userEmail, setUserEmail] = useState<string | undefined>(undefined)
   const [isMounted, setIsMounted] = useState(false)
+  const [context, setContext] = useState<string>('registration') // registration | password_change | password_reset
 
   useEffect(() => {
     setIsMounted(true)
 
-    // Check if we have pending registration data
-    const pendingData = localStorage.getItem('pending_registration')
-    if (!pendingData) {
-      // No pending registration - check if user is already authenticated
-      const authData = getAuthData()
-      if (!authData) {
-        router.push("/auth")
+    // Get context from URL
+    const urlContext = searchParams?.get('context') || 'registration'
+    setContext(urlContext)
+
+    // Handle different contexts
+    if (urlContext === 'password_change') {
+      // Password change context - get email from sessionStorage
+      const email = sessionStorage.getItem('password_change_email')
+      if (!email) {
+        toast({
+          variant: 'destructive',
+          title: 'Session expirée',
+          description: 'Veuillez recommencer le changement de mot de passe',
+        })
+        router.push('/dashboard/settings/security')
         return
       }
-      setUserEmail(authData.user?.email)
+      setUserEmail(email)
     } else {
-      // Has pending registration data - parse and set email
-      try {
-        const data = JSON.parse(pendingData)
-        setUserEmail(data.email)
-      } catch {
-        router.push("/auth")
+      // Original logic for registration context
+      const pendingData = localStorage.getItem('pending_registration')
+      if (!pendingData) {
+        // No pending registration - check if user is already authenticated
+        const authData = getAuthData()
+        if (!authData) {
+          router.push("/auth")
+          return
+        }
+        setUserEmail(authData.user?.email)
+      } else {
+        // Has pending registration data - parse and set email
+        try {
+          const data = JSON.parse(pendingData)
+          setUserEmail(data.email)
+        } catch {
+          router.push("/auth")
+        }
       }
     }
-  }, [router])
+  }, [router, searchParams, toast])
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -68,7 +90,45 @@ export default function VerifyEmailPage() {
     setIsLoading(true)
 
     try {
-      // Check if this is from registration or from existing user email verification
+      // Handle password change context
+      if (context === 'password_change') {
+        const email = sessionStorage.getItem('password_change_email')
+        const newPassword = sessionStorage.getItem('password_change_new_password')
+
+        if (!email || !newPassword) {
+          toast({
+            variant: 'destructive',
+            title: 'Session expirée',
+            description: 'Veuillez recommencer le changement de mot de passe',
+          })
+          router.push('/dashboard/settings/security')
+          return
+        }
+
+        // Verify password change
+        const { authApi: passwordApi } = await import('@/lib/api/auth')
+        await passwordApi.verifyPasswordChange({
+          email,
+          verification_code: verificationCode,
+          new_password: newPassword,
+        })
+
+        // Clear session storage
+        sessionStorage.removeItem('password_change_email')
+        sessionStorage.removeItem('password_change_new_password')
+
+        toast({
+          title: 'Mot de passe changé !',
+          description: 'Votre mot de passe a été changé avec succès.',
+        })
+
+        setTimeout(() => {
+          router.push('/dashboard')
+        }, 1500)
+        return
+      }
+
+      // Original registration/email verification logic
       const pendingData = localStorage.getItem('pending_registration')
 
       if (pendingData) {

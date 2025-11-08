@@ -134,6 +134,26 @@ export interface PasswordResetConfirmResponse {
   message: string;
 }
 
+// Password Change (for authenticated users)
+export interface PasswordChangeRequest {
+  current_password: string;
+}
+
+export interface PasswordChangeResponse {
+  message: string;
+  email: string;
+}
+
+export interface PasswordChangeVerifyRequest {
+  email: string;
+  verification_code: string;
+  new_password: string;
+}
+
+export interface PasswordChangeVerifyResponse {
+  message: string;
+}
+
 // Email Verification
 export interface EmailVerifyRequest {
   verification_code: string;

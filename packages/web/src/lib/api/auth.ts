@@ -14,6 +14,10 @@ import type {
   PasswordResetResponse,
   PasswordResetConfirm,
   PasswordResetConfirmResponse,
+  PasswordChangeRequest,
+  PasswordChangeResponse,
+  PasswordChangeVerifyRequest,
+  PasswordChangeVerifyResponse,
   EmailVerifyRequest,
   EmailVerifyResponse,
   EmailResendResponse,
@@ -157,6 +161,51 @@ export async function confirmPasswordReset(
 }
 
 /**
+ * Request password change (authenticated user)
+ * POST /auth/password/change
+ * Sends verification code to email
+ */
+export async function requestPasswordChange(
+  data: PasswordChangeRequest
+): Promise<PasswordChangeResponse> {
+  try {
+    const response = await apiClient.post<PasswordChangeResponse>(
+      '/auth/password/change',
+      data
+    );
+    return response.data;
+  } catch (error: unknown) {
+    if (error instanceof AxiosError && error.response) {
+      const apiError: ApiError = error.response.data;
+      throw new Error(apiError.detail || 'Password change request failed');
+    }
+    throw new Error('Network error - Unable to request password change');
+  }
+}
+
+/**
+ * Verify password change with code and new password
+ * POST /auth/password/change/verify
+ */
+export async function verifyPasswordChange(
+  data: PasswordChangeVerifyRequest
+): Promise<PasswordChangeVerifyResponse> {
+  try {
+    const response = await apiClient.post<PasswordChangeVerifyResponse>(
+      '/auth/password/change/verify',
+      data
+    );
+    return response.data;
+  } catch (error: unknown) {
+    if (error instanceof AxiosError && error.response) {
+      const apiError: ApiError = error.response.data;
+      throw new Error(apiError.detail || 'Password change verification failed');
+    }
+    throw new Error('Network error - Unable to verify password change');
+  }
+}
+
+/**
  * Verify email with code
  * POST /auth/email/verify
  */
@@ -205,6 +254,8 @@ export const authApi = {
   logout,
   requestPasswordReset,
   confirmPasswordReset,
+  requestPasswordChange,
+  verifyPasswordChange,
   verifyEmail,
   resendEmailVerification,
 };
