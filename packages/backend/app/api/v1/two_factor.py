@@ -27,7 +27,7 @@ from app.models.two_factor import (
     TwoFactorDisableResponse,
     TwoFactorStatusResponse
 )
-from app.core.auth import get_current_user
+from app.api.v1.auth import get_current_user
 
 router = APIRouter(prefix="/2fa", tags=["Two-Factor Authentication"])
 security = HTTPBearer()
