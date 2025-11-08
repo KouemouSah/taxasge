@@ -267,17 +267,6 @@ export default function VerifyEmailPage() {
                     {isResending ? "Envoi en cours..." : "Renvoyer le code"}
                   </Button>
                 </div>
-
-                <div className="text-center">
-                  <Button
-                    type="button"
-                    variant="link"
-                    onClick={() => router.push("/dashboard")}
-                    className="text-sm"
-                  >
-                    Je le ferai plus tard
-                  </Button>
-                </div>
               </form>
             </CardContent>
           </Card>

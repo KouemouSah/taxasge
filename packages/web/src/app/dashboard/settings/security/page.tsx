@@ -1,0 +1,264 @@
+'use client'
+
+/**
+ * Security Settings Page
+ * Centralized security management:
+ * - Password change
+ * - Two-Factor Authentication (2FA)
+ * - Active sessions
+ */
+
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { useToast } from '@/hooks/use-toast'
+import { Shield, Key, Lock, ArrowLeft } from 'lucide-react'
+import Header from '@/components/layout/Header'
+import Footer from '@/components/layout/Footer'
+import { getAuthData } from '@/lib/auth/storage'
+import TwoFactorToggle from '@/components/security/TwoFactorToggle'
+import type { User as UserType } from '@/types/auth'
+import Link from 'next/link'
+
+export default function SecuritySettingsPage() {
+  const router = useRouter()
+  const { toast } = useToast()
+  const [user, setUser] = useState<UserType | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordChangeLoading, setPasswordChangeLoading] = useState(false)
+
+  useEffect(() => {
+    const authData = getAuthData()
+
+    if (!authData) {
+      router.push('/auth')
+      return
+    }
+
+    setUser(authData.user)
+    setIsLoading(false)
+  }, [router])
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    // Validation
+    if (newPassword !== confirmPassword) {
+      toast({
+        variant: 'destructive',
+        title: 'Erreur',
+        description: 'Les mots de passe ne correspondent pas',
+      })
+      return
+    }
+
+    if (newPassword.length < 8) {
+      toast({
+        variant: 'destructive',
+        title: 'Mot de passe trop court',
+        description: 'Le mot de passe doit contenir au moins 8 caractères',
+      })
+      return
+    }
+
+    // Password strength validation
+    if (!/[A-Z]/.test(newPassword)) {
+      toast({
+        variant: 'destructive',
+        title: 'Mot de passe faible',
+        description: 'Le mot de passe doit contenir au moins une majuscule',
+      })
+      return
+    }
+    if (!/[a-z]/.test(newPassword)) {
+      toast({
+        variant: 'destructive',
+        title: 'Mot de passe faible',
+        description: 'Le mot de passe doit contenir au moins une minuscule',
+      })
+      return
+    }
+    if (!/[0-9]/.test(newPassword)) {
+      toast({
+        variant: 'destructive',
+        title: 'Mot de passe faible',
+        description: 'Le mot de passe doit contenir au moins un chiffre',
+      })
+      return
+    }
+    if (!/[^A-Za-z0-9]/.test(newPassword)) {
+      toast({
+        variant: 'destructive',
+        title: 'Mot de passe faible',
+        description: 'Le mot de passe doit contenir au moins un caractère spécial',
+      })
+      return
+    }
+
+    setPasswordChangeLoading(true)
+
+    try {
+      // TODO: Implement password change with verification code
+      // 1. Call API to change password
+      // 2. API sends verification code to email
+      // 3. Redirect to /auth/verify-email with context='password_change'
+
+      toast({
+        title: 'Fonctionnalité en développement',
+        description: 'Le changement de mot de passe sera bientôt disponible',
+      })
+
+      // Clear form
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch (error: unknown) {
+      toast({
+        variant: 'destructive',
+        title: 'Erreur',
+        description: error instanceof Error ? error.message : 'Échec du changement de mot de passe',
+      })
+    } finally {
+      setPasswordChangeLoading(false)
+    }
+  }
+
+  if (isLoading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Chargement...</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Header />
+
+      <main className="flex-1 container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-8">
+            <Link href="/dashboard">
+              <Button variant="ghost" className="mb-4">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Retour au tableau de bord
+              </Button>
+            </Link>
+            <h1 className="text-4xl font-bold mb-2">Paramètres de sécurité</h1>
+            <p className="text-muted-foreground">
+              Gérez votre mot de passe et vos options de sécurité
+            </p>
+          </div>
+
+          <Tabs defaultValue="password" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="password">
+                <Key className="mr-2 h-4 w-4" />
+                Mot de passe
+              </TabsTrigger>
+              <TabsTrigger value="2fa">
+                <Shield className="mr-2 h-4 w-4" />
+                Authentification 2FA
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Password Tab */}
+            <TabsContent value="password">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Lock className="h-5 w-5" />
+                    Changer le mot de passe
+                  </CardTitle>
+                  <CardDescription>
+                    Modifiez votre mot de passe. Un code de vérification sera envoyé à votre email.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handlePasswordChange} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="current-password">Mot de passe actuel</Label>
+                      <Input
+                        id="current-password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="new-password">Nouveau mot de passe</Label>
+                      <Input
+                        id="new-password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        required
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Min 8 caractères, 1 majuscule, 1 minuscule, 1 chiffre, 1 caractère spécial
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="confirm-password">Confirmer le nouveau mot de passe</Label>
+                      <Input
+                        id="confirm-password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                      />
+                    </div>
+
+                    <Button type="submit" className="w-full" disabled={passwordChangeLoading}>
+                      {passwordChangeLoading ? 'Changement en cours...' : 'Changer le mot de passe'}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* 2FA Tab */}
+            <TabsContent value="2fa">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="h-5 w-5" />
+                    Authentification à deux facteurs
+                  </CardTitle>
+                  <CardDescription>
+                    Ajoutez une couche de sécurité supplémentaire à votre compte
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <TwoFactorToggle
+                    initialEnabled={user.two_factor_enabled || false}
+                    onStatusChange={(enabled) => {
+                      setUser(prev => prev ? { ...prev, two_factor_enabled: enabled } : null)
+                    }}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </main>
+
+      <Footer />
+    </div>
+  )
+}
