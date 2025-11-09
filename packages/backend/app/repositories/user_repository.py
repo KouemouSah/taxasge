@@ -85,6 +85,29 @@ class UserRepository(BaseRepository[UserResponse]):
 
         return None
 
+    async def get_by_id(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get user by ID and return raw data including sensitive fields
+        Used for internal operations (2FA, password change, etc.)
+
+        Args:
+            user_id: User UUID
+
+        Returns:
+            Optional[Dict]: Raw user data, or None if not found
+        """
+        try:
+            query = f"SELECT * FROM {self.table_name} WHERE id = $1"
+            result = await self.db_manager.execute_single(query, user_id)
+
+            if result:
+                return dict(result)
+
+        except Exception as e:
+            logger.error(f"❌ Error finding user by ID {user_id}: {e}")
+
+        return None
+
     async def find_by_email_with_password(self, email: str) -> Optional[Dict[str, Any]]:
         """
         Find user by email and return raw data including password_hash
