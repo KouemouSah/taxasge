@@ -137,6 +137,7 @@ class UserRepository(BaseRepository[UserResponse]):
                 "role": user_data.role.value,
                 "status": UserStatus.active.value,
                 "preferred_language": user_data.profile.language if user_data.profile.language else "es",  # Note: language -> preferred_language
+                "email_verified": user_data.email_verified if hasattr(user_data, 'email_verified') else False,  # CRITICAL: Email verification status
                 # created_at, updated_at have DB defaults, no need to insert
             }
 
