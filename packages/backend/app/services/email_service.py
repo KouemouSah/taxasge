@@ -208,9 +208,20 @@ class EmailService:
         """
         subject = "TaxasGE - Password Reset Request"
 
-        # TODO: Replace with actual frontend URL from environment variable
-        # For now using placeholder
-        reset_url = f"https://taxasge.com/reset-password?token={reset_token}"
+        # Frontend password reset URL
+        # Uses environment variable or defaults to Firebase hosting
+        from app.config import get_settings
+        settings = get_settings()
+
+        # Determine frontend URL based on environment
+        if settings.ENVIRONMENT == "production":
+            frontend_url = "https://taxasge-prod.web.app"
+        elif settings.ENVIRONMENT == "staging":
+            frontend_url = "https://taxasge-dev.web.app"
+        else:
+            frontend_url = "http://localhost:3000"
+
+        reset_url = f"{frontend_url}/reset-password?token={reset_token}"
 
         greeting = f"Hello {user_name}," if user_name else "Hello,"
 
