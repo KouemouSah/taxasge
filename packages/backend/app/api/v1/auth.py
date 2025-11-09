@@ -845,7 +845,8 @@ async def change_password(
         # Get user from database
         from app.repositories.user_repository import UserRepository
         user_repo = UserRepository()
-        user = await user_repo.get_by_id(current_user["id"])
+        user_id = current_user.get("sub") or current_user.get("id")
+        user = await user_repo.get_by_id(user_id)
 
         if not user:
             raise HTTPException(
@@ -858,7 +859,7 @@ async def change_password(
         password_service = PasswordService()
         is_valid = await password_service.verify_password(
             plain_password=request.current_password,
-            hashed_password=user["hashed_password"]
+            hashed_password=user.get("password_hash")
         )
 
         if not is_valid:
@@ -875,7 +876,7 @@ async def change_password(
         from app.repositories.pending_registration_repository import PendingRegistrationRepository
         pending_repo = PendingRegistrationRepository()
         await pending_repo.create(
-            email=user["email"],
+            email=user.get("email"),
             verification_code=verification_code,
             expires_in_minutes=10
         )
@@ -884,16 +885,16 @@ async def change_password(
         from app.services.email_service import EmailService
         email_service = EmailService()
         await email_service.send_verification_email(
-            email=user["email"],
+            email=user.get("email"),
             verification_code=verification_code,
             context="password_change"
         )
 
-        logger.info(f"Password change verification code sent to {user['email']}")
+        logger.info(f"Password change verification code sent to {user.get('email')}")
 
         return PasswordChangeResponse(
             message="Verification code sent to your email. Please enter the code and your new password to complete the change.",
-            email=user["email"]
+            email=user.get("email")
         )
 
     except HTTPException:
