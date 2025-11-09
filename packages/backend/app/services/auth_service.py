@@ -157,9 +157,51 @@ class AuthService:
             if not user_data:
                 raise Exception("Invalid email or password")
 
+            user_id = user_data.get("id")
+
+            # LOCKOUT CHECK: Verify account is not locked BEFORE password verification
+            locked_until = await self.user_repo.check_account_lockout(user_id)
+            if locked_until:
+                from datetime import timezone
+                remaining_seconds = (locked_until - datetime.now(timezone.utc)).total_seconds()
+                remaining_minutes = int(remaining_seconds / 60)
+                raise Exception(f"Account locked. Try again in {remaining_minutes} minutes.")
+
             # Verify password
             if not self.password_service.verify_password(password, user_data["password_hash"]):
-                logger.warning(f"Failed login attempt for {email}")
+                logger.warning(f"Failed login attempt for {email} from IP {ip_address}")
+
+                # LOCKOUT: Increment failed attempts (may lock account)
+                lockout_result = await self.user_repo.increment_failed_login(
+                    user_id=user_id,
+                    ip_address=ip_address or "unknown"
+                )
+
+                # If account was just locked, send notification email
+                if lockout_result.get("was_locked"):
+                    # Send account lockout notification email
+                    from app.config import get_settings
+                    settings = get_settings()
+
+                    email_service = EmailService(
+                        smtp_host=settings.SMTP_HOST,
+                        smtp_port=settings.SMTP_PORT,
+                        smtp_username=settings.SMTP_USERNAME,
+                        smtp_password=settings.SMTP_PASSWORD,
+                        smtp_use_tls=settings.SMTP_USE_TLS,
+                        smtp_from_email=settings.SMTP_FROM_EMAIL,
+                        smtp_from_name=settings.SMTP_FROM_NAME
+                    )
+
+                    # Send lockout notification
+                    email_service.send_account_lockout_notification(
+                        to_email=email,
+                        user_name=user_data.get("first_name", "User"),
+                        locked_until=lockout_result["locked_until"]
+                    )
+
+                    logger.info(f"Account lockout email sent to {email}")
+
                 raise Exception("Invalid email or password")
 
             # Map user data to UserResponse model (excluding password_hash)
@@ -202,6 +244,9 @@ class AuthService:
                 }
 
             # Standard login flow (no 2FA)
+            # LOCKOUT: Reset failed login attempts on successful login
+            await self.user_repo.reset_failed_login(user.id)
+
             # Update last login
             await self.user_repo.update_last_login(user.id)
 
@@ -780,6 +825,9 @@ class AuthService:
                 raise Exception("Invalid or expired 2FA code")
 
             logger.info(f"2FA verification successful for user {email}")
+
+            # LOCKOUT: Reset failed login attempts on successful 2FA login
+            await self.user_repo.reset_failed_login(user_id)
 
             # Update last login
             await self.user_repo.update_last_login(user_id)

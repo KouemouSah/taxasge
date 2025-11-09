@@ -789,6 +789,176 @@ class UserRepository(BaseRepository[UserResponse]):
             logger.error(f"❌ Error updating backup codes for user {user_id}: {e}")
             return False
 
+    # =========================================================================
+    # LOGIN LOCKOUT METHODS (Account Security - Brute Force Protection)
+    # =========================================================================
+
+    async def increment_failed_login(
+        self,
+        user_id: str,
+        ip_address: str
+    ) -> Dict[str, Any]:
+        """
+        Increment failed login attempts for user.
+        Locks account if attempts reach 5.
+
+        Args:
+            user_id: User UUID
+            ip_address: Client IP address
+
+        Returns:
+            Dict with: failed_attempts (int), locked_until (datetime or None), was_locked (bool)
+
+        Source: Account lockout feature (brute force protection)
+        """
+        try:
+            from datetime import timezone
+
+            # Get current user data to check IP
+            query_get = """
+                SELECT failed_login_attempts, last_failed_ip, locked_until
+                FROM users
+                WHERE id = $1
+            """
+            user_data = await self.db_manager.execute_single(query_get, user_id)
+
+            if not user_data:
+                logger.warning(f"User {user_id} not found for lockout increment")
+                return {"failed_attempts": 0, "locked_until": None, "was_locked": False}
+
+            current_attempts = user_data.get("failed_login_attempts", 0) or 0
+            last_ip = user_data.get("last_failed_ip")
+
+            # Reset counter if IP changed (different device/location)
+            if last_ip and last_ip != ip_address:
+                new_attempts = 1
+                logger.info(f"IP changed for user {user_id}, resetting attempts to 1")
+            else:
+                new_attempts = current_attempts + 1
+
+            # Check if we need to lock the account
+            locked_until = None
+            was_locked = False
+
+            if new_attempts >= 5:
+                # Lock for 10 minutes
+                locked_until = datetime.now(timezone.utc) + timedelta(minutes=10)
+                was_locked = True
+                logger.warning(f"🔒 Account locked for user {user_id} until {locked_until}")
+
+            # Update database
+            now = datetime.utcnow()
+            if locked_until:
+                query_update = """
+                    UPDATE users
+                    SET failed_login_attempts = $1,
+                        last_failed_ip = $2,
+                        locked_until = $3,
+                        updated_at = $4
+                    WHERE id = $5
+                """
+                await self.db_manager.execute_command(
+                    query_update, new_attempts, ip_address, locked_until, now, user_id
+                )
+            else:
+                query_update = """
+                    UPDATE users
+                    SET failed_login_attempts = $1,
+                        last_failed_ip = $2,
+                        updated_at = $3
+                    WHERE id = $4
+                """
+                await self.db_manager.execute_command(
+                    query_update, new_attempts, ip_address, now, user_id
+                )
+
+            return {
+                "failed_attempts": new_attempts,
+                "locked_until": locked_until,
+                "was_locked": was_locked
+            }
+
+        except Exception as e:
+            logger.error(f"❌ Error incrementing failed login for user {user_id}: {e}")
+            return {"failed_attempts": 0, "locked_until": None, "was_locked": False}
+
+    async def reset_failed_login(self, user_id: str) -> bool:
+        """
+        Reset failed login attempts and unlock account.
+        Called on successful login.
+
+        Args:
+            user_id: User UUID
+
+        Returns:
+            bool: True if reset successfully, False otherwise
+
+        Source: Account lockout feature (brute force protection)
+        """
+        try:
+            now = datetime.utcnow()
+            query = """
+                UPDATE users
+                SET failed_login_attempts = 0,
+                    last_failed_ip = NULL,
+                    locked_until = NULL,
+                    updated_at = $1
+                WHERE id = $2
+            """
+            result = await self.db_manager.execute_command(query, now, user_id)
+            success = "UPDATE 1" in result
+            if success:
+                logger.info(f"✅ Failed login attempts reset for user {user_id}")
+            return success
+
+        except Exception as e:
+            logger.error(f"❌ Error resetting failed login for user {user_id}: {e}")
+            return False
+
+    async def check_account_lockout(self, user_id: str) -> Optional[datetime]:
+        """
+        Check if account is currently locked.
+
+        Args:
+            user_id: User UUID
+
+        Returns:
+            Optional[datetime]: locked_until timestamp if locked, None if not locked
+
+        Source: Account lockout feature (brute force protection)
+        """
+        try:
+            from datetime import timezone
+
+            query = """
+                SELECT locked_until
+                FROM users
+                WHERE id = $1
+            """
+            result = await self.db_manager.execute_single(query, user_id)
+
+            if not result:
+                return None
+
+            locked_until = result.get("locked_until")
+
+            if not locked_until:
+                return None
+
+            # Check if lock has expired
+            if datetime.now(timezone.utc) >= locked_until:
+                # Auto-unlock (lock expired)
+                await self.reset_failed_login(user_id)
+                logger.info(f"🔓 Auto-unlocked expired lock for user {user_id}")
+                return None
+
+            # Still locked
+            return locked_until
+
+        except Exception as e:
+            logger.error(f"❌ Error checking account lockout for user {user_id}: {e}")
+            return None
+
     async def delete_user(self, user_id: str) -> bool:
         """
         Delete user by ID (used for rollback when email verification fails).

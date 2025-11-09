@@ -381,3 +381,68 @@ class EmailService:
         """
 
         return self.send_email(to_email, subject, body_html, body_text)
+
+    def send_account_lockout_notification(
+        self, to_email: str, user_name: Optional[str] = None, locked_until: datetime = None
+    ) -> bool:
+        """
+        Send account lockout notification email
+
+        Args:
+            to_email: Recipient email address
+            user_name: User's name (optional)
+            locked_until: Timestamp when account will be unlocked
+
+        Returns:
+            bool: True if email sent successfully, False otherwise
+        """
+        subject = "TaxasGE - Account Temporarily Locked"
+
+        greeting = f"Hello {user_name}," if user_name else "Hello,"
+
+        # Calculate remaining time
+        from datetime import timezone as tz
+        if locked_until:
+            remaining_minutes = int((locked_until - datetime.now(tz.utc)).total_seconds() / 60)
+        else:
+            remaining_minutes = 10
+
+        body_html = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #dc2626;">Account Temporarily Locked</h2>
+                    <p>{greeting}</p>
+                    <p>Your TaxasGE account has been temporarily locked due to multiple failed login attempts.</p>
+                    <div style="background-color: #fee2e2; padding: 20px; border-left: 4px solid #dc2626; margin: 20px 0; border-radius: 4px;">
+                        <p style="margin: 0; font-weight: bold;">Your account will be automatically unlocked in {remaining_minutes} minutes.</p>
+                    </div>
+                    <p><strong>If this was you:</strong> Please wait {remaining_minutes} minutes before trying to log in again. Make sure you're using the correct password.</p>
+                    <p><strong>If this wasn't you:</strong> Someone may be trying to access your account. We recommend changing your password after the lockout period expires.</p>
+                    <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
+                    <p style="color: #6b7280; font-size: 12px;">
+                        This is an automated security message from TaxasGE Platform. Please do not reply to this email.
+                    </p>
+                </div>
+            </body>
+        </html>
+        """
+
+        body_text = f"""
+        Account Temporarily Locked
+
+        {greeting}
+
+        Your TaxasGE account has been temporarily locked due to multiple failed login attempts.
+
+        Your account will be automatically unlocked in {remaining_minutes} minutes.
+
+        If this was you: Please wait {remaining_minutes} minutes before trying to log in again. Make sure you're using the correct password.
+
+        If this wasn't you: Someone may be trying to access your account. We recommend changing your password after the lockout period expires.
+
+        ---
+        This is an automated security message from TaxasGE Platform.
+        """
+
+        return self.send_email(to_email, subject, body_html, body_text)
