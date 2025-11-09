@@ -164,8 +164,9 @@ class AuthService:
             if locked_until:
                 from datetime import timezone
                 remaining_seconds = (locked_until - datetime.now(timezone.utc)).total_seconds()
-                remaining_minutes = int(remaining_seconds / 60)
-                raise Exception(f"Account locked. Try again in {remaining_minutes} minutes.")
+                # Ensure at least 1 minute is shown (round up)
+                remaining_minutes = max(1, int((remaining_seconds + 59) / 60))
+                raise Exception(f"Account locked. Try again in {remaining_minutes} minute{'s' if remaining_minutes != 1 else ''}.")
 
             # Verify password
             if not self.password_service.verify_password(password, user_data["password_hash"]):

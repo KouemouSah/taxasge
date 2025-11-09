@@ -154,7 +154,7 @@ export default function AuthPage() {
         // Erreurs API
         const errorMessage = error instanceof Error ? error.message : "Email ou mot de passe invalide"
 
-        // Check for account lockout error
+        // Check for account lockout error (handles both "minute" and "minutes")
         const lockoutMatch = errorMessage.match(/Account locked\. Try again in (\d+) minutes?\./)
         if (lockoutMatch) {
           const remainingMinutes = parseInt(lockoutMatch[1])
