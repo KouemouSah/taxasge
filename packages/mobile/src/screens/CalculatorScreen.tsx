@@ -7,7 +7,7 @@
  * Date: 2025-10-21
  */
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -39,7 +39,7 @@ import { exportService } from '../services/ExportService';
 export interface CalculatorScreenProps {
   service: FiscalService;
   language: 'es' | 'fr' | 'en';
-  userId: string;
+  userId?: string; // Optional - defaults to 'local-user'
   onBack?: () => void;
 }
 
@@ -109,7 +109,7 @@ const TEXTS = {
 export const CalculatorScreen: React.FC<CalculatorScreenProps> = ({
   service,
   language,
-  userId,
+  userId = 'local-user', // Default user ID for offline use
   onBack,
 }) => {
   const t = TEXTS[language];
@@ -123,8 +123,44 @@ export const CalculatorScreen: React.FC<CalculatorScreenProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [saveForLater, setSaveForLater] = useState(false);
 
-  // Get required input fields
-  const requiredFields = calculatorEngine.getRequiredInputs(service);
+  // Get required input fields with translations - MEMOIZED to prevent re-renders
+  const requiredFields = useMemo(() => {
+    console.log('[CalculatorScreen] Getting required inputs for', service.service_code);
+    const fields = calculatorEngine.getRequiredInputs(service, language);
+    console.log('[CalculatorScreen] Required fields count:', fields.length);
+
+    // Validate each field to detect potential issues
+    fields.forEach((field, index) => {
+      Object.keys(field).forEach(key => {
+        const value = field[key as keyof typeof field];
+        const valueType = typeof value;
+        if (valueType === 'object' && value !== null && value !== undefined) {
+          console.error(`[CalculatorScreen] ⚠️  Field ${index} key "${key}" is object:`, value);
+        }
+      });
+    });
+
+    return fields;
+  }, [service, language, calculationType]);
+
+  // Get formula description if available - MEMOIZED to prevent re-renders
+  const formulaDescription = useMemo(() => {
+    const desc = calculatorEngine.getFormulaDescription(service, language);
+    console.log('[CalculatorScreen] Formula description:', typeof desc, desc);
+    return desc;
+  }, [service, language]);
+
+  // Group fields by section - MEMOIZED to prevent re-renders
+  const groupedFields = useMemo(() => {
+    return requiredFields.reduce((acc, field) => {
+      const section = field.section || 'default';
+      if (!acc[section]) {
+        acc[section] = [];
+      }
+      acc[section].push(field);
+      return acc;
+    }, {} as Record<string, typeof requiredFields>);
+  }, [requiredFields]);
 
   // Handle input change
   const handleInputChange = useCallback((field: string, value: string) => {
@@ -133,16 +169,32 @@ export const CalculatorScreen: React.FC<CalculatorScreenProps> = ({
     setResult(null);
   }, []);
 
-  // Validate inputs
+  // Validate inputs with enhanced validation
   const validateInputs = (): boolean => {
     for (const field of requiredFields) {
       const value = inputs[field.field];
-      if (!value || value.trim() === '') {
+
+      // Check if required field is empty
+      if (field.required !== false && (!value || value.trim() === '')) {
         return false;
       }
-      const numValue = parseFloat(value);
-      if (isNaN(numValue) || numValue < 0) {
-        return false;
+
+      // If value provided, validate it
+      if (value && value.trim() !== '') {
+        const numValue = parseFloat(value);
+
+        // Check if valid number
+        if (isNaN(numValue)) {
+          return false;
+        }
+
+        // Check min/max constraints
+        if (field.min !== undefined && numValue < field.min) {
+          return false;
+        }
+        if (field.max !== undefined && numValue > field.max) {
+          return false;
+        }
       }
     }
     return true;
@@ -297,17 +349,75 @@ export const CalculatorScreen: React.FC<CalculatorScreenProps> = ({
     }
   }, [result, service, t]);
 
-  // Render input field
-  const renderInputField = (field: { field: string; label: string; type: string }) => {
+  // Render input field with enhanced features
+  const renderInputField = (field: {
+    field: string;
+    label: string;
+    placeholder: string;
+    type: string;
+    hint?: string;
+    unit?: string;
+    required?: boolean;
+    min?: number;
+    max?: number;
+  }) => {
+    // Validate all string fields to prevent "Text must be within <Text>" errors
+    const safeLabel = typeof field.label === 'string' && field.label.trim() !== '' ? field.label : field.field || 'Input';
+    const safePlaceholder = typeof field.placeholder === 'string' ? field.placeholder : '';
+    const safeHint = field.hint && typeof field.hint === 'string' && field.hint.trim() !== '' ? field.hint : null;
+    const safeUnit = field.unit && typeof field.unit === 'string' && field.unit.trim() !== '' ? field.unit : null;
+
+    // Build label with unit and optional indicator
+    const labelText = safeUnit ? `${safeLabel} (${safeUnit})` : safeLabel;
+    const isOptional = field.required === false;
+
+    // Build validation hint
+    let validationHint: string = '';
+    if (field.min !== undefined && field.max !== undefined) {
+      const hint = {
+        es: `Valor entre ${field.min} y ${field.max}`,
+        fr: `Valeur entre ${field.min} et ${field.max}`,
+        en: `Value between ${field.min} and ${field.max}`,
+      }[language];
+      validationHint = typeof hint === 'string' ? hint : '';
+    } else if (field.min !== undefined) {
+      const hint = {
+        es: `Mínimo: ${field.min}`,
+        fr: `Minimum: ${field.min}`,
+        en: `Minimum: ${field.min}`,
+      }[language];
+      validationHint = typeof hint === 'string' ? hint : '';
+    } else if (field.max !== undefined) {
+      const hint = {
+        es: `Máximo: ${field.max}`,
+        fr: `Maximum: ${field.max}`,
+        en: `Maximum: ${field.max}`,
+      }[language];
+      validationHint = typeof hint === 'string' ? hint : '';
+    }
+
     return (
       <View key={field.field} style={styles.inputContainer}>
-        <Text style={styles.inputLabel}>{field.label}</Text>
+        <View style={styles.inputLabelContainer}>
+          <Text style={styles.inputLabel}>{String(labelText)}</Text>
+          {isOptional && (
+            <Text style={styles.optionalBadge}>
+              {String(language === 'es' ? 'Opcional' : language === 'fr' ? 'Facultatif' : 'Optional')}
+            </Text>
+          )}
+        </View>
+        {safeHint && (
+          <Text style={styles.inputHint}>{String(safeHint)}</Text>
+        )}
+        {validationHint && typeof validationHint === 'string' && validationHint.trim() !== '' && (
+          <Text style={styles.validationHint}>{String(validationHint)}</Text>
+        )}
         <TextInput
           style={styles.input}
           value={inputs[field.field] || ''}
           onChangeText={value => handleInputChange(field.field, value)}
           keyboardType="numeric"
-          placeholder={`Enter ${field.label.toLowerCase()}`}
+          placeholder={safePlaceholder}
           placeholderTextColor="#999"
         />
       </View>
@@ -326,27 +436,16 @@ export const CalculatorScreen: React.FC<CalculatorScreenProps> = ({
           </TouchableOpacity>
         )}
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>{t.title}</Text>
+          <Text style={styles.headerTitle}>{String(t.title)}</Text>
         </View>
         <View style={styles.headerRight} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Service Info */}
-        <View style={styles.serviceInfo}>
-          <Text style={styles.serviceName}>{getServiceName(service, language)}</Text>
-          <Text style={styles.serviceCode}>{service.service_code}</Text>
-          {getServiceDescription(service, language) && (
-            <Text style={styles.serviceDescription}>
-              {getServiceDescription(service, language)}
-            </Text>
-          )}
-        </View>
-
         {/* Calculation Type Selector */}
         {(service.tasa_renovacion && service.tasa_renovacion > 0) && (
           <View style={styles.typeSelector}>
-            <Text style={styles.sectionTitle}>{t.calculationType}</Text>
+            <Text style={styles.sectionTitle}>{String(t.calculationType)}</Text>
             <View style={styles.typeButtons}>
               <TouchableOpacity
                 style={[
@@ -359,7 +458,7 @@ export const CalculatorScreen: React.FC<CalculatorScreenProps> = ({
                     styles.typeButtonText,
                     calculationType === 'expedition' && styles.typeButtonTextActive,
                   ]}>
-                  {t.expedition}
+                  {String(t.expedition)}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -373,18 +472,43 @@ export const CalculatorScreen: React.FC<CalculatorScreenProps> = ({
                     styles.typeButtonText,
                     calculationType === 'renewal' && styles.typeButtonTextActive,
                   ]}>
-                  {t.renewal}
+                  {String(t.renewal)}
                 </Text>
               </TouchableOpacity>
             </View>
           </View>
         )}
 
-        {/* Input Fields */}
-        {requiredFields.length > 0 && (
-          <View style={styles.inputsSection}>
-            {requiredFields.map(renderInputField)}
+        {/* Formula Description */}
+        {formulaDescription && typeof formulaDescription === 'string' && formulaDescription.trim() !== '' && (
+          <View style={styles.formulaDescriptionSection}>
+            <Text style={styles.formulaDescriptionIcon}>ℹ️</Text>
+            <Text style={styles.formulaDescriptionText}>{String(formulaDescription)}</Text>
           </View>
+        )}
+
+        {/* Input Fields - Grouped by section */}
+        {requiredFields.length > 0 && (
+          <>
+            {Object.keys(groupedFields).map(sectionKey => {
+              const sectionFields = groupedFields[sectionKey];
+              const showSectionHeader = sectionKey !== 'default' && Object.keys(groupedFields).length > 1;
+
+              // CRITICAL: Ensure sectionKey is absolutely a valid string
+              const safeSectionKey = typeof sectionKey === 'string' && sectionKey.trim() !== ''
+                ? String(sectionKey)
+                : 'section';
+
+              return (
+                <View key={safeSectionKey} style={styles.inputsSection}>
+                  {showSectionHeader && (
+                    <Text style={styles.sectionHeader}>{safeSectionKey}</Text>
+                  )}
+                  {sectionFields.map(renderInputField)}
+                </View>
+              );
+            })}
+          </>
         )}
 
         {/* Calculate Button */}
@@ -395,28 +519,28 @@ export const CalculatorScreen: React.FC<CalculatorScreenProps> = ({
           {isCalculating ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.calculateButtonText}>{t.calculate}</Text>
+            <Text style={styles.calculateButtonText}>{String(t.calculate)}</Text>
           )}
         </TouchableOpacity>
 
         {/* Result */}
         {result && (
           <View ref={resultViewRef} style={styles.resultSection}>
-            <Text style={styles.sectionTitle}>{t.result}</Text>
+            <Text style={styles.sectionTitle}>{String(t.result)}</Text>
             <View style={styles.resultBox}>
-              <Text style={styles.resultLabel}>{t.amount}</Text>
+              <Text style={styles.resultLabel}>{String(t.amount)}</Text>
               <Text style={styles.resultAmount}>
-                {formatAmount(result.amount)} XAF
+                {String(formatAmount(result.amount))} XAF
               </Text>
             </View>
 
             {/* Breakdown */}
             {result.breakdown && result.breakdown.steps && (
               <View style={styles.breakdownSection}>
-                <Text style={styles.breakdownTitle}>{t.breakdown}</Text>
+                <Text style={styles.breakdownTitle}>{String(t.breakdown)}</Text>
                 {result.breakdown.steps.filter(Boolean).map((step, index) => (
                   <Text key={index} style={styles.breakdownStep}>
-                    • {step}
+                    • {String(step)}
                   </Text>
                 ))}
               </View>
@@ -429,7 +553,7 @@ export const CalculatorScreen: React.FC<CalculatorScreenProps> = ({
               <View style={[styles.checkboxBox, saveForLater && styles.checkboxBoxChecked]}>
                 {saveForLater && <Text style={styles.checkboxCheck}>✓</Text>}
               </View>
-              <Text style={styles.checkboxLabel}>{t.saveForLater}</Text>
+              <Text style={styles.checkboxLabel}>{String(t.saveForLater)}</Text>
             </TouchableOpacity>
 
             {/* Action Buttons */}
@@ -441,17 +565,17 @@ export const CalculatorScreen: React.FC<CalculatorScreenProps> = ({
                 {isSaving ? (
                   <ActivityIndicator size="small" color="#007AFF" />
                 ) : (
-                  <Text style={styles.actionButtonText}>{t.save}</Text>
+                  <Text style={styles.actionButtonText}>{String(t.save)}</Text>
                 )}
               </TouchableOpacity>
               <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
-                <Text style={styles.actionButtonText}>{t.share}</Text>
+                <Text style={styles.actionButtonText}>{String(t.share)}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.actionButton} onPress={handleExportPDF}>
-                <Text style={styles.actionButtonText}>{t.exportPDF}</Text>
+                <Text style={styles.actionButtonText}>{String(t.exportPDF)}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.actionButton} onPress={handleExportImage}>
-                <Text style={styles.actionButtonText}>{t.exportImage}</Text>
+                <Text style={styles.actionButtonText}>{String(t.exportImage)}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -460,7 +584,7 @@ export const CalculatorScreen: React.FC<CalculatorScreenProps> = ({
         {/* No result message */}
         {!result && !isCalculating && (
           <View style={styles.noResultSection}>
-            <Text style={styles.noResultText}>{t.noCalculation}</Text>
+            <Text style={styles.noResultText}>{String(t.noCalculation)}</Text>
           </View>
         )}
       </ScrollView>
@@ -561,6 +685,28 @@ const styles = StyleSheet.create({
     color: '#1A1A1A',
     marginBottom: 12,
   },
+
+  // Formula Description
+  formulaDescriptionSection: {
+    backgroundColor: '#E8F4FD',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#007AFF',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  formulaDescriptionIcon: {
+    fontSize: 20,
+    marginRight: 12,
+  },
+  formulaDescriptionText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#1A1A1A',
+    lineHeight: 20,
+  },
   typeButtons: {
     flexDirection: 'row',
     gap: 12,
@@ -596,14 +742,49 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
   },
+  sectionHeader: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#007AFF',
+    marginBottom: 12,
+    marginTop: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+    paddingBottom: 8,
+  },
   inputContainer: {
     marginBottom: 16,
+  },
+  inputLabelContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: '#1A1A1A',
-    marginBottom: 8,
+  },
+  optionalBadge: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#666',
+    backgroundColor: '#F0F0F0',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  inputHint: {
+    fontSize: 12,
+    color: '#007AFF',
+    marginBottom: 6,
+    fontStyle: 'italic',
+  },
+  validationHint: {
+    fontSize: 11,
+    color: '#666',
+    marginBottom: 6,
   },
   input: {
     borderWidth: 1,
