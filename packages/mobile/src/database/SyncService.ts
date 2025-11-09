@@ -260,24 +260,60 @@ class SyncService {
 
       const selectColumns = columnMappings[tableName] || '*';
 
-      // Fetch ALL rows - set high range to avoid pagination limits
-      // For large tables like service_keywords (7014 rows), use higher limit
-      let query = this.supabase
-        .from(tableName)
-        .select(selectColumns)
-        .range(0, 19999);
+      // Tables that have 'updated_at' column (for incremental sync)
+      const tablesWithUpdatedAt = [
+        'ministries', 'sectors', 'categories', 'fiscal_services',
+        'procedure_templates', 'procedure_template_steps', 'document_templates',
+        'entity_translations', 'user_favorites', 'declarations', 'user_profiles', 'chatbot_faq'
+      ];
 
-      if (since) {
-        query = query.gte('updated_at', since.toISOString());
+      // Check if table is empty locally (force full sync if empty)
+      let isTableEmpty = false;
+      try {
+        const countResult = await db.query(`SELECT COUNT(*) as count FROM ${tableName}`, []);
+        isTableEmpty = countResult[0]?.count === 0;
+      } catch (error) {
+        console.log(`[Sync] Could not count ${tableName}, treating as empty`);
+        isTableEmpty = true;
       }
 
-      const { data, error } = await query;
+      // Pagination: Fetch ALL rows in batches
+      // CRITICAL: Supabase limits to 1000 rows by default
+      // Some tables have >10k rows (service_keywords: 7014, entity_translations: 8486)
+      const BATCH_SIZE = 1000;
+      let allData: any[] = [];
+      let offset = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        let query = this.supabase
+          .from(tableName)
+          .select(selectColumns)
+          .range(offset, offset + BATCH_SIZE - 1);
+
+        // Only apply updated_at filter for tables that have this column AND are not empty
+        if (since && !isTableEmpty && tablesWithUpdatedAt.includes(tableName)) {
+          query = query.gte('updated_at', since.toISOString());
+        }
+
+        const { data: batchData, error } = await query;
+
+        if (error) {
+          throw error;
+        }
+
+        if (batchData && batchData.length > 0) {
+          allData.push(...batchData);
+          offset += BATCH_SIZE;
+          hasMore = batchData.length === BATCH_SIZE; // Continue if we got a full batch
+        } else {
+          hasMore = false;
+        }
+      }
+
+      const data = allData;
 
       console.log(`[Sync] ${tableName} query returned: ${data?.length || 0} rows`);
-
-      if (error) {
-        throw error;
-      }
 
       if (data && data.length > 0) {
         // Map Supabase fields to SQLite fields
@@ -389,7 +425,7 @@ class SyncService {
         const mapped = data.map((item: any) => ({
           // IDs (INTEGER → TEXT)
           id: String(item.id),
-          service_code: item.code || `SVC-${item.id}`,  // FIXED: Use id as fallback if code is NULL
+          service_code: item.service_code || `T-${String(item.id).padStart(3, '0')}`,  // FIXED: Use service_code (not code), fallback to T-XXX format
           category_id: String(item.category_id),
 
           // Basic info (SPANISH ONLY)
@@ -405,8 +441,12 @@ class SyncService {
           tasa_renovacion: item.tasa_renovacion || 0,
           renewal_formula: item.renewal_formula || null,
           renewal_unit_measure: item.renewal_unit_measure || null,
-          calculation_config: item.calculation_config || null,
-          rate_tiers: item.rate_tiers || null,
+          calculation_config: item.calculation_config
+            ? (typeof item.calculation_config === 'string' ? item.calculation_config : JSON.stringify(item.calculation_config))
+            : null,
+          rate_tiers: item.rate_tiers
+            ? (typeof item.rate_tiers === 'string' ? item.rate_tiers : JSON.stringify(item.rate_tiers))
+            : null,
           base_percentage: item.base_percentage || null,
           percentage_of: item.percentage_of || null,
           unit_rate: item.unit_rate || null,
@@ -425,15 +465,23 @@ class SyncService {
           // Penalties
           late_penalty_percentage: item.late_penalty_percentage || null,
           late_penalty_fixed: item.late_penalty_fixed || null,
-          penalty_calculation_rules: item.penalty_calculation_rules || null,
+          penalty_calculation_rules: item.penalty_calculation_rules
+            ? (typeof item.penalty_calculation_rules === 'string' ? item.penalty_calculation_rules : JSON.stringify(item.penalty_calculation_rules))
+            : null,
 
           // Conditions
-          eligibility_criteria: item.eligibility_criteria || null,
-          exemption_conditions: item.exemption_conditions || null,
+          eligibility_criteria: item.eligibility_criteria
+            ? (typeof item.eligibility_criteria === 'string' ? item.eligibility_criteria : JSON.stringify(item.eligibility_criteria))
+            : null,
+          exemption_conditions: item.exemption_conditions
+            ? (typeof item.exemption_conditions === 'string' ? item.exemption_conditions : JSON.stringify(item.exemption_conditions))
+            : null,
 
           // Legal basis
           legal_reference: item.legal_reference || null,
-          regulatory_articles: item.regulatory_articles || null,
+          regulatory_articles: item.regulatory_articles
+            ? (typeof item.regulatory_articles === 'string' ? item.regulatory_articles : JSON.stringify(item.regulatory_articles))
+            : null,
 
           // Tariff validity dates
           tariff_effective_from: item.tariff_effective_from || null,
