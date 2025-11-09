@@ -44,7 +44,14 @@ export default function DashboardPage() {
       return
     }
 
-    setUser(authData.user)
+    // Map backend status to is_active boolean for UI compatibility
+    const userData = {
+      ...authData.user,
+      is_active: authData.user.status === 'active',
+      email_verified: authData.user.email_verified ?? false,
+    }
+
+    setUser(userData as UserType)
     setIsLoading(false)
   }, [router])
 
@@ -155,19 +162,6 @@ export default function DashboardPage() {
                   </div>
                 </div>
               </div>
-
-              {!user.email_verified && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <p className="text-sm text-yellow-800 mb-2">
-                    <strong>Action requise:</strong> Vérifiez votre adresse email
-                  </p>
-                  <Link href="/auth/verify-email">
-                    <Button size="sm" variant="outline">
-                      Vérifier maintenant
-                    </Button>
-                  </Link>
-                </div>
-              )}
             </CardContent>
           </Card>
 
