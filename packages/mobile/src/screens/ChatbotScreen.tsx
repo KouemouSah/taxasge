@@ -340,7 +340,7 @@ export const ChatbotScreen: React.FC<ChatbotScreenProps> = ({ language, onBack, 
   // ============================================
 
   const renderMessage = ({ item }: { item: ChatMessage }) => (
-    <MessageBubble message={item} onActionPress={handleActionPress} />
+    <MessageBubble message={item} onActionPress={handleActionPress} language={currentLanguage} />
   );
 
   const renderFooter = () => {

@@ -3,6 +3,7 @@
  * Service pour gérer le chatbot FAQ local (MVP1)
  * Date: 2025-10-13
  * Updated: 2025-11-06 - Fixed SQL queries to use TranslationService
+ * Updated: 2025-11-07 - Added conversation context, spell correction, and synonyms
  *
  * CRITICAL FIXES:
  * - fiscal_services only has name_es (Spanish) - name_fr/name_en DON'T EXIST
@@ -10,16 +11,23 @@
  * - Use TranslationService for all multilingual content
  * - Use proper JOINs for related data (ministries, categories, etc.)
  *
+ * NEW FEATURES:
+ * - Conversation context tracking (remembers last intent/service)
+ * - Spell correction with Levenshtein distance
+ * - Synonym handling for better query understanding
+ *
  * Stratégie:
  * - Matching par regex patterns (rapide, 10-50ms)
  * - Recherche FTS5 en fallback (si aucun pattern match)
- * - Stateless (pas de sauvegarde conversations en MVP1)
+ * - Spell correction + synonym expansion before search
+ * - Context-aware responses
  * - Support multilingue (ES/FR/EN via TranslationService)
  */
 
 import { db } from '../database/DatabaseManager';
 import { QUERIES, TABLE_NAMES } from '../database/schema';
 import TranslationService from './TranslationService';
+import { enhanceQuery, FISCAL_KEYWORDS } from '../utils/textUtils';
 import {
   ChatbotFAQ,
   ChatbotFAQParsed,
@@ -41,6 +49,24 @@ import {
   buildDynamicResponse,
   CHATBOT_I18N,
 } from './chatbot/chatbot.i18n';
+
+// ============================================
+// TYPES
+// ============================================
+
+/**
+ * Contexte de conversation pour tracking
+ */
+interface ConversationContext {
+  lastIntent: ChatbotIntent;
+  lastServiceCode?: string;
+  lastServiceName?: string;
+  lastCategoryId?: number;
+  lastMinistryId?: number;
+  lastEntities: Record<string, any>;
+  messageCount: number;
+  timestamp: number;
+}
 
 // ============================================
 // HELPER FUNCTIONS
@@ -150,12 +176,51 @@ function extractEntities(text: string, intent: ChatbotIntent): Record<string, an
 
 class ChatbotService {
   private language: ChatbotLanguage = 'es';
+  private context: ConversationContext | null = null;
+  private readonly CONTEXT_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
 
   /**
    * Définit la langue du chatbot
    */
   setLanguage(language: ChatbotLanguage): void {
     this.language = language;
+  }
+
+  /**
+   * Réinitialise le contexte de conversation
+   */
+  resetContext(): void {
+    this.context = null;
+  }
+
+  /**
+   * Vérifie si le contexte est encore valide
+   */
+  private isContextValid(): boolean {
+    if (!this.context) return false;
+    const now = Date.now();
+    return (now - this.context.timestamp) < this.CONTEXT_EXPIRY_MS;
+  }
+
+  /**
+   * Met à jour le contexte de conversation
+   */
+  private updateContext(
+    intent: ChatbotIntent,
+    entities: Record<string, any>,
+    serviceCode?: string,
+    serviceName?: string
+  ): void {
+    this.context = {
+      lastIntent: intent,
+      lastServiceCode: serviceCode,
+      lastServiceName: serviceName,
+      lastCategoryId: entities.categoryId,
+      lastMinistryId: entities.ministryId,
+      lastEntities: entities,
+      messageCount: (this.context?.messageCount || 0) + 1,
+      timestamp: Date.now(),
+    };
   }
 
   /**
@@ -168,16 +233,51 @@ class ChatbotService {
     const startTime = Date.now();
 
     try {
-      // 1. Détecter l'intention
-      const detectedIntent = await this.detectIntent(userMessage, language);
+      // 1. Améliorer la query (correction orthographique + synonymes)
+      const enhancedQuery = enhanceQuery(userMessage);
+      console.log('[ChatbotService] Enhanced query:', {
+        original: userMessage,
+        corrected: enhancedQuery.corrected,
+        variantsCount: enhancedQuery.variants.length,
+        keywords: enhancedQuery.keywords,
+      });
 
-      // 2. Extraire entités
-      const entities = extractEntities(userMessage, detectedIntent.intent);
+      // 2. Détecter l'intention (avec contexte si disponible)
+      const detectedIntent = await this.detectIntent(enhancedQuery.corrected, language);
 
-      // 3. Générer la réponse (passer userMessage pour recherche dynamique)
-      const response = await this.generateResponse(detectedIntent, entities, language, userMessage);
+      // 3. Extraire entités
+      const entities = extractEntities(enhancedQuery.corrected, detectedIntent.intent);
 
-      // 4. Calculer le temps de traitement
+      // 4. Enrichir les entités avec le contexte
+      if (this.isContextValid() && this.context) {
+        // Si l'utilisateur pose une question de suivi sans mentionner le service
+        if (!entities.serviceKeyword && !entities.serviceCode && this.context.lastServiceCode) {
+          console.log('[ChatbotService] Using context:', {
+            lastIntent: this.context.lastIntent,
+            lastService: this.context.lastServiceCode,
+          });
+
+          entities.contextServiceCode = this.context.lastServiceCode;
+          entities.contextServiceName = this.context.lastServiceName;
+          entities.usingContext = true;
+        }
+      }
+
+      // 5. Générer la réponse (passer userMessage + enhanced query)
+      const response = await this.generateResponse(
+        detectedIntent,
+        entities,
+        language,
+        enhancedQuery.corrected,
+        enhancedQuery.variants
+      );
+
+      // 6. Mettre à jour le contexte
+      const serviceCode = entities.serviceCode || entities.contextServiceCode;
+      const serviceName = entities.serviceName || entities.contextServiceName;
+      this.updateContext(detectedIntent.intent, entities, serviceCode, serviceName);
+
+      // 7. Calculer le temps de traitement
       const processingTime = Date.now() - startTime;
       response.message.metadata = {
         ...response.message.metadata,
@@ -186,6 +286,9 @@ class ChatbotService {
         matchScore: detectedIntent.confidence,
         fallback: detectedIntent.confidence < 0.5,
         entities,
+        spellingCorrected: enhancedQuery.corrected !== userMessage,
+        synonymsExpanded: enhancedQuery.variants.length > 1,
+        contextUsed: entities.usingContext || false,
       };
 
       return response;
@@ -320,7 +423,8 @@ class ChatbotService {
     detectedIntent: DetectedIntent,
     entities: Record<string, any>,
     language: ChatbotLanguage,
-    userMessage?: string
+    userMessage?: string,
+    queryVariants?: string[]
   ): Promise<ChatResponse> {
     const { intent, matchedFAQs } = detectedIntent;
 
@@ -333,7 +437,22 @@ class ChatbotService {
     // Si intention inconnue ET on a le message utilisateur, chercher en BD
     if (intent === 'unknown' && userMessage) {
       console.log('[ChatbotService] No FAQ match, trying dynamic DB search...');
-      const services = await this.searchServicesInDB(userMessage, language, 5);
+
+      // Chercher d'abord avec la query corrigée
+      let services = await this.searchServicesInDB(userMessage, language, 5);
+
+      // Si aucun résultat et on a des variantes, essayer avec les variantes
+      if (services.length === 0 && queryVariants && queryVariants.length > 1) {
+        console.log('[ChatbotService] Trying with synonym variants...');
+        for (const variant of queryVariants.slice(0, 3)) {
+          // Max 3 variantes
+          services = await this.searchServicesInDB(variant, language, 5);
+          if (services.length > 0) {
+            console.log(`[ChatbotService] Found ${services.length} services with variant: ${variant}`);
+            break;
+          }
+        }
+      }
 
       if (services.length > 0) {
         console.log(`[ChatbotService] Found ${services.length} services in DB`);
