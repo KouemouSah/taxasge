@@ -68,7 +68,7 @@ async def enable_two_factor(
         user_repo = UserRepository()
         user = await user_repo.get_by_id(user_id)
 
-        if user.two_factor_enabled:
+        if user and user.get('two_factor_enabled'):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="2FA is already enabled for this account"
@@ -203,14 +203,14 @@ async def disable_two_factor(
         user_repo = UserRepository()
         user = await user_repo.get_by_id(user_id)
 
-        if not user.two_factor_enabled:
+        if not user or not user.get('two_factor_enabled'):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="2FA is not enabled for this account"
             )
 
         # Verify password
-        user_with_password = await user_repo.find_by_email_with_password(user.email)
+        user_with_password = await user_repo.find_by_email_with_password(user['email'])
         if not user_with_password:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -270,16 +270,24 @@ async def get_two_factor_status(
         user_repo = UserRepository()
         user = await user_repo.get_by_id(user_id)
 
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+
         # Count remaining backup codes
         backup_codes_remaining = None
-        if user.two_factor_enabled and user.two_factor_backup_codes:
+        if user.get('two_factor_enabled') and user.get('two_factor_backup_codes'):
             import json
-            codes = json.loads(user.two_factor_backup_codes) if isinstance(user.two_factor_backup_codes, str) else user.two_factor_backup_codes
+            backup_codes = user.get('two_factor_backup_codes')
+            codes = json.loads(backup_codes) if isinstance(backup_codes, str) else backup_codes
             backup_codes_remaining = len(codes) if isinstance(codes, list) else 0
 
+        two_factor_enabled_at = user.get('two_factor_enabled_at')
         return TwoFactorStatusResponse(
-            two_factor_enabled=user.two_factor_enabled or False,
-            two_factor_enabled_at=user.two_factor_enabled_at.isoformat() if user.two_factor_enabled_at else None,
+            two_factor_enabled=user.get('two_factor_enabled') or False,
+            two_factor_enabled_at=two_factor_enabled_at.isoformat() if two_factor_enabled_at else None,
             backup_codes_remaining=backup_codes_remaining
         )
 
