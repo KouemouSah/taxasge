@@ -898,10 +898,10 @@ async def change_password(
             smtp_from_name=settings.SMTP_FROM_NAME
         )
 
-        await email_service.send_verification_email(
-            email=user.get("email"),
+        email_service.send_verification_code(
+            to_email=user.get("email"),
             verification_code=verification_code,
-            context="password_change"
+            user_name=user.get("first_name")
         )
 
         logger.info(f"Password change verification code sent to {user.get('email')}")
