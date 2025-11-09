@@ -391,7 +391,7 @@ export default function AuthPage() {
 
                     <div className="text-center">
                       <Link
-                        href="/forgot-password"
+                        href="/auth/forgot-password"
                         className="text-sm text-primary hover:underline"
                       >
                         Mot de passe oublié ?
