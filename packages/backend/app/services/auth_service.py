@@ -588,7 +588,8 @@ class AuthService:
                 return True  # Pretend success to avoid email enumeration
 
             # Check user status
-            if user.status != UserStatus.active:
+            user_status = user.get("status") if isinstance(user, dict) else user.status
+            if user_status != "active":  # UserStatus.active is "active"
                 logger.warning(f"Password reset requested for inactive user: {email}")
                 return True  # Pretend success to avoid status enumeration
 
@@ -600,8 +601,9 @@ class AuthService:
             expires_at = datetime.utcnow() + timedelta(hours=1)
 
             # Save token to database
+            user_id = user.get("id") if isinstance(user, dict) else user.id
             success = await self.user_repo.update_password_reset_token(
-                user_id=user.id,
+                user_id=user_id,
                 reset_token=reset_token,
                 expires_at=expires_at
             )
@@ -625,10 +627,11 @@ class AuthService:
                 smtp_from_name=settings.SMTP_FROM_NAME
             )
 
+            user_name = user.get("first_name") if isinstance(user, dict) else user.first_name
             email_sent = email_service.send_password_reset_email(
                 to_email=email,
                 reset_token=reset_token,
-                user_name=user.first_name
+                user_name=user_name
             )
 
             if not email_sent:

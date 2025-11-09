@@ -248,7 +248,7 @@ class TwoFactorService:
         secret = self.generate_secret()
 
         # Generate QR code
-        qr_code = self.generate_qr_code(user.email, secret)
+        qr_code = self.generate_qr_code(user.get("email"), secret)
 
         # Generate backup codes
         backup_codes_plain = self.generate_backup_codes()
