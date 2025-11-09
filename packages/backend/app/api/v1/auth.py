@@ -684,21 +684,23 @@ async def get_profile(
 
         # Return user response
         return UserResponse(
-            id=user.id,
-            email=user.email,
-            role=user.role,
-            status=user.status,
-            first_name=user.first_name,
-            last_name=user.last_name,
-            phone=user.phone,
-            address=user.address,
-            city=user.city,
-            country=user.country,
-            language=user.language,
-            avatar_url=user.avatar_url,
-            created_at=user.created_at,
-            updated_at=user.updated_at,
-            last_login=user.last_login,
+            id=user.get("id"),
+            email=user.get("email"),
+            role=user.get("role"),
+            status=user.get("status"),
+            first_name=user.get("first_name"),
+            last_name=user.get("last_name"),
+            phone=user.get("phone"),
+            address=user.get("address"),
+            city=user.get("city"),
+            country=user.get("country"),
+            language=user.get("language"),
+            avatar_url=user.get("avatar_url"),
+            created_at=user.get("created_at"),
+            updated_at=user.get("updated_at"),
+            last_login=user.get("last_login"),
+            email_verified=user.get("email_verified", False),
+            two_factor_enabled=user.get("two_factor_enabled", False),
         )
 
     except HTTPException:
@@ -883,7 +885,19 @@ async def change_password(
 
         # Send verification email
         from app.services.email_service import EmailService
-        email_service = EmailService()
+        from app.config import get_settings
+        settings = get_settings()
+
+        email_service = EmailService(
+            smtp_host=settings.SMTP_HOST,
+            smtp_port=settings.SMTP_PORT,
+            smtp_username=settings.SMTP_USERNAME,
+            smtp_password=settings.SMTP_PASSWORD,
+            smtp_use_tls=settings.SMTP_USE_TLS,
+            smtp_from_email=settings.SMTP_FROM_EMAIL,
+            smtp_from_name=settings.SMTP_FROM_NAME
+        )
+
         await email_service.send_verification_email(
             email=user.get("email"),
             verification_code=verification_code,
