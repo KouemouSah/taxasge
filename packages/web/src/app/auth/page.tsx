@@ -6,7 +6,7 @@
  * Backend API: https://taxasge-backend-staging-xrlbgdr5eq-uc.a.run.app/api/v1
  */
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -33,6 +33,8 @@ export default function AuthPage() {
   const [loginPassword, setLoginPassword] = useState("")
   const [rememberMe, setRememberMe] = useState(false)
   const [loginLoading, setLoginLoading] = useState(false)
+  const [accountLocked, setAccountLocked] = useState(false)
+  const [lockoutSecondsRemaining, setLockoutSecondsRemaining] = useState(0)
 
   // État Register
   const [registerEmail, setRegisterEmail] = useState("")
@@ -46,6 +48,54 @@ export default function AuthPage() {
   // État erreurs
   const [loginErrors, setLoginErrors] = useState<Record<string, string>>({})
   const [registerErrors, setRegisterErrors] = useState<Record<string, string>>({})
+
+  // Lockout countdown timer
+  useEffect(() => {
+    // Check for existing lockout on mount
+    const checkLockout = () => {
+      const lockoutData = localStorage.getItem('account_lockout')
+      if (lockoutData) {
+        try {
+          const { lockedUntil, email } = JSON.parse(lockoutData)
+          const lockedUntilDate = new Date(lockedUntil)
+          const now = new Date()
+
+          if (now < lockedUntilDate) {
+            // Still locked
+            const remainingSeconds = Math.floor((lockedUntilDate.getTime() - now.getTime()) / 1000)
+            setAccountLocked(true)
+            setLockoutSecondsRemaining(remainingSeconds)
+            setLoginEmail(email)
+          } else {
+            // Lockout expired
+            localStorage.removeItem('account_lockout')
+            setAccountLocked(false)
+            setLockoutSecondsRemaining(0)
+          }
+        } catch {
+          // Invalid data, remove it
+          localStorage.removeItem('account_lockout')
+        }
+      }
+    }
+
+    checkLockout()
+
+    // Countdown interval
+    const interval = setInterval(() => {
+      setLockoutSecondsRemaining((prev) => {
+        if (prev <= 1) {
+          // Lockout expired
+          setAccountLocked(false)
+          localStorage.removeItem('account_lockout')
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [])
 
   // Handler Login
   const handleLogin = async (e: React.FormEvent) => {
@@ -102,11 +152,37 @@ export default function AuthPage() {
         setLoginErrors(errors)
       } else {
         // Erreurs API
-        toast({
-          variant: "destructive",
-          title: "Erreur de connexion",
-          description: error instanceof Error ? error.message : "Email ou mot de passe invalide",
-        })
+        const errorMessage = error instanceof Error ? error.message : "Email ou mot de passe invalide"
+
+        // Check for account lockout error
+        const lockoutMatch = errorMessage.match(/Account locked\. Try again in (\d+) minutes?\./)
+        if (lockoutMatch) {
+          const remainingMinutes = parseInt(lockoutMatch[1])
+          const remainingSeconds = remainingMinutes * 60
+          const lockedUntil = new Date(Date.now() + remainingSeconds * 1000)
+
+          // Store lockout info in localStorage
+          localStorage.setItem('account_lockout', JSON.stringify({
+            email: loginEmail,
+            lockedUntil: lockedUntil.toISOString()
+          }))
+
+          // Update UI state
+          setAccountLocked(true)
+          setLockoutSecondsRemaining(remainingSeconds)
+
+          toast({
+            variant: "destructive",
+            title: "Compte verrouillé",
+            description: `Votre compte est temporairement verrouillé. Réessayez dans ${remainingMinutes} minute${remainingMinutes > 1 ? 's' : ''}.`,
+          })
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Erreur de connexion",
+            description: errorMessage,
+          })
+        }
       }
     } finally {
       setLoginLoading(false)
@@ -246,6 +322,22 @@ export default function AuthPage() {
                 {/* TAB LOGIN */}
                 <TabsContent value="login">
                   <form onSubmit={handleLogin} className="space-y-4">
+                    {/* Account Lockout Warning */}
+                    {accountLocked && lockoutSecondsRemaining > 0 && (
+                      <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
+                        <h3 className="font-semibold text-destructive mb-2">Compte temporairement verrouillé</h3>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Trop de tentatives de connexion échouées. Veuillez réessayer dans:
+                        </p>
+                        <div className="text-center">
+                          <div className="text-3xl font-bold text-destructive">
+                            {Math.floor(lockoutSecondsRemaining / 60)}:{String(lockoutSecondsRemaining % 60).padStart(2, '0')}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">minutes restantes</p>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="space-y-2">
                       <Label htmlFor="login-email">Email</Label>
                       <Input
@@ -255,6 +347,7 @@ export default function AuthPage() {
                         value={loginEmail}
                         onChange={(e) => setLoginEmail(e.target.value)}
                         required
+                        disabled={accountLocked}
                       />
                       {loginErrors.email && (
                         <p className="text-sm text-destructive">{loginErrors.email}</p>
@@ -270,6 +363,7 @@ export default function AuthPage() {
                         value={loginPassword}
                         onChange={(e) => setLoginPassword(e.target.value)}
                         required
+                        disabled={accountLocked}
                       />
                       {loginErrors.password && (
                         <p className="text-sm text-destructive">{loginErrors.password}</p>
@@ -281,6 +375,7 @@ export default function AuthPage() {
                         id="remember-me"
                         checked={rememberMe}
                         onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                        disabled={accountLocked}
                       />
                       <Label
                         htmlFor="remember-me"
@@ -290,8 +385,8 @@ export default function AuthPage() {
                       </Label>
                     </div>
 
-                    <Button type="submit" className="w-full" disabled={loginLoading}>
-                      {loginLoading ? "Connexion..." : "Se connecter"}
+                    <Button type="submit" className="w-full" disabled={loginLoading || accountLocked}>
+                      {loginLoading ? "Connexion..." : accountLocked ? "Compte verrouillé" : "Se connecter"}
                     </Button>
 
                     <div className="text-center">
