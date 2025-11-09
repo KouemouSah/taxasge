@@ -7,7 +7,6 @@
  */
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,7 +19,6 @@ import Footer from '@/components/layout/Footer'
 import { authApi } from '@/lib/api/auth'
 
 export default function ForgotPasswordPage() {
-  const router = useRouter()
   const { toast } = useToast()
 
   const [email, setEmail] = useState('')
