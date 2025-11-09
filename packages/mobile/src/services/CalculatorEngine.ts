@@ -4,6 +4,12 @@
  * Handles all calculation methods based on fiscal_services configuration.
  * Supports 8 calculation methods with strict validation.
  *
+ * CRITICAL RULE FOR formula_based METHOD:
+ * - ALWAYS get variable names from calculation_config.variables
+ * - NEVER parse the formula text to extract variables
+ * - Formula text may contain Spanish/French words that are NOT variable names
+ * - Any new formula must have calculation_config.variables properly defined
+ *
  * Date: 2025-10-21
  */
 
@@ -141,10 +147,10 @@ export class CalculatorEngine {
       breakdown: {
         baseAmount: amount,
         steps: [
-          `Method: ${method}`,
-          `Type: ${type}`,
-          `Amount: ${amount} XAF`,
-        ],
+          `Method: ${String(method)}`,
+          `Type: ${String(type)}`,
+          `Amount: ${String(amount)} XAF`,
+        ].filter(step => typeof step === 'string' && step.trim() !== ''),
       },
     };
   }
@@ -178,11 +184,13 @@ export class CalculatorEngine {
         baseAmount,
         percentage,
         steps: [
-          `Base amount: ${baseAmount} XAF`,
-          `Percentage: ${percentage}%`,
-          `Calculation: ${baseAmount} × ${percentage}% = ${amount} XAF`,
-          service.percentage_of ? `Applied to: ${service.percentage_of}` : '',
-        ].filter(Boolean),
+          `Base amount: ${String(baseAmount)} XAF`,
+          `Percentage: ${String(percentage)}%`,
+          `Calculation: ${String(baseAmount)} × ${String(percentage)}% = ${String(amount)} XAF`,
+          (service.percentage_of && typeof service.percentage_of === 'string' && service.percentage_of.trim())
+            ? `Applied to: ${String(service.percentage_of)}`
+            : '',
+        ].filter(step => typeof step === 'string' && step.trim() !== ''),
       },
     };
   }
@@ -226,7 +234,7 @@ export class CalculatorEngine {
     }> = [];
 
     let totalAmount = 0;
-    const steps: string[] = [`Base amount: ${baseAmount} XAF`, 'Tier breakdown:'];
+    const steps: string[] = [`Base amount: ${String(baseAmount)} XAF`, 'Tier breakdown:'];
 
     // Sort tiers by min value
     const sortedTiers = [...tiers].sort((a, b) => a.min - b.min);
@@ -249,11 +257,11 @@ export class CalculatorEngine {
       });
 
       steps.push(
-        `  ${tier.min} - ${tier.max}: ${applicableAmount} XAF × ${tier.rate}% = ${tierAmount} XAF`
+        `  ${String(tier.min)} - ${String(tier.max)}: ${String(applicableAmount)} XAF × ${String(tier.rate)}% = ${String(tierAmount)} XAF`
       );
     }
 
-    steps.push(`Total: ${totalAmount} XAF`);
+    steps.push(`Total: ${String(totalAmount)} XAF`);
 
     return {
       amount: totalAmount,
@@ -295,10 +303,10 @@ export class CalculatorEngine {
       breakdown: {
         formula,
         steps: [
-          `Formula: ${formula}`,
-          `Inputs: ${JSON.stringify(customInputs)}`,
-          `Result: ${amount} XAF`,
-        ],
+          `Formula: ${String(formula)}`,
+          `Inputs: ${String(JSON.stringify(customInputs))}`,
+          `Result: ${String(amount)} XAF`,
+        ].filter(step => typeof step === 'string' && step.trim() !== ''),
       },
     };
   }
@@ -331,10 +339,10 @@ export class CalculatorEngine {
         quantity,
         unitRate: service.unit_rate,
         steps: [
-          `Quantity: ${quantity} ${service.unit_type || 'units'}`,
-          `Unit rate: ${service.unit_rate} XAF`,
-          `Calculation: ${quantity} × ${service.unit_rate} = ${amount} XAF`,
-        ],
+          `Quantity: ${String(quantity)} ${String(service.unit_type || 'units')}`,
+          `Unit rate: ${String(service.unit_rate)} XAF`,
+          `Calculation: ${String(quantity)} × ${String(service.unit_rate)} = ${String(amount)} XAF`,
+        ].filter(step => typeof step === 'string' && step.trim() !== ''),
       },
     };
   }
@@ -381,10 +389,10 @@ export class CalculatorEngine {
         unitRate: service.unit_rate,
         variablePart,
         steps: [
-          `Fixed part (${type}): ${fixedPart} XAF`,
-          `Variable part: ${quantity} × ${service.unit_rate} = ${variablePart} XAF`,
-          `Total: ${fixedPart} + ${variablePart} = ${amount} XAF`,
-        ],
+          `Fixed part (${String(type)}): ${String(fixedPart)} XAF`,
+          `Variable part: ${String(quantity)} × ${String(service.unit_rate)} = ${String(variablePart)} XAF`,
+          `Total: ${String(fixedPart)} + ${String(variablePart)} = ${String(amount)} XAF`,
+        ].filter(step => typeof step === 'string' && step.trim() !== ''),
       },
     };
   }
@@ -414,7 +422,22 @@ export class CalculatorEngine {
 
       // SECURITY: Validate formula doesn't contain dangerous patterns
       if (safeFormula !== evaluableFormula.replace(/\s+/g, ' ').trim()) {
-        throw new Error('Formula contains invalid characters');
+        // Check if the formula looks like descriptive text instead of math
+        const hasMultipleWords = formula.split(/\s+/).length > 3;
+        const hasOnlyLetters = /^[a-zA-ZáéíóúñÁÉÍÓÚÑ\s]+$/.test(formula);
+
+        if (hasMultipleWords && hasOnlyLetters) {
+          throw new Error(
+            'La fórmula contiene texto descriptivo en lugar de una expresión matemática. ' +
+            'Se esperaba una fórmula como "t * CA * RF" con las variables: ' +
+            Object.keys(inputs).join(', ')
+          );
+        }
+
+        throw new Error(
+          'Fórmula contiene caracteres inválidos. Solo se permiten: números, +, -, *, /, (, ), y las variables: ' +
+          Object.keys(inputs).join(', ')
+        );
       }
 
       // Evaluate using Function constructor (safer than eval)
@@ -446,22 +469,116 @@ export class CalculatorEngine {
   }
 
   /**
-   * Get required input fields for a calculation method
+   * Get the formula description for display in the UI
    */
-  getRequiredInputs(service: FiscalService): {
+  getFormulaDescription(
+    service: FiscalService,
+    language: 'es' | 'fr' | 'en' = 'es'
+  ): string | undefined {
+    if (service.calculation_method !== 'formula_based') {
+      return undefined;
+    }
+
+    let config: any = null;
+    if (service.calculation_config) {
+      try {
+        if (service.calculation_config === '[object Object]') {
+          return undefined;
+        }
+        config = typeof service.calculation_config === 'string'
+          ? JSON.parse(service.calculation_config)
+          : service.calculation_config;
+      } catch (e) {
+        return undefined;
+      }
+    }
+
+    const descKey = `formula_description_${language}`;
+    const description = config?.[descKey];
+
+    return typeof description === 'string' && description.trim() !== ''
+      ? description
+      : undefined;
+  }
+
+  /**
+   * Get required input fields for a calculation method with i18n support
+   * Enhanced version with advanced features
+   */
+  getRequiredInputs(
+    service: FiscalService,
+    language: 'es' | 'fr' | 'en' = 'es'
+  ): {
     field: string;
     label: string;
+    placeholder: string;
     type: 'number' | 'currency' | 'formula';
+    hint?: string;
+    unit?: string; // Unit of measurement (e.g., "m²", "km²", "hectares")
+    section?: string; // Group section for organization
+    order?: number; // Display order
+    required?: boolean; // Is this field required?
+    min?: number; // Minimum value
+    max?: number; // Maximum value
   }[] {
     const method = service.calculation_method;
 
+    const LABELS = {
+      baseAmount: {
+        es: 'Monto Base',
+        fr: 'Montant de Base',
+        en: 'Base Amount',
+      },
+      baseAmountPlaceholder: {
+        es: 'Ingrese el monto base',
+        fr: 'Entrez le montant de base',
+        en: 'Enter base amount',
+      },
+      quantity: {
+        es: 'Cantidad',
+        fr: 'Quantité',
+        en: 'Quantity',
+      },
+      quantityPlaceholder: {
+        es: 'Ingrese la cantidad',
+        fr: 'Entrez la quantité',
+        en: 'Enter quantity',
+      },
+      units: {
+        es: 'unidades',
+        fr: 'unités',
+        en: 'units',
+      },
+    };
+
     switch (method) {
       case 'percentage_based':
+        // Show configured percentage in hint
+        const percentageHintRaw = service.base_percentage
+          ? {
+              es: `Se aplicará el ${service.base_percentage}%`,
+              fr: `${service.base_percentage}% sera appliqué`,
+              en: `${service.base_percentage}% will be applied`,
+            }[language]
+          : undefined;
+
+        // Ensure hint is a valid string or undefined
+        const percentageHint = percentageHintRaw && typeof percentageHintRaw === 'string' && percentageHintRaw.trim() !== ''
+          ? String(percentageHintRaw)
+          : undefined;
+
+        // Ensure label is a valid string
+        const percentageLabel = (typeof service.percentage_of === 'string' && service.percentage_of.trim())
+          ? service.percentage_of
+          : LABELS.baseAmount[language];
+
         return [
           {
             field: 'baseAmount',
-            label: service.percentage_of || 'Base Amount',
+            label: String(percentageLabel),
+            placeholder: String(LABELS.baseAmountPlaceholder[language]),
             type: 'currency',
+            hint: percentageHint,
           },
         ];
 
@@ -469,38 +586,188 @@ export class CalculatorEngine {
         return [
           {
             field: 'baseAmount',
-            label: 'Base Amount',
+            label: String(LABELS.baseAmount[language]),
+            placeholder: String(LABELS.baseAmountPlaceholder[language]),
             type: 'currency',
           },
         ];
 
       case 'unit_based':
+        const unitType = (typeof service.unit_type === 'string' && service.unit_type.trim())
+          ? service.unit_type
+          : LABELS.units[language];
+
+        const unitBasedHintRaw = service.unit_rate
+          ? {
+              es: `${service.unit_rate} XAF por ${unitType}`,
+              fr: `${service.unit_rate} XAF par ${unitType}`,
+              en: `${service.unit_rate} XAF per ${unitType}`,
+            }[language]
+          : undefined;
+
+        const unitBasedHint = unitBasedHintRaw && typeof unitBasedHintRaw === 'string' && unitBasedHintRaw.trim() !== ''
+          ? String(unitBasedHintRaw)
+          : undefined;
+
         return [
           {
             field: 'quantity',
-            label: `Quantity (${service.unit_type || 'units'})`,
+            label: String(`${LABELS.quantity[language]} (${unitType})`),
+            placeholder: String(LABELS.quantityPlaceholder[language]),
             type: 'number',
+            hint: unitBasedHint,
           },
         ];
 
       case 'fixed_plus_unit':
+        const unitTypeFixed = (typeof service.unit_type === 'string' && service.unit_type.trim())
+          ? service.unit_type
+          : LABELS.units[language];
+
+        const fixedPlusUnitHintRaw = service.unit_rate
+          ? {
+              es: `Precio fijo + ${service.unit_rate} XAF por ${unitTypeFixed}`,
+              fr: `Prix fixe + ${service.unit_rate} XAF par ${unitTypeFixed}`,
+              en: `Fixed price + ${service.unit_rate} XAF per ${unitTypeFixed}`,
+            }[language]
+          : undefined;
+
+        const fixedPlusUnitHint = fixedPlusUnitHintRaw && typeof fixedPlusUnitHintRaw === 'string' && fixedPlusUnitHintRaw.trim() !== ''
+          ? String(fixedPlusUnitHintRaw)
+          : undefined;
+
         return [
           {
             field: 'quantity',
-            label: `Quantity (${service.unit_type || 'units'})`,
+            label: String(`${LABELS.quantity[language]} (${unitTypeFixed})`),
+            placeholder: String(LABELS.quantityPlaceholder[language]),
             type: 'number',
+            hint: fixedPlusUnitHint,
           },
         ];
 
       case 'formula_based':
-        // Extract variables from formula
-        const formula = service.expedition_formula || service.renewal_formula || '';
-        const variables = this.extractFormulaVariables(formula);
-        return variables.map(v => ({
-          field: v,
-          label: v,
-          type: 'number' as const,
-        }));
+        // ============================================================
+        // CRITICAL: ALWAYS use calculation_config.variables
+        // NEVER parse the formula text for variables!
+        // Formula text may contain Spanish/French words that are NOT variable names
+        // ============================================================
+        let config: any = null;
+        if (service.calculation_config) {
+          try {
+            // Check if it's the invalid "[object Object]" string
+            if (service.calculation_config === '[object Object]') {
+              console.warn('[CalculatorEngine] Invalid calculation_config detected: [object Object]');
+              config = null;
+            } else {
+              config = typeof service.calculation_config === 'string'
+                ? JSON.parse(service.calculation_config)
+                : service.calculation_config;
+            }
+          } catch (e) {
+            console.warn('[CalculatorEngine] Failed to parse calculation_config:', e);
+            config = null;
+          }
+        }
+
+        // Get variables from calculation_config.variables ONLY
+        const variables = config?.variables ? Object.keys(config.variables) : [];
+
+        console.log('[CalculatorEngine] formula_based variables for', service.service_code, ':', variables);
+
+        // Validate that we have variables defined
+        if (variables.length === 0) {
+          console.error(
+            `[CalculatorEngine] No variables defined in calculation_config.variables for service ${service.service_code}. ` +
+            `Please ensure calculation_config has a "variables" object.`
+          );
+          return [];
+        }
+
+        // Get formula description from calculation_config
+        const formulaDescKey = `formula_description_${language}`;
+        const formulaDescription = config?.[formulaDescKey];
+
+        return variables.map(v => {
+          const varConfig = config?.variables?.[v];
+
+          // CRITICAL: Ensure label is ALWAYS a valid string
+          let label: string = v; // Default to variable name
+          const labelFromConfig = varConfig?.[`label_${language}`];
+          if (typeof labelFromConfig === 'string' && labelFromConfig.trim() !== '') {
+            label = labelFromConfig;
+          }
+
+          // Build hint - ensure it's always a string or undefined
+          const descriptionFromConfig = varConfig?.[`description_${language}`];
+          let hint: string | undefined = undefined;
+
+          if (typeof descriptionFromConfig === 'string' && descriptionFromConfig.trim()) {
+            hint = descriptionFromConfig;
+          } else if (typeof formulaDescription === 'string' && formulaDescription.trim()) {
+            hint = formulaDescription;
+          }
+
+          // Extract unit if present
+          const unit = varConfig?.unit ? String(varConfig.unit) : undefined;
+
+          // Extract section for grouping
+          // CRITICAL: section must be a simple string, not an object
+          // If section_XX (language-specific) exists and is a string, use it
+          // Otherwise fallback to section if it's a string
+          // Reject any objects to prevent [object Object] rendering
+          let section: string | undefined = undefined;
+
+          const sectionLangKey = `section_${language}`;
+          const sectionLang = varConfig?.[sectionLangKey];
+          const sectionBase = varConfig?.section;
+
+          if (typeof sectionLang === 'string' && sectionLang.trim() !== '') {
+            section = String(sectionLang);
+          } else if (typeof sectionBase === 'string' && sectionBase.trim() !== '') {
+            section = String(sectionBase);
+          }
+          // If section is an object or invalid, leave it undefined
+
+          // Extract order (for sorting)
+          const order = typeof varConfig?.order === 'number' ? varConfig.order : undefined;
+
+          // Extract required flag (default to true)
+          const required = varConfig?.required !== false; // Default to required
+
+          // Extract min/max validation
+          const min = typeof varConfig?.min === 'number' ? varConfig.min : undefined;
+          const max = typeof varConfig?.max === 'number' ? varConfig.max : undefined;
+
+          // CRITICAL: Ensure ALL return values are valid strings
+          const fieldType: 'number' | 'currency' | 'formula' = varConfig?.type === 'currency' ? 'currency' as const : 'number' as const;
+
+          return {
+            field: String(v), // Ensure field is a string
+            label: String(label), // Ensure label is a string
+            placeholder: String({
+              es: `Ingrese ${label}`,
+              fr: `Entrez ${label}`,
+              en: `Enter ${label}`,
+            }[language] || `Enter ${label}`),
+            type: fieldType,
+            hint: hint && typeof hint === 'string' && hint.trim() !== '' ? String(hint) : undefined,
+            unit: unit && typeof unit === 'string' && unit.trim() !== '' ? String(unit) : undefined,
+            section: section && typeof section === 'string' && section.trim() !== '' ? String(section) : undefined,
+            order: order,
+            required: required,
+            min: min,
+            max: max,
+          };
+        }).sort((a, b) => {
+          // Sort by order if provided, otherwise maintain original order
+          if (a.order !== undefined && b.order !== undefined) {
+            return a.order - b.order;
+          }
+          if (a.order !== undefined) return -1;
+          if (b.order !== undefined) return 1;
+          return 0;
+        });
 
       default:
         return [];
@@ -508,9 +775,19 @@ export class CalculatorEngine {
   }
 
   /**
+   * DEPRECATED: Do NOT use this function!
+   *
    * Extract variable names from a formula string
+   *
+   * WARNING: This function was used to parse formula text for variables,
+   * but it causes issues because formula text may contain Spanish/French
+   * words that are NOT variable names.
+   *
+   * ALWAYS use calculation_config.variables instead!
+   *
+   * This function is kept here only as a reference of what NOT to do.
    */
-  private extractFormulaVariables(formula: string): string[] {
+  private extractFormulaVariables_DEPRECATED_DO_NOT_USE(formula: string): string[] {
     // Match variable names (alphabetic sequences)
     const matches = formula.match(/[a-zA-Z_][a-zA-Z0-9_]*/g);
 
