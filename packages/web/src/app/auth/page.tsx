@@ -132,14 +132,16 @@ export default function AuthPage() {
         return
       }
 
-      // Standard login (no 2FA)
-      setAuthData(response)
+      // Standard login (no 2FA) - TypeScript now knows response is TokenResponse
+      if ('access_token' in response) {
+        setAuthData(response)
 
-      // Toast succès
-      toast({
-        title: "Connexion réussie",
-        description: `Bienvenue ${response.user.first_name || response.user.email}`,
-      })
+        // Toast succès
+        toast({
+          title: "Connexion réussie",
+          description: `Bienvenue ${response.user.first_name || response.user.email}`,
+        })
+      }
 
       // Redirect to dashboard
       // Note: Email verification is mandatory during registration,
