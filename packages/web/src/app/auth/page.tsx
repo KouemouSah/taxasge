@@ -141,14 +141,14 @@ export default function AuthPage() {
           title: "Connexion réussie",
           description: `Bienvenue ${response.user.first_name || response.user.email}`,
         })
-      }
 
-      // Redirect to dashboard
-      // Note: Email verification is mandatory during registration,
-      // so all accounts are pre-verified. No need to check email_verified here.
-      setTimeout(() => {
-        router.push("/dashboard")
-      }, 500)
+        // Redirect to dashboard
+        // Note: Email verification is mandatory during registration,
+        // so all accounts are pre-verified. No need to check email_verified here.
+        setTimeout(() => {
+          router.push("/dashboard")
+        }, 500)
+      }
     } catch (error: unknown) {
       if (error instanceof z.ZodError) {
         // Erreurs validation
