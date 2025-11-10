@@ -164,10 +164,18 @@ class BaseRepository(ABC, Generic[T]):
             updates["updated_at"] = datetime.utcnow()
 
             if use_supabase and self.supabase.enabled:
+                # Convert datetime objects to ISO string for JSON serialization
+                supabase_updates = {}
+                for key, value in updates.items():
+                    if isinstance(value, datetime):
+                        supabase_updates[key] = value.isoformat()
+                    else:
+                        supabase_updates[key] = value
+
                 results = await self.supabase.update(
                     self.table_name,
                     filters={"id": id},
-                    data=updates
+                    data=supabase_updates
                 )
                 if results:
                     return self._map_to_model(results[0])
