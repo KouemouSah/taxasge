@@ -33,7 +33,7 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { Shield, AlertTriangle, CheckCircle2, Copy } from 'lucide-react'
 import { authApi2FA } from '@/lib/api/authApi'
-import { getAuthData } from '@/lib/auth/storage'
+import { getAuthData, update2FAStatus } from '@/lib/auth/storage'
 
 interface TwoFactorToggleProps {
   initialEnabled: boolean
@@ -136,6 +136,8 @@ export default function TwoFactorToggle({ initialEnabled, onStatusChange }: TwoF
       })
       setEnabled(true)
       onStatusChange(true)
+      // IMPORTANT: Update localStorage to persist 2FA status
+      update2FAStatus(true)
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -174,6 +176,8 @@ export default function TwoFactorToggle({ initialEnabled, onStatusChange }: TwoF
       onStatusChange(false)
       setShowDisableModal(false)
       setPassword('')
+      // IMPORTANT: Update localStorage to persist 2FA status
+      update2FAStatus(false)
       toast({
         title: '2FA désactivé',
         description: 'L\'authentification à deux facteurs est maintenant désactivée',

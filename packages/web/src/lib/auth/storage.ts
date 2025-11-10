@@ -50,5 +50,22 @@ export function isAuthenticated(): boolean {
   return authData !== null && authData.access_token !== '';
 }
 
+/**
+ * Update user's 2FA status in storage
+ * Used after enabling/disabling 2FA to keep localStorage in sync
+ */
+export function update2FAStatus(enabled: boolean): void {
+  if (typeof window === 'undefined') return;
+
+  const authData = getAuthData();
+  if (!authData) return;
+
+  // Update user object with new 2FA status
+  authData.user.two_factor_enabled = enabled;
+
+  // Save back to localStorage
+  setAuthData(authData);
+}
+
 // Legacy exports for backward compatibility
 export { clearAuthData as clearAuth };
