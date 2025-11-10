@@ -582,8 +582,8 @@ class AuthService:
         try:
             logger.info(f"🔍 [PASSWORD_RESET] Starting password reset request for: {email}")
 
-            # Find user by email
-            user = await self.user_repo.find_by_email(email)
+            # Find user by email (IMPORTANT: use_supabase=False to bypass RLS on public endpoint)
+            user = await self.user_repo.find_by_email(email, use_supabase=False)
             logger.debug(f"🔍 [PASSWORD_RESET] User lookup result - Found: {user is not None}, Type: {type(user).__name__ if user else 'None'}")
 
             if not user:
