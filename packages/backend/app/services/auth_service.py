@@ -277,6 +277,8 @@ class AuthService:
                 created_at=user.created_at,
                 updated_at=user.updated_at,
                 last_login=datetime.utcnow(),
+                email_verified=user.email_verified,
+                two_factor_enabled=user.two_factor_enabled,
             )
 
             return {
@@ -878,6 +880,8 @@ class AuthService:
                 created_at=user.created_at,
                 updated_at=user.updated_at,
                 last_login=datetime.utcnow(),
+                email_verified=user.email_verified,
+                two_factor_enabled=user.two_factor_enabled,
             )
 
             return {
