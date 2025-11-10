@@ -126,6 +126,7 @@ export default function TwoFactorToggle({ initialEnabled, onStatusChange }: TwoF
       await authApi2FA.verifySetup(authData.access_token, {
         secret,
         code: verificationCode,
+        backup_codes: backupCodes,
       })
 
       setStep('backup')

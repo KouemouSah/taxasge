@@ -465,9 +465,9 @@ async function enable2FA(accessToken: string): Promise<{
  * Verify 2FA setup - POST /auth/2fa/verify
  * Confirms 2FA setup with TOTP code
  */
-async function verify2FASetup(accessToken: string, data: { secret: string; code: string }): Promise<{
+async function verify2FASetup(accessToken: string, data: { secret: string; code: string; backup_codes: string[] }): Promise<{
   message: string
-  backup_codes: string[]
+  two_factor_enabled: boolean
 }> {
   const response = await fetch(`${AUTH_API_URL}/2fa/verify`, {
     method: 'POST',
