@@ -222,30 +222,29 @@ class UserRepository(BaseRepository[UserResponse]):
             raise ValueError(f"Error retrieving user password")
 
     async def update_password(self, user_id: str, password_hash: str) -> bool:
-        """Update user password hash"""
+        """
+        Update user password hash
+
+        IMPORTANT: Always uses PostgreSQL directly (not Supabase) to bypass RLS
+        because password updates can happen from public endpoints (password reset)
+        or from authenticated users changing their own password.
+        """
         try:
             updates = {
                 "password_hash": password_hash,
                 "updated_at": datetime.utcnow()
             }
 
-            if self.supabase.enabled:
-                results = await self.supabase.update(
-                    self.table_name,
-                    filters={"id": user_id},
-                    data=updates
-                )
-                return len(results) > 0
-            else:
-                query = """
-                    UPDATE users
-                    SET password_hash = $1, updated_at = $2
-                    WHERE id = $3
-                """
-                result = await self.db_manager.execute_command(
-                    query, password_hash, updates["updated_at"], user_id
-                )
-                return "UPDATE 1" in result
+            # Always use direct PostgreSQL to bypass Supabase RLS restrictions
+            query = """
+                UPDATE users
+                SET password_hash = $1, updated_at = $2
+                WHERE id = $3
+            """
+            result = await self.db_manager.execute_command(
+                query, password_hash, updates["updated_at"], user_id
+            )
+            return "UPDATE 1" in result
 
         except Exception as e:
             logger.error(f"❌ Error updating password for user {user_id}: {e}")
