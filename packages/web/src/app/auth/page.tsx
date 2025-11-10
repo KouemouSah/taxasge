@@ -17,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/hooks/use-toast"
-import { User, Building2 } from "lucide-react"
+import { User, Building2, Shield } from "lucide-react"
 import Header from "@/components/layout/Header"
 import Footer from "@/components/layout/Footer"
 import { authApi } from "@/lib/api/authApi"
@@ -35,6 +35,11 @@ export default function AuthPage() {
   const [loginLoading, setLoginLoading] = useState(false)
   const [accountLocked, setAccountLocked] = useState(false)
   const [lockoutSecondsRemaining, setLockoutSecondsRemaining] = useState(0)
+
+  // État 2FA
+  const [requires2FA, setRequires2FA] = useState(false)
+  const [tempToken, setTempToken] = useState("")
+  const [twoFactorCode, setTwoFactorCode] = useState("")
 
   // État Register
   const [registerEmail, setRegisterEmail] = useState("")
@@ -116,11 +121,13 @@ export default function AuthPage() {
 
       // Stockage tokens + user
       // Check if 2FA is required
-      if ('requires_2fa' in response) {
-        // TODO: Handle 2FA flow
+      if ('requires_2fa' in response && response.requires_2fa) {
+        // 2FA is enabled - show 2FA code input
+        setRequires2FA(true)
+        setTempToken(response.temp_token)
         toast({
           title: "2FA requis",
-          description: response.message,
+          description: "Entrez le code de votre application d'authentification",
         })
         return
       }
@@ -184,6 +191,53 @@ export default function AuthPage() {
           })
         }
       }
+    } finally {
+      setLoginLoading(false)
+    }
+  }
+
+  // Handler 2FA Verification
+  const handle2FAVerify = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoginLoading(true)
+
+    try {
+      // Validate 2FA code
+      if (twoFactorCode.length !== 6) {
+        toast({
+          variant: "destructive",
+          title: "Code invalide",
+          description: "Le code doit contenir 6 chiffres",
+        })
+        setLoginLoading(false)
+        return
+      }
+
+      // Call 2FA verification API
+      const response = await authApi.verify2FA({
+        temp_token: tempToken,
+        code: twoFactorCode,
+      })
+
+      // Store tokens and user data
+      setAuthData(response)
+
+      // Success toast
+      toast({
+        title: "Connexion réussie",
+        description: `Bienvenue ${response.user.first_name || response.user.email}`,
+      })
+
+      // Redirect to dashboard
+      setTimeout(() => {
+        router.push("/dashboard")
+      }, 500)
+    } catch (error: unknown) {
+      toast({
+        variant: "destructive",
+        title: "Code 2FA incorrect",
+        description: error instanceof Error ? error.message : "Vérifiez le code et réessayez",
+      })
     } finally {
       setLoginLoading(false)
     }
@@ -321,83 +375,132 @@ export default function AuthPage() {
 
                 {/* TAB LOGIN */}
                 <TabsContent value="login">
-                  <form onSubmit={handleLogin} className="space-y-4">
-                    {/* Account Lockout Warning */}
-                    {accountLocked && lockoutSecondsRemaining > 0 && (
-                      <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
-                        <h3 className="font-semibold text-destructive mb-2">Compte temporairement verrouillé</h3>
-                        <p className="text-sm text-muted-foreground mb-3">
-                          Trop de tentatives de connexion échouées. Veuillez réessayer dans:
-                        </p>
-                        <div className="text-center">
-                          <div className="text-3xl font-bold text-destructive">
-                            {Math.floor(lockoutSecondsRemaining / 60)}:{String(lockoutSecondsRemaining % 60).padStart(2, '0')}
+                  {!requires2FA ? (
+                    // Standard Login Form
+                    <form onSubmit={handleLogin} className="space-y-4">
+                      {/* Account Lockout Warning */}
+                      {accountLocked && lockoutSecondsRemaining > 0 && (
+                        <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
+                          <h3 className="font-semibold text-destructive mb-2">Compte temporairement verrouillé</h3>
+                          <p className="text-sm text-muted-foreground mb-3">
+                            Trop de tentatives de connexion échouées. Veuillez réessayer dans:
+                          </p>
+                          <div className="text-center">
+                            <div className="text-3xl font-bold text-destructive">
+                              {Math.floor(lockoutSecondsRemaining / 60)}:{String(lockoutSecondsRemaining % 60).padStart(2, '0')}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">minutes restantes</p>
                           </div>
-                          <p className="text-xs text-muted-foreground mt-1">minutes restantes</p>
                         </div>
+                      )}
+
+                      <div className="space-y-2">
+                        <Label htmlFor="login-email">Email</Label>
+                        <Input
+                          id="login-email"
+                          type="email"
+                          placeholder="votre@email.com"
+                          value={loginEmail}
+                          onChange={(e) => setLoginEmail(e.target.value)}
+                          required
+                          disabled={accountLocked}
+                        />
+                        {loginErrors.email && (
+                          <p className="text-sm text-destructive">{loginErrors.email}</p>
+                        )}
                       </div>
-                    )}
 
-                    <div className="space-y-2">
-                      <Label htmlFor="login-email">Email</Label>
-                      <Input
-                        id="login-email"
-                        type="email"
-                        placeholder="votre@email.com"
-                        value={loginEmail}
-                        onChange={(e) => setLoginEmail(e.target.value)}
-                        required
-                        disabled={accountLocked}
-                      />
-                      {loginErrors.email && (
-                        <p className="text-sm text-destructive">{loginErrors.email}</p>
-                      )}
-                    </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="login-password">Mot de passe</Label>
+                        <Input
+                          id="login-password"
+                          type="password"
+                          placeholder="••••••••"
+                          value={loginPassword}
+                          onChange={(e) => setLoginPassword(e.target.value)}
+                          required
+                          disabled={accountLocked}
+                        />
+                        {loginErrors.password && (
+                          <p className="text-sm text-destructive">{loginErrors.password}</p>
+                        )}
+                      </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="login-password">Mot de passe</Label>
-                      <Input
-                        id="login-password"
-                        type="password"
-                        placeholder="••••••••"
-                        value={loginPassword}
-                        onChange={(e) => setLoginPassword(e.target.value)}
-                        required
-                        disabled={accountLocked}
-                      />
-                      {loginErrors.password && (
-                        <p className="text-sm text-destructive">{loginErrors.password}</p>
-                      )}
-                    </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="remember-me"
+                          checked={rememberMe}
+                          onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                          disabled={accountLocked}
+                        />
+                        <Label
+                          htmlFor="remember-me"
+                          className="text-sm font-normal cursor-pointer"
+                        >
+                          Se souvenir de moi
+                        </Label>
+                      </div>
 
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="remember-me"
-                        checked={rememberMe}
-                        onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-                        disabled={accountLocked}
-                      />
-                      <Label
-                        htmlFor="remember-me"
-                        className="text-sm font-normal cursor-pointer"
+                      <Button type="submit" className="w-full" disabled={loginLoading || accountLocked}>
+                        {loginLoading ? "Connexion..." : accountLocked ? "Compte verrouillé" : "Se connecter"}
+                      </Button>
+
+                      <div className="text-center">
+                        <Link
+                          href="/auth/forgot-password"
+                          className="text-sm text-primary hover:underline"
+                        >
+                          Mot de passe oublié ?
+                        </Link>
+                      </div>
+                    </form>
+                  ) : (
+                    // 2FA Verification Form
+                    <form onSubmit={handle2FAVerify} className="space-y-4">
+                      <div className="text-center mb-4">
+                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-3">
+                          <Shield className="h-8 w-8 text-primary" />
+                        </div>
+                        <h3 className="text-lg font-semibold mb-1">Authentification à deux facteurs</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Entrez le code à 6 chiffres de votre application d&apos;authentification
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="2fa-code">Code de vérification</Label>
+                        <Input
+                          id="2fa-code"
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={6}
+                          placeholder="123456"
+                          value={twoFactorCode}
+                          onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, ''))}
+                          className="text-center text-2xl tracking-widest"
+                          required
+                          autoFocus
+                        />
+                      </div>
+
+                      <Button type="submit" className="w-full" disabled={loginLoading}>
+                        {loginLoading ? "Vérification..." : "Vérifier"}
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => {
+                          setRequires2FA(false)
+                          setTempToken("")
+                          setTwoFactorCode("")
+                        }}
                       >
-                        Se souvenir de moi
-                      </Label>
-                    </div>
-
-                    <Button type="submit" className="w-full" disabled={loginLoading || accountLocked}>
-                      {loginLoading ? "Connexion..." : accountLocked ? "Compte verrouillé" : "Se connecter"}
-                    </Button>
-
-                    <div className="text-center">
-                      <Link
-                        href="/auth/forgot-password"
-                        className="text-sm text-primary hover:underline"
-                      >
-                        Mot de passe oublié ?
-                      </Link>
-                    </div>
-                  </form>
+                        Retour
+                      </Button>
+                    </form>
+                  )}
                 </TabsContent>
 
                 {/* TAB REGISTER */}
