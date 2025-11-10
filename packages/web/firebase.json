@@ -7,6 +7,12 @@
       "**/node_modules/**"
     ],
     "cleanUrls": true,
-    "trailingSlash": false
+    "trailingSlash": true,
+    "rewrites": [
+      {
+        "source": "/auth/reset-password/confirm",
+        "destination": "/auth/reset-password/confirm/index.html"
+      }
+    ]
   }
 }
