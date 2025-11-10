@@ -221,7 +221,8 @@ class EmailService:
         else:
             frontend_url = "http://localhost:3000"
 
-        reset_url = f"{frontend_url}/reset-password?token={reset_token}"
+        # IMPORTANT: URL must match Next.js route structure
+        reset_url = f"{frontend_url}/auth/reset-password/confirm?token={reset_token}"
 
         greeting = f"Hello {user_name}," if user_name else "Hello,"
 

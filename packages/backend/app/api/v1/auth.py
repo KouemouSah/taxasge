@@ -743,9 +743,13 @@ async def request_password_reset(request: PasswordResetRequestRequest):
     try:
         # Request password reset via AuthService
         auth_service = get_auth_service()
-        await auth_service.request_password_reset(email=request.email)
+        email_sent = await auth_service.request_password_reset(email=request.email)
 
-        # Always return success (don't reveal if email exists)
+        # Log the result for debugging (but don't expose to user)
+        if not email_sent:
+            logger.error(f"Password reset email failed to send to {request.email}, but returning success for security")
+
+        # Always return success (don't reveal if email exists or if email failed)
         return PasswordResetRequestResponse(
             message="If your email exists in our system, you will receive a password reset link shortly.",
             email=request.email
@@ -753,7 +757,8 @@ async def request_password_reset(request: PasswordResetRequestRequest):
 
     except Exception as e:
         logger.error(f"Password reset request error: {str(e)}")
-        # Still return success to avoid revealing internal errors
+        # For security: Still return success to avoid revealing internal errors
+        # But log the full error for debugging
         return PasswordResetRequestResponse(
             message="If your email exists in our system, you will receive a password reset link shortly.",
             email=request.email
