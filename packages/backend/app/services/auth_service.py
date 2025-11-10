@@ -580,28 +580,37 @@ class AuthService:
         Source: .github/docs-internal/Documentations/Backend/API_REFERENCE.md
         """
         try:
+            logger.info(f"🔍 [PASSWORD_RESET] Starting password reset request for: {email}")
+
             # Find user by email
             user = await self.user_repo.find_by_email(email)
+            logger.debug(f"🔍 [PASSWORD_RESET] User lookup result - Found: {user is not None}, Type: {type(user).__name__ if user else 'None'}")
+
             if not user:
                 # For security, don't reveal if email exists
-                logger.warning(f"Password reset requested for non-existent email: {email}")
+                logger.warning(f"⚠️ [PASSWORD_RESET] Password reset requested for non-existent email: {email}")
                 return True  # Pretend success to avoid email enumeration
 
             # Check user status
             user_status = user.get("status") if isinstance(user, dict) else user.status
+            logger.debug(f"🔍 [PASSWORD_RESET] User status: {user_status}")
+
             if user_status != "active":  # UserStatus.active is "active"
-                logger.warning(f"Password reset requested for inactive user: {email}")
+                logger.warning(f"⚠️ [PASSWORD_RESET] Password reset requested for inactive user: {email} (status={user_status})")
                 return True  # Pretend success to avoid status enumeration
 
             # Generate reset token (32 chars random)
             import secrets
             reset_token = secrets.token_urlsafe(32)
+            logger.debug(f"🔍 [PASSWORD_RESET] Generated reset token (length={len(reset_token)})")
 
             # Set expiration (1 hour from now)
             expires_at = datetime.utcnow() + timedelta(hours=1)
 
             # Save token to database
             user_id = user.get("id") if isinstance(user, dict) else user.id
+            logger.debug(f"🔍 [PASSWORD_RESET] Saving token to DB for user_id: {user_id}")
+
             success = await self.user_repo.update_password_reset_token(
                 user_id=user_id,
                 reset_token=reset_token,
@@ -609,12 +618,16 @@ class AuthService:
             )
 
             if not success:
-                logger.error(f"Failed to save password reset token for {email}")
+                logger.error(f"❌ [PASSWORD_RESET] Failed to save password reset token for {email}")
                 raise Exception("Failed to generate password reset token")
+
+            logger.info(f"✅ [PASSWORD_RESET] Token saved successfully to DB")
 
             # Send reset email
             from app.config import get_settings
             settings = get_settings()
+
+            logger.debug(f"🔍 [PASSWORD_RESET] Initializing EmailService - SMTP_HOST={settings.SMTP_HOST}, SMTP_PORT={settings.SMTP_PORT}, SMTP_PASSWORD={'[SET]' if settings.SMTP_PASSWORD else '[NOT SET]'}")
 
             # Initialize EmailService with config
             email_service = EmailService(
@@ -628,6 +641,8 @@ class AuthService:
             )
 
             user_name = user.get("first_name") if isinstance(user, dict) else user.first_name
+            logger.debug(f"🔍 [PASSWORD_RESET] Sending email to {email} with user_name={user_name}")
+
             email_sent = email_service.send_password_reset_email(
                 to_email=email,
                 reset_token=reset_token,
@@ -635,15 +650,16 @@ class AuthService:
             )
 
             if not email_sent:
-                logger.error(f"Failed to send password reset email to {email}")
+                logger.error(f"❌ [PASSWORD_RESET] Failed to send password reset email to {email}")
                 # Don't raise exception - token is saved, user can retry
                 return False
 
-            logger.info(f"Password reset email sent successfully to {email}")
+            logger.info(f"✅ [PASSWORD_RESET] Password reset email sent successfully to {email}")
             return True
 
         except Exception as e:
-            logger.error(f"Password reset request failed for {email}: {str(e)}")
+            logger.error(f"❌ [PASSWORD_RESET] Password reset request failed for {email}: {str(e)}")
+            logger.exception(e)
             raise
 
     async def confirm_password_reset(
