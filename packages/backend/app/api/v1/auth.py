@@ -968,10 +968,10 @@ async def verify_password_change(request: PasswordChangeVerifyRequest):
                 detail="Invalid or expired verification code",
             )
 
-        # Get user by email
+        # Get user by email (use find_by_email_with_password to get Dict, not UserResponse)
         from app.repositories.user_repository import UserRepository
         user_repo = UserRepository()
-        user = await user_repo.find_by_email(request.email)
+        user = await user_repo.find_by_email_with_password(request.email)
 
         if not user:
             # Clean up pending record even if user not found
@@ -987,7 +987,7 @@ async def verify_password_change(request: PasswordChangeVerifyRequest):
         new_password_hash = password_service.hash_password(request.new_password)
 
         # Update user password in database
-        success = await user_repo.update_password(user["id"], new_password_hash)
+        success = await user_repo.update_password(user.get("id") if isinstance(user, dict) else user["id"], new_password_hash)
 
         if not success:
             raise HTTPException(
@@ -1096,11 +1096,44 @@ async def resend_verification_email(
         user_id = current_user["sub"]
         email = current_user["email"]
 
-        # Resend verification email via AuthService
-        auth_service = get_auth_service()
-        success = await auth_service.send_verification_email(
-            user_id=user_id,
-            email=email
+        # Get existing verification code from pending_registrations
+        from app.repositories.pending_registration_repository import PendingRegistrationRepository
+        pending_repo = PendingRegistrationRepository()
+        pending_record = await pending_repo.find_by_email(email)
+
+        if not pending_record:
+            # No pending verification code - generate a new one
+            import secrets
+            verification_code = ''.join([str(secrets.randbelow(10)) for _ in range(6)])
+            await pending_repo.create(email, verification_code, expires_in_minutes=15)
+        else:
+            # Use existing code
+            verification_code = pending_record.get("verification_code")
+
+        # Resend verification email
+        from app.services.email_service import EmailService
+        from app.config import get_settings
+        settings = get_settings()
+
+        email_service = EmailService(
+            smtp_host=settings.SMTP_HOST,
+            smtp_port=settings.SMTP_PORT,
+            smtp_username=settings.SMTP_USERNAME,
+            smtp_password=settings.SMTP_PASSWORD,
+            smtp_use_tls=settings.SMTP_USE_TLS,
+            smtp_from_email=settings.SMTP_FROM_EMAIL,
+            smtp_from_name=settings.SMTP_FROM_NAME
+        )
+
+        # Get user info for personalization
+        from app.repositories.user_repository import UserRepository
+        user_repo = UserRepository()
+        user = await user_repo.get_by_id(user_id)
+
+        success = email_service.send_verification_code(
+            to_email=email,
+            verification_code=verification_code,
+            user_name=user.get("first_name") if user else email.split('@')[0]
         )
 
         if not success:
