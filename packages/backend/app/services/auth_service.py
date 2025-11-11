@@ -832,8 +832,11 @@ class AuthService:
             logger.info(f"Verifying 2FA code for user {email}")
 
             # Get user to verify 2FA is enabled and get secret
-            user = await self.user_repo.get_by_id(user_id)
-            if not user.two_factor_enabled:
+            user_data = await self.user_repo.get_by_id(user_id)
+            if not user_data:
+                raise Exception("User not found")
+
+            if not user_data.get("two_factor_enabled"):
                 raise Exception("2FA is not enabled for this account")
 
             # Verify 2FA code (TOTP or backup code)
@@ -863,6 +866,9 @@ class AuthService:
                 user_agent=user_agent,
                 remember_me=remember_me,
             )
+
+            # Map user data to UserResponse model
+            user = self.user_repo._map_to_model(user_data)
 
             # Prepare user response
             user_response = UserResponse(
