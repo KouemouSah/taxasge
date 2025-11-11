@@ -725,7 +725,6 @@ class UserRepository(BaseRepository[UserResponse]):
                 SET two_factor_enabled = TRUE,
                     two_factor_secret = $1,
                     two_factor_backup_codes = $2,
-                    two_factor_enabled_at = $3,
                     updated_at = $3
                 WHERE id = $4
             """
@@ -760,7 +759,6 @@ class UserRepository(BaseRepository[UserResponse]):
                 SET two_factor_enabled = FALSE,
                     two_factor_secret = NULL,
                     two_factor_backup_codes = NULL,
-                    two_factor_enabled_at = NULL,
                     updated_at = $1
                 WHERE id = $2
             """

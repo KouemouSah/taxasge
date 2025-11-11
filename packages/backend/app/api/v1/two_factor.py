@@ -254,7 +254,6 @@ async def get_two_factor_status(
 
     **Response:**
     - `two_factor_enabled`: Whether 2FA is enabled
-    - `two_factor_enabled_at`: Timestamp when 2FA was enabled (ISO 8601)
     - `backup_codes_remaining`: Number of unused backup codes
 
     **Security:**
@@ -284,10 +283,9 @@ async def get_two_factor_status(
             codes = json.loads(backup_codes) if isinstance(backup_codes, str) else backup_codes
             backup_codes_remaining = len(codes) if isinstance(codes, list) else 0
 
-        two_factor_enabled_at = user.get('two_factor_enabled_at')
         return TwoFactorStatusResponse(
             two_factor_enabled=user.get('two_factor_enabled') or False,
-            two_factor_enabled_at=two_factor_enabled_at.isoformat() if two_factor_enabled_at else None,
+            two_factor_enabled_at=None,  # Column removed from database schema
             backup_codes_remaining=backup_codes_remaining
         )
 

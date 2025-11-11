@@ -286,7 +286,6 @@ class TwoFactorService:
                 - Save secret to DB (encrypted)
                 - Save backup codes to DB (hashed)
                 - Set two_factor_enabled = True
-                - Set two_factor_enabled_at = now()
             3. If invalid: Return False (do not save anything)
 
         Security:

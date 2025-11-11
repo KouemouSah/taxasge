@@ -174,14 +174,12 @@ class TwoFactorStatusResponse(BaseModel):
     Shows user's current 2FA status.
     """
     two_factor_enabled: bool = Field(..., description="Whether 2FA is enabled")
-    two_factor_enabled_at: Optional[str] = Field(None, description="ISO 8601 timestamp when 2FA was enabled")
     backup_codes_remaining: Optional[int] = Field(None, description="Number of unused backup codes")
 
     class Config:
         schema_extra = {
             "example": {
                 "two_factor_enabled": True,
-                "two_factor_enabled_at": "2025-11-02T10:30:00Z",
                 "backup_codes_remaining": 8
             }
         }
