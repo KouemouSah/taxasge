@@ -145,12 +145,15 @@ async def verify_two_factor_setup(
         )
 
         if not success:
+            logger.warning(f"2FA verification failed for user {user_id}. "
+                         f"This could be due to: invalid TOTP code OR database save failure. "
+                         f"Check logs above for specific error.")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid or expired verification code. Please try again."
+                detail="Failed to enable 2FA. This could be due to an invalid verification code or a system error. Please try again or contact support if the problem persists."
             )
 
-        logger.info(f"2FA enabled successfully for user {user_id}")
+        logger.info(f"✅ 2FA enabled successfully for user {user_id}")
 
         return TwoFactorVerifyResponse(
             message="2FA enabled successfully. Save your backup codes in a safe place.",
@@ -160,10 +163,13 @@ async def verify_two_factor_setup(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error verifying 2FA setup for user {current_user.get('sub')}: {e}")
+        logger.error(f"❌ Unexpected exception verifying 2FA setup for user {current_user.get('sub')}: {str(e)}")
+        logger.error(f"Exception type: {type(e).__name__}")
+        import traceback
+        logger.error(f"Stacktrace: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to verify 2FA setup"
+            detail="An unexpected error occurred while setting up 2FA. Please try again later or contact support."
         )
 
 

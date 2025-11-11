@@ -294,20 +294,27 @@ class TwoFactorService:
         """
         # Verify code
         if not self.verify_code(secret, code):
-            logger.warning(f"2FA setup verification failed for user {user_id}")
+            logger.warning(f"2FA setup verification failed for user {user_id}: Invalid TOTP code")
             return False
+
+        logger.info(f"TOTP code verified successfully for user {user_id}, proceeding with database save...")
 
         # Hash backup codes
         hashed_codes = [self.hash_backup_code(code) for code in backup_codes]
 
         # Save to database
-        await self.user_repo.enable_two_factor(
+        db_success = await self.user_repo.enable_two_factor(
             user_id=user_id,
             secret=secret,
             backup_codes=hashed_codes
         )
 
-        logger.info(f"2FA enabled successfully for user {user_id}")
+        if not db_success:
+            logger.error(f"❌ CRITICAL: TOTP code was valid but database save FAILED for user {user_id}. "
+                       f"2FA will NOT be enabled. Check database logs for details.")
+            return False
+
+        logger.info(f"✅ 2FA enabled successfully for user {user_id} - both verification and database save succeeded")
         return True
 
     async def disable_2fa(self, user_id: str) -> bool:

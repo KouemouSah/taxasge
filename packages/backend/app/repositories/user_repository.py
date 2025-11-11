@@ -728,16 +728,26 @@ class UserRepository(BaseRepository[UserResponse]):
                     updated_at = $3
                 WHERE id = $4
             """
+
+            logger.info(f"Enabling 2FA for user {user_id}")
             result = await self.db_manager.execute_command(
                 query, secret, json.dumps(backup_codes), now, user_id
             )
+
             success = "UPDATE 1" in result
             if success:
-                logger.info(f"✅ 2FA enabled for user {user_id}")
+                logger.info(f"✅ 2FA enabled successfully for user {user_id}")
+            else:
+                logger.error(f"❌ 2FA enable failed: UPDATE affected 0 rows for user {user_id}. "
+                           f"Possible causes: user not found, RLS blocking update, or database permissions issue. "
+                           f"Query result: {result}")
             return success
 
         except Exception as e:
-            logger.error(f"❌ Error enabling 2FA for user {user_id}: {e}")
+            logger.error(f"❌ Exception while enabling 2FA for user {user_id}: {str(e)}")
+            logger.error(f"Exception type: {type(e).__name__}")
+            import traceback
+            logger.error(f"Stacktrace: {traceback.format_exc()}")
             return False
 
     async def disable_two_factor(self, user_id: str) -> bool:
@@ -762,14 +772,24 @@ class UserRepository(BaseRepository[UserResponse]):
                     updated_at = $1
                 WHERE id = $2
             """
+
+            logger.info(f"Disabling 2FA for user {user_id}")
             result = await self.db_manager.execute_command(query, now, user_id)
+
             success = "UPDATE 1" in result
             if success:
-                logger.info(f"✅ 2FA disabled for user {user_id}")
+                logger.info(f"✅ 2FA disabled successfully for user {user_id}")
+            else:
+                logger.error(f"❌ 2FA disable failed: UPDATE affected 0 rows for user {user_id}. "
+                           f"Possible causes: user not found, RLS blocking update, or database permissions issue. "
+                           f"Query result: {result}")
             return success
 
         except Exception as e:
-            logger.error(f"❌ Error disabling 2FA for user {user_id}: {e}")
+            logger.error(f"❌ Exception while disabling 2FA for user {user_id}: {str(e)}")
+            logger.error(f"Exception type: {type(e).__name__}")
+            import traceback
+            logger.error(f"Stacktrace: {traceback.format_exc()}")
             return False
 
     async def update_backup_codes(
