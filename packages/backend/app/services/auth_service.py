@@ -817,8 +817,8 @@ class AuthService:
         Source: TASK-M01-013 (Login 2FA Integration)
         """
         try:
-            # Validate temp token
-            token_data = self.jwt_service.verify_access_token(temp_token)
+            # Validate temp token (use decode_token, not verify_access_token, since this is a 2fa_temp token)
+            token_data = self.jwt_service.decode_token(temp_token)
             if not token_data or token_data.get("type") != "2fa_temp":
                 raise Exception("Invalid or expired temporary token")
 
