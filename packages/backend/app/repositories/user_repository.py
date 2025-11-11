@@ -38,6 +38,10 @@ class UserRepository(BaseRepository[UserResponse]):
             created_at=data["created_at"],
             updated_at=data["updated_at"],
             last_login=data.get("last_login"),
+            email_verified=data.get("email_verified", False),
+            two_factor_enabled=data.get("two_factor_enabled", False),
+            two_factor_secret=data.get("two_factor_secret"),
+            two_factor_backup_codes=data.get("two_factor_backup_codes"),
             citizen_profile=data.get("citizen_profile"),
             business_profile=data.get("business_profile")
         )
