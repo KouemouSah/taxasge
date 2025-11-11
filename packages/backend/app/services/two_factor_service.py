@@ -366,24 +366,49 @@ class TwoFactorService:
             - Backup codes can be used only once
             - After all backup codes used, user should re-enable 2FA
         """
-        user = await self.user_repo.get_by_id(user_id)
+        import json
 
-        if not user.two_factor_enabled or not user.two_factor_secret:
-            logger.error(f"2FA not enabled for user {user_id}")
+        # Get user data from DB (returns Dict[str, Any])
+        user_data = await self.user_repo.get_by_id(user_id)
+
+        if not user_data:
+            logger.error(f"User {user_id} not found")
+            return False
+
+        # Access fields as dict (not object properties)
+        two_factor_enabled = user_data.get("two_factor_enabled", False)
+        two_factor_secret = user_data.get("two_factor_secret")
+
+        if not two_factor_enabled or not two_factor_secret:
+            logger.error(f"2FA not enabled for user {user_id} (enabled={two_factor_enabled}, has_secret={bool(two_factor_secret)})")
             return False
 
         # Try TOTP code first
-        if self.verify_code(user.two_factor_secret, code):
+        logger.info(f"Verifying TOTP code for user {user_id}")
+        if self.verify_code(two_factor_secret, code):
+            logger.info(f"✅ TOTP code verified successfully for user {user_id}")
             return True
 
         # Try backup code if allowed
-        if allow_backup_code and user.two_factor_backup_codes:
-            is_valid, remaining_codes = self.verify_backup_code(
-                code,
-                user.two_factor_backup_codes
-            )
+        backup_codes_raw = user_data.get("two_factor_backup_codes")
+
+        # Parse JSONB field if it's a string (asyncpg returns JSONB as JSON string)
+        backup_codes = None
+        if backup_codes_raw:
+            if isinstance(backup_codes_raw, str):
+                try:
+                    backup_codes = json.loads(backup_codes_raw)
+                except json.JSONDecodeError:
+                    logger.warning(f"Failed to parse two_factor_backup_codes for user {user_id}")
+            elif isinstance(backup_codes_raw, list):
+                backup_codes = backup_codes_raw
+
+        if allow_backup_code and backup_codes:
+            logger.info(f"TOTP code failed, trying backup code for user {user_id}")
+            is_valid, remaining_codes = self.verify_backup_code(code, backup_codes)
 
             if is_valid:
+                logger.info(f"✅ Backup code verified successfully for user {user_id}")
                 # Update backup codes in DB (remove used code)
                 await self.user_repo.update_backup_codes(user_id, remaining_codes)
 
@@ -395,7 +420,7 @@ class TwoFactorService:
 
                 return True
 
-        logger.warning(f"2FA login verification failed for user {user_id}")
+        logger.warning(f"❌ 2FA login verification failed for user {user_id}: Neither TOTP code nor backup code was valid")
         return False
 
 
