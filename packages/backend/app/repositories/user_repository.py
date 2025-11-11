@@ -23,6 +23,17 @@ class UserRepository(BaseRepository[UserResponse]):
 
     def _map_to_model(self, data: Dict[str, Any]) -> UserResponse:
         """Map database row to UserResponse model"""
+        import json
+
+        # Parse JSONB fields that come as strings from asyncpg
+        backup_codes = data.get("two_factor_backup_codes")
+        if backup_codes and isinstance(backup_codes, str):
+            try:
+                backup_codes = json.loads(backup_codes)
+            except json.JSONDecodeError:
+                logger.warning(f"Failed to parse two_factor_backup_codes for user {data.get('id')}")
+                backup_codes = None
+
         return UserResponse(
             id=str(data["id"]),  # Convert UUID to string
             email=data["email"],
@@ -41,7 +52,7 @@ class UserRepository(BaseRepository[UserResponse]):
             email_verified=data.get("email_verified", False),
             two_factor_enabled=data.get("two_factor_enabled", False),
             two_factor_secret=data.get("two_factor_secret"),
-            two_factor_backup_codes=data.get("two_factor_backup_codes"),
+            two_factor_backup_codes=backup_codes,  # Now properly parsed as list
             citizen_profile=data.get("citizen_profile"),
             business_profile=data.get("business_profile")
         )
