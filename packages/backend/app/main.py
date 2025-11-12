@@ -293,6 +293,15 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ Taxes router not available (non-blocking): {e}")
 
+# Try to load homepage router (for dynamic statistics and category directory)
+try:
+    from app.api.v1 import homepage
+    app.include_router(homepage.router, prefix="/api/v1/homepage", tags=["homepage"])
+    routers_loaded.append("homepage")
+    logger.info("✅ Homepage router loaded")
+except ImportError as e:
+    logger.warning(f"⚠️ Homepage router not available: {e}")
+
 if routers_loaded:
     logger.info(f"✅ {len(routers_loaded)} API routers loaded: {', '.join(routers_loaded)}")
 else:
