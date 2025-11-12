@@ -71,6 +71,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <main className="flex-1 overflow-y-auto bg-muted/10 p-4 md:p-6 lg:p-8">
           {children}
         </main>
+
+        {/* Footer */}
+        <footer className="border-t bg-card px-4 py-3 text-center">
+          <p className="text-xs text-muted-foreground">
+            © 2025 TaxasGE - Ministère des Finance Guinée Équatoriale. Tous droits réservés.
+          </p>
+        </footer>
       </div>
     </div>
   )
