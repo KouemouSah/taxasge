@@ -12,8 +12,8 @@ from datetime import datetime
 from loguru import logger
 import asyncpg
 
-# Import database dependency from core module (avoids circular imports)
-from app.core.database import get_db
+# Import database dependency from existing connection module
+from app.database.connection import get_database as get_db
 
 # Create router
 router = APIRouter()
