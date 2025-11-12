@@ -16,13 +16,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
-import { Shield, Key, Lock, ArrowLeft } from 'lucide-react'
-import Header from '@/components/layout/Header'
-import Footer from '@/components/layout/Footer'
+import { Shield, Key, Lock } from 'lucide-react'
+import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { getAuthData } from '@/lib/auth/storage'
 import TwoFactorToggle from '@/components/security/TwoFactorToggle'
 import type { User as UserType } from '@/types/auth'
-import Link from 'next/link'
 
 export default function SecuritySettingsPage() {
   const router = useRouter()
@@ -137,32 +135,32 @@ export default function SecuritySettingsPage() {
 
   if (isLoading || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Chargement...</p>
-      </div>
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center space-y-4">
+            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
+            <p className="text-muted-foreground">Chargement...</p>
+          </div>
+        </div>
+      </DashboardLayout>
     )
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
+    <DashboardLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
+            Paramètres de sécurité
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            Gérez votre mot de passe et vos options de sécurité
+          </p>
+        </div>
 
-      <main className="flex-1 container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="mb-8">
-            <Link href="/dashboard">
-              <Button variant="ghost" className="mb-4">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Retour au tableau de bord
-              </Button>
-            </Link>
-            <h1 className="text-4xl font-bold mb-2">Paramètres de sécurité</h1>
-            <p className="text-muted-foreground">
-              Gérez votre mot de passe et vos options de sécurité
-            </p>
-          </div>
-
-          <Tabs defaultValue="password" className="w-full">
+        {/* Tabs */}
+        <Tabs defaultValue="password" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="password">
                 <Key className="mr-2 h-4 w-4" />
@@ -258,10 +256,7 @@ export default function SecuritySettingsPage() {
               </Card>
             </TabsContent>
           </Tabs>
-        </div>
-      </main>
-
-      <Footer />
-    </div>
+      </div>
+    </DashboardLayout>
   )
 }

@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { DashboardSidebar, MobileSidebar } from './DashboardSidebar'
 import { getAuthData } from '@/lib/auth/storage'
 import type { User } from '@/types/auth'
@@ -62,6 +63,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Mobile Header */}
         <header className="flex h-16 items-center gap-4 border-b bg-card px-4 md:hidden">
           <MobileSidebar />
+          <Image src="/logo.png" alt="TaxasGE Logo" width={32} height={32} className="h-8 w-8" />
           <h1 className="text-lg font-semibold">TaxasGE</h1>
         </header>
 

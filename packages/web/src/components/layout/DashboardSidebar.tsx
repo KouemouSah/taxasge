@@ -7,6 +7,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -111,9 +112,9 @@ export function DashboardSidebar({ className }: DashboardSidebarProps) {
       <div className="flex h-full flex-col">
         {/* Logo */}
         <div className="flex h-16 items-center border-b px-6">
-          <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-            <LayoutDashboard className="h-6 w-6 text-primary" />
-            <span className="text-xl">TaxasGE</span>
+          <Link href="/dashboard" className="flex items-center gap-2">
+            <Image src="/logo.png" alt="TaxasGE Logo" width={32} height={32} className="h-8 w-8" />
+            <span className="text-xl font-semibold">TaxasGE</span>
           </Link>
         </div>
 
