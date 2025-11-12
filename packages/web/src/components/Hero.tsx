@@ -4,12 +4,35 @@ import { Search, Calculator, BookOpen, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { getHomepageStats, type HomepageStats } from "@/lib/api/homepageApi"
 
 export const Hero = () => {
   const [searchQuery, setSearchQuery] = useState("")
+  const [stats, setStats] = useState<HomepageStats | null>(null)
   const router = useRouter()
+
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        const data = await getHomepageStats()
+        setStats(data)
+      } catch (err) {
+        console.error('Failed to fetch stats for Hero:', err)
+        // Fallback to default value if API fails
+        setStats({
+          total_services: 0,
+          total_ministries: 0,
+          total_categories: 0,
+          total_sectors: 0,
+          last_updated: new Date().toISOString()
+        })
+      }
+    }
+
+    fetchStats()
+  }, [])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -28,7 +51,7 @@ export const Hero = () => {
     },
     {
       icon: FileText,
-      title: "547 Services",
+      title: stats ? `${stats.total_services} Services` : "Services",
       description: "Services fiscaux",
       href: "/services",
       color: "text-white",

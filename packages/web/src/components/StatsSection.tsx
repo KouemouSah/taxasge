@@ -1,32 +1,61 @@
-import { Users, FileCheck, Building2, TrendingUp } from "lucide-react"
+'use client'
+
+import { Users, FileCheck, Building2, TrendingUp, AlertCircle } from "lucide-react"
 import { Card } from "@/components/ui/card"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useEffect, useState } from "react"
+import { getHomepageStats, getDefaultStats, type HomepageStats } from "@/lib/api/homepageApi"
 
 export const StatsSection = () => {
-  const stats = [
+  const [stats, setStats] = useState<HomepageStats | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        setLoading(true)
+        setError(null)
+        const data = await getHomepageStats()
+        setStats(data)
+      } catch (err: any) {
+        console.error('Failed to fetch homepage stats:', err)
+        setError(err.message || 'Failed to load statistics')
+        // Use default/fallback stats on error
+        setStats(getDefaultStats())
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchStats()
+  }, [])
+
+  const displayStats = [
     {
       icon: FileCheck,
-      value: "547",
+      value: loading ? "..." : (stats?.total_services.toString() || "0"),
       label: "Services Fiscaux",
       description: "Services disponibles",
       color: "text-primary",
     },
     {
       icon: Building2,
-      value: "14",
+      value: loading ? "..." : (stats?.total_ministries.toString() || "0"),
       label: "Ministères",
       description: "Ministères couverts",
       color: "text-red-600",
     },
     {
       icon: Users,
-      value: "86",
+      value: loading ? "..." : (stats?.total_categories.toString() || "0"),
       label: "Catégories",
       description: "Catégories de services",
       color: "text-yellow-600",
     },
     {
       icon: TrendingUp,
-      value: "16",
+      value: loading ? "..." : (stats?.total_sectors.toString() || "0"),
       label: "Secteurs",
       description: "Secteurs d'activité",
       color: "text-green-600",
@@ -43,8 +72,18 @@ export const StatsSection = () => {
           </p>
         </div>
 
+        {/* Error Alert */}
+        {error && !loading && (
+          <Alert variant="destructive" className="mb-6 max-w-2xl mx-auto">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Impossible de charger les statistiques: {error}. Affichage des valeurs par défaut.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat) => {
+          {displayStats.map((stat) => {
             const Icon = stat.icon
             return (
               <Card
