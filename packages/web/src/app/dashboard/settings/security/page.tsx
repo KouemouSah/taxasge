@@ -12,11 +12,10 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
-import { Shield, Key, Lock } from 'lucide-react'
+import { Shield, Lock } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { getAuthData } from '@/lib/auth/storage'
 import TwoFactorToggle from '@/components/security/TwoFactorToggle'
@@ -159,103 +158,88 @@ export default function SecuritySettingsPage() {
           </p>
         </div>
 
-        {/* Tabs */}
-        <Tabs defaultValue="password" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="password">
-                <Key className="mr-2 h-4 w-4" />
+        {/* 2 Blocs côte à côte : Mot de passe | Authentification 2FA */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Bloc 1 : Mot de passe */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lock className="h-5 w-5" />
                 Mot de passe
-              </TabsTrigger>
-              <TabsTrigger value="2fa">
-                <Shield className="mr-2 h-4 w-4" />
-                Authentification 2FA
-              </TabsTrigger>
-            </TabsList>
-
-            {/* Password Tab */}
-            <TabsContent value="password">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Lock className="h-5 w-5" />
-                    Changer le mot de passe
-                  </CardTitle>
-                  <CardDescription>
-                    Modifiez votre mot de passe. Un code de vérification sera envoyé à votre email.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handlePasswordChange} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="current-password">Mot de passe actuel</Label>
-                      <Input
-                        id="current-password"
-                        type="password"
-                        placeholder="••••••••"
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="new-password">Nouveau mot de passe</Label>
-                      <Input
-                        id="new-password"
-                        type="password"
-                        placeholder="••••••••"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        required
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Min 8 caractères, 1 majuscule, 1 minuscule, 1 chiffre, 1 caractère spécial
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="confirm-password">Confirmer le nouveau mot de passe</Label>
-                      <Input
-                        id="confirm-password"
-                        type="password"
-                        placeholder="••••••••"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        required
-                      />
-                    </div>
-
-                    <Button type="submit" className="w-full" disabled={passwordChangeLoading}>
-                      {passwordChangeLoading ? 'Changement en cours...' : 'Changer le mot de passe'}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* 2FA Tab */}
-            <TabsContent value="2fa">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Shield className="h-5 w-5" />
-                    Authentification à deux facteurs
-                  </CardTitle>
-                  <CardDescription>
-                    Ajoutez une couche de sécurité supplémentaire à votre compte
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <TwoFactorToggle
-                    initialEnabled={user.two_factor_enabled || false}
-                    onStatusChange={(enabled) => {
-                      setUser(prev => prev ? { ...prev, two_factor_enabled: enabled } : null)
-                    }}
+              </CardTitle>
+              <CardDescription>
+                Modifiez votre mot de passe. Un code de vérification sera envoyé à votre email.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handlePasswordChange} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="current-password">Mot de passe actuel</Label>
+                  <Input
+                    id="current-password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    required
                   />
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">Nouveau mot de passe</Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Min 8 caractères, 1 majuscule, 1 minuscule, 1 chiffre, 1 caractère spécial
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password">Confirmer le nouveau mot de passe</Label>
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <Button type="submit" className="w-full" disabled={passwordChangeLoading}>
+                  {passwordChangeLoading ? 'Changement en cours...' : 'Changer le mot de passe'}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Bloc 2 : Authentification 2FA */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Authentification 2FA
+              </CardTitle>
+              <CardDescription>
+                Ajoutez une couche de sécurité supplémentaire à votre compte
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TwoFactorToggle
+                initialEnabled={user.two_factor_enabled || false}
+                onStatusChange={(enabled) => {
+                  setUser(prev => prev ? { ...prev, two_factor_enabled: enabled } : null)
+                }}
+              />
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </DashboardLayout>
   )

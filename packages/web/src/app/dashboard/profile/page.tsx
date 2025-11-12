@@ -348,39 +348,42 @@ export default function ProfilePage() {
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="address" className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    Adresse
-                  </Label>
-                  {isEditingPersonal ? (
-                    <Input
-                      id="address"
-                      value={personalForm.address}
-                      onChange={(e) => setPersonalForm({ ...personalForm, address: e.target.value })}
-                      placeholder="Votre adresse"
-                    />
-                  ) : (
-                    <p className="text-sm py-2 px-3 bg-muted rounded-md">
-                      {user.address || 'Non renseignée'}
-                    </p>
-                  )}
-                </div>
+                {/* Adresse et Ville en 2 colonnes */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="address" className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      Adresse
+                    </Label>
+                    {isEditingPersonal ? (
+                      <Input
+                        id="address"
+                        value={personalForm.address}
+                        onChange={(e) => setPersonalForm({ ...personalForm, address: e.target.value })}
+                        placeholder="Votre adresse"
+                      />
+                    ) : (
+                      <p className="text-sm py-2 px-3 bg-muted rounded-md">
+                        {user.address || 'Non renseignée'}
+                      </p>
+                    )}
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="city">Ville</Label>
-                  {isEditingPersonal ? (
-                    <Input
-                      id="city"
-                      value={personalForm.city}
-                      onChange={(e) => setPersonalForm({ ...personalForm, city: e.target.value })}
-                      placeholder="Votre ville"
-                    />
-                  ) : (
-                    <p className="text-sm py-2 px-3 bg-muted rounded-md">
-                      {user.city || 'Non renseignée'}
-                    </p>
-                  )}
+                  <div className="space-y-2">
+                    <Label htmlFor="city">Ville</Label>
+                    {isEditingPersonal ? (
+                      <Input
+                        id="city"
+                        value={personalForm.city}
+                        onChange={(e) => setPersonalForm({ ...personalForm, city: e.target.value })}
+                        placeholder="Votre ville"
+                      />
+                    ) : (
+                      <p className="text-sm py-2 px-3 bg-muted rounded-md">
+                        {user.city || 'Non renseignée'}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -421,120 +424,137 @@ export default function ProfilePage() {
                     )}
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="legal_name">Nom de l&apos;entreprise *</Label>
-                    {isEditingCompany ? (
-                      <Input
-                        id="legal_name"
-                        value={companyForm.legal_name}
-                        onChange={(e) => setCompanyForm({ ...companyForm, legal_name: e.target.value })}
-                        required
-                      />
-                    ) : (
-                      <p className="text-sm py-2 px-3 bg-muted rounded-md">
-                        {user.company?.legal_name || 'Non renseigné'}
-                      </p>
-                    )}
-                  </div>
+                <CardContent>
+                  {/* Organisation en 2 colonnes : Identité | Contact */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Colonne 1 : Identité de l'entreprise */}
+                    <div className="space-y-4">
+                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                        Identité
+                      </h3>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="trade_name">Nom commercial</Label>
-                    {isEditingCompany ? (
-                      <Input
-                        id="trade_name"
-                        value={companyForm.trade_name}
-                        onChange={(e) => setCompanyForm({ ...companyForm, trade_name: e.target.value })}
-                      />
-                    ) : (
-                      <p className="text-sm py-2 px-3 bg-muted rounded-md">
-                        {user.company?.trade_name || 'Non renseigné'}
-                      </p>
-                    )}
-                  </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="legal_name">Nom de l&apos;entreprise *</Label>
+                        {isEditingCompany ? (
+                          <Input
+                            id="legal_name"
+                            value={companyForm.legal_name}
+                            onChange={(e) => setCompanyForm({ ...companyForm, legal_name: e.target.value })}
+                            required
+                          />
+                        ) : (
+                          <p className="text-sm py-2 px-3 bg-muted rounded-md">
+                            {user.company?.legal_name || 'Non renseigné'}
+                          </p>
+                        )}
+                      </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="tax_id" className="flex items-center gap-2">
-                      <FileText className="h-4 w-4" />
-                      NIF ou RC *
-                    </Label>
-                    {isEditingCompany ? (
-                      <Input
-                        id="tax_id"
-                        value={companyForm.tax_id}
-                        onChange={(e) => setCompanyForm({ ...companyForm, tax_id: e.target.value })}
-                        required
-                      />
-                    ) : (
-                      <p className="text-sm py-2 px-3 bg-muted rounded-md">
-                        {user.company?.tax_id || 'Non renseigné'}
-                      </p>
-                    )}
-                  </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="trade_name">Nom commercial</Label>
+                        {isEditingCompany ? (
+                          <Input
+                            id="trade_name"
+                            value={companyForm.trade_name}
+                            onChange={(e) => setCompanyForm({ ...companyForm, trade_name: e.target.value })}
+                          />
+                        ) : (
+                          <p className="text-sm py-2 px-3 bg-muted rounded-md">
+                            {user.company?.trade_name || 'Non renseigné'}
+                          </p>
+                        )}
+                      </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="company_address">Adresse *</Label>
-                    {isEditingCompany ? (
-                      <Input
-                        id="company_address"
-                        value={companyForm.address}
-                        onChange={(e) => setCompanyForm({ ...companyForm, address: e.target.value })}
-                        required
-                      />
-                    ) : (
-                      <p className="text-sm py-2 px-3 bg-muted rounded-md">
-                        {user.company?.address || 'Non renseignée'}
-                      </p>
-                    )}
-                  </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="tax_id" className="flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          NIF ou RC *
+                        </Label>
+                        {isEditingCompany ? (
+                          <Input
+                            id="tax_id"
+                            value={companyForm.tax_id}
+                            onChange={(e) => setCompanyForm({ ...companyForm, tax_id: e.target.value })}
+                            required
+                          />
+                        ) : (
+                          <p className="text-sm py-2 px-3 bg-muted rounded-md">
+                            {user.company?.tax_id || 'Non renseigné'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="company_city">Ville *</Label>
-                    {isEditingCompany ? (
-                      <Input
-                        id="company_city"
-                        value={companyForm.city}
-                        onChange={(e) => setCompanyForm({ ...companyForm, city: e.target.value })}
-                        required
-                      />
-                    ) : (
-                      <p className="text-sm py-2 px-3 bg-muted rounded-md">
-                        {user.company?.city || 'Non renseignée'}
-                      </p>
-                    )}
-                  </div>
+                    {/* Colonne 2 : Contact */}
+                    <div className="space-y-4">
+                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                        Contact
+                      </h3>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="company_phone">Téléphone entreprise *</Label>
-                    {isEditingCompany ? (
-                      <Input
-                        id="company_phone"
-                        value={companyForm.phone}
-                        onChange={(e) => setCompanyForm({ ...companyForm, phone: e.target.value })}
-                        required
-                      />
-                    ) : (
-                      <p className="text-sm py-2 px-3 bg-muted rounded-md">
-                        {user.company?.phone || 'Non renseigné'}
-                      </p>
-                    )}
-                  </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="company_address">Adresse *</Label>
+                        {isEditingCompany ? (
+                          <Input
+                            id="company_address"
+                            value={companyForm.address}
+                            onChange={(e) => setCompanyForm({ ...companyForm, address: e.target.value })}
+                            required
+                          />
+                        ) : (
+                          <p className="text-sm py-2 px-3 bg-muted rounded-md">
+                            {user.company?.address || 'Non renseignée'}
+                          </p>
+                        )}
+                      </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="company_email">Email entreprise *</Label>
-                    {isEditingCompany ? (
-                      <Input
-                        id="company_email"
-                        type="email"
-                        value={companyForm.email}
-                        onChange={(e) => setCompanyForm({ ...companyForm, email: e.target.value })}
-                        required
-                      />
-                    ) : (
-                      <p className="text-sm py-2 px-3 bg-muted rounded-md">
-                        {user.company?.email || 'Non renseigné'}
-                      </p>
-                    )}
+                      <div className="space-y-2">
+                        <Label htmlFor="company_city">Ville *</Label>
+                        {isEditingCompany ? (
+                          <Input
+                            id="company_city"
+                            value={companyForm.city}
+                            onChange={(e) => setCompanyForm({ ...companyForm, city: e.target.value })}
+                            required
+                          />
+                        ) : (
+                          <p className="text-sm py-2 px-3 bg-muted rounded-md">
+                            {user.company?.city || 'Non renseignée'}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="company_phone">Téléphone entreprise *</Label>
+                        {isEditingCompany ? (
+                          <Input
+                            id="company_phone"
+                            value={companyForm.phone}
+                            onChange={(e) => setCompanyForm({ ...companyForm, phone: e.target.value })}
+                            required
+                          />
+                        ) : (
+                          <p className="text-sm py-2 px-3 bg-muted rounded-md">
+                            {user.company?.phone || 'Non renseigné'}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="company_email">Email entreprise *</Label>
+                        {isEditingCompany ? (
+                          <Input
+                            id="company_email"
+                            type="email"
+                            value={companyForm.email}
+                            onChange={(e) => setCompanyForm({ ...companyForm, email: e.target.value })}
+                            required
+                          />
+                        ) : (
+                          <p className="text-sm py-2 px-3 bg-muted rounded-md">
+                            {user.company?.email || 'Non renseigné'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
