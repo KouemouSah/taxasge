@@ -47,25 +47,18 @@ class CategoryDirectory(BaseModel):
     last_updated: str = Field(..., description="ISO timestamp")
 
 
-# Database dependency (from main.py)
-async def get_db():
-    """Get database connection from the pool"""
-    from app.main import db_pool
-
-    if db_pool is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database connection not available"
-        )
-
-    async with db_pool.acquire() as connection:
-        yield connection
+# Import get_db dependency from main
+# Note: This import is done at the function level to avoid circular import issues
+def get_db_dependency():
+    """Lazy import of get_db to avoid circular imports"""
+    from app.main import get_db
+    return get_db
 
 
 # API Endpoints
 
 @router.get("/stats", response_model=HomepageStats)
-async def get_homepage_stats(db: asyncpg.Connection = Depends(get_db)):
+async def get_homepage_stats(db: asyncpg.Connection = Depends(get_db_dependency())):
     """
     Get dynamic homepage statistics calculated from database
 
@@ -145,7 +138,7 @@ async def get_homepage_stats(db: asyncpg.Connection = Depends(get_db)):
 
 @router.get("/categories", response_model=CategoryDirectory)
 async def get_category_directory(
-    db: asyncpg.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_db_dependency()),
     language: str = Query("es", pattern="^(es|fr|en)$", description="Language code")
 ):
     """
