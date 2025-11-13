@@ -102,11 +102,6 @@ const nextConfig = {
         destination: '/',
         permanent: true,
       },
-      {
-        source: '/services',
-        destination: '/search',
-        permanent: true,
-      },
     ];
   },
 
