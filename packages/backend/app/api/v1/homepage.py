@@ -12,6 +12,9 @@ from datetime import datetime
 from loguru import logger
 import asyncpg
 
+# Import database dependency from existing connection module
+from app.database.connection import get_database as get_db
+
 # Create router
 router = APIRouter()
 
@@ -47,18 +50,10 @@ class CategoryDirectory(BaseModel):
     last_updated: str = Field(..., description="ISO timestamp")
 
 
-# Import get_db dependency from main
-# Note: This import is done at the function level to avoid circular import issues
-def get_db_dependency():
-    """Lazy import of get_db to avoid circular imports"""
-    from app.main import get_db
-    return get_db
-
-
 # API Endpoints
 
 @router.get("/stats", response_model=HomepageStats)
-async def get_homepage_stats(db: asyncpg.Connection = Depends(get_db_dependency())):
+async def get_homepage_stats(db: asyncpg.Connection = Depends(get_db)):
     """
     Get dynamic homepage statistics calculated from database
 
@@ -138,7 +133,7 @@ async def get_homepage_stats(db: asyncpg.Connection = Depends(get_db_dependency(
 
 @router.get("/categories", response_model=CategoryDirectory)
 async def get_category_directory(
-    db: asyncpg.Connection = Depends(get_db_dependency()),
+    db: asyncpg.Connection = Depends(get_db),
     language: str = Query("es", pattern="^(es|fr|en)$", description="Language code")
 ):
     """

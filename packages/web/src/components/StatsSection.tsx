@@ -18,9 +18,10 @@ export const StatsSection = () => {
         setError(null)
         const data = await getHomepageStats()
         setStats(data)
-      } catch (err: any) {
+      } catch (err) {
         console.error('Failed to fetch homepage stats:', err)
-        setError(err.message || 'Failed to load statistics')
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load statistics'
+        setError(errorMessage)
         // Use default/fallback stats on error
         setStats(getDefaultStats())
       } finally {

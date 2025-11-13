@@ -69,8 +69,12 @@ async def lifespan(app: FastAPI):
             )
             await redis_client.ping()
             logger.info("✅ Redis connection initialized")
+
+            # Store in app.state for dependency injection
+            app.state.redis = redis_client
         else:
             logger.warning("⚠️ Redis disabled for staging environment")
+            app.state.redis = None
 
     except Exception as e:
         logger.error(f"❌ Failed to initialize connections: {e}")
@@ -266,6 +270,15 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ Fiscal services router not available: {e}")
 
+# Try to load fiscal_services_search_db router (PostgreSQL-based search)
+try:
+    from app.api.v1 import fiscal_services_search_db
+    app.include_router(fiscal_services_search_db.router, prefix="/api/v1/fiscal-services", tags=["fiscal-services-search"])
+    routers_loaded.append("fiscal_services_search_db")
+    logger.info("✅ Fiscal services search (PostgreSQL) router loaded")
+except ImportError as e:
+    logger.warning(f"⚠️ Fiscal services search (PostgreSQL) router not available: {e}")
+
 # Try to load users router
 try:
     from app.api.v1 import users
@@ -301,6 +314,15 @@ try:
     logger.info("✅ Taxes router loaded")
 except ImportError as e:
     logger.warning(f"⚠️ Taxes router not available (non-blocking): {e}")
+
+# Try to load homepage router (for dynamic statistics and category directory)
+try:
+    from app.api.v1 import homepage
+    app.include_router(homepage.router, prefix="/api/v1/homepage", tags=["homepage"])
+    routers_loaded.append("homepage")
+    logger.info("✅ Homepage router loaded")
+except ImportError as e:
+    logger.warning(f"⚠️ Homepage router not available: {e}")
 
 if routers_loaded:
     logger.info(f"✅ {len(routers_loaded)} API routers loaded: {', '.join(routers_loaded)}")

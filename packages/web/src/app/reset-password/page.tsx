@@ -93,10 +93,20 @@ function ResetPasswordContent() {
         router.push('/auth')
       }, 3000)
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Password reset error:', error)
 
-      const errorMessage = error.response?.data?.detail || error.message || "Une erreur est survenue"
+      // Type-safe error handling
+      let errorMessage = "Une erreur est survenue"
+      let statusCode: number | undefined
+
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { detail?: string }, status?: number }, message?: string }
+        errorMessage = axiosError.response?.data?.detail || axiosError.message || errorMessage
+        statusCode = axiosError.response?.status
+      } else if (error instanceof Error) {
+        errorMessage = error.message
+      }
 
       toast({
         title: "Échec de la réinitialisation",
@@ -105,7 +115,7 @@ function ResetPasswordContent() {
       })
 
       // Si le token est invalide/expiré
-      if (error.response?.status === 400 || error.response?.status === 404) {
+      if (statusCode === 400 || statusCode === 404) {
         setTokenError(true)
       }
     } finally {

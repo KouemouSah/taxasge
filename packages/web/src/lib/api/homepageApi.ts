@@ -59,11 +59,17 @@ export async function getHomepageStats(): Promise<HomepageStats> {
   try {
     const response = await apiClient.get<HomepageStats>('/homepage/stats');
     return response.data;
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching homepage stats:', error);
 
-    // Extract error message
-    const errorMessage = error.response?.data?.detail || error.message || 'Failed to fetch homepage statistics';
+    // Type-safe error handling
+    let errorMessage = 'Failed to fetch homepage statistics'
+    if (error && typeof error === 'object' && 'response' in error) {
+      const axiosError = error as { response?: { data?: { detail?: string } }, message?: string }
+      errorMessage = axiosError.response?.data?.detail || axiosError.message || errorMessage
+    } else if (error instanceof Error) {
+      errorMessage = error.message
+    }
 
     throw new Error(errorMessage);
   }
@@ -82,11 +88,17 @@ export async function getCategoryDirectory(language: string = 'es'): Promise<Cat
       params: { language }
     });
     return response.data;
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching category directory:', error);
 
-    // Extract error message
-    const errorMessage = error.response?.data?.detail || error.message || 'Failed to fetch category directory';
+    // Type-safe error handling
+    let errorMessage = 'Failed to fetch category directory'
+    if (error && typeof error === 'object' && 'response' in error) {
+      const axiosError = error as { response?: { data?: { detail?: string } }, message?: string }
+      errorMessage = axiosError.response?.data?.detail || axiosError.message || errorMessage
+    } else if (error instanceof Error) {
+      errorMessage = error.message
+    }
 
     throw new Error(errorMessage);
   }
