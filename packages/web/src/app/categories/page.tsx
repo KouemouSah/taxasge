@@ -2,11 +2,19 @@
 
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   ArrowRight, Building, AlertCircle, Loader2, LayoutGrid, List,
-  ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, X
 } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { getCategoryDirectory, getDefaultCategoryDirectory, type CategoryDirectory, type CategoryWithServices } from "@/lib/api/homepageApi"
@@ -16,7 +24,7 @@ import Breadcrumb from "@/components/ui/breadcrumb"
 
 type ViewMode = 'kanban' | 'list'
 
-const ITEMS_PER_PAGE = 14
+const ITEMS_PER_PAGE = 12
 
 /**
  * Page des catégories - Affiche toutes les catégories avec vues multiples
@@ -30,6 +38,10 @@ export default function CategoriesPage() {
   // View and pagination state
   const [viewMode, setViewMode] = useState<ViewMode>('kanban')
   const [currentPage, setCurrentPage] = useState(1)
+
+  // Filter state
+  const [selectedMinistry, setSelectedMinistry] = useState<string | null>(null)
+  const [selectedSector, setSelectedSector] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchDirectory() {
@@ -51,12 +63,50 @@ export default function CategoriesPage() {
     fetchDirectory()
   }, [])
 
-  // Pagination logic
+  // Filter categories based on selected ministry and sector
   const allCategories = directory?.categories || []
-  const totalPages = Math.ceil(allCategories.length / ITEMS_PER_PAGE)
+  const filteredCategories = allCategories.filter((category) => {
+    if (selectedMinistry && category.ministry_name !== selectedMinistry) {
+      return false
+    }
+    if (selectedSector && category.sector_name !== selectedSector) {
+      return false
+    }
+    return true
+  })
+
+  // Pagination logic (applied AFTER filtering)
+  const totalPages = Math.ceil(filteredCategories.length / ITEMS_PER_PAGE)
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
   const endIndex = startIndex + ITEMS_PER_PAGE
-  const currentCategories = allCategories.slice(startIndex, endIndex)
+  const currentCategories = filteredCategories.slice(startIndex, endIndex)
+
+  // Get unique ministry and sector names for filters
+  const uniqueMinistries = Array.from(
+    new Set(
+      allCategories
+        .map(cat => cat.ministry_name)
+        .filter((name): name is string => name !== null && name !== undefined && name.trim() !== '')
+    )
+  ).sort()
+
+  const uniqueSectors = Array.from(
+    new Set(
+      allCategories
+        .map(cat => cat.sector_name)
+        .filter((name): name is string => name !== null && name !== undefined && name.trim() !== '')
+    )
+  ).sort()
+
+  // Active filters count
+  const activeFiltersCount = [selectedMinistry, selectedSector].filter(Boolean).length
+
+  // Clear all filters
+  const clearAllFilters = () => {
+    setSelectedMinistry(null)
+    setSelectedSector(null)
+    setCurrentPage(1)
+  }
 
   const handlePreviousPage = () => {
     if (currentPage > 1) {
@@ -90,20 +140,123 @@ export default function CategoriesPage() {
             className="mb-6"
           />
 
-          {/* Header with view toggle */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-            <div>
-              <h1 className="text-4xl font-bold mb-2">Toutes les catégories</h1>
-              <p className="text-muted-foreground text-lg">
-                {loading
-                  ? "Chargement des catégories..."
-                  : `${directory?.total_categories || 0} catégories • ${directory?.total_services || 0} services disponibles`
-                }
-              </p>
-            </div>
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="text-4xl font-bold mb-2">Toutes les catégories</h1>
+            <p className="text-muted-foreground text-lg">
+              {loading
+                ? "Chargement des catégories..."
+                : `${filteredCategories.length} catégories • ${directory?.total_services || 0} services disponibles`
+              }
+            </p>
+          </div>
 
-            {/* View Mode Toggle */}
-            {!loading && currentCategories.length > 0 && (
+          {/* Filter Dropdowns Bar */}
+          {!loading && allCategories.length > 0 && (
+            <Card className="p-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Ministry Filter */}
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Ministerio</label>
+                  <Select
+                    value={selectedMinistry || 'all'}
+                    onValueChange={(value) => {
+                      if (value === 'all') {
+                        setSelectedMinistry(null)
+                      } else {
+                        setSelectedMinistry(value)
+                      }
+                      setCurrentPage(1)
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Todos los ministerios" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos los ministerios</SelectItem>
+                      {uniqueMinistries.map((ministry) => (
+                        <SelectItem key={ministry} value={ministry}>
+                          {ministry}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Sector Filter */}
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Sector</label>
+                  <Select
+                    value={selectedSector || 'all'}
+                    onValueChange={(value) => {
+                      if (value === 'all') {
+                        setSelectedSector(null)
+                      } else {
+                        setSelectedSector(value)
+                      }
+                      setCurrentPage(1)
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Todos los sectores" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos los sectores</SelectItem>
+                      {uniqueSectors.map((sector) => (
+                        <SelectItem key={sector} value={sector}>
+                          {sector}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Active Filters Display */}
+              {activeFiltersCount > 0 && (
+                <div className="flex items-center gap-2 mt-4 pt-4 border-t">
+                  <span className="text-sm text-muted-foreground">Filtros activos:</span>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedMinistry && (
+                      <Badge variant="secondary" className="gap-1">
+                        Ministerio: {selectedMinistry}
+                        <button
+                          onClick={() => { setSelectedMinistry(null); setCurrentPage(1) }}
+                          className="ml-1 hover:bg-muted-foreground/20 rounded-full"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    )}
+                    {selectedSector && (
+                      <Badge variant="secondary" className="gap-1">
+                        Sector: {selectedSector}
+                        <button
+                          onClick={() => { setSelectedSector(null); setCurrentPage(1) }}
+                          className="ml-1 hover:bg-muted-foreground/20 rounded-full"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearAllFilters}
+                    className="ml-auto"
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Limpiar todo
+                  </Button>
+                </div>
+              )}
+            </Card>
+          )}
+
+          {/* View Mode Toggle */}
+          {!loading && currentCategories.length > 0 && (
+            <div className="flex justify-end mb-6">
               <div className="flex items-center gap-2 bg-muted p-1 rounded-lg">
                 <Button
                   variant={viewMode === 'kanban' ? 'default' : 'ghost'}
@@ -124,8 +277,8 @@ export default function CategoriesPage() {
                   <span className="hidden sm:inline">Liste</span>
                 </Button>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Error Alert */}
           {error && !loading && (
@@ -286,7 +439,7 @@ export default function CategoriesPage() {
                   Page {currentPage} sur {totalPages}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  ({startIndex + 1}-{Math.min(endIndex, allCategories.length)} sur {allCategories.length})
+                  ({startIndex + 1}-{Math.min(endIndex, filteredCategories.length)} sur {filteredCategories.length})
                 </span>
               </div>
 

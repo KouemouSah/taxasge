@@ -688,6 +688,139 @@ async def search_services_database(
         )
 
 
+@router.get("/{service_id}")
+async def get_service_detail(
+    service_id: int,
+    db: asyncpg.Connection = Depends(get_db)
+):
+    """
+    Get detailed information for a single fiscal service by ID
+
+    Returns complete service details including:
+    - Basic information (name, description, status)
+    - Category, ministry, and sector information
+    - Pricing details (expedition and renewal)
+    - Processing times and validity periods
+    - Required documents
+    - Legal references and regulatory articles
+    - Eligibility criteria and exemptions
+    - Penalties for late payment
+    - Calculation method and configuration
+    """
+    try:
+        query = """
+            SELECT
+                fs.id,
+                fs.service_code,
+                fs.name_es as name,
+                fs.description_es as description,
+                fs.service_type,
+                fs.calculation_method,
+                fs.tasa_expedicion as expedition_price,
+                fs.tasa_renovacion as renewal_price,
+                fs.processing_time_days,
+                fs.validity_period_months,
+                fs.renewal_frequency_months,
+                fs.grace_period_days,
+                fs.late_penalty_percentage,
+                fs.late_penalty_fixed,
+                fs.legal_reference,
+                fs.regulatory_articles,
+                fs.eligibility_criteria,
+                fs.exemption_conditions,
+                fs.status,
+                fs.complexity_level,
+                fs.tariff_effective_from,
+                fs.tariff_effective_to,
+                c.id as category_id,
+                c.category_code,
+                c.name_es as category_name,
+                m.id as ministry_id,
+                m.name_es as ministry_name,
+                s.id as sector_id,
+                s.name_es as sector_name
+            FROM fiscal_services fs
+            INNER JOIN categories c ON fs.category_id = c.id
+            LEFT JOIN ministries m ON c.ministry_id = m.id
+            LEFT JOIN sectors s ON c.sector_id = s.id
+            WHERE fs.id = $1 AND fs.status = 'active'::service_status_enum
+        """
+
+        service_row = await db.fetchrow(query, service_id)
+
+        if not service_row:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Service with ID {service_id} not found or inactive"
+            )
+
+        # Fetch required documents
+        documents_query = """
+            SELECT dt.name_es as document_name
+            FROM service_document_assignments sda
+            INNER JOIN document_templates dt ON sda.document_template_id = dt.id
+            WHERE sda.fiscal_service_id = $1
+                AND (sda.is_required_expedition = true OR sda.is_required_renewal = true)
+            ORDER BY sda.display_order
+        """
+
+        document_rows = await db.fetch(documents_query, service_id)
+        required_documents = [row['document_name'] for row in document_rows]
+
+        # Build detailed response
+        service_detail = {
+            "id": service_row['id'],
+            "service_code": service_row['service_code'],
+            "name": service_row['name'],
+            "description": service_row['description'],
+            "category_id": service_row['category_id'],
+            "category_code": service_row['category_code'],
+            "category_name": service_row['category_name'],
+            "ministry_id": service_row['ministry_id'],
+            "ministry_name": service_row['ministry_name'],
+            "sector_id": service_row['sector_id'],
+            "sector_name": service_row['sector_name'],
+            "service_type": service_row['service_type'],
+            "calculation_method": service_row['calculation_method'],
+            "expedition_price": float(service_row['expedition_price']) if service_row['expedition_price'] else 0.0,
+            "renewal_price": float(service_row['renewal_price']) if service_row['renewal_price'] else 0.0,
+            "processing_time_days": service_row['processing_time_days'],
+            "validity_period_months": service_row['validity_period_months'],
+            "renewal_frequency_months": service_row['renewal_frequency_months'],
+            "grace_period_days": service_row['grace_period_days'] or 0,
+            "late_penalty_percentage": float(service_row['late_penalty_percentage']) if service_row['late_penalty_percentage'] else None,
+            "late_penalty_fixed": float(service_row['late_penalty_fixed']) if service_row['late_penalty_fixed'] else None,
+            "legal_reference": service_row['legal_reference'],
+            "regulatory_articles": service_row['regulatory_articles'],
+            "eligibility_criteria": service_row['eligibility_criteria'],
+            "exemption_conditions": service_row['exemption_conditions'],
+            "required_documents": required_documents,
+            "status": service_row['status'],
+            "complexity_level": service_row['complexity_level'],
+            "tariff_effective_from": service_row['tariff_effective_from'].isoformat() if service_row['tariff_effective_from'] else None,
+            "tariff_effective_to": service_row['tariff_effective_to'].isoformat() if service_row['tariff_effective_to'] else None
+        }
+
+        logger.info(f"Retrieved service detail for ID {service_id}")
+
+        return service_detail
+
+    except HTTPException:
+        raise
+    except asyncpg.PostgresError as e:
+        logger.error(f"Database error fetching service {service_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error fetching service {service_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
 @router.get("/search-db/info")
 async def search_db_info():
     """Get information about the PostgreSQL-based search endpoint"""

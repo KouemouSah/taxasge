@@ -11,6 +11,13 @@ import {
   Search, Filter, X, AlertCircle, Loader2, ChevronLeft, ChevronRight,
   Building2, Clock, SlidersHorizontal, LayoutGrid, List
 } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import Header from "@/components/layout/Header"
 import Footer from "@/components/layout/Footer"
 import Breadcrumb from "@/components/ui/breadcrumb"
@@ -290,13 +297,170 @@ function ServicesContent() {
             )}
           </div>
 
+          {/* Filter Dropdowns Bar */}
+          <Card className="p-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Category Filter */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">Categoría</label>
+                <Select
+                  value={selectedCategory || 'all'}
+                  onValueChange={(value) => {
+                    if (value === 'all') {
+                      setSelectedCategory(null)
+                    } else {
+                      setSelectedCategory(value)
+                    }
+                    setCurrentPage(1)
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Todas las categorías" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas las categorías</SelectItem>
+                    {searchResults?.facets?.categories && searchResults.facets.categories.length > 0 &&
+                      searchResults.facets.categories.map((category) => (
+                        <SelectItem key={category.code} value={category.code || ''}>
+                          {category.name} ({category.count})
+                        </SelectItem>
+                      ))
+                    }
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Service Type Filter */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">Tipo de Servicio</label>
+                <Select
+                  value={selectedServiceType || 'all'}
+                  onValueChange={(value) => {
+                    if (value === 'all') {
+                      setSelectedServiceType(null)
+                    } else {
+                      setSelectedServiceType(value)
+                    }
+                    setCurrentPage(1)
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Todos los tipos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los tipos</SelectItem>
+                    {searchResults?.facets?.service_types && searchResults.facets.service_types.length > 0 &&
+                      searchResults.facets.service_types.map((type) => (
+                        <SelectItem key={type.type} value={type.type || ''}>
+                          {getServiceTypeLabel(type.type || '')} ({type.count})
+                        </SelectItem>
+                      ))
+                    }
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Ministry Filter */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">Ministerio</label>
+                <Select
+                  value={selectedMinistry?.toString() || 'all'}
+                  onValueChange={(value) => {
+                    if (value === 'all') {
+                      setSelectedMinistry(null)
+                    } else {
+                      setSelectedMinistry(parseInt(value))
+                    }
+                    setCurrentPage(1)
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Todos los ministerios" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los ministerios</SelectItem>
+                    {searchResults?.facets?.ministries && searchResults.facets.ministries.length > 0 &&
+                      searchResults.facets.ministries.map((ministry) => (
+                        <SelectItem key={ministry.id} value={ministry.id?.toString() || ''}>
+                          {ministry.name} ({ministry.count})
+                        </SelectItem>
+                      ))
+                    }
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Active Filters Display */}
+            {activeFiltersCount > 0 && (
+              <div className="flex items-center gap-2 mt-4 pt-4 border-t">
+                <span className="text-sm text-muted-foreground">Filtros activos:</span>
+                <div className="flex flex-wrap gap-2">
+                  {selectedCategory && (
+                    <Badge variant="secondary" className="gap-1">
+                      Categoría
+                      <button
+                        onClick={() => { setSelectedCategory(null); setCurrentPage(1) }}
+                        className="ml-1 hover:bg-muted-foreground/20 rounded-full"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  )}
+                  {selectedServiceType && (
+                    <Badge variant="secondary" className="gap-1">
+                      Tipo
+                      <button
+                        onClick={() => { setSelectedServiceType(null); setCurrentPage(1) }}
+                        className="ml-1 hover:bg-muted-foreground/20 rounded-full"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  )}
+                  {selectedMinistry && (
+                    <Badge variant="secondary" className="gap-1">
+                      Ministerio
+                      <button
+                        onClick={() => { setSelectedMinistry(null); setCurrentPage(1) }}
+                        className="ml-1 hover:bg-muted-foreground/20 rounded-full"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  )}
+                  {selectedPriceRange && (
+                    <Badge variant="secondary" className="gap-1">
+                      Precio
+                      <button
+                        onClick={() => { setSelectedPriceRange(null); setCurrentPage(1) }}
+                        className="ml-1 hover:bg-muted-foreground/20 rounded-full"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearAllFilters}
+                  className="ml-auto"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Limpiar todo
+                </Button>
+              </div>
+            )}
+          </Card>
+
           {/* Search Bar */}
           <div className="mb-6">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
               <Input
                 type="text"
-                placeholder="Buscar servicios fiscales..."
+                placeholder="Buscar servicios fiscales por nombre..."
                 value={searchQuery}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 className="pl-10 pr-4 py-6 text-base"

@@ -302,6 +302,15 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ Homepage router not available: {e}")
 
+# Try to load ministries router (for ministry details and listings)
+try:
+    from app.api.v1 import ministries
+    app.include_router(ministries.router, prefix="/api/v1/ministries", tags=["ministries"])
+    routers_loaded.append("ministries")
+    logger.info("✅ Ministries router loaded")
+except ImportError as e:
+    logger.warning(f"⚠️ Ministries router not available: {e}")
+
 if routers_loaded:
     logger.info(f"✅ {len(routers_loaded)} API routers loaded: {', '.join(routers_loaded)}")
 else:
