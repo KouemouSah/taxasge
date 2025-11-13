@@ -44,8 +44,16 @@ function ServicesContent() {
   // Search filters state
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedMinistry, setSelectedMinistry] = useState<number | null>(null)
   const [selectedServiceType, setSelectedServiceType] = useState<string | null>(null)
   const [selectedPriceRange, setSelectedPriceRange] = useState<string | null>(null)
+
+  // Advanced price filters
+  const [minExpeditionPrice, setMinExpeditionPrice] = useState<number | undefined>()
+  const [maxExpeditionPrice, setMaxExpeditionPrice] = useState<number | undefined>()
+  const [minRenewalPrice, setMinRenewalPrice] = useState<number | undefined>()
+  const [maxRenewalPrice, setMaxRenewalPrice] = useState<number | undefined>()
+
   const [sortBy, setSortBy] = useState<'relevance' | 'name' | 'price' | 'popular'>('relevance')
   const [currentPage, setCurrentPage] = useState(1)
 
@@ -79,6 +87,7 @@ function ServicesContent() {
       const filters: SearchFilters = {
         q: searchQuery || undefined,
         category_code: selectedCategory || undefined,
+        ministry_id: selectedMinistry || undefined,
         service_type: selectedServiceType || undefined,
         sort_by: sortBy,
         page: currentPage,
@@ -87,7 +96,7 @@ function ServicesContent() {
         language: 'es'
       }
 
-      // Add price range filters
+      // Add price range filters (legacy UI)
       if (selectedPriceRange) {
         const priceRanges: Record<string, { min?: number, max?: number }> = {
           'free': { max: 0 },
@@ -104,6 +113,20 @@ function ServicesContent() {
         }
       }
 
+      // Add advanced price filters
+      if (minExpeditionPrice !== undefined) {
+        filters.min_expedition_price = minExpeditionPrice
+      }
+      if (maxExpeditionPrice !== undefined) {
+        filters.max_expedition_price = maxExpeditionPrice
+      }
+      if (minRenewalPrice !== undefined) {
+        filters.min_renewal_price = minRenewalPrice
+      }
+      if (maxRenewalPrice !== undefined) {
+        filters.max_renewal_price = maxRenewalPrice
+      }
+
       const results = await searchServices(filters)
       setSearchResults(results)
 
@@ -115,7 +138,7 @@ function ServicesContent() {
     } finally {
       setLoading(false)
     }
-  }, [searchQuery, selectedCategory, selectedServiceType, selectedPriceRange, sortBy, currentPage])
+  }, [searchQuery, selectedCategory, selectedMinistry, selectedServiceType, selectedPriceRange, minExpeditionPrice, maxExpeditionPrice, minRenewalPrice, maxRenewalPrice, sortBy, currentPage])
 
   /**
    * Trigger search when filters change
@@ -162,11 +185,21 @@ function ServicesContent() {
     setCurrentPage(1)
   }
 
+  const handleMinistryFilter = (ministryId: number) => {
+    setSelectedMinistry(selectedMinistry === ministryId ? null : ministryId)
+    setCurrentPage(1)
+  }
+
   const clearAllFilters = () => {
     setSearchQuery('')
     setSelectedCategory(null)
+    setSelectedMinistry(null)
     setSelectedServiceType(null)
     setSelectedPriceRange(null)
+    setMinExpeditionPrice(undefined)
+    setMaxExpeditionPrice(undefined)
+    setMinRenewalPrice(undefined)
+    setMaxRenewalPrice(undefined)
     setSortBy('relevance')
     setCurrentPage(1)
   }
@@ -197,8 +230,13 @@ function ServicesContent() {
 
   const activeFiltersCount = [
     selectedCategory,
+    selectedMinistry,
     selectedServiceType,
-    selectedPriceRange
+    selectedPriceRange,
+    minExpeditionPrice !== undefined,
+    maxExpeditionPrice !== undefined,
+    minRenewalPrice !== undefined,
+    maxRenewalPrice !== undefined
   ].filter(Boolean).length
 
   return (
@@ -399,6 +437,97 @@ function ServicesContent() {
                       </div>
                     </div>
                   )}
+
+                  {/* Ministries Facets */}
+                  {searchResults?.facets?.ministries && searchResults.facets.ministries.length > 0 && (
+                    <div>
+                      <h3 className="font-medium mb-3">Ministerio</h3>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {searchResults.facets.ministries.map((ministry: any) => (
+                          <Button
+                            key={ministry.id}
+                            variant={selectedMinistry === ministry.id ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handleMinistryFilter(ministry.id)}
+                            className="w-full justify-between text-left"
+                          >
+                            <span className="truncate text-xs">{ministry.name}</span>
+                            <Badge variant="secondary" className="ml-2 text-xs">
+                              {ministry.count}
+                            </Badge>
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Advanced Price Filters */}
+                  <div>
+                    <h3 className="font-medium mb-3">Precios Específicos</h3>
+                    <div className="space-y-4">
+                      {/* Expedition Price */}
+                      <div>
+                        <label className="text-xs text-muted-foreground mb-2 block">
+                          Precio Expedición
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Input
+                            type="number"
+                            placeholder="Mín"
+                            value={minExpeditionPrice || ''}
+                            onChange={(e) => {
+                              const val = e.target.value ? parseFloat(e.target.value) : undefined
+                              setMinExpeditionPrice(val)
+                              setCurrentPage(1)
+                            }}
+                            className="text-xs"
+                          />
+                          <Input
+                            type="number"
+                            placeholder="Máx"
+                            value={maxExpeditionPrice || ''}
+                            onChange={(e) => {
+                              const val = e.target.value ? parseFloat(e.target.value) : undefined
+                              setMaxExpeditionPrice(val)
+                              setCurrentPage(1)
+                            }}
+                            className="text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Renewal Price */}
+                      <div>
+                        <label className="text-xs text-muted-foreground mb-2 block">
+                          Precio Renovación
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Input
+                            type="number"
+                            placeholder="Mín"
+                            value={minRenewalPrice || ''}
+                            onChange={(e) => {
+                              const val = e.target.value ? parseFloat(e.target.value) : undefined
+                              setMinRenewalPrice(val)
+                              setCurrentPage(1)
+                            }}
+                            className="text-xs"
+                          />
+                          <Input
+                            type="number"
+                            placeholder="Máx"
+                            value={maxRenewalPrice || ''}
+                            onChange={(e) => {
+                              const val = e.target.value ? parseFloat(e.target.value) : undefined
+                              setMaxRenewalPrice(val)
+                              setCurrentPage(1)
+                            }}
+                            className="text-xs"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </Card>
             </aside>
