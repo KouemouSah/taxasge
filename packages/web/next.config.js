@@ -32,8 +32,7 @@
 // });
 
 const nextConfig = {
-  // output: 'export', // Disabled to support dynamic routes ([id])
-  // Firebase Hosting supports both static and SSR Next.js apps
+  output: 'export', // Static export with pre-generated dynamic routes
   trailingSlash: true,
   images: {
     unoptimized: true,
