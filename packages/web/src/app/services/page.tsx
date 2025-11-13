@@ -87,7 +87,7 @@ function ServicesContent() {
       const filters: SearchFilters = {
         q: searchQuery || undefined,
         category_code: selectedCategory || undefined,
-        ministry_id: selectedMinistry || undefined,
+        ministry_code: selectedMinistry || undefined,
         service_type: selectedServiceType || undefined,
         sort_by: sortBy,
         page: currentPage,
