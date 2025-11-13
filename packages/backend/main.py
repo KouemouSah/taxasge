@@ -266,6 +266,15 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ Fiscal services router not available: {e}")
 
+# Try to load fiscal_services_search_db router (PostgreSQL-based search)
+try:
+    from app.api.v1 import fiscal_services_search_db
+    app.include_router(fiscal_services_search_db.router, prefix="/api/v1/fiscal-services", tags=["fiscal-services-search"])
+    routers_loaded.append("fiscal_services_search_db")
+    logger.info("✅ Fiscal services search (PostgreSQL) router loaded")
+except ImportError as e:
+    logger.warning(f"⚠️ Fiscal services search (PostgreSQL) router not available: {e}")
+
 # Try to load users router
 try:
     from app.api.v1 import users
