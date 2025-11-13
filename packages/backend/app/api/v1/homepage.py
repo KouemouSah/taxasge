@@ -1,7 +1,10 @@
 """
 🏠 TaxasGE Homepage API
 Provides dynamic statistics and category directory for the homepage
-All data is calculated from PostgreSQL database with Redis caching
+Uses 3-layer caching architecture:
+  1. Redis cache (5ms) - Primary cache
+  2. Materialized views (2-5ms) - Robust fallback
+  3. Direct queries (150-500ms) - Last resort
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Query, status
@@ -93,7 +96,43 @@ async def get_homepage_stats(
             except Exception as redis_err:
                 logger.warning(f"Redis get failed (graceful fallback): {redis_err}")
 
-        # STEP 2: Calculate from database (cache miss or Redis unavailable)
+        # STEP 2: Try materialized view fallback (2-5ms)
+        # Try to get stats from pre-calculated materialized view
+        try:
+            mv_query = """
+                SELECT
+                    total_services,
+                    total_ministries,
+                    total_categories,
+                    total_sectors,
+                    last_updated
+                FROM homepage_stats
+                LIMIT 1
+            """
+            mv_row = await db.fetchrow(mv_query)
+
+            if mv_row:
+                logger.info("✅ Homepage stats served from materialized view (fallback)")
+                stats_data = {
+                    "total_services": mv_row['total_services'] or 0,
+                    "total_ministries": mv_row['total_ministries'] or 0,
+                    "total_categories": mv_row['total_categories'] or 0,
+                    "total_sectors": mv_row['total_sectors'] or 0,
+                    "last_updated": datetime.utcnow().isoformat()
+                }
+
+                # Cache the result for next time
+                if redis_client:
+                    try:
+                        await redis_client.setex(STATS_CACHE_KEY, STATS_TTL, json.dumps(stats_data))
+                    except Exception:
+                        pass
+
+                return HomepageStats(**stats_data)
+        except Exception as mv_err:
+            logger.warning(f"Materialized view fallback failed (trying direct query): {mv_err}")
+
+        # STEP 3: Calculate from database with direct queries (150-500ms - last resort)
         # Query 1: Count active fiscal services
         # CRITICAL: Only count services where status = 'active'
         services_query = """
@@ -126,6 +165,8 @@ async def get_homepage_stats(
             WHERE is_active = true
         """
         sectors_count = await db.fetchval(sectors_query)
+
+        logger.info("⚠️ Homepage stats calculated via direct queries (slowest fallback)")
 
         execution_time = (datetime.now() - start_time).total_seconds() * 1000
 
@@ -201,10 +242,80 @@ async def get_category_directory(
             except Exception as redis_err:
                 logger.warning(f"Redis get failed (graceful fallback): {redis_err}")
 
-        # STEP 2: Calculate from database (cache miss or Redis unavailable)
+        # STEP 2: Try materialized view fallback (2-5ms)
+        # Try to get categories from pre-calculated materialized view
+        try:
+            # Select appropriate language columns based on language parameter
+            name_col = f"name_{language}"
+            description_col = f"description_{language}"
+            ministry_col = f"ministry_name_{language}"
+            sector_col = f"sector_name_{language}"
+
+            mv_query = f"""
+                SELECT
+                    id,
+                    category_code,
+                    {name_col} as name_es,
+                    {description_col} as description_es,
+                    icon,
+                    color,
+                    ministry_id,
+                    sector_id,
+                    {ministry_col} as ministry_name,
+                    {sector_col} as sector_name,
+                    service_count
+                FROM categories_with_services
+                ORDER BY service_count DESC, name_es ASC
+            """
+            mv_rows = await db.fetch(mv_query)
+
+            if mv_rows:
+                logger.info("✅ Category directory served from materialized view (fallback)")
+
+                # Build category list from materialized view
+                categories = []
+                total_services = 0
+
+                for row in mv_rows:
+                    service_count = row['service_count'] or 0
+                    total_services += service_count
+
+                    categories.append(CategoryWithServices(
+                        id=row['id'],
+                        category_code=row['category_code'],
+                        name_es=row['name_es'],
+                        description_es=row['description_es'],
+                        icon=row['icon'],
+                        color=row['color'],
+                        service_count=service_count,
+                        ministry_name=row['ministry_name'],
+                        sector_name=row['sector_name']
+                    ))
+
+                result_data = {
+                    "total_categories": len(categories),
+                    "total_services": total_services,
+                    "categories": [cat.dict() for cat in categories],
+                    "last_updated": datetime.utcnow().isoformat()
+                }
+
+                # Cache the result for next time
+                if redis_client:
+                    try:
+                        await redis_client.setex(CATEGORIES_CACHE_KEY, CATEGORIES_TTL, json.dumps(result_data))
+                    except Exception:
+                        pass
+
+                return CategoryDirectory(**result_data)
+        except Exception as mv_err:
+            logger.warning(f"Materialized view fallback failed (trying direct query): {mv_err}")
+
+        # STEP 3: Calculate from database with direct queries (150-500ms - last resort)
         # Complex query to get categories with service counts
         # CRITICAL: Only count services where status = 'active'
         # Join with ministries and sectors for additional context
+        logger.info("⚠️ Category directory calculated via direct queries (slowest fallback)")
+
         query = """
             SELECT
                 c.id,
