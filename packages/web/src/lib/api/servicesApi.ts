@@ -16,9 +16,23 @@ export interface SearchFilters {
   // Filters
   category_id?: number
   category_code?: string
+  ministry_id?: number
   service_type?: string
+
+  // Price filters - legacy (expedition only)
   min_price?: number
   max_price?: number
+
+  // Advanced price filters - expedition
+  min_expedition_price?: number
+  max_expedition_price?: number
+
+  // Advanced price filters - renewal
+  min_renewal_price?: number
+  max_renewal_price?: number
+
+  // Document filters
+  required_documents?: string[]
 
   // Sorting
   sort_by?: 'relevance' | 'name' | 'price' | 'popular'
@@ -63,6 +77,7 @@ export interface SearchFacets {
   categories: FacetItem[]
   service_types: FacetItem[]
   price_ranges: FacetItem[]
+  ministries: FacetItem[]
 }
 
 export interface SearchResponse {
@@ -93,9 +108,24 @@ export async function searchServices(filters: SearchFilters = {}): Promise<Searc
       q: filters.q || null,
       category_id: filters.category_id || null,
       category_code: filters.category_code || null,
+      ministry_id: filters.ministry_id || null,
       service_type: filters.service_type || null,
+
+      // Legacy price filters
       min_price: filters.min_price !== undefined ? filters.min_price : null,
       max_price: filters.max_price !== undefined ? filters.max_price : null,
+
+      // Advanced expedition price filters
+      min_expedition_price: filters.min_expedition_price !== undefined ? filters.min_expedition_price : null,
+      max_expedition_price: filters.max_expedition_price !== undefined ? filters.max_expedition_price : null,
+
+      // Advanced renewal price filters
+      min_renewal_price: filters.min_renewal_price !== undefined ? filters.min_renewal_price : null,
+      max_renewal_price: filters.max_renewal_price !== undefined ? filters.max_renewal_price : null,
+
+      // Document filters
+      required_documents: filters.required_documents || null,
+
       sort_by: filters.sort_by || 'relevance',
       sort_order: filters.sort_order || 'asc',
       page: filters.page || 1,
@@ -143,7 +173,8 @@ export function getDefaultSearchResponse(): SearchResponse {
     facets: {
       categories: [],
       service_types: [],
-      price_ranges: []
+      price_ranges: [],
+      ministries: []
     },
     suggestions: [
       'permiso de construcción',

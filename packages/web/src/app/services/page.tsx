@@ -87,7 +87,7 @@ function ServicesContent() {
       const filters: SearchFilters = {
         q: searchQuery || undefined,
         category_code: selectedCategory || undefined,
-        ministry_code: selectedMinistry || undefined,
+        ministry_id: selectedMinistry || undefined,
         service_type: selectedServiceType || undefined,
         sort_by: sortBy,
         page: currentPage,
@@ -443,12 +443,12 @@ function ServicesContent() {
                     <div>
                       <h3 className="font-medium mb-3">Ministerio</h3>
                       <div className="space-y-2 max-h-64 overflow-y-auto">
-                        {searchResults.facets.ministries.map((ministry: any) => (
+                        {searchResults.facets.ministries.map((ministry) => (
                           <Button
                             key={ministry.id}
                             variant={selectedMinistry === ministry.id ? "default" : "outline"}
                             size="sm"
-                            onClick={() => handleMinistryFilter(ministry.id)}
+                            onClick={() => handleMinistryFilter(ministry.id!)}
                             className="w-full justify-between text-left"
                           >
                             <span className="truncate text-xs">{ministry.name}</span>
