@@ -17,8 +17,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
-import { User, Mail, Phone, MapPin, Calendar, Shield, Edit2, Save, X, Building2, Bell, FileText } from 'lucide-react'
+import { User, Mail, Phone, MapPin, Calendar, Shield, Edit2, Save, X, Building2, Bell, FileText, CreditCard, Languages } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { getAuthData } from '@/lib/auth/storage'
 import type { User as UserType } from '@/types/auth'
@@ -37,6 +38,8 @@ export default function ProfilePage() {
     first_name: '',
     last_name: '',
     phone_number: '',
+    document_type: '',
+    document_number: '',
     address: '',
     city: '',
   })
@@ -52,10 +55,11 @@ export default function ProfilePage() {
     email: '',
   })
 
-  // Notification preferences
+  // Notification preferences and language
   const [notificationPrefs, setNotificationPrefs] = useState({
     email_notifications: true,
     push_notifications: true,
+    preferred_language: 'es',
   })
 
   useEffect(() => {
@@ -79,6 +83,8 @@ export default function ProfilePage() {
       first_name: userData.first_name || '',
       last_name: userData.last_name || '',
       phone_number: userData.phone_number || '',
+      document_type: userData.document_type || '',
+      document_number: userData.document_number || '',
       address: userData.address || '',
       city: userData.city || '',
     })
@@ -99,6 +105,7 @@ export default function ProfilePage() {
     setNotificationPrefs({
       email_notifications: userData.email_notifications ?? true,
       push_notifications: userData.push_notifications ?? true,
+      preferred_language: userData.preferred_language || 'es',
     })
 
     setIsLoading(false)
@@ -346,6 +353,58 @@ export default function ProfilePage() {
                       {user.phone_number || 'Non renseigné'}
                     </p>
                   )}
+                </div>
+
+                {/* Document d'identité en 2 colonnes */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="document_type" className="flex items-center gap-2">
+                      <CreditCard className="h-4 w-4" />
+                      Type de document
+                    </Label>
+                    {isEditingPersonal ? (
+                      <Select
+                        value={personalForm.document_type}
+                        onValueChange={(value) => setPersonalForm({ ...personalForm, document_type: value })}
+                      >
+                        <SelectTrigger id="document_type">
+                          <SelectValue placeholder="Sélectionner un type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="CNI">CNI (Carte Nationale d&apos;Identité)</SelectItem>
+                          <SelectItem value="PASSPORT">Passeport</SelectItem>
+                          <SelectItem value="RESIDENCE_PERMIT">Permis de résidence</SelectItem>
+                          <SelectItem value="DRIVER_LICENSE">Permis de conduire</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p className="text-sm py-2 px-3 bg-muted rounded-md">
+                        {user.document_type ? (
+                          user.document_type === 'CNI' ? 'CNI (Carte Nationale d\'Identité)' :
+                          user.document_type === 'PASSPORT' ? 'Passeport' :
+                          user.document_type === 'RESIDENCE_PERMIT' ? 'Permis de résidence' :
+                          user.document_type === 'DRIVER_LICENSE' ? 'Permis de conduire' :
+                          user.document_type
+                        ) : 'Non renseigné'}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="document_number">Numéro de document</Label>
+                    {isEditingPersonal ? (
+                      <Input
+                        id="document_number"
+                        value={personalForm.document_number}
+                        onChange={(e) => setPersonalForm({ ...personalForm, document_number: e.target.value })}
+                        placeholder="Numéro du document"
+                      />
+                    ) : (
+                      <p className="text-sm py-2 px-3 bg-muted rounded-md">
+                        {user.document_number || 'Non renseigné'}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Adresse et Ville en 2 colonnes */}
@@ -758,6 +817,33 @@ export default function ProfilePage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* Préférence de langue */}
+                <div className="space-y-3 pb-6 border-b">
+                  <div className="flex items-center gap-2">
+                    <Languages className="h-5 w-5 text-primary" />
+                    <Label htmlFor="preferred_language" className="text-base font-medium">
+                      Langue préférée
+                    </Label>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Choisissez votre langue pour l&apos;interface et les communications
+                  </p>
+                  <Select
+                    value={notificationPrefs.preferred_language}
+                    onValueChange={(value) => setNotificationPrefs({ ...notificationPrefs, preferred_language: value })}
+                  >
+                    <SelectTrigger id="preferred_language" className="max-w-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="es">🇪🇸 Español (Espagnol)</SelectItem>
+                      <SelectItem value="fr">🇫🇷 Français</SelectItem>
+                      <SelectItem value="en">🇬🇧 English (Anglais)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Notifications */}
                 <div className="flex items-center justify-between space-x-4">
                   <div className="flex-1">
                     <Label htmlFor="email_notifications" className="text-base font-medium">
