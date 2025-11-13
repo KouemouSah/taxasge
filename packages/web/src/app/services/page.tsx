@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -25,10 +25,9 @@ import {
 } from "@/lib/api/servicesApi"
 
 /**
- * Services Page - Advanced search with filters
- * Connects to PostgreSQL-based search endpoint
+ * Services Content - Component that uses useSearchParams
  */
-export default function ServicesPage() {
+function ServicesContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -526,5 +525,30 @@ export default function ServicesPage() {
 
       <Footer />
     </div>
+  )
+}
+
+/**
+ * Services Page - Wrapper with Suspense boundary
+ * Required for Next.js static export with useSearchParams
+ */
+export default function ServicesPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen flex-col">
+        <Header />
+        <main className="flex-1 bg-background">
+          <div className="container mx-auto px-4 py-8">
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="ml-3 text-muted-foreground">Cargando servicios...</span>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    }>
+      <ServicesContent />
+    </Suspense>
   )
 }
