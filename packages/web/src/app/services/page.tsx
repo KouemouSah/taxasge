@@ -139,7 +139,15 @@ function ServicesContent() {
 
     } catch (err) {
       console.error('Search failed:', err)
-      const errorMessage = err instanceof Error ? err.message : 'Failed to search services'
+      let errorMessage = err instanceof Error ? err.message : 'Failed to search services'
+
+      // User-friendly error messages for common issues
+      if (errorMessage.includes('Database error') || errorMessage.includes('GROUP BY')) {
+        errorMessage = 'El servicio de búsqueda está temporalmente fuera de servicio debido a mantenimiento del servidor. Por favor, inténtelo más tarde.'
+      } else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
+        errorMessage = 'No se puede conectar al servidor. Verifique su conexión a internet e inténtelo de nuevo.'
+      }
+
       setError(errorMessage)
       setSearchResults(getDefaultSearchResponse())
     } finally {

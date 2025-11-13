@@ -44,14 +44,50 @@ export default function MinistriesPage() {
       setLoading(true)
       setError(null)
 
-      const response = await fetch(`${API_BASE_URL}/api/v1/ministries`)
+      // Workaround: Extract ministries from categories endpoint
+      // TODO: Use /api/v1/ministries endpoint when backend is deployed
+      const response = await fetch(`${API_BASE_URL}/api/v1/homepage/categories`)
 
       if (!response.ok) {
         throw new Error(`Error ${response.status}: No se pudieron cargar los ministerios`)
       }
 
       const data = await response.json()
-      setMinistries(Array.isArray(data) ? data : data.ministries || [])
+
+      // Extract unique ministries from categories
+      const ministryMap = new Map<string, Ministry>()
+      let idCounter = 1
+
+      if (data.categories && Array.isArray(data.categories)) {
+        data.categories.forEach((cat: any) => {
+          if (cat.ministry_name && !ministryMap.has(cat.ministry_name)) {
+            ministryMap.set(cat.ministry_name, {
+              id: idCounter++,
+              ministry_code: `MIN-${String(idCounter).padStart(3, '0')}`,
+              name: cat.ministry_name,
+              description: null,
+              website_url: null,
+              contact_email: null,
+              contact_phone: null,
+              categories_count: 0,
+              services_count: 0
+            })
+          }
+        })
+
+        // Count categories and services for each ministry
+        data.categories.forEach((cat: any) => {
+          if (cat.ministry_name) {
+            const ministry = ministryMap.get(cat.ministry_name)
+            if (ministry) {
+              ministry.categories_count++
+              ministry.services_count += cat.service_count || 0
+            }
+          }
+        })
+      }
+
+      setMinistries(Array.from(ministryMap.values()).sort((a, b) => a.name.localeCompare(b.name)))
 
     } catch (err) {
       console.error('Error fetching ministries:', err)
