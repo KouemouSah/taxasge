@@ -10,13 +10,10 @@
 CREATE MATERIALIZED VIEW IF NOT EXISTS ministries_with_stats AS
 SELECT
     m.id,
+    m.ministry_code,
     m.name_es,
-    m.name_fr,
-    m.name_en,
     m.description_es,
-    m.description_fr,
-    m.description_en,
-    m.website,
+    m.website_url,
     m.is_active,
     COUNT(DISTINCT c.id)::INTEGER as categories_count,
     COUNT(DISTINCT fs.id)::INTEGER as services_count,
@@ -25,9 +22,8 @@ FROM ministries m
 LEFT JOIN categories c ON c.ministry_id = m.id AND c.is_active = true
 LEFT JOIN fiscal_services fs ON fs.category_id = c.id AND fs.status = 'active'::service_status_enum
 WHERE m.is_active = true
-GROUP BY m.id, m.name_es, m.name_fr, m.name_en,
-         m.description_es, m.description_fr, m.description_en,
-         m.website, m.is_active
+GROUP BY m.id, m.ministry_code, m.name_es, m.description_es,
+         m.website_url, m.is_active
 ORDER BY services_count DESC, m.name_es ASC;
 
 -- Step 2: Create unique index (required for CONCURRENTLY refresh)

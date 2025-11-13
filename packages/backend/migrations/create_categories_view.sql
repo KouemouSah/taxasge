@@ -12,21 +12,13 @@ SELECT
     c.id,
     c.category_code,
     c.name_es,
-    c.name_fr,
-    c.name_en,
     c.description_es,
-    c.description_fr,
-    c.description_en,
     c.icon,
     c.color,
     c.ministry_id,
     c.sector_id,
-    m.name_es as ministry_name_es,
-    m.name_fr as ministry_name_fr,
-    m.name_en as ministry_name_en,
-    s.name_es as sector_name_es,
-    s.name_fr as sector_name_fr,
-    s.name_en as sector_name_en,
+    m.name_es as ministry_name,
+    s.name_es as sector_name,
     COUNT(fs.id)::INTEGER as service_count,
     NOW() as last_updated
 FROM categories c
@@ -35,11 +27,9 @@ LEFT JOIN sectors s ON c.sector_id = s.id
 LEFT JOIN fiscal_services fs ON fs.category_id = c.id
     AND fs.status = 'active'::service_status_enum
 WHERE c.is_active = true
-GROUP BY c.id, c.category_code, c.name_es, c.name_fr, c.name_en,
-         c.description_es, c.description_fr, c.description_en,
+GROUP BY c.id, c.category_code, c.name_es, c.description_es,
          c.icon, c.color, c.ministry_id, c.sector_id,
-         m.name_es, m.name_fr, m.name_en,
-         s.name_es, s.name_fr, s.name_en
+         m.name_es, s.name_es
 ORDER BY service_count DESC, c.name_es ASC;
 
 -- Step 2: Create unique index (required for CONCURRENTLY refresh)

@@ -10,12 +10,10 @@
 CREATE MATERIALIZED VIEW IF NOT EXISTS sectors_with_stats AS
 SELECT
     s.id,
+    s.sector_code,
+    s.ministry_id,
     s.name_es,
-    s.name_fr,
-    s.name_en,
     s.description_es,
-    s.description_fr,
-    s.description_en,
     s.is_active,
     COUNT(DISTINCT c.id)::INTEGER as categories_count,
     COUNT(DISTINCT fs.id)::INTEGER as services_count,
@@ -24,8 +22,7 @@ FROM sectors s
 LEFT JOIN categories c ON c.sector_id = s.id AND c.is_active = true
 LEFT JOIN fiscal_services fs ON fs.category_id = c.id AND fs.status = 'active'::service_status_enum
 WHERE s.is_active = true
-GROUP BY s.id, s.name_es, s.name_fr, s.name_en,
-         s.description_es, s.description_fr, s.description_en,
+GROUP BY s.id, s.sector_code, s.ministry_id, s.name_es, s.description_es,
          s.is_active
 ORDER BY services_count DESC, s.name_es ASC;
 

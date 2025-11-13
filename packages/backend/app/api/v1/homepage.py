@@ -245,24 +245,20 @@ async def get_category_directory(
         # STEP 2: Try materialized view fallback (2-5ms)
         # Try to get categories from pre-calculated materialized view
         try:
-            # Select appropriate language columns based on language parameter
-            name_col = f"name_{language}"
-            description_col = f"description_{language}"
-            ministry_col = f"ministry_name_{language}"
-            sector_col = f"sector_name_{language}"
-
-            mv_query = f"""
+            # Note: Currently only Spanish (_es) columns exist in the schema
+            # The language parameter is kept for future multi-language support
+            mv_query = """
                 SELECT
                     id,
                     category_code,
-                    {name_col} as name_es,
-                    {description_col} as description_es,
+                    name_es,
+                    description_es,
                     icon,
                     color,
                     ministry_id,
                     sector_id,
-                    {ministry_col} as ministry_name,
-                    {sector_col} as sector_name,
+                    ministry_name,
+                    sector_name,
                     service_count
                 FROM categories_with_services
                 ORDER BY service_count DESC, name_es ASC
