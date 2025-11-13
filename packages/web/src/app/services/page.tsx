@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,10 +9,11 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   Search, Filter, X, AlertCircle, Loader2, ChevronLeft, ChevronRight,
-  Building2, Clock, SlidersHorizontal
+  Building2, Clock, SlidersHorizontal, LayoutGrid, List
 } from "lucide-react"
 import Header from "@/components/layout/Header"
 import Footer from "@/components/layout/Footer"
+import Breadcrumb from "@/components/ui/breadcrumb"
 import {
   searchServices,
   getDefaultSearchResponse,
@@ -24,11 +25,12 @@ import {
   type ServiceResult
 } from "@/lib/api/servicesApi"
 
+type ViewMode = 'kanban' | 'list'
+
 /**
- * Services Page - Advanced search with filters
- * Connects to PostgreSQL-based search endpoint
+ * Services Content - Component that uses useSearchParams
  */
-export default function ServicesPage() {
+function ServicesContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -37,12 +39,21 @@ export default function ServicesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showFilters, setShowFilters] = useState(false)
+  const [viewMode, setViewMode] = useState<ViewMode>('kanban')
 
   // Search filters state
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedMinistry, setSelectedMinistry] = useState<number | null>(null)
   const [selectedServiceType, setSelectedServiceType] = useState<string | null>(null)
   const [selectedPriceRange, setSelectedPriceRange] = useState<string | null>(null)
+
+  // Advanced price filters
+  const [minExpeditionPrice, setMinExpeditionPrice] = useState<number | undefined>()
+  const [maxExpeditionPrice, setMaxExpeditionPrice] = useState<number | undefined>()
+  const [minRenewalPrice, setMinRenewalPrice] = useState<number | undefined>()
+  const [maxRenewalPrice, setMaxRenewalPrice] = useState<number | undefined>()
+
   const [sortBy, setSortBy] = useState<'relevance' | 'name' | 'price' | 'popular'>('relevance')
   const [currentPage, setCurrentPage] = useState(1)
 
@@ -76,6 +87,7 @@ export default function ServicesPage() {
       const filters: SearchFilters = {
         q: searchQuery || undefined,
         category_code: selectedCategory || undefined,
+        ministry_code: selectedMinistry || undefined,
         service_type: selectedServiceType || undefined,
         sort_by: sortBy,
         page: currentPage,
@@ -84,7 +96,7 @@ export default function ServicesPage() {
         language: 'es'
       }
 
-      // Add price range filters
+      // Add price range filters (legacy UI)
       if (selectedPriceRange) {
         const priceRanges: Record<string, { min?: number, max?: number }> = {
           'free': { max: 0 },
@@ -101,6 +113,20 @@ export default function ServicesPage() {
         }
       }
 
+      // Add advanced price filters
+      if (minExpeditionPrice !== undefined) {
+        filters.min_expedition_price = minExpeditionPrice
+      }
+      if (maxExpeditionPrice !== undefined) {
+        filters.max_expedition_price = maxExpeditionPrice
+      }
+      if (minRenewalPrice !== undefined) {
+        filters.min_renewal_price = minRenewalPrice
+      }
+      if (maxRenewalPrice !== undefined) {
+        filters.max_renewal_price = maxRenewalPrice
+      }
+
       const results = await searchServices(filters)
       setSearchResults(results)
 
@@ -112,7 +138,7 @@ export default function ServicesPage() {
     } finally {
       setLoading(false)
     }
-  }, [searchQuery, selectedCategory, selectedServiceType, selectedPriceRange, sortBy, currentPage])
+  }, [searchQuery, selectedCategory, selectedMinistry, selectedServiceType, selectedPriceRange, minExpeditionPrice, maxExpeditionPrice, minRenewalPrice, maxRenewalPrice, sortBy, currentPage])
 
   /**
    * Trigger search when filters change
@@ -159,11 +185,21 @@ export default function ServicesPage() {
     setCurrentPage(1)
   }
 
+  const handleMinistryFilter = (ministryId: number) => {
+    setSelectedMinistry(selectedMinistry === ministryId ? null : ministryId)
+    setCurrentPage(1)
+  }
+
   const clearAllFilters = () => {
     setSearchQuery('')
     setSelectedCategory(null)
+    setSelectedMinistry(null)
     setSelectedServiceType(null)
     setSelectedPriceRange(null)
+    setMinExpeditionPrice(undefined)
+    setMaxExpeditionPrice(undefined)
+    setMinRenewalPrice(undefined)
+    setMaxRenewalPrice(undefined)
     setSortBy('relevance')
     setCurrentPage(1)
   }
@@ -194,8 +230,13 @@ export default function ServicesPage() {
 
   const activeFiltersCount = [
     selectedCategory,
+    selectedMinistry,
     selectedServiceType,
-    selectedPriceRange
+    selectedPriceRange,
+    minExpeditionPrice !== undefined,
+    maxExpeditionPrice !== undefined,
+    minRenewalPrice !== undefined,
+    maxRenewalPrice !== undefined
   ].filter(Boolean).length
 
   return (
@@ -204,15 +245,49 @@ export default function ServicesPage() {
 
       <main className="flex-1 bg-background">
         <div className="container mx-auto px-4 py-8">
-          {/* Page Header */}
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-2">Servicios Fiscales</h1>
-            <p className="text-muted-foreground">
-              {loading
-                ? "Cargando servicios..."
-                : `${searchResults?.total_results || 0} servicios encontrados`
-              }
-            </p>
+          {/* Breadcrumbs */}
+          <Breadcrumb
+            items={[
+              { label: 'Services Fiscaux' }
+            ]}
+            className="mb-6"
+          />
+
+          {/* Page Header with View Toggle */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+            <div>
+              <h1 className="text-4xl font-bold mb-2">Servicios Fiscales</h1>
+              <p className="text-muted-foreground">
+                {loading
+                  ? "Cargando servicios..."
+                  : `${searchResults?.total_results || 0} servicios encontrados`
+                }
+              </p>
+            </div>
+
+            {/* View Mode Toggle */}
+            {!loading && searchResults && searchResults.results.length > 0 && (
+              <div className="flex items-center gap-2 bg-muted p-1 rounded-lg">
+                <Button
+                  variant={viewMode === 'kanban' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('kanban')}
+                  className="gap-2"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                  <span className="hidden sm:inline">Kanban</span>
+                </Button>
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                  className="gap-2"
+                >
+                  <List className="h-4 w-4" />
+                  <span className="hidden sm:inline">Lista</span>
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Search Bar */}
@@ -362,6 +437,97 @@ export default function ServicesPage() {
                       </div>
                     </div>
                   )}
+
+                  {/* Ministries Facets */}
+                  {searchResults?.facets?.ministries && searchResults.facets.ministries.length > 0 && (
+                    <div>
+                      <h3 className="font-medium mb-3">Ministerio</h3>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {searchResults.facets.ministries.map((ministry: any) => (
+                          <Button
+                            key={ministry.id}
+                            variant={selectedMinistry === ministry.id ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handleMinistryFilter(ministry.id)}
+                            className="w-full justify-between text-left"
+                          >
+                            <span className="truncate text-xs">{ministry.name}</span>
+                            <Badge variant="secondary" className="ml-2 text-xs">
+                              {ministry.count}
+                            </Badge>
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Advanced Price Filters */}
+                  <div>
+                    <h3 className="font-medium mb-3">Precios Específicos</h3>
+                    <div className="space-y-4">
+                      {/* Expedition Price */}
+                      <div>
+                        <label className="text-xs text-muted-foreground mb-2 block">
+                          Precio Expedición
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Input
+                            type="number"
+                            placeholder="Mín"
+                            value={minExpeditionPrice || ''}
+                            onChange={(e) => {
+                              const val = e.target.value ? parseFloat(e.target.value) : undefined
+                              setMinExpeditionPrice(val)
+                              setCurrentPage(1)
+                            }}
+                            className="text-xs"
+                          />
+                          <Input
+                            type="number"
+                            placeholder="Máx"
+                            value={maxExpeditionPrice || ''}
+                            onChange={(e) => {
+                              const val = e.target.value ? parseFloat(e.target.value) : undefined
+                              setMaxExpeditionPrice(val)
+                              setCurrentPage(1)
+                            }}
+                            className="text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Renewal Price */}
+                      <div>
+                        <label className="text-xs text-muted-foreground mb-2 block">
+                          Precio Renovación
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Input
+                            type="number"
+                            placeholder="Mín"
+                            value={minRenewalPrice || ''}
+                            onChange={(e) => {
+                              const val = e.target.value ? parseFloat(e.target.value) : undefined
+                              setMinRenewalPrice(val)
+                              setCurrentPage(1)
+                            }}
+                            className="text-xs"
+                          />
+                          <Input
+                            type="number"
+                            placeholder="Máx"
+                            value={maxRenewalPrice || ''}
+                            onChange={(e) => {
+                              const val = e.target.value ? parseFloat(e.target.value) : undefined
+                              setMaxRenewalPrice(val)
+                              setCurrentPage(1)
+                            }}
+                            className="text-xs"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </Card>
             </aside>
@@ -414,8 +580,8 @@ export default function ServicesPage() {
                 </Card>
               )}
 
-              {/* Results Grid */}
-              {!loading && searchResults && searchResults.results.length > 0 && (
+              {/* Kanban View (Grid) */}
+              {!loading && searchResults && searchResults.results.length > 0 && viewMode === 'kanban' && (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
                     {searchResults.results.map((service) => (
@@ -480,44 +646,118 @@ export default function ServicesPage() {
                       </Card>
                     ))}
                   </div>
-
-                  {/* Pagination */}
-                  {searchResults.total_pages > 1 && (
-                    <div className="flex items-center justify-between">
-                      <Button
-                        variant="outline"
-                        onClick={handlePreviousPage}
-                        disabled={currentPage === 1}
-                      >
-                        <ChevronLeft className="h-4 w-4 mr-2" />
-                        Anterior
-                      </Button>
-
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">
-                          Página {currentPage} de {searchResults.total_pages}
-                        </span>
-                      </div>
-
-                      <Button
-                        variant="outline"
-                        onClick={handleNextPage}
-                        disabled={currentPage === searchResults.total_pages}
-                      >
-                        Siguiente
-                        <ChevronRight className="h-4 w-4 ml-2" />
-                      </Button>
-                    </div>
-                  )}
-
-                  {/* Execution time (debug info) */}
-                  {searchResults.execution_time_ms > 0 && (
-                    <p className="text-xs text-muted-foreground text-center mt-4">
-                      Búsqueda completada en {searchResults.execution_time_ms.toFixed(2)}ms
-                      {searchResults.cached && ' (en caché)'}
-                    </p>
-                  )}
                 </>
+              )}
+
+              {/* List View */}
+              {!loading && searchResults && searchResults.results.length > 0 && viewMode === 'list' && (
+                <>
+                  <div className="space-y-4 mb-8">
+                    {searchResults.results.map((service) => (
+                      <Card
+                        key={service.id}
+                        className="group cursor-pointer hover:shadow-md transition-all duration-300"
+                        onClick={() => handleServiceClick(service)}
+                      >
+                        <div className="p-6">
+                          <div className="flex flex-col md:flex-row gap-6">
+                            {/* Main Content */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-4 mb-3">
+                                <div className="flex-1">
+                                  <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors">
+                                    {service.name}
+                                  </h3>
+                                  <div className="flex flex-wrap items-center gap-2 mb-3">
+                                    <Badge variant="secondary" className="text-xs">
+                                      {service.category_name}
+                                    </Badge>
+                                    {service.ministry_name && (
+                                      <div className="flex items-center text-xs text-muted-foreground">
+                                        <Building2 className="h-3 w-3 mr-1" />
+                                        <span>{service.ministry_name}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Description */}
+                              {service.description && (
+                                <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                                  {service.description}
+                                </p>
+                              )}
+
+                              {/* Processing Time */}
+                              <div className="flex items-center text-sm text-muted-foreground">
+                                <Clock className="h-4 w-4 mr-2" />
+                                <span>{service.processing_time_days} días de procesamiento</span>
+                              </div>
+                            </div>
+
+                            {/* Pricing Section */}
+                            <div className="flex flex-row md:flex-col items-center md:items-end gap-4 md:gap-2 pt-4 md:pt-0 border-t md:border-t-0 md:border-l md:pl-6">
+                              <div className="text-center md:text-right">
+                                <p className="text-xs text-muted-foreground mb-1">Expedición</p>
+                                <p className="font-bold text-xl text-primary">
+                                  {formatPrice(service.expedition_price)}
+                                </p>
+                              </div>
+                              {service.renewal_price > 0 && (
+                                <div className="text-center md:text-right">
+                                  <p className="text-xs text-muted-foreground mb-1">Renovación</p>
+                                  <p className="font-semibold text-base">
+                                    {formatPrice(service.renewal_price)}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* Pagination - shared by both views */}
+              {!loading && searchResults && searchResults.results.length > 0 && searchResults.total_pages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
+                  <Button
+                    variant="outline"
+                    onClick={handlePreviousPage}
+                    disabled={currentPage === 1}
+                    className="w-full sm:w-auto"
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-2" />
+                    Anterior
+                  </Button>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      Página {currentPage} de {searchResults.total_pages}
+                    </span>
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    onClick={handleNextPage}
+                    disabled={currentPage === searchResults.total_pages}
+                    className="w-full sm:w-auto"
+                  >
+                    Siguiente
+                    <ChevronRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </div>
+              )}
+
+              {/* Execution time (debug info) */}
+              {!loading && searchResults && searchResults.execution_time_ms > 0 && (
+                <p className="text-xs text-muted-foreground text-center mt-2">
+                  Búsqueda completada en {searchResults.execution_time_ms.toFixed(2)}ms
+                  {searchResults.cached && ' (en caché)'}
+                </p>
               )}
             </div>
           </div>
@@ -526,5 +766,30 @@ export default function ServicesPage() {
 
       <Footer />
     </div>
+  )
+}
+
+/**
+ * Services Page - Wrapper with Suspense boundary
+ * Required for Next.js static export with useSearchParams
+ */
+export default function ServicesPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen flex-col">
+        <Header />
+        <main className="flex-1 bg-background">
+          <div className="container mx-auto px-4 py-8">
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="ml-3 text-muted-foreground">Cargando servicios...</span>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    }>
+      <ServicesContent />
+    </Suspense>
   )
 }

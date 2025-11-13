@@ -40,9 +40,21 @@ class SearchFilters(BaseModel):
     # Filters
     category_id: Optional[int] = Field(None, description="Filter by category ID")
     category_code: Optional[str] = Field(None, description="Filter by category code")
+    ministry_id: Optional[int] = Field(None, description="Filter by ministry ID")
     service_type: Optional[str] = Field(None, description="Filter by service type")
-    min_price: Optional[float] = Field(None, ge=0, description="Minimum expedition price")
-    max_price: Optional[float] = Field(None, ge=0, description="Maximum expedition price")
+
+    # Price filters - expedition
+    min_price: Optional[float] = Field(None, ge=0, description="Minimum expedition price (legacy)")
+    max_price: Optional[float] = Field(None, ge=0, description="Maximum expedition price (legacy)")
+    min_expedition_price: Optional[float] = Field(None, ge=0, description="Minimum expedition price")
+    max_expedition_price: Optional[float] = Field(None, ge=0, description="Maximum expedition price")
+
+    # Price filters - renewal
+    min_renewal_price: Optional[float] = Field(None, ge=0, description="Minimum renewal price")
+    max_renewal_price: Optional[float] = Field(None, ge=0, description="Maximum renewal price")
+
+    # Document filters
+    required_documents: Optional[List[str]] = Field(None, description="Filter by required documents")
 
     # Sorting
     sort_by: Optional[str] = Field("relevance", description="Sort field: relevance, name, price, popular")
@@ -78,6 +90,7 @@ class SearchFacets(BaseModel):
     categories: List[Dict[str, Any]] = []
     service_types: List[Dict[str, Any]] = []
     price_ranges: List[Dict[str, Any]] = []
+    ministries: List[Dict[str, Any]] = []
 
 
 class SearchResponse(BaseModel):
@@ -228,13 +241,19 @@ def build_search_query(filters: SearchFilters) -> tuple[str, list]:
         params.append(filters.category_code)
         param_counter += 1
 
+    # Ministry filter
+    if filters.ministry_id:
+        conditions.append(f"m.id = ${param_counter}")
+        params.append(filters.ministry_id)
+        param_counter += 1
+
     # Service type filter
     if filters.service_type:
         conditions.append(f"fs.service_type = ${param_counter}::service_type_enum")
         params.append(filters.service_type)
         param_counter += 1
 
-    # Price range filters
+    # Price range filters - expedition (legacy support)
     if filters.min_price is not None:
         conditions.append(f"fs.tasa_expedicion >= ${param_counter}")
         params.append(filters.min_price)
@@ -243,6 +262,36 @@ def build_search_query(filters: SearchFilters) -> tuple[str, list]:
     if filters.max_price is not None:
         conditions.append(f"fs.tasa_expedicion <= ${param_counter}")
         params.append(filters.max_price)
+        param_counter += 1
+
+    # Price range filters - expedition (new explicit naming)
+    if filters.min_expedition_price is not None:
+        conditions.append(f"fs.tasa_expedicion >= ${param_counter}")
+        params.append(filters.min_expedition_price)
+        param_counter += 1
+
+    if filters.max_expedition_price is not None:
+        conditions.append(f"fs.tasa_expedicion <= ${param_counter}")
+        params.append(filters.max_expedition_price)
+        param_counter += 1
+
+    # Price range filters - renewal
+    if filters.min_renewal_price is not None:
+        conditions.append(f"fs.tasa_renovacion >= ${param_counter}")
+        params.append(filters.min_renewal_price)
+        param_counter += 1
+
+    if filters.max_renewal_price is not None:
+        conditions.append(f"fs.tasa_renovacion <= ${param_counter}")
+        params.append(filters.max_renewal_price)
+        param_counter += 1
+
+    # Document filters
+    if filters.required_documents and len(filters.required_documents) > 0:
+        # Filter services that have ALL the required documents
+        # Uses array contains operator @> in PostgreSQL
+        conditions.append(f"fs.documentos_requeridos @> ${param_counter}::text[]")
+        params.append(filters.required_documents)
         param_counter += 1
 
     # Add conditions to query
@@ -376,11 +425,27 @@ async def calculate_facets(
         ORDER BY min_price
     """
 
+    # Facet 4: Ministries
+    ministry_query = f"""
+        SELECT
+            m.id,
+            m.name_es,
+            COUNT(fs.id) as count
+        FROM fiscal_services fs
+        INNER JOIN categories c ON fs.category_id = c.id
+        LEFT JOIN ministries m ON c.ministry_id = m.id
+        WHERE {where_clause} AND m.id IS NOT NULL
+        GROUP BY m.id, m.name_es
+        ORDER BY count DESC
+        LIMIT 20
+    """
+
     # Execute all facet queries
     try:
         category_rows = await db.fetch(category_query, *params)
         type_rows = await db.fetch(type_query, *params)
         price_rows = await db.fetch(price_range_query, *params)
+        ministry_rows = await db.fetch(ministry_query, *params)
 
         facets = SearchFacets(
             categories=[
@@ -407,6 +472,14 @@ async def calculate_facets(
                     "max": float(row["max_price"])
                 }
                 for row in price_rows
+            ],
+            ministries=[
+                {
+                    "id": row["id"],
+                    "name": row["name_es"],
+                    "count": row["count"]
+                }
+                for row in ministry_rows
             ]
         )
 

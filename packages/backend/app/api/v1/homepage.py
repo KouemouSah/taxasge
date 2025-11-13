@@ -1,7 +1,7 @@
 """
 🏠 TaxasGE Homepage API
 Provides dynamic statistics and category directory for the homepage
-All data is calculated from PostgreSQL database, not static values
+All data is calculated from PostgreSQL database with Redis caching
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Query, status
@@ -11,12 +11,22 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 from loguru import logger
 import asyncpg
+import json
+import redis.asyncio as redis
 
-# Import database dependency from existing connection module
+# Import dependencies
 from app.database.connection import get_database as get_db
+from app.core.redis_dependency import get_redis_optional
 
 # Create router
 router = APIRouter()
+
+# Cache configuration
+STATS_CACHE_KEY = "homepage:stats:v1"
+STATS_TTL = 1800  # 30 minutes - stats don't change frequently
+
+CATEGORIES_CACHE_KEY = "homepage:categories:v1"
+CATEGORIES_TTL = 3600  # 1 hour - categories are relatively static
 
 
 # Response Models
@@ -53,9 +63,12 @@ class CategoryDirectory(BaseModel):
 # API Endpoints
 
 @router.get("/stats", response_model=HomepageStats)
-async def get_homepage_stats(db: asyncpg.Connection = Depends(get_db)):
+async def get_homepage_stats(
+    db: asyncpg.Connection = Depends(get_db),
+    redis_client: Optional[redis.Redis] = Depends(get_redis_optional)
+):
     """
-    Get dynamic homepage statistics calculated from database
+    Get dynamic homepage statistics calculated from database with Redis caching
 
     Returns:
     - total_services: Count of active fiscal services (status = 'active')
@@ -63,11 +76,24 @@ async def get_homepage_stats(db: asyncpg.Connection = Depends(get_db)):
     - total_categories: Count of active categories (is_active = true)
     - total_sectors: Count of active sectors (is_active = true)
 
-    All values are calculated in real-time from PostgreSQL, not static.
+    Cache: 30 minutes TTL (stats don't change frequently)
     """
     try:
         start_time = datetime.now()
 
+        # STEP 1: Check Redis cache
+        cached_stats = None
+        if redis_client:
+            try:
+                cached_data = await redis_client.get(STATS_CACHE_KEY)
+                if cached_data:
+                    cached_stats = json.loads(cached_data)
+                    logger.info("✅ Homepage stats served from cache")
+                    return HomepageStats(**cached_stats)
+            except Exception as redis_err:
+                logger.warning(f"Redis get failed (graceful fallback): {redis_err}")
+
+        # STEP 2: Calculate from database (cache miss or Redis unavailable)
         # Query 1: Count active fiscal services
         # CRITICAL: Only count services where status = 'active'
         services_query = """
@@ -103,19 +129,33 @@ async def get_homepage_stats(db: asyncpg.Connection = Depends(get_db)):
 
         execution_time = (datetime.now() - start_time).total_seconds() * 1000
 
+        stats_data = {
+            "total_services": services_count or 0,
+            "total_ministries": ministries_count or 0,
+            "total_categories": categories_count or 0,
+            "total_sectors": sectors_count or 0,
+            "last_updated": datetime.utcnow().isoformat()
+        }
+
+        # STEP 3: Store in cache for next request
+        if redis_client:
+            try:
+                await redis_client.setex(
+                    STATS_CACHE_KEY,
+                    STATS_TTL,
+                    json.dumps(stats_data)
+                )
+                logger.info(f"✅ Homepage stats cached for {STATS_TTL}s")
+            except Exception as redis_err:
+                logger.warning(f"Redis setex failed (non-critical): {redis_err}")
+
         logger.info(
             f"Homepage stats calculated: services={services_count}, "
             f"ministries={ministries_count}, categories={categories_count}, "
             f"sectors={sectors_count}, time={execution_time:.2f}ms"
         )
 
-        return HomepageStats(
-            total_services=services_count or 0,
-            total_ministries=ministries_count or 0,
-            total_categories=categories_count or 0,
-            total_sectors=sectors_count or 0,
-            last_updated=datetime.utcnow().isoformat()
-        )
+        return HomepageStats(**stats_data)
 
     except asyncpg.PostgresError as e:
         logger.error(f"Database error in get_homepage_stats: {e}")
@@ -134,21 +174,34 @@ async def get_homepage_stats(db: asyncpg.Connection = Depends(get_db)):
 @router.get("/categories", response_model=CategoryDirectory)
 async def get_category_directory(
     db: asyncpg.Connection = Depends(get_db),
+    redis_client: Optional[redis.Redis] = Depends(get_redis_optional),
     language: str = Query("es", pattern="^(es|fr|en)$", description="Language code")
 ):
     """
-    Get category directory with service counts for homepage
+    Get category directory with service counts for homepage with Redis caching
 
     Returns categories sorted by service count (descending) with:
     - Category information (name, description, icon, color)
     - Number of active services in each category
     - Associated ministry and sector names
 
-    Service counts are calculated dynamically from active fiscal services only.
+    Cache: 1 hour TTL (categories are relatively static)
     """
     try:
         start_time = datetime.now()
 
+        # STEP 1: Check Redis cache
+        if redis_client:
+            try:
+                cached_data = await redis_client.get(CATEGORIES_CACHE_KEY)
+                if cached_data:
+                    cached_result = json.loads(cached_data)
+                    logger.info("✅ Category directory served from cache")
+                    return CategoryDirectory(**cached_result)
+            except Exception as redis_err:
+                logger.warning(f"Redis get failed (graceful fallback): {redis_err}")
+
+        # STEP 2: Calculate from database (cache miss or Redis unavailable)
         # Complex query to get categories with service counts
         # CRITICAL: Only count services where status = 'active'
         # Join with ministries and sectors for additional context
@@ -201,17 +254,31 @@ async def get_category_directory(
 
         execution_time = (datetime.now() - start_time).total_seconds() * 1000
 
+        result_data = {
+            "total_categories": len(categories),
+            "total_services": total_services,
+            "categories": [cat.dict() for cat in categories],
+            "last_updated": datetime.utcnow().isoformat()
+        }
+
+        # STEP 3: Store in cache for next request
+        if redis_client:
+            try:
+                await redis_client.setex(
+                    CATEGORIES_CACHE_KEY,
+                    CATEGORIES_TTL,
+                    json.dumps(result_data)
+                )
+                logger.info(f"✅ Category directory cached for {CATEGORIES_TTL}s")
+            except Exception as redis_err:
+                logger.warning(f"Redis setex failed (non-critical): {redis_err}")
+
         logger.info(
             f"Category directory generated: {len(categories)} categories, "
             f"{total_services} total services, time={execution_time:.2f}ms"
         )
 
-        return CategoryDirectory(
-            total_categories=len(categories),
-            total_services=total_services,
-            categories=categories,
-            last_updated=datetime.utcnow().isoformat()
-        )
+        return CategoryDirectory(**result_data)
 
     except asyncpg.PostgresError as e:
         logger.error(f"Database error in get_category_directory: {e}")
