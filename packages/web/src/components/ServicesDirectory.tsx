@@ -35,19 +35,19 @@ export const ServicesDirectory = () => {
     fetchDirectory()
   }, [])
 
-  // Display only top 6 categories
-  const topCategories = directory?.categories.slice(0, 6) || []
+  // Display only top 8 categories
+  const topCategories = directory?.categories.slice(0, 8) || []
 
   return (
     <section className="py-16 bg-background">
       <div className="container mx-auto px-4">
         {/* Header */}
-        <div className="mb-12">
-          <h2 className="text-3xl font-bold mb-2">Annuaire des services</h2>
-          <p className="text-muted-foreground">
+        <div className="mb-12 text-center">
+          <h2 className="text-3xl font-bold mb-3">Annuaire des Services Fiscaux</h2>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
             {loading
               ? "Chargement de l'annuaire..."
-              : `${directory?.total_categories || 0} catégories • ${directory?.total_services || 0} services disponibles`
+              : `Explorez notre catalogue de ${directory?.total_services || 0} services fiscaux répartis dans ${directory?.total_categories || 0} catégories pour simplifier vos démarches administratives.`
             }
           </p>
         </div>
@@ -139,7 +139,7 @@ export const ServicesDirectory = () => {
         )}
 
         {/* View All Button (bottom) */}
-        {!loading && topCategories.length > 0 && directory && directory.total_categories > 6 && (
+        {!loading && topCategories.length > 0 && directory && directory.total_categories > 8 && (
           <div className="mt-8 text-center">
             <Button
               size="lg"
