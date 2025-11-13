@@ -69,8 +69,12 @@ async def lifespan(app: FastAPI):
             )
             await redis_client.ping()
             logger.info("✅ Redis connection initialized")
+
+            # Store in app.state for dependency injection
+            app.state.redis = redis_client
         else:
             logger.warning("⚠️ Redis disabled for staging environment")
+            app.state.redis = None
 
     except Exception as e:
         logger.error(f"❌ Failed to initialize connections: {e}")
