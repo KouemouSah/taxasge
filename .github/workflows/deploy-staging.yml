@@ -40,6 +40,8 @@ jobs:
     name: Deploy Backend to Cloud Run
     runs-on: ubuntu-latest
     needs: pre-deployment-tests
+    outputs:
+      url: ${{ steps.backend-url.outputs.url }}
     defaults:
       run:
         working-directory: packages/backend
