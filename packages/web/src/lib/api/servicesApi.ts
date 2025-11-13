@@ -124,14 +124,14 @@ export async function searchServices(filters: SearchFilters = {}): Promise<Searc
     console.error('Search services error:', error)
 
     // Return fallback response
-    return getDefaultSearchResponse('Failed to load services')
+    return getDefaultSearchResponse()
   }
 }
 
 /**
  * Get default/fallback search response for error cases
  */
-export function getDefaultSearchResponse(errorMessage: string = 'Failed to load services'): SearchResponse {
+export function getDefaultSearchResponse(): SearchResponse {
   return {
     success: false,
     query: '',
