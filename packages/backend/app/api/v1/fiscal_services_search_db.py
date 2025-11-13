@@ -612,7 +612,9 @@ async def search_services_database(
         rows = await db.fetch(search_query, *query_params)
 
         # Get total count (for pagination)
-        count_query = search_query.split("LIMIT")[0].replace(
+        # Remove ORDER BY and LIMIT to avoid GROUP BY issues with COUNT(*)
+        count_query_base = search_query.split("ORDER BY")[0] if "ORDER BY" in search_query else search_query.split("LIMIT")[0]
+        count_query = count_query_base.replace(
             "SELECT * FROM filtered_services",
             "SELECT COUNT(*) as total FROM filtered_services"
         )
