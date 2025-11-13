@@ -14,6 +14,8 @@ SELECT
     m.name_es,
     m.description_es,
     m.website_url,
+    m.contact_email,
+    m.contact_phone,
     m.is_active,
     COUNT(DISTINCT c.id)::INTEGER as categories_count,
     COUNT(DISTINCT fs.id)::INTEGER as services_count,
@@ -23,7 +25,7 @@ LEFT JOIN categories c ON c.ministry_id = m.id AND c.is_active = true
 LEFT JOIN fiscal_services fs ON fs.category_id = c.id AND fs.status = 'active'::service_status_enum
 WHERE m.is_active = true
 GROUP BY m.id, m.ministry_code, m.name_es, m.description_es,
-         m.website_url, m.is_active
+         m.website_url, m.contact_email, m.contact_phone, m.is_active
 ORDER BY services_count DESC, m.name_es ASC;
 
 -- Step 2: Create unique index (required for CONCURRENTLY refresh)
