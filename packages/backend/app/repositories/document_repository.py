@@ -1,0 +1,602 @@
+"""
+Document Repository for TaxasGE Backend
+Handles document persistence with PostgreSQL and Supabase
+Aligned with uploaded_files and ocr_extraction_results tables
+
+Author: Claude Code
+Date: 2025-11-13
+Version: 2.0 - Reorganized with core/documents/
+"""
+
+from typing import Optional, List, Dict, Any, Tuple
+from datetime import datetime
+from uuid import UUID
+from loguru import logger
+import json
+
+from app.repositories.base import BaseRepository
+from app.models.document import (
+    Document, DocumentCreate, DocumentUpdate, DocumentSearchFilter,
+    DocumentProcessingStats, DocumentOCRStatus, DocumentExtractionStatus,
+    DocumentValidationStatus, DocumentAccessLevel, DocumentType
+)
+
+
+class DocumentRepository(BaseRepository[Document]):
+    """Repository for document management operations"""
+
+    def __init__(self):
+        super().__init__("uploaded_files")
+
+    def _map_to_model(self, data: Dict[str, Any]) -> Document:
+        """Map database row to Document model"""
+
+        # Parse JSONB fields that come as strings from asyncpg
+        extracted_data = data.get("extracted_data")
+        if extracted_data and isinstance(extracted_data, str):
+            try:
+                extracted_data = json.loads(extracted_data)
+            except json.JSONDecodeError:
+                logger.warning(f"Failed to parse extracted_data for document {data.get('id')}")
+                extracted_data = None
+
+        form_mapping = data.get("form_mapping")
+        if form_mapping and isinstance(form_mapping, str):
+            try:
+                form_mapping = json.loads(form_mapping)
+            except json.JSONDecodeError:
+                logger.warning(f"Failed to parse form_mapping for document {data.get('id')}")
+                form_mapping = None
+
+        # Map database columns to Document model
+        return Document(
+            id=data["id"] if isinstance(data["id"], UUID) else UUID(data["id"]),
+            user_id=data["user_id"] if isinstance(data["user_id"], UUID) else UUID(data["user_id"]),
+            original_filename=data["original_filename"],
+            document_type=DocumentType(data["document_type"]) if data.get("document_type") else DocumentType.other,
+            document_subtype=data.get("document_subtype"),
+            description=data.get("description"),
+
+            # Firebase Storage
+            file_path=data["file_path"],
+            file_url=data["file_url"],
+            file_size_bytes=data["file_size_bytes"],
+            mime_type=data["mime_type"],
+            file_hash=data["file_hash"],
+
+            # Processing configuration
+            processing_mode=data.get("processing_mode", "server_processing"),
+
+            # OCR status
+            ocr_status=DocumentOCRStatus(data.get("ocr_status", "pending")),
+            ocr_text=data.get("ocr_text"),
+            ocr_confidence=data.get("ocr_confidence"),
+            ocr_provider=data.get("ocr_provider"),
+
+            # Extraction status
+            extraction_status=DocumentExtractionStatus(data.get("extraction_status", "pending")),
+            extracted_data=extracted_data,
+            extraction_confidence=data.get("extraction_confidence"),
+
+            # Form mapping (NEW)
+            form_mapping=form_mapping,
+
+            # Validation
+            validation_status=DocumentValidationStatus(data.get("validation_status", "pending")),
+
+            # Relationships
+            related_to_type=data.get("related_to_type"),
+            related_to_id=UUID(data["related_to_id"]) if data.get("related_to_id") else None,
+
+            # Access control
+            access_level=DocumentAccessLevel(data.get("access_level", "private")),
+
+            # Metadata
+            processing_started_at=data.get("processing_started_at"),
+            processing_completed_at=data.get("processing_completed_at"),
+            processing_duration_ms=data.get("processing_duration_ms"),
+            uploaded_at=data.get("uploaded_at", datetime.utcnow()),
+            updated_at=data.get("updated_at", datetime.utcnow())
+        )
+
+    def _map_from_model(self, model: Document) -> Dict[str, Any]:
+        """Map Document model to database row"""
+        return {
+            "id": str(model.id),
+            "user_id": str(model.user_id),
+            "original_filename": model.original_filename,
+            "document_type": model.document_type.value,
+            "document_subtype": model.document_subtype,
+            "description": model.description,
+
+            # Firebase Storage
+            "file_path": model.file_path,
+            "file_url": model.file_url,
+            "file_size_bytes": model.file_size_bytes,
+            "mime_type": model.mime_type,
+            "file_hash": model.file_hash,
+
+            # Processing configuration
+            "processing_mode": model.processing_mode.value if hasattr(model.processing_mode, 'value') else model.processing_mode,
+
+            # OCR status
+            "ocr_status": model.ocr_status.value,
+            "ocr_text": model.ocr_text,
+            "ocr_confidence": model.ocr_confidence,
+            "ocr_provider": model.ocr_provider,
+
+            # Extraction status
+            "extraction_status": model.extraction_status.value,
+            "extracted_data": model.extracted_data,
+            "extraction_confidence": model.extraction_confidence,
+
+            # Form mapping
+            "form_mapping": model.form_mapping,
+
+            # Validation
+            "validation_status": model.validation_status.value,
+
+            # Relationships
+            "related_to_type": model.related_to_type,
+            "related_to_id": str(model.related_to_id) if model.related_to_id else None,
+
+            # Access control
+            "access_level": model.access_level.value,
+
+            # Metadata
+            "processing_started_at": model.processing_started_at,
+            "processing_completed_at": model.processing_completed_at,
+            "processing_duration_ms": model.processing_duration_ms,
+            "uploaded_at": model.uploaded_at,
+            "updated_at": model.updated_at
+        }
+
+    async def create_document(
+        self,
+        document_data: DocumentCreate,
+        use_supabase: bool = True
+    ) -> Optional[Document]:
+        """
+        Create new document record
+
+        Args:
+            document_data: Document creation data
+            use_supabase: Use Supabase client (default: True)
+
+        Returns:
+            Created Document or None
+        """
+        try:
+            from uuid import uuid4
+            from datetime import datetime
+
+            # Generate ID and timestamps
+            doc_id = uuid4()
+            now = datetime.utcnow()
+
+            # Prepare data for insertion
+            data = {
+                "id": str(doc_id),
+                "user_id": str(document_data.user_id),
+                "original_filename": document_data.original_filename,
+                "document_type": document_data.document_type.value,
+                "document_subtype": document_data.document_subtype,
+                "description": document_data.description,
+
+                # Firebase Storage
+                "file_path": document_data.file_path,
+                "file_url": document_data.file_url,
+                "file_size_bytes": document_data.file_size_bytes,
+                "mime_type": document_data.mime_type,
+                "file_hash": document_data.file_hash,
+
+                # Processing configuration
+                "processing_mode": document_data.processing_mode.value,
+
+                # Initial status
+                "ocr_status": DocumentOCRStatus.pending.value,
+                "extraction_status": DocumentExtractionStatus.pending.value,
+                "validation_status": DocumentValidationStatus.pending.value,
+
+                # Relationships
+                "related_to_type": document_data.related_to_type,
+                "related_to_id": str(document_data.related_to_id) if document_data.related_to_id else None,
+
+                # Access control
+                "access_level": DocumentAccessLevel.private.value,
+
+                # Timestamps
+                "uploaded_at": now,
+                "updated_at": now
+            }
+
+            if use_supabase and self.supabase.enabled:
+                result = await self.supabase.insert(self.table_name, data)
+                if result:
+                    return self._map_to_model(result)
+            else:
+                # Build INSERT query
+                columns = list(data.keys())
+                placeholders = [f"${i+1}" for i in range(len(columns))]
+                values = list(data.values())
+
+                query = f"""
+                    INSERT INTO {self.table_name} ({', '.join(columns)})
+                    VALUES ({', '.join(placeholders)})
+                    RETURNING *
+                """
+
+                result = await self.db_manager.execute_single(query, *values)
+                if result:
+                    return self._map_to_model(dict(result))
+
+            return None
+
+        except Exception as e:
+            logger.error(f"Error creating document: {e}")
+            return None
+
+    async def update_ocr_results(
+        self,
+        document_id: UUID,
+        ocr_text: str,
+        ocr_confidence: float,
+        ocr_provider: str,
+        processing_duration_ms: int,
+        use_supabase: bool = True
+    ) -> Optional[Document]:
+        """
+        Update document with OCR results
+
+        Args:
+            document_id: Document UUID
+            ocr_text: Extracted OCR text
+            ocr_confidence: Confidence score (0-1)
+            ocr_provider: OCR provider used (tesseract, google_vision)
+            processing_duration_ms: Processing time
+            use_supabase: Use Supabase client
+
+        Returns:
+            Updated Document or None
+        """
+        try:
+            updates = {
+                "ocr_status": DocumentOCRStatus.completed.value,
+                "ocr_text": ocr_text,
+                "ocr_confidence": ocr_confidence,
+                "ocr_provider": ocr_provider,
+                "processing_completed_at": datetime.utcnow(),
+                "processing_duration_ms": processing_duration_ms,
+                "updated_at": datetime.utcnow()
+            }
+
+            return await self.update(str(document_id), updates, use_supabase)
+
+        except Exception as e:
+            logger.error(f"Error updating OCR results for document {document_id}: {e}")
+            return None
+
+    async def update_ocr_failed(
+        self,
+        document_id: UUID,
+        error_message: str,
+        use_supabase: bool = True
+    ) -> Optional[Document]:
+        """Mark document OCR as failed"""
+        try:
+            updates = {
+                "ocr_status": DocumentOCRStatus.failed.value,
+                "ocr_text": f"ERROR: {error_message}",
+                "processing_completed_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow()
+            }
+
+            return await self.update(str(document_id), updates, use_supabase)
+
+        except Exception as e:
+            logger.error(f"Error marking OCR as failed for document {document_id}: {e}")
+            return None
+
+    async def update_extracted_data(
+        self,
+        document_id: UUID,
+        extracted_data: Dict[str, Any],
+        extraction_confidence: float,
+        form_mapping: Optional[Dict[str, Any]] = None,
+        use_supabase: bool = True
+    ) -> Optional[Document]:
+        """
+        Update document with extracted structured data
+
+        Args:
+            document_id: Document UUID
+            extracted_data: Structured extracted data
+            extraction_confidence: Confidence score (0-1)
+            form_mapping: Form mapping for frontend pre-fill
+            use_supabase: Use Supabase client
+
+        Returns:
+            Updated Document or None
+        """
+        try:
+            updates = {
+                "extraction_status": DocumentExtractionStatus.completed.value,
+                "extracted_data": json.dumps(extracted_data) if isinstance(extracted_data, dict) else extracted_data,
+                "extraction_confidence": extraction_confidence,
+                "updated_at": datetime.utcnow()
+            }
+
+            # Add form mapping if provided
+            if form_mapping:
+                updates["form_mapping"] = json.dumps(form_mapping) if isinstance(form_mapping, dict) else form_mapping
+
+            return await self.update(str(document_id), updates, use_supabase)
+
+        except Exception as e:
+            logger.error(f"Error updating extracted data for document {document_id}: {e}")
+            return None
+
+    async def update_extraction_failed(
+        self,
+        document_id: UUID,
+        error_message: str,
+        use_supabase: bool = True
+    ) -> Optional[Document]:
+        """Mark document extraction as failed"""
+        try:
+            updates = {
+                "extraction_status": DocumentExtractionStatus.failed.value,
+                "extracted_data": json.dumps({"error": error_message}),
+                "updated_at": datetime.utcnow()
+            }
+
+            return await self.update(str(document_id), updates, use_supabase)
+
+        except Exception as e:
+            logger.error(f"Error marking extraction as failed for document {document_id}: {e}")
+            return None
+
+    async def update_validation_status(
+        self,
+        document_id: UUID,
+        validation_status: DocumentValidationStatus,
+        use_supabase: bool = True
+    ) -> Optional[Document]:
+        """Update document validation status"""
+        try:
+            updates = {
+                "validation_status": validation_status.value,
+                "updated_at": datetime.utcnow()
+            }
+
+            return await self.update(str(document_id), updates, use_supabase)
+
+        except Exception as e:
+            logger.error(f"Error updating validation status for document {document_id}: {e}")
+            return None
+
+    async def find_by_user(
+        self,
+        user_id: UUID,
+        limit: int = 20,
+        offset: int = 0,
+        use_supabase: bool = True
+    ) -> List[Document]:
+        """Find all documents for a user"""
+        try:
+            filters = {"user_id": str(user_id)}
+            return await self.find_all(
+                filters=filters,
+                order_by="uploaded_at DESC",
+                limit=limit,
+                offset=offset,
+                use_supabase=use_supabase
+            )
+
+        except Exception as e:
+            logger.error(f"Error finding documents for user {user_id}: {e}")
+            return []
+
+    async def search_documents(
+        self,
+        filters: DocumentSearchFilter,
+        use_supabase: bool = True
+    ) -> Tuple[List[Document], int]:
+        """
+        Advanced document search with filters
+
+        Args:
+            filters: Search filters
+            use_supabase: Use Supabase client
+
+        Returns:
+            Tuple of (documents, total_count)
+        """
+        try:
+            # Build filter conditions
+            query_filters = {}
+
+            if filters.user_id:
+                query_filters["user_id"] = str(filters.user_id)
+
+            if filters.document_type:
+                query_filters["document_type"] = filters.document_type.value
+
+            if filters.document_subtype:
+                query_filters["document_subtype"] = filters.document_subtype
+
+            if filters.ocr_status:
+                query_filters["ocr_status"] = filters.ocr_status.value
+
+            if filters.extraction_status:
+                query_filters["extraction_status"] = filters.extraction_status.value
+
+            if filters.validation_status:
+                query_filters["validation_status"] = filters.validation_status.value
+
+            # Get total count
+            total_count = await self.count(filters=query_filters, use_supabase=use_supabase)
+
+            # Get paginated results
+            offset = (filters.page - 1) * filters.size
+            documents = await self.find_all(
+                filters=query_filters,
+                order_by="uploaded_at DESC",
+                limit=filters.size,
+                offset=offset,
+                use_supabase=use_supabase
+            )
+
+            return documents, total_count
+
+        except Exception as e:
+            logger.error(f"Error searching documents: {e}")
+            return [], 0
+
+    async def get_processing_stats(
+        self,
+        user_id: Optional[UUID] = None,
+        use_supabase: bool = True
+    ) -> DocumentProcessingStats:
+        """
+        Get document processing statistics
+
+        Args:
+            user_id: Filter by user (None for all users)
+            use_supabase: Use Supabase client
+
+        Returns:
+            Document processing statistics
+        """
+        try:
+            # Build base query
+            base_filters = {"user_id": str(user_id)} if user_id else {}
+
+            # Total documents
+            total_documents = await self.count(filters=base_filters, use_supabase=False)
+
+            # OCR stats
+            pending_ocr = await self.count(
+                filters={**base_filters, "ocr_status": DocumentOCRStatus.pending.value},
+                use_supabase=False
+            )
+            completed_ocr = await self.count(
+                filters={**base_filters, "ocr_status": DocumentOCRStatus.completed.value},
+                use_supabase=False
+            )
+            failed_ocr = await self.count(
+                filters={**base_filters, "ocr_status": DocumentOCRStatus.failed.value},
+                use_supabase=False
+            )
+
+            # Extraction stats
+            pending_extraction = await self.count(
+                filters={**base_filters, "extraction_status": DocumentExtractionStatus.pending.value},
+                use_supabase=False
+            )
+            completed_extraction = await self.count(
+                filters={**base_filters, "extraction_status": DocumentExtractionStatus.completed.value},
+                use_supabase=False
+            )
+
+            # Averages (using raw SQL)
+            where_clause = f"WHERE user_id = '{user_id}'" if user_id else ""
+
+            avg_query = f"""
+                SELECT
+                    AVG(processing_duration_ms) as avg_processing_time_ms,
+                    AVG(ocr_confidence) as avg_ocr_confidence,
+                    AVG(extraction_confidence) as avg_extraction_confidence
+                FROM {self.table_name}
+                {where_clause}
+                AND ocr_status = 'completed'
+            """
+            avg_result = await self.db_manager.execute_single(avg_query)
+
+            # Documents by type
+            type_query = f"""
+                SELECT document_type, COUNT(*) as count
+                FROM {self.table_name}
+                {where_clause}
+                GROUP BY document_type
+            """
+            type_results = await self.db_manager.execute_query(type_query)
+            documents_by_type = {row["document_type"]: row["count"] for row in type_results}
+
+            return DocumentProcessingStats(
+                total_documents=total_documents,
+                pending_ocr=pending_ocr,
+                completed_ocr=completed_ocr,
+                failed_ocr=failed_ocr,
+                pending_extraction=pending_extraction,
+                completed_extraction=completed_extraction,
+                avg_processing_time_ms=avg_result.get("avg_processing_time_ms") if avg_result else None,
+                avg_ocr_confidence=avg_result.get("avg_ocr_confidence") if avg_result else None,
+                avg_extraction_confidence=avg_result.get("avg_extraction_confidence") if avg_result else None,
+                documents_by_type=documents_by_type
+            )
+
+        except Exception as e:
+            logger.error(f"Error getting processing stats: {e}")
+            # Return empty stats on error
+            return DocumentProcessingStats(
+                total_documents=0,
+                pending_ocr=0,
+                completed_ocr=0,
+                failed_ocr=0,
+                pending_extraction=0,
+                completed_extraction=0,
+                documents_by_type={}
+            )
+
+    async def find_pending_ocr(
+        self,
+        limit: int = 10,
+        use_supabase: bool = True
+    ) -> List[Document]:
+        """Find documents pending OCR processing"""
+        try:
+            filters = {"ocr_status": DocumentOCRStatus.pending.value}
+            return await self.find_all(
+                filters=filters,
+                order_by="uploaded_at ASC",  # FIFO order
+                limit=limit,
+                use_supabase=use_supabase
+            )
+
+        except Exception as e:
+            logger.error(f"Error finding pending OCR documents: {e}")
+            return []
+
+    async def find_pending_extraction(
+        self,
+        limit: int = 10,
+        use_supabase: bool = True
+    ) -> List[Document]:
+        """Find documents pending extraction (OCR completed but extraction pending)"""
+        try:
+            # Need raw SQL for complex WHERE with AND
+            query = f"""
+                SELECT * FROM {self.table_name}
+                WHERE ocr_status = $1
+                  AND extraction_status = $2
+                ORDER BY uploaded_at ASC
+                LIMIT $3
+            """
+
+            results = await self.db_manager.execute_query(
+                query,
+                DocumentOCRStatus.completed.value,
+                DocumentExtractionStatus.pending.value,
+                limit
+            )
+
+            return [self._map_to_model(dict(row)) for row in results]
+
+        except Exception as e:
+            logger.error(f"Error finding pending extraction documents: {e}")
+            return []
+
+
+# Singleton instance
+document_repository = DocumentRepository()
