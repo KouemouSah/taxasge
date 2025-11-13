@@ -9,10 +9,11 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   Search, Filter, X, AlertCircle, Loader2, ChevronLeft, ChevronRight,
-  Building2, Clock, SlidersHorizontal
+  Building2, Clock, SlidersHorizontal, LayoutGrid, List
 } from "lucide-react"
 import Header from "@/components/layout/Header"
 import Footer from "@/components/layout/Footer"
+import Breadcrumb from "@/components/ui/breadcrumb"
 import {
   searchServices,
   getDefaultSearchResponse,
@@ -23,6 +24,8 @@ import {
   type SearchResponse,
   type ServiceResult
 } from "@/lib/api/servicesApi"
+
+type ViewMode = 'kanban' | 'list'
 
 /**
  * Services Content - Component that uses useSearchParams
@@ -36,6 +39,7 @@ function ServicesContent() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showFilters, setShowFilters] = useState(false)
+  const [viewMode, setViewMode] = useState<ViewMode>('kanban')
 
   // Search filters state
   const [searchQuery, setSearchQuery] = useState('')
@@ -203,15 +207,49 @@ function ServicesContent() {
 
       <main className="flex-1 bg-background">
         <div className="container mx-auto px-4 py-8">
-          {/* Page Header */}
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-2">Servicios Fiscales</h1>
-            <p className="text-muted-foreground">
-              {loading
-                ? "Cargando servicios..."
-                : `${searchResults?.total_results || 0} servicios encontrados`
-              }
-            </p>
+          {/* Breadcrumbs */}
+          <Breadcrumb
+            items={[
+              { label: 'Services Fiscaux' }
+            ]}
+            className="mb-6"
+          />
+
+          {/* Page Header with View Toggle */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+            <div>
+              <h1 className="text-4xl font-bold mb-2">Servicios Fiscales</h1>
+              <p className="text-muted-foreground">
+                {loading
+                  ? "Cargando servicios..."
+                  : `${searchResults?.total_results || 0} servicios encontrados`
+                }
+              </p>
+            </div>
+
+            {/* View Mode Toggle */}
+            {!loading && searchResults && searchResults.results.length > 0 && (
+              <div className="flex items-center gap-2 bg-muted p-1 rounded-lg">
+                <Button
+                  variant={viewMode === 'kanban' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('kanban')}
+                  className="gap-2"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                  <span className="hidden sm:inline">Kanban</span>
+                </Button>
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                  className="gap-2"
+                >
+                  <List className="h-4 w-4" />
+                  <span className="hidden sm:inline">Lista</span>
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Search Bar */}
@@ -413,8 +451,8 @@ function ServicesContent() {
                 </Card>
               )}
 
-              {/* Results Grid */}
-              {!loading && searchResults && searchResults.results.length > 0 && (
+              {/* Kanban View (Grid) */}
+              {!loading && searchResults && searchResults.results.length > 0 && viewMode === 'kanban' && (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
                     {searchResults.results.map((service) => (
@@ -479,44 +517,118 @@ function ServicesContent() {
                       </Card>
                     ))}
                   </div>
-
-                  {/* Pagination */}
-                  {searchResults.total_pages > 1 && (
-                    <div className="flex items-center justify-between">
-                      <Button
-                        variant="outline"
-                        onClick={handlePreviousPage}
-                        disabled={currentPage === 1}
-                      >
-                        <ChevronLeft className="h-4 w-4 mr-2" />
-                        Anterior
-                      </Button>
-
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">
-                          Página {currentPage} de {searchResults.total_pages}
-                        </span>
-                      </div>
-
-                      <Button
-                        variant="outline"
-                        onClick={handleNextPage}
-                        disabled={currentPage === searchResults.total_pages}
-                      >
-                        Siguiente
-                        <ChevronRight className="h-4 w-4 ml-2" />
-                      </Button>
-                    </div>
-                  )}
-
-                  {/* Execution time (debug info) */}
-                  {searchResults.execution_time_ms > 0 && (
-                    <p className="text-xs text-muted-foreground text-center mt-4">
-                      Búsqueda completada en {searchResults.execution_time_ms.toFixed(2)}ms
-                      {searchResults.cached && ' (en caché)'}
-                    </p>
-                  )}
                 </>
+              )}
+
+              {/* List View */}
+              {!loading && searchResults && searchResults.results.length > 0 && viewMode === 'list' && (
+                <>
+                  <div className="space-y-4 mb-8">
+                    {searchResults.results.map((service) => (
+                      <Card
+                        key={service.id}
+                        className="group cursor-pointer hover:shadow-md transition-all duration-300"
+                        onClick={() => handleServiceClick(service)}
+                      >
+                        <div className="p-6">
+                          <div className="flex flex-col md:flex-row gap-6">
+                            {/* Main Content */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-4 mb-3">
+                                <div className="flex-1">
+                                  <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors">
+                                    {service.name}
+                                  </h3>
+                                  <div className="flex flex-wrap items-center gap-2 mb-3">
+                                    <Badge variant="secondary" className="text-xs">
+                                      {service.category_name}
+                                    </Badge>
+                                    {service.ministry_name && (
+                                      <div className="flex items-center text-xs text-muted-foreground">
+                                        <Building2 className="h-3 w-3 mr-1" />
+                                        <span>{service.ministry_name}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Description */}
+                              {service.description && (
+                                <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                                  {service.description}
+                                </p>
+                              )}
+
+                              {/* Processing Time */}
+                              <div className="flex items-center text-sm text-muted-foreground">
+                                <Clock className="h-4 w-4 mr-2" />
+                                <span>{service.processing_time_days} días de procesamiento</span>
+                              </div>
+                            </div>
+
+                            {/* Pricing Section */}
+                            <div className="flex flex-row md:flex-col items-center md:items-end gap-4 md:gap-2 pt-4 md:pt-0 border-t md:border-t-0 md:border-l md:pl-6">
+                              <div className="text-center md:text-right">
+                                <p className="text-xs text-muted-foreground mb-1">Expedición</p>
+                                <p className="font-bold text-xl text-primary">
+                                  {formatPrice(service.expedition_price)}
+                                </p>
+                              </div>
+                              {service.renewal_price > 0 && (
+                                <div className="text-center md:text-right">
+                                  <p className="text-xs text-muted-foreground mb-1">Renovación</p>
+                                  <p className="font-semibold text-base">
+                                    {formatPrice(service.renewal_price)}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* Pagination - shared by both views */}
+              {!loading && searchResults && searchResults.results.length > 0 && searchResults.total_pages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
+                  <Button
+                    variant="outline"
+                    onClick={handlePreviousPage}
+                    disabled={currentPage === 1}
+                    className="w-full sm:w-auto"
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-2" />
+                    Anterior
+                  </Button>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      Página {currentPage} de {searchResults.total_pages}
+                    </span>
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    onClick={handleNextPage}
+                    disabled={currentPage === searchResults.total_pages}
+                    className="w-full sm:w-auto"
+                  >
+                    Siguiente
+                    <ChevronRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </div>
+              )}
+
+              {/* Execution time (debug info) */}
+              {!loading && searchResults && searchResults.execution_time_ms > 0 && (
+                <p className="text-xs text-muted-foreground text-center mt-2">
+                  Búsqueda completada en {searchResults.execution_time_ms.toFixed(2)}ms
+                  {searchResults.cached && ' (en caché)'}
+                </p>
               )}
             </div>
           </div>
