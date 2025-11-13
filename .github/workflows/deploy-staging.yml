@@ -154,6 +154,21 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: npm run build
 
+      - name: Verify build output
+        run: |
+          echo "Checking if out directory exists..."
+          ls -la
+          if [ -d "out" ]; then
+            echo "✅ out directory exists"
+            echo "Contents:"
+            ls -la out/
+            echo "File count:"
+            find out -type f | wc -l
+          else
+            echo "❌ out directory does not exist!"
+            exit 1
+          fi
+
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
