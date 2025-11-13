@@ -2,7 +2,6 @@
 
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ArrowRight, Building, AlertCircle, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -22,9 +21,10 @@ export const ServicesDirectory = () => {
         setError(null)
         const data = await getCategoryDirectory('es')
         setDirectory(data)
-      } catch (err: any) {
+      } catch (err) {
         console.error('Failed to fetch category directory:', err)
-        setError(err.message || 'Failed to load category directory')
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load category directory'
+        setError(errorMessage)
         // Use default/fallback directory on error
         setDirectory(getDefaultCategoryDirectory())
       } finally {
