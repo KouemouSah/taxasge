@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   Search, Filter, X, AlertCircle, Loader2, ChevronLeft, ChevronRight,
-  Building2, Clock, TrendingUp, SlidersHorizontal
+  Building2, Clock, SlidersHorizontal
 } from "lucide-react"
 import Header from "@/components/layout/Header"
 import Footer from "@/components/layout/Footer"
@@ -104,9 +104,10 @@ export default function ServicesPage() {
       const results = await searchServices(filters)
       setSearchResults(results)
 
-    } catch (err: any) {
+    } catch (err) {
       console.error('Search failed:', err)
-      setError(err.message || 'Failed to search services')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to search services'
+      setError(errorMessage)
       setSearchResults(getDefaultSearchResponse())
     } finally {
       setLoading(false)
@@ -284,7 +285,7 @@ export default function ServicesPage() {
                           key={option.value}
                           variant={sortBy === option.value ? "default" : "outline"}
                           size="sm"
-                          onClick={() => { setSortBy(option.value as any); setCurrentPage(1) }}
+                          onClick={() => { setSortBy(option.value as 'relevance' | 'name' | 'price' | 'popular'); setCurrentPage(1) }}
                           className="w-full justify-start"
                         >
                           {option.label}

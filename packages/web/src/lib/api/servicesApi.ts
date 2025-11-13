@@ -120,11 +120,11 @@ export async function searchServices(filters: SearchFilters = {}): Promise<Searc
     const data: SearchResponse = await response.json()
     return data
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Search services error:', error)
 
     // Return fallback response
-    return getDefaultSearchResponse(error.message)
+    return getDefaultSearchResponse('Failed to load services')
   }
 }
 
