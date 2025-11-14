@@ -832,12 +832,12 @@ function ServicesContent() {
                         onClick={() => handleServiceClick(service)}
                       >
                         <div className="p-6">
-                          <div className="flex flex-col md:flex-row gap-6">
-                            {/* Main Content */}
-                            <div className="flex-1 min-w-0">
+                          <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6">
+                            {/* Main Content - Fixed min height for consistent alignment */}
+                            <div className="flex flex-col min-h-[140px]">
                               <div className="flex items-start justify-between gap-4 mb-3">
                                 <div className="flex-1">
-                                  <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors">
+                                  <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">
                                     {service.name}
                                   </h3>
                                   <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -854,36 +854,49 @@ function ServicesContent() {
                                 </div>
                               </div>
 
-                              {/* Description */}
-                              {service.description && (
-                                <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                                  {service.description}
-                                </p>
-                              )}
+                              {/* Description - Fixed height */}
+                              <div className="mb-3 min-h-[40px]">
+                                {service.description && (
+                                  <p className="text-sm text-muted-foreground line-clamp-2">
+                                    {service.description}
+                                  </p>
+                                )}
+                              </div>
 
-                              {/* Processing Time */}
-                              <div className="flex items-center text-sm text-muted-foreground">
-                                <Clock className="h-4 w-4 mr-2" />
-                                <span>{service.processing_time_days} días de procesamiento</span>
+                              {/* Processing Time - At bottom */}
+                              <div className="mt-auto">
+                                {service.processing_time_days && (
+                                  <div className="flex items-center text-sm text-muted-foreground">
+                                    <Clock className="h-4 w-4 mr-2" />
+                                    <span>{service.processing_time_days} días de procesamiento</span>
+                                  </div>
+                                )}
                               </div>
                             </div>
 
-                            {/* Pricing Section */}
-                            <div className="flex flex-row md:flex-col items-center md:items-end gap-4 md:gap-2 pt-4 md:pt-0 border-t md:border-t-0 md:border-l md:pl-6">
-                              <div className="text-center md:text-right">
+                            {/* Pricing Section - Fixed width and alignment */}
+                            <div className="flex flex-row md:flex-col items-start justify-start md:justify-center gap-4 pt-4 md:pt-0 border-t md:border-t-0 md:border-l md:pl-6 min-w-[200px]">
+                              {/* Expedición Price - Always same position */}
+                              <div className="flex-1 md:flex-none text-left md:text-right w-full">
                                 <p className="text-xs text-muted-foreground mb-1">Expedición</p>
                                 <p className="font-bold text-xl text-primary">
                                   {formatPrice(service.expedition_price)}
                                 </p>
                               </div>
-                              {service.renewal_price > 0 && (
-                                <div className="text-center md:text-right">
-                                  <p className="text-xs text-muted-foreground mb-1">Renovación</p>
-                                  <p className="font-semibold text-base">
-                                    {formatPrice(service.renewal_price)}
-                                  </p>
-                                </div>
-                              )}
+
+                              {/* Renovación Price - Fixed height even when empty */}
+                              <div className="flex-1 md:flex-none text-left md:text-right w-full min-h-[60px] flex flex-col justify-center">
+                                {service.renewal_price > 0 ? (
+                                  <>
+                                    <p className="text-xs text-muted-foreground mb-1">Renovación</p>
+                                    <p className="font-semibold text-base">
+                                      {formatPrice(service.renewal_price)}
+                                    </p>
+                                  </>
+                                ) : (
+                                  <div className="h-[48px]" />
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
