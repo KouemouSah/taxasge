@@ -85,7 +85,7 @@ export default function ServiceDetailClient() {
   const formatPrice = (price: number): string => {
     return new Intl.NumberFormat('fr-FR', {
       style: 'currency',
-      currency: 'GNF',
+      currency: 'XAF',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(price)

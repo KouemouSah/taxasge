@@ -80,7 +80,7 @@ class ServiceResult(BaseModel):
     service_type: str
     expedition_price: float
     renewal_price: float
-    processing_time_days: int
+    processing_time_days: Optional[int]
     status: str
     # No service_code exposed as per requirements
 
@@ -632,7 +632,7 @@ async def search_services_database(
                 service_type=row["service_type"],
                 expedition_price=float(row["tasa_expedicion"]) if row["tasa_expedicion"] else 0.0,
                 renewal_price=float(row["tasa_renovacion"]) if row["tasa_renovacion"] else 0.0,
-                processing_time_days=row["processing_time_days"] or 1,
+                processing_time_days=row["processing_time_days"],
                 status=row["status"]
             )
             for row in rows
