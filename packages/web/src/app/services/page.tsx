@@ -765,10 +765,10 @@ function ServicesContent() {
                         <div className="p-6 space-y-4">
                           {/* Header */}
                           <div>
-                            <h3 className="font-semibold text-base mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                            <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">
                               {service.name}
                             </h3>
-                            <Badge variant="secondary" className="text-xs">
+                            <Badge variant="secondary" className="text-[10px] px-2 py-0.5">
                               {service.category_name}
                             </Badge>
                           </div>
@@ -837,11 +837,11 @@ function ServicesContent() {
                             <div className="flex flex-col min-h-[140px]">
                               <div className="flex items-start justify-between gap-4 mb-3">
                                 <div className="flex-1">
-                                  <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                                  <h3 className="font-semibold text-xl mb-2 group-hover:text-primary transition-colors line-clamp-2">
                                     {service.name}
                                   </h3>
                                   <div className="flex flex-wrap items-center gap-2 mb-3">
-                                    <Badge variant="secondary" className="text-xs">
+                                    <Badge variant="secondary" className="text-[10px] px-2 py-0.5">
                                       {service.category_name}
                                     </Badge>
                                     {service.ministry_name && (
