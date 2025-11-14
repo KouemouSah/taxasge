@@ -78,6 +78,7 @@ class ServiceResult(BaseModel):
     ministry_name: Optional[str]
     sector_name: Optional[str]
     service_type: str
+    calculation_method: Optional[str]
     expedition_price: float
     renewal_price: float
     processing_time_days: Optional[int]
@@ -630,6 +631,7 @@ async def search_services_database(
                 ministry_name=row["ministry_name"],
                 sector_name=row["sector_name"],
                 service_type=row["service_type"],
+                calculation_method=row["calculation_method"],
                 expedition_price=float(row["tasa_expedicion"]) if row["tasa_expedicion"] else 0.0,
                 renewal_price=float(row["tasa_renovacion"]) if row["tasa_renovacion"] else 0.0,
                 processing_time_days=row["processing_time_days"],

@@ -55,9 +55,10 @@ export interface ServiceResult {
   ministry_name: string | null
   sector_name: string | null
   service_type: string
+  calculation_method: string | null
   expedition_price: number
   renewal_price: number
-  processing_time_days: number
+  processing_time_days: number | null
   status: string
   // Note: service_code is NOT included (as per requirements)
 }

@@ -795,38 +795,64 @@ function ServicesContent() {
                             </div>
                           </div>
 
-                          {/* Pricing */}
+                          {/* Pricing / Formula */}
                           <div className="pt-4 border-t space-y-3">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-xs text-muted-foreground">Expedición</p>
-                                <p className="font-semibold text-primary">
-                                  {formatPrice(service.expedition_price)}
-                                </p>
-                              </div>
-                              {service.renewal_price > 0 && (
-                                <div className="text-right">
-                                  <p className="text-xs text-muted-foreground">Renovación</p>
-                                  <p className="font-semibold text-sm">
-                                    {formatPrice(service.renewal_price)}
-                                  </p>
+                            {service.calculation_method ? (
+                              /* Formula-based service */
+                              <div className="space-y-3">
+                                <div className="bg-muted/50 p-3 rounded-md">
+                                  <p className="text-xs text-muted-foreground mb-1">Método de cálculo</p>
+                                  <p className="text-sm font-medium">Fórmula de cálculo</p>
+                                  <p className="text-xs text-muted-foreground mt-1">{service.calculation_method}</p>
                                 </div>
-                              )}
-                            </div>
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  className="w-full"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    router.push(`/calculator?service=${service.id}`)
+                                  }}
+                                >
+                                  Calculer
+                                  <ArrowRight className="ml-2 h-4 w-4" />
+                                </Button>
+                              </div>
+                            ) : (
+                              /* Fixed-price service */
+                              <>
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Expedición</p>
+                                    <p className="font-semibold text-primary">
+                                      {formatPrice(service.expedition_price)}
+                                    </p>
+                                  </div>
+                                  {service.renewal_price > 0 && (
+                                    <div className="text-right">
+                                      <p className="text-xs text-muted-foreground">Renovación</p>
+                                      <p className="font-semibold text-sm">
+                                        {formatPrice(service.renewal_price)}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
 
-                            {/* Voir les Détails Button */}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="w-full"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleServiceClick(service)
-                              }}
-                            >
-                              Voir les Détails
-                              <ArrowRight className="ml-2 h-4 w-4" />
-                            </Button>
+                                {/* Voir les Détails Button */}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleServiceClick(service)
+                                  }}
+                                >
+                                  Voir les Détails
+                                  <ArrowRight className="ml-2 h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
                           </div>
                         </div>
                       </Card>
@@ -888,45 +914,71 @@ function ServicesContent() {
                               </div>
                             </div>
 
-                            {/* Pricing Section - Fixed width and alignment */}
+                            {/* Pricing / Formula Section - Fixed width and alignment */}
                             <div className="flex flex-col gap-3 pt-4 md:pt-0 border-t md:border-t-0 md:border-l md:pl-6 min-w-[220px]">
-                              <div className="flex flex-row md:flex-col gap-4">
-                                {/* Expedición Price - Always same position */}
-                                <div className="flex-1 md:flex-none text-left md:text-right w-full">
-                                  <p className="text-xs text-muted-foreground mb-1">Expedición</p>
-                                  <p className="font-bold text-xl text-primary">
-                                    {formatPrice(service.expedition_price)}
-                                  </p>
-                                </div>
-
-                                {/* Renovación Price - Fixed height even when empty */}
-                                <div className="flex-1 md:flex-none text-left md:text-right w-full min-h-[60px] flex flex-col justify-center">
-                                  {service.renewal_price > 0 ? (
-                                    <>
-                                      <p className="text-xs text-muted-foreground mb-1">Renovación</p>
-                                      <p className="font-semibold text-base">
-                                        {formatPrice(service.renewal_price)}
+                              {service.calculation_method ? (
+                                /* Formula-based service */
+                                <>
+                                  <div className="bg-muted/50 p-3 rounded-md">
+                                    <p className="text-xs text-muted-foreground mb-1">Método de cálculo</p>
+                                    <p className="text-sm font-medium mb-2">Fórmula de cálculo</p>
+                                    <p className="text-xs text-muted-foreground line-clamp-2">{service.calculation_method}</p>
+                                  </div>
+                                  <Button
+                                    variant="default"
+                                    size="sm"
+                                    className="w-full"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      router.push(`/calculator?service=${service.id}`)
+                                    }}
+                                  >
+                                    Calculer
+                                    <ArrowRight className="ml-2 h-4 w-4" />
+                                  </Button>
+                                </>
+                              ) : (
+                                /* Fixed-price service */
+                                <>
+                                  <div className="flex flex-row md:flex-col gap-4">
+                                    {/* Expedición Price - Always same position */}
+                                    <div className="flex-1 md:flex-none text-left md:text-right w-full">
+                                      <p className="text-xs text-muted-foreground mb-1">Expedición</p>
+                                      <p className="font-bold text-xl text-primary">
+                                        {formatPrice(service.expedition_price)}
                                       </p>
-                                    </>
-                                  ) : (
-                                    <div className="h-[48px]" />
-                                  )}
-                                </div>
-                              </div>
+                                    </div>
 
-                              {/* Voir les Détails Button */}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="w-full mt-auto"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleServiceClick(service)
-                                }}
-                              >
-                                Voir les Détails
-                                <ArrowRight className="ml-2 h-4 w-4" />
-                              </Button>
+                                    {/* Renovación Price - Fixed height even when empty */}
+                                    <div className="flex-1 md:flex-none text-left md:text-right w-full min-h-[60px] flex flex-col justify-center">
+                                      {service.renewal_price > 0 ? (
+                                        <>
+                                          <p className="text-xs text-muted-foreground mb-1">Renovación</p>
+                                          <p className="font-semibold text-base">
+                                            {formatPrice(service.renewal_price)}
+                                          </p>
+                                        </>
+                                      ) : (
+                                        <div className="h-[48px]" />
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Voir les Détails Button */}
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full mt-auto"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleServiceClick(service)
+                                    }}
+                                  >
+                                    Voir les Détails
+                                    <ArrowRight className="ml-2 h-4 w-4" />
+                                  </Button>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>
