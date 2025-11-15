@@ -21,20 +21,6 @@ interface SyncResult {
   errors: string[];
 }
 
-interface FiscalService {
-  id: string;
-  code: string;
-  name_es: string;
-  name_fr?: string;
-  name_en?: string;
-  service_type?: string;
-  tasa_expedicion?: number;
-  tasa_renovacion?: number;
-  calculation_method?: string;
-  category_id?: string;
-  [key: string]: any;
-}
-
 class SyncService {
   private supabase: SupabaseClient;
   private isSyncing: boolean = false;

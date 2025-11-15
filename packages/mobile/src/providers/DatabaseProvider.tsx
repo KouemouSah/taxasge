@@ -42,9 +42,11 @@ export const DatabaseProvider: React.FC<DatabaseProviderProps> = ({
 
   /**
    * Initialize database on mount
+   * Note: Empty dependency array is intentional - we only want to initialize once
    */
   useEffect(() => {
     initializeDatabase();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const initializeDatabase = async () => {

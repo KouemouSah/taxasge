@@ -66,7 +66,7 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({
     });
 
     return () => unsubscribe();
-  }, [queuePending, userId]);
+  }, [queuePending, userId, processQueue]);
 
   /**
    * Refresh queue stats periodically
@@ -95,7 +95,7 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({
     }, autoSyncInterval * 60 * 1000); // Convert minutes to ms
 
     return () => clearInterval(interval);
-  }, [online, syncing, autoSyncInterval, userId]);
+  }, [online, syncing, autoSyncInterval, userId, performSync]);
 
   /**
    * Refresh queue statistics

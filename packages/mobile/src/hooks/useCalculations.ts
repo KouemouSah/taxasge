@@ -8,7 +8,6 @@ import {
   calculationsService,
   Calculation,
   CalculationParams,
-  CalculationBreakdown,
 } from '../database/services/CalculationsService';
 import { FiscalService } from '../database/services/FiscalServicesService';
 
@@ -48,6 +47,47 @@ export function useCalculations(userId?: string) {
       }
     },
     []
+  );
+
+  /**
+   * Load user calculation history
+   */
+  const loadHistory = useCallback(
+    async (uid?: string, limit: number = 50) => {
+      const targetUserId = uid || userId;
+      if (!targetUserId) {
+        console.warn('[useCalculations] No user ID provided');
+        return [];
+      }
+
+      setState(prev => ({ ...prev, loading: true, error: null }));
+
+      try {
+        const results = await calculationsService.getUserHistory(targetUserId, limit);
+        const total = await calculationsService.getTotalCalculated(targetUserId);
+        const totalCount = await calculationsService.getCount(targetUserId);
+
+        setState(prev => ({
+          ...prev,
+          history: results,
+          loading: false,
+          totalCalculated: total,
+          count: totalCount,
+          error: null,
+        }));
+
+        return results;
+      } catch (error) {
+        console.error('[useCalculations] Load history failed:', error);
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: error instanceof Error ? error.message : 'Load failed',
+        }));
+        return [];
+      }
+    },
+    [userId]
   );
 
   /**
@@ -106,48 +146,7 @@ export function useCalculations(userId?: string) {
         throw error;
       }
     },
-    [userId]
-  );
-
-  /**
-   * Load user calculation history
-   */
-  const loadHistory = useCallback(
-    async (uid?: string, limit: number = 50) => {
-      const targetUserId = uid || userId;
-      if (!targetUserId) {
-        console.warn('[useCalculations] No user ID provided');
-        return [];
-      }
-
-      setState(prev => ({ ...prev, loading: true, error: null }));
-
-      try {
-        const results = await calculationsService.getUserHistory(targetUserId, limit);
-        const total = await calculationsService.getTotalCalculated(targetUserId);
-        const totalCount = await calculationsService.getCount(targetUserId);
-
-        setState(prev => ({
-          ...prev,
-          history: results,
-          loading: false,
-          totalCalculated: total,
-          count: totalCount,
-          error: null,
-        }));
-
-        return results;
-      } catch (error) {
-        console.error('[useCalculations] Load history failed:', error);
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          error: error instanceof Error ? error.message : 'Load failed',
-        }));
-        return [];
-      }
-    },
-    [userId]
+    [userId, loadHistory]
   );
 
   /**

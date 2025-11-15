@@ -30,7 +30,6 @@ import {
   ChatMessage,
   ChatbotLanguage,
   ChatbotAction,
-  DEFAULT_CHATBOT_CONFIG,
 } from '../types/chatbot.types';
 import {
   MessageBubble,

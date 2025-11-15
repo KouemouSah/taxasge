@@ -133,27 +133,26 @@ export const CalculatorScreen: React.FC<CalculatorScreenProps> = ({
     setResult(null);
   }, []);
 
-  // Validate inputs
-  const validateInputs = (): boolean => {
-    for (const field of requiredFields) {
-      const value = inputs[field.field];
-      if (!value || value.trim() === '') {
-        return false;
-      }
-      const numValue = parseFloat(value);
-      if (isNaN(numValue) || numValue < 0) {
-        return false;
-      }
-    }
-    return true;
-  };
-
   // Handle calculate
   const handleCalculate = useCallback(() => {
     try {
       setIsCalculating(true);
 
-      // Validate inputs
+      // Validate inputs (inline to avoid dependency issues)
+      const validateInputs = (): boolean => {
+        for (const field of requiredFields) {
+          const value = inputs[field.field];
+          if (!value || value.trim() === '') {
+            return false;
+          }
+          const numValue = parseFloat(value);
+          if (isNaN(numValue) || numValue < 0) {
+            return false;
+          }
+        }
+        return true;
+      };
+
       if (!validateInputs()) {
         Alert.alert(t.error, t.validationError);
         setIsCalculating(false);
@@ -198,7 +197,7 @@ export const CalculatorScreen: React.FC<CalculatorScreenProps> = ({
     } finally {
       setIsCalculating(false);
     }
-  }, [inputs, calculationType, service, t, requiredFields, validateInputs]);
+  }, [inputs, calculationType, service, t, requiredFields]);
 
   // Handle save
   const handleSave = useCallback(async () => {

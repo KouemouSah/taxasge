@@ -211,7 +211,7 @@ class DatabaseManager {
     return new Promise((resolve, reject) => {
       db.transaction(
         (tx: Transaction) => {
-          items.forEach((item, index) => {
+          items.forEach((item, _index) => {
             const values = keys.map(key => item[key]);
             tx.executeSql(
               sql,
