@@ -11,13 +11,9 @@ react {
     root = file("../../")
 
     /* Bundling */
-    // CRITICAL: Force bundle to be included in release APK
+    // React Native 0.80 plugin handles bundling automatically for release builds
     entryFile = file("../../index.js")
     bundleAssetName = "index.android.bundle"
-
-    // Disable bundle in debug, enable in release
-    bundleInDebug = false
-    bundleInRelease = true
 
     /* Autolinking */
     autolinkLibrariesWithApp()
