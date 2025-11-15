@@ -230,6 +230,9 @@ class CalculationsService {
       const safeFormula = evaluableFormula.replace(/[^0-9+\-*/().\s]/g, '');
 
       // Using Function is safer than eval
+      // SECURITY NOTE: Function constructor is necessary for dynamic formula evaluation
+      // Formula is sanitized above - only mathematical operators allowed
+      // eslint-disable-next-line no-new-func
       const result = new Function(`return ${safeFormula}`)();
 
       return parseFloat(result) || 0;

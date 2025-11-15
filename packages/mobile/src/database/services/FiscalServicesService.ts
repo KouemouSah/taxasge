@@ -12,7 +12,10 @@ export interface FiscalService {
   name_fr?: string;
   name_en?: string;
   description_es?: string;
+  description_fr?: string;
+  description_en?: string;
   service_type?: string;
+  calculation_method?: string; // Method: fixed_expedition, percentage_based, etc.
   expedition_amount: number;
   renewal_amount?: number;
   category_id?: string;
@@ -228,3 +231,61 @@ class FiscalServicesService {
 }
 
 export const fiscalServicesService = new FiscalServicesService();
+
+// ============================================================================
+// UTILITY FUNCTIONS - Localization Helpers
+// ============================================================================
+
+/**
+ * Get service name in the specified language
+ * Falls back to Spanish if translation not available
+ */
+export function getServiceName(service: FiscalService, language: 'es' | 'fr' | 'en'): string {
+  switch (language) {
+    case 'fr':
+      return service.name_fr || service.name_es;
+    case 'en':
+      return service.name_en || service.name_es;
+    default:
+      return service.name_es;
+  }
+}
+
+/**
+ * Get service description in the specified language
+ * Falls back to Spanish if translation not available
+ */
+export function getServiceDescription(
+  service: FiscalService,
+  language: 'es' | 'fr' | 'en'
+): string | undefined {
+  switch (language) {
+    case 'fr':
+      return service.description_fr || service.description_es;
+    case 'en':
+      return service.description_en || service.description_es;
+    default:
+      return service.description_es;
+  }
+}
+
+/**
+ * Get ministry name (already localized from join)
+ */
+export function getMinistryName(service: FiscalService): string | undefined {
+  return service.ministry_name;
+}
+
+/**
+ * Get category name (already localized from join)
+ */
+export function getCategoryName(service: FiscalService): string | undefined {
+  return service.category_name;
+}
+
+/**
+ * Get sector name (already localized from join)
+ */
+export function getSectorName(service: FiscalService): string | undefined {
+  return service.sector_name;
+}

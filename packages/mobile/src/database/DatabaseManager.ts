@@ -4,7 +4,7 @@
  */
 
 import SQLite, { SQLiteDatabase, ResultSet, Transaction } from 'react-native-sqlite-storage';
-import { DATABASE_NAME, DATABASE_VERSION, SCHEMA_PARTS, QUERIES, TABLE_NAMES } from './schema';
+import { DATABASE_NAME, SCHEMA_PARTS, TABLE_NAMES } from './schema';
 
 // Enable debug mode in development
 SQLite.DEBUG(__DEV__);

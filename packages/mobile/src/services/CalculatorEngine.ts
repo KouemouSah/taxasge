@@ -418,6 +418,13 @@ export class CalculatorEngine {
       }
 
       // Evaluate using Function constructor (safer than eval)
+      // SECURITY NOTE: This is necessary for evaluating dynamic formulas from the database.
+      // The formula is sanitized above (variables replaced with numeric values).
+      // This is safe as long as:
+      // 1. Formulas are validated before being stored in the database
+      // 2. User input is never directly injected into formulas
+      // 3. Only numeric replacements are made (no string concatenation)
+      // eslint-disable-next-line no-new-func
       const result = new Function(`'use strict'; return (${safeFormula})`)();
 
       // Validate result

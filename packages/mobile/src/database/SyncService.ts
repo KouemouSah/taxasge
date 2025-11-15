@@ -210,62 +210,62 @@ class SyncService {
         if (selectColumns === '*') {
           // Full table sync - add ID conversion and defaults
           mapped = data.map(item => {
-            const result: any = { ...item };
+            const row: any = { ...item };
 
             // CRITICAL: Convert INTEGER IDs to TEXT - only for fields that exist
-            if ('id' in result && result.id) result.id = String(result.id);
-            if ('ministry_id' in result && result.ministry_id) result.ministry_id = String(result.ministry_id);
-            if ('sector_id' in result && result.sector_id) result.sector_id = String(result.sector_id);
-            if ('category_id' in result && result.category_id) result.category_id = String(result.category_id);
-            if ('fiscal_service_id' in result && result.fiscal_service_id) result.fiscal_service_id = String(result.fiscal_service_id);
-            if ('template_id' in result && result.template_id) result.template_id = String(result.template_id);
-            if ('procedure_template_id' in result && result.procedure_template_id) result.procedure_template_id = String(result.procedure_template_id);
-            if ('document_template_id' in result && result.document_template_id) result.document_template_id = String(result.document_template_id);
+            if ('id' in row && row.id) row.id = String(row.id);
+            if ('ministry_id' in row && row.ministry_id) row.ministry_id = String(row.ministry_id);
+            if ('sector_id' in row && row.sector_id) row.sector_id = String(row.sector_id);
+            if ('category_id' in row && row.category_id) row.category_id = String(row.category_id);
+            if ('fiscal_service_id' in row && row.fiscal_service_id) row.fiscal_service_id = String(row.fiscal_service_id);
+            if ('template_id' in row && row.template_id) row.template_id = String(row.template_id);
+            if ('procedure_template_id' in row && row.procedure_template_id) row.procedure_template_id = String(row.procedure_template_id);
+            if ('document_template_id' in row && row.document_template_id) row.document_template_id = String(row.document_template_id);
 
             // Convert booleans to integers - only for fields that exist
-            if ('is_active' in result && typeof result.is_active === 'boolean') {
-              result.is_active = result.is_active ? 1 : 0;
+            if ('is_active' in row && typeof row.is_active === 'boolean') {
+              row.is_active = row.is_active ? 1 : 0;
             }
-            if ('is_optional' in result && typeof result.is_optional === 'boolean') {
-              result.is_optional = result.is_optional ? 1 : 0;
+            if ('is_optional' in row && typeof row.is_optional === 'boolean') {
+              row.is_optional = row.is_optional ? 1 : 0;
             }
-            if ('requires_appointment' in result && typeof result.requires_appointment === 'boolean') {
-              result.requires_appointment = result.requires_appointment ? 1 : 0;
+            if ('requires_appointment' in row && typeof row.requires_appointment === 'boolean') {
+              row.requires_appointment = row.requires_appointment ? 1 : 0;
             }
-            if ('can_be_done_online' in result && typeof result.can_be_done_online === 'boolean') {
-              result.can_be_done_online = result.can_be_done_online ? 1 : 0;
+            if ('can_be_done_online' in row && typeof row.can_be_done_online === 'boolean') {
+              row.can_be_done_online = row.can_be_done_online ? 1 : 0;
             }
-            if ('is_mandatory' in result && typeof result.is_mandatory === 'boolean') {
-              result.is_mandatory = result.is_mandatory ? 1 : 0;
+            if ('is_mandatory' in row && typeof row.is_mandatory === 'boolean') {
+              row.is_mandatory = row.is_mandatory ? 1 : 0;
             }
-            if ('accepts_digital_copy' in result && typeof result.accepts_digital_copy === 'boolean') {
-              result.accepts_digital_copy = result.accepts_digital_copy ? 1 : 0;
+            if ('accepts_digital_copy' in row && typeof row.accepts_digital_copy === 'boolean') {
+              row.accepts_digital_copy = row.accepts_digital_copy ? 1 : 0;
             }
-            if ('is_required' in result && typeof result.is_required === 'boolean') {
-              result.is_required = result.is_required ? 1 : 0;
+            if ('is_required' in row && typeof row.is_required === 'boolean') {
+              row.is_required = row.is_required ? 1 : 0;
             }
 
             // Add defaults for timestamp fields if missing
-            if (!result.created_at) result.created_at = new Date().toISOString();
-            if (!result.updated_at) result.updated_at = new Date().toISOString();
+            if (!row.created_at) row.created_at = new Date().toISOString();
+            if (!row.updated_at) row.updated_at = new Date().toISOString();
 
-            return result;
+            return row;
           });
         } else {
           // Explicit column mapping - convert only present fields
           mapped = data.map(item => {
-            const result: any = { ...item };
+            const row: any = { ...item };
             // Convert IDs
-            if ('id' in result) result.id = String(result.id);
-            if ('fiscal_service_id' in result) result.fiscal_service_id = String(result.fiscal_service_id);
+            if ('id' in row) row.id = String(row.id);
+            if ('fiscal_service_id' in row) row.fiscal_service_id = String(row.fiscal_service_id);
             // Convert booleans
-            if ('is_active' in result && typeof result.is_active === 'boolean') {
-              result.is_active = result.is_active ? 1 : 0;
+            if ('is_active' in row && typeof row.is_active === 'boolean') {
+              row.is_active = row.is_active ? 1 : 0;
             }
-            if ('is_auto_generated' in result && typeof result.is_auto_generated === 'boolean') {
-              result.is_auto_generated = result.is_auto_generated ? 1 : 0;
+            if ('is_auto_generated' in row && typeof row.is_auto_generated === 'boolean') {
+              row.is_auto_generated = row.is_auto_generated ? 1 : 0;
             }
-            return result;
+            return row;
           });
         }
 

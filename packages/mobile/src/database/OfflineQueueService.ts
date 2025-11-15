@@ -4,7 +4,7 @@
  */
 
 import { db } from './DatabaseManager';
-import { TABLE_NAMES, SYNC_STATUS, MAX_SYNC_RETRIES } from './schema';
+import { TABLE_NAMES, MAX_SYNC_RETRIES } from './schema';
 import { syncService } from './SyncService';
 
 export type QueueOperation = 'INSERT' | 'UPDATE' | 'DELETE';
