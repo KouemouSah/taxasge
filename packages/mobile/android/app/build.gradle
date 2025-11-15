@@ -11,9 +11,13 @@ react {
     root = file("../../")
 
     /* Bundling */
-    // Force bundle generation for release builds
+    // CRITICAL: Force bundle to be included in release APK
     entryFile = file("../../index.js")
     bundleAssetName = "index.android.bundle"
+
+    // Disable bundle in debug, enable in release
+    bundleInDebug = false
+    bundleInRelease = true
 
     /* Autolinking */
     autolinkLibrariesWithApp()
@@ -88,46 +92,5 @@ dependencies {
         implementation("com.facebook.react:hermes-android")
     } else {
         implementation jscFlavor
-    }
-}
-
-// ============================================================================
-// TAXASGE: Automatic bundle generation for release builds
-// ============================================================================
-project.afterEvaluate {
-    // Create bundle task for release
-    tasks.register("bundleReleaseJsAndAssets", Exec) {
-        group = "react"
-        description = "Generate JavaScript bundle for release"
-
-        workingDir rootProject.projectDir.parent
-
-        def bundleOutput = "$projectDir/src/main/assets/index.android.bundle"
-        def assetsOutput = "$projectDir/src/main/res"
-
-        // Create assets directory if it doesn't exist
-        doFirst {
-            file("$projectDir/src/main/assets").mkdirs()
-            println("📦 TaxasGE: Generating JavaScript bundle...")
-        }
-
-        commandLine "npx", "react-native", "bundle",
-            "--platform", "android",
-            "--dev", "false",
-            "--entry-file", "index.js",
-            "--bundle-output", bundleOutput,
-            "--assets-dest", assetsOutput,
-            "--reset-cache"
-
-        doLast {
-            println("✅ TaxasGE: Bundle generated at $bundleOutput")
-        }
-    }
-
-    // Make assembleRelease depend on bundle generation
-    tasks.whenTaskAdded { task ->
-        if (task.name == "assembleRelease") {
-            task.dependsOn("bundleReleaseJsAndAssets")
-        }
     }
 }
