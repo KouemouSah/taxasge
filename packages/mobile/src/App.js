@@ -18,10 +18,14 @@ import {
   ScrollView,
   Platform,
   NativeModules,
+  Image,
 } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DatabaseProvider } from './providers/DatabaseProvider';
 import { ChatbotScreen } from './screens/ChatbotScreen';
+
+// Import logo
+const LOGO = require('./assets/images/taxasge.png');
 
 /**
  * Détecte la langue du système Android/iOS
@@ -124,6 +128,12 @@ const App = () => {
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
+          {/* Logo */}
+          <Image
+            source={LOGO}
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <Text style={styles.title}>{TEXTS[currentLanguage].title}</Text>
           <Text style={styles.subtitle}>{TEXTS[currentLanguage].subtitle}</Text>
           <Text style={styles.version}>React Native 0.80.0</Text>
@@ -268,6 +278,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 32,
     paddingTop: 20,
+  },
+  logo: {
+    width: 120,
+    height: 120,
+    marginBottom: 16,
   },
   title: {
     fontSize: 32,
