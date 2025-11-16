@@ -30,7 +30,9 @@ import { DatabaseProvider } from './providers/DatabaseProvider';
 import { ChatbotScreen } from './screens/ChatbotScreen';
 import { OnboardingScreen } from './screens/OnboardingScreen';
 import { PlaceholderScreen } from './screens/PlaceholderScreen';
-import { APP_CONFIG, logConfiguration } from './config/AppConfig';
+import ServiceListScreen from './screens/ServiceListScreen';
+import FavoritesScreen from './screens/FavoritesScreen';
+import { APP_CONFIG } from './config/AppConfig';
 
 /**
  * Détecte la langue du système Android/iOS
@@ -78,8 +80,11 @@ const TEXTS = {
     chatbotButton: 'Asistente Chatbot',
     chatbotSubtitle: 'Haz tus preguntas sobre servicios fiscales',
     searchButton: 'Buscar Servicios',
+    searchSubtitle: 'Explora y filtra todos los servicios fiscales',
     calculatorButton: 'Calculadora',
+    calculatorSubtitle: 'Próximamente',
     favoritesButton: 'Favoritos',
+    favoritesSubtitle: 'Accede a tus servicios guardados',
     comingSoon: 'Próximamente',
     footer1: 'Versión MVP1 - Chatbot FAQ',
     footer2: 'Base de datos: SQLite v3',
@@ -91,8 +96,11 @@ const TEXTS = {
     chatbotButton: 'Assistant Chatbot',
     chatbotSubtitle: 'Posez vos questions sur les services fiscaux',
     searchButton: 'Rechercher Services',
+    searchSubtitle: 'Explorez et filtrez tous les services fiscaux',
     calculatorButton: 'Calculatrice',
+    calculatorSubtitle: 'Bientôt disponible',
     favoritesButton: 'Favoris',
+    favoritesSubtitle: 'Accédez à vos services enregistrés',
     comingSoon: 'Bientôt disponible',
     footer1: 'Version MVP1 - Chatbot FAQ',
     footer2: 'Base de données : SQLite v3',
@@ -104,8 +112,11 @@ const TEXTS = {
     chatbotButton: 'Chatbot Assistant',
     chatbotSubtitle: 'Ask your questions about tax services',
     searchButton: 'Search Services',
+    searchSubtitle: 'Browse and filter all tax services',
     calculatorButton: 'Calculator',
+    calculatorSubtitle: 'Coming soon',
     favoritesButton: 'Favorites',
+    favoritesSubtitle: 'Access your saved services',
     comingSoon: 'Coming soon',
     footer1: 'Version MVP1 - Chatbot FAQ',
     footer2: 'Database: SQLite v3',
@@ -134,9 +145,6 @@ const App = () => {
 
   // Détecter la langue système et vérifier si onboarding déjà complété
   useEffect(() => {
-    // Log app configuration (version, features, sync strategy)
-    logConfiguration();
-
     // Detect system language
     const systemLang = getSystemLanguage();
     console.log('[App] Setting initial language to:', systemLang);
@@ -279,7 +287,7 @@ const App = () => {
                   {TEXTS[currentLanguage].searchButton}
                 </Text>
                 <Text style={styles.buttonSubtitle}>
-                  {TEXTS[currentLanguage].comingSoon}
+                  {TEXTS[currentLanguage].searchSubtitle}
                 </Text>
               </View>
             </View>
@@ -296,7 +304,7 @@ const App = () => {
                   {TEXTS[currentLanguage].calculatorButton}
                 </Text>
                 <Text style={styles.buttonSubtitle}>
-                  {TEXTS[currentLanguage].comingSoon}
+                  {TEXTS[currentLanguage].calculatorSubtitle}
                 </Text>
               </View>
             </View>
@@ -313,7 +321,7 @@ const App = () => {
                   {TEXTS[currentLanguage].favoritesButton}
                 </Text>
                 <Text style={styles.buttonSubtitle}>
-                  {TEXTS[currentLanguage].comingSoon}
+                  {TEXTS[currentLanguage].favoritesSubtitle}
                 </Text>
               </View>
             </View>
@@ -345,56 +353,15 @@ const App = () => {
   );
 
   const renderSearchScreen = () => {
-    const translations = {
-      es: {
-        title: 'Buscar Servicios',
-        subtitle: 'Encuentra servicios fiscales rápidamente',
-        back: 'Volver',
-        comingSoon: 'Próximamente',
-        features: [
-          'Búsqueda por nombre de servicio',
-          'Filtros por categoría y ministerio',
-          'Ver detalles completos del servicio',
-          'Guardar servicios en favoritos',
-        ],
-      },
-      fr: {
-        title: 'Rechercher Services',
-        subtitle: 'Trouvez des services fiscaux rapidement',
-        back: 'Retour',
-        comingSoon: 'Bientôt disponible',
-        features: [
-          'Recherche par nom de service',
-          'Filtres par catégorie et ministère',
-          'Voir les détails complets du service',
-          'Enregistrer les services en favoris',
-        ],
-      },
-      en: {
-        title: 'Search Services',
-        subtitle: 'Find tax services quickly',
-        back: 'Back',
-        comingSoon: 'Coming soon',
-        features: [
-          'Search by service name',
-          'Filter by category and ministry',
-          'View complete service details',
-          'Save services to favorites',
-        ],
-      },
-    };
-
-    const t = translations[currentLanguage];
-
     return (
-      <PlaceholderScreen
-        title={t.title}
-        subtitle={t.subtitle}
-        icon="🔍"
-        comingSoonText={t.comingSoon}
-        backButtonText={t.back}
+      <ServiceListScreen
+        language={currentLanguage}
         onBack={() => setCurrentScreen('home')}
-        features={t.features}
+        onServicePress={(service) => {
+          console.log('[App] Service selected:', service.name_es);
+          // TODO: Navigate to service detail screen
+          // For now, just log the selection
+        }}
       />
     );
   };
@@ -455,56 +422,21 @@ const App = () => {
   };
 
   const renderFavoritesScreen = () => {
-    const translations = {
-      es: {
-        title: 'Favoritos',
-        subtitle: 'Tus servicios guardados',
-        back: 'Volver',
-        comingSoon: 'Próximamente',
-        features: [
-          'Guardar servicios frecuentes',
-          'Acceso rápido a tus servicios',
-          'Organizar por carpetas',
-          'Sincronización en la nube (versión Pro)',
-        ],
-      },
-      fr: {
-        title: 'Favoris',
-        subtitle: 'Vos services enregistrés',
-        back: 'Retour',
-        comingSoon: 'Bientôt disponible',
-        features: [
-          'Enregistrer les services fréquents',
-          'Accès rapide à vos services',
-          'Organiser par dossiers',
-          'Synchronisation cloud (version Pro)',
-        ],
-      },
-      en: {
-        title: 'Favorites',
-        subtitle: 'Your saved services',
-        back: 'Back',
-        comingSoon: 'Coming soon',
-        features: [
-          'Save frequent services',
-          'Quick access to your services',
-          'Organize by folders',
-          'Cloud sync (Pro version)',
-        ],
-      },
-    };
-
-    const t = translations[currentLanguage];
-
     return (
-      <PlaceholderScreen
-        title={t.title}
-        subtitle={t.subtitle}
-        icon="⭐"
-        comingSoonText={t.comingSoon}
-        backButtonText={t.back}
+      <FavoritesScreen
+        language={currentLanguage}
+        userId={APP_CONFIG.defaultUserId}
         onBack={() => setCurrentScreen('home')}
-        features={t.features}
+        onServicePress={(service) => {
+          console.log('[App] Favorite service selected:', service.name_es);
+          // TODO: Navigate to service detail screen
+          // For now, just log the selection
+        }}
+        onCalculate={(service) => {
+          console.log('[App] Calculate requested for service:', service.name_es);
+          // TODO: Navigate to calculator with this service
+          // For now, just log the action
+        }}
       />
     );
   };
