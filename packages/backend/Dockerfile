@@ -33,9 +33,20 @@ FROM python:3.9-slim
 # Set working directory
 WORKDIR /app
 
-# Install runtime dependencies only
+# Install runtime dependencies including Tesseract OCR
+# - libpq5: PostgreSQL client library
+# - tesseract-ocr: OCR engine for text extraction from images/PDFs
+# - tesseract-ocr-spa: Spanish language data (primary for Guinea Ecuatorial)
+# - tesseract-ocr-fra: French language data (secondary)
+# - tesseract-ocr-eng: English language data (fallback)
+# - poppler-utils: PDF rendering utilities (required by pdf2image)
 RUN apt-get update && apt-get install -y \
     libpq5 \
+    tesseract-ocr \
+    tesseract-ocr-spa \
+    tesseract-ocr-fra \
+    tesseract-ocr-eng \
+    poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy installed packages from builder
