@@ -56,12 +56,53 @@ class DocumentAccessLevel(str, Enum):
     public = "public"
 
 
+class DocumentSubtype(str, Enum):
+    """
+    Common document subtypes for fiscal declarations
+    Used with DocumentType for specific variations
+    """
+    # IVA subtypes
+    iva_destajo = "destajo"
+    iva_real = "real"
+
+    # Retención subtypes
+    retencion_3pct_petrolero = "3pct_petrolero"
+    retencion_5pct_petrolero = "5pct_petrolero"
+    retencion_10pct_comun = "10pct_comun"
+    retencion_10pct_petrolero = "10pct_petrolero"
+
+    # Cuota Mínima subtypes
+    cuota_min_comun = "comun"
+    cuota_min_petrolera = "petrolera"
+
+    # Productos Petroleros subtypes
+    petroliferos_fmi = "fmi"
+    petroliferos_ivs = "ivs"
+
+    # Sueldos subtypes
+    sueldos_comun = "comun"
+    sueldos_petrolero = "petrolero"
+
+
 class DocumentType(str, Enum):
-    """Supported document types (20 models)"""
-    # Déclarations fiscales (3)
-    declaration_iva = "declaration_iva"
-    declaration_irpf = "declaration_irpf"
-    declaration_petroliferos = "declaration_petroliferos"
+    """
+    Supported document types (generics)
+    Use document_subtype field for specific variations
+
+    Examples:
+    - declaration_iva + subtype="destajo" → IVA Destajo
+    - declaration_iva + subtype="real" → IVA Real
+    - declaration_retencion + subtype="3pct_petrolero" → Retención 3% Petrolífero
+
+    See DocumentSubtype enum for common subtype values
+    """
+    # Déclarations fiscales (6 types génériques)
+    declaration_iva = "declaration_iva"                      # Subtypes: destajo, real
+    declaration_retencion = "declaration_retencion"          # Subtypes: 3pct_petrolero, 5pct_petrolero, 10pct_comun, 10pct_petrolero
+    declaration_cuota_min = "declaration_cuota_min"          # Subtypes: comun, petrolera
+    declaration_petroliferos = "declaration_petroliferos"    # Subtypes: fmi, ivs
+    declaration_sueldos = "declaration_sueldos"              # Subtypes: comun, petrolero
+    declaration_irpf = "declaration_irpf"                    # Generic IRPF (legacy, prefer declaration_retencion)
 
     # Services fiscaux (generic)
     fiscal_service = "fiscal_service"
@@ -87,7 +128,7 @@ class DocumentType(str, Enum):
     balance_sheet = "balance_sheet"
     profit_loss_statement = "profit_loss_statement"
 
-    # Documents support (4)
+    # Documents support (5)
     proof_of_address = "proof_of_address"
     contract = "contract"
     certificate = "certificate"
@@ -96,6 +137,34 @@ class DocumentType(str, Enum):
 
     # Generic
     other = "other"
+
+
+# ============================================================================
+# SUBTYPE MAPPING REFERENCE
+# ============================================================================
+# Use this mapping to determine valid subtypes for each DocumentType:
+#
+# declaration_iva:
+#   - "destajo" (IVA al Destajo)
+#   - "real" (IVA Real)
+#
+# declaration_retencion:
+#   - "3pct_petrolero" (Retención 3% Sector Petrolero)
+#   - "5pct_petrolero" (Retención 5% Sector Petrolero)
+#   - "10pct_comun" (Retención 10% Sector Común)
+#   - "10pct_petrolero" (Retención 10% Sector Petrolero)
+#
+# declaration_cuota_min:
+#   - "comun" (Cuota Mínima Fiscal Sector Común)
+#   - "petrolera" (Cuota Mínima Fiscal Sector Petrolero)
+#
+# declaration_petroliferos:
+#   - "fmi" (Productos Petroleros FMI)
+#   - "ivs" (Productos Petroleros IVS)
+#
+# declaration_sueldos:
+#   - "comun" (Impuesto sobre Sueldos Sector Común)
+#   - "petrolero" (Impuesto sobre Sueldos Sector Petrolero)
 
 
 # ============================================================================
