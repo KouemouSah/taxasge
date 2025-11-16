@@ -35,6 +35,8 @@
     "ios": "react-native run-ios",
     "start": "react-native start",
     "build:android": "cd android && ./gradlew assembleRelease",
+    "build:android:standalone": "./build-standalone-apk.sh",
+    "build:android:standalone:offline": "ENVFILE=.env.offline ./build-standalone-apk.sh",
     "build:ios": "cd ios && xcodebuild -workspace TaxasGE.xcworkspace -scheme TaxasGE -configuration Release",
 
     "android:offline": "ENVFILE=.env.offline react-native run-android",

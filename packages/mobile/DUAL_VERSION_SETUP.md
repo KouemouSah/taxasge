@@ -141,6 +141,25 @@ npm run ios:pro           # iOS simulator
 
 ### Production Build
 
+#### Build Standalone APK (Recommandé)
+
+Pour créer une APK complète avec bundle JavaScript inclus (installation offline sans Metro) :
+
+```bash
+# Offline version standalone
+npm run build:android:standalone:offline
+
+# Pro version standalone
+ENVFILE=.env.pro npm run build:android:standalone
+
+# Script direct
+./build-standalone-apk.sh
+```
+
+**📖 Voir** : [`STANDALONE_APK_BUILD.md`](./STANDALONE_APK_BUILD.md) pour le guide complet
+
+#### Build Gradle Standard
+
 ```bash
 # Offline version
 npm run build:android:offline  # APK/AAB offline
@@ -358,6 +377,20 @@ ENVFILE=.env.pro cd ios && xcodebuild archive
 - Pro version: Bundle ID `com.taxasge.pro`
 
 ## Troubleshooting
+
+### Problème: "Unable to load script" sur tablette
+
+**Symptômes**: Erreur "Make sure you're running Metro or that your bundle 'index.android.bundle' is packaged correctly"
+
+**Cause**: L'APK ne contient pas le bundle JavaScript
+
+**Solution**: Utiliser le script de build standalone
+
+```bash
+npm run build:android:standalone:offline
+```
+
+**📖 Voir** : [`STANDALONE_APK_BUILD.md`](./STANDALONE_APK_BUILD.md) pour plus de détails
 
 ### Problème: .env variables non chargées
 
