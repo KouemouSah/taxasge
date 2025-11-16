@@ -17,7 +17,6 @@ export interface SearchFilters {
   category_id?: number
   category_code?: string
   ministry_id?: number
-  ministry_code?: number
   service_type?: string
   min_price?: number
   max_price?: number
@@ -101,7 +100,6 @@ export async function searchServices(filters: SearchFilters = {}): Promise<Searc
       category_id: filters.category_id || null,
       category_code: filters.category_code || null,
       ministry_id: filters.ministry_id || null,
-      ministry_code: filters.ministry_code || null,
       service_type: filters.service_type || null,
       min_price: filters.min_price !== undefined ? filters.min_price : null,
       max_price: filters.max_price !== undefined ? filters.max_price : null,
