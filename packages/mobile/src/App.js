@@ -31,7 +31,9 @@ import { ChatbotScreen } from './screens/ChatbotScreen';
 import { OnboardingScreen } from './screens/OnboardingScreen';
 import { PlaceholderScreen } from './screens/PlaceholderScreen';
 import ServiceListScreen from './screens/ServiceListScreen';
+import ServiceDetailScreen from './screens/ServiceDetailScreen';
 import FavoritesScreen from './screens/FavoritesScreen';
+import CalculatorScreen from './screens/CalculatorScreen';
 import { APP_CONFIG } from './config/AppConfig';
 
 /**
@@ -82,7 +84,7 @@ const TEXTS = {
     searchButton: 'Buscar Servicios',
     searchSubtitle: 'Explora y filtra todos los servicios fiscales',
     calculatorButton: 'Calculadora',
-    calculatorSubtitle: 'Próximamente',
+    calculatorSubtitle: 'Selecciona un servicio primero',
     favoritesButton: 'Favoritos',
     favoritesSubtitle: 'Accede a tus servicios guardados',
     comingSoon: 'Próximamente',
@@ -98,7 +100,7 @@ const TEXTS = {
     searchButton: 'Rechercher Services',
     searchSubtitle: 'Explorez et filtrez tous les services fiscaux',
     calculatorButton: 'Calculatrice',
-    calculatorSubtitle: 'Bientôt disponible',
+    calculatorSubtitle: 'Sélectionnez un service d\'abord',
     favoritesButton: 'Favoris',
     favoritesSubtitle: 'Accédez à vos services enregistrés',
     comingSoon: 'Bientôt disponible',
@@ -114,7 +116,7 @@ const TEXTS = {
     searchButton: 'Search Services',
     searchSubtitle: 'Browse and filter all tax services',
     calculatorButton: 'Calculator',
-    calculatorSubtitle: 'Coming soon',
+    calculatorSubtitle: 'Select a service first',
     favoritesButton: 'Favorites',
     favoritesSubtitle: 'Access your saved services',
     comingSoon: 'Coming soon',
@@ -142,6 +144,7 @@ const App = () => {
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
   const [syncPhase, setSyncPhase] = useState(0);
+  const [selectedService, setSelectedService] = useState(null);
 
   // Détecter la langue système et vérifier si onboarding déjà complété
   useEffect(() => {
@@ -295,7 +298,12 @@ const App = () => {
 
           <TouchableOpacity
             style={styles.menuButton}
-            onPress={() => setCurrentScreen('calculator')}
+            onPress={() => {
+              // Calculator requires a service selection
+              // Redirect to search to select a service first
+              console.log('[App] Calculator: Redirecting to search to select service');
+              setCurrentScreen('search');
+            }}
             activeOpacity={0.7}>
             <View style={styles.buttonContent}>
               <Text style={styles.buttonIcon}>🧮</Text>
@@ -359,64 +367,53 @@ const App = () => {
         onBack={() => setCurrentScreen('home')}
         onServicePress={(service) => {
           console.log('[App] Service selected:', service.name_es);
-          // TODO: Navigate to service detail screen
-          // For now, just log the selection
+          setSelectedService(service);
+          setCurrentScreen('serviceDetail');
+        }}
+      />
+    );
+  };
+
+  const renderServiceDetailScreen = () => {
+    if (!selectedService) {
+      console.warn('[App] ServiceDetailScreen called without selected service');
+      setCurrentScreen('home');
+      return null;
+    }
+
+    return (
+      <ServiceDetailScreen
+        service={selectedService}
+        language={currentLanguage}
+        onBack={() => {
+          setSelectedService(null);
+          setCurrentScreen('search');
+        }}
+        onCalculate={(service) => {
+          console.log('[App] Calculate requested for:', service.name_es);
+          setSelectedService(service);
+          setCurrentScreen('calculator');
         }}
       />
     );
   };
 
   const renderCalculatorScreen = () => {
-    const translations = {
-      es: {
-        title: 'Calculadora Fiscal',
-        subtitle: 'Calcula el costo exacto de tus trámites',
-        back: 'Volver',
-        comingSoon: 'Próximamente',
-        features: [
-          'Calcular tasas de expedición y renovación',
-          'Aplicar urgencias automáticamente',
-          'Guardar cálculos en historial',
-          'Exportar resultados',
-        ],
-      },
-      fr: {
-        title: 'Calculatrice Fiscale',
-        subtitle: 'Calculez le coût exact de vos démarches',
-        back: 'Retour',
-        comingSoon: 'Bientôt disponible',
-        features: [
-          'Calculer les frais d\'expédition et de renouvellement',
-          'Appliquer les urgences automatiquement',
-          'Enregistrer les calculs dans l\'historique',
-          'Exporter les résultats',
-        ],
-      },
-      en: {
-        title: 'Tax Calculator',
-        subtitle: 'Calculate the exact cost of your procedures',
-        back: 'Back',
-        comingSoon: 'Coming soon',
-        features: [
-          'Calculate expedition and renewal fees',
-          'Apply urgencies automatically',
-          'Save calculations to history',
-          'Export results',
-        ],
-      },
-    };
-
-    const t = translations[currentLanguage];
+    if (!selectedService) {
+      console.warn('[App] CalculatorScreen called without selected service');
+      setCurrentScreen('home');
+      return null;
+    }
 
     return (
-      <PlaceholderScreen
-        title={t.title}
-        subtitle={t.subtitle}
-        icon="🧮"
-        comingSoonText={t.comingSoon}
-        backButtonText={t.back}
-        onBack={() => setCurrentScreen('home')}
-        features={t.features}
+      <CalculatorScreen
+        service={selectedService}
+        language={currentLanguage}
+        userId={APP_CONFIG.defaultUserId}
+        onBack={() => {
+          // Return to service detail if coming from there
+          setCurrentScreen('serviceDetail');
+        }}
       />
     );
   };
@@ -429,13 +426,13 @@ const App = () => {
         onBack={() => setCurrentScreen('home')}
         onServicePress={(service) => {
           console.log('[App] Favorite service selected:', service.name_es);
-          // TODO: Navigate to service detail screen
-          // For now, just log the selection
+          setSelectedService(service);
+          setCurrentScreen('serviceDetail');
         }}
         onCalculate={(service) => {
           console.log('[App] Calculate requested for service:', service.name_es);
-          // TODO: Navigate to calculator with this service
-          // For now, just log the action
+          setSelectedService(service);
+          setCurrentScreen('calculator');
         }}
       />
     );
@@ -484,6 +481,8 @@ const App = () => {
         return renderChatbotScreen();
       case 'search':
         return renderSearchScreen();
+      case 'serviceDetail':
+        return renderServiceDetailScreen();
       case 'calculator':
         return renderCalculatorScreen();
       case 'favorites':
