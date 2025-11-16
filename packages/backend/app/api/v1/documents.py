@@ -105,6 +105,12 @@ async def upload_document_endpoint(
     processing_mode: DocumentProcessingMode = Form(DocumentProcessingMode.server_processing),
     auto_process: bool = Form(True),
     metadata: Optional[str] = Form(None),
+
+    # PHASE 2: Additional parameters for fiscal documents
+    type_compte: Optional[str] = Form(None, description="Type de compte (cuenta_propia/cuenta_empresa) for fiscal_service"),
+    fiscal_service_id: Optional[str] = Form(None, description="Fiscal service ID if updating existing"),
+    declaration_id: Optional[str] = Form(None, description="Declaration ID if updating existing"),
+
     current_user: UserResponse = Depends(get_current_user)
 ):
     """
@@ -133,6 +139,14 @@ async def upload_document_endpoint(
                     status_code=400,
                     detail="Invalid metadata JSON format"
                 )
+
+        # PHASE 2: Add fiscal document parameters to metadata
+        if type_compte:
+            parsed_metadata["type_compte"] = type_compte
+        if fiscal_service_id:
+            parsed_metadata["fiscal_service_id"] = fiscal_service_id
+        if declaration_id:
+            parsed_metadata["declaration_id"] = declaration_id
 
         # Upload to Firebase Storage using appropriate folder
         if document_type in ["tax_return", "declaration", "receipt", "invoice"]:
@@ -733,6 +747,56 @@ async def _process_extraction_step(document: Document):
         }
 
         await document_repository.update(document.id, update_data)
+
+        # PHASE 2: Save extracted data to specialized tables (fiscal_service_data or declaration_*_data)
+        if is_fiscal_form and extraction_result.success:
+            try:
+                if document.document_type == "fiscal_service" or template_name in ["nota_ingreso"]:
+                    # === SAVE TO fiscal_service_data ===
+                    from app.repositories.fiscal_service_repository import fiscal_service_repository
+
+                    # Get fiscal_service_id from metadata or create new
+                    fiscal_service_id = document.metadata.get("fiscal_service_id") if document.metadata else None
+                    if not fiscal_service_id:
+                        fiscal_service_id = str(uuid.uuid4())
+
+                    # Get type_compte from metadata (from frontend form)
+                    type_compte = document.metadata.get("type_compte") if document.metadata else None
+
+                    # Call repository method to save in fiscal_service_data
+                    save_result = await fiscal_service_repository.process_uploaded_fiscal_service_document(
+                        fiscal_service_id=fiscal_service_id,
+                        document_file_path=document.file_path,
+                        service_type=template_name,
+                        user_id=str(document.user_id),
+                        type_compte=type_compte
+                    )
+
+                    logger.info(f"Fiscal service data saved: {save_result.get('fiscal_service_data_id')} for document {document.id}")
+
+                else:
+                    # === SAVE TO declaration_*_data (IVA, IRPF, etc.) ===
+                    from app.repositories.tax_declaration_repository import tax_declaration_repository
+
+                    # Get declaration_id from metadata or create new
+                    declaration_id = document.metadata.get("declaration_id") if document.metadata else None
+                    if not declaration_id:
+                        declaration_id = str(uuid.uuid4())
+
+                    # Call repository method to save in declaration_*_data
+                    save_result = await tax_declaration_repository.process_uploaded_declaration_document(
+                        declaration_id=declaration_id,
+                        document_file_path=document.file_path,
+                        declaration_type=template_name,
+                        user_id=str(document.user_id)
+                    )
+
+                    logger.info(f"Declaration data saved: {save_result.get('declaration_data_id')} for document {document.id}")
+
+            except Exception as save_error:
+                logger.error(f"Failed to save extracted data to database: {save_error}")
+                # Don't fail the whole extraction if DB save fails
+                # Data is still in document.extracted_data as fallback
 
         logger.info(f"Extraction completed for {document.id}: confidence={extraction_result.confidence:.2%}, success={extraction_result.success}")
 
