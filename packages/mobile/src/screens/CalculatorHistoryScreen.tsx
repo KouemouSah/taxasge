@@ -751,3 +751,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 });
+
+// Export default for convenience
+export default HistoryScreen;
