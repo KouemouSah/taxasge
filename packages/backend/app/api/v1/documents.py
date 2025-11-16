@@ -33,6 +33,8 @@ from app.services.firebase_storage_service import (
 )
 from app.services.ocr_service import ocr_service
 from app.services.extraction_service import extraction_service
+from app.core.documents.extractors import TemplateBasedExtractor
+from app.core.documents.extractors.template_loader import template_loader
 from app.api.v1.auth import require_admin, require_operator, get_current_user, get_current_user_optional
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
@@ -627,7 +629,13 @@ async def _process_ocr_step(document: Document):
 
 
 async def _process_extraction_step(document: Document):
-    """Process data extraction step"""
+    """
+    Process data extraction step
+
+    Routes to appropriate extractor based on document type:
+    - Fiscal forms (tax_declaration, fiscal_service) → TemplateBasedExtractor (Phase 2)
+    - General documents (passport, nif_card, invoice, receipt) → extraction_service (legacy)
+    """
     try:
         # Update status
         await document_repository.update(document.id, {
@@ -640,14 +648,52 @@ async def _process_extraction_step(document: Document):
             logger.warning(f"No OCR text available for extraction: {document.id}")
             return
 
-        # Run extraction
-        extraction_result = await extraction_service.extract_structured_data(
-            text=updated_doc.extracted_text,
-            document_type=document.document_type,
-            document_subtype=document.document_subtype
+        # Route to correct extractor based on document type
+        fiscal_form_types = [
+            "tax_declaration", "fiscal_service",
+            "iva_destajo", "iva_real", "irpf", "imp_salarios", "cuota_minima"
+        ]
+
+        is_fiscal_form = (
+            document.document_type in fiscal_form_types or
+            document.document_subtype in fiscal_form_types
         )
 
-        # Update document
+        # PHASE 2: Use TemplateBasedExtractor for fiscal forms
+        if is_fiscal_form:
+            logger.info(f"Using TemplateBasedExtractor for fiscal form: {document.document_type}/{document.document_subtype}")
+
+            # Determine template name (prioritize subtype over type)
+            template_name = document.document_subtype or document.document_type
+
+            # Load template from Firebase Storage (with local fallback)
+            template = template_loader.load(
+                template_name=template_name,
+                template_type="declaration"
+            )
+
+            if not template:
+                logger.error(f"No template found for fiscal form: {template_name}")
+                await document_repository.update(document.id, {
+                    "extraction_status": DocumentExtractionStatus.failed,
+                    "error_logs": [{"error": f"Template not found: {template_name}", "timestamp": datetime.utcnow().isoformat()}]
+                })
+                return
+
+            # Extract using template
+            extractor = TemplateBasedExtractor(template)
+            extraction_result = await extractor.extract(updated_doc.extracted_text)
+
+        # LEGACY: Use extraction_service for general documents
+        else:
+            logger.info(f"Using extraction_service for general document: {document.document_type}")
+            extraction_result = await extraction_service.extract_structured_data(
+                text=updated_doc.extracted_text,
+                document_type=document.document_type,
+                document_subtype=document.document_subtype
+            )
+
+        # Update document with extraction results
         update_data = {
             "extraction_status": DocumentExtractionStatus.completed if extraction_result.success else DocumentExtractionStatus.failed,
             "extracted_data": extraction_result.data if extraction_result.success else None,
@@ -657,10 +703,13 @@ async def _process_extraction_step(document: Document):
 
         await document_repository.update(document.id, update_data)
 
+        logger.info(f"Extraction completed for {document.id}: confidence={extraction_result.confidence:.2%}, success={extraction_result.success}")
+
     except Exception as e:
-        logger.error(f"Extraction step failed: {e}")
+        logger.error(f"Extraction step failed for {document.id}: {e}")
         await document_repository.update(document.id, {
-            "extraction_status": DocumentExtractionStatus.failed
+            "extraction_status": DocumentExtractionStatus.failed,
+            "error_logs": [{"error": f"Extraction failed: {str(e)}", "timestamp": datetime.utcnow().isoformat()}]
         })
 
 

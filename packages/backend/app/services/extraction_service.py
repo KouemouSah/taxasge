@@ -36,12 +36,17 @@ class ExtractionResult(BaseModel):
 
 
 class DocumentType(str, Enum):
-    """Supported document types for extraction"""
+    """
+    Supported document types for extraction
+
+    Note: For tax declaration forms (IVA, IRPF, etc.), use TemplateBasedExtractor
+    from app.core.documents.extractors instead of this service.
+    This service is optimized for general documents only.
+    """
     PASSPORT = "passport"
     NIF_CARD = "nif_card"
     RESIDENCE_PERMIT = "residence_permit"
     BIRTH_CERTIFICATE = "birth_certificate"
-    TAX_RETURN = "tax_return"
     BANK_STATEMENT = "bank_statement"
     INVOICE = "invoice"
     RECEIPT = "receipt"
@@ -676,7 +681,6 @@ def _get_document_description(doc_type: DocumentType) -> str:
         DocumentType.NIF_CARD: "Tax identification number card",
         DocumentType.RESIDENCE_PERMIT: "Official residence authorization document",
         DocumentType.BIRTH_CERTIFICATE: "Official birth registration document",
-        DocumentType.TAX_RETURN: "Annual tax declaration form",
         DocumentType.BANK_STATEMENT: "Financial account statement",
         DocumentType.INVOICE: "Commercial transaction invoice",
         DocumentType.RECEIPT: "Payment receipt or proof of purchase",
@@ -692,8 +696,7 @@ def _get_required_fields(doc_type: DocumentType) -> List[str]:
         DocumentType.PASSPORT: ["passport_number", "full_name", "date_of_birth"],
         DocumentType.NIF_CARD: ["nif_number", "full_name", "date_of_birth"],
         DocumentType.INVOICE: ["invoice_number", "total_amount", "invoice_date"],
-        DocumentType.RECEIPT: ["total_amount"],
-        DocumentType.TAX_RETURN: ["tax_year", "taxpayer_name", "total_income"]
+        DocumentType.RECEIPT: ["total_amount"]
     }
     return required_fields.get(doc_type, [])
 
@@ -704,7 +707,6 @@ def _get_optional_fields(doc_type: DocumentType) -> List[str]:
         DocumentType.PASSPORT: ["nationality", "expiry_date", "place_of_birth"],
         DocumentType.NIF_CARD: ["address"],
         DocumentType.INVOICE: ["vendor_name", "tax_amount"],
-        DocumentType.RECEIPT: ["vendor_name", "purchase_date"],
-        DocumentType.TAX_RETURN: ["tax_owed", "refund_amount"]
+        DocumentType.RECEIPT: ["vendor_name", "purchase_date"]
     }
     return optional_fields.get(doc_type, [])
