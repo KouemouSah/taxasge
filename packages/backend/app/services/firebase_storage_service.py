@@ -153,22 +153,122 @@ class FirebaseStorageService:
         except Exception as e:
             raise Exception(f"Bucket access test failed: {e}")
 
-    async def upload_file(
+    async def upload_user_document(
         self,
-        file: Union[UploadFile, BinaryIO, bytes],
         user_id: str,
-        document_type: str = "general",
-        folder: str = "documents",
+        application_id: str,
+        file: Union[UploadFile, BinaryIO, bytes],
         metadata: Optional[Dict] = None
     ) -> UploadResult:
         """
-        Upload file to Firebase Storage
+        Upload document utilisateur vers /user-documents/{userId}/{applicationId}/{fileName}
+        Conforme storage.rules ligne 65-78
 
         Args:
-            file: File to upload (UploadFile, BinaryIO, or bytes)
-            user_id: User ID for organizing files
-            document_type: Type of document
-            folder: Storage folder
+            user_id: User ID (must match authenticated user)
+            application_id: Application/Declaration ID
+            file: File to upload
+            metadata: Custom metadata (must include uploadedBy, uploadedAt, applicationId)
+
+        Returns:
+            UploadResult with file details
+        """
+        try:
+            if not self._initialized:
+                await self.initialize()
+
+            # Read file content
+            if isinstance(file, UploadFile):
+                content = await file.read()
+                filename = file.filename or "unknown"
+                mime_type = file.content_type or "application/octet-stream"
+            elif isinstance(file, bytes):
+                content = file
+                filename = metadata.get("filename", "unknown") if metadata else "unknown"
+                mime_type = metadata.get("mime_type", "application/octet-stream") if metadata else "application/octet-stream"
+            else:
+                content = file.read()
+                filename = getattr(file, 'name', 'unknown')
+                mime_type = "application/octet-stream"
+
+            # Validate file
+            await self._validate_file(content, mime_type, filename)
+
+            # Generate file hash
+            file_hash = hashlib.sha256(content).hexdigest()
+
+            # Storage path conforme storage.rules
+            storage_path = f"user-documents/{user_id}/{application_id}/{filename}"
+
+            # Create blob
+            blob = self.bucket.blob(storage_path)
+
+            # Set metadata (storage.rules requires: uploadedBy, uploadedAt, applicationId)
+            blob_metadata = {
+                "uploadedBy": user_id,  # Required by storage.rules
+                "uploadedAt": datetime.utcnow().isoformat(),  # Required
+                "applicationId": application_id,  # Required
+                "original_filename": filename,
+                "file_hash": file_hash,
+                "file_size": str(len(content))
+            }
+
+            if metadata:
+                blob_metadata.update(metadata)
+
+            blob.metadata = blob_metadata
+
+            # Set retention policy
+            retention_date = datetime.utcnow() + timedelta(days=self.config.retention_days)
+            blob.custom_time = retention_date
+
+            # Upload file
+            blob.upload_from_string(
+                content,
+                content_type=mime_type,
+                timeout=300  # 5 minutes timeout
+            )
+
+            # Generate signed URL (24h validity)
+            signed_url = blob.generate_signed_url(
+                version="v4",
+                expiration=timedelta(hours=24),
+                method="GET"
+            )
+
+            # Create result
+            result = UploadResult(
+                file_id=f"{user_id}_{application_id}_{file_hash[:8]}",
+                file_path=storage_path,
+                file_url=signed_url,
+                file_size=len(content),
+                mime_type=mime_type,
+                file_hash=file_hash,
+                expires_at=datetime.utcnow() + timedelta(hours=24)
+            )
+
+            logger.info(f"User document uploaded: {storage_path} ({len(content)} bytes)")
+            return result
+
+        except Exception as e:
+            logger.error(f"Upload user document failed: {e}")
+            raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+    async def upload_tax_attachment(
+        self,
+        application_id: str,
+        file: Union[UploadFile, BinaryIO, bytes],
+        allowed_users: List[str],
+        metadata: Optional[Dict] = None
+    ) -> UploadResult:
+        """
+        Upload pièce jointe fiscale vers /application-attachments/{applicationId}/{fileName}
+        Conforme storage.rules ligne 117-131
+
+        Args:
+            application_id: ID de l'application/déclaration
+            file: File to upload
+            allowed_users: Liste des user IDs autorisés à accéder au fichier
             metadata: Custom metadata
 
         Returns:
@@ -198,26 +298,21 @@ class FirebaseStorageService:
             # Generate file hash
             file_hash = hashlib.sha256(content).hexdigest()
 
-            # Generate file ID and path
-            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-            file_id = f"{user_id}_{timestamp}_{file_hash[:8]}"
-            file_extension = Path(filename).suffix
-
-            # Organize selon architecture TaxasGE : folder/user_id/date/document_type/
-            date_folder = datetime.utcnow().strftime("%Y/%m/%d")
-            storage_path = f"{folder}/{user_id}/{date_folder}/{document_type}/{file_id}{file_extension}"
+            # Storage path conforme storage.rules
+            storage_path = f"application-attachments/{application_id}/{filename}"
 
             # Create blob
             blob = self.bucket.blob(storage_path)
 
-            # Set metadata
+            # Set metadata (storage.rules requires: uploadedBy, uploadedAt, applicationId, allowedUsers)
             blob_metadata = {
-                "user_id": user_id,
-                "document_type": document_type,
+                "uploadedBy": allowed_users[0] if allowed_users else "system",  # Premier user autorisé
+                "uploadedAt": datetime.utcnow().isoformat(),
+                "applicationId": application_id,
+                "allowedUsers": ",".join(allowed_users),  # Liste CSV pour metadata
                 "original_filename": filename,
                 "file_hash": file_hash,
-                "uploaded_at": datetime.utcnow().isoformat(),
-                "file_id": file_id
+                "file_size": str(len(content))
             }
 
             if metadata:
@@ -233,7 +328,7 @@ class FirebaseStorageService:
             blob.upload_from_string(
                 content,
                 content_type=mime_type,
-                timeout=300  # 5 minutes timeout
+                timeout=300
             )
 
             # Generate signed URL (24h validity)
@@ -245,7 +340,7 @@ class FirebaseStorageService:
 
             # Create result
             result = UploadResult(
-                file_id=file_id,
+                file_id=f"{application_id}_{file_hash[:8]}",
                 file_path=storage_path,
                 file_url=signed_url,
                 file_size=len(content),
@@ -254,11 +349,314 @@ class FirebaseStorageService:
                 expires_at=datetime.utcnow() + timedelta(hours=24)
             )
 
-            logger.info(f"File uploaded successfully: {file_id} ({len(content)} bytes)")
+            logger.info(f"Tax attachment uploaded: {storage_path} ({len(content)} bytes)")
             return result
 
         except Exception as e:
-            logger.error(f"Upload failed: {e}")
+            logger.error(f"Upload tax attachment failed: {e}")
+            raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+    async def upload_temporary_file(
+        self,
+        user_id: str,
+        session_id: str,
+        file: Union[UploadFile, BinaryIO, bytes],
+        expires_in_minutes: int = 15,
+        metadata: Optional[Dict] = None
+    ) -> UploadResult:
+        """
+        Upload fichier temporaire vers /temp-uploads/{userId}/{sessionId}/{fileName}
+        Conforme storage.rules ligne 151-159
+
+        Args:
+            user_id: User ID
+            session_id: Session ID unique
+            file: File to upload
+            expires_in_minutes: Durée de vie en minutes (défaut: 15min)
+            metadata: Custom metadata
+
+        Returns:
+            UploadResult with file details
+        """
+        try:
+            if not self._initialized:
+                await self.initialize()
+
+            # Read file content
+            if isinstance(file, UploadFile):
+                content = await file.read()
+                filename = file.filename or "unknown"
+                mime_type = file.content_type or "application/octet-stream"
+            elif isinstance(file, bytes):
+                content = file
+                filename = metadata.get("filename", "unknown") if metadata else "unknown"
+                mime_type = metadata.get("mime_type", "application/octet-stream") if metadata else "application/octet-stream"
+            else:
+                content = file.read()
+                filename = getattr(file, 'name', 'unknown')
+                mime_type = "application/octet-stream"
+
+            # Validate file
+            await self._validate_file(content, mime_type, filename)
+
+            # Generate file hash
+            file_hash = hashlib.sha256(content).hexdigest()
+
+            # Storage path conforme storage.rules
+            storage_path = f"temp-uploads/{user_id}/{session_id}/{filename}"
+
+            # Create blob
+            blob = self.bucket.blob(storage_path)
+
+            # Set metadata (storage.rules requires: uploadedBy, uploadedAt, expiresAt)
+            expires_at = datetime.utcnow() + timedelta(minutes=expires_in_minutes)
+            blob_metadata = {
+                "uploadedBy": user_id,
+                "uploadedAt": datetime.utcnow().isoformat(),
+                "expiresAt": expires_at.isoformat(),  # Required by storage.rules
+                "original_filename": filename,
+                "file_hash": file_hash,
+                "file_size": str(len(content)),
+                "session_id": session_id
+            }
+
+            if metadata:
+                blob_metadata.update(metadata)
+
+            blob.metadata = blob_metadata
+
+            # Set custom time for auto-deletion
+            blob.custom_time = expires_at
+
+            # Upload file
+            blob.upload_from_string(
+                content,
+                content_type=mime_type,
+                timeout=300
+            )
+
+            # Generate signed URL (expires with file)
+            signed_url = blob.generate_signed_url(
+                version="v4",
+                expiration=timedelta(minutes=expires_in_minutes),
+                method="GET"
+            )
+
+            # Create result
+            result = UploadResult(
+                file_id=f"{user_id}_{session_id}_{file_hash[:8]}",
+                file_path=storage_path,
+                file_url=signed_url,
+                file_size=len(content),
+                mime_type=mime_type,
+                file_hash=file_hash,
+                expires_at=expires_at
+            )
+
+            logger.info(f"Temporary file uploaded: {storage_path} (expires in {expires_in_minutes}min)")
+            return result
+
+        except Exception as e:
+            logger.error(f"Upload temporary file failed: {e}")
+            raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+    async def upload_system_asset(
+        self,
+        asset_type: str,
+        file: Union[UploadFile, BinaryIO, bytes],
+        admin_user_id: str,
+        metadata: Optional[Dict] = None
+    ) -> UploadResult:
+        """
+        Upload asset système vers /system-assets/{assetType}/{fileName}
+        Conforme storage.rules ligne 134-142
+        ATTENTION: Requiert permissions admin
+
+        Args:
+            asset_type: Type d'asset (logos, templates, banners, etc.)
+            file: File to upload
+            admin_user_id: ID de l'admin qui upload
+            metadata: Custom metadata
+
+        Returns:
+            UploadResult with file details
+        """
+        try:
+            if not self._initialized:
+                await self.initialize()
+
+            # Read file content
+            if isinstance(file, UploadFile):
+                content = await file.read()
+                filename = file.filename or "unknown"
+                mime_type = file.content_type or "application/octet-stream"
+            elif isinstance(file, bytes):
+                content = file
+                filename = metadata.get("filename", "unknown") if metadata else "unknown"
+                mime_type = metadata.get("mime_type", "application/octet-stream") if metadata else "application/octet-stream"
+            else:
+                content = file.read()
+                filename = getattr(file, 'name', 'unknown')
+                mime_type = "application/octet-stream"
+
+            # Validate file
+            await self._validate_file(content, mime_type, filename)
+
+            # Generate file hash
+            file_hash = hashlib.sha256(content).hexdigest()
+
+            # Storage path conforme storage.rules
+            storage_path = f"system-assets/{asset_type}/{filename}"
+
+            # Create blob
+            blob = self.bucket.blob(storage_path)
+
+            # Set metadata (storage.rules requires: uploadedBy, uploadedAt, assetType)
+            blob_metadata = {
+                "uploadedBy": admin_user_id,
+                "uploadedAt": datetime.utcnow().isoformat(),
+                "assetType": asset_type,  # Required by storage.rules
+                "original_filename": filename,
+                "file_hash": file_hash,
+                "file_size": str(len(content))
+            }
+
+            if metadata:
+                blob_metadata.update(metadata)
+
+            blob.metadata = blob_metadata
+
+            # Set retention policy (permanent for system assets)
+            blob.custom_time = datetime.utcnow() + timedelta(days=3650)  # 10 years
+
+            # Upload file
+            blob.upload_from_string(
+                content,
+                content_type=mime_type,
+                timeout=300
+            )
+
+            # Generate signed URL (long expiration for public assets)
+            signed_url = blob.generate_signed_url(
+                version="v4",
+                expiration=timedelta(days=365),  # 1 year for system assets
+                method="GET"
+            )
+
+            # Create result
+            result = UploadResult(
+                file_id=f"system_{asset_type}_{file_hash[:8]}",
+                file_path=storage_path,
+                file_url=signed_url,
+                file_size=len(content),
+                mime_type=mime_type,
+                file_hash=file_hash,
+                expires_at=datetime.utcnow() + timedelta(days=365)
+            )
+
+            logger.info(f"System asset uploaded: {storage_path} ({len(content)} bytes)")
+            return result
+
+        except Exception as e:
+            logger.error(f"Upload system asset failed: {e}")
+            raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+    async def upload_profile_picture(
+        self,
+        user_id: str,
+        file: Union[UploadFile, BinaryIO, bytes],
+        metadata: Optional[Dict] = None
+    ) -> UploadResult:
+        """
+        Upload photo de profil vers /profile-pictures/{userId}/{fileName}
+        Conforme storage.rules ligne 81-92
+
+        Args:
+            user_id: User ID
+            file: Image file to upload
+            metadata: Custom metadata
+
+        Returns:
+            UploadResult with file details
+        """
+        try:
+            if not self._initialized:
+                await self.initialize()
+
+            # Read file content
+            if isinstance(file, UploadFile):
+                content = await file.read()
+                filename = file.filename or f"profile_{user_id}.jpg"
+                mime_type = file.content_type or "image/jpeg"
+            elif isinstance(file, bytes):
+                content = file
+                filename = metadata.get("filename", f"profile_{user_id}.jpg") if metadata else f"profile_{user_id}.jpg"
+                mime_type = metadata.get("mime_type", "image/jpeg") if metadata else "image/jpeg"
+            else:
+                content = file.read()
+                filename = getattr(file, 'name', f"profile_{user_id}.jpg")
+                mime_type = "image/jpeg"
+
+            # Validate file (must be image)
+            await self._validate_file(content, mime_type, filename)
+
+            # Generate file hash
+            file_hash = hashlib.sha256(content).hexdigest()
+
+            # Storage path conforme storage.rules
+            storage_path = f"profile-pictures/{user_id}/{filename}"
+
+            # Create blob
+            blob = self.bucket.blob(storage_path)
+
+            # Set metadata (storage.rules requires: uploadedBy, uploadedAt)
+            blob_metadata = {
+                "uploadedBy": user_id,
+                "uploadedAt": datetime.utcnow().isoformat(),
+                "original_filename": filename,
+                "file_hash": file_hash,
+                "file_size": str(len(content))
+            }
+
+            if metadata:
+                blob_metadata.update(metadata)
+
+            blob.metadata = blob_metadata
+
+            # Set retention policy
+            retention_date = datetime.utcnow() + timedelta(days=self.config.retention_days)
+            blob.custom_time = retention_date
+
+            # Upload file
+            blob.upload_from_string(
+                content,
+                content_type=mime_type,
+                timeout=300
+            )
+
+            # Generate signed URL (long expiration for profile pictures)
+            signed_url = blob.generate_signed_url(
+                version="v4",
+                expiration=timedelta(days=30),  # 30 days for profile pictures
+                method="GET"
+            )
+
+            # Create result
+            result = UploadResult(
+                file_id=f"profile_{user_id}_{file_hash[:8]}",
+                file_path=storage_path,
+                file_url=signed_url,
+                file_size=len(content),
+                mime_type=mime_type,
+                file_hash=file_hash,
+                expires_at=datetime.utcnow() + timedelta(days=30)
+            )
+
+            logger.info(f"Profile picture uploaded: {storage_path} ({len(content)} bytes)")
+            return result
+
+        except Exception as e:
+            logger.error(f"Upload profile picture failed: {e}")
             raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
     async def download_file(
@@ -619,78 +1017,146 @@ async def get_document_url(
 # TAXASGE-SPECIFIC FOLDER FUNCTIONS
 # ============================================================================
 
-async def upload_user_document(
+async def upload_user_document_helper(
     file: UploadFile,
     user_id: str,
-    document_type: str = "general"
+    application_id: str
 ) -> UploadResult:
-    """Upload to user-documents/ folder"""
+    """
+    Helper function aligned with storage.rules
+    Upload to user-documents/{userId}/{applicationId}/{fileName}
+    """
     await ensure_storage_initialized()
-    return await firebase_storage_service.upload_file(
-        file=file,
+    return await firebase_storage_service.upload_user_document(
         user_id=user_id,
-        document_type=document_type,
-        folder="user-documents"
+        application_id=application_id,
+        file=file
     )
 
 
-async def upload_tax_attachment(
+async def upload_tax_attachment_helper(
     file: UploadFile,
-    user_id: str,
-    attachment_type: str = "supporting_document"
+    application_id: str,
+    allowed_users: List[str]
 ) -> UploadResult:
-    """Upload to tax-attachments/ folder"""
+    """
+    Helper function aligned with storage.rules
+    Upload to application-attachments/{applicationId}/{fileName}
+    """
     await ensure_storage_initialized()
-    return await firebase_storage_service.upload_file(
+    return await firebase_storage_service.upload_tax_attachment(
+        application_id=application_id,
         file=file,
-        user_id=user_id,
-        document_type=attachment_type,
-        folder="tax-attachments"
+        allowed_users=allowed_users
     )
 
 
-async def upload_app_asset(
+async def upload_system_asset_helper(
     file: UploadFile,
     asset_type: str,
-    user_id: str = "system"
+    admin_user_id: str
 ) -> UploadResult:
-    """Upload to app/assets/ folder (system assets)"""
+    """
+    Helper function aligned with storage.rules
+    Upload to system-assets/{assetType}/{fileName}
+    Requires admin permissions
+    """
     await ensure_storage_initialized()
-    return await firebase_storage_service.upload_file(
+    return await firebase_storage_service.upload_system_asset(
+        asset_type=asset_type,
         file=file,
+        admin_user_id=admin_user_id
+    )
+
+
+async def upload_profile_picture_helper(
+    file: UploadFile,
+    user_id: str
+) -> UploadResult:
+    """
+    Helper function aligned with storage.rules
+    Upload to profile-pictures/{userId}/{fileName}
+    """
+    await ensure_storage_initialized()
+    return await firebase_storage_service.upload_profile_picture(
         user_id=user_id,
-        document_type=asset_type,
-        folder="app/assets"
+        file=file
+    )
+
+
+async def upload_temporary_file_helper(
+    file: UploadFile,
+    user_id: str,
+    session_id: str,
+    expires_in_minutes: int = 15
+) -> UploadResult:
+    """
+    Helper function aligned with storage.rules
+    Upload to temp-uploads/{userId}/{sessionId}/{fileName}
+    Auto-expires after specified minutes (default: 15min)
+    """
+    await ensure_storage_initialized()
+    return await firebase_storage_service.upload_temporary_file(
+        user_id=user_id,
+        session_id=session_id,
+        file=file,
+        expires_in_minutes=expires_in_minutes
     )
 
 
 def get_taxasge_folder_info() -> Dict[str, Any]:
-    """Get information about TaxasGE folder structure"""
+    """
+    Get information about TaxasGE folder structure
+    ALIGNED WITH storage.rules (SOURCE DE VÉRITÉ)
+    """
     return {
         "folder_structure": {
             "user-documents": {
-                "description": "Documents personnels des utilisateurs",
-                "path_format": "user-documents/{user_id}/{YYYY/MM/DD}/{document_type}/{file_id}",
+                "description": "Documents utilisateurs liés aux déclarations",
+                "path_format": "user-documents/{userId}/{applicationId}/{fileName}",
+                "storage_rules": "Ligne 65-78",
                 "examples": [
-                    "user-documents/user123/2025/09/27/passport/user123_20250927_143052_abc12345.pdf",
-                    "user-documents/user123/2025/09/27/nif_card/user123_20250927_143153_def67890.jpg"
+                    "user-documents/user123/decl_456/formulaire_iva.pdf",
+                    "user-documents/user123/decl_789/justificatif_residence.jpg"
                 ]
             },
-            "tax-attachments": {
+            "application-attachments": {
                 "description": "Pièces jointes pour déclarations fiscales",
-                "path_format": "tax-attachments/{user_id}/{YYYY/MM/DD}/{attachment_type}/{file_id}",
+                "path_format": "application-attachments/{applicationId}/{fileName}",
+                "storage_rules": "Ligne 117-131",
                 "examples": [
-                    "tax-attachments/user123/2025/09/27/receipt/user123_20250927_143052_ghi12345.pdf",
-                    "tax-attachments/user123/2025/09/27/invoice/user123_20250927_143153_jkl67890.pdf"
+                    "application-attachments/decl_456/receipt_001.pdf",
+                    "application-attachments/decl_456/invoice_002.pdf"
                 ]
             },
-            "app/assets": {
-                "description": "Assets de l'application (logos, templates, etc.)",
-                "path_format": "app/assets/{asset_type}/{file_id}",
+            "system-assets": {
+                "description": "Assets système (logos, templates, banners)",
+                "path_format": "system-assets/{assetType}/{fileName}",
+                "storage_rules": "Ligne 134-142",
+                "permissions": "Admin only",
                 "examples": [
-                    "app/assets/logos/logo_dgi.png",
-                    "app/assets/templates/tax_form_template.pdf",
-                    "app/assets/banners/welcome_banner.jpg"
+                    "system-assets/logos/logo_dgi.png",
+                    "system-assets/templates/tax_form_template.pdf",
+                    "system-assets/banners/welcome_banner.jpg"
+                ]
+            },
+            "profile-pictures": {
+                "description": "Photos de profil utilisateurs",
+                "path_format": "profile-pictures/{userId}/{fileName}",
+                "storage_rules": "Ligne 81-92",
+                "examples": [
+                    "profile-pictures/user123/avatar.jpg",
+                    "profile-pictures/user456/profile.png"
+                ]
+            },
+            "temp-uploads": {
+                "description": "Uploads temporaires (auto-suppression 15min)",
+                "path_format": "temp-uploads/{userId}/{sessionId}/{fileName}",
+                "storage_rules": "Ligne 151-159",
+                "expiration": "15 minutes (configurable)",
+                "examples": [
+                    "temp-uploads/user123/session_abc/draft_form.pdf",
+                    "temp-uploads/user123/session_abc/temp_receipt.jpg"
                 ]
             }
         },
@@ -701,5 +1167,10 @@ def get_taxasge_folder_info() -> Dict[str, Any]:
         "github_secrets": {
             "development": "FIREBASE_STORAGE_BUCKET=taxasge-dev.firebasestorage.app",
             "production": "FIREBASE_STORAGE_BUCKET=taxasge-pro.firebasestorage.app"
+        },
+        "migration_notes": {
+            "app-assets": "RENAMED to system-assets (2025-11-15)",
+            "tax-attachments": "RENAMED to application-attachments (2025-11-15)",
+            "date_organization": "REMOVED (not in storage.rules)"
         }
     }
