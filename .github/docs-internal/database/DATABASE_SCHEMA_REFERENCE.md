@@ -3,7 +3,7 @@
 TAXASGE DATABASE SCHEMA - COMPLETE REFERENCE
 ====================================================================================================
 
-Extracted on: 2025-11-14 01:24:42
+Extracted on: 2025-11-16 19:23:14
 Database: Supabase PostgreSQL
 Project: taxasge-dev
 
@@ -22,10 +22,11 @@ Project: taxasge-dev
   - companies                                No description
   - declaration_amount_adjustments           Audit trail de tous les ajustements de montants (historique complet)
   - declaration_corrections                  Audit trail des corrections apportées aux déclarations (rectificatives)
-  - declaration_data_generic                 NIVEAU 2 - Données JSONB génériques pour 7 autres types de déclarations (<1% volume)
   - declaration_irpf_data                    NIVEAU 1 - Données structurées IRPF (5% volume) - Impôt sur le Revenu
-  - declaration_iva_data                     NIVEAU 1 - Données structurées IVA (90% volume) - Après validation OCR Tesseract ou saisie manuelle
-  - declaration_petroliferos_data            NIVEAU 1 - Données structurées Pétrolifères (4% volume, GROS MONTANTS) - 6 sous-types
+  - declaration_iva_details                  NIVEAU 1 - Données structurées IVA (90% volume) - Après validation OCR Tesseract ou saisie manuelle
+  - declaration_other_details                NIVEAU 2 - Données JSONB génériques pour 7 autres types de déclarations (<1% volume)
+  - declaration_petroliferos_details         NIVEAU 1 - Données structurées Pétrolifères (4% volume, GROS MONTANTS) - 6 sous-types
+  - declaration_retencion_details            Détails des déclarations de Retención a la Fuente (3%, 5%, 10%) - Structure avec array fournisseurs en JSONB
   - document_processing_queue                Async processing queue for OCR with retry logic, exponential backoff, and Cloud Vision→Tesseract fallback
   - document_templates                       Templates documents - Avec validity_duration_months (v4.1 fix)
   - document_templates_backup_20251017       No description
@@ -130,6 +131,20 @@ declaration_type_enum:
   - withholding_5pct_oil_mining_residents
   - minimum_fiscal_oil_mining
   - withholding_10pct_oil_mining_nonresidents
+  - iva_destajo
+  - iva_real
+  - retencion_3pct_petrolero
+  - retencion_5pct_petrolero
+  - retencion_10pct_no_residentes_petrolero
+  - retencion_10pct_no_residentes_comun
+  - imp_prod_petroleros_ivs
+  - imp_prod_petroleros_fmi
+  - imp_sueldos_petrolero
+  - imp_sueldos_comun
+  - cuota_min_petrolera
+  - cuota_min_comun
+  - impreso_comun
+  - impreso_liquidacion
 
 escalation_level:
   - low
@@ -204,6 +219,10 @@ translatable_entity_type:
   - procedure_template
   - procedure_step
   - document_template
+
+type_compte_enum:
+  - cuenta_propia
+  - cuenta_empresa
 
 user_role_enum:
   - citizen
@@ -622,49 +641,6 @@ Indexes:
     CREATE INDEX idx_declaration_corrections_status ON public.declaration_corrections USING btree (status)
 
 ----------------------------------------------------------------------------------------------------
-Table: DECLARATION_DATA_GENERIC
-----------------------------------------------------------------------------------------------------
-
-
-Column                              Type                      Nullable   Default                       
-----------------------------------------------------------------------------------------------------
-id                                  uuid                      NO         gen_random_uuid()             
-tax_declaration_id                  uuid                      NO                                       
-form_template_id                    uuid                      YES                                      
-declaration_subtype                 varchar(100)              NO                                       
-  └─ Description: Type: iva_destajo, cuota_min_comun, sueldos_petrolero, sueldos_comun, residentes_comun_10, impreso_comun, impreso_liquidacion
-data                                jsonb                     NO                                       
-  └─ Description: Données complètes en JSONB (structure flexible selon sous-type)
-calculated_amount                   numeric                   YES                                      
-adjusted_amount                     numeric                   YES                                      
-adjustment_reason_id                integer                   YES                                      
-adjustment_reason_custom            text                      YES                                      
-adjusted_by                         uuid                      YES                                      
-adjusted_at                         timestamp with time zone  YES                                      
-final_amount                        numeric                   YES                                      
-created_at                          timestamp with time zone  NO         now()                         
-updated_at                          timestamp with time zone  NO         now()                         
-
-Primary Key: id
-
-Foreign Keys:
-  - adjusted_by → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
-  - adjustment_reason_id → adjustment_reasons.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
-  - form_template_id → form_templates.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
-  - tax_declaration_id → tax_declarations.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
-
-Unique Constraints:
-  - declaration_data_generic_tax_declaration_id_key: (tax_declaration_id)
-
-Indexes:
-  - declaration_data_generic_tax_declaration_id_key
-    CREATE UNIQUE INDEX declaration_data_generic_tax_declaration_id_key ON public.declaration_data_generic USING btree (tax_declaration_id)
-  - idx_declaration_data_generic_tax_declaration_id
-    CREATE INDEX idx_declaration_data_generic_tax_declaration_id ON public.declaration_data_generic USING btree (tax_declaration_id)
-  - idx_declaration_data_generic_subtype
-    CREATE INDEX idx_declaration_data_generic_subtype ON public.declaration_data_generic USING btree (declaration_subtype)
-
-----------------------------------------------------------------------------------------------------
 Table: DECLARATION_IRPF_DATA
 ----------------------------------------------------------------------------------------------------
 
@@ -721,7 +697,7 @@ Indexes:
     CREATE INDEX idx_declaration_irpf_data_tax_declaration_id ON public.declaration_irpf_data USING btree (tax_declaration_id)
 
 ----------------------------------------------------------------------------------------------------
-Table: DECLARATION_IVA_DATA
+Table: DECLARATION_IVA_DETAILS
 ----------------------------------------------------------------------------------------------------
 
 
@@ -733,10 +709,12 @@ iva_dev_01_base                     numeric                   YES        0
 iva_dev_02_tipo                     numeric                   YES        15.00                         
 iva_dev_03_cuota                    numeric                   YES                                      
 iva_dev_04_base                     numeric                   YES        0                             
-iva_dev_05_tipo                     numeric                   YES        6.00                          
+iva_dev_05_tipo                     numeric                   YES        5.00                          
+  └─ Description: Tipo IVA pour tranche 5% (campo 05) - PDFs officiels
 iva_dev_06_cuota                    numeric                   YES                                      
 iva_dev_07_base                     numeric                   YES        0                             
-iva_dev_08_tipo                     numeric                   YES        1.50                          
+iva_dev_08_tipo                     numeric                   YES        0.00                          
+  └─ Description: Tipo IVA pour tranche 0% (campo 08) - PDFs officiels
 iva_dev_09_cuota                    numeric                   YES                                      
 iva_dev_10_base                     numeric                   YES        0                             
 iva_dev_11_tipo                     numeric                   YES        15.00                         
@@ -767,6 +745,14 @@ total_a_ingresar                    numeric                   YES
   └─ Description: Montant total à payer (final_amount + pénalités)
 created_at                          timestamp with time zone  NO         now()                         
 updated_at                          timestamp with time zone  NO         now()                         
+iva_dev_19_base                     numeric                   YES        0                             
+  └─ Description: Campo 19: Base imponible Adquisiciones Intracomunitarias (IVA REAL uniquement)
+iva_dev_19_tipo                     numeric                   YES                                      
+  └─ Description: Campo 19: Tipo % Adquisiciones Intracomunitarias (IVA REAL uniquement)
+iva_dev_020_cuota                   numeric                   YES                                      
+  └─ Description: Campo 020: Cuota Adquisiciones Intracomunitarias = campo_19_base × campo_19_tipo / 100 (IVA REAL uniquement)
+iva_subtype                         varchar(20)               YES        'destajo'::character varying  
+  └─ Description: Sous-type IVA: destajo (simplifié) ou real (complet avec déductions)
 
 Primary Key: id
 
@@ -776,16 +762,63 @@ Foreign Keys:
   - tax_declaration_id → tax_declarations.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
 
 Unique Constraints:
-  - declaration_iva_data_tax_declaration_id_key: (tax_declaration_id)
+  - declaration_iva_details_tax_declaration_id_key: (tax_declaration_id)
 
 Indexes:
-  - declaration_iva_data_tax_declaration_id_key
-    CREATE UNIQUE INDEX declaration_iva_data_tax_declaration_id_key ON public.declaration_iva_data USING btree (tax_declaration_id)
-  - idx_declaration_iva_data_tax_declaration_id
-    CREATE INDEX idx_declaration_iva_data_tax_declaration_id ON public.declaration_iva_data USING btree (tax_declaration_id)
+  - declaration_iva_details_tax_declaration_id_key
+    CREATE UNIQUE INDEX declaration_iva_details_tax_declaration_id_key ON public.declaration_iva_details USING btree (tax_declaration_id)
+  - idx_declaration_iva_details_tax_declaration_id
+    CREATE INDEX idx_declaration_iva_details_tax_declaration_id ON public.declaration_iva_details USING btree (tax_declaration_id)
+  - idx_iva_details_subtype
+    CREATE INDEX idx_iva_details_subtype ON public.declaration_iva_details USING btree (iva_subtype)
 
 ----------------------------------------------------------------------------------------------------
-Table: DECLARATION_PETROLIFEROS_DATA
+Table: DECLARATION_OTHER_DETAILS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+tax_declaration_id                  uuid                      NO                                       
+form_template_id                    uuid                      YES                                      
+form_code                           varchar(100)              NO                                       
+  └─ Description: Type: iva_destajo, cuota_min_comun, sueldos_petrolero, sueldos_comun, residentes_comun_10, impreso_comun, impreso_liquidacion
+form_data                           jsonb                     NO                                       
+  └─ Description: Données complètes en JSONB (structure flexible selon sous-type)
+calculated_amount                   numeric                   YES                                      
+adjusted_amount                     numeric                   YES                                      
+adjustment_reason_id                integer                   YES                                      
+adjustment_reason_custom            text                      YES                                      
+adjusted_by                         uuid                      YES                                      
+adjusted_at                         timestamp with time zone  YES                                      
+final_amount                        numeric                   YES                                      
+created_at                          timestamp with time zone  NO         now()                         
+updated_at                          timestamp with time zone  NO         now()                         
+
+Primary Key: id
+
+Foreign Keys:
+  - adjusted_by → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - adjustment_reason_id → adjustment_reasons.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - form_template_id → form_templates.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - tax_declaration_id → tax_declarations.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+Unique Constraints:
+  - declaration_other_details_tax_declaration_id_key: (tax_declaration_id)
+
+Indexes:
+  - declaration_other_details_tax_declaration_id_key
+    CREATE UNIQUE INDEX declaration_other_details_tax_declaration_id_key ON public.declaration_other_details USING btree (tax_declaration_id)
+  - idx_declaration_data_generic_tax_declaration_id
+    CREATE INDEX idx_declaration_data_generic_tax_declaration_id ON public.declaration_other_details USING btree (tax_declaration_id)
+  - idx_declaration_data_generic_subtype
+    CREATE INDEX idx_declaration_data_generic_subtype ON public.declaration_other_details USING btree (form_code)
+  - idx_other_details_form_data_gin
+    CREATE INDEX idx_other_details_form_data_gin ON public.declaration_other_details USING gin (form_data)
+
+----------------------------------------------------------------------------------------------------
+Table: DECLARATION_PETROLIFEROS_DETAILS
 ----------------------------------------------------------------------------------------------------
 
 
@@ -824,15 +857,71 @@ Foreign Keys:
   - tax_declaration_id → tax_declarations.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
 
 Unique Constraints:
-  - declaration_petroliferos_data_tax_declaration_id_key: (tax_declaration_id)
+  - declaration_petroliferos_details_tax_declaration_id_key: (tax_declaration_id)
 
 Indexes:
-  - declaration_petroliferos_data_tax_declaration_id_key
-    CREATE UNIQUE INDEX declaration_petroliferos_data_tax_declaration_id_key ON public.declaration_petroliferos_data USING btree (tax_declaration_id)
+  - declaration_petroliferos_details_tax_declaration_id_key
+    CREATE UNIQUE INDEX declaration_petroliferos_details_tax_declaration_id_key ON public.declaration_petroliferos_details USING btree (tax_declaration_id)
   - idx_declaration_petroliferos_data_tax_declaration_id
-    CREATE INDEX idx_declaration_petroliferos_data_tax_declaration_id ON public.declaration_petroliferos_data USING btree (tax_declaration_id)
+    CREATE INDEX idx_declaration_petroliferos_data_tax_declaration_id ON public.declaration_petroliferos_details USING btree (tax_declaration_id)
   - idx_declaration_petroliferos_data_subtype
-    CREATE INDEX idx_declaration_petroliferos_data_subtype ON public.declaration_petroliferos_data USING btree (petroleum_declaration_subtype)
+    CREATE INDEX idx_declaration_petroliferos_data_subtype ON public.declaration_petroliferos_details USING btree (petroleum_declaration_subtype)
+
+----------------------------------------------------------------------------------------------------
+Table: DECLARATION_RETENCION_DETAILS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+tax_declaration_id                  uuid                      NO                                       
+retencion_subtype                   varchar(50)               NO                                       
+  └─ Description: Sous-type de rétention: 3pct_petrolero, 5pct_petrolero, 10pct_no_residentes_petrolero, 10pct_no_residentes_comun
+tasa_retencion                      numeric                   NO                                       
+  └─ Description: Taux de rétention: 3, 5, ou 10%
+proveedores                         jsonb                     NO         '[]'::jsonb                   
+  └─ Description: Array JSONB de fournisseurs: [{nombre, nif, actividad, monto_bruto}, ...] (max 7)
+total_servicios_sujetos             numeric                   NO         0                             
+  └─ Description: Campo 01: Somme des monto_bruto (services sujets à rétention)
+total_gastos_reembolsados           numeric                   YES        0                             
+  └─ Description: Campo 02: Gastos reembolsados 0% (non soumis à rétention)
+sub_total                           numeric                   NO         0                             
+  └─ Description: Campo 03: total_servicios_sujetos × tasa_retencion / 100
+recargo_base                        numeric                   YES        0                             
+recargo_tipo                        numeric                   YES        0                             
+recargo_cuota                       numeric                   YES        0                             
+  └─ Description: Campo 04: Pénalité recargo Art. 315.1
+interes_demora_base                 numeric                   YES        0                             
+interes_demora_tipo                 numeric                   YES        0                             
+interes_demora_cuota                numeric                   YES        0                             
+  └─ Description: Campo 05: Intérêt de retard Art. 315.5
+total_a_ingresar                    numeric                   NO         0                             
+  └─ Description: Campo 06: sub_total + recargo_cuota + interes_demora_cuota
+created_at                          timestamp with time zone  NO         now()                         
+updated_at                          timestamp with time zone  NO         now()                         
+
+Primary Key: id
+
+Foreign Keys:
+  - tax_declaration_id → tax_declarations.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+Unique Constraints:
+  - declaration_retencion_details_tax_declaration_id_key: (tax_declaration_id)
+
+Indexes:
+  - declaration_retencion_details_tax_declaration_id_key
+    CREATE UNIQUE INDEX declaration_retencion_details_tax_declaration_id_key ON public.declaration_retencion_details USING btree (tax_declaration_id)
+  - idx_retencion_details_tax_declaration
+    CREATE INDEX idx_retencion_details_tax_declaration ON public.declaration_retencion_details USING btree (tax_declaration_id)
+  - idx_retencion_details_subtype
+    CREATE INDEX idx_retencion_details_subtype ON public.declaration_retencion_details USING btree (retencion_subtype)
+  - idx_retencion_details_tasa
+    CREATE INDEX idx_retencion_details_tasa ON public.declaration_retencion_details USING btree (tasa_retencion)
+  - idx_retencion_proveedores_gin
+    CREATE INDEX idx_retencion_proveedores_gin ON public.declaration_retencion_details USING gin (proveedores)
+  - idx_retencion_details_total
+    CREATE INDEX idx_retencion_details_total ON public.declaration_retencion_details USING btree (total_a_ingresar)
 
 ----------------------------------------------------------------------------------------------------
 Table: DOCUMENT_PROCESSING_QUEUE
@@ -987,6 +1076,22 @@ review_notes                        text                      YES
 submitted_at                        timestamp with time zone  YES                                      
 created_at                          timestamp with time zone  NO         now()                         
 updated_at                          timestamp with time zone  NO         now()                         
+type_compte                         type_compte_enum          YES                                      
+  └─ Description: Type de compte pour le paiement (saisi manuellement par utilisateur): compte_propia (particulier) ou cuenta_empresa (entreprise)
+date_emission                       date                      YES                                      
+  └─ Description: Date d'émission du document (extraite par OCR, proche du numéro de nota)
+organisme_emetteur                  text                      YES                                      
+  └─ Description: Organisme émetteur du document (ex: MINISTERIO DE SEGURIDAD NACIONAL)
+departement_emetteur                text                      YES                                      
+  └─ Description: Département émetteur (ex: DIRECCION GENERAL DE EXTRANJERIA Y FRONTERAS)
+compte_destinataire                 text                      YES                                      
+  └─ Description: Compte bancaire destinataire (ex: Cuenta de la TESORERIA GENERAL DEL ESTADO)
+signataire                          text                      YES                                      
+  └─ Description: Nom du signataire du document (ex: EL JEFE DE LA SECCION)
+code_reference                      text                      YES                                      
+  └─ Description: Code de référence manuscrit (ex: AA0516 visible sur l'image)
+tampon_officiel                     boolean                   YES        false                         
+  └─ Description: Indicateur de présence du tampon officiel (détecté par OCR image analysis)
 
 Primary Key: id
 
@@ -1007,6 +1112,14 @@ Indexes:
     CREATE INDEX idx_fiscal_service_data_status ON public.fiscal_service_data USING btree (status)
   - idx_fiscal_service_data_payment_id
     CREATE INDEX idx_fiscal_service_data_payment_id ON public.fiscal_service_data USING btree (payment_id) WHERE (payment_id IS NOT NULL)
+  - idx_fiscal_service_data_unique_numero_nota
+    CREATE UNIQUE INDEX idx_fiscal_service_data_unique_numero_nota ON public.fiscal_service_data USING btree (user_id, numero_nota) WHERE (numero_nota IS NOT NULL)
+  - idx_fiscal_service_data_date_emission
+    CREATE INDEX idx_fiscal_service_data_date_emission ON public.fiscal_service_data USING btree (date_emission) WHERE (date_emission IS NOT NULL)
+  - idx_fiscal_service_data_type_compte
+    CREATE INDEX idx_fiscal_service_data_type_compte ON public.fiscal_service_data USING btree (type_compte) WHERE (type_compte IS NOT NULL)
+  - idx_fiscal_service_data_organisme
+    CREATE INDEX idx_fiscal_service_data_organisme ON public.fiscal_service_data USING btree (organisme_emetteur) WHERE (organisme_emetteur IS NOT NULL)
 
 ----------------------------------------------------------------------------------------------------
 Table: FISCAL_SERVICES
@@ -2287,6 +2400,28 @@ requires_ocr                        boolean                   NO         false
 ocr_status                          varchar(20)               YES        'pending'::character varying  
   └─ Description: Statut de l'extraction OCR (pending, processing, completed, failed, skipped)
 uploaded_at                         timestamp with time zone  NO         now()                         
+original_filename                   varchar(255)              YES                                      
+file_url                            text                      YES                                      
+file_hash                           varchar(64)               YES                                      
+document_type                       varchar(50)               YES                                      
+document_subtype                    varchar(50)               YES                                      
+description                         text                      YES                                      
+processing_mode                     varchar(20)               YES        'server_processing'::character
+ocr_text                            text                      YES                                      
+ocr_confidence                      numeric                   YES                                      
+ocr_provider                        varchar(20)               YES                                      
+extraction_status                   varchar(20)               YES        'pending'::character varying  
+extracted_data                      jsonb                     YES                                      
+extraction_confidence               numeric                   YES                                      
+form_mapping                        jsonb                     YES                                      
+processing_started_at               timestamp with time zone  YES                                      
+processing_completed_at             timestamp with time zone  YES                                      
+processing_duration_ms              integer                   YES                                      
+access_level                        varchar(20)               YES        'private'::character varying  
+validation_status                   varchar(20)               YES        'pending'::character varying  
+related_to_type                     varchar(50)               YES                                      
+related_to_id                       uuid                      YES                                      
+updated_at                          timestamp with time zone  YES        now()                         
 
 Primary Key: id
 
@@ -2307,6 +2442,20 @@ Indexes:
     CREATE INDEX idx_uploaded_files_tax_declaration_id ON public.uploaded_files USING btree (tax_declaration_id) WHERE (tax_declaration_id IS NOT NULL)
   - idx_uploaded_files_ocr_status
     CREATE INDEX idx_uploaded_files_ocr_status ON public.uploaded_files USING btree (ocr_status) WHERE (requires_ocr = true)
+  - idx_uploaded_files_document_type
+    CREATE INDEX idx_uploaded_files_document_type ON public.uploaded_files USING btree (document_type) WHERE (document_type IS NOT NULL)
+  - idx_uploaded_files_extraction_status
+    CREATE INDEX idx_uploaded_files_extraction_status ON public.uploaded_files USING btree (extraction_status)
+  - idx_uploaded_files_form_mapping
+    CREATE INDEX idx_uploaded_files_form_mapping ON public.uploaded_files USING gin (form_mapping) WHERE (form_mapping IS NOT NULL)
+  - idx_uploaded_files_extracted_data
+    CREATE INDEX idx_uploaded_files_extracted_data ON public.uploaded_files USING gin (extracted_data) WHERE (extracted_data IS NOT NULL)
+  - idx_uploaded_files_user_statuses
+    CREATE INDEX idx_uploaded_files_user_statuses ON public.uploaded_files USING btree (user_id, extraction_status, validation_status)
+  - idx_uploaded_files_processing_times
+    CREATE INDEX idx_uploaded_files_processing_times ON public.uploaded_files USING btree (processing_started_at, processing_completed_at) WHERE (processing_completed_at IS NOT NULL)
+  - idx_uploaded_files_document_subtype
+    CREATE INDEX idx_uploaded_files_document_subtype ON public.uploaded_files USING btree (document_subtype) WHERE (document_subtype IS NOT NULL)
 
 ----------------------------------------------------------------------------------------------------
 Table: USER_COMPANY_ROLES
@@ -2919,6 +3068,9 @@ Returns: trigger
 Function: unlock_payment_by_agent
 Returns: jsonb
 
+Function: update_fiscal_service_data_updated_at
+Returns: trigger
+
 Function: update_refresh_tokens_updated_at
 Returns: trigger
 
@@ -2932,6 +3084,9 @@ Function: update_translations_updated_at
 Returns: trigger
 
 Function: update_updated_at_column
+Returns: trigger
+
+Function: validate_fiscal_service_montants
 Returns: trigger
 
 Function: word_similarity
@@ -2973,19 +3128,20 @@ declaration_amount_adjustments.tax_declaration_id → tax_declarations.id
 declaration_corrections.approved_by → users.id
 declaration_corrections.original_declaration_id → tax_declarations.id
 declaration_corrections.rectificative_declaration_id → tax_declarations.id
-declaration_data_generic.adjusted_by → users.id
-declaration_data_generic.adjustment_reason_id → adjustment_reasons.id
-declaration_data_generic.form_template_id → form_templates.id
-declaration_data_generic.tax_declaration_id → tax_declarations.id
 declaration_irpf_data.adjusted_by → users.id
 declaration_irpf_data.adjustment_reason_id → adjustment_reasons.id
 declaration_irpf_data.tax_declaration_id → tax_declarations.id
-declaration_iva_data.adjusted_by → users.id
-declaration_iva_data.adjustment_reason_id → adjustment_reasons.id
-declaration_iva_data.tax_declaration_id → tax_declarations.id
-declaration_petroliferos_data.adjusted_by → users.id
-declaration_petroliferos_data.adjustment_reason_id → adjustment_reasons.id
-declaration_petroliferos_data.tax_declaration_id → tax_declarations.id
+declaration_iva_details.adjusted_by → users.id
+declaration_iva_details.adjustment_reason_id → adjustment_reasons.id
+declaration_iva_details.tax_declaration_id → tax_declarations.id
+declaration_other_details.adjusted_by → users.id
+declaration_other_details.adjustment_reason_id → adjustment_reasons.id
+declaration_other_details.form_template_id → form_templates.id
+declaration_other_details.tax_declaration_id → tax_declarations.id
+declaration_petroliferos_details.adjusted_by → users.id
+declaration_petroliferos_details.adjustment_reason_id → adjustment_reasons.id
+declaration_petroliferos_details.tax_declaration_id → tax_declarations.id
+declaration_retencion_details.tax_declaration_id → tax_declarations.id
 document_processing_queue.form_template_id → form_templates.id
 document_processing_queue.uploaded_file_id → uploaded_files.id
 fiscal_service_data.fiscal_service_id → fiscal_services.id
