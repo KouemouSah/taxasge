@@ -110,8 +110,8 @@ class TaxDeclarationRepository:
                 insert_query = self._build_irpf_insert_query()
             elif db_table == "declaration_petroliferos_data":
                 insert_query = self._build_petroliferos_insert_query()
-            elif db_table == "declaration_other_data":
-                insert_query = self._build_other_insert_query()
+            elif db_table == "declaration_data_generic":
+                insert_query = self._build_generic_insert_query()
             else:
                 raise Exception(f"Unknown declaration table: {db_table}")
 
@@ -203,10 +203,10 @@ class TaxDeclarationRepository:
             RETURNING id
         """
 
-    def _build_other_insert_query(self) -> str:
-        """Build INSERT query for declaration_other_data (generic JSONB)"""
+    def _build_generic_insert_query(self) -> str:
+        """Build INSERT query for declaration_data_generic (generic JSONB)"""
         return """
-            INSERT INTO declaration_other_data (
+            INSERT INTO declaration_data_generic (
                 id, user_id, declaration_id,
                 declaration_type, periodo_fiscal, ejercicio,
                 extracted_fields, additional_data,
@@ -294,7 +294,7 @@ class TaxDeclarationRepository:
                 mapped_data.get("updated_at")
             ])
 
-        elif db_table == "declaration_other_data":
+        elif db_table == "declaration_data_generic":
             values.extend([
                 mapped_data.get("declaration_type"),
                 mapped_data.get("periodo_fiscal"),
