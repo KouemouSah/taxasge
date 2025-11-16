@@ -137,6 +137,9 @@ class OCRService:
             # Process based on provider
             if provider == "google_vision":
                 result = await self._process_with_google_vision(images, language)
+            elif provider == "document_ai":
+                # Phase 2 future: Google Document AI for structured forms
+                result = await self._process_with_document_ai(images, language, document_type)
             elif provider == "tesseract_lite":
                 result = await self._process_with_tesseract_lite(images, language)
             else:  # tesseract_server (default)
@@ -379,15 +382,78 @@ class OCRService:
                 errors=[str(e)]
             )
 
+    async def _process_with_document_ai(
+        self,
+        images: List[np.ndarray],
+        language: str,
+        document_type: Optional[str] = None
+    ) -> OCRResult:
+        """
+        Process images with Google Document AI (PHASE 2 - Future)
+
+        Document AI is optimized for structured forms with tables, key-value pairs,
+        and form fields - perfect for tax declaration forms (IVA, IRPF, etc.)
+
+        Advantages over Tesseract:
+        - Form field detection (automatic key-value extraction)
+        - Table extraction with structure preservation
+        - Better handling of checkboxes and form elements
+        - Higher accuracy for financial documents
+        - Native currency and number recognition
+
+        Implementation roadmap:
+        1. Enable Document AI API in Google Cloud Console
+        2. Create processor for "FORM_PARSER" type
+        3. Upload JSON templates as processor schemas
+        4. Integrate with firebase_storage_service for batch processing
+
+        References:
+        - https://cloud.google.com/document-ai/docs/form-parser
+        - https://cloud.google.com/document-ai/docs/processors-list
+        """
+        try:
+            # PHASE 2 TODO: Implement Google Document AI
+            logger.warning("Document AI not yet implemented - falling back to Tesseract")
+            logger.info(f"Document type '{document_type}' would benefit from Document AI form parser")
+
+            # Fallback to Tesseract for now
+            return await self._process_with_tesseract_server(images, language, document_type)
+
+        except Exception as e:
+            logger.error(f"Document AI processing failed: {e}")
+            return OCRResult(
+                success=False,
+                provider="document_ai",
+                errors=[str(e)]
+            )
+
     def _get_tesseract_config(self, document_type: Optional[str] = None) -> str:
-        """Get optimized Tesseract configuration based on document type"""
+        """
+        Get optimized Tesseract configuration based on document type
+
+        Updated for Phase 2 - Added fiscal form configurations
+        """
         base_config = "--oem 3 --psm 6"
 
         document_configs = {
+            # Identity documents
             "passport": "--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz<>/",
             "nif_card": "--oem 3 --psm 8 -c tessedit_char_whitelist=0123456789",
+
+            # Financial documents
             "invoice": "--oem 3 --psm 6",
-            "receipt": "--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,:-€$£"
+            "receipt": "--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,:-€$£",
+
+            # Tax declaration forms (Phase 2) - Optimized for numbers, percentages, currency
+            "tax_declaration": "--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789.,%-€$£FCFA ",
+            "iva_destajo": "--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789.,%-€$£FCFA ",
+            "iva_real": "--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789.,%-€$£FCFA ",
+            "irpf": "--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789.,%-€$£FCFA ",
+            "imp_salarios": "--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789.,%-€$£FCFA ",
+            "cuota_minima": "--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789.,%-€$£FCFA ",
+
+            # Fiscal service forms
+            "fiscal_service": "--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,:-€$£FCFA "
         }
 
         return document_configs.get(document_type, base_config)
