@@ -16,6 +16,10 @@ from app.models.declaration import (
     DeclarationStatus, DeclarationType, Priority, PaymentStatus, PaymentInfo
 )
 from app.models.user import UserActivity
+from app.core.documents.extractors import TemplateBasedExtractor, DeclarationDatabaseMapper
+from app.core.documents.extractors.template_loader import template_loader
+from app.services.ocr_service import ocr_service
+from app.services.firebase_storage_service import firebase_storage_service
 
 
 class DeclarationRepository(BaseRepository[DeclarationResponse]):
@@ -586,6 +590,149 @@ class DeclarationRepository(BaseRepository[DeclarationResponse]):
 
         except Exception as e:
             logger.error(f"❌ Error logging declaration activity: {e}")
+
+    async def process_uploaded_declaration_document(
+        self,
+        declaration_id: str,
+        document_file_path: str,
+        form_type: str,
+        user_id: str
+    ) -> Dict[str, Any]:
+        """
+        Process uploaded declaration document using Phase 2 template-based extraction
+
+        Pipeline: Download → OCR → Extract → Map → Save
+
+        Args:
+            declaration_id: ID of the declaration
+            document_file_path: Firebase Storage path to document
+            form_type: Form type for template selection (e.g., "iva_destajo")
+            user_id: User ID for access control
+
+        Returns:
+            Dict with extraction results and statistics
+        """
+        try:
+            logger.info(f"📄 Processing declaration document: {declaration_id} (form: {form_type})")
+
+            # Step 1: Download document from Firebase Storage
+            logger.debug(f"Downloading document from Firebase: {document_file_path}")
+            download_result = await firebase_storage_service.download_file(
+                file_path=document_file_path,
+                user_id=user_id
+            )
+
+            # Step 2: Run OCR extraction
+            logger.debug("Running OCR extraction...")
+            ocr_result = await ocr_service.extract_text(
+                file_content=download_result.content,
+                file_type=download_result.mime_type,
+                provider="tesseract_server"  # Use server OCR for declarations
+            )
+
+            if not ocr_result.success:
+                logger.error(f"OCR failed: {ocr_result.errors}")
+                return {
+                    "success": False,
+                    "error": "OCR extraction failed",
+                    "details": ocr_result.errors
+                }
+
+            # Step 3: Load template for form type
+            logger.debug(f"Loading template: {form_type}")
+            template = template_loader.load(form_type, template_type="declaration")
+
+            if not template:
+                logger.error(f"Template not found: {form_type}")
+                return {
+                    "success": False,
+                    "error": f"Template not found: {form_type}"
+                }
+
+            # Step 4: Extract structured data using template
+            logger.debug("Extracting structured data with TemplateBasedExtractor...")
+            extractor = TemplateBasedExtractor(template)
+            extraction_result = await extractor.extract(ocr_result.text)
+
+            if not extraction_result.success:
+                logger.error(f"Extraction failed: {extraction_result.errors}")
+                return {
+                    "success": False,
+                    "error": "Structured extraction failed",
+                    "details": extraction_result.errors
+                }
+
+            # Step 5: Map extracted data to database format
+            logger.debug("Mapping extracted data to database format...")
+            mapper = DeclarationDatabaseMapper(template)
+            mapped_data = mapper.map_to_database(extraction_result)
+
+            # Step 6: Update declaration with extracted data
+            logger.debug(f"Updating declaration {declaration_id} with extracted data...")
+
+            # Update form_data with extracted fields
+            update_data = {
+                "form_data": mapped_data.get("declaration_data", {}),
+                "updated_at": datetime.utcnow()
+            }
+
+            # Execute update
+            if self.supabase.enabled:
+                await self.supabase.update(
+                    "tax_declarations",
+                    update_data,
+                    {"id": declaration_id}
+                )
+            else:
+                query = """
+                    UPDATE tax_declarations
+                    SET form_data = $1, updated_at = $2
+                    WHERE id = $3
+                """
+                await self.db_manager.execute_command(
+                    query,
+                    update_data["form_data"],
+                    update_data["updated_at"],
+                    declaration_id
+                )
+
+            # Log extraction activity
+            await self.log_activity(
+                user_id=user_id,
+                action="document_extracted",
+                declaration_id=declaration_id,
+                details={
+                    "form_type": form_type,
+                    "ocr_confidence": ocr_result.confidence,
+                    "extraction_confidence": extraction_result.confidence,
+                    "fields_extracted": len(extraction_result.data),
+                    "template_version": template.version
+                }
+            )
+
+            logger.info(f"✅ Declaration document processed successfully: {declaration_id}")
+
+            return {
+                "success": True,
+                "declaration_id": declaration_id,
+                "form_type": form_type,
+                "ocr_confidence": ocr_result.confidence,
+                "extraction_confidence": extraction_result.confidence,
+                "fields_extracted": len(extraction_result.data),
+                "extracted_data": extraction_result.data,
+                "mapped_data": mapped_data,
+                "warnings": extraction_result.warnings
+            }
+
+        except Exception as e:
+            logger.error(f"❌ Error processing declaration document: {e}")
+            import traceback
+            traceback.print_exc()
+            return {
+                "success": False,
+                "error": str(e),
+                "traceback": traceback.format_exc()
+            }
 
 
 # Global declaration repository instance
