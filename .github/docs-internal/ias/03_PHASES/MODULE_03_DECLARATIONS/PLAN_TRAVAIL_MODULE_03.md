@@ -143,7 +143,7 @@ Implémenter le système complet de soumission de déclarations fiscales et de s
   - ✅ `declaration_irpf_data` - **EXISTE** (Schéma ligne 644) - Niveau 1 IRPF ✅
   - ✅ `declaration_petroliferos_details` - **EXISTE** (Schéma ligne 821) - Niveau 1 Pétrolifères ✅
   - ✅ `declaration_other_details` - **EXISTE** (Schéma ligne 776) - Niveau 2 Generic (JSONB) ✅
-  - ✅ `fiscal_service_data` - **EXISTE** (Schéma ligne 34) + Migration 004 (8 colonnes + type_compte_enum) ✅
+  - ✅ `fiscal_service_data` - **EXISTE** (Schéma ligne 1045) + Migration 004 (8 colonnes + type_compte_enum) ✅
   - ✅ `declaration_amount_adjustments` - **EXISTE** (Schéma ligne 542) - Audit trail ✅
   - ✅ `agent_work_queue` - **EXISTE** (Migration 001 + Schéma ligne 16) - Load balancing ✅
   - ✅ `document_processing_queue` - **EXISTE** (Migration 001 + Schéma ligne 30) - OCR retry ✅
