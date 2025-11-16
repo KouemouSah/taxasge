@@ -11,7 +11,7 @@
  * - Pro: Auth required, instant sync, 8+ tables
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,7 @@ import {
   Platform,
   NativeModules,
   ActivityIndicator,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -34,6 +35,7 @@ import ServiceListScreen from './screens/ServiceListScreen';
 import ServiceDetailScreen from './screens/ServiceDetailScreen';
 import FavoritesScreen from './screens/FavoritesScreen';
 import CalculatorScreen from './screens/CalculatorScreen';
+import CalculatorHistoryScreen from './screens/CalculatorHistoryScreen';
 import { APP_CONFIG } from './config/AppConfig';
 
 /**
@@ -87,6 +89,8 @@ const TEXTS = {
     calculatorSubtitle: 'Selecciona un servicio primero',
     favoritesButton: 'Favoritos',
     favoritesSubtitle: 'Accede a tus servicios guardados',
+    historyButton: 'Historial',
+    historySubtitle: 'Revisa tus cálculos anteriores',
     comingSoon: 'Próximamente',
     footer1: 'Versión MVP1 - Chatbot FAQ',
     footer2: 'Base de datos: SQLite v3',
@@ -103,6 +107,8 @@ const TEXTS = {
     calculatorSubtitle: 'Sélectionnez un service d\'abord',
     favoritesButton: 'Favoris',
     favoritesSubtitle: 'Accédez à vos services enregistrés',
+    historyButton: 'Historique',
+    historySubtitle: 'Consultez vos calculs précédents',
     comingSoon: 'Bientôt disponible',
     footer1: 'Version MVP1 - Chatbot FAQ',
     footer2: 'Base de données : SQLite v3',
@@ -119,6 +125,8 @@ const TEXTS = {
     calculatorSubtitle: 'Select a service first',
     favoritesButton: 'Favorites',
     favoritesSubtitle: 'Access your saved services',
+    historyButton: 'History',
+    historySubtitle: 'Review your previous calculations',
     comingSoon: 'Coming soon',
     footer1: 'Version MVP1 - Chatbot FAQ',
     footer2: 'Database: SQLite v3',
@@ -145,6 +153,44 @@ const App = () => {
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
   const [syncPhase, setSyncPhase] = useState(0);
   const [selectedService, setSelectedService] = useState(null);
+  const [navigationHistory, setNavigationHistory] = useState(['home']);
+
+  /**
+   * Navigate to a screen with history tracking
+   */
+  const navigateTo = useCallback((screen, service = null) => {
+    console.log('[App] Navigating to:', screen);
+    setCurrentScreen(screen);
+    if (service) {
+      setSelectedService(service);
+    }
+    setNavigationHistory(prev => [...prev, screen]);
+  }, []);
+
+  /**
+   * Navigate back using history
+   */
+  const navigateBack = useCallback(() => {
+    if (navigationHistory.length <= 1) {
+      // Already at root, exit app
+      return false;
+    }
+
+    const newHistory = [...navigationHistory];
+    newHistory.pop(); // Remove current screen
+    const previousScreen = newHistory[newHistory.length - 1];
+
+    console.log('[App] Navigating back to:', previousScreen);
+    setNavigationHistory(newHistory);
+    setCurrentScreen(previousScreen);
+
+    // Clear selected service if returning to home or search
+    if (previousScreen === 'home' || previousScreen === 'search') {
+      setSelectedService(null);
+    }
+
+    return true;
+  }, [navigationHistory]);
 
   // Détecter la langue système et vérifier si onboarding déjà complété
   useEffect(() => {
@@ -164,6 +210,24 @@ const App = () => {
     // Check if onboarding already completed
     checkOnboardingStatus();
   }, []);
+
+  // Handle Android hardware back button
+  useEffect(() => {
+    if (Platform.OS !== 'android') {
+      return;
+    }
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (showOnboarding || checkingOnboarding) {
+        // Don't allow back during onboarding
+        return true;
+      }
+
+      return !navigateBack();
+    });
+
+    return () => backHandler.remove();
+  }, [navigateBack, showOnboarding, checkingOnboarding]);
 
   /**
    * Check if user has already completed onboarding
@@ -266,7 +330,7 @@ const App = () => {
 
           <TouchableOpacity
             style={styles.menuButton}
-            onPress={() => setCurrentScreen('chatbot')}
+            onPress={() => navigateTo('chatbot')}
             activeOpacity={0.7}>
             <View style={styles.buttonContent}>
               <Text style={styles.buttonIcon}>💬</Text>
@@ -281,7 +345,7 @@ const App = () => {
 
           <TouchableOpacity
             style={styles.menuButton}
-            onPress={() => setCurrentScreen('search')}
+            onPress={() => navigateTo('search')}
             activeOpacity={0.7}>
             <View style={styles.buttonContent}>
               <Text style={styles.buttonIcon}>🔍</Text>
@@ -302,7 +366,7 @@ const App = () => {
               // Calculator requires a service selection
               // Redirect to search to select a service first
               console.log('[App] Calculator: Redirecting to search to select service');
-              setCurrentScreen('search');
+              navigateTo('search');
             }}
             activeOpacity={0.7}>
             <View style={styles.buttonContent}>
@@ -320,7 +384,7 @@ const App = () => {
 
           <TouchableOpacity
             style={styles.menuButton}
-            onPress={() => setCurrentScreen('favorites')}
+            onPress={() => navigateTo('favorites')}
             activeOpacity={0.7}>
             <View style={styles.buttonContent}>
               <Text style={styles.buttonIcon}>⭐</Text>
@@ -330,6 +394,23 @@ const App = () => {
                 </Text>
                 <Text style={styles.buttonSubtitle}>
                   {TEXTS[currentLanguage].favoritesSubtitle}
+                </Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuButton}
+            onPress={() => navigateTo('history')}
+            activeOpacity={0.7}>
+            <View style={styles.buttonContent}>
+              <Text style={styles.buttonIcon}>📜</Text>
+              <View style={styles.buttonTextContainer}>
+                <Text style={styles.buttonTitle}>
+                  {TEXTS[currentLanguage].historyButton}
+                </Text>
+                <Text style={styles.buttonSubtitle}>
+                  {TEXTS[currentLanguage].historySubtitle}
                 </Text>
               </View>
             </View>
@@ -347,14 +428,14 @@ const App = () => {
   const renderChatbotScreen = () => (
     <ChatbotScreen
       language={currentLanguage}
-      onBack={() => setCurrentScreen('home')}
+      onBack={navigateBack}
       onNavigate={(screen) => {
         // Navigation vers les écrans disponibles
         console.log(`[App] Navigation requested to: ${screen}`);
-        if (['search', 'calculator', 'favorites'].includes(screen)) {
-          setCurrentScreen(screen);
+        if (['search', 'calculator', 'favorites', 'history'].includes(screen)) {
+          navigateTo(screen);
         } else {
-          setCurrentScreen('home');
+          navigateTo('home');
         }
       }}
     />
@@ -364,11 +445,10 @@ const App = () => {
     return (
       <ServiceListScreen
         language={currentLanguage}
-        onBack={() => setCurrentScreen('home')}
+        onBack={navigateBack}
         onServicePress={(service) => {
           console.log('[App] Service selected:', service.name_es);
-          setSelectedService(service);
-          setCurrentScreen('serviceDetail');
+          navigateTo('serviceDetail', service);
         }}
       />
     );
@@ -377,7 +457,7 @@ const App = () => {
   const renderServiceDetailScreen = () => {
     if (!selectedService) {
       console.warn('[App] ServiceDetailScreen called without selected service');
-      setCurrentScreen('home');
+      navigateTo('home');
       return null;
     }
 
@@ -385,14 +465,10 @@ const App = () => {
       <ServiceDetailScreen
         service={selectedService}
         language={currentLanguage}
-        onBack={() => {
-          setSelectedService(null);
-          setCurrentScreen('search');
-        }}
+        onBack={navigateBack}
         onCalculate={(service) => {
           console.log('[App] Calculate requested for:', service.name_es);
-          setSelectedService(service);
-          setCurrentScreen('calculator');
+          navigateTo('calculator', service);
         }}
       />
     );
@@ -401,7 +477,7 @@ const App = () => {
   const renderCalculatorScreen = () => {
     if (!selectedService) {
       console.warn('[App] CalculatorScreen called without selected service');
-      setCurrentScreen('home');
+      navigateTo('home');
       return null;
     }
 
@@ -410,10 +486,7 @@ const App = () => {
         service={selectedService}
         language={currentLanguage}
         userId={APP_CONFIG.defaultUserId}
-        onBack={() => {
-          // Return to service detail if coming from there
-          setCurrentScreen('serviceDetail');
-        }}
+        onBack={navigateBack}
       />
     );
   };
@@ -423,16 +496,30 @@ const App = () => {
       <FavoritesScreen
         language={currentLanguage}
         userId={APP_CONFIG.defaultUserId}
-        onBack={() => setCurrentScreen('home')}
+        onBack={navigateBack}
         onServicePress={(service) => {
           console.log('[App] Favorite service selected:', service.name_es);
-          setSelectedService(service);
-          setCurrentScreen('serviceDetail');
+          navigateTo('serviceDetail', service);
         }}
         onCalculate={(service) => {
           console.log('[App] Calculate requested for service:', service.name_es);
-          setSelectedService(service);
-          setCurrentScreen('calculator');
+          navigateTo('calculator', service);
+        }}
+      />
+    );
+  };
+
+  const renderHistoryScreen = () => {
+    return (
+      <CalculatorHistoryScreen
+        language={currentLanguage}
+        userId={APP_CONFIG.defaultUserId}
+        onBack={navigateBack}
+        onRecalculate={(record) => {
+          console.log('[App] Recalculate requested for:', record.service_name);
+          // Navigate to service detail with the service from history
+          // For now, just log - would need to fetch service from DB by ID
+          navigateTo('home');
         }}
       />
     );
@@ -487,6 +574,8 @@ const App = () => {
         return renderCalculatorScreen();
       case 'favorites':
         return renderFavoritesScreen();
+      case 'history':
+        return renderHistoryScreen();
       default:
         return renderHomeScreen();
     }
