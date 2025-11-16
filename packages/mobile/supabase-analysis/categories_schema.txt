@@ -1,0 +1,13 @@
+id: number
+category_code: string
+sector_id: number
+ministry_id: null
+service_type: null
+name_es: string
+description_es: null
+display_order: number
+icon: null
+color: null
+is_active: boolean
+created_at: string
+updated_at: string

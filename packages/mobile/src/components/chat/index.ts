@@ -6,3 +6,4 @@ export * from './MessageBubble';
 export * from './ChatInput';
 export * from './SuggestionChips';
 export * from './TypingIndicator';
+export * from './MarkdownText';

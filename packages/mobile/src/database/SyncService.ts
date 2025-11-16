@@ -1,17 +1,26 @@
 /**
  * TaxasGE Mobile - Sync Service
  * Service de synchronisation bidirectionnelle SQLite <-> Supabase
+ *
+ * DUAL-VERSION SUPPORT:
+ * - Offline: Syncs only 4 public tables (download-only)
+ * - Pro: Syncs 8+ tables including user data (bidirectional)
+ *
+ * PROGRESSIVE SYNC (2025-11-06):
+ * - Phase 1 (CRITICAL - 5s): Core data for immediate app usage
+ * - Phase 2 (BACKGROUND - 20s): Translations for multilingual support
+ * - Phase 3 (DEFERRED - 30s): Extended features (keywords, procedures, documents)
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import NetInfo from '@react-native-community/netinfo';
 import { db } from './DatabaseManager';
 import { TABLE_NAMES, SYNC_STATUS } from './schema';
+import { APP_CONFIG, getSyncTables, getSyncStrategy } from '../config/AppConfig';
 
-// Supabase credentials - fallback values from .env
-// TODO: Configure react-native-dotenv properly for production
-const SUPABASE_URL = 'https://bpdzfkymgydjxxwlctam.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJwZHpma3ltZ3lkanh4d2xjdGFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMyNzg4NjksImV4cCI6MjA2ODg1NDg2OX0.M0d8r-0fxkwEQYyYfERExRj8sMwmda2UBoHPabgqbFg';
+// Supabase credentials from AppConfig (configured via .env.offline or .env.pro)
+const SUPABASE_URL = APP_CONFIG.supabaseUrl || 'https://bpdzfkymgydjxxwlctam.supabase.co';
+const SUPABASE_ANON_KEY = APP_CONFIG.supabaseAnonKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJwZHpma3ltZ3lkanh4d2xjdGFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMyNzg4NjksImV4cCI6MjA2ODg1NDg2OX0.M0d8r-0fxkwEQYyYfERExRj8sMwmda2UBoHPabgqbFg';
 
 interface SyncResult {
   success: boolean;
@@ -19,6 +28,12 @@ interface SyncResult {
   updated: number;
   deleted: number;
   errors: string[];
+}
+
+interface ProgressiveSyncResult extends SyncResult {
+  phase: 1 | 2 | 3;
+  phaseName: string;
+  tablesSync: string[];
 }
 
 interface FiscalService {
@@ -65,7 +80,9 @@ class SyncService {
   }
 
   /**
-   * Sync all reference data (ministries, services, etc.)
+   * Sync reference data based on app version configuration
+   * Offline: Syncs only 4 public tables
+   * Pro: Syncs all tables including user data
    */
   async syncReferenceData(): Promise<SyncResult> {
     if (this.isSyncing) {
@@ -99,7 +116,16 @@ class SyncService {
     };
 
     try {
-      console.log('[Sync] Starting reference data sync...');
+      const syncStrategy = getSyncStrategy();
+      const tablesToSync = getSyncTables();
+
+      console.log('[Sync] ========================================');
+      console.log('[Sync] Starting sync with configuration:');
+      console.log('[Sync] Version:', APP_CONFIG.version);
+      console.log('[Sync] Direction:', syncStrategy.direction);
+      console.log('[Sync] Frequency:', syncStrategy.frequency);
+      console.log('[Sync] Tables to sync:', tablesToSync);
+      console.log('[Sync] ========================================');
 
       // Get last sync timestamp
       this.lastSyncTimestamp = await db.getMetadata('last_full_sync');
@@ -119,32 +145,80 @@ class SyncService {
       console.log('[Sync] Last sync:', since?.toISOString() || 'never');
       console.log('[Sync] Fresh sync mode:', isFreshSync);
 
-      // PHASE 1: HIERARCHY (116 records)
-      await this.syncTable('ministries', result, since);
-      await this.syncTable('sectors', result, since);
-      await this.syncTable('categories', result, since);
+      // DYNAMIC TABLE SYNC based on configuration
+      // Always sync: ministries, categories, fiscal_services, entity_translations
+      // Pro only: user_favorites, calculation_history, declarations, user_profiles
 
-      // PHASE 2: FISCAL SERVICES (7,561 records)
-      await this.syncFiscalServices(result, since);
-      await this.syncTable('service_keywords', result, since);
+      // PHASE 1: HIERARCHY (if needed)
+      if (tablesToSync.includes('ministries')) {
+        await this.syncTable('ministries', result, since);
+      }
+      if (tablesToSync.includes('sectors')) {
+        await this.syncTable('sectors', result, since);
+      }
+      if (tablesToSync.includes('categories')) {
+        await this.syncTable('categories', result, since);
+      }
 
-      // PHASE 3: TEMPLATES (4,814 records)
-      await this.syncTable('procedure_templates', result, since);
-      await this.syncTable('procedure_template_steps', result, since);
-      await this.syncTable('document_templates', result, since);
+      // PHASE 2: FISCAL SERVICES (main data)
+      if (tablesToSync.includes('fiscal_services')) {
+        await this.syncFiscalServices(result, since);
+      }
+      if (tablesToSync.includes('service_keywords')) {
+        await this.syncTable('service_keywords', result, since);
+      }
 
-      // PHASE 4: ASSIGNMENTS (5,547 records)
-      await this.syncTable('service_procedure_assignments', result, since);
-      await this.syncTable('service_document_assignments', result, since);
+      // PHASE 3: TEMPLATES (Pro version or explicit)
+      if (tablesToSync.includes('procedure_templates')) {
+        await this.syncTable('procedure_templates', result, since);
+      }
+      if (tablesToSync.includes('procedure_template_steps')) {
+        await this.syncTable('procedure_template_steps', result, since);
+      }
+      if (tablesToSync.includes('document_templates')) {
+        await this.syncTable('document_templates', result, since);
+      }
 
-      // PHASE 5: TRANSLATIONS (i18n support)
-      await this.syncTable('entity_translations', result, since);
+      // PHASE 4: ASSIGNMENTS (Pro version or explicit)
+      if (tablesToSync.includes('service_procedure_assignments')) {
+        await this.syncTable('service_procedure_assignments', result, since);
+      }
+      if (tablesToSync.includes('service_document_assignments')) {
+        await this.syncTable('service_document_assignments', result, since);
+      }
+
+      // PHASE 5: TRANSLATIONS (i18n support - filtered for active entities only)
+      if (tablesToSync.includes('entity_translations')) {
+        await this.syncEntityTranslations(result, since);
+      }
+
+      // PHASE 6: USER DATA (Pro version only)
+      if (tablesToSync.includes('user_favorites')) {
+        console.log('[Sync] Syncing user_favorites (Pro version only)...');
+        await this.syncTable('user_favorites', result, since);
+      }
+      if (tablesToSync.includes('calculation_history')) {
+        console.log('[Sync] Syncing calculation_history (Pro version only)...');
+        await this.syncTable('calculation_history', result, since);
+      }
+      if (tablesToSync.includes('declarations')) {
+        console.log('[Sync] Syncing declarations (Pro version only)...');
+        await this.syncTable('declarations', result, since);
+      }
+      if (tablesToSync.includes('user_profiles')) {
+        console.log('[Sync] Syncing user_profiles (Pro version only)...');
+        await this.syncTable('user_profiles', result, since);
+      }
 
       // Update last sync timestamp
       await db.setMetadata('last_full_sync', new Date().toISOString());
 
-      console.log('[Sync] Reference data sync complete:', result);
-      console.log('[Sync] Total records synced:', result.inserted);
+      console.log('[Sync] ========================================');
+      console.log('[Sync] Sync complete!');
+      console.log('[Sync] Total inserted:', result.inserted);
+      console.log('[Sync] Total updated:', result.updated);
+      console.log('[Sync] Version:', APP_CONFIG.version);
+      console.log('[Sync] ========================================');
     } catch (error) {
       console.error('[Sync] Reference data sync failed:', error);
       result.success = false;
@@ -181,28 +255,65 @@ class SyncService {
         service_procedure_assignments: 'id,fiscal_service_id,template_id,applies_to,display_order,custom_notes,override_steps,assigned_at',
         service_document_assignments: 'id,fiscal_service_id,document_template_id,is_required_expedition,is_required_renewal,display_order,custom_notes,assigned_at',
         entity_translations: 'entity_type,entity_code,language_code,field_name,translation_text,translation_source,translation_quality,created_at,updated_at',
+        chatbot_faq: 'id,question_pattern,intent,response_es,response_fr,response_en,follow_up_suggestions,actions,keywords,priority,is_active,created_at,updated_at',
       };
 
       const selectColumns = columnMappings[tableName] || '*';
 
-      // Fetch ALL rows - set high range to avoid pagination limits
-      // For large tables like service_keywords (7014 rows), use higher limit
-      let query = this.supabase
-        .from(tableName)
-        .select(selectColumns)
-        .range(0, 19999);
+      // Tables that have 'updated_at' column (for incremental sync)
+      const tablesWithUpdatedAt = [
+        'ministries', 'sectors', 'categories', 'fiscal_services',
+        'procedure_templates', 'procedure_template_steps', 'document_templates',
+        'entity_translations', 'user_favorites', 'declarations', 'user_profiles', 'chatbot_faq'
+      ];
 
-      if (since) {
-        query = query.gte('updated_at', since.toISOString());
+      // Check if table is empty locally (force full sync if empty)
+      let isTableEmpty = false;
+      try {
+        const countResult = await db.query(`SELECT COUNT(*) as count FROM ${tableName}`, []);
+        isTableEmpty = countResult[0]?.count === 0;
+      } catch (error) {
+        console.log(`[Sync] Could not count ${tableName}, treating as empty`);
+        isTableEmpty = true;
       }
 
-      const { data, error } = await query;
+      // Pagination: Fetch ALL rows in batches
+      // CRITICAL: Supabase limits to 1000 rows by default
+      // Some tables have >10k rows (service_keywords: 7014, entity_translations: 8486)
+      const BATCH_SIZE = 1000;
+      let allData: any[] = [];
+      let offset = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        let query = this.supabase
+          .from(tableName)
+          .select(selectColumns)
+          .range(offset, offset + BATCH_SIZE - 1);
+
+        // Only apply updated_at filter for tables that have this column AND are not empty
+        if (since && !isTableEmpty && tablesWithUpdatedAt.includes(tableName)) {
+          query = query.gte('updated_at', since.toISOString());
+        }
+
+        const { data: batchData, error } = await query;
+
+        if (error) {
+          throw error;
+        }
+
+        if (batchData && batchData.length > 0) {
+          allData.push(...batchData);
+          offset += BATCH_SIZE;
+          hasMore = batchData.length === BATCH_SIZE; // Continue if we got a full batch
+        } else {
+          hasMore = false;
+        }
+      }
+
+      const data = allData;
 
       console.log(`[Sync] ${tableName} query returned: ${data?.length || 0} rows`);
-
-      if (error) {
-        throw error;
-      }
 
       if (data && data.length > 0) {
         // Map Supabase fields to SQLite fields
@@ -314,7 +425,7 @@ class SyncService {
         const mapped = data.map((item: any) => ({
           // IDs (INTEGER → TEXT)
           id: String(item.id),
-          service_code: item.code || `SVC-${item.id}`,  // FIXED: Use id as fallback if code is NULL
+          service_code: item.service_code || `T-${String(item.id).padStart(3, '0')}`,  // FIXED: Use service_code (not code), fallback to T-XXX format
           category_id: String(item.category_id),
 
           // Basic info (SPANISH ONLY)
@@ -330,8 +441,12 @@ class SyncService {
           tasa_renovacion: item.tasa_renovacion || 0,
           renewal_formula: item.renewal_formula || null,
           renewal_unit_measure: item.renewal_unit_measure || null,
-          calculation_config: item.calculation_config || null,
-          rate_tiers: item.rate_tiers || null,
+          calculation_config: item.calculation_config
+            ? (typeof item.calculation_config === 'string' ? item.calculation_config : JSON.stringify(item.calculation_config))
+            : null,
+          rate_tiers: item.rate_tiers
+            ? (typeof item.rate_tiers === 'string' ? item.rate_tiers : JSON.stringify(item.rate_tiers))
+            : null,
           base_percentage: item.base_percentage || null,
           percentage_of: item.percentage_of || null,
           unit_rate: item.unit_rate || null,
@@ -350,15 +465,23 @@ class SyncService {
           // Penalties
           late_penalty_percentage: item.late_penalty_percentage || null,
           late_penalty_fixed: item.late_penalty_fixed || null,
-          penalty_calculation_rules: item.penalty_calculation_rules || null,
+          penalty_calculation_rules: item.penalty_calculation_rules
+            ? (typeof item.penalty_calculation_rules === 'string' ? item.penalty_calculation_rules : JSON.stringify(item.penalty_calculation_rules))
+            : null,
 
           // Conditions
-          eligibility_criteria: item.eligibility_criteria || null,
-          exemption_conditions: item.exemption_conditions || null,
+          eligibility_criteria: item.eligibility_criteria
+            ? (typeof item.eligibility_criteria === 'string' ? item.eligibility_criteria : JSON.stringify(item.eligibility_criteria))
+            : null,
+          exemption_conditions: item.exemption_conditions
+            ? (typeof item.exemption_conditions === 'string' ? item.exemption_conditions : JSON.stringify(item.exemption_conditions))
+            : null,
 
           // Legal basis
           legal_reference: item.legal_reference || null,
-          regulatory_articles: item.regulatory_articles || null,
+          regulatory_articles: item.regulatory_articles
+            ? (typeof item.regulatory_articles === 'string' ? item.regulatory_articles : JSON.stringify(item.regulatory_articles))
+            : null,
 
           // Tariff validity dates
           tariff_effective_from: item.tariff_effective_from || null,
@@ -560,6 +683,34 @@ class SyncService {
   }
 
   /**
+   * Sync entity_translations with filtering for active entities
+   *
+   * NOTE: Currently syncs ALL translations (~8,486 records) for simplicity
+   * Alternative: Filter by active entity codes (saves ~66 records but adds 7+ queries)
+   *
+   * Trade-off analysis:
+   * - Full sync: ~800 KB, 1 query, ~2-3 seconds
+   * - Filtered sync: ~794 KB, 8 queries, ~10-12 seconds
+   * - Benefit: Save ~6 KB (0.75%)
+   * - Cost: +7-9 seconds sync time
+   *
+   * Decision: Full sync (performance > minimal space savings)
+   */
+  private async syncEntityTranslations(result: SyncResult, since: Date | null): Promise<void> {
+    try {
+      console.log('[Sync] Syncing entity_translations (all translations)...');
+
+      // Sync all translations - simpler and faster than filtering
+      await this.syncTable('entity_translations', result, since);
+
+      console.log('[Sync] entity_translations: Synced successfully');
+    } catch (error) {
+      console.error('[Sync] Error syncing entity_translations:', error);
+      result.errors.push(`entity_translations: ${error instanceof Error ? error.message : 'Unknown'}`);
+    }
+  }
+
+  /**
    * Full sync (all data)
    */
   async fullSync(userId?: string): Promise<SyncResult> {
@@ -584,10 +735,205 @@ class SyncService {
       errors: [...refResult.errors, ...favResult.errors, ...calcResult.errors],
     };
   }
+
+  /**
+   * PROGRESSIVE SYNC - Phase 1 (CRITICAL - ~5 seconds)
+   * Core data needed for immediate app usage
+   *
+   * Tables: ministries, sectors, categories, fiscal_services (850)
+   * Total: ~1,000 records (~150 KB)
+   * Use case: Chatbot functional in Spanish only
+   */
+  async syncPhase1(): Promise<ProgressiveSyncResult> {
+    const result: ProgressiveSyncResult = {
+      success: true,
+      inserted: 0,
+      updated: 0,
+      deleted: 0,
+      errors: [],
+      phase: 1,
+      phaseName: 'CRITICAL',
+      tablesSync: ['ministries', 'sectors', 'categories', 'fiscal_services'],
+    };
+
+    try {
+      console.log('[Sync Phase 1] Starting CRITICAL sync...');
+      const startTime = Date.now();
+
+      await this.syncTable('ministries', result, null);
+      await this.syncTable('sectors', result, null);
+      await this.syncTable('categories', result, null);
+      await this.syncFiscalServices(result, null);
+
+      const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+      console.log(`[Sync Phase 1] ✅ Complete in ${duration}s`);
+      console.log(`[Sync Phase 1] Inserted: ${result.inserted} records`);
+
+      await db.setMetadata('sync_phase_1_complete', new Date().toISOString());
+    } catch (error) {
+      console.error('[Sync Phase 1] ❌ Failed:', error);
+      result.success = false;
+      result.errors.push(error instanceof Error ? error.message : 'Unknown error');
+    }
+
+    return result;
+  }
+
+  /**
+   * PROGRESSIVE SYNC - Phase 2 (BACKGROUND - ~20 seconds)
+   * Translations for multilingual support
+   *
+   * Tables: entity_translations (8,486)
+   * Use case: Chatbot functional in FR/EN
+   */
+  async syncPhase2(): Promise<ProgressiveSyncResult> {
+    const result: ProgressiveSyncResult = {
+      success: true,
+      inserted: 0,
+      updated: 0,
+      deleted: 0,
+      errors: [],
+      phase: 2,
+      phaseName: 'BACKGROUND',
+      tablesSync: ['entity_translations'],
+    };
+
+    try {
+      console.log('[Sync Phase 2] Starting BACKGROUND sync...');
+      const startTime = Date.now();
+
+      await this.syncEntityTranslations(result, null);
+
+      const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+      console.log(`[Sync Phase 2] ✅ Complete in ${duration}s`);
+
+      await db.setMetadata('sync_phase_2_complete', new Date().toISOString());
+    } catch (error) {
+      console.error('[Sync Phase 2] ❌ Failed:', error);
+      result.success = false;
+      result.errors.push(error instanceof Error ? error.message : 'Unknown error');
+    }
+
+    return result;
+  }
+
+  /**
+   * PROGRESSIVE SYNC - Phase 3 (DEFERRED - ~30 seconds)
+   * Extended features (keywords, procedures, documents)
+   *
+   * Tables: service_keywords (7,014), procedure_templates (703),
+   *         procedure_template_steps (2,077), document_templates (792),
+   *         service_procedure_assignments (850), service_document_assignments (1,234)
+   * Use case: Advanced search, procedures, documents available
+   */
+  async syncPhase3(): Promise<ProgressiveSyncResult> {
+    const result: ProgressiveSyncResult = {
+      success: true,
+      inserted: 0,
+      updated: 0,
+      deleted: 0,
+      errors: [],
+      phase: 3,
+      phaseName: 'DEFERRED',
+      tablesSync: [
+        'service_keywords',
+        'procedure_templates',
+        'procedure_template_steps',
+        'document_templates',
+        'service_procedure_assignments',
+        'service_document_assignments',
+      ],
+    };
+
+    try {
+      console.log('[Sync Phase 3] Starting DEFERRED sync...');
+      const startTime = Date.now();
+
+      await this.syncTable('service_keywords', result, null);
+      await this.syncTable('procedure_templates', result, null);
+      await this.syncTable('procedure_template_steps', result, null);
+      await this.syncTable('document_templates', result, null);
+      await this.syncTable('service_procedure_assignments', result, null);
+      await this.syncTable('service_document_assignments', result, null);
+
+      const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+      console.log(`[Sync Phase 3] ✅ Complete in ${duration}s`);
+
+      await db.setMetadata('sync_phase_3_complete', new Date().toISOString());
+      await db.setMetadata('last_full_sync', new Date().toISOString());
+    } catch (error) {
+      console.error('[Sync Phase 3] ❌ Failed:', error);
+      result.success = false;
+      result.errors.push(error instanceof Error ? error.message : 'Unknown error');
+    }
+
+    return result;
+  }
+
+  /**
+   * Progressive Sync - Full workflow
+   * Executes all 3 phases sequentially with callbacks
+   */
+  async progressiveSync(
+    onPhaseComplete?: (phase: 1 | 2 | 3, result: ProgressiveSyncResult) => void
+  ): Promise<SyncResult> {
+    console.log('[Progressive Sync] ========================================');
+    console.log('[Progressive Sync] Starting 3-phase progressive sync...');
+    console.log('[Progressive Sync] ========================================');
+
+    const totalResult: SyncResult = {
+      success: true,
+      inserted: 0,
+      updated: 0,
+      deleted: 0,
+      errors: [],
+    };
+
+    const startTime = Date.now();
+
+    // Phase 1: CRITICAL
+    const phase1 = await this.syncPhase1();
+    totalResult.inserted += phase1.inserted;
+    totalResult.updated += phase1.updated;
+    totalResult.errors.push(...phase1.errors);
+    onPhaseComplete?.(1, phase1);
+
+    if (!phase1.success) {
+      totalResult.success = false;
+      console.error('[Progressive Sync] Phase 1 failed, aborting remaining phases');
+      return totalResult;
+    }
+
+    // Phase 2: BACKGROUND
+    const phase2 = await this.syncPhase2();
+    totalResult.inserted += phase2.inserted;
+    totalResult.updated += phase2.updated;
+    totalResult.errors.push(...phase2.errors);
+    onPhaseComplete?.(2, phase2);
+
+    // Phase 3: DEFERRED
+    const phase3 = await this.syncPhase3();
+    totalResult.inserted += phase3.inserted;
+    totalResult.updated += phase3.updated;
+    totalResult.errors.push(...phase3.errors);
+    onPhaseComplete?.(3, phase3);
+
+    const totalDuration = ((Date.now() - startTime) / 1000).toFixed(1);
+
+    console.log('[Progressive Sync] ========================================');
+    console.log('[Progressive Sync] ✅ ALL PHASES COMPLETE');
+    console.log(`[Progressive Sync] Total time: ${totalDuration}s`);
+    console.log(`[Progressive Sync] Total records: ${totalResult.inserted}`);
+    console.log('[Progressive Sync] ========================================');
+
+    totalResult.success = phase1.success && phase2.success && phase3.success;
+    return totalResult;
+  }
 }
 
 // Export singleton instance
 export const syncService = new SyncService();
+export type { ProgressiveSyncResult };
 
 // Export for testing
 export { SyncService };

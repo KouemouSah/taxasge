@@ -2,16 +2,32 @@
  * TaxasGE Mobile - Chatbot Service
  * Service pour gérer le chatbot FAQ local (MVP1)
  * Date: 2025-10-13
+ * Updated: 2025-11-06 - Fixed SQL queries to use TranslationService
+ * Updated: 2025-11-07 - Added conversation context, spell correction, and synonyms
+ *
+ * CRITICAL FIXES:
+ * - fiscal_services only has name_es (Spanish) - name_fr/name_en DON'T EXIST
+ * - FR/EN translations are in entity_translations table
+ * - Use TranslationService for all multilingual content
+ * - Use proper JOINs for related data (ministries, categories, etc.)
+ *
+ * NEW FEATURES:
+ * - Conversation context tracking (remembers last intent/service)
+ * - Spell correction with Levenshtein distance
+ * - Synonym handling for better query understanding
  *
  * Stratégie:
  * - Matching par regex patterns (rapide, 10-50ms)
  * - Recherche FTS5 en fallback (si aucun pattern match)
- * - Stateless (pas de sauvegarde conversations en MVP1)
- * - Support multilingue (ES/FR/EN)
+ * - Spell correction + synonym expansion before search
+ * - Context-aware responses
+ * - Support multilingue (ES/FR/EN via TranslationService)
  */
 
 import { db } from '../database/DatabaseManager';
 import { QUERIES, TABLE_NAMES } from '../database/schema';
+import TranslationService from './TranslationService';
+import { enhanceQuery, FISCAL_KEYWORDS } from '../utils/textUtils';
 import {
   ChatbotFAQ,
   ChatbotFAQParsed,
@@ -25,6 +41,32 @@ import {
   ChatbotAction,
   DEFAULT_RESPONSES,
 } from '../types/chatbot.types';
+import {
+  getRandomIntro,
+  getSuggestion,
+  getError,
+  getServiceLabel,
+  buildDynamicResponse,
+  CHATBOT_I18N,
+} from './chatbot/chatbot.i18n';
+
+// ============================================
+// TYPES
+// ============================================
+
+/**
+ * Contexte de conversation pour tracking
+ */
+interface ConversationContext {
+  lastIntent: ChatbotIntent;
+  lastServiceCode?: string;
+  lastServiceName?: string;
+  lastCategoryId?: number;
+  lastMinistryId?: number;
+  lastEntities: Record<string, any>;
+  messageCount: number;
+  timestamp: number;
+}
 
 // ============================================
 // HELPER FUNCTIONS
@@ -38,122 +80,6 @@ function generateMessageId(): string {
 }
 
 /**
- * Introductions variées pour les réponses (effet humain, non-machine)
- * 5 variations aléatoires par langue
- */
-const RESPONSE_INTROS: Record<ChatbotLanguage, string[]> = {
-  es: [
-    'He encontrado la siguiente información:',
-    'Aquí está lo que necesitas saber:',
-    'Según nuestros registros:',
-    'Te puedo ayudar con eso:',
-    'Esto es lo que tengo para ti:',
-  ],
-  fr: [
-    "J'ai trouvé les informations suivantes :",
-    'Voici ce que vous devez savoir :',
-    "D'après nos données :",
-    'Je peux vous aider avec cela :',
-    "Voici ce que j'ai pour vous :",
-  ],
-  en: [
-    'I found the following information:',
-    "Here's what you need to know:",
-    'According to our records:',
-    'I can help you with that:',
-    "Here's what I have for you:",
-  ],
-};
-
-/**
- * Sélectionne une introduction aléatoire pour la réponse
- */
-function getRandomIntro(language: ChatbotLanguage): string {
-  const intros = RESPONSE_INTROS[language];
-  const randomIndex = Math.floor(Math.random() * intros.length);
-  return intros[randomIndex];
-}
-
-/**
- * Dictionnaire de traductions pour les suggestions courantes
- */
-const SUGGESTION_TRANSLATIONS: Record<string, Record<ChatbotLanguage, string>> = {
-  // Suggestions courantes
-  '¿Cuánto cuesta un servicio?': {
-    es: '¿Cuánto cuesta un servicio?',
-    fr: 'Combien coûte un service ?',
-    en: 'How much does a service cost?',
-  },
-  '¿Qué documentos necesito?': {
-    es: '¿Qué documentos necesito?',
-    fr: 'Quels documents ai-je besoin ?',
-    en: 'What documents do I need?',
-  },
-  'Ver servicios populares': {
-    es: 'Ver servicios populares',
-    fr: 'Voir services populaires',
-    en: 'View popular services',
-  },
-  'Buscar servicios': {
-    es: 'Buscar servicios',
-    fr: 'Rechercher services',
-    en: 'Search services',
-  },
-  'Usar calculadora': {
-    es: 'Usar calculadora',
-    fr: 'Utiliser calculatrice',
-    en: 'Use calculator',
-  },
-  'Ver procedimientos': {
-    es: 'Ver procedimientos',
-    fr: 'Voir procédures',
-    en: 'View procedures',
-  },
-  'Ver documentos requeridos': {
-    es: 'Ver documentos requeridos',
-    fr: 'Voir documents requis',
-    en: 'View required documents',
-  },
-  '¿Cuánto tiempo toma?': {
-    es: '¿Cuánto tiempo toma?',
-    fr: 'Combien de temps cela prend-il ?',
-    en: 'How long does it take?',
-  },
-  'Documentos comunes': {
-    es: 'Documentos comunes',
-    fr: 'Documents communs',
-    en: 'Common documents',
-  },
-  'Buscar otro servicio': {
-    es: 'Buscar otro servicio',
-    fr: 'Rechercher un autre service',
-    en: 'Search another service',
-  },
-  'Ver favoritos': {
-    es: 'Ver favoritos',
-    fr: 'Voir favoris',
-    en: 'View favorites',
-  },
-};
-
-/**
- * Traduit un array de suggestions vers la langue cible
- */
-function translateSuggestions(
-  suggestions: string[],
-  targetLanguage: ChatbotLanguage
-): string[] {
-  return suggestions.map((suggestion) => {
-    const translation = SUGGESTION_TRANSLATIONS[suggestion];
-    if (translation) {
-      return translation[targetLanguage];
-    }
-    // Si pas de traduction, retourner tel quel
-    return suggestion;
-  });
-}
-
-/**
  * Parse une FAQ de la DB vers le format parsed
  */
 function parseFAQ(faq: ChatbotFAQ): ChatbotFAQParsed {
@@ -164,6 +90,38 @@ function parseFAQ(faq: ChatbotFAQ): ChatbotFAQParsed {
     keywords: JSON.parse(faq.keywords),
     is_active: faq.is_active === 1,
   };
+}
+
+/**
+ * Convert suggestion keys to localized text
+ * Uses CHATBOT_I18N for translations
+ */
+function localizeSuggestions(
+  suggestionKeys: string[],
+  language: ChatbotLanguage
+): string[] {
+  const suggestionMap: Record<string, keyof typeof CHATBOT_I18N.suggestions> = {
+    'Buscar servicios': 'searchServices',
+    'Ver servicios populares': 'viewPopular',
+    'Usar calculadora': 'useCalculator',
+    '¿Cuánto cuesta un servicio?': 'getPrice',
+    '¿Qué documentos necesito?': 'getDocuments',
+    'Ver procedimientos': 'viewProcedures',
+    'Ver documentos requeridos': 'viewDocuments',
+    '¿Cuánto tiempo toma?': 'getProcessingTime',
+    'Documentos comunes': 'commonDocuments',
+    'Buscar otro servicio': 'searchAnother',
+    'Ver favoritos': 'viewFavorites',
+  };
+
+  return suggestionKeys.map((key) => {
+    const mappedKey = suggestionMap[key];
+    if (mappedKey) {
+      return getSuggestion(mappedKey, language);
+    }
+    // If no mapping, return as-is (for custom suggestions)
+    return key;
+  });
 }
 
 /**
@@ -218,12 +176,51 @@ function extractEntities(text: string, intent: ChatbotIntent): Record<string, an
 
 class ChatbotService {
   private language: ChatbotLanguage = 'es';
+  private context: ConversationContext | null = null;
+  private readonly CONTEXT_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
 
   /**
    * Définit la langue du chatbot
    */
   setLanguage(language: ChatbotLanguage): void {
     this.language = language;
+  }
+
+  /**
+   * Réinitialise le contexte de conversation
+   */
+  resetContext(): void {
+    this.context = null;
+  }
+
+  /**
+   * Vérifie si le contexte est encore valide
+   */
+  private isContextValid(): boolean {
+    if (!this.context) return false;
+    const now = Date.now();
+    return (now - this.context.timestamp) < this.CONTEXT_EXPIRY_MS;
+  }
+
+  /**
+   * Met à jour le contexte de conversation
+   */
+  private updateContext(
+    intent: ChatbotIntent,
+    entities: Record<string, any>,
+    serviceCode?: string,
+    serviceName?: string
+  ): void {
+    this.context = {
+      lastIntent: intent,
+      lastServiceCode: serviceCode,
+      lastServiceName: serviceName,
+      lastCategoryId: entities.categoryId,
+      lastMinistryId: entities.ministryId,
+      lastEntities: entities,
+      messageCount: (this.context?.messageCount || 0) + 1,
+      timestamp: Date.now(),
+    };
   }
 
   /**
@@ -236,16 +233,51 @@ class ChatbotService {
     const startTime = Date.now();
 
     try {
-      // 1. Détecter l'intention
-      const detectedIntent = await this.detectIntent(userMessage, language);
+      // 1. Améliorer la query (correction orthographique + synonymes)
+      const enhancedQuery = enhanceQuery(userMessage);
+      console.log('[ChatbotService] Enhanced query:', {
+        original: userMessage,
+        corrected: enhancedQuery.corrected,
+        variantsCount: enhancedQuery.variants.length,
+        keywords: enhancedQuery.keywords,
+      });
 
-      // 2. Extraire entités
-      const entities = extractEntities(userMessage, detectedIntent.intent);
+      // 2. Détecter l'intention (avec contexte si disponible)
+      const detectedIntent = await this.detectIntent(enhancedQuery.corrected, language);
 
-      // 3. Générer la réponse (passer userMessage pour recherche dynamique)
-      const response = await this.generateResponse(detectedIntent, entities, language, userMessage);
+      // 3. Extraire entités
+      const entities = extractEntities(enhancedQuery.corrected, detectedIntent.intent);
 
-      // 4. Calculer le temps de traitement
+      // 4. Enrichir les entités avec le contexte
+      if (this.isContextValid() && this.context) {
+        // Si l'utilisateur pose une question de suivi sans mentionner le service
+        if (!entities.serviceKeyword && !entities.serviceCode && this.context.lastServiceCode) {
+          console.log('[ChatbotService] Using context:', {
+            lastIntent: this.context.lastIntent,
+            lastService: this.context.lastServiceCode,
+          });
+
+          entities.contextServiceCode = this.context.lastServiceCode;
+          entities.contextServiceName = this.context.lastServiceName;
+          entities.usingContext = true;
+        }
+      }
+
+      // 5. Générer la réponse (passer userMessage + enhanced query)
+      const response = await this.generateResponse(
+        detectedIntent,
+        entities,
+        language,
+        enhancedQuery.corrected,
+        enhancedQuery.variants
+      );
+
+      // 6. Mettre à jour le contexte
+      const serviceCode = entities.serviceCode || entities.contextServiceCode;
+      const serviceName = entities.serviceName || entities.contextServiceName;
+      this.updateContext(detectedIntent.intent, entities, serviceCode, serviceName);
+
+      // 7. Calculer le temps de traitement
       const processingTime = Date.now() - startTime;
       response.message.metadata = {
         ...response.message.metadata,
@@ -254,6 +286,9 @@ class ChatbotService {
         matchScore: detectedIntent.confidence,
         fallback: detectedIntent.confidence < 0.5,
         entities,
+        spellingCorrected: enhancedQuery.corrected !== userMessage,
+        synonymsExpanded: enhancedQuery.variants.length > 1,
+        contextUsed: entities.usingContext || false,
       };
 
       return response;
@@ -388,7 +423,8 @@ class ChatbotService {
     detectedIntent: DetectedIntent,
     entities: Record<string, any>,
     language: ChatbotLanguage,
-    userMessage?: string
+    userMessage?: string,
+    queryVariants?: string[]
   ): Promise<ChatResponse> {
     const { intent, matchedFAQs } = detectedIntent;
 
@@ -401,7 +437,22 @@ class ChatbotService {
     // Si intention inconnue ET on a le message utilisateur, chercher en BD
     if (intent === 'unknown' && userMessage) {
       console.log('[ChatbotService] No FAQ match, trying dynamic DB search...');
-      const services = await this.searchServicesInDB(userMessage, language, 5);
+
+      // Chercher d'abord avec la query corrigée
+      let services = await this.searchServicesInDB(userMessage, language, 5);
+
+      // Si aucun résultat et on a des variantes, essayer avec les variantes
+      if (services.length === 0 && queryVariants && queryVariants.length > 1) {
+        console.log('[ChatbotService] Trying with synonym variants...');
+        for (const variant of queryVariants.slice(0, 3)) {
+          // Max 3 variantes
+          services = await this.searchServicesInDB(variant, language, 5);
+          if (services.length > 0) {
+            console.log(`[ChatbotService] Found ${services.length} services with variant: ${variant}`);
+            break;
+          }
+        }
+      }
 
       if (services.length > 0) {
         console.log(`[ChatbotService] Found ${services.length} services in DB`);
@@ -432,8 +483,8 @@ class ChatbotService {
     const intro = getRandomIntro(language);
     const fullResponse = `${intro}\n\n${responseText}`;
 
-    // Traduire les suggestions vers la langue cible
-    const translatedSuggestions = translateSuggestions(faq.follow_up_suggestions, language);
+    // Localiser les suggestions vers la langue cible
+    const localizedSuggestions = localizeSuggestions(faq.follow_up_suggestions, language);
 
     const message: ChatMessage = {
       id: generateMessageId(),
@@ -442,13 +493,13 @@ class ChatbotService {
       timestamp: new Date(),
       intent: faq.intent as ChatbotIntent,
       faqId: faq.id,
-      suggestions: translatedSuggestions,
+      suggestions: localizedSuggestions,
       actions: faq.actions || undefined,
     };
 
     return {
       message,
-      suggestions: translatedSuggestions,
+      suggestions: localizedSuggestions,
       actions: faq.actions || undefined,
     };
   }
@@ -470,16 +521,16 @@ class ChatbotService {
       intent,
     };
 
-    // Suggestions génériques
-    const genericSuggestions: Record<ChatbotLanguage, string[]> = {
-      es: ['Buscar servicios', 'Ver servicios populares', 'Usar calculadora'],
-      fr: ['Rechercher services', 'Voir services populaires', 'Utiliser calculatrice'],
-      en: ['Search services', 'View popular services', 'Use calculator'],
-    };
+    // Suggestions génériques utilisant i18n
+    const genericSuggestions = [
+      getSuggestion('searchServices', language),
+      getSuggestion('viewPopular', language),
+      getSuggestion('useCalculator', language),
+    ];
 
     return {
       message,
-      suggestions: genericSuggestions[language],
+      suggestions: genericSuggestions,
     };
   }
 
@@ -487,16 +538,10 @@ class ChatbotService {
    * Génère réponse d'erreur
    */
   private generateErrorResponse(language: ChatbotLanguage): ChatResponse {
-    const errorMessages: Record<ChatbotLanguage, string> = {
-      es: 'Disculpa, ocurrió un error. Por favor, intenta de nuevo.',
-      fr: "Désolé, une erreur s'est produite. Veuillez réessayer.",
-      en: 'Sorry, an error occurred. Please try again.',
-    };
-
     const message: ChatMessage = {
       id: generateMessageId(),
       role: 'bot',
-      content: errorMessages[language],
+      content: getError('general', language),
       timestamp: new Date(),
       intent: 'unknown',
     };
@@ -519,34 +564,46 @@ class ChatbotService {
     try {
       const normalizedQuery = normalizeText(query);
 
-      // Recherche LIKE dans les noms de services (multilingue)
+      // Recherche LIKE dans les noms de services (Spanish only) + keywords
       const likePattern = `%${normalizedQuery}%`;
 
+      // CORRECTED QUERY: Only select columns that actually exist
+      // fiscal_services has: id, service_code, name_es, description_es, tasa_expedicion, tasa_renovacion
+      // Related data comes from JOINs
       const services = await db.query(
         `SELECT
-          id,
-          name_es,
-          name_fr,
-          name_en,
-          expedition_amount,
-          renewal_amount,
-          required_documents_es,
-          required_documents_fr,
-          required_documents_en,
-          procedure_es,
-          procedure_fr,
-          procedure_en,
-          ministry_es,
-          sector_es,
-          category_es
-        FROM fiscal_services
-        WHERE
-          name_es LIKE ? OR
-          name_fr LIKE ? OR
-          name_en LIKE ? OR
-          palabras_clave LIKE ?
+          fs.id,
+          fs.service_code,
+          fs.name_es,
+          fs.description_es,
+          fs.tasa_expedicion,
+          fs.tasa_renovacion,
+          fs.processing_time_days,
+          fs.service_type,
+          c.name_es as category_name,
+          c.category_code,
+          m.name_es as ministry_name,
+          m.ministry_code
+        FROM fiscal_services fs
+        LEFT JOIN categories c ON fs.category_id = c.id
+        LEFT JOIN sectors s ON c.sector_id = s.id
+        LEFT JOIN ministries m ON (s.ministry_id = m.id OR c.ministry_id = m.id)
+        WHERE fs.status = 'active'
+          AND (
+            fs.name_es LIKE ? OR
+            fs.description_es LIKE ? OR
+            fs.service_code LIKE ? OR
+            c.name_es LIKE ? OR
+            m.name_es LIKE ? OR
+            fs.id IN (
+              SELECT fiscal_service_id
+              FROM service_keywords
+              WHERE keyword LIKE ?
+              LIMIT 50
+            )
+          )
         LIMIT ?`,
-        [likePattern, likePattern, likePattern, likePattern, limit]
+        [likePattern, likePattern, likePattern, likePattern, likePattern, likePattern, limit]
       );
 
       return services;
@@ -558,6 +615,7 @@ class ChatbotService {
 
   /**
    * Génère une réponse dynamique à partir des services trouvés en BD
+   * UPDATED: 2025-11-06 - Uses TranslationService for multilingual support
    */
   async generateDynamicServiceResponse(
     services: any[],
@@ -572,113 +630,107 @@ class ChatbotService {
     // Introduction aléatoire
     const intro = getRandomIntro(language);
 
-    // Construire la réponse avec les services trouvés
+    // Translate all service names in parallel for performance
+    const translatedServices = await Promise.all(
+      services.map(async (svc) => {
+        const serviceName = await TranslationService.translate(
+          'service',
+          svc.service_code,
+          'name',
+          language,
+          svc.name_es
+        );
+
+        const ministryName = svc.ministry_name
+          ? await TranslationService.translate(
+              'ministry',
+              svc.ministry_code,
+              'name',
+              language,
+              svc.ministry_name
+            )
+          : '';
+
+        const categoryName = svc.category_name
+          ? await TranslationService.translate(
+              'category',
+              svc.category_code,
+              'name',
+              language,
+              svc.category_name
+            )
+          : '';
+
+        return {
+          ...svc,
+          translatedName: serviceName,
+          translatedMinistry: ministryName,
+          translatedCategory: categoryName,
+        };
+      })
+    );
+
+    // Build response text using i18n system
     let responseText = '';
 
-    if (language === 'es') {
-      responseText = `${intro}\n\n🔍 **Encontré ${services.length} servicio(s) fiscal(es):**\n\n`;
-      services.forEach((svc, idx) => {
-        responseText += `**${idx + 1}. ${svc.name_es}**\n`;
-        responseText += `💰 Expedición: ${svc.expedition_amount ? svc.expedition_amount + ' XAF' : 'Consultar'}\n`;
-        if (svc.renewal_amount) {
-          responseText += `🔄 Renovación: ${svc.renewal_amount} XAF\n`;
-        }
-        responseText += `🏛️ ${svc.ministry_es}\n`;
+    const servicesFoundText = buildDynamicResponse(
+      CHATBOT_I18N.dynamicResponses.servicesFound[language],
+      { count: services.length }
+    );
 
-        if (svc.required_documents_es) {
-          const docs = svc.required_documents_es.split(',').slice(0, 3).join(', ');
-          responseText += `📄 Documentos: ${docs}${svc.required_documents_es.split(',').length > 3 ? '...' : ''}\n`;
-        }
+    responseText = `${intro}\n\n🔍 **${servicesFoundText}**\n\n`;
 
-        if (svc.procedure_es) {
-          const procedures = svc.procedure_es.split('\n').slice(0, 3);
-          if (procedures.length > 0) {
-            responseText += `📋 Procedimiento:\n${procedures.map(p => `  • ${p}`).join('\n')}\n`;
-            if (svc.procedure_es.split('\n').length > 3) {
-              responseText += `  • ...\n`;
-            }
-          }
-        }
+    translatedServices.forEach((svc, idx) => {
+      // Service name with link
+      responseText += `**${idx + 1}. ${svc.translatedName}**\n`;
 
-        responseText += '\n';
-      });
-
-      if (services.length === 5) {
-        responseText += '💡 _Hay más resultados disponibles. Refina tu búsqueda para ver servicios específicos._';
+      // Costs (use correct field names: tasa_expedicion/tasa_renovacion)
+      if (svc.tasa_expedicion !== null && svc.tasa_expedicion !== undefined) {
+        const expeditionLabel = getServiceLabel('expedition', language);
+        const consultLabel = getServiceLabel('consult', language);
+        responseText += `💰 ${expeditionLabel}: ${svc.tasa_expedicion > 0 ? svc.tasa_expedicion + ' XAF' : consultLabel}\n`;
       }
-    } else if (language === 'fr') {
-      responseText = `${intro}\n\n🔍 **Trouvé ${services.length} service(s) fiscal(aux):**\n\n`;
-      services.forEach((svc, idx) => {
-        responseText += `**${idx + 1}. ${svc.name_fr || svc.name_es}**\n`;
-        responseText += `💰 Expédition: ${svc.expedition_amount ? svc.expedition_amount + ' XAF' : 'Consulter'}\n`;
-        if (svc.renewal_amount) {
-          responseText += `🔄 Renouvellement: ${svc.renewal_amount} XAF\n`;
-        }
-        responseText += `🏛️ ${svc.ministry_es}\n`;
 
-        const docs = svc.required_documents_fr || svc.required_documents_es;
-        if (docs) {
-          const docList = docs.split(',').slice(0, 3).join(', ');
-          responseText += `📄 Documents: ${docList}${docs.split(',').length > 3 ? '...' : ''}\n`;
-        }
-
-        const procedureField = svc.procedure_fr || svc.procedure_es;
-        if (procedureField) {
-          const procedures = procedureField.split('\n').slice(0, 3);
-          if (procedures.length > 0) {
-            responseText += `📋 Procédure:\n${procedures.map(p => `  • ${p}`).join('\n')}\n`;
-            if (procedureField.split('\n').length > 3) {
-              responseText += `  • ...\n`;
-            }
-          }
-        }
-
-        responseText += '\n';
-      });
-
-      if (services.length === 5) {
-        responseText += '💡 _Il y a plus de résultats disponibles. Affinez votre recherche pour voir des services spécifiques._';
+      if (svc.tasa_renovacion && svc.tasa_renovacion > 0) {
+        const renewalLabel = getServiceLabel('renewal', language);
+        responseText += `🔄 ${renewalLabel}: ${svc.tasa_renovacion} XAF\n`;
       }
-    } else {
-      responseText = `${intro}\n\n🔍 **Found ${services.length} fiscal service(s):**\n\n`;
-      services.forEach((svc, idx) => {
-        responseText += `**${idx + 1}. ${svc.name_en || svc.name_es}**\n`;
-        responseText += `💰 Expedition: ${svc.expedition_amount ? svc.expedition_amount + ' XAF' : 'Consult'}\n`;
-        if (svc.renewal_amount) {
-          responseText += `🔄 Renewal: ${svc.renewal_amount} XAF\n`;
-        }
-        responseText += `🏛️ ${svc.ministry_es}\n`;
 
-        const docs = svc.required_documents_en || svc.required_documents_es;
-        if (docs) {
-          const docList = docs.split(',').slice(0, 3).join(', ');
-          responseText += `📄 Documents: ${docList}${docs.split(',').length > 3 ? '...' : ''}\n`;
-        }
-
-        const procedureField = svc.procedure_en || svc.procedure_es;
-        if (procedureField) {
-          const procedures = procedureField.split('\n').slice(0, 3);
-          if (procedures.length > 0) {
-            responseText += `📋 Procedure:\n${procedures.map(p => `  • ${p}`).join('\n')}\n`;
-            if (procedureField.split('\n').length > 3) {
-              responseText += `  • ...\n`;
-            }
-          }
-        }
-
-        responseText += '\n';
-      });
-
-      if (services.length === 5) {
-        responseText += '💡 _More results available. Refine your search to see specific services._';
+      // Ministry and Category
+      if (svc.translatedMinistry) {
+        responseText += `🏛️ ${svc.translatedMinistry}\n`;
       }
+
+      if (svc.translatedCategory) {
+        const categoryLabel = getServiceLabel('category', language);
+        responseText += `📂 ${categoryLabel}: ${svc.translatedCategory}\n`;
+      }
+
+      // Processing time
+      if (svc.processing_time_days && svc.processing_time_days > 0) {
+        const processingLabel = getServiceLabel('processing', language);
+        const daysLabel = getServiceLabel('days', language);
+        responseText += `⏱️ ${processingLabel}: ${svc.processing_time_days} ${daysLabel}\n`;
+      }
+
+      // Navigation link (clickable in UI)
+      const viewDetailsLabel = getServiceLabel('viewDetails', language);
+      responseText += `🔗 [${viewDetailsLabel}](/service/${svc.service_code})\n`;
+
+      responseText += '\n';
+    });
+
+    if (services.length === 5) {
+      const moreResultsText = CHATBOT_I18N.dynamicResponses.moreResults[language];
+      responseText += `💡 _${moreResultsText}_`;
     }
 
-    const suggestions: Record<ChatbotLanguage, string[]> = {
-      es: ['Buscar otro servicio', 'Ver servicios populares', 'Usar calculadora'],
-      fr: ['Rechercher un autre service', 'Voir services populaires', 'Utiliser calculatrice'],
-      en: ['Search another service', 'View popular services', 'Use calculator'],
-    };
+    // Suggestions using i18n
+    const suggestions = [
+      getSuggestion('searchAnother', language),
+      getSuggestion('viewPopular', language),
+      getSuggestion('useCalculator', language),
+    ];
 
     const message: ChatMessage = {
       id: generateMessageId(),
@@ -687,15 +739,19 @@ class ChatbotService {
       timestamp: new Date(),
       intent: 'search_service',
       metadata: {
-        source: 'dynamic_db_search',
-        servicesFound: services.length,
-        serviceIds: services.map((s) => s.id),
+        language,
+        fallback: false,
+        entities: {
+          source: 'dynamic_db_search',
+          servicesFound: services.length,
+          serviceIds: services.map((s) => s.id),
+        },
       },
     };
 
     return {
       message,
-      suggestions: suggestions[language],
+      suggestions,
     };
   }
 
@@ -703,29 +759,28 @@ class ChatbotService {
    * Génère réponse quand aucun service trouvé
    */
   private generateNoResultsResponse(query: string, language: ChatbotLanguage): ChatResponse {
-    const noResultsMessages: Record<ChatbotLanguage, string> = {
-      es: `❌ **No encontré servicios para "${query}"**\n\n💡 **Sugerencias:**\n• Intenta con palabras más generales (ej: "pasaporte" en lugar de "pasaporte biométrico")\n• Verifica la ortografía\n• Usa sinónimos (ej: "licencia" o "permiso")\n• Explora por categorías en el menú principal\n\n📊 Contamos con **547 servicios fiscales** disponibles.`,
-      fr: `❌ **Aucun service trouvé pour "${query}"**\n\n💡 **Suggestions:**\n• Essayez avec des mots plus généraux (ex: "passeport" au lieu de "passeport biométrique")\n• Vérifiez l'orthographe\n• Utilisez des synonymes (ex: "licence" ou "permis")\n• Explorez par catégories dans le menu principal\n\n📊 Nous avons **547 services fiscaux** disponibles.`,
-      en: `❌ **No services found for "${query}"**\n\n💡 **Suggestions:**\n• Try more general words (eg: "passport" instead of "biometric passport")\n• Check spelling\n• Use synonyms (eg: "license" or "permit")\n• Browse by categories in main menu\n\n📊 We have **547 fiscal services** available.`,
-    };
+    const noResultsHeader = getError('noResults', language, { query });
+    const suggestionsTips = CHATBOT_I18N.noResultsSuggestions[language];
+    const fullMessage = `❌ **${noResultsHeader}**\n\n${suggestionsTips}`;
 
-    const suggestions: Record<ChatbotLanguage, string[]> = {
-      es: ['Buscar servicios', 'Ver servicios populares', '¿Qué documentos necesito?'],
-      fr: ['Rechercher services', 'Voir services populaires', 'Quels documents ai-je besoin ?'],
-      en: ['Search services', 'View popular services', 'What documents do I need?'],
-    };
+    // Suggestions using i18n
+    const suggestions = [
+      getSuggestion('searchServices', language),
+      getSuggestion('viewPopular', language),
+      getSuggestion('getDocuments', language),
+    ];
 
     const message: ChatMessage = {
       id: generateMessageId(),
       role: 'bot',
-      content: noResultsMessages[language],
+      content: fullMessage,
       timestamp: new Date(),
       intent: 'unknown',
     };
 
     return {
       message,
-      suggestions: suggestions[language],
+      suggestions,
     };
   }
 

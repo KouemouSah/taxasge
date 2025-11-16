@@ -35,7 +35,23 @@
     "ios": "react-native run-ios",
     "start": "react-native start",
     "build:android": "cd android && ./gradlew assembleRelease",
+    "build:android:standalone": "./build-standalone-apk.sh",
+    "build:android:standalone:offline": "ENVFILE=.env.offline ./build-standalone-apk.sh",
     "build:ios": "cd ios && xcodebuild -workspace TaxasGE.xcworkspace -scheme TaxasGE -configuration Release",
+
+    "android:offline": "ENVFILE=.env.offline react-native run-android",
+    "android:pro": "ENVFILE=.env.pro react-native run-android",
+    "ios:offline": "ENVFILE=.env.offline react-native run-ios",
+    "ios:pro": "ENVFILE=.env.pro react-native run-ios",
+
+    "build:android:offline": "ENVFILE=.env.offline cd android && ./gradlew assembleRelease",
+    "build:android:pro": "ENVFILE=.env.pro cd android && ./gradlew assembleRelease",
+    "build:ios:offline": "ENVFILE=.env.offline cd ios && xcodebuild -workspace TaxasGE.xcworkspace -scheme TaxasGE -configuration Release",
+    "build:ios:pro": "ENVFILE=.env.pro cd ios && xcodebuild -workspace TaxasGE.xcworkspace -scheme TaxasGE -configuration Release",
+
+    "start:offline": "ENVFILE=.env.offline react-native start",
+    "start:pro": "ENVFILE=.env.pro react-native start",
+
     "lint": "eslint src/ --ext .js,.jsx,.ts,.tsx --fix",
     "lint:check": "eslint src/ --ext .js,.jsx,.ts,.tsx",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json}\"",
@@ -45,7 +61,7 @@
     "test:coverage": "jest --coverage",
     "clean": "cd android && ./gradlew clean && cd ../ios && xcodebuild clean",
     "clean:node": "rm -rf node_modules && npm install",
-    "postinstall": "echo 'Dependencies installed successfully'",
+    "postinstall": "patch-package",
     "precommit": "lint-staged",
     "prepare": "node -e \"if (process.env.CI !== 'true') { try { require('husky').install() } catch (e) {} }\""
   },
@@ -53,6 +69,7 @@
     "react": "19.1.0",
     "react-native": "0.80.0",
     "@react-native/new-app-screen": "0.80.0",
+    "@react-native-async-storage/async-storage": "^2.1.0",
     "@react-native-community/netinfo": "^11.3.1",
     "@reduxjs/toolkit": "^2.5.0",
     "@supabase/supabase-js": "^2.38.0",
@@ -65,6 +82,7 @@
     "lodash": "^4.17.21",
     "react-native-safe-area-context": "^5.5.2",
     "react-native-sqlite-storage": "^6.0.1",
+    "react-native-url-polyfill": "^2.0.0",
     "react-i18next": "^13.3.1",
     "@tanstack/react-query": "^5.0.0",
     "react-redux": "^9.2.0",
@@ -106,6 +124,7 @@
     "lint-staged": "^15.0.2",
     "patch-package": "^8.0.0",
     "prettier": "2.8.8",
+    "react-native-dotenv": "^3.4.11",
     "react-test-renderer": "19.1.0",
     "typescript": "5.0.4"
   },

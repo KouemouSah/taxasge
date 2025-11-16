@@ -228,7 +228,7 @@ class OfflineQueueService {
         await this.syncFavorite(item, data, userId);
         break;
 
-      case TABLE_NAMES.CALCULATIONS_HISTORY:
+      case TABLE_NAMES.CALCULATION_HISTORY:
         await this.syncCalculation(item, data, userId);
         break;
 

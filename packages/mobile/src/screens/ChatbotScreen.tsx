@@ -72,6 +72,8 @@ export const ChatbotScreen: React.FC<ChatbotScreenProps> = ({ language, onBack, 
 
   // Refs
   const flatListRef = useRef<FlatList>(null);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // ============================================
   // LIFECYCLE - Load saved session
@@ -94,6 +96,18 @@ export const ChatbotScreen: React.FC<ChatbotScreenProps> = ({ language, onBack, 
     // Set language in service
     chatbotService.setLanguage(currentLanguage);
   }, [currentLanguage]);
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // ============================================
   // SAVE/LOAD SESSION (AsyncStorage)
@@ -218,7 +232,8 @@ export const ChatbotScreen: React.FC<ChatbotScreenProps> = ({ language, onBack, 
     setSuggestions([]);
 
     // 2. Scroll to bottom
-    setTimeout(() => {
+    if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    scrollTimeoutRef.current = setTimeout(() => {
       flatListRef.current?.scrollToEnd({ animated: true });
     }, 100);
 
@@ -226,7 +241,9 @@ export const ChatbotScreen: React.FC<ChatbotScreenProps> = ({ language, onBack, 
     setIsTyping(true);
 
     // 4. Simulate typing delay (500ms)
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => {
+      typingTimeoutRef.current = setTimeout(resolve, 500);
+    });
 
     try {
       // 5. Get bot response
@@ -241,7 +258,8 @@ export const ChatbotScreen: React.FC<ChatbotScreenProps> = ({ language, onBack, 
       }
 
       // 8. Scroll to bottom
-      setTimeout(() => {
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
     } catch (error) {
@@ -322,12 +340,12 @@ export const ChatbotScreen: React.FC<ChatbotScreenProps> = ({ language, onBack, 
   // ============================================
 
   const renderMessage = ({ item }: { item: ChatMessage }) => (
-    <MessageBubble message={item} onActionPress={handleActionPress} />
+    <MessageBubble message={item} onActionPress={handleActionPress} language={currentLanguage} />
   );
 
   const renderFooter = () => {
     if (!isTyping) return null;
-    return <TypingIndicator />;
+    return <TypingIndicator language={currentLanguage} />;
   };
 
   if (isLoading) {

@@ -1,0 +1,7 @@
+id: number
+fiscal_service_id: number
+keyword: string
+language_code: string
+weight: number
+is_auto_generated: boolean
+created_at: string

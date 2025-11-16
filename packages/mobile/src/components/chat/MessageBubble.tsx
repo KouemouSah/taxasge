@@ -6,14 +6,16 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { ChatMessage } from '../../types/chatbot.types';
+import { ChatMessage, ChatbotLanguage } from '../../types/chatbot.types';
+import { MarkdownText } from './MarkdownText';
 
 export interface MessageBubbleProps {
   message: ChatMessage;
   onActionPress?: (action: any) => void;
+  language?: ChatbotLanguage;
 }
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onActionPress }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onActionPress, language = 'es' }) => {
   const isBot = message.role === 'bot';
   const isSystem = message.role === 'system';
 
@@ -50,9 +52,21 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onActionP
           {isBot && <Text style={styles.botName}>TaxasBot</Text>}
 
           {/* Contenu message */}
-          <Text style={[styles.messageText, isBot ? styles.botText : styles.userText]}>
-            {message.content}
-          </Text>
+          {isBot ? (
+            <MarkdownText
+              style={[styles.messageText, styles.botText]}
+              boldStyle={styles.boldText}
+              italicStyle={styles.italicText}
+              codeStyle={styles.codeText}
+              linkStyle={styles.linkText}
+            >
+              {message.content}
+            </MarkdownText>
+          ) : (
+            <Text style={[styles.messageText, styles.userText]}>
+              {message.content}
+            </Text>
+          )}
 
           {/* Timestamp */}
           <Text style={[styles.timestamp, isBot ? styles.botTimestamp : styles.userTimestamp]}>
@@ -60,14 +74,16 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onActionP
           </Text>
         </View>
 
-        {/* Action buttons (si présents) */}
-        {isBot && message.actions && message.actions.type === 'navigate' && (
+        {/* Action buttons (si présents ET explicitement demandés) */}
+        {isBot && message.actions && message.actions.type === 'navigate' && message.actions.showButton !== false && (
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => onActionPress?.(message.actions)}
           >
             <Text style={styles.actionButtonText}>
-              {message.actions.screen === 'Search' ? '🔍 Buscar servicios' : '➡️ Ver más'}
+              {message.actions.screen === 'Search'
+                ? (language === 'es' ? '🔍 Buscar servicios' : language === 'fr' ? '🔍 Rechercher services' : '🔍 Search services')
+                : (language === 'es' ? '➡️ Ver más' : language === 'fr' ? '➡️ Voir plus' : '➡️ View more')}
             </Text>
           </TouchableOpacity>
         )}
@@ -154,6 +170,29 @@ const styles = StyleSheet.create({
   },
   userText: {
     color: '#FFFFFF',
+  },
+
+  // Markdown styles (pour MarkdownText)
+  boldText: {
+    fontWeight: '700',
+    color: '#000000',
+  },
+  italicText: {
+    fontStyle: 'italic',
+    color: '#000000',
+  },
+  codeText: {
+    fontFamily: 'monospace',
+    backgroundColor: '#F5F5F5',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 3,
+    fontSize: 13,
+    color: '#000000',
+  },
+  linkText: {
+    color: '#007AFF',
+    textDecorationLine: 'underline',
   },
 
   // Timestamp

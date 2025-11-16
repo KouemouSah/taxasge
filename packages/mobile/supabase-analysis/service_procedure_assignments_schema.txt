@@ -1,0 +1,9 @@
+id: number
+fiscal_service_id: number
+template_id: number
+applies_to: string
+display_order: number
+custom_notes: null
+override_steps: null
+assigned_at: string
+assigned_by: null

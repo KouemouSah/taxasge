@@ -1,0 +1,5 @@
+[{"id":1,"fiscal_service_id":8,"keyword":"asunttos","language_code":"es","weight":1,"is_auto_generated":true,"created_at":"2025-10-13T01:44:50.936119+00:00"}, 
+ {"id":2,"fiscal_service_id":8,"keyword":"consular","language_code":"es","weight":1,"is_auto_generated":true,"created_at":"2025-10-13T01:44:50.936119+00:00"}, 
+ {"id":3,"fiscal_service_id":8,"keyword":"cooperación","language_code":"es","weight":1,"is_auto_generated":true,"created_at":"2025-10-13T01:44:50.936119+00:00"}, 
+ {"id":4,"fiscal_service_id":8,"keyword":"documentos","language_code":"es","weight":1,"is_auto_generated":true,"created_at":"2025-10-13T01:44:50.936119+00:00"}, 
+ {"id":5,"fiscal_service_id":8,"keyword":"exteriores","language_code":"es","weight":1,"is_auto_generated":true,"created_at":"2025-10-13T01:44:50.936119+00:00"}]
