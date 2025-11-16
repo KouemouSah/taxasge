@@ -7,8 +7,12 @@ from typing import List, Optional, Dict, Any
 from uuid import UUID
 from decimal import Decimal
 from loguru import logger
+import json
 
 from app.repositories.base import BaseRepository
+from app.services.firebase_storage_service import firebase_storage_service
+from app.services.ocr_service import ocr_service
+from app.core.documents.extractors.template_loader import template_loader
 from app.models.tax import (
     FiscalService, FiscalServiceCreate, FiscalServiceUpdate, FiscalServiceSearchFilter,
     FiscalServiceStats, Ministry, Sector, Category, Subcategory
@@ -465,6 +469,211 @@ class FiscalServiceRepository(BaseRepository[FiscalService]):
             revenue_by_category={},
             monthly_usage_trend=[]
         )
+
+    # ============================================================================
+    # PHASE 2 - DOCUMENT EXTRACTION PIPELINE (fiscal_service integration)
+    # ============================================================================
+
+    async def process_uploaded_fiscal_service_document(
+        self,
+        fiscal_service_id: str,
+        document_file_path: str,
+        service_type: str,
+        user_id: str,
+        type_compte: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Process uploaded fiscal service document using Phase 2 template-based extraction
+
+        Pipeline: Download → OCR → Extract → Map → Save
+
+        Similar to declaration_repository.process_uploaded_declaration_document()
+        but for fiscal services (Nota de Ingreso, etc.)
+
+        Args:
+            fiscal_service_id: UUID of fiscal_service record
+            document_file_path: Firebase Storage path (e.g., "user-documents/{userId}/nota.pdf")
+            service_type: Template name (e.g., "nota_ingreso")
+            user_id: User UUID
+            type_compte: Type de compte (cuenta_propia/cuenta_empresa) - FORM INPUT
+
+        Returns:
+            Dict with extraction result and database update status
+
+        Example:
+            result = await fiscal_service_repository.process_uploaded_fiscal_service_document(
+                fiscal_service_id="123e4567-...",
+                document_file_path="user-documents/uuid/nota_ingreso.pdf",
+                service_type="nota_ingreso",
+                user_id="user-uuid",
+                type_compte="cuenta_propia"
+            )
+        """
+        try:
+            logger.info(
+                f"Processing fiscal service document: {service_type} "
+                f"for service {fiscal_service_id}"
+            )
+
+            # Step 1: Download document from Firebase Storage
+            logger.debug(f"Step 1: Downloading from Firebase: {document_file_path}")
+            download_result = await firebase_storage_service.download_file(
+                file_path=document_file_path,
+                user_id=user_id
+            )
+
+            if not download_result.success:
+                raise Exception(f"Firebase download failed: {download_result.error}")
+
+            logger.info(f"Downloaded {len(download_result.content)} bytes from Firebase")
+
+            # Step 2: Run OCR extraction
+            logger.debug(f"Step 2: Running OCR (Tesseract)")
+            ocr_result = await ocr_service.extract_text(
+                file_content=download_result.content,
+                language="spa",  # Spanish for Guinea fiscal forms
+                document_type=service_type
+            )
+
+            if not ocr_result.success or not ocr_result.text:
+                raise Exception(f"OCR failed: {ocr_result.errors}")
+
+            logger.info(
+                f"OCR completed: {len(ocr_result.text)} chars, "
+                f"confidence={ocr_result.confidence:.2%}, "
+                f"provider={ocr_result.provider}"
+            )
+
+            # Step 3: Load template from Firebase (with local fallback)
+            logger.debug(f"Step 3: Loading template: {service_type}")
+            template = template_loader.load(
+                template_name=service_type,
+                template_type="fiscal_service"
+            )
+
+            if not template:
+                raise Exception(f"Template not found for service type: {service_type}")
+
+            logger.info(f"Template loaded: {template.template_id} v{template.version}")
+
+            # Step 4: Extract structured data using FiscalServiceExtractor
+            logger.debug(f"Step 4: Extracting structured data")
+            from app.core.documents.extractors.fiscal_services import FiscalServiceExtractor
+
+            extractor = FiscalServiceExtractor(service_type)
+            extraction_result = await extractor.extract(
+                ocr_text=ocr_result.text,
+                metadata={
+                    "ocr_confidence": ocr_result.confidence,
+                    "ocr_provider": ocr_result.provider
+                }
+            )
+
+            if not extraction_result.success:
+                logger.warning(
+                    f"Extraction had errors: {extraction_result.errors}"
+                )
+
+            logger.info(
+                f"Extraction completed: success={extraction_result.success}, "
+                f"confidence={extraction_result.confidence:.2%}, "
+                f"fields={len(extraction_result.data)}"
+            )
+
+            # Step 5: Map to database format using FiscalServiceDatabaseMapper
+            logger.debug(f"Step 5: Mapping to database format")
+            from app.core.documents.extractors.fiscal_services import FiscalServiceDatabaseMapper
+
+            mapper = FiscalServiceDatabaseMapper(service_type)
+            mapped_data = mapper.map_to_database(
+                extraction_result=extraction_result,
+                user_id=UUID(user_id),
+                fiscal_service_id=UUID(fiscal_service_id),
+                type_compte=type_compte
+            )
+
+            logger.info(
+                f"Mapped data: numero_nota={mapped_data.get('numero_nota')}, "
+                f"amount={mapped_data.get('final_amount')} XAF"
+            )
+
+            # Step 6: Insert into fiscal_service_data table
+            logger.debug(f"Step 6: Saving to fiscal_service_data table")
+
+            insert_query = """
+                INSERT INTO fiscal_service_data (
+                    id, user_id, fiscal_service_id,
+                    numero_nota, date_emission, organisme_emetteur,
+                    departement_emetteur, code_reference,
+                    nom_demandeur, type_compte,
+                    concepto_pago, periode,
+                    montant_chiffre, montant_lettre, final_amount, currency,
+                    compte_destinataire, date_expiration,
+                    signataire, tampon_officiel,
+                    additional_data, review_notes, status,
+                    created_at, updated_at
+                ) VALUES (
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
+                    $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25
+                )
+                RETURNING id
+            """
+
+            result_id = await self.db_manager.execute_command(
+                insert_query,
+                mapped_data["id"],
+                mapped_data["user_id"],
+                mapped_data["fiscal_service_id"],
+                mapped_data.get("numero_nota"),
+                mapped_data.get("date_emission"),
+                mapped_data.get("organisme_emetteur"),
+                mapped_data.get("departement_emetteur"),
+                mapped_data.get("code_reference"),
+                mapped_data.get("nom_demandeur"),
+                mapped_data.get("type_compte"),
+                mapped_data.get("concepto_pago"),
+                mapped_data.get("periode"),
+                mapped_data.get("montant_chiffre"),
+                mapped_data.get("montant_lettre"),
+                mapped_data.get("final_amount"),
+                mapped_data.get("currency"),
+                mapped_data.get("compte_destinataire"),
+                mapped_data.get("date_expiration"),
+                mapped_data.get("signataire"),
+                mapped_data.get("tampon_officiel"),
+                json.dumps(mapped_data.get("additional_data")),
+                mapped_data.get("review_notes"),
+                mapped_data.get("status"),
+                mapped_data.get("created_at"),
+                mapped_data.get("updated_at")
+            )
+
+            logger.info(f"✅ Fiscal service data saved: {result_id}")
+
+            return {
+                "success": True,
+                "fiscal_service_data_id": str(mapped_data["id"]),
+                "extraction_confidence": extraction_result.confidence,
+                "fields_extracted": len(extraction_result.data),
+                "ocr_provider": ocr_result.provider,
+                "processing_time_ms": extraction_result.processing_time_ms,
+                "warnings": extraction_result.warnings,
+                "review_notes": mapped_data.get("review_notes"),
+                "metadata": {
+                    "numero_nota": mapped_data.get("numero_nota"),
+                    "final_amount": float(mapped_data.get("final_amount")) if mapped_data.get("final_amount") else None,
+                    "currency": mapped_data.get("currency")
+                }
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to process fiscal service document: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "fiscal_service_id": fiscal_service_id,
+                "service_type": service_type
+            }
 
 
 # Global repository instance

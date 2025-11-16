@@ -34,6 +34,7 @@ from app.services.firebase_storage_service import (
 from app.services.ocr_service import ocr_service
 from app.services.extraction_service import extraction_service
 from app.core.documents.extractors import TemplateBasedExtractor
+from app.core.documents.extractors.fiscal_services import FiscalServiceExtractor
 from app.core.documents.extractors.template_loader import template_loader
 from app.api.v1.auth import require_admin, require_operator, get_current_user, get_current_user_optional
 
@@ -659,30 +660,60 @@ async def _process_extraction_step(document: Document):
             document.document_subtype in fiscal_form_types
         )
 
-        # PHASE 2: Use TemplateBasedExtractor for fiscal forms
+        # PHASE 2: Use correct extractor based on document type
         if is_fiscal_form:
-            logger.info(f"Using TemplateBasedExtractor for fiscal form: {document.document_type}/{document.document_subtype}")
-
             # Determine template name (prioritize subtype over type)
             template_name = document.document_subtype or document.document_type
 
-            # Load template from Firebase Storage (with local fallback)
-            template = template_loader.load(
-                template_name=template_name,
-                template_type="declaration"
-            )
+            # Route to correct extractor: fiscal_service vs tax_declaration
+            if document.document_type == "fiscal_service" or template_name in ["nota_ingreso"]:
+                # === FISCAL SERVICES (Nota de Ingreso, etc.) ===
+                logger.info(f"Using FiscalServiceExtractor for: {template_name}")
+                template_type = "fiscal_service"
 
-            if not template:
-                logger.error(f"No template found for fiscal form: {template_name}")
-                await document_repository.update(document.id, {
-                    "extraction_status": DocumentExtractionStatus.failed,
-                    "error_logs": [{"error": f"Template not found: {template_name}", "timestamp": datetime.utcnow().isoformat()}]
-                })
-                return
+                # Load template from Firebase Storage (with local fallback)
+                template = template_loader.load(
+                    template_name=template_name,
+                    template_type=template_type
+                )
 
-            # Extract using template
-            extractor = TemplateBasedExtractor(template)
-            extraction_result = await extractor.extract(updated_doc.extracted_text)
+                if not template:
+                    logger.error(f"No template found for fiscal service: {template_name}")
+                    await document_repository.update(document.id, {
+                        "extraction_status": DocumentExtractionStatus.failed,
+                        "error_logs": [{"error": f"Template not found: {template_name}", "timestamp": datetime.utcnow().isoformat()}]
+                    })
+                    return
+
+                # Extract using FiscalServiceExtractor
+                extractor = FiscalServiceExtractor(template_name)
+                extraction_result = await extractor.extract(
+                    updated_doc.extracted_text,
+                    metadata={"ocr_confidence": updated_doc.ocr_confidence}
+                )
+
+            else:
+                # === TAX DECLARATIONS (IVA, IRPF, etc.) ===
+                logger.info(f"Using TemplateBasedExtractor for tax declaration: {template_name}")
+                template_type = "declaration"
+
+                # Load template from Firebase Storage (with local fallback)
+                template = template_loader.load(
+                    template_name=template_name,
+                    template_type=template_type
+                )
+
+                if not template:
+                    logger.error(f"No template found for tax declaration: {template_name}")
+                    await document_repository.update(document.id, {
+                        "extraction_status": DocumentExtractionStatus.failed,
+                        "error_logs": [{"error": f"Template not found: {template_name}", "timestamp": datetime.utcnow().isoformat()}]
+                    })
+                    return
+
+                # Extract using TemplateBasedExtractor
+                extractor = TemplateBasedExtractor(template)
+                extraction_result = await extractor.extract(updated_doc.extracted_text)
 
         # LEGACY: Use extraction_service for general documents
         else:
