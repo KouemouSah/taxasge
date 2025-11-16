@@ -302,6 +302,15 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ Homepage router not available: {e}")
 
+# Try to load files router (Module 03 - Firebase Storage file management)
+try:
+    from app.api.v1 import files
+    app.include_router(files.router, prefix="/api/v1", tags=["files"])
+    routers_loaded.append("files")
+    logger.info("✅ Files router loaded (Firebase Storage)")
+except ImportError as e:
+    logger.warning(f"⚠️ Files router not available: {e}")
+
 if routers_loaded:
     logger.info(f"✅ {len(routers_loaded)} API routers loaded: {', '.join(routers_loaded)}")
 else:
