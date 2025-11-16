@@ -16,9 +16,15 @@ export interface SearchFilters {
   // Filters
   category_id?: number
   category_code?: string
+  ministry_id?: number
+  ministry_code?: number
   service_type?: string
   min_price?: number
   max_price?: number
+  min_expedition_price?: number
+  max_expedition_price?: number
+  min_renewal_price?: number
+  max_renewal_price?: number
 
   // Sorting
   sort_by?: 'relevance' | 'name' | 'price' | 'popular'
@@ -61,6 +67,7 @@ export interface FacetItem {
 
 export interface SearchFacets {
   categories: FacetItem[]
+  ministries: FacetItem[]
   service_types: FacetItem[]
   price_ranges: FacetItem[]
 }
@@ -93,9 +100,15 @@ export async function searchServices(filters: SearchFilters = {}): Promise<Searc
       q: filters.q || null,
       category_id: filters.category_id || null,
       category_code: filters.category_code || null,
+      ministry_id: filters.ministry_id || null,
+      ministry_code: filters.ministry_code || null,
       service_type: filters.service_type || null,
       min_price: filters.min_price !== undefined ? filters.min_price : null,
       max_price: filters.max_price !== undefined ? filters.max_price : null,
+      min_expedition_price: filters.min_expedition_price !== undefined ? filters.min_expedition_price : null,
+      max_expedition_price: filters.max_expedition_price !== undefined ? filters.max_expedition_price : null,
+      min_renewal_price: filters.min_renewal_price !== undefined ? filters.min_renewal_price : null,
+      max_renewal_price: filters.max_renewal_price !== undefined ? filters.max_renewal_price : null,
       sort_by: filters.sort_by || 'relevance',
       sort_order: filters.sort_order || 'asc',
       page: filters.page || 1,
@@ -142,6 +155,7 @@ export function getDefaultSearchResponse(): SearchResponse {
     results: [],
     facets: {
       categories: [],
+      ministries: [],
       service_types: [],
       price_ranges: []
     },
