@@ -139,25 +139,25 @@ Implémenter le système complet de soumission de déclarations fiscales et de s
   6. ✅ Extraire schéma DB à jour (2025-11-15 23:28:17)
 - **Résultat Final** : **🎉 100% TABLES IMPLÉMENTÉES** ✅
   - ✅ `bank_configurations` - **EXISTE** (DATABASE_SCHEMA_REFERENCE.md ligne 18)
-  - ✅ `declaration_iva_details` - **EXISTE** (Migration 003 + Schéma ligne 26) - Niveau 1 IVA ✅
-  - ✅ `declaration_irpf_data` - **EXISTE** (Schéma ligne 25) - Niveau 1 IRPF ✅
-  - ✅ `declaration_petroliferos_details` - **EXISTE** (Migration 003 + Schéma ligne 28) - Niveau 1 Pétrolifères ✅
-  - ✅ `declaration_retencion_details` - **EXISTE** (Migration 003 + Schéma ligne 29) - Niveau 1 Retenciones ✅
-  - ✅ `declaration_other_details` - **EXISTE** (Migration 003 + Schéma ligne 27) - Niveau 2 Generic ✅
+  - ✅ `declaration_iva_data` - **EXISTE** (Schéma ligne 724) - Niveau 1 IVA ✅
+  - ✅ `declaration_irpf_data` - **EXISTE** (Schéma ligne 668) - Niveau 1 IRPF ✅
+  - ✅ `declaration_petroliferos_data` - **EXISTE** (Schéma ligne 788) - Niveau 1 Pétrolifères ✅
+  - ✅ `declaration_data_generic` - **EXISTE** (Schéma ligne 625) - Niveau 2 Generic (JSONB) ✅
   - ✅ `fiscal_service_data` - **EXISTE** (Schéma ligne 34) + Migration 004 (8 colonnes + type_compte_enum) ✅
-  - ✅ `declaration_amount_adjustments` - **EXISTE** (Schéma ligne 23) - Audit trail ✅
+  - ✅ `declaration_amount_adjustments` - **EXISTE** (Schéma ligne 542) - Audit trail ✅
   - ✅ `agent_work_queue` - **EXISTE** (Migration 001 + Schéma ligne 16) - Load balancing ✅
   - ✅ `document_processing_queue` - **EXISTE** (Migration 001 + Schéma ligne 30) - OCR retry ✅
   - ✅ `sessions` - **EXISTE** (Schéma ligne 60) + context_data + termination_reason (Migration 001) ✅
 - **Métriques Finales** :
   - ✅ Tables manquantes : **0/0** (100% implémentées)
-  - ✅ Architecture 3 niveaux : **100% implémentée** (4 tables details + fiscal_service_data)
+  - ✅ Architecture 3 niveaux : **100% implémentée** (4 tables data: iva, irpf, petroliferos, generic + fiscal_service_data)
   - ✅ Migration 001 exécutée : **OUI** (2025-11-13) - Infrastructure (3 tables/colonnes)
-  - ✅ Migration 003 exécutée : **OUI** (2025-11-14) - Document extraction (4 tables details)
+  - ✅ Migration 003 exécutée : **OUI** (2025-11-14) - Document extraction (4 tables data)
   - ✅ Migration 004 exécutée : **OUI** (2025-11-15) - Fiscal services (8 colonnes + ENUM)
   - ✅ Total tables DB : **57 tables** (DATABASE_SCHEMA_REFERENCE.md 2025-11-15)
   - ✅ Total ENUMs : **17 ENUMs** (incluant type_compte_enum)
   - ✅ Tests migration : **OUI** (6/6 checks passed)
+  - ✅ Noms tables vérifiés : **OUI** (2025-11-16) - Conformes DATABASE_SCHEMA_REFERENCE.md
 - **Impact** : **🎉 Infrastructure 100% prête - Développement Phase 3 non bloqué**
 - **Prochaine Étape** : Phase 3 (API Backend Workflow)
 - **Durée Réalisée** : 0.5 jour (exactement comme prévu)
@@ -1062,10 +1062,10 @@ Implémenter le système complet de soumission de déclarations fiscales et de s
 
 ### NOTE-01 : Architecture 3 Niveaux Validée ✅ IMPLÉMENTÉE
 - **Date** : 2025-01-12
-- **Décision** : Adopter architecture 3 niveaux (IVA/IRPF/Pétrolifères structurés, 7 autres JSONB, fiscal services séparés)
+- **Décision** : Adopter architecture 3 niveaux (IVA/IRPF/Pétrolifères structurés, autres JSONB generic, fiscal services séparés)
 - **Justification** : Performance critique 99% volume, évite overengineering 14 tables
-- **Impact** : UC-01-01 doit créer 5 tables data (pas 14)
-- **Statut** : ✅ **COMPLÉTÉ** - Migration 001 exécutée, 4 tables data en production
+- **Impact** : UC-01-01 doit créer 4 tables data (declaration_iva_data, declaration_irpf_data, declaration_petroliferos_data, declaration_data_generic)
+- **Statut** : ✅ **COMPLÉTÉ** - 4 tables data en production (noms vérifiés DATABASE_SCHEMA_REFERENCE.md 2025-11-16)
 
 ### NOTE-02 : Tesseract Uniquement pour MVP
 - **Date** : 2025-01-12
