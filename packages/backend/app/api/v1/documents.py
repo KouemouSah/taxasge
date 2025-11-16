@@ -27,8 +27,9 @@ from app.models.document import (
 from app.models.user import UserResponse
 from app.repositories.document_repository import document_repository
 from app.services.firebase_storage_service import (
-    firebase_storage_service, upload_document, upload_user_document,
-    upload_tax_attachment, upload_app_asset, get_taxasge_folder_info
+    firebase_storage_service,
+    UploadResult,
+    get_taxasge_folder_info
 )
 from app.services.ocr_service import ocr_service
 from app.services.extraction_service import extraction_service
@@ -132,18 +133,21 @@ async def upload_document_endpoint(
 
         # Upload to Firebase Storage using appropriate folder
         if document_type in ["tax_return", "declaration", "receipt", "invoice"]:
-            # Tax-related documents go to tax-attachments/
-            upload_result = await upload_tax_attachment(
+            # Tax-related documents go to application-attachments/
+            upload_result = await firebase_storage_service.upload_declaration_attachment(
+                application_id=str(uuid.uuid4()),
                 file=file,
-                user_id=str(current_user.id),
-                attachment_type=document_type
+                allowed_users=[str(current_user.id)],
+                declaration_type=document_subtype or document_type,
+                metadata=parsed_metadata
             )
         else:
             # Personal documents go to user-documents/
-            upload_result = await upload_user_document(
-                file=file,
+            upload_result = await firebase_storage_service.upload_user_document(
                 user_id=str(current_user.id),
-                document_type=document_type
+                application_id=str(uuid.uuid4()),
+                file=file,
+                metadata=parsed_metadata
             )
 
         # Create document record
@@ -216,10 +220,11 @@ async def bulk_upload_documents(
         for file in files:
             try:
                 # Upload each file
-                upload_result = await upload_document(
-                    file=file,
+                upload_result = await firebase_storage_service.upload_user_document(
                     user_id=str(current_user.id),
-                    document_type=document_type
+                    application_id=str(uuid.uuid4()),
+                    file=file,
+                    metadata={"document_type": document_type}
                 )
 
                 # Create document record
