@@ -104,14 +104,14 @@ class TaxDeclarationRepository:
             record_id = mapped_data.pop("id")  # Extract UUID
 
             # Build INSERT query based on table
-            if db_table == "declaration_iva_data":
+            if db_table == "declaration_iva_details":
                 insert_query = self._build_iva_insert_query()
             elif db_table == "declaration_irpf_data":
                 insert_query = self._build_irpf_insert_query()
-            elif db_table == "declaration_petroliferos_data":
+            elif db_table == "declaration_petroliferos_details":
                 insert_query = self._build_petroliferos_insert_query()
-            elif db_table == "declaration_data_generic":
-                insert_query = self._build_generic_insert_query()
+            elif db_table == "declaration_other_details":
+                insert_query = self._build_other_insert_query()
             else:
                 raise Exception(f"Unknown declaration table: {db_table}")
 
@@ -148,9 +148,9 @@ class TaxDeclarationRepository:
             }
 
     def _build_iva_insert_query(self) -> str:
-        """Build INSERT query for declaration_iva_data"""
+        """Build INSERT query for declaration_iva_details"""
         return """
-            INSERT INTO declaration_iva_data (
+            INSERT INTO declaration_iva_details (
                 id, user_id, declaration_id,
                 periodo_fiscal, ejercicio, numero_formulario,
                 nif_contribuyente, razon_social,
@@ -187,9 +187,9 @@ class TaxDeclarationRepository:
         """
 
     def _build_petroliferos_insert_query(self) -> str:
-        """Build INSERT query for declaration_petroliferos_data"""
+        """Build INSERT query for declaration_petroliferos_details"""
         return """
-            INSERT INTO declaration_petroliferos_data (
+            INSERT INTO declaration_petroliferos_details (
                 id, user_id, declaration_id,
                 periodo_fiscal, ejercicio, numero_formulario,
                 nif_contribuyente, razon_social,
@@ -203,10 +203,10 @@ class TaxDeclarationRepository:
             RETURNING id
         """
 
-    def _build_generic_insert_query(self) -> str:
-        """Build INSERT query for declaration_data_generic (generic JSONB)"""
+    def _build_other_insert_query(self) -> str:
+        """Build INSERT query for declaration_other_details (generic JSONB)"""
         return """
-            INSERT INTO declaration_data_generic (
+            INSERT INTO declaration_other_details (
                 id, user_id, declaration_id,
                 declaration_type, periodo_fiscal, ejercicio,
                 extracted_fields, additional_data,
@@ -236,7 +236,7 @@ class TaxDeclarationRepository:
             mapped_data["declaration_id"]
         ]
 
-        if db_table == "declaration_iva_data":
+        if db_table == "declaration_iva_details":
             values.extend([
                 mapped_data.get("periodo_fiscal"),
                 mapped_data.get("ejercicio"),
@@ -277,7 +277,7 @@ class TaxDeclarationRepository:
                 mapped_data.get("updated_at")
             ])
 
-        elif db_table == "declaration_petroliferos_data":
+        elif db_table == "declaration_petroliferos_details":
             values.extend([
                 mapped_data.get("periodo_fiscal"),
                 mapped_data.get("ejercicio"),
@@ -294,7 +294,7 @@ class TaxDeclarationRepository:
                 mapped_data.get("updated_at")
             ])
 
-        elif db_table == "declaration_data_generic":
+        elif db_table == "declaration_other_details":
             values.extend([
                 mapped_data.get("declaration_type"),
                 mapped_data.get("periodo_fiscal"),

@@ -31,7 +31,7 @@
 - ✅ **TemplateBasedExtractor** : Classe universelle remplace 13 extracteurs spécialisés
 - ✅ **13 pré-configurations** : iva_destajo, iva_real, retencion_3pct (4 secteurs), retencion_10pct (4 secteurs), cuota_min (2 secteurs), productos_petroleros
 - ✅ **Zone Label Extractor v3.0** : Extraction basée sections (document_info, contribuable, montants, totaux, validation)
-- ✅ **DeclarationDatabaseMapper** : Mapping polymorphe vers 4 tables (declaration_iva_data, declaration_irpf_data, declaration_petroliferos_data, declaration_data_generic)
+- ✅ **DeclarationDatabaseMapper** : Mapping polymorphe vers 4 tables (declaration_iva_details, declaration_irpf_data, declaration_petroliferos_details, declaration_other_details)
 
 **2. Fiscal Services Alignement**
 - ✅ **Migration 004** : Ajout 8 colonnes fiscal_service_data (type_compte ENUM, date_emission, organisme_emetteur, departement_emetteur, compte_destinataire, signataire, code_reference, tampon_officiel)
@@ -139,10 +139,10 @@ Implémenter le système complet de soumission de déclarations fiscales et de s
   6. ✅ Extraire schéma DB à jour (2025-11-15 23:28:17)
 - **Résultat Final** : **🎉 100% TABLES IMPLÉMENTÉES** ✅
   - ✅ `bank_configurations` - **EXISTE** (DATABASE_SCHEMA_REFERENCE.md ligne 18)
-  - ✅ `declaration_iva_data` - **EXISTE** (Schéma ligne 724) - Niveau 1 IVA ✅
-  - ✅ `declaration_irpf_data` - **EXISTE** (Schéma ligne 668) - Niveau 1 IRPF ✅
-  - ✅ `declaration_petroliferos_data` - **EXISTE** (Schéma ligne 788) - Niveau 1 Pétrolifères ✅
-  - ✅ `declaration_data_generic` - **EXISTE** (Schéma ligne 625) - Niveau 2 Generic (JSONB) ✅
+  - ✅ `declaration_iva_details` - **EXISTE** (Schéma ligne 700) - Niveau 1 IVA ✅
+  - ✅ `declaration_irpf_data` - **EXISTE** (Schéma ligne 644) - Niveau 1 IRPF ✅
+  - ✅ `declaration_petroliferos_details` - **EXISTE** (Schéma ligne 821) - Niveau 1 Pétrolifères ✅
+  - ✅ `declaration_other_details` - **EXISTE** (Schéma ligne 776) - Niveau 2 Generic (JSONB) ✅
   - ✅ `fiscal_service_data` - **EXISTE** (Schéma ligne 34) + Migration 004 (8 colonnes + type_compte_enum) ✅
   - ✅ `declaration_amount_adjustments` - **EXISTE** (Schéma ligne 542) - Audit trail ✅
   - ✅ `agent_work_queue` - **EXISTE** (Migration 001 + Schéma ligne 16) - Load balancing ✅
@@ -565,7 +565,7 @@ Implémenter le système complet de soumission de déclarations fiscales et de s
   # Test mapping database
   mapper = DeclarationDatabaseMapper()
   record = mapper.map_to_database(result, user_id, declaration_id)
-  assert record['db_table'] == 'declaration_iva_data'
+  assert record['db_table'] == 'declaration_iva_details'
   assert record['total_a_payer'] == result.data['sections']['totaux']['total_a_payer']
   ```
 - **Résultats** :
@@ -1064,7 +1064,7 @@ Implémenter le système complet de soumission de déclarations fiscales et de s
 - **Date** : 2025-01-12
 - **Décision** : Adopter architecture 3 niveaux (IVA/IRPF/Pétrolifères structurés, autres JSONB generic, fiscal services séparés)
 - **Justification** : Performance critique 99% volume, évite overengineering 14 tables
-- **Impact** : UC-01-01 doit créer 4 tables data (declaration_iva_data, declaration_irpf_data, declaration_petroliferos_data, declaration_data_generic)
+- **Impact** : UC-01-01 doit créer 4 tables data (declaration_iva_details, declaration_irpf_data, declaration_petroliferos_details, declaration_other_details)
 - **Statut** : ✅ **COMPLÉTÉ** - 4 tables data en production (noms vérifiés DATABASE_SCHEMA_REFERENCE.md 2025-11-16)
 
 ### NOTE-02 : Tesseract Uniquement pour MVP
