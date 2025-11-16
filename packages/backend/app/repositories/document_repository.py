@@ -20,6 +20,10 @@ from app.models.document import (
     DocumentProcessingStats, DocumentOCRStatus, DocumentExtractionStatus,
     DocumentValidationStatus, DocumentAccessLevel, DocumentType
 )
+from app.core.documents.extractors import TemplateBasedExtractor, DeclarationDatabaseMapper
+from app.core.documents.extractors.template_loader import template_loader
+from app.services.ocr_service import ocr_service
+from app.services.firebase_storage_service import firebase_storage_service
 
 
 class DocumentRepository(BaseRepository[Document]):
@@ -596,6 +600,166 @@ class DocumentRepository(BaseRepository[Document]):
         except Exception as e:
             logger.error(f"Error finding pending extraction documents: {e}")
             return []
+
+    async def process_document_extraction(
+        self,
+        document_id: UUID,
+        template_name: str,
+        template_type: str = "declaration"
+    ) -> Dict[str, Any]:
+        """
+        Process document extraction using Phase 2 template-based architecture
+
+        Pipeline: Download → OCR → Extract → Map → Update
+
+        Args:
+            document_id: Document UUID
+            template_name: Template name (e.g., "iva_destajo", "nota_ingreso")
+            template_type: "declaration" or "fiscal_service"
+
+        Returns:
+            Dict with extraction results and statistics
+        """
+        try:
+            logger.info(f"📄 Processing document extraction: {document_id} (template: {template_name})")
+
+            # Step 1: Get document from database
+            document = await self.get_by_id(document_id)
+            if not document:
+                logger.error(f"Document not found: {document_id}")
+                return {
+                    "success": False,
+                    "error": f"Document not found: {document_id}"
+                }
+
+            # Mark OCR as processing
+            await self.update(document_id, {
+                "ocr_status": DocumentOCRStatus.processing.value,
+                "processing_started_at": datetime.utcnow()
+            })
+
+            # Step 2: Download document from Firebase Storage
+            logger.debug(f"Downloading document from Firebase: {document.file_path}")
+            download_result = await firebase_storage_service.download_file(
+                file_path=document.file_path,
+                user_id=str(document.user_id)
+            )
+
+            # Step 3: Run OCR extraction
+            logger.debug("Running OCR extraction...")
+            ocr_result = await ocr_service.extract_text(
+                file_content=download_result.content,
+                file_type=document.mime_type,
+                provider="tesseract_server"
+            )
+
+            if not ocr_result.success:
+                logger.error(f"OCR failed: {ocr_result.errors}")
+                await self.update_ocr_failed(
+                    document_id=document_id,
+                    error_message=str(ocr_result.errors)
+                )
+                return {
+                    "success": False,
+                    "error": "OCR extraction failed",
+                    "details": ocr_result.errors
+                }
+
+            # Update OCR results
+            await self.update_ocr_results(
+                document_id=document_id,
+                ocr_text=ocr_result.text,
+                confidence=ocr_result.confidence,
+                provider="tesseract_server",
+                processing_time_ms=ocr_result.processing_time_ms
+            )
+
+            # Step 4: Load template
+            logger.debug(f"Loading template: {template_name} (type: {template_type})")
+            template = template_loader.load(template_name, template_type=template_type)
+
+            if not template:
+                logger.error(f"Template not found: {template_name}")
+                await self.update_extraction_failed(
+                    document_id=document_id,
+                    error_message=f"Template not found: {template_name}"
+                )
+                return {
+                    "success": False,
+                    "error": f"Template not found: {template_name}"
+                }
+
+            # Step 5: Extract structured data
+            logger.debug("Extracting structured data with TemplateBasedExtractor...")
+            extractor = TemplateBasedExtractor(template)
+            extraction_result = await extractor.extract(ocr_result.text)
+
+            if not extraction_result.success:
+                logger.error(f"Extraction failed: {extraction_result.errors}")
+                await self.update_extraction_failed(
+                    document_id=document_id,
+                    error_message=str(extraction_result.errors)
+                )
+                return {
+                    "success": False,
+                    "error": "Structured extraction failed",
+                    "details": extraction_result.errors
+                }
+
+            # Step 6: Map to database format
+            logger.debug("Mapping extracted data to database format...")
+            mapper = DeclarationDatabaseMapper(template)
+            mapped_data = mapper.map_to_database(extraction_result)
+
+            # Step 7: Update document with extracted data
+            logger.debug(f"Updating document {document_id} with extracted data...")
+            await self.update_extracted_data(
+                document_id=document_id,
+                extracted_data=extraction_result.data,
+                confidence=extraction_result.confidence,
+                processing_time_ms=extraction_result.metadata.get("processing_time_ms", 0)
+            )
+
+            # Update processing completion
+            await self.update(document_id, {
+                "processing_completed_at": datetime.utcnow(),
+                "form_mapping": mapped_data
+            })
+
+            logger.info(f"✅ Document extraction completed successfully: {document_id}")
+
+            return {
+                "success": True,
+                "document_id": str(document_id),
+                "template_name": template_name,
+                "template_type": template_type,
+                "ocr_confidence": ocr_result.confidence,
+                "extraction_confidence": extraction_result.confidence,
+                "fields_extracted": len(extraction_result.data),
+                "extracted_data": extraction_result.data,
+                "mapped_data": mapped_data,
+                "warnings": extraction_result.warnings
+            }
+
+        except Exception as e:
+            logger.error(f"❌ Error processing document extraction: {e}")
+            import traceback
+            traceback.print_exc()
+
+            # Mark extraction as failed
+            try:
+                await self.update_extraction_failed(
+                    document_id=document_id,
+                    error_message=str(e)
+                )
+            except:
+                pass
+
+            return {
+                "success": False,
+                "error": str(e),
+                "traceback": traceback.format_exc()
+            }
 
 
 # Singleton instance
