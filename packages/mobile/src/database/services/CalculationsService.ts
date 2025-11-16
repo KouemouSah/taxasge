@@ -457,6 +457,22 @@ class CalculationsService {
   }
 
   /**
+   * Alias for getStatsByCalculationType (backward compatibility)
+   * @deprecated Use getStatsByCalculationType instead
+   */
+  async getStatsByPaymentType(userId: string): Promise<{
+    expedition: { count: number; total: number };
+    renewal: { count: number; total: number };
+    urgent: { count: number; total: number };
+  }> {
+    const stats = await this.getStatsByCalculationType(userId);
+    return {
+      ...stats,
+      urgent: { count: 0, total: 0 }, // Legacy urgent type no longer used
+    };
+  }
+
+  /**
    * Delete calculation
    */
   async deleteCalculation(userId: string, calculationId: number): Promise<boolean> {

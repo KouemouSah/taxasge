@@ -19,6 +19,13 @@ module.exports = {
         '@database': './src/database',
         '@config': './src/config'
       }
+    }],
+    // Environment variables - Dynamic .env file selection
+    ['module:react-native-dotenv', {
+      moduleName: '@env',
+      path: process.env.ENVFILE || '.env',
+      safe: false,
+      allowUndefined: true
     }]
   ],
   env: {

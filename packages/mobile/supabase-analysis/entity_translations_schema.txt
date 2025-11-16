@@ -1,0 +1,9 @@
+entity_type: string
+entity_code: string
+language_code: string
+field_name: string
+translation_text: string
+translation_source: string
+translation_quality: null
+created_at: string
+updated_at: string

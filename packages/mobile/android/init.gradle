@@ -1,0 +1,36 @@
+// Gradle initialization script to configure repositories and network settings
+
+allprojects {
+    buildscript {
+        repositories {
+            maven {
+                url "https://repo1.maven.org/maven2/"
+                allowInsecureProtocol = false
+            }
+            maven {
+                url "https://dl.google.com/dl/android/maven2/"
+                allowInsecureProtocol = false
+            }
+            maven {
+                url "https://plugins.gradle.org/m2/"
+                allowInsecureProtocol = false
+            }
+            mavenCentral()
+            google()
+            gradlePluginPortal()
+        }
+    }
+
+    repositories {
+        maven {
+            url "https://repo1.maven.org/maven2/"
+            allowInsecureProtocol = false
+        }
+        maven {
+            url "https://dl.google.com/dl/android/maven2/"
+            allowInsecureProtocol = false
+        }
+        mavenCentral()
+        google()
+    }
+}

@@ -2,12 +2,22 @@
  * TaxasGE Mobile - Typing Indicator Component
  * Affiche l'indicateur "TaxasBot is typing..."
  * Date: 2025-10-13
+ * Updated: 2025-11-06 - Added multilingual support
  */
 
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 
-export const TypingIndicator: React.FC = () => {
+interface TypingIndicatorProps {
+  language?: 'es' | 'fr' | 'en';
+}
+
+export const TypingIndicator: React.FC<TypingIndicatorProps> = ({ language = 'es' }) => {
+  const translations = {
+    es: 'TaxasBot está escribiendo',
+    fr: 'TaxasBot écrit',
+    en: 'TaxasBot is typing',
+  };
   const dot1 = useRef(new Animated.Value(0)).current;
   const dot2 = useRef(new Animated.Value(0)).current;
   const dot3 = useRef(new Animated.Value(0)).current;
@@ -53,7 +63,7 @@ export const TypingIndicator: React.FC = () => {
       </View>
 
       <View style={styles.bubble}>
-        <Text style={styles.text}>TaxasBot está escribiendo</Text>
+        <Text style={styles.text}>{translations[language]}</Text>
         <View style={styles.dotsContainer}>
           <Animated.View
             style={[
