@@ -3,7 +3,7 @@
 TAXASGE DATABASE SCHEMA - COMPLETE REFERENCE
 ====================================================================================================
 
-Extracted on: 2025-11-16 19:23:14
+Extracted on: 2025-11-17 14:05:49
 Database: Supabase PostgreSQL
 Project: taxasge-dev
 
@@ -14,6 +14,9 @@ Project: taxasge-dev
   - adjustment_reasons                       Catalogue des raisons prédéfinies pour ajustements de montants
   - agent_performance_stats                  No description
   - agent_work_queue                         Work queue for agent load balancing with dynamic priority calculation based on SLA, amount, and complexity
+  - agent_workloads                          Suivi en temps réel de la charge de travail des agents
+  - assignment_rules                         Règles configurables pour l'auto-assignation intelligente
+  - assignments                              Historique complet des assignations de déclarations aux agents
   - audit_logs                               No description
   - bank_configurations                      Configuration des intégrations bancaires (API, webhooks, comptes)
   - bank_transactions                        Transactions bancaires reçues des banques (webhooks ou réconciliation manuelle)
@@ -47,10 +50,14 @@ Project: taxasge-dev
   - payment_validation_audit                 No description
   - payments                                 Table centrale polymorphe pour TOUS les paiements (services fiscaux et déclarations)
   - pending_registrations                    Stores email verification codes. Expires after 15 minutes. Minimal by design.
+  - permission_audit_log                     Historique complet de tous les changements de permissions (audit trail)
+  - permissions                              Catalogue centralisé de toutes les permissions de l'application
   - procedure_template_steps                 No description
   - procedure_template_steps_backup_20251017 No description
   - procedure_templates                      Templates procédures - Architecture radicale 58.7%% économie
   - refresh_tokens                           Refresh tokens for JWT authentication with revocation support
+  - role_permissions                         Permissions associées à chaque rôle
+  - roles                                    Rôles personnalisables pour attribution de permissions groupées
   - sectors                                  No description
   - service_document_assignments             No description
   - service_keywords                         No description
@@ -66,6 +73,7 @@ Project: taxasge-dev
   - user_company_roles                       No description
   - user_favorites                           No description
   - user_ministry_assignments                No description
+  - user_permissions                         Permissions spécifiques par utilisateur (override du rôle)
   - users                                    No description
   - workflow_transitions                     No description
 
@@ -83,6 +91,29 @@ agent_action_type:
   - escalate
   - unlock_release
   - assign_to_colleague
+
+agent_availability_enum:
+  - available
+  - on_leave
+  - sick_leave
+  - training
+  - mission
+  - temporarily_unavailable
+
+assignment_method_enum:
+  - auto
+  - manual
+  - self_assigned
+  - escalated
+
+assignment_status_enum:
+  - assigned
+  - in_progress
+  - pending_review
+  - completed
+  - reassigned
+  - cancelled
+  - rejected
 
 attachment_type_enum:
   - declaration_form
@@ -195,6 +226,22 @@ payment_workflow_status:
   - cancelled_by_agent
   - expired
 
+reassignment_reason_enum:
+  - workload_imbalance
+  - agent_unavailable
+  - specialization_mismatch
+  - quality_issue
+  - deadline_missed
+  - agent_request
+  - supervisor_decision
+  - complexity_change
+
+rule_status_enum:
+  - active
+  - inactive
+  - draft
+  - archived
+
 service_status_enum:
   - active
   - inactive
@@ -229,6 +276,7 @@ user_role_enum:
   - business
   - accountant
   - admin
+  - supervisor
   - dgi_agent
   - ministry_agent
 
@@ -237,6 +285,13 @@ user_status_enum:
   - suspended
   - pending_verification
   - deactivated
+
+workload_status_enum:
+  - available
+  - normal
+  - busy
+  - overloaded
+  - unavailable
 
 ====================================================================================================
 3. DETAILED TABLE SCHEMAS
@@ -360,6 +415,171 @@ Indexes:
     CREATE INDEX idx_queue_sla_critical ON public.agent_work_queue USING btree (sla_status, sla_deadline) WHERE (((sla_status)::text = ANY ((ARRAY['warning'::character varying, 'critical'::character varying, 'breached'::character varying])::text[])) AND ((status)::text <> 'completed'::text))
   - idx_queue_escalated
     CREATE INDEX idx_queue_escalated ON public.agent_work_queue USING btree (escalated, escalated_at DESC) WHERE (escalated = true)
+
+----------------------------------------------------------------------------------------------------
+Table: AGENT_WORKLOADS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+agent_id                            uuid                      NO                                       
+current_assignments                 integer                   YES        0                             
+pending_declarations                integer                   YES        0                             
+in_progress_declarations            integer                   YES        0                             
+max_concurrent_assignments          integer                   YES        20                            
+capacity_percentage                 numeric                   YES        0.00                          
+workload_status                     workload_status_enum      YES        'available'::workload_status_e
+availability                        agent_availability_enum   YES        'available'::agent_availabilit
+availability_reason                 text                      YES                                      
+unavailable_until                   timestamp with time zone  YES                                      
+avg_processing_time_hours           numeric                   YES                                      
+avg_daily_completions               numeric                   YES        0.00                          
+completion_rate_7d                  numeric                   YES        0.00                          
+quality_score_avg                   numeric                   YES        0.00                          
+success_rate                        numeric                   YES        0.0000                        
+deadline_compliance_rate            numeric                   YES        0.0000                        
+active_specializations              jsonb                     YES        '[]'::jsonb                   
+preferred_declaration_types         jsonb                     YES        '[]'::jsonb                   
+oldest_pending_assignment_date      timestamp with time zone  YES                                      
+avg_pending_duration_hours          numeric                   YES                                      
+last_assignment_at                  timestamp with time zone  YES                                      
+last_completion_at                  timestamp with time zone  YES                                      
+last_updated_at                     timestamp with time zone  YES        now()                         
+
+Primary Key: id
+
+Foreign Keys:
+  - agent_id → users.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+Unique Constraints:
+  - agent_workloads_agent_id_key: (agent_id)
+
+Indexes:
+  - agent_workloads_agent_id_key
+    CREATE UNIQUE INDEX agent_workloads_agent_id_key ON public.agent_workloads USING btree (agent_id)
+  - idx_agent_workloads_agent_id
+    CREATE INDEX idx_agent_workloads_agent_id ON public.agent_workloads USING btree (agent_id)
+  - idx_agent_workloads_status
+    CREATE INDEX idx_agent_workloads_status ON public.agent_workloads USING btree (workload_status)
+  - idx_agent_workloads_availability
+    CREATE INDEX idx_agent_workloads_availability ON public.agent_workloads USING btree (availability)
+  - idx_agent_workloads_capacity
+    CREATE INDEX idx_agent_workloads_capacity ON public.agent_workloads USING btree (capacity_percentage)
+  - idx_agent_workloads_specializations
+    CREATE INDEX idx_agent_workloads_specializations ON public.agent_workloads USING gin (active_specializations)
+  - idx_agent_workloads_last_assignment
+    CREATE INDEX idx_agent_workloads_last_assignment ON public.agent_workloads USING btree (last_assignment_at) WHERE (last_assignment_at IS NOT NULL)
+
+----------------------------------------------------------------------------------------------------
+Table: ASSIGNMENT_RULES
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+name                                varchar(200)              NO                                       
+description                         text                      YES                                      
+priority                            integer                   YES        50                            
+entity_type                         varchar(50)               NO                                       
+entity_id                           varchar(100)              YES                                      
+conditions                          jsonb                     NO                                       
+actions                             jsonb                     NO                                       
+status                              rule_status_enum          YES        'draft'::rule_status_enum     
+times_applied                       integer                   YES        0                             
+times_matched                       integer                   YES        0                             
+successful_assignments              integer                   YES        0                             
+failed_assignments                  integer                   YES        0                             
+success_rate                        numeric                   YES        0.0000                        
+last_applied_at                     timestamp with time zone  YES                                      
+created_by                          uuid                      NO                                       
+created_at                          timestamp with time zone  YES        now()                         
+updated_at                          timestamp with time zone  YES        now()                         
+updated_by                          uuid                      YES                                      
+
+Primary Key: id
+
+Foreign Keys:
+  - created_by → users.id (ON UPDATE NO ACTION, ON DELETE RESTRICT)
+  - updated_by → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+
+Indexes:
+  - idx_assignment_rules_status
+    CREATE INDEX idx_assignment_rules_status ON public.assignment_rules USING btree (status)
+  - idx_assignment_rules_priority
+    CREATE INDEX idx_assignment_rules_priority ON public.assignment_rules USING btree (priority) WHERE (status = 'active'::rule_status_enum)
+  - idx_assignment_rules_entity
+    CREATE INDEX idx_assignment_rules_entity ON public.assignment_rules USING btree (entity_type, entity_id)
+  - idx_assignment_rules_conditions
+    CREATE INDEX idx_assignment_rules_conditions ON public.assignment_rules USING gin (conditions)
+  - idx_assignment_rules_created_by
+    CREATE INDEX idx_assignment_rules_created_by ON public.assignment_rules USING btree (created_by)
+
+----------------------------------------------------------------------------------------------------
+Table: ASSIGNMENTS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+declaration_id                      uuid                      NO                                       
+declaration_type                    varchar(50)               NO                                       
+agent_id                            uuid                      NO                                       
+assigned_by                         uuid                      NO                                       
+assignment_method                   assignment_method_enum    YES        'manual'::assignment_method_en
+status                              assignment_status_enum    YES        'assigned'::assignment_status_
+notes                               text                      YES                                      
+auto_assignment_score               numeric                   YES                                      
+score_breakdown                     jsonb                     YES                                      
+rule_applied_id                     uuid                      YES                                      
+assigned_at                         timestamp with time zone  YES        now()                         
+started_at                          timestamp with time zone  YES                                      
+completed_at                        timestamp with time zone  YES                                      
+processing_duration_hours           numeric                   YES                                      
+deadline                            timestamp with time zone  YES                                      
+deadline_met                        boolean                   YES                                      
+priority_level                      integer                   YES        5                             
+reassigned_to                       uuid                      YES                                      
+reassigned_at                       timestamp with time zone  YES                                      
+reassignment_reason                 reassignment_reason_enum  YES                                      
+reassignment_notes                  text                      YES                                      
+validation_status                   varchar(20)               YES                                      
+quality_score                       numeric                   YES                                      
+created_at                          timestamp with time zone  YES        now()                         
+updated_at                          timestamp with time zone  YES        now()                         
+
+Primary Key: id
+
+Foreign Keys:
+  - agent_id → users.id (ON UPDATE NO ACTION, ON DELETE RESTRICT)
+  - assigned_by → users.id (ON UPDATE NO ACTION, ON DELETE RESTRICT)
+  - reassigned_to → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - rule_applied_id → assignment_rules.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+
+Indexes:
+  - idx_assignments_declaration
+    CREATE INDEX idx_assignments_declaration ON public.assignments USING btree (declaration_id, declaration_type)
+  - idx_assignments_agent_id
+    CREATE INDEX idx_assignments_agent_id ON public.assignments USING btree (agent_id)
+  - idx_assignments_assigned_by
+    CREATE INDEX idx_assignments_assigned_by ON public.assignments USING btree (assigned_by)
+  - idx_assignments_status
+    CREATE INDEX idx_assignments_status ON public.assignments USING btree (status)
+  - idx_assignments_assignment_method
+    CREATE INDEX idx_assignments_assignment_method ON public.assignments USING btree (assignment_method)
+  - idx_assignments_deadline
+    CREATE INDEX idx_assignments_deadline ON public.assignments USING btree (deadline) WHERE (deadline IS NOT NULL)
+  - idx_assignments_priority
+    CREATE INDEX idx_assignments_priority ON public.assignments USING btree (priority_level DESC)
+  - idx_assignments_rule_applied
+    CREATE INDEX idx_assignments_rule_applied ON public.assignments USING btree (rule_applied_id) WHERE (rule_applied_id IS NOT NULL)
+  - idx_assignments_created_at
+    CREATE INDEX idx_assignments_created_at ON public.assignments USING btree (created_at DESC)
+  - idx_assignments_agent_status
+    CREATE INDEX idx_assignments_agent_status ON public.assignments USING btree (agent_id, status)
 
 ----------------------------------------------------------------------------------------------------
 Table: AUDIT_LOGS
@@ -1769,6 +1989,82 @@ Indexes:
     CREATE INDEX idx_pending_registrations_expires_at ON public.pending_registrations USING btree (expires_at)
 
 ----------------------------------------------------------------------------------------------------
+Table: PERMISSION_AUDIT_LOG
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         uuid_generate_v4()            
+action                              varchar(50)               NO                                       
+  └─ Description: Type de modification (INSERT, UPDATE, DELETE)
+table_name                          varchar(50)               NO                                       
+  └─ Description: Table concernée par la modification
+record_id                           text                      YES                                      
+user_id                             uuid                      YES                                      
+permission_id                       uuid                      YES                                      
+old_value                           jsonb                     YES                                      
+  └─ Description: Ancienne valeur (JSONB) avant modification
+new_value                           jsonb                     YES                                      
+  └─ Description: Nouvelle valeur (JSONB) après modification
+changed_by                          uuid                      YES                                      
+changed_at                          timestamp without time zone YES        now()                         
+
+Primary Key: id
+
+Foreign Keys:
+  - changed_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - permission_id → permissions.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - user_id → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+
+Indexes:
+  - idx_permission_audit_log_user
+    CREATE INDEX idx_permission_audit_log_user ON public.permission_audit_log USING btree (user_id)
+  - idx_permission_audit_log_permission
+    CREATE INDEX idx_permission_audit_log_permission ON public.permission_audit_log USING btree (permission_id)
+  - idx_permission_audit_log_changed_at
+    CREATE INDEX idx_permission_audit_log_changed_at ON public.permission_audit_log USING btree (changed_at)
+  - idx_permission_audit_log_table
+    CREATE INDEX idx_permission_audit_log_table ON public.permission_audit_log USING btree (table_name)
+
+----------------------------------------------------------------------------------------------------
+Table: PERMISSIONS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         uuid_generate_v4()            
+name                                varchar(100)              NO                                       
+  └─ Description: Nom unique de la permission (format: resource.action)
+resource                            varchar(50)               NO                                       
+  └─ Description: Ressource concernée (assignment, declaration, etc.)
+action                              varchar(50)               NO                                       
+  └─ Description: Action autorisée (view, create, edit, delete, etc.)
+description                         text                      YES                                      
+is_critical                         boolean                   YES        false                         
+  └─ Description: Si TRUE, UI affiche un warning lors de l'attribution
+module_name                         varchar(50)               YES                                      
+  └─ Description: Nom du module qui a déclaré cette permission
+created_at                          timestamp without time zone YES        now()                         
+updated_at                          timestamp without time zone YES        now()                         
+
+Primary Key: id
+
+Unique Constraints:
+  - permissions_name_key: (name)
+
+Indexes:
+  - permissions_name_key
+    CREATE UNIQUE INDEX permissions_name_key ON public.permissions USING btree (name)
+  - idx_permissions_resource
+    CREATE INDEX idx_permissions_resource ON public.permissions USING btree (resource)
+  - idx_permissions_name
+    CREATE INDEX idx_permissions_name ON public.permissions USING btree (name)
+  - idx_permissions_module
+    CREATE INDEX idx_permissions_module ON public.permissions USING btree (module_name)
+
+----------------------------------------------------------------------------------------------------
 Table: PROCEDURE_TEMPLATE_STEPS
 ----------------------------------------------------------------------------------------------------
 
@@ -1905,6 +2201,74 @@ Indexes:
     CREATE INDEX idx_refresh_tokens_is_revoked ON public.refresh_tokens USING btree (is_revoked)
   - idx_refresh_tokens_expires_at
     CREATE INDEX idx_refresh_tokens_expires_at ON public.refresh_tokens USING btree (expires_at)
+
+----------------------------------------------------------------------------------------------------
+Table: ROLE_PERMISSIONS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+role_id                             uuid                      NO                                       
+permission_id                       uuid                      NO                                       
+granted                             boolean                   YES        true                          
+  └─ Description: FALSE permet de refuser explicitement une permission héritée
+created_at                          timestamp without time zone YES        now()                         
+created_by                          uuid                      YES                                      
+  └─ Description: Admin qui a assigné cette permission au rôle
+
+Primary Key: role_id, permission_id
+
+Foreign Keys:
+  - created_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - permission_id → permissions.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+  - role_id → roles.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+Indexes:
+  - idx_role_permissions_role
+    CREATE INDEX idx_role_permissions_role ON public.role_permissions USING btree (role_id)
+  - idx_role_permissions_permission
+    CREATE INDEX idx_role_permissions_permission ON public.role_permissions USING btree (permission_id)
+
+----------------------------------------------------------------------------------------------------
+Table: ROLES
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         uuid_generate_v4()            
+name                                varchar(100)              NO                                       
+code                                varchar(50)               NO                                       
+  └─ Description: Code unique du rôle (utilisé dans le code)
+entity_type                         varchar(50)               YES                                      
+  └─ Description: Type d'entité (DGI, Ministry, NULL pour global)
+description                         text                      YES                                      
+is_system                           boolean                   YES        false                         
+  └─ Description: Rôles système protégés (citizen, admin, etc.) - ne peuvent pas être modifiés/supprimés
+created_at                          timestamp without time zone YES        now()                         
+updated_at                          timestamp without time zone YES        now()                         
+created_by                          uuid                      YES                                      
+  └─ Description: Utilisateur qui a créé le rôle (NULL pour rôles système)
+
+Primary Key: id
+
+Foreign Keys:
+  - created_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+
+Unique Constraints:
+  - roles_code_key: (code)
+  - roles_name_key: (name)
+
+Indexes:
+  - roles_name_key
+    CREATE UNIQUE INDEX roles_name_key ON public.roles USING btree (name)
+  - roles_code_key
+    CREATE UNIQUE INDEX roles_code_key ON public.roles USING btree (code)
+  - idx_roles_code
+    CREATE INDEX idx_roles_code ON public.roles USING btree (code)
+  - idx_roles_entity_type
+    CREATE INDEX idx_roles_entity_type ON public.roles USING btree (entity_type)
 
 ----------------------------------------------------------------------------------------------------
 Table: SECTORS
@@ -2531,6 +2895,40 @@ Indexes:
     CREATE INDEX idx_ministry_assignments_pending ON public.user_ministry_assignments USING btree (status, assigned_at) WHERE ((status)::text = 'pending'::text)
 
 ----------------------------------------------------------------------------------------------------
+Table: USER_PERMISSIONS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+user_id                             uuid                      NO                                       
+permission_id                       uuid                      NO                                       
+granted                             boolean                   YES        true                          
+  └─ Description: TRUE = permission accordée, FALSE = permission refusée (override)
+granted_by                          uuid                      YES                                      
+  └─ Description: Admin qui a accordé/refusé cette permission
+granted_at                          timestamp without time zone YES        now()                         
+expires_at                          timestamp without time zone YES                                      
+  └─ Description: Expiration automatique pour permissions temporaires
+reason                              text                      YES                                      
+  └─ Description: Raison de l'attribution (pour audit et traçabilité)
+
+Primary Key: user_id, permission_id
+
+Foreign Keys:
+  - granted_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - permission_id → permissions.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+  - user_id → users.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+Indexes:
+  - idx_user_permissions_user
+    CREATE INDEX idx_user_permissions_user ON public.user_permissions USING btree (user_id)
+  - idx_user_permissions_permission
+    CREATE INDEX idx_user_permissions_permission ON public.user_permissions USING btree (permission_id)
+  - idx_user_permissions_expires
+    CREATE INDEX idx_user_permissions_expires ON public.user_permissions USING btree (expires_at) WHERE (expires_at IS NOT NULL)
+
+----------------------------------------------------------------------------------------------------
 Table: USERS
 ----------------------------------------------------------------------------------------------------
 
@@ -2584,8 +2982,22 @@ two_factor_backup_codes             jsonb                     YES
   └─ Description: Array of 10 backup codes for 2FA recovery (hashed)
 last_failed_ip                      varchar(45)               YES                                      
   └─ Description: IP address of last failed login attempt (used to reset counter if IP changes)
+supervisor_id                       uuid                      YES                                      
+  └─ Description: ID du superviseur de cet agent (hiérarchie)
+department_id                       varchar(100)              YES                                      
+  └─ Description: ID du département (DGI-DEPT-MALABO, MIN001-DEPT-FISCAL, etc.)
+specializations                     jsonb                     YES        '[]'::jsonb                   
+  └─ Description: Spécialisations de l'agent (ex: ["declaration_iva_destajo", "sector_petrolero"])
+max_concurrent_assignments          integer                   YES        20                            
+  └─ Description: Nombre maximum d'assignations simultanées pour cet agent
+role_id                             uuid                      YES                                      
+  └─ Description: Référence vers table roles (nouvelle logique granulaire). Si NULL, utilise role VARCHAR.
 
 Primary Key: id
+
+Foreign Keys:
+  - role_id → roles.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - supervisor_id → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
 
 Unique Constraints:
   - users_email_key: (email)
@@ -2616,6 +3028,14 @@ Indexes:
     CREATE INDEX idx_users_email_verified ON public.users USING btree (email_verified) WHERE (email_verified = true)
   - idx_users_locked_until
     CREATE INDEX idx_users_locked_until ON public.users USING btree (locked_until) WHERE (locked_until IS NOT NULL)
+  - idx_users_role_id
+    CREATE INDEX idx_users_role_id ON public.users USING btree (role_id) WHERE (role_id IS NOT NULL)
+  - idx_users_supervisor_id
+    CREATE INDEX idx_users_supervisor_id ON public.users USING btree (supervisor_id) WHERE (supervisor_id IS NOT NULL)
+  - idx_users_department_id
+    CREATE INDEX idx_users_department_id ON public.users USING btree (department_id) WHERE (department_id IS NOT NULL)
+  - idx_users_specializations
+    CREATE INDEX idx_users_specializations ON public.users USING gin (specializations)
 
 ----------------------------------------------------------------------------------------------------
 Table: WORKFLOW_TRANSITIONS
@@ -2647,7 +3067,26 @@ Indexes:
 ====================================================================================================
 
 
-No views found in public schema
+View: v_active_assignments
+Definition:  SELECT a.id AS assignment_id,
+    a.declaration_id,
+    a.declaration_type,
+    a.status,
+    a.priority_level,
+    a.assigned_at,
+    a.deadline,
+        CASE
+            WHEN ((a.deadline IS NOT NU...
+
+View: v_available_agents
+Definition:  SELECT u.id AS agent_id,
+    u.full_name AS agent_name,
+    u.email,
+    u.department_id,
+    u.supervisor_id,
+    u.specializations,
+    u.max_concurrent_assignments,
+    COALESCE(aw.current_assignm...
 
 ====================================================================================================
 5. FUNCTIONS
@@ -2663,16 +3102,28 @@ Returns: boolean
 Function: assign_procedure_template
 Returns: boolean
 
+Function: audit_role_permissions
+Returns: trigger
+
+Function: audit_user_permissions
+Returns: trigger
+
 Function: calculate_next_retry
 Returns: trigger
 
 Function: calculate_payment_ministry
 Returns: trigger
 
+Function: calculate_processing_duration
+Returns: trigger
+
 Function: calculate_queue_priority
 Returns: trigger
 
 Function: cleanup_expired_locks
+Returns: integer
+
+Function: cleanup_expired_permissions
 Returns: integer
 
 Function: fiscal_services_search_vector_update
@@ -3068,6 +3519,9 @@ Returns: trigger
 Function: unlock_payment_by_agent
 Returns: jsonb
 
+Function: update_capacity_percentage
+Returns: trigger
+
 Function: update_fiscal_service_data_updated_at
 Returns: trigger
 
@@ -3113,6 +3567,13 @@ agent_work_queue.assigned_to → users.id
 agent_work_queue.completed_by → users.id
 agent_work_queue.escalated_by → users.id
 agent_work_queue.ministry_id → ministries.id
+agent_workloads.agent_id → users.id
+assignment_rules.created_by → users.id
+assignment_rules.updated_by → users.id
+assignments.agent_id → users.id
+assignments.assigned_by → users.id
+assignments.reassigned_to → users.id
+assignments.rule_applied_id → assignment_rules.id
 audit_logs.user_id → users.id
 bank_transactions.payment_id → payments.id
 bank_transactions.reconciled_by → users.id
@@ -3181,9 +3642,16 @@ payments.installment_id → payment_installments.id
 payments.payment_plan_id → payment_plans.id
 payments.tax_declaration_id → tax_declarations.id
 payments.user_id → users.id
+permission_audit_log.changed_by → users.id
+permission_audit_log.permission_id → permissions.id
+permission_audit_log.user_id → users.id
 procedure_template_steps.template_id → procedure_templates.id
 refresh_tokens.session_id → sessions.id
 refresh_tokens.user_id → users.id
+role_permissions.created_by → users.id
+role_permissions.permission_id → permissions.id
+role_permissions.role_id → roles.id
+roles.created_by → users.id
 sectors.ministry_id → ministries.id
 service_document_assignments.document_template_id → document_templates.id
 service_document_assignments.fiscal_service_id → fiscal_services.id
@@ -3217,3 +3685,8 @@ user_ministry_assignments.assigned_by → users.id
 user_ministry_assignments.ministry_id → ministries.id
 user_ministry_assignments.revoked_by → users.id
 user_ministry_assignments.user_id → users.id
+user_permissions.granted_by → users.id
+user_permissions.permission_id → permissions.id
+user_permissions.user_id → users.id
+users.role_id → roles.id
+users.supervisor_id → users.id
