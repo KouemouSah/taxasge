@@ -30,6 +30,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DatabaseProvider } from './providers/DatabaseProvider';
 import { ServicesProvider } from './providers/ServicesProvider';
 import { ChatbotScreen } from './screens/ChatbotScreen';
+import HomeScreen from './screens/HomeScreen';
 import { OnboardingScreen } from './screens/OnboardingScreen';
 import NewOnboardingScreen from './screens/NewOnboardingScreen';
 import { PlaceholderScreen } from './screens/PlaceholderScreen';
@@ -288,143 +289,28 @@ const App = () => {
   };
 
   const renderHomeScreen = () => (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.title}>{APP_CONFIG.appName}</Text>
-          <Text style={styles.subtitle}>{TEXTS[currentLanguage].subtitle}</Text>
-          <Text style={styles.version}>React Native 0.80.0</Text>
-          <Text style={styles.status}>
-            {APP_CONFIG.version === 'offline' ? '📱 Offline Version' : '🌐 Pro Version'}
-            {' | '}
-            {APP_CONFIG.requireAuth ? '🔒 Auth Required' : '🔓 No Auth'}
-          </Text>
+    <HomeScreen
+      language={currentLanguage}
+      onNavigate={(screen, data) => {
+        console.log('[App] HomeScreen navigation:', screen, data);
 
-          {/* Language Selector */}
-          <View style={styles.languageSelector}>
-            <TouchableOpacity
-              style={[styles.langButton, currentLanguage === 'es' && styles.langButtonActive]}
-              onPress={() => setCurrentLanguage('es')}>
-              <Text style={[styles.langText, currentLanguage === 'es' && styles.langTextActive]}>
-                ES
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.langButton, currentLanguage === 'fr' && styles.langButtonActive]}
-              onPress={() => setCurrentLanguage('fr')}>
-              <Text style={[styles.langText, currentLanguage === 'fr' && styles.langTextActive]}>
-                FR
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.langButton, currentLanguage === 'en' && styles.langButtonActive]}
-              onPress={() => setCurrentLanguage('en')}>
-              <Text style={[styles.langText, currentLanguage === 'en' && styles.langTextActive]}>
-                EN
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.menuContainer}>
-          <Text style={styles.menuTitle}>{TEXTS[currentLanguage].menuTitle}</Text>
-
-          <TouchableOpacity
-            style={styles.menuButton}
-            onPress={() => navigateTo('chatbot')}
-            activeOpacity={0.7}>
-            <View style={styles.buttonContent}>
-              <Text style={styles.buttonIcon}>💬</Text>
-              <View style={styles.buttonTextContainer}>
-                <Text style={styles.buttonTitle}>{TEXTS[currentLanguage].chatbotButton}</Text>
-                <Text style={styles.buttonSubtitle}>
-                  {TEXTS[currentLanguage].chatbotSubtitle}
-                </Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuButton}
-            onPress={() => navigateTo('search')}
-            activeOpacity={0.7}>
-            <View style={styles.buttonContent}>
-              <Text style={styles.buttonIcon}>🔍</Text>
-              <View style={styles.buttonTextContainer}>
-                <Text style={styles.buttonTitle}>
-                  {TEXTS[currentLanguage].searchButton}
-                </Text>
-                <Text style={styles.buttonSubtitle}>
-                  {TEXTS[currentLanguage].searchSubtitle}
-                </Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuButton}
-            onPress={() => {
-              // Calculator requires a service selection
-              // Redirect to search to select a service first
-              console.log('[App] Calculator: Redirecting to search to select service');
-              navigateTo('search');
-            }}
-            activeOpacity={0.7}>
-            <View style={styles.buttonContent}>
-              <Text style={styles.buttonIcon}>🧮</Text>
-              <View style={styles.buttonTextContainer}>
-                <Text style={styles.buttonTitle}>
-                  {TEXTS[currentLanguage].calculatorButton}
-                </Text>
-                <Text style={styles.buttonSubtitle}>
-                  {TEXTS[currentLanguage].calculatorSubtitle}
-                </Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuButton}
-            onPress={() => navigateTo('favorites')}
-            activeOpacity={0.7}>
-            <View style={styles.buttonContent}>
-              <Text style={styles.buttonIcon}>⭐</Text>
-              <View style={styles.buttonTextContainer}>
-                <Text style={styles.buttonTitle}>
-                  {TEXTS[currentLanguage].favoritesButton}
-                </Text>
-                <Text style={styles.buttonSubtitle}>
-                  {TEXTS[currentLanguage].favoritesSubtitle}
-                </Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuButton}
-            onPress={() => navigateTo('history')}
-            activeOpacity={0.7}>
-            <View style={styles.buttonContent}>
-              <Text style={styles.buttonIcon}>📜</Text>
-              <View style={styles.buttonTextContainer}>
-                <Text style={styles.buttonTitle}>
-                  {TEXTS[currentLanguage].historyButton}
-                </Text>
-                <Text style={styles.buttonSubtitle}>
-                  {TEXTS[currentLanguage].historySubtitle}
-                </Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>{TEXTS[currentLanguage].footer1}</Text>
-          <Text style={styles.footerText}>{TEXTS[currentLanguage].footer2}</Text>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+        // Handle navigation with data
+        if (data) {
+          if (screen === 'serviceDetail') {
+            // data is the service object
+            navigateTo(screen, data);
+          } else if (screen === 'search') {
+            // data contains filter parameters
+            navigateTo(screen);
+            // TODO: Pass filter parameters to ServiceListScreen when implemented
+          } else {
+            navigateTo(screen);
+          }
+        } else {
+          navigateTo(screen);
+        }
+      }}
+    />
   );
 
   const renderChatbotScreen = () => (
