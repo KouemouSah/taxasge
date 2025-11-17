@@ -1,362 +1,265 @@
 /**
  * TaxasGE Mobile - Modern Home Screen
- * Beautiful home screen with search, quick actions, ministries, and recent consultations
+ * Beautiful home screen with search, quick actions, and random ministries
  * Date: 2025-11-17
- * Based on: Inicio.png design
+ * Based on: Inicio.png design + i18n system
  */
 
 import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   TouchableOpacity,
   TextInput,
   Image,
-  StatusBar,
+  StyleSheet,
   SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { Colors, Typography, Spacing, Shadows } from '../theme';
-import { fiscalServicesService, FiscalService } from '../database/services/FiscalServicesService';
-import { APP_CONFIG } from '../config/AppConfig';
+import { BottomTabBar, TabName } from '../components/BottomTabBar';
+import { getSection } from '../i18n';
+import { HEADER_GRADIENT, GRADIENTS, Colors, Spacing, Shadows } from '../theme';
+import DatabaseService from '../database/DatabaseService';
+
+interface Ministry {
+  id: string;
+  name_es: string;
+  name_fr?: string;
+  name_en?: string;
+  service_count: number;
+}
 
 interface HomeScreenProps {
   language: 'es' | 'fr' | 'en';
   onNavigate: (screen: string, data?: any) => void;
 }
 
-const TEXTS = {
-  es: {
-    searchPlaceholder: 'Buscar ministerios o servicios...',
-    quickActions: 'Acciones Rápidas',
-    ministries: 'Ministerios',
-    seeAll: 'Ver todos',
-    recentConsultations: 'Consultas Recientes',
-    noRecent: 'Sin consultas recientes',
-    tabs: {
-      home: 'Inicio',
-      search: 'Buscar',
-      favorites: 'Favoritos',
-      profile: 'Perfil',
-    },
-    actions: {
-      search: 'Buscar Servicios',
-      chatbot: 'Asistente',
-      favorites: 'Mis Favoritos',
-      history: 'Historial',
-    },
-  },
-  fr: {
-    searchPlaceholder: 'Rechercher ministères ou services...',
-    quickActions: 'Actions Rapides',
-    ministries: 'Ministères',
-    seeAll: 'Voir tous',
-    recentConsultations: 'Consultations Récentes',
-    noRecent: 'Aucune consultation récente',
-    tabs: {
-      home: 'Accueil',
-      search: 'Rechercher',
-      favorites: 'Favoris',
-      profile: 'Profil',
-    },
-    actions: {
-      search: 'Rechercher Services',
-      chatbot: 'Assistant',
-      favorites: 'Mes Favoris',
-      history: 'Historique',
-    },
-  },
-  en: {
-    searchPlaceholder: 'Search ministries or services...',
-    quickActions: 'Quick Actions',
-    ministries: 'Ministries',
-    seeAll: 'See all',
-    recentConsultations: 'Recent Consultations',
-    noRecent: 'No recent consultations',
-    tabs: {
-      home: 'Home',
-      search: 'Search',
-      favorites: 'Favorites',
-      profile: 'Profile',
-    },
-    actions: {
-      search: 'Search Services',
-      chatbot: 'Assistant',
-      favorites: 'My Favorites',
-      history: 'History',
-    },
-  },
-};
-
 const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
+  const t = getSection(language, 'homeScreen');
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('home');
-  const [topMinistries, setTopMinistries] = useState<any[]>([]);
-  const [recentServices, setRecentServices] = useState<FiscalService[]>([]);
-  const t = TEXTS[language];
+  const [randomMinistries, setRandomMinistries] = useState<Ministry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadTopMinistries();
-    loadRecentConsultations();
+    loadRandomMinistries();
   }, []);
 
-  const loadTopMinistries = async () => {
+  const loadRandomMinistries = async () => {
     try {
-      // Get top 4 ministries by service count
-      const services = await fiscalServicesService.getFiltered({}, 100);
+      setIsLoading(true);
+      const db = DatabaseService.getInstance();
 
-      // Group by ministry and count
-      const ministryMap = new Map<string, { name: string; count: number; icon: string }>();
+      // Load 4 RANDOM ministries with service count
+      const ministries = await db.query<Ministry>(
+        `SELECT
+          m.id,
+          m.name_es,
+          m.name_fr,
+          m.name_en,
+          COUNT(DISTINCT fs.id) as service_count
+        FROM ministries m
+        LEFT JOIN fiscal_services fs ON fs.ministry_id = m.id AND fs.status = 'active'
+        WHERE m.status = 'active'
+        GROUP BY m.id
+        HAVING service_count > 0
+        ORDER BY RANDOM()
+        LIMIT 4`,
+        []
+      );
 
-      services.forEach(service => {
-        const ministryId = service.ministry_id;
-        const ministryName = service.ministry_name_es;
-
-        if (!ministryMap.has(ministryId)) {
-          ministryMap.set(ministryId, {
-            name: ministryName,
-            count: 0,
-            icon: '🏛️', // Default icon
-          });
-        }
-
-        const ministry = ministryMap.get(ministryId)!;
-        ministry.count++;
-      });
-
-      // Sort by count and take top 4
-      const sorted = Array.from(ministryMap.entries())
-        .map(([id, data]) => ({ id, ...data }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 4);
-
-      setTopMinistries(sorted);
+      setRandomMinistries(ministries);
     } catch (error) {
       console.error('[HomeScreen] Error loading ministries:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const loadRecentConsultations = async () => {
-    try {
-      // Get 3 most recently viewed services (from history/favorites)
-      // For now, just get first 3 services as placeholder
-      const services = await fiscalServicesService.getFiltered({}, 3);
-      setRecentServices(services);
-    } catch (error) {
-      console.error('[HomeScreen] Error loading recent consultations:', error);
-    }
+  const getMinistryName = (ministry: Ministry): string => {
+    if (language === 'fr' && ministry.name_fr) return ministry.name_fr;
+    if (language === 'en' && ministry.name_en) return ministry.name_en;
+    return ministry.name_es;
   };
 
-  const handleSearch = () => {
-    if (searchQuery.trim()) {
-      onNavigate('search', { initialSearch: searchQuery });
-    } else {
-      onNavigate('search');
-    }
+  const getMinistryGradient = (index: number): string[] => {
+    const gradients = [
+      GRADIENTS.ministryYellow,
+      GRADIENTS.ministryCyan,
+      GRADIENTS.ministryOrange,
+      GRADIENTS.ministryBlue,
+    ];
+    return gradients[index % gradients.length];
   };
 
-  const renderHeader = () => (
-    <View style={styles.header}>
-      {/* Logo + App Name */}
-      <View style={styles.logoSection}>
-        <Image
-          source={require('../assets/images/taxasge.png')}
-          style={styles.logoSmall}
-          resizeMode="contain"
-        />
-        <View>
-          <Text style={styles.appName}>TaxasGE</Text>
-          <Text style={styles.appSubtitle}>E-Fiscal Servicios</Text>
-        </View>
-      </View>
-
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
-          <Text style={styles.searchIcon}>🔍</Text>
-          <TextInput
-            style={styles.searchInput}
-            placeholder={t.searchPlaceholder}
-            placeholderTextColor={Colors.neutral.gray400}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            onSubmitEditing={handleSearch}
-            returnKeyType="search"
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Text style={styles.clearIcon}>✕</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-    </View>
-  );
-
-  const renderTabs = () => (
-    <View style={styles.tabsContainer}>
-      {Object.entries(t.tabs).map(([key, label]) => (
-        <TouchableOpacity
-          key={key}
-          style={[
-            styles.tab,
-            activeTab === key && styles.tabActive,
-          ]}
-          onPress={() => {
-            setActiveTab(key);
-            if (key !== 'home') {
-              onNavigate(key === 'search' ? 'search' : key);
-            }
-          }}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === key && styles.tabTextActive,
-            ]}
-          >
-            {label}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
-
-  const renderQuickActions = () => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{t.quickActions}</Text>
-      <View style={styles.quickActionsGrid}>
-        <TouchableOpacity
-          style={[styles.actionCard, { backgroundColor: Colors.primary.blue }]}
-          onPress={() => onNavigate('search')}
-        >
-          <Text style={styles.actionIcon}>🔍</Text>
-          <Text style={styles.actionText}>{t.actions.search}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionCard, { backgroundColor: Colors.primary.green }]}
-          onPress={() => onNavigate('chatbot')}
-        >
-          <Text style={styles.actionIcon}>🤖</Text>
-          <Text style={styles.actionText}>{t.actions.chatbot}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionCard, { backgroundColor: '#e91e63' }]}
-          onPress={() => onNavigate('favorites')}
-        >
-          <Text style={styles.actionIcon}>❤️</Text>
-          <Text style={styles.actionText}>{t.actions.favorites}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionCard, { backgroundColor: '#9c27b0' }]}
-          onPress={() => onNavigate('history')}
-        >
-          <Text style={styles.actionIcon}>🕐</Text>
-          <Text style={styles.actionText}>{t.actions.history}</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-
-  const renderMinistries = () => (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{t.ministries}</Text>
-        <TouchableOpacity onPress={() => onNavigate('search', { filterByMinistry: true })}>
-          <Text style={styles.seeAllText}>{t.seeAll} →</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.ministriesGrid}>
-        {topMinistries.map((ministry, index) => (
-          <TouchableOpacity
-            key={ministry.id}
-            style={styles.ministryCard}
-            onPress={() => onNavigate('search', { ministryId: ministry.id })}
-          >
-            <View style={styles.ministryIcon}>
-              <Text style={styles.ministryIconText}>{ministry.icon}</Text>
-            </View>
-            <Text style={styles.ministryName} numberOfLines={2}>
-              {ministry.name}
-            </Text>
-            <Text style={styles.ministryCount}>
-              {ministry.count} {language === 'es' ? 'servicios' : language === 'fr' ? 'services' : 'services'}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
-  );
-
-  const renderRecentConsultations = () => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{t.recentConsultations}</Text>
-
-      {recentServices.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>{t.noRecent}</Text>
-        </View>
-      ) : (
-        <View style={styles.recentList}>
-          {recentServices.map((service, index) => (
-            <TouchableOpacity
-              key={service.id}
-              style={styles.recentCard}
-              onPress={() => onNavigate('serviceDetail', service)}
-            >
-              <View style={styles.recentIcon}>
-                <Text style={styles.recentIconText}>📄</Text>
-              </View>
-              <View style={styles.recentInfo}>
-                <Text style={styles.recentName} numberOfLines={1}>
-                  {service.name_es}
-                </Text>
-                <Text style={styles.recentCategory} numberOfLines={1}>
-                  {service.category_name_es}
-                </Text>
-              </View>
-              <Text style={styles.recentArrow}>→</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-    </View>
-  );
+  const handleTabPress = (tab: TabName) => {
+    if (tab === 'home') return; // Already on home
+    onNavigate(tab);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={Colors.neutral.white} />
-
       {/* Header with gradient */}
       <LinearGradient
-        colors={['#004aad', '#0066cc']}
-        style={styles.headerGradient}
-      >
-        {renderHeader()}
+        colors={HEADER_GRADIENT}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.header}>
+        <View style={styles.headerContent}>
+          <View style={styles.headerTop}>
+            <View style={styles.logoContainer}>
+              <Image
+                source={require('../assets/images/taxasge.png')}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+              <View style={styles.titleContainer}>
+                <Text style={styles.headerTitle}>{t.title}</Text>
+                <Text style={styles.headerSubtitle}>{t.subtitle}</Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.notificationButton}>
+              <Text style={styles.notificationIcon}>🔔</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Search bar */}
+          <View style={styles.searchContainer}>
+            <Text style={styles.searchIcon}>🔍</Text>
+            <TextInput
+              style={styles.searchInput}
+              placeholder={t.searchPlaceholder}
+              placeholderTextColor="#999999"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              onSubmitEditing={() => {
+                if (searchQuery.trim()) {
+                  onNavigate('search', { query: searchQuery });
+                }
+              }}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Text style={styles.clearIcon}>✕</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
       </LinearGradient>
 
-      {/* Tabs */}
-      {renderTabs()}
+      {/* Scrollable content */}
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        {/* Quick Actions - ICONS CENTERED */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{t.quickActionsTitle}</Text>
+          <View style={styles.quickActionsGrid}>
+            <TouchableOpacity
+              style={styles.actionCard}
+              onPress={() => onNavigate('search')}
+              activeOpacity={0.8}>
+              <LinearGradient
+                colors={['#4A90E2', '#357ABD']}
+                style={styles.actionCardGradient}>
+                <View style={styles.actionIconContainer}>
+                  <Text style={styles.actionIcon}>🔍</Text>
+                </View>
+                <Text style={styles.actionLabel}>{t.quickActions.searchServices}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
 
-      {/* Scrollable Content */}
-      <ScrollView
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.contentContainer}
-      >
-        {renderQuickActions()}
-        {renderMinistries()}
-        {renderRecentConsultations()}
+            <TouchableOpacity
+              style={styles.actionCard}
+              onPress={() => onNavigate('chatbot')}
+              activeOpacity={0.8}>
+              <LinearGradient
+                colors={['#50C878', '#3EAE63']}
+                style={styles.actionCardGradient}>
+                <View style={styles.actionIconContainer}>
+                  <Text style={styles.actionIcon}>🤖</Text>
+                </View>
+                <Text style={styles.actionLabel}>{t.quickActions.contactAssistant}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
 
-        {/* Bottom Spacer */}
-        <View style={{ height: Spacing.xxxl }} />
+            <TouchableOpacity
+              style={styles.actionCard}
+              onPress={() => onNavigate('favorites')}
+              activeOpacity={0.8}>
+              <LinearGradient
+                colors={['#E91E63', '#C2185B']}
+                style={styles.actionCardGradient}>
+                <View style={styles.actionIconContainer}>
+                  <Text style={styles.actionIcon}>❤️</Text>
+                </View>
+                <Text style={styles.actionLabel}>{t.quickActions.myFavorites}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionCard}
+              onPress={() => onNavigate('history')}
+              activeOpacity={0.8}>
+              <LinearGradient
+                colors={['#9C27B0', '#7B1FA2']}
+                style={styles.actionCardGradient}>
+                <View style={styles.actionIconContainer}>
+                  <Text style={styles.actionIcon}>📅</Text>
+                </View>
+                <Text style={styles.actionLabel}>{t.quickActions.scheduledAppointments}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Ministerios Populares - REDUCED SPACING */}
+        <View style={[styles.section, { marginTop: Spacing.md }]}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{t.popularMinistriesTitle}</Text>
+            <TouchableOpacity onPress={() => onNavigate('ministerios')}>
+              <Text style={styles.viewAllLink}>
+                {t.viewAll} →
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={Colors.primary} />
+            </View>
+          ) : (
+            <View style={styles.ministriesContainer}>
+              {randomMinistries.map((ministry, index) => (
+                <TouchableOpacity
+                  key={ministry.id}
+                  style={styles.ministryCard}
+                  onPress={() => onNavigate('ministerioDetail', ministry)}
+                  activeOpacity={0.8}>
+                  <View
+                    style={[
+                      styles.ministryIconCircle,
+                      { backgroundColor: getMinistryGradient(index)[0] },
+                    ]}>
+                    <Text style={styles.ministryIcon}>🏛️</Text>
+                  </View>
+                  <View style={styles.ministryInfo}>
+                    <Text style={styles.ministryName} numberOfLines={2}>
+                      {getMinistryName(ministry)}
+                    </Text>
+                    <Text style={styles.ministryServices}>
+                      {ministry.service_count} {t.services}
+                    </Text>
+                  </View>
+                  <Text style={styles.ministryArrow}>→</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
       </ScrollView>
+
+      {/* Bottom Tab Navigation */}
+      <BottomTabBar activeTab="home" onTabPress={handleTabPress} language={language} />
     </SafeAreaView>
   );
 };
@@ -364,93 +267,91 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.neutral.gray100,
-  },
-  headerGradient: {
-    paddingBottom: Spacing.lg,
+    backgroundColor: '#F5F5F5',
   },
   header: {
-    paddingHorizontal: Spacing.screenPadding,
-    paddingTop: Spacing.md,
+    paddingTop: 50,
+    paddingBottom: 20,
+    paddingHorizontal: 16,
   },
-  logoSection: {
+  headerContent: {
+    gap: 16,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: Spacing.md,
+    flex: 1,
   },
-  logoSmall: {
-    width: 50,
-    height: 50,
-    marginRight: Spacing.sm,
+  logo: {
+    width: 40,
+    height: 40,
+    marginRight: 12,
   },
-  appName: {
-    ...Typography.h3,
-    color: Colors.neutral.white,
-    fontWeight: 'bold',
+  titleContainer: {
+    flex: 1,
   },
-  appSubtitle: {
-    ...Typography.bodySmall,
-    color: 'rgba(255,255,255,0.8)',
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.9)',
+    marginTop: 2,
+  },
+  notificationButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  notificationIcon: {
+    fontSize: 20,
   },
   searchContainer: {
-    marginTop: Spacing.sm,
-  },
-  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.neutral.white,
-    borderRadius: Spacing.borderRadius.lg,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    ...Shadows.md,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   searchIcon: {
-    fontSize: 20,
-    marginRight: Spacing.sm,
+    fontSize: 18,
+    marginRight: 8,
   },
   searchInput: {
     flex: 1,
-    ...Typography.body,
-    color: Colors.text.primary,
+    fontSize: 15,
+    color: '#000000',
   },
   clearIcon: {
-    fontSize: 18,
-    color: Colors.neutral.gray400,
-    padding: Spacing.xs,
+    fontSize: 16,
+    color: '#999999',
+    paddingHorizontal: 8,
   },
-  tabsContainer: {
-    flexDirection: 'row',
-    backgroundColor: Colors.neutral.white,
-    paddingHorizontal: Spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.neutral.gray200,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: Spacing.md,
-    alignItems: 'center',
-  },
-  tabActive: {
-    borderBottomWidth: 3,
-    borderBottomColor: Colors.primary.blue,
-  },
-  tabText: {
-    ...Typography.label,
-    color: Colors.neutral.gray500,
-  },
-  tabTextActive: {
-    color: Colors.primary.blue,
-    fontWeight: 'bold',
-  },
-  content: {
+  scrollView: {
     flex: 1,
   },
-  contentContainer: {
-    paddingTop: Spacing.lg,
+  scrollContent: {
+    padding: Spacing.md,
   },
   section: {
-    marginBottom: Spacing.xl,
-    paddingHorizontal: Spacing.screenPadding,
+    marginBottom: Spacing.lg,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginBottom: Spacing.md,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -458,124 +359,86 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.md,
   },
-  sectionTitle: {
-    ...Typography.h3,
-    color: Colors.text.primary,
-    fontWeight: 'bold',
-  },
-  seeAllText: {
-    ...Typography.label,
-    color: Colors.primary.blue,
+  viewAllLink: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.primary,
   },
   quickActionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
     gap: Spacing.md,
   },
   actionCard: {
-    width: '47%',
-    aspectRatio: 1.5,
-    borderRadius: Spacing.borderRadius.md,
-    padding: Spacing.md,
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: '48%',
+    aspectRatio: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
     ...Shadows.md,
   },
-  actionIcon: {
-    fontSize: 32,
-    marginBottom: Spacing.sm,
-  },
-  actionText: {
-    ...Typography.label,
-    color: Colors.neutral.white,
-    textAlign: 'center',
-    fontWeight: 'bold',
-  },
-  ministriesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: Spacing.md,
-  },
-  ministryCard: {
-    width: '47%',
-    backgroundColor: Colors.neutral.white,
-    borderRadius: Spacing.borderRadius.md,
+  actionCardGradient: {
+    flex: 1,
     padding: Spacing.md,
+    justifyContent: 'space-between',
     alignItems: 'center',
-    ...Shadows.sm,
   },
-  ministryIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: Colors.neutral.gray100,
+  actionIconContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: Spacing.sm,
   },
-  ministryIconText: {
-    fontSize: 24,
+  actionIcon: {
+    fontSize: 48,
   },
-  ministryName: {
-    ...Typography.bodySmall,
-    color: Colors.text.primary,
-    textAlign: 'center',
+  actionLabel: {
+    fontSize: 13,
     fontWeight: '600',
-    marginBottom: Spacing.xs,
+    color: '#FFFFFF',
+    textAlign: 'center',
   },
-  ministryCount: {
-    ...Typography.caption,
-    color: Colors.neutral.gray500,
+  loadingContainer: {
+    padding: Spacing.xl,
+    alignItems: 'center',
   },
-  recentList: {
+  ministriesContainer: {
     gap: Spacing.sm,
   },
-  recentCard: {
+  ministryCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.neutral.white,
-    borderRadius: Spacing.borderRadius.md,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
     padding: Spacing.md,
     ...Shadows.sm,
   },
-  recentIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.neutral.gray100,
+  ministryIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: Spacing.md,
   },
-  recentIconText: {
-    fontSize: 20,
+  ministryIcon: {
+    fontSize: 24,
   },
-  recentInfo: {
+  ministryInfo: {
     flex: 1,
   },
-  recentName: {
-    ...Typography.body,
-    color: Colors.text.primary,
+  ministryName: {
+    fontSize: 15,
     fontWeight: '600',
-    marginBottom: 2,
+    color: '#1A1A1A',
+    marginBottom: 4,
   },
-  recentCategory: {
-    ...Typography.bodySmall,
-    color: Colors.neutral.gray500,
+  ministryServices: {
+    fontSize: 13,
+    color: '#666666',
   },
-  recentArrow: {
-    fontSize: 20,
-    color: Colors.neutral.gray400,
-  },
-  emptyState: {
-    paddingVertical: Spacing.xl,
-    alignItems: 'center',
-  },
-  emptyText: {
-    ...Typography.body,
-    color: Colors.neutral.gray400,
+  ministryArrow: {
+    fontSize: 18,
+    color: Colors.primary,
+    marginLeft: Spacing.sm,
   },
 });
 

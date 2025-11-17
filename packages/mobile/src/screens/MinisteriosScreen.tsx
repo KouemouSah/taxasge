@@ -19,6 +19,7 @@ import { BottomTabBar, TabName } from '../components/BottomTabBar';
 import { Ministry } from '../database/services/FiscalServicesService';
 import DatabaseService from '../database/DatabaseService';
 import { Colors, Spacing, Shadows } from '../theme';
+import { getSection } from '../i18n';
 
 type ViewMode = 'grid' | 'list';
 
@@ -28,27 +29,6 @@ interface MinisteriosScreenProps {
   onMinistryPress: (ministry: Ministry) => void;
   onTabPress: (tab: TabName) => void;
 }
-
-const TEXTS = {
-  es: {
-    title: 'Todos los Ministerios',
-    loading: 'Cargando ministerios...',
-    error: 'Error al cargar ministerios',
-    services: 'servicios',
-  },
-  fr: {
-    title: 'Tous les Ministères',
-    loading: 'Chargement des ministères...',
-    error: 'Erreur de chargement',
-    services: 'services',
-  },
-  en: {
-    title: 'All Ministries',
-    loading: 'Loading ministries...',
-    error: 'Loading error',
-    services: 'services',
-  },
-};
 
 // Ministry gradient colors based on design
 const MINISTRY_GRADIENTS = [
@@ -68,7 +48,7 @@ export const MinisteriosScreen: React.FC<MinisteriosScreenProps> = ({
   onMinistryPress,
   onTabPress,
 }) => {
-  const t = TEXTS[language];
+  const t = getSection(language, 'ministeriosScreen');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [ministries, setMinistries] = useState<Ministry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
