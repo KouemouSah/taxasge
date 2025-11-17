@@ -1,0 +1,150 @@
+{
+  "common": {
+    "back": "Back",
+    "loading": "Loading...",
+    "error": "Error",
+    "retry": "Retry",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "search": "Search",
+    "filter": "Filter",
+    "close": "Close"
+  },
+  "navigation": {
+    "home": "Home",
+    "search": "Search",
+    "favorites": "Favorites",
+    "profile": "Profile"
+  },
+  "homeScreen": {
+    "title": "Ministry Explorer",
+    "subtitle": "Your government services portal",
+    "searchPlaceholder": "Search ministries or services...",
+    "quickActionsTitle": "Quick Actions",
+    "quickActions": {
+      "searchServices": "Search Services",
+      "contactAssistant": "Contact Assistant",
+      "myFavorites": "My Favorites",
+      "scheduledAppointments": "Scheduled Appointments"
+    },
+    "popularMinistriesTitle": "Popular Ministries",
+    "viewAll": "View all",
+    "services": "services"
+  },
+  "ministeriosScreen": {
+    "title": "All Ministries",
+    "loading": "Loading ministries...",
+    "error": "Error loading ministries",
+    "services": "services",
+    "noResults": "No ministries found"
+  },
+  "ministerioDetail": {
+    "title": "Ministry Details",
+    "servicesAvailable": "services available",
+    "location": "Location",
+    "email": "Email",
+    "website": "Website",
+    "notAvailable": "Not available",
+    "stats": {
+      "sectors": "Sectors",
+      "categories": "Categories",
+      "services": "Services"
+    },
+    "servicesTitle": "Fiscal Services",
+    "noServices": "No services available"
+  },
+  "profileScreen": {
+    "title": "My Profile",
+    "memberSince": "Member since",
+    "sections": {
+      "language": "Language",
+      "history": "History",
+      "customization": "Customization",
+      "about": "About"
+    },
+    "settings": {
+      "selectLanguage": "Select language",
+      "calculationHistory": "Calculation history",
+      "chatbotBackground": "Chatbot background",
+      "appVersion": "App version",
+      "termsOfService": "Terms of service",
+      "privacyPolicy": "Privacy policy"
+    },
+    "languages": {
+      "spanish": "Español",
+      "french": "Français",
+      "english": "English"
+    },
+    "backgroundOptions": {
+      "greenPattern": "Green with pattern",
+      "bluePattern": "Blue with pattern",
+      "grayPattern": "Gray with pattern"
+    },
+    "selectLanguageTitle": "Select Language",
+    "selectBackgroundTitle": "Chatbot Background"
+  },
+  "chatbotScreen": {
+    "title": "Assistant",
+    "assistantName": "TaxaBot",
+    "inputPlaceholder": "Write a message...",
+    "greeting": "Hello, how can I help you?",
+    "needHelp": "I need information about the",
+    "viewDetails": "View details",
+    "documentsRequired": "Documents required",
+    "processingTime": "Processing time",
+    "expeditionFee": "Expedition fee",
+    "renewalFee": "Renewal fee",
+    "workingDays": "working days",
+    "noMessages": "No messages yet. Start a conversation!"
+  },
+  "serviceDetailScreen": {
+    "title": "Service Details",
+    "description": "Description",
+    "pricing": "Pricing",
+    "expedition": "Expedition",
+    "renewal": "Renewal",
+    "calculationMethod": "Calculation Method",
+    "category": "Category",
+    "sector": "Sector",
+    "ministry": "Ministry",
+    "documents": "Required Documents",
+    "documentsExpedition": "Required Documents - Expedition",
+    "documentsRenewal": "Required Documents - Renewal",
+    "documentsBoth": "Required Documents - Expedition and Renewal",
+    "procedures": "Procedures",
+    "proceduresExpedition": "Procedures - Expedition",
+    "proceduresRenewal": "Procedures - Renewal",
+    "proceduresBoth": "Procedures - Expedition and Renewal",
+    "noDocuments": "No documents registered",
+    "noProcedures": "No procedures registered",
+    "steps": "steps",
+    "estimatedDuration": "Estimated duration",
+    "location": "Location",
+    "officeHours": "Office hours",
+    "minutes": "minutes",
+    "calculate": "Calculate",
+    "getHelp": "Get Help"
+  },
+  "onboarding": {
+    "skip": "Skip",
+    "next": "Next",
+    "getStarted": "Get Started",
+    "screen1": {
+      "title": "Welcome to TaxasGE",
+      "subtitle": "Your fiscal services portal for Equatorial Guinea"
+    },
+    "screen2": {
+      "title": "Easy Consultation",
+      "subtitle": "Access fiscal service information quickly and easily"
+    },
+    "screen3": {
+      "title": "Accurate Calculation",
+      "subtitle": "Calculate fiscal rates with precision and transparency"
+    },
+    "screen4": {
+      "title": "Smart Assistant",
+      "subtitle": "Get personalized help with our TaxaBot chatbot"
+    }
+  }
+}
