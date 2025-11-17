@@ -14,15 +14,15 @@
  */
 
 import React from 'react';
-import { Text, StyleSheet, TextStyle } from 'react-native';
+import { Text, StyleSheet, TextStyle, StyleProp } from 'react-native';
 
 export interface MarkdownTextProps {
   children: string;
-  style?: TextStyle;
-  boldStyle?: TextStyle;
-  italicStyle?: TextStyle;
-  codeStyle?: TextStyle;
-  linkStyle?: TextStyle;
+  style?: StyleProp<TextStyle>;
+  boldStyle?: StyleProp<TextStyle>;
+  italicStyle?: StyleProp<TextStyle>;
+  codeStyle?: StyleProp<TextStyle>;
+  linkStyle?: StyleProp<TextStyle>;
 }
 
 interface TextSegment {
@@ -191,19 +191,23 @@ export const MarkdownText: React.FC<MarkdownTextProps> = ({
         const segmentStyles: TextStyle[] = [];
 
         if (segment.bold) {
-          segmentStyles.push(styles.bold, boldStyle || {});
+          segmentStyles.push(styles.bold);
+          if (boldStyle) segmentStyles.push(StyleSheet.flatten(boldStyle));
         }
 
         if (segment.italic) {
-          segmentStyles.push(styles.italic, italicStyle || {});
+          segmentStyles.push(styles.italic);
+          if (italicStyle) segmentStyles.push(StyleSheet.flatten(italicStyle));
         }
 
         if (segment.code) {
-          segmentStyles.push(styles.code, codeStyle || {});
+          segmentStyles.push(styles.code);
+          if (codeStyle) segmentStyles.push(StyleSheet.flatten(codeStyle));
         }
 
         if (segment.link) {
-          segmentStyles.push(styles.link, linkStyle || {});
+          segmentStyles.push(styles.link);
+          if (linkStyle) segmentStyles.push(StyleSheet.flatten(linkStyle));
         }
 
         if (segment.header) {

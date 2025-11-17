@@ -152,20 +152,16 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
       // Split documents that contain commas into separate entries
       const expandedDocuments: ServiceDocument[] = [];
       details.documents.forEach(doc => {
-        // Split all language versions (es, fr, en)
-        const namesEs = doc.document_name.split(',').map(n => n.trim()).filter(n => n.length > 0);
-        const namesFr = doc.document_name_fr ? doc.document_name_fr.split(',').map(n => n.trim()).filter(n => n.length > 0) : [];
-        const namesEn = doc.document_name_en ? doc.document_name_en.split(',').map(n => n.trim()).filter(n => n.length > 0) : [];
+        // Split document names if they contain commas (ES only for now)
+        const namesEs = doc.document_name.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0);
 
-        // Use the longest array to determine how many documents we have
-        const maxLength = Math.max(namesEs.length, namesFr.length, namesEn.length);
+        // Use the length to determine how many documents we have
+        const maxLength = namesEs.length;
 
         if (maxLength > 1) {
           // Multiple documents in one line - split them
           for (let i = 0; i < maxLength; i++) {
             const cleanNameEs = (namesEs[i] || namesEs[0] || '').replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim();
-            const cleanNameFr = (namesFr[i] || '').replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim();
-            const cleanNameEn = (namesEn[i] || '').replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim();
 
             expandedDocuments.push({
               ...doc,

@@ -4,7 +4,10 @@
 
 import { db } from '../DatabaseManager';
 import { QUERIES, TABLE_NAMES } from '../schema';
-import { translationService } from './TranslationService';
+import TranslationService from '../../services/TranslationService';
+
+// Create singleton instance
+const translationService = new TranslationService();
 
 export interface FiscalService {
   id: string;
@@ -374,7 +377,7 @@ class FiscalServicesService {
       );
 
       // Enrich with translations
-      const ministryTranslations = await (await import('./TranslationService')).translationService.getTranslationsForEntityType('ministry');
+      const ministryTranslations = await translationService.getTranslationsForEntityType('ministry');
 
       return results.map(m => ({
         ...m,
@@ -406,7 +409,7 @@ class FiscalServicesService {
       );
 
       // Enrich with translations
-      const categoryTranslations = await (await import('./TranslationService')).translationService.getTranslationsForEntityType('category');
+      const categoryTranslations = await translationService.getTranslationsForEntityType('category');
 
       return results.map(c => ({
         ...c,

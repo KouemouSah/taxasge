@@ -12,7 +12,7 @@
  * FORMATO: Exact match con ServiceDetailsScreen.tsx
  */
 
-import {ChatbotFAQ} from '../types/chatbot.types';
+import {ChatbotFAQ} from '../../types/chatbot.types';
 
 export const GENERATED_FAQS: ChatbotFAQ[] = [
   {
