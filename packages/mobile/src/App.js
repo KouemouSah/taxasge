@@ -30,6 +30,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DatabaseProvider } from './providers/DatabaseProvider';
 import { ChatbotScreen } from './screens/ChatbotScreen';
 import { OnboardingScreen } from './screens/OnboardingScreen';
+import NewOnboardingScreen from './screens/NewOnboardingScreen';
 import { PlaceholderScreen } from './screens/PlaceholderScreen';
 import ServiceListScreen from './screens/ServiceListScreen';
 import ServiceDetailScreen from './screens/ServiceDetailScreen';
@@ -550,7 +551,7 @@ const App = () => {
           onSyncComplete={handleSyncComplete}
           onError={handleSyncError}
         >
-          <OnboardingScreen
+          <NewOnboardingScreen
             language={currentLanguage}
             onComplete={handleOnboardingComplete}
           />
