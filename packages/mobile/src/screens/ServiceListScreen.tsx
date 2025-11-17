@@ -26,6 +26,7 @@ import { FiscalService, getServiceName, getCategoryName, fiscalServicesService, 
 import { favoritesService } from '../database/services/FavoritesService';
 import { getUserId } from '../config/AppConfig';
 import { useServices } from '../providers/ServicesProvider';
+import { GradientHeader } from '../components/GradientHeader';
 
 export interface ServicesListScreenProps {
   language: 'es' | 'fr' | 'en';
@@ -655,21 +656,10 @@ Via TaxasGE Mobile`;
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <StatusBar barStyle="light-content" backgroundColor="#004aad" />
 
-        {/* Header */}
-        <View style={styles.header}>
-          {onBack && (
-            <TouchableOpacity style={styles.backButton} onPress={onBack}>
-              <Text style={styles.backButtonText}>←</Text>
-            </TouchableOpacity>
-          )}
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>{TEXTS[language].title}</Text>
-            <Text style={styles.headerSubtitle}>{TEXTS[language].loading}...</Text>
-          </View>
-          <View style={styles.headerRight} />
-        </View>
+        {/* Modern Header */}
+        <GradientHeader title={TEXTS[language].title} onBack={onBack} />
 
         {/* Skeleton Loader */}
         <View style={styles.skeletonContainer}>
@@ -695,25 +685,14 @@ Via TaxasGE Mobile`;
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="light-content" backgroundColor="#004aad" />
 
-      {/* Header */}
-      <View style={styles.header}>
-        {onBack && (
-          <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Text style={styles.backButtonText}>←</Text>
-          </TouchableOpacity>
-        )}
-
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>{TEXTS[language].title}</Text>
-          <Text style={styles.headerSubtitle}>
-            {`${filteredServices.length} / ${allServices.length} ${TEXTS[language].subtitle}`}
-          </Text>
-        </View>
-
-        <View style={styles.headerRight} />
-      </View>
+      {/* Modern Header with Service Count */}
+      <GradientHeader
+        title={TEXTS[language].title}
+        onBack={onBack}
+        subtitle={`${filteredServices.length} / ${allServices.length} ${TEXTS[language].subtitle}`}
+      />
 
       {/* Search and Filters */}
       <View style={styles.filtersContainer}>
@@ -1342,44 +1321,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
-  },
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  backButton: {
-    padding: 8,
-    marginRight: 8,
-  },
-  backButtonText: {
-    fontSize: 24,
-    color: '#007AFF',
-    fontWeight: '600',
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#000',
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
-  },
-  headerRight: {
-    width: 40, // Balance the back button
   },
 
   // List
