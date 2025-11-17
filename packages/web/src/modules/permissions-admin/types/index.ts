@@ -80,8 +80,8 @@ export interface PermissionGrant {
   record_id: string;
   user_id: string | null;
   permission_id: string | null;
-  old_value: Record<string, any> | null;
-  new_value: Record<string, any> | null;
+  old_value: Record<string, unknown> | null;
+  new_value: Record<string, unknown> | null;
   changed_by: string | null;
   changed_at: string;
 }

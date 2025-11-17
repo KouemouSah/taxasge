@@ -48,10 +48,19 @@ class ApiClient {
       ? localStorage.getItem("auth_token")
       : null;
 
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      ...options.headers,
     };
+
+    // Merge with provided headers
+    if (options.headers) {
+      const headersToMerge = options.headers instanceof Headers
+        ? Object.fromEntries(options.headers.entries())
+        : Array.isArray(options.headers)
+        ? Object.fromEntries(options.headers)
+        : options.headers;
+      Object.assign(headers, headersToMerge);
+    }
 
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
@@ -81,21 +90,21 @@ class ApiClient {
     return this.request<T>(endpoint, { method: "GET" });
   }
 
-  async post<T>(endpoint: string, data: any): Promise<T> {
+  async post<T>(endpoint: string, data: unknown): Promise<T> {
     return this.request<T>(endpoint, {
       method: "POST",
       body: JSON.stringify(data),
     });
   }
 
-  async put<T>(endpoint: string, data: any): Promise<T> {
+  async put<T>(endpoint: string, data: unknown): Promise<T> {
     return this.request<T>(endpoint, {
       method: "PUT",
       body: JSON.stringify(data),
     });
   }
 
-  async patch<T>(endpoint: string, data: any): Promise<T> {
+  async patch<T>(endpoint: string, data: unknown): Promise<T> {
     return this.request<T>(endpoint, {
       method: "PATCH",
       body: JSON.stringify(data),

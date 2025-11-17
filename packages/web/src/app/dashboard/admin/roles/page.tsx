@@ -498,7 +498,7 @@ function RolesTableContent() {
       </div>
 
       {/* Tabs Filter */}
-      <Tabs value={filter} onValueChange={(v) => setFilter(v as any)}>
+      <Tabs value={filter} onValueChange={(v) => setFilter(v as 'all' | 'system' | 'custom')}>
         <TabsList>
           <TabsTrigger value="all">Tous</TabsTrigger>
           <TabsTrigger value="system">Système</TabsTrigger>

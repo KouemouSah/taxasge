@@ -27,6 +27,12 @@ import {
 
 type ViewMode = 'kanban' | 'list'
 
+interface MinistryFacet {
+  id: string
+  name: string
+  count: number
+}
+
 /**
  * Services Content - Component that uses useSearchParams
  */
@@ -443,7 +449,7 @@ function ServicesContent() {
                     <div>
                       <h3 className="font-medium mb-3">Ministerio</h3>
                       <div className="space-y-2 max-h-64 overflow-y-auto">
-                        {searchResults.facets.ministries.map((ministry: any) => (
+                        {searchResults.facets.ministries.map((ministry: MinistryFacet) => (
                           <Button
                             key={ministry.id}
                             variant={selectedMinistry === ministry.id ? "default" : "outline"}
