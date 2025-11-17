@@ -183,8 +183,10 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
       // Split procedures that contain commas into separate entries
       const expandedProcedures: ServiceProcedure[] = [];
       details.procedures.forEach(proc => {
-        // Split procedure names if they contain commas (ES only for now)
+        // Split procedure names if they contain commas
         const namesEs = proc.name_es.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0);
+        const namesFr = proc.name_fr ? proc.name_fr.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0) : [];
+        const namesEn = proc.name_en ? proc.name_en.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0) : [];
 
         // Use the longest array to determine how many procedures we have
         const maxLength = namesEs.length;
@@ -192,16 +194,16 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
         if (maxLength > 1) {
           // Multiple procedures in one line - split them
           for (let i = 0; i < maxLength; i++) {
-            const cleanNameEn = (namesEn[i] || '').replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim();
+            const cleanNameEs = (namesEs[i] || namesEs[0] || '').replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim();
+            const cleanNameFr = namesFr[i] ? namesFr[i].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim() : undefined;
+            const cleanNameEn = namesEn[i] ? namesEn[i].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim() : undefined;
 
             expandedProcedures.push({
               ...proc,
-              procedure_name: cleanNameEs,
-              procedure_name_fr: cleanNameFr || undefined,
-              procedure_name_en: cleanNameEn || undefined,
+              name_es: cleanNameEs,
+              name_fr: cleanNameFr,
+              name_en: cleanNameEn,
               template_code: `${proc.template_code}-${i + 1}`,
-              // Don't show steps_count for split procedures - it's not accurate
-              steps_count: 0,
             });
           }
         } else {
@@ -212,10 +214,9 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
 
           expandedProcedures.push({
             ...proc,
-            procedure_name: cleanNameEs,
-            procedure_name_fr: cleanNameFr,
-            procedure_name_en: cleanNameEn,
-            // Keep the original steps_count for unsplit procedures
+            name_es: cleanNameEs,
+            name_fr: cleanNameFr,
+            name_en: cleanNameEn,
           });
         }
       });
@@ -266,14 +267,14 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
   expeditionProcs.forEach(expProc => {
     // Find if same procedure exists in renewal
     const matchingRenewalIndex = renewalProcs.findIndex(
-      renProc => renProc.procedure_name.trim().toLowerCase() === expProc.procedure_name.trim().toLowerCase() &&
+      renProc => renProc.name_es.trim().toLowerCase() === expProc.name_es.trim().toLowerCase() &&
                  renProc.template_code.split('-')[0] === expProc.template_code.split('-')[0]
     );
 
     if (matchingRenewalIndex !== -1) {
       // Found duplicate - add to "both" only once
       const isDuplicateInBoth = deduplicatedBothProcs.some(
-        bothProc => bothProc.procedure_name.trim().toLowerCase() === expProc.procedure_name.trim().toLowerCase()
+        bothProc => bothProc.name_es.trim().toLowerCase() === expProc.name_es.trim().toLowerCase()
       );
       if (!isDuplicateInBoth) {
         deduplicatedBothProcs.push({ ...expProc, applies_to: 'both' });
@@ -287,7 +288,7 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
   // Add remaining renewal procedures that weren't duplicates
   renewalProcs.forEach(renProc => {
     const isInBoth = deduplicatedBothProcs.some(
-      bothProc => bothProc.procedure_name.trim().toLowerCase() === renProc.procedure_name.trim().toLowerCase()
+      bothProc => bothProc.name_es.trim().toLowerCase() === renProc.name_es.trim().toLowerCase()
     );
     if (!isInBoth) {
       deduplicatedRenewalProcs.push(renProc);

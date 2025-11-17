@@ -81,7 +81,7 @@ export function useCalculations(userId?: string) {
           service.id,
           (paymentType === 'urgent' ? 'expedition' : paymentType) as 'expedition' | 'renewal',
           amount,
-          params,
+          params || {},
           breakdown,
           false
         );
