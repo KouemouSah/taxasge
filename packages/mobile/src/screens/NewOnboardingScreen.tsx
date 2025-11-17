@@ -1,7 +1,14 @@
 /**
- * TaxasGE Mobile - Modern Onboarding Screen
+ * TaxasGE Mobile - Modern Onboarding Screen (OPTIMIZED)
  * Beautiful animated onboarding with Lottie animations
  * Date: 2025-11-17
+ *
+ * IMPROVEMENTS:
+ * - Responsive Lottie sizes (max 35% screen height)
+ * - Text backgrounds for visibility
+ * - Staggered entrance animations
+ * - Proper spacing and layout
+ * - Screen rotation support
  */
 
 import React, { useRef, useState, useEffect } from 'react';
@@ -22,6 +29,9 @@ import LottieView from 'lottie-react-native';
 import { Colors, Typography, Spacing, Shadows } from '../theme';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// Max Lottie size: 35% of screen height (responsive)
+const LOTTIE_SIZE = Math.min(SCREEN_HEIGHT * 0.35, 280);
 
 interface OnboardingSlide {
   key: string;
@@ -108,21 +118,34 @@ const NewOnboardingScreen: React.FC<NewOnboardingScreenProps> = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollX = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+
+  // Staggered entrance animations
+  const logoAnim = useRef(new Animated.Value(0)).current;
+  const mediaAnim = useRef(new Animated.Value(0)).current;
+  const textAnim = useRef(new Animated.Value(0)).current;
+  const buttonAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Entrance animation
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
+    // Staggered sequence: logo → media → text → button
+    Animated.sequence([
+      Animated.timing(logoAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(mediaAnim, {
         toValue: 1,
         duration: 800,
         useNativeDriver: true,
       }),
-      Animated.spring(scaleAnim, {
+      Animated.timing(textAnim, {
         toValue: 1,
-        tension: 50,
-        friction: 7,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(buttonAnim, {
+        toValue: 1,
+        duration: 500,
         useNativeDriver: true,
       }),
     ]).start();
@@ -168,13 +191,13 @@ const NewOnboardingScreen: React.FC<NewOnboardingScreenProps> = ({
 
     const scale = scrollX.interpolate({
       inputRange,
-      outputRange: [0.8, 1, 0.8],
+      outputRange: [0.85, 1, 0.85],
       extrapolate: 'clamp',
     });
 
     const opacity = scrollX.interpolate({
       inputRange,
-      outputRange: [0.3, 1, 0.3],
+      outputRange: [0.4, 1, 0.4],
       extrapolate: 'clamp',
     });
 
@@ -196,28 +219,39 @@ const NewOnboardingScreen: React.FC<NewOnboardingScreenProps> = ({
           backgroundColor={item.gradientColors[0]}
         />
 
-        <Animated.View
-          style={[
-            styles.contentContainer,
-            { opacity: fadeAnim, transform: [{ scale: scaleAnim }] },
-          ]}
-        >
+        <View style={styles.contentContainer}>
           {/* Logo at top for first screen */}
           {index === 0 && (
-            <View style={styles.logoContainer}>
+            <Animated.View
+              style={[
+                styles.logoContainer,
+                {
+                  opacity: logoAnim,
+                  transform: [{
+                    translateY: logoAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [-20, 0],
+                    })
+                  }]
+                }
+              ]}
+            >
               <Image
                 source={require('../assets/images/taxasge.png')}
                 style={styles.logo}
                 resizeMode="contain"
               />
-            </View>
+            </Animated.View>
           )}
 
           {/* Animation or Image */}
           <Animated.View
             style={[
               styles.animationContainer,
-              { transform: [{ scale }], opacity },
+              {
+                transform: [{ scale }],
+                opacity: Animated.multiply(opacity, mediaAnim),
+              },
             ]}
           >
             {item.animation ? (
@@ -234,6 +268,8 @@ const NewOnboardingScreen: React.FC<NewOnboardingScreenProps> = ({
               </View>
             ) : item.image ? (
               <View style={styles.imageWrapper}>
+                {/* White circle background behind flag */}
+                <View style={styles.imageBackground} />
                 <Image
                   source={item.image}
                   style={styles.flagImage}
@@ -243,8 +279,24 @@ const NewOnboardingScreen: React.FC<NewOnboardingScreenProps> = ({
             ) : null}
           </Animated.View>
 
-          {/* Text Content */}
-          <View style={styles.textContainer}>
+          {/* Text Content with Background for Visibility */}
+          <Animated.View
+            style={[
+              styles.textContainer,
+              {
+                opacity: textAnim,
+                transform: [{
+                  translateY: textAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [20, 0],
+                  })
+                }]
+              }
+            ]}
+          >
+            {/* Semi-transparent background behind text */}
+            <View style={styles.textBackground} />
+
             <Text
               style={[
                 styles.title,
@@ -262,39 +314,34 @@ const NewOnboardingScreen: React.FC<NewOnboardingScreenProps> = ({
             >
               {item[subtitleKey] as string}
             </Text>
-          </View>
+          </Animated.View>
 
           {/* CTA Button */}
-          <TouchableOpacity
-            style={[
-              styles.button,
-              {
-                backgroundColor: item.buttonColor,
-                ...Shadows.lg,
-              },
-            ]}
-            onPress={handleNext}
-            activeOpacity={0.8}
+          <Animated.View
+            style={{
+              opacity: buttonAnim,
+              transform: [{
+                scale: buttonAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.8, 1],
+                })
+              }]
+            }}
           >
-            <Text
+            <TouchableOpacity
               style={[
-                styles.buttonText,
+                styles.button,
                 {
-                  color:
-                    item.buttonColor === '#ffffff'
-                      ? Colors.primary.blue
-                      : item.buttonColor === Colors.primary.yellow
-                      ? Colors.text.primary
-                      : Colors.neutral.white,
+                  backgroundColor: item.buttonColor,
+                  ...Shadows.lg,
                 },
               ]}
+              onPress={handleNext}
+              activeOpacity={0.8}
             >
-              {item[buttonTextKey] as string}
-            </Text>
-            <View style={styles.buttonIcon}>
               <Text
                 style={[
-                  styles.arrowIcon,
+                  styles.buttonText,
                   {
                     color:
                       item.buttonColor === '#ffffff'
@@ -305,11 +352,28 @@ const NewOnboardingScreen: React.FC<NewOnboardingScreenProps> = ({
                   },
                 ]}
               >
-                →
+                {item[buttonTextKey] as string}
               </Text>
-            </View>
-          </TouchableOpacity>
-        </Animated.View>
+              <View style={styles.buttonIcon}>
+                <Text
+                  style={[
+                    styles.arrowIcon,
+                    {
+                      color:
+                        item.buttonColor === '#ffffff'
+                          ? Colors.primary.blue
+                          : item.buttonColor === Colors.primary.yellow
+                          ? Colors.text.primary
+                          : Colors.neutral.white,
+                    },
+                  ]}
+                >
+                  →
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
       </View>
     );
   };
@@ -402,62 +466,88 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: Spacing.xxxl,
+    paddingVertical: Platform.OS === 'ios' ? Spacing.xxxl : Spacing.xl,
     paddingHorizontal: Spacing.screenPadding,
   },
   logoContainer: {
     marginTop: Platform.OS === 'ios' ? 40 : 20,
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   logo: {
-    width: 200,
-    height: 80,
+    width: 180,
+    height: 70,
   },
   animationContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
+    maxHeight: LOTTIE_SIZE + 60,
   },
   lottieWrapper: {
-    width: SCREEN_WIDTH * 0.7,
-    height: SCREEN_WIDTH * 0.7,
+    width: LOTTIE_SIZE,
+    height: LOTTIE_SIZE,
     justifyContent: 'center',
     alignItems: 'center',
   },
   lottieCircleBackground: {
     backgroundColor: Colors.primary.greenLight,
-    borderRadius: SCREEN_WIDTH * 0.35,
-    padding: Spacing.xl,
+    borderRadius: LOTTIE_SIZE / 2,
+    padding: Spacing.lg,
   },
   lottieAnimation: {
     width: '100%',
     height: '100%',
   },
   imageWrapper: {
-    width: SCREEN_WIDTH * 0.8,
-    height: SCREEN_WIDTH * 0.5,
+    width: SCREEN_WIDTH * 0.7,
+    height: LOTTIE_SIZE,
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
+  },
+  imageBackground: {
+    position: 'absolute',
+    width: LOTTIE_SIZE,
+    height: LOTTIE_SIZE,
+    borderRadius: LOTTIE_SIZE / 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
   },
   flagImage: {
-    width: '100%',
-    height: '100%',
+    width: '90%',
+    height: '90%',
+    zIndex: 1,
   },
   textContainer: {
     width: '100%',
     paddingHorizontal: Spacing.md,
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing.lg,
+    position: 'relative',
+  },
+  textBackground: {
+    position: 'absolute',
+    top: -Spacing.md,
+    left: 0,
+    right: 0,
+    bottom: -Spacing.md,
+    backgroundColor: 'rgba(0, 0, 0, 0.15)',
+    borderRadius: Spacing.borderRadius.lg,
   },
   title: {
     ...Typography.h1,
     textAlign: 'center',
     marginBottom: Spacing.md,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   subtitle: {
     ...Typography.bodyLarge,
     textAlign: 'center',
     lineHeight: 28,
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   button: {
     flexDirection: 'row',
@@ -466,7 +556,8 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.lg,
     paddingHorizontal: Spacing.xl,
     borderRadius: Spacing.borderRadius.full,
-    minWidth: SCREEN_WIDTH * 0.8,
+    minWidth: SCREEN_WIDTH * 0.75,
+    marginBottom: Spacing.md,
   },
   buttonText: {
     ...Typography.buttonLarge,
@@ -487,7 +578,7 @@ const styles = StyleSheet.create({
   paginationContainer: {
     flexDirection: 'row',
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 120 : 100,
+    bottom: Platform.OS === 'ios' ? 140 : 120,
     alignSelf: 'center',
     gap: Spacing.sm,
   },
