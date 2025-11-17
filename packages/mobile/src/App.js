@@ -39,6 +39,9 @@ import ServiceDetailScreen from './screens/ServiceDetailScreen';
 import FavoritesScreen from './screens/FavoritesScreen';
 import CalculatorScreen from './screens/CalculatorScreen';
 import CalculatorHistoryScreen from './screens/CalculatorHistoryScreen';
+import ProfileScreen from './screens/ProfileScreen';
+import MinisteriosScreen from './screens/MinisteriosScreen';
+import MinisterioDetailScreen from './screens/MinisterioDetailScreen';
 import { APP_CONFIG } from './config/AppConfig';
 
 /**
@@ -156,17 +159,25 @@ const App = () => {
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
   const [syncPhase, setSyncPhase] = useState(0);
   const [selectedService, setSelectedService] = useState(null);
+  const [selectedMinistry, setSelectedMinistry] = useState(null);
   const [navigationHistory, setNavigationHistory] = useState(['home']);
 
   /**
    * Navigate to a screen with history tracking
    */
-  const navigateTo = useCallback((screen, service = null) => {
+  const navigateTo = useCallback((screen, data = null) => {
     console.log('[App] Navigating to:', screen);
     setCurrentScreen(screen);
-    if (service) {
-      setSelectedService(service);
+
+    // Handle different data types based on screen
+    if (data) {
+      if (screen === 'serviceDetail' || screen === 'calculator') {
+        setSelectedService(data);
+      } else if (screen === 'ministerioDetail') {
+        setSelectedMinistry(data);
+      }
     }
+
     setNavigationHistory(prev => [...prev, screen]);
   }, []);
 
@@ -187,9 +198,10 @@ const App = () => {
     setNavigationHistory(newHistory);
     setCurrentScreen(previousScreen);
 
-    // Clear selected service if returning to home or search
-    if (previousScreen === 'home' || previousScreen === 'search') {
+    // Clear selected items when returning to home screens
+    if (previousScreen === 'home' || previousScreen === 'search' || previousScreen === 'ministerios') {
       setSelectedService(null);
+      setSelectedMinistry(null);
     }
 
     return true;
@@ -240,9 +252,10 @@ const App = () => {
       setNavigationHistory(newHistory);
       setCurrentScreen(previousScreen);
 
-      // Clear selected service if returning to home or search
-      if (previousScreen === 'home' || previousScreen === 'search') {
+      // Clear selected items when returning to home screens
+      if (previousScreen === 'home' || previousScreen === 'search' || previousScreen === 'ministerios') {
         setSelectedService(null);
+        setSelectedMinistry(null);
       }
 
       // Prevent exit - we handled the back
@@ -319,6 +332,9 @@ const App = () => {
           if (screen === 'serviceDetail') {
             // data is the service object
             navigateTo(screen, data);
+          } else if (screen === 'ministerioDetail') {
+            // data is the ministry object
+            navigateTo(screen, data);
           } else if (screen === 'search') {
             // data contains filter parameters
             navigateTo(screen);
@@ -328,6 +344,20 @@ const App = () => {
           }
         } else {
           navigateTo(screen);
+        }
+      }}
+      onTabPress={(tab) => {
+        console.log('[App] Tab pressed:', tab);
+        // Map tab names to screen names
+        const screenMap = {
+          home: 'home',
+          search: 'ministerios',
+          favorites: 'favorites',
+          profile: 'profile',
+        };
+        const targetScreen = screenMap[tab] || tab;
+        if (targetScreen !== currentScreen) {
+          navigateTo(targetScreen);
         }
       }}
     />
@@ -433,6 +463,82 @@ const App = () => {
     );
   };
 
+  const renderProfileScreen = () => {
+    return (
+      <ProfileScreen
+        language={currentLanguage}
+        onBack={navigateBack}
+        onLanguageChange={(newLanguage) => {
+          console.log('[App] Language changed to:', newLanguage);
+          setCurrentLanguage(newLanguage);
+        }}
+        onNavigate={(screen) => {
+          console.log('[App] ProfileScreen navigation to:', screen);
+          navigateTo(screen);
+        }}
+        onTabPress={(tab) => {
+          console.log('[App] ProfileScreen tab press:', tab);
+          const screenMap = {
+            home: 'home',
+            search: 'ministerios',
+            favorites: 'favorites',
+            profile: 'profile',
+          };
+          const targetScreen = screenMap[tab] || tab;
+          if (targetScreen !== currentScreen) {
+            navigateTo(targetScreen);
+          }
+        }}
+      />
+    );
+  };
+
+  const renderMinisteriosScreen = () => {
+    return (
+      <MinisteriosScreen
+        language={currentLanguage}
+        onBack={navigateBack}
+        onMinistryPress={(ministry) => {
+          console.log('[App] Ministry selected:', ministry.name_es);
+          navigateTo('ministerioDetail', ministry);
+        }}
+        onTabPress={(tab) => {
+          console.log('[App] MinisteriosScreen tab press:', tab);
+          const screenMap = {
+            home: 'home',
+            search: 'ministerios',
+            favorites: 'favorites',
+            profile: 'profile',
+          };
+          const targetScreen = screenMap[tab] || tab;
+          if (targetScreen !== currentScreen) {
+            navigateTo(targetScreen);
+          }
+        }}
+      />
+    );
+  };
+
+  const renderMinisterioDetailScreen = () => {
+    if (!selectedMinistry) {
+      console.warn('[App] MinisterioDetailScreen called without selected ministry');
+      navigateTo('ministerios');
+      return null;
+    }
+
+    return (
+      <MinisterioDetailScreen
+        ministry={selectedMinistry}
+        language={currentLanguage}
+        onBack={navigateBack}
+        onServicePress={(service) => {
+          console.log('[App] Service selected from ministry:', service.name_es);
+          navigateTo('serviceDetail', service);
+        }}
+      />
+    );
+  };
+
   // Show loading while checking onboarding status
   if (checkingOnboarding) {
     return (
@@ -486,6 +592,12 @@ const App = () => {
         return renderFavoritesScreen();
       case 'history':
         return renderHistoryScreen();
+      case 'profile':
+        return renderProfileScreen();
+      case 'ministerios':
+        return renderMinisteriosScreen();
+      case 'ministerioDetail':
+        return renderMinisterioDetailScreen();
       default:
         return renderHomeScreen();
     }
