@@ -140,31 +140,10 @@ async def get_auto_assignment_service_dep(
 
 
 # ============================================================================
-# AUTHORIZATION HELPERS
-# ============================================================================
-
-def check_supervisor_permission(current_user: UserResponse):
-    """Verify user is supervisor"""
-    if current_user.role not in ["supervisor_dgi", "supervisor_ministry", "admin"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Permission denied. Supervisor role required (current: {current_user.role})"
-        )
-
-
-def check_agent_permission(current_user: UserResponse):
-    """Verify user is agent or supervisor"""
-    allowed_roles = ["dgi_agent", "ministry_agent", "supervisor_dgi", "supervisor_ministry", "admin"]
-    if current_user.role not in allowed_roles:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Permission denied. Agent or Supervisor role required (current: {current_user.role})"
-        )
-
-
-# ============================================================================
 # ENDPOINTS - ASSIGNMENT OPERATIONS
 # ============================================================================
+# Note: Authorization is handled via @require_permission decorators
+# Legacy check_*_permission functions have been removed (replaced by RBAC system)
 
 @router.post("/manual", response_model=Assignment, status_code=status.HTTP_201_CREATED)
 @require_permission("assignment.create")

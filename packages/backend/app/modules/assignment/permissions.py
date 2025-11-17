@@ -96,6 +96,133 @@ ASSIGNMENT_PERMISSIONS = [
         "Extender fecha límite de asignación",
         False
     ),
+
+    # === RULES MANAGEMENT ===
+    (
+        "rules.view",
+        "rules",
+        "view",
+        "Ver reglas de asignación",
+        False
+    ),
+    (
+        "rules.create",
+        "rules",
+        "create",
+        "Crear reglas de asignación",
+        False
+    ),
+    (
+        "rules.edit",
+        "rules",
+        "edit",
+        "Editar reglas de asignación",
+        False
+    ),
+    (
+        "rules.activate",
+        "rules",
+        "activate",
+        "Activar/desactivar reglas",
+        False
+    ),
+    (
+        "rules.delete",
+        "rules",
+        "delete",
+        "Eliminar reglas de asignación",
+        True  # Critical permission
+    ),
+    (
+        "rules.view_effectiveness",
+        "rules",
+        "view_effectiveness",
+        "Ver reporte de eficacia de reglas",
+        False
+    ),
+
+    # === REPORTS ===
+    (
+        "reports.view",
+        "reports",
+        "view",
+        "Ver reportes de asignación",
+        False
+    ),
+    (
+        "reports.generate",
+        "reports",
+        "generate",
+        "Generar reportes",
+        False
+    ),
+    (
+        "reports.edit",
+        "reports",
+        "edit",
+        "Editar reportes generados",
+        True  # Critical permission
+    ),
+    (
+        "reports.export_pdf",
+        "reports",
+        "export_pdf",
+        "Exportar reporte en PDF",
+        False
+    ),
+    (
+        "reports.export_excel",
+        "reports",
+        "export_excel",
+        "Exportar reporte en Excel",
+        False
+    ),
+
+    # === DASHBOARD ===
+    (
+        "dashboard.view",
+        "dashboard",
+        "view",
+        "Ver dashboard de supervisor",
+        False
+    ),
+    (
+        "dashboard.team_stats",
+        "dashboard",
+        "team_stats",
+        "Ver estadísticas de equipo",
+        False
+    ),
+    (
+        "dashboard.agent_stats",
+        "dashboard",
+        "agent_stats",
+        "Ver estadísticas de agente específico",
+        False
+    ),
+
+    # === AGENT MANAGEMENT ===
+    (
+        "agents.view",
+        "agents",
+        "view",
+        "Ver lista de agentes",
+        False
+    ),
+    (
+        "agents.view_workload",
+        "agents",
+        "view_workload",
+        "Ver carga de trabajo de agentes",
+        False
+    ),
+    (
+        "agents.view_performance",
+        "agents",
+        "view_performance",
+        "Ver rendimiento de agentes",
+        False
+    ),
 ]
 
 
