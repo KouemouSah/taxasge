@@ -22,16 +22,11 @@ import {
   getServiceTypeLabel,
   type SearchFilters,
   type SearchResponse,
-  type ServiceResult
+  type ServiceResult,
+  type FacetItem
 } from "@/lib/api/servicesApi"
 
 type ViewMode = 'kanban' | 'list'
-
-interface MinistryFacet {
-  id: string
-  name: string
-  count: number
-}
 
 /**
  * Services Content - Component that uses useSearchParams
@@ -449,12 +444,12 @@ function ServicesContent() {
                     <div>
                       <h3 className="font-medium mb-3">Ministerio</h3>
                       <div className="space-y-2 max-h-64 overflow-y-auto">
-                        {searchResults.facets.ministries.map((ministry: MinistryFacet) => (
+                        {searchResults.facets.ministries.map((ministry: FacetItem) => (
                           <Button
-                            key={ministry.id}
+                            key={ministry.id ?? ministry.name}
                             variant={selectedMinistry === ministry.id ? "default" : "outline"}
                             size="sm"
-                            onClick={() => handleMinistryFilter(ministry.id)}
+                            onClick={() => ministry.id && handleMinistryFilter(ministry.id)}
                             className="w-full justify-between text-left"
                           >
                             <span className="truncate text-xs">{ministry.name}</span>
