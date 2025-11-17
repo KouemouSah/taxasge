@@ -28,6 +28,7 @@ import {
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DatabaseProvider } from './providers/DatabaseProvider';
+import { ServicesProvider } from './providers/ServicesProvider';
 import { ChatbotScreen } from './screens/ChatbotScreen';
 import { OnboardingScreen } from './screens/OnboardingScreen';
 import NewOnboardingScreen from './screens/NewOnboardingScreen';
@@ -551,10 +552,12 @@ const App = () => {
           onSyncComplete={handleSyncComplete}
           onError={handleSyncError}
         >
-          <NewOnboardingScreen
-            language={currentLanguage}
-            onComplete={handleOnboardingComplete}
-          />
+          <ServicesProvider>
+            <NewOnboardingScreen
+              language={currentLanguage}
+              onComplete={handleOnboardingComplete}
+            />
+          </ServicesProvider>
         </DatabaseProvider>
       </SafeAreaProvider>
     );
@@ -594,7 +597,9 @@ const App = () => {
         onSyncComplete={handleSyncComplete}
         onError={handleSyncError}
       >
-        {renderCurrentScreen()}
+        <ServicesProvider>
+          {renderCurrentScreen()}
+        </ServicesProvider>
       </DatabaseProvider>
     </SafeAreaProvider>
   );
