@@ -79,11 +79,11 @@ export function useCalculations(userId?: string) {
         const insertId = await calculationsService.saveCalculation(
           targetUserId,
           service.id,
-          params?.base_amount || amount,
+          (paymentType === 'urgent' ? 'expedition' : paymentType) as 'expedition' | 'renewal',
           amount,
-          paymentType,
           params,
-          breakdown
+          breakdown,
+          false
         );
 
         // Reload history

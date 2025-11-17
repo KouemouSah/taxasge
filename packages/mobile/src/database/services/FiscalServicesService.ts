@@ -4,7 +4,7 @@
 
 import { db } from '../DatabaseManager';
 import { QUERIES, TABLE_NAMES } from '../schema';
-import { translationService } from './TranslationService';
+import TranslationService from '../../services/TranslationService';
 
 export interface FiscalService {
   id: string;
@@ -91,10 +91,10 @@ class FiscalServicesService {
     try {
       // Load all translations - direct mapping service_code → entity_code
       const [serviceTranslations, ministryTranslations, sectorTranslations, categoryTranslations] = await Promise.all([
-        translationService.getTranslationsForEntityType('service'),
-        translationService.getTranslationsForEntityType('ministry'),
-        translationService.getTranslationsForEntityType('sector'),
-        translationService.getTranslationsForEntityType('category'),
+        TranslationService.getTranslationsForEntityType('service'),
+        TranslationService.getTranslationsForEntityType('ministry'),
+        TranslationService.getTranslationsForEntityType('sector'),
+        TranslationService.getTranslationsForEntityType('category'),
       ]);
 
       console.log(`[FiscalServices] Enriching ${services.length} services with translations`);
@@ -374,7 +374,7 @@ class FiscalServicesService {
       );
 
       // Enrich with translations
-      const ministryTranslations = await (await import('./TranslationService')).translationService.getTranslationsForEntityType('ministry');
+      const ministryTranslations = await TranslationService.getTranslationsForEntityType('ministry');
 
       return results.map(m => ({
         ...m,
@@ -406,7 +406,7 @@ class FiscalServicesService {
       );
 
       // Enrich with translations
-      const categoryTranslations = await (await import('./TranslationService')).translationService.getTranslationsForEntityType('category');
+      const categoryTranslations = await TranslationService.getTranslationsForEntityType('category');
 
       return results.map(c => ({
         ...c,

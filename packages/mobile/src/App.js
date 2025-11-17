@@ -11,7 +11,7 @@
  * - Pro: Auth required, instant sync, 8+ tables
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,7 @@ import {
   Platform,
   NativeModules,
   ActivityIndicator,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -30,7 +31,12 @@ import { DatabaseProvider } from './providers/DatabaseProvider';
 import { ChatbotScreen } from './screens/ChatbotScreen';
 import { OnboardingScreen } from './screens/OnboardingScreen';
 import { PlaceholderScreen } from './screens/PlaceholderScreen';
-import { APP_CONFIG, logConfiguration } from './config/AppConfig';
+import ServiceListScreen from './screens/ServiceListScreen';
+import ServiceDetailScreen from './screens/ServiceDetailScreen';
+import FavoritesScreen from './screens/FavoritesScreen';
+import CalculatorScreen from './screens/CalculatorScreen';
+import CalculatorHistoryScreen from './screens/CalculatorHistoryScreen';
+import { APP_CONFIG } from './config/AppConfig';
 
 /**
  * Détecte la langue du système Android/iOS
@@ -78,8 +84,13 @@ const TEXTS = {
     chatbotButton: 'Asistente Chatbot',
     chatbotSubtitle: 'Haz tus preguntas sobre servicios fiscales',
     searchButton: 'Buscar Servicios',
+    searchSubtitle: 'Explora y filtra todos los servicios fiscales',
     calculatorButton: 'Calculadora',
+    calculatorSubtitle: 'Selecciona un servicio primero',
     favoritesButton: 'Favoritos',
+    favoritesSubtitle: 'Accede a tus servicios guardados',
+    historyButton: 'Historial',
+    historySubtitle: 'Revisa tus cálculos anteriores',
     comingSoon: 'Próximamente',
     footer1: 'Versión MVP1 - Chatbot FAQ',
     footer2: 'Base de datos: SQLite v3',
@@ -91,8 +102,13 @@ const TEXTS = {
     chatbotButton: 'Assistant Chatbot',
     chatbotSubtitle: 'Posez vos questions sur les services fiscaux',
     searchButton: 'Rechercher Services',
+    searchSubtitle: 'Explorez et filtrez tous les services fiscaux',
     calculatorButton: 'Calculatrice',
+    calculatorSubtitle: 'Sélectionnez un service d\'abord',
     favoritesButton: 'Favoris',
+    favoritesSubtitle: 'Accédez à vos services enregistrés',
+    historyButton: 'Historique',
+    historySubtitle: 'Consultez vos calculs précédents',
     comingSoon: 'Bientôt disponible',
     footer1: 'Version MVP1 - Chatbot FAQ',
     footer2: 'Base de données : SQLite v3',
@@ -104,8 +120,13 @@ const TEXTS = {
     chatbotButton: 'Chatbot Assistant',
     chatbotSubtitle: 'Ask your questions about tax services',
     searchButton: 'Search Services',
+    searchSubtitle: 'Browse and filter all tax services',
     calculatorButton: 'Calculator',
+    calculatorSubtitle: 'Select a service first',
     favoritesButton: 'Favorites',
+    favoritesSubtitle: 'Access your saved services',
+    historyButton: 'History',
+    historySubtitle: 'Review your previous calculations',
     comingSoon: 'Coming soon',
     footer1: 'Version MVP1 - Chatbot FAQ',
     footer2: 'Database: SQLite v3',
@@ -131,12 +152,48 @@ const App = () => {
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
   const [syncPhase, setSyncPhase] = useState(0);
+  const [selectedService, setSelectedService] = useState(null);
+  const [navigationHistory, setNavigationHistory] = useState(['home']);
+
+  /**
+   * Navigate to a screen with history tracking
+   */
+  const navigateTo = useCallback((screen, service = null) => {
+    console.log('[App] Navigating to:', screen);
+    setCurrentScreen(screen);
+    if (service) {
+      setSelectedService(service);
+    }
+    setNavigationHistory(prev => [...prev, screen]);
+  }, []);
+
+  /**
+   * Navigate back using history
+   */
+  const navigateBack = useCallback(() => {
+    if (navigationHistory.length <= 1) {
+      // Already at root, exit app
+      return false;
+    }
+
+    const newHistory = [...navigationHistory];
+    newHistory.pop(); // Remove current screen
+    const previousScreen = newHistory[newHistory.length - 1];
+
+    console.log('[App] Navigating back to:', previousScreen);
+    setNavigationHistory(newHistory);
+    setCurrentScreen(previousScreen);
+
+    // Clear selected service if returning to home or search
+    if (previousScreen === 'home' || previousScreen === 'search') {
+      setSelectedService(null);
+    }
+
+    return true;
+  }, [navigationHistory]);
 
   // Détecter la langue système et vérifier si onboarding déjà complété
   useEffect(() => {
-    // Log app configuration (version, features, sync strategy)
-    logConfiguration();
-
     // Detect system language
     const systemLang = getSystemLanguage();
     console.log('[App] Setting initial language to:', systemLang);
@@ -153,6 +210,24 @@ const App = () => {
     // Check if onboarding already completed
     checkOnboardingStatus();
   }, []);
+
+  // Handle Android hardware back button
+  useEffect(() => {
+    if (Platform.OS !== 'android') {
+      return;
+    }
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (showOnboarding || checkingOnboarding) {
+        // Don't allow back during onboarding
+        return true;
+      }
+
+      return !navigateBack();
+    });
+
+    return () => backHandler.remove();
+  }, [navigateBack, showOnboarding, checkingOnboarding]);
 
   /**
    * Check if user has already completed onboarding
@@ -255,7 +330,7 @@ const App = () => {
 
           <TouchableOpacity
             style={styles.menuButton}
-            onPress={() => setCurrentScreen('chatbot')}
+            onPress={() => navigateTo('chatbot')}
             activeOpacity={0.7}>
             <View style={styles.buttonContent}>
               <Text style={styles.buttonIcon}>💬</Text>
@@ -270,7 +345,7 @@ const App = () => {
 
           <TouchableOpacity
             style={styles.menuButton}
-            onPress={() => setCurrentScreen('search')}
+            onPress={() => navigateTo('search')}
             activeOpacity={0.7}>
             <View style={styles.buttonContent}>
               <Text style={styles.buttonIcon}>🔍</Text>
@@ -279,7 +354,7 @@ const App = () => {
                   {TEXTS[currentLanguage].searchButton}
                 </Text>
                 <Text style={styles.buttonSubtitle}>
-                  {TEXTS[currentLanguage].comingSoon}
+                  {TEXTS[currentLanguage].searchSubtitle}
                 </Text>
               </View>
             </View>
@@ -287,7 +362,12 @@ const App = () => {
 
           <TouchableOpacity
             style={styles.menuButton}
-            onPress={() => setCurrentScreen('calculator')}
+            onPress={() => {
+              // Calculator requires a service selection
+              // Redirect to search to select a service first
+              console.log('[App] Calculator: Redirecting to search to select service');
+              navigateTo('search');
+            }}
             activeOpacity={0.7}>
             <View style={styles.buttonContent}>
               <Text style={styles.buttonIcon}>🧮</Text>
@@ -296,7 +376,7 @@ const App = () => {
                   {TEXTS[currentLanguage].calculatorButton}
                 </Text>
                 <Text style={styles.buttonSubtitle}>
-                  {TEXTS[currentLanguage].comingSoon}
+                  {TEXTS[currentLanguage].calculatorSubtitle}
                 </Text>
               </View>
             </View>
@@ -304,7 +384,7 @@ const App = () => {
 
           <TouchableOpacity
             style={styles.menuButton}
-            onPress={() => setCurrentScreen('favorites')}
+            onPress={() => navigateTo('favorites')}
             activeOpacity={0.7}>
             <View style={styles.buttonContent}>
               <Text style={styles.buttonIcon}>⭐</Text>
@@ -313,7 +393,24 @@ const App = () => {
                   {TEXTS[currentLanguage].favoritesButton}
                 </Text>
                 <Text style={styles.buttonSubtitle}>
-                  {TEXTS[currentLanguage].comingSoon}
+                  {TEXTS[currentLanguage].favoritesSubtitle}
+                </Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuButton}
+            onPress={() => navigateTo('history')}
+            activeOpacity={0.7}>
+            <View style={styles.buttonContent}>
+              <Text style={styles.buttonIcon}>📜</Text>
+              <View style={styles.buttonTextContainer}>
+                <Text style={styles.buttonTitle}>
+                  {TEXTS[currentLanguage].historyButton}
+                </Text>
+                <Text style={styles.buttonSubtitle}>
+                  {TEXTS[currentLanguage].historySubtitle}
                 </Text>
               </View>
             </View>
@@ -331,180 +428,99 @@ const App = () => {
   const renderChatbotScreen = () => (
     <ChatbotScreen
       language={currentLanguage}
-      onBack={() => setCurrentScreen('home')}
+      onBack={navigateBack}
       onNavigate={(screen) => {
         // Navigation vers les écrans disponibles
         console.log(`[App] Navigation requested to: ${screen}`);
-        if (['search', 'calculator', 'favorites'].includes(screen)) {
-          setCurrentScreen(screen);
+        if (['search', 'calculator', 'favorites', 'history'].includes(screen)) {
+          navigateTo(screen);
         } else {
-          setCurrentScreen('home');
+          navigateTo('home');
         }
       }}
     />
   );
 
   const renderSearchScreen = () => {
-    const translations = {
-      es: {
-        title: 'Buscar Servicios',
-        subtitle: 'Encuentra servicios fiscales rápidamente',
-        back: 'Volver',
-        comingSoon: 'Próximamente',
-        features: [
-          'Búsqueda por nombre de servicio',
-          'Filtros por categoría y ministerio',
-          'Ver detalles completos del servicio',
-          'Guardar servicios en favoritos',
-        ],
-      },
-      fr: {
-        title: 'Rechercher Services',
-        subtitle: 'Trouvez des services fiscaux rapidement',
-        back: 'Retour',
-        comingSoon: 'Bientôt disponible',
-        features: [
-          'Recherche par nom de service',
-          'Filtres par catégorie et ministère',
-          'Voir les détails complets du service',
-          'Enregistrer les services en favoris',
-        ],
-      },
-      en: {
-        title: 'Search Services',
-        subtitle: 'Find tax services quickly',
-        back: 'Back',
-        comingSoon: 'Coming soon',
-        features: [
-          'Search by service name',
-          'Filter by category and ministry',
-          'View complete service details',
-          'Save services to favorites',
-        ],
-      },
-    };
+    return (
+      <ServiceListScreen
+        language={currentLanguage}
+        onBack={navigateBack}
+        onServicePress={(service) => {
+          console.log('[App] Service selected:', service.name_es);
+          navigateTo('serviceDetail', service);
+        }}
+      />
+    );
+  };
 
-    const t = translations[currentLanguage];
+  const renderServiceDetailScreen = () => {
+    if (!selectedService) {
+      console.warn('[App] ServiceDetailScreen called without selected service');
+      navigateTo('home');
+      return null;
+    }
 
     return (
-      <PlaceholderScreen
-        title={t.title}
-        subtitle={t.subtitle}
-        icon="🔍"
-        comingSoonText={t.comingSoon}
-        backButtonText={t.back}
-        onBack={() => setCurrentScreen('home')}
-        features={t.features}
+      <ServiceDetailScreen
+        service={selectedService}
+        language={currentLanguage}
+        onBack={navigateBack}
+        onCalculate={(service) => {
+          console.log('[App] Calculate requested for:', service.name_es);
+          navigateTo('calculator', service);
+        }}
       />
     );
   };
 
   const renderCalculatorScreen = () => {
-    const translations = {
-      es: {
-        title: 'Calculadora Fiscal',
-        subtitle: 'Calcula el costo exacto de tus trámites',
-        back: 'Volver',
-        comingSoon: 'Próximamente',
-        features: [
-          'Calcular tasas de expedición y renovación',
-          'Aplicar urgencias automáticamente',
-          'Guardar cálculos en historial',
-          'Exportar resultados',
-        ],
-      },
-      fr: {
-        title: 'Calculatrice Fiscale',
-        subtitle: 'Calculez le coût exact de vos démarches',
-        back: 'Retour',
-        comingSoon: 'Bientôt disponible',
-        features: [
-          'Calculer les frais d\'expédition et de renouvellement',
-          'Appliquer les urgences automatiquement',
-          'Enregistrer les calculs dans l\'historique',
-          'Exporter les résultats',
-        ],
-      },
-      en: {
-        title: 'Tax Calculator',
-        subtitle: 'Calculate the exact cost of your procedures',
-        back: 'Back',
-        comingSoon: 'Coming soon',
-        features: [
-          'Calculate expedition and renewal fees',
-          'Apply urgencies automatically',
-          'Save calculations to history',
-          'Export results',
-        ],
-      },
-    };
-
-    const t = translations[currentLanguage];
+    if (!selectedService) {
+      console.warn('[App] CalculatorScreen called without selected service');
+      navigateTo('home');
+      return null;
+    }
 
     return (
-      <PlaceholderScreen
-        title={t.title}
-        subtitle={t.subtitle}
-        icon="🧮"
-        comingSoonText={t.comingSoon}
-        backButtonText={t.back}
-        onBack={() => setCurrentScreen('home')}
-        features={t.features}
+      <CalculatorScreen
+        service={selectedService}
+        language={currentLanguage}
+        userId={APP_CONFIG.defaultUserId}
+        onBack={navigateBack}
       />
     );
   };
 
   const renderFavoritesScreen = () => {
-    const translations = {
-      es: {
-        title: 'Favoritos',
-        subtitle: 'Tus servicios guardados',
-        back: 'Volver',
-        comingSoon: 'Próximamente',
-        features: [
-          'Guardar servicios frecuentes',
-          'Acceso rápido a tus servicios',
-          'Organizar por carpetas',
-          'Sincronización en la nube (versión Pro)',
-        ],
-      },
-      fr: {
-        title: 'Favoris',
-        subtitle: 'Vos services enregistrés',
-        back: 'Retour',
-        comingSoon: 'Bientôt disponible',
-        features: [
-          'Enregistrer les services fréquents',
-          'Accès rapide à vos services',
-          'Organiser par dossiers',
-          'Synchronisation cloud (version Pro)',
-        ],
-      },
-      en: {
-        title: 'Favorites',
-        subtitle: 'Your saved services',
-        back: 'Back',
-        comingSoon: 'Coming soon',
-        features: [
-          'Save frequent services',
-          'Quick access to your services',
-          'Organize by folders',
-          'Cloud sync (Pro version)',
-        ],
-      },
-    };
-
-    const t = translations[currentLanguage];
-
     return (
-      <PlaceholderScreen
-        title={t.title}
-        subtitle={t.subtitle}
-        icon="⭐"
-        comingSoonText={t.comingSoon}
-        backButtonText={t.back}
-        onBack={() => setCurrentScreen('home')}
-        features={t.features}
+      <FavoritesScreen
+        language={currentLanguage}
+        userId={APP_CONFIG.defaultUserId}
+        onBack={navigateBack}
+        onServicePress={(service) => {
+          console.log('[App] Favorite service selected:', service.name_es);
+          navigateTo('serviceDetail', service);
+        }}
+        onCalculate={(service) => {
+          console.log('[App] Calculate requested for service:', service.name_es);
+          navigateTo('calculator', service);
+        }}
+      />
+    );
+  };
+
+  const renderHistoryScreen = () => {
+    return (
+      <CalculatorHistoryScreen
+        language={currentLanguage}
+        userId={APP_CONFIG.defaultUserId}
+        onBack={navigateBack}
+        onRecalculate={(record) => {
+          console.log('[App] Recalculate requested for:', record.service_name);
+          // Navigate to service detail with the service from history
+          // For now, just log - would need to fetch service from DB by ID
+          navigateTo('home');
+        }}
       />
     );
   };
@@ -552,10 +568,14 @@ const App = () => {
         return renderChatbotScreen();
       case 'search':
         return renderSearchScreen();
+      case 'serviceDetail':
+        return renderServiceDetailScreen();
       case 'calculator':
         return renderCalculatorScreen();
       case 'favorites':
         return renderFavoritesScreen();
+      case 'history':
+        return renderHistoryScreen();
       default:
         return renderHomeScreen();
     }

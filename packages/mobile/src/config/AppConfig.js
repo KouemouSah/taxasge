@@ -249,5 +249,9 @@ export const logConfiguration = () => {
   console.log('[AppConfig] ========================================');
 };
 
+// Auto-log configuration on module load
+// This ensures configuration is visible immediately when app starts
+logConfiguration();
+
 // Default export for convenience
 export default APP_CONFIG;
