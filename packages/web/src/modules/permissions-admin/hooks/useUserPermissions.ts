@@ -9,8 +9,6 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type {
-  UserWithPermissions,
-  UserPermission,
   GrantUserPermissionRequest,
 } from "../types";
 import { userPermissionsApi } from "../services/api";
@@ -63,13 +61,6 @@ export function useHasPermission(userId: string | null, permissionName: string) 
  * Returns an object mapping permission names to boolean values
  */
 export function useHasPermissions(userId: string | null, permissionNames: string[]) {
-  const queries = permissionNames.map((name) => ({
-    queryKey: userPermissionsKeys.check(userId || "", name),
-    queryFn: () => userPermissionsApi.hasPermission(userId!, name),
-    enabled: !!userId && !!name,
-    staleTime: 1 * 60 * 1000,
-  }));
-
   // Note: In production, consider using useQueries from React Query
   // For now, we'll use a simpler approach
   const { data: userPerms } = useUserPermissions(userId);

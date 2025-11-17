@@ -72,11 +72,10 @@ import {
   useCreateRole,
   useUpdateRole,
   useDeleteRole,
-  useEntityTypes,
 } from '@/modules/permissions-admin/hooks'
 import { usePermissions } from '@/modules/permissions-admin/hooks'
 import { PermissionCheckboxGroup } from '@/modules/permissions-admin/components'
-import type { Role, CreateRoleRequest, UpdateRoleRequest } from '@/modules/permissions-admin/types'
+import type { Role } from '@/modules/permissions-admin/types'
 
 // =============================================================================
 // CREATE/EDIT ROLE DIALOG
@@ -165,10 +164,10 @@ function RoleDialog({ role, open, onOpenChange, onSuccess }: RoleDialogProps) {
       setEntityType('null')
       setDescription('')
       setSelectedPermissions(new Set())
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Erreur',
-        description: error.message || 'Une erreur est survenue',
+        description: error instanceof Error ? error.message : 'Une erreur est survenue',
         variant: 'destructive',
       })
     }
@@ -239,7 +238,7 @@ function RoleDialog({ role, open, onOpenChange, onSuccess }: RoleDialogProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="entity_type">Type d'entité</Label>
+              <Label htmlFor="entity_type">Type d&apos;entité</Label>
               <Select value={entityType} onValueChange={setEntityType}>
                 <SelectTrigger id="entity_type">
                   <SelectValue placeholder="Sélectionner un type" />
@@ -420,10 +419,10 @@ function RolesTableContent() {
       })
       setDeleteDialogOpen(false)
       setSelectedRole(null)
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Erreur',
-        description: error.message || 'Impossible de supprimer le rôle',
+        description: error instanceof Error ? error.message : 'Impossible de supprimer le rôle',
         variant: 'destructive',
       })
     }

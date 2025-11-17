@@ -7,8 +7,8 @@
  * @date 2025-11-17
  */
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Permission, PermissionFilter } from "../types";
+import { useQuery } from "@tanstack/react-query";
+import type { PermissionFilter } from "../types";
 import { permissionsApi } from "../services/api";
 
 // =============================================================================

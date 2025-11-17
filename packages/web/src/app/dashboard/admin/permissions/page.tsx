@@ -42,7 +42,7 @@ import {
   useResources,
   usePermissionsByResource,
 } from '@/modules/permissions-admin/hooks'
-import { PermissionBadge, PermissionBadgeCompact } from '@/modules/permissions-admin/components'
+import { PermissionBadge } from '@/modules/permissions-admin/components'
 import type { PermissionFilter } from '@/modules/permissions-admin/types'
 
 // =============================================================================

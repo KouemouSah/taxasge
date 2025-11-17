@@ -209,7 +209,7 @@ export function PermissionCheckbox({
           <div className="flex items-start gap-2 text-xs text-amber-700">
             <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
             <span>
-              Cette permission nécessite une confirmation avant d'être accordée
+              Cette permission nécessite une confirmation avant d&apos;être accordée
             </span>
           </div>
         )}

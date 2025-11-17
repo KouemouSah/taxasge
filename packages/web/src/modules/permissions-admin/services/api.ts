@@ -17,7 +17,6 @@ import type {
   GrantUserPermissionRequest,
   RoleWithPermissions,
   UserWithPermissions,
-  PaginatedResponse,
 } from "../types";
 
 // =============================================================================
