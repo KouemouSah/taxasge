@@ -84,16 +84,16 @@ BEGIN
     PERFORM assign_permission_by_name('supervisor_dgi', 'assignment.update_priority');
     PERFORM assign_permission_by_name('supervisor_dgi', 'assignment.extend_deadline');
 
-    -- Supervisor Ministry (same as DGI)
-    PERFORM assign_permission_by_name('supervisor_ministry', 'assignment.view');
-    PERFORM assign_permission_by_name('supervisor_ministry', 'assignment.list');
-    PERFORM assign_permission_by_name('supervisor_ministry', 'assignment.create');
-    PERFORM assign_permission_by_name('supervisor_ministry', 'assignment.auto_assign');
-    PERFORM assign_permission_by_name('supervisor_ministry', 'assignment.reassign');
-    PERFORM assign_permission_by_name('supervisor_ministry', 'assignment.reassign_in_progress'); -- CRITICAL
-    PERFORM assign_permission_by_name('supervisor_ministry', 'assignment.cancel');
-    PERFORM assign_permission_by_name('supervisor_ministry', 'assignment.update_priority');
-    PERFORM assign_permission_by_name('supervisor_ministry', 'assignment.extend_deadline');
+    -- Supervisor (general supervisor role)
+    PERFORM assign_permission_by_name('supervisor', 'assignment.view');
+    PERFORM assign_permission_by_name('supervisor', 'assignment.list');
+    PERFORM assign_permission_by_name('supervisor', 'assignment.create');
+    PERFORM assign_permission_by_name('supervisor', 'assignment.auto_assign');
+    PERFORM assign_permission_by_name('supervisor', 'assignment.reassign');
+    PERFORM assign_permission_by_name('supervisor', 'assignment.reassign_in_progress'); -- CRITICAL
+    PERFORM assign_permission_by_name('supervisor', 'assignment.cancel');
+    PERFORM assign_permission_by_name('supervisor', 'assignment.update_priority');
+    PERFORM assign_permission_by_name('supervisor', 'assignment.extend_deadline');
 
     RAISE NOTICE '✅ Supervisors: Granted management permissions';
 END $$;
@@ -122,51 +122,42 @@ END $$;
 
 
 -- ============================================================================
--- 4. TAXPAYER ROLE - Read-only Access
+-- 4. CITIZEN & BUSINESS ROLES - Read-only Access
 -- ============================================================================
--- Taxpayers can only view their own assignment status
+-- Citizens and businesses can only view their own assignment status
 DO $$
 BEGIN
-    PERFORM assign_permission_by_name('taxpayer', 'assignment.view');
+    -- Citizen role
+    PERFORM assign_permission_by_name('citizen', 'assignment.view');
 
-    RAISE NOTICE '✅ Taxpayer: Granted read-only permissions';
+    -- Business role
+    PERFORM assign_permission_by_name('business', 'assignment.view');
+
+    RAISE NOTICE '✅ Citizen & Business: Granted read-only permissions';
 END $$;
 
 
 -- ============================================================================
--- 5. PROFESSIONAL ACCOUNTANT ROLE - Read-only + List
+-- 5. ACCOUNTANT ROLE - Read-only + List
 -- ============================================================================
--- Professional accountants can view and list assignments for their clients
+-- Accountants can view and list assignments for their clients
 DO $$
 BEGIN
-    PERFORM assign_permission_by_name('professional_accountant', 'assignment.view');
-    PERFORM assign_permission_by_name('professional_accountant', 'assignment.list');
+    PERFORM assign_permission_by_name('accountant', 'assignment.view');
+    PERFORM assign_permission_by_name('accountant', 'assignment.list');
 
-    RAISE NOTICE '✅ Professional Accountant: Granted read permissions';
+    RAISE NOTICE '✅ Accountant: Granted read permissions';
 END $$;
 
 
 -- ============================================================================
--- 6. DEVELOPER ROLE - Full Access for Debugging
+-- DEVELOPER ROLE: Not present in database schema
 -- ============================================================================
-DO $$
-DECLARE
-    v_dev_role_id UUID;
-    v_perm RECORD;
-BEGIN
-    SELECT id INTO v_dev_role_id FROM roles WHERE code = 'developer';
-
-    -- Grant ALL permissions to developer (for debugging/testing)
-    FOR v_perm IN SELECT id FROM permissions
-    LOOP
-        INSERT INTO role_permissions (role_id, permission_id, granted)
-        VALUES (v_dev_role_id, v_perm.id, TRUE)
-        ON CONFLICT (role_id, permission_id) DO UPDATE
-        SET granted = TRUE;
-    END LOOP;
-
-    RAISE NOTICE '✅ Developer: Granted ALL permissions (debug access)';
-END $$;
+-- Note: The 'developer' role does not exist in the current database schema.
+-- Only the following 8 system roles exist:
+-- 1. admin, 2. supervisor_dgi, 3. supervisor, 4. dgi_agent,
+-- 5. ministry_agent, 6. citizen, 7. business, 8. accountant
+-- ============================================================================
 
 
 -- ============================================================================
@@ -197,16 +188,9 @@ BEGIN
     PERFORM assign_permission_by_name('supervisor_dgi', 'roles.view');
     PERFORM assign_permission_by_name('supervisor_dgi', 'user_permissions.view');
 
-    PERFORM assign_permission_by_name('supervisor_ministry', 'permissions.view');
-    PERFORM assign_permission_by_name('supervisor_ministry', 'roles.view');
-    PERFORM assign_permission_by_name('supervisor_ministry', 'user_permissions.view');
-
-    -- Developer can manage permissions (for development)
-    PERFORM assign_permission_by_name('developer', 'permissions.view');
-    PERFORM assign_permission_by_name('developer', 'permissions.create');
-    PERFORM assign_permission_by_name('developer', 'roles.view');
-    PERFORM assign_permission_by_name('developer', 'user_permissions.view');
-    PERFORM assign_permission_by_name('developer', 'user_permissions.grant');
+    PERFORM assign_permission_by_name('supervisor', 'permissions.view');
+    PERFORM assign_permission_by_name('supervisor', 'roles.view');
+    PERFORM assign_permission_by_name('supervisor', 'user_permissions.view');
 
     RAISE NOTICE '✅ Permissions module: Access configured';
 END $$;
