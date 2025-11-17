@@ -246,6 +246,11 @@ class FiscalServicesService {
         params.push(filters.serviceType);
       }
 
+      if (filters.calculationMethod) {
+        sql += ' AND calculation_method = ?';
+        params.push(filters.calculationMethod);
+      }
+
       if (filters.minAmount !== undefined) {
         sql += ' AND tasa_expedicion >= ?';
         params.push(filters.minAmount);

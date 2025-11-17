@@ -221,16 +221,36 @@ const App = () => {
     }
 
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      // Don't allow back during onboarding
       if (showOnboarding || checkingOnboarding) {
-        // Don't allow back during onboarding
         return true;
       }
 
-      return !navigateBack();
+      // Handle back navigation
+      if (navigationHistory.length <= 1) {
+        // Already at root screen - allow exit
+        return false;
+      }
+
+      // Navigate back within app
+      const newHistory = [...navigationHistory];
+      newHistory.pop();
+      const previousScreen = newHistory[newHistory.length - 1];
+
+      setNavigationHistory(newHistory);
+      setCurrentScreen(previousScreen);
+
+      // Clear selected service if returning to home or search
+      if (previousScreen === 'home' || previousScreen === 'search') {
+        setSelectedService(null);
+      }
+
+      // Prevent exit - we handled the back
+      return true;
     });
 
     return () => backHandler.remove();
-  }, [navigateBack, showOnboarding, checkingOnboarding]);
+  }, [navigationHistory, showOnboarding, checkingOnboarding, currentScreen]);
 
   /**
    * Check if user has already completed onboarding

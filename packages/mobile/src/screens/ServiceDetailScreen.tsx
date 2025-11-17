@@ -152,8 +152,10 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
       // Split documents that contain commas into separate entries
       const expandedDocuments: ServiceDocument[] = [];
       details.documents.forEach(doc => {
-        // Split document names if they contain commas (ES only for now)
+        // Split document names if they contain commas (all languages)
         const namesEs = doc.document_name.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0);
+        const namesFr = doc.document_name_fr ? doc.document_name_fr.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0) : [];
+        const namesEn = doc.document_name_en ? doc.document_name_en.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0) : [];
 
         // Use the length to determine how many documents we have
         const maxLength = namesEs.length;
@@ -162,20 +164,28 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
           // Multiple documents in one line - split them
           for (let i = 0; i < maxLength; i++) {
             const cleanNameEs = (namesEs[i] || namesEs[0] || '').replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim();
+            const cleanNameFr = namesFr[i] ? namesFr[i].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim() : undefined;
+            const cleanNameEn = namesEn[i] ? namesEn[i].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim() : undefined;
 
             expandedDocuments.push({
               ...doc,
               document_name: cleanNameEs,
+              document_name_fr: cleanNameFr,
+              document_name_en: cleanNameEn,
               document_code: `${doc.document_code}-${i + 1}`,
             });
           }
         } else {
           // Single document - also clean it
           const cleanNameEs = namesEs[0].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim();
+          const cleanNameFr = namesFr[0] ? namesFr[0].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim() : undefined;
+          const cleanNameEn = namesEn[0] ? namesEn[0].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim() : undefined;
 
           expandedDocuments.push({
             ...doc,
             document_name: cleanNameEs,
+            document_name_fr: cleanNameFr,
+            document_name_en: cleanNameEn,
           });
         }
       });

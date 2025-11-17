@@ -123,22 +123,36 @@ class ServiceDetailsService {
     try {
       const db = DatabaseService.getInstance();
 
-      // Load all translations in parallel
-      console.log('[ServiceDetailsService] Loading translations...');
-      const [documentTranslations, procedureTranslations, stepTranslations] = await Promise.all([
+      // Load translations AND data in parallel for maximum speed
+      console.log('[ServiceDetailsService] Loading all data in parallel...');
+      const [
+        documentTranslations,
+        procedureTranslations,
+        stepTranslations,
+        documents,
+        procedures
+      ] = await Promise.all([
         TranslationService.getTranslationsForEntityType('document_template'),
         TranslationService.getTranslationsForEntityType('procedure_template'),
         TranslationService.getTranslationsForEntityType('procedure_step'),
+        db.query<ServiceDocument>(
+          'SELECT * FROM v_service_documents WHERE fiscal_service_id = ?',
+          [serviceId]
+        ),
+        db.query<ServiceProcedure>(
+          `SELECT
+            pt.*,
+            spa.applies_to,
+            spa.display_order
+          FROM service_procedure_assignments spa
+          JOIN procedure_templates pt ON spa.template_id = pt.id
+          WHERE spa.fiscal_service_id = ?
+          ORDER BY spa.display_order, pt.template_code`,
+          [serviceId]
+        )
       ]);
-      console.log('[ServiceDetailsService] Translations loaded');
 
-      // Get documents
-      const documents = await db.query<ServiceDocument>(
-        'SELECT * FROM v_service_documents WHERE fiscal_service_id = ?',
-        [serviceId]
-      );
-
-      console.log(`[ServiceDetailsService] Found ${documents.length} documents`);
+      console.log(`[ServiceDetailsService] Loaded ${documents.length} documents and ${procedures.length} procedures in parallel`);
 
       // Enrich documents with translations
       const enrichedDocuments = documents.map(doc => {
@@ -149,21 +163,6 @@ class ServiceDetailsService {
           document_name_en: trans?.en?.name,
         };
       });
-
-      // Get procedures
-      const procedures = await db.query<ServiceProcedure>(
-        `SELECT
-          pt.*,
-          spa.applies_to,
-          spa.display_order
-        FROM service_procedure_assignments spa
-        JOIN procedure_templates pt ON spa.template_id = pt.id
-        WHERE spa.fiscal_service_id = ?
-        ORDER BY spa.display_order, pt.template_code`,
-        [serviceId]
-      );
-
-      console.log(`[ServiceDetailsService] Found ${procedures.length} procedures`);
 
       // Enrich procedures with translations
       const enrichedProcedures = procedures.map(proc => {
@@ -177,32 +176,39 @@ class ServiceDetailsService {
         };
       });
 
-      // Get steps for each procedure
+      // Load ALL procedure steps in parallel (not sequential!)
       const procedureSteps = new Map<string, ProcedureStep[]>();
 
-      for (const proc of enrichedProcedures) {
-        const steps = await db.query<ProcedureStep>(
-          `SELECT * FROM procedure_template_steps
-          WHERE template_id = ?
-          ORDER BY step_number`,
-          [proc.id]
+      if (enrichedProcedures.length > 0) {
+        const allStepsPromises = enrichedProcedures.map(proc =>
+          db.query<ProcedureStep>(
+            `SELECT * FROM procedure_template_steps
+            WHERE template_id = ?
+            ORDER BY step_number`,
+            [proc.id]
+          ).then(steps => ({ proc, steps }))
         );
 
-        // Enrich steps with translations
-        const enrichedSteps = steps.map(step => {
-          const stepCode = `${proc.template_code}:step_${step.step_number}`;
-          const trans = stepTranslations[stepCode];
-          return {
-            ...step,
-            description_fr: trans?.fr?.description,
-            description_en: trans?.en?.description,
-            instructions_fr: trans?.fr?.instructions,
-            instructions_en: trans?.en?.instructions,
-          };
+        const allStepsResults = await Promise.all(allStepsPromises);
+
+        // Enrich steps with translations and map to procedures
+        allStepsResults.forEach(({ proc, steps }) => {
+          const enrichedSteps = steps.map(step => {
+            const stepCode = `${proc.template_code}:step_${step.step_number}`;
+            const trans = stepTranslations[stepCode];
+            return {
+              ...step,
+              description_fr: trans?.fr?.description,
+              description_en: trans?.en?.description,
+              instructions_fr: trans?.fr?.instructions,
+              instructions_en: trans?.en?.instructions,
+            };
+          });
+
+          procedureSteps.set(proc.id, enrichedSteps);
         });
 
-        procedureSteps.set(proc.id, enrichedSteps);
-        console.log(`[ServiceDetailsService] Found ${enrichedSteps.length} steps for procedure ${proc.template_code}`);
+        console.log(`[ServiceDetailsService] Loaded steps for ${allStepsResults.length} procedures in parallel`);
       }
 
       return {
