@@ -25,9 +25,15 @@ interface OnboardingScreenProps {
   language: 'es' | 'fr' | 'en';
 }
 
+interface OnboardingSlide {
+  image?: any; // React Native ImageSourcePropType
+  title: string;
+  description: string;
+}
+
 // TODO: Add proper onboarding images to src/assets/onboarding/
 // Images removed temporarily to fix bundling - Metro cannot resolve paths outside mobile package
-const ONBOARDING_DATA = {
+const ONBOARDING_DATA: Record<'es' | 'fr' | 'en', OnboardingSlide[]> = {
   es: [
     {
       // image: require('../../.github/docs-internal/Documentations/MOBILE/Design/2.png'),

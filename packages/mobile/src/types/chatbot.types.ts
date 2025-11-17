@@ -88,6 +88,7 @@ export interface ChatbotAction {
   params?: Record<string, any>; // Paramètres pour l'action
   items?: ChatbotSuggestion[]; // Pour suggestions
   url?: string; // Pour external_link
+  showButton?: boolean; // Afficher un bouton pour l'action
 }
 
 /**

@@ -254,13 +254,62 @@ Si vous rencontrez des problèmes :
 
 ---
 
+## 🤖 Build via GitHub Actions CI/CD
+
+### Configuration Automatique
+
+**Bonne nouvelle** : Votre workflow GitHub Actions est **déjà configuré** pour générer des APK avec le bundle JavaScript inclus !
+
+**Configuration clé** dans `android/app/build.gradle` :
+```gradle
+debuggableVariants = []  // Bundle JS dans TOUTES les variantes
+```
+
+### Comment Récupérer l'APK du CI/CD
+
+1. **Accédez à GitHub Actions** :
+   - Allez sur votre repository GitHub
+   - Cliquez sur l'onglet **Actions**
+   - Sélectionnez le workflow **"📱 Mobile CI (React Native)"**
+
+2. **Trouvez le run réussi** :
+   - Cherchez un run avec ✅ (succès)
+   - Cliquez sur le run
+
+3. **Téléchargez l'artifact** :
+   - Scrollez vers le bas jusqu'à **"Artifacts"**
+   - Téléchargez : `taxasge-android-{environment}-{sha}.zip`
+   - Extrayez pour obtenir `app-debug.apk`
+
+4. **Installez sur tablette** :
+   - L'APK est **100% fonctionnelle** sans Metro
+   - Suivez les étapes d'installation normales
+
+### Vérification que le Bundle est Inclus
+
+```bash
+# Vérifier le contenu de l'APK téléchargée
+unzip -l app-debug.apk | grep "index.android.bundle"
+
+# Vous devriez voir :
+# assets/index.android.bundle
+```
+
+✅ Si vous voyez cette ligne = **Bundle inclus, APK fonctionnelle offline**
+
+📖 **Voir** : [`GITHUB_ACTIONS_APK_VERIFICATION.md`](./GITHUB_ACTIONS_APK_VERIFICATION.md) pour tous les détails
+
 ## 🎉 Résumé
 
 **Problème** : APK sans bundle JavaScript → Erreur "Unable to load script"
 
-**Solution** : Script de build standalone qui génère et inclut le bundle
+**Solution** :
+- **Build local** : Script de build standalone qui génère et inclut le bundle
+- **Build CI/CD** : Configuration Gradle `debuggableVariants = []` déjà en place
 
-**Commande** : `npm run build:android:standalone:offline`
+**Commandes** :
+- Build local : `npm run build:android:standalone:offline`
+- Build CI/CD : Automatique via GitHub Actions
 
 **Résultat** : APK fonctionnelle, installation offline, aucune dépendance Metro
 
@@ -269,5 +318,6 @@ Si vous rencontrez des problèmes :
 ---
 
 **Créé le** : 2025-11-16
+**Mis à jour** : 2025-11-16
 **Version** : 1.0.0
 **Testé sur** : React Native 0.80.0, Android SDK 35

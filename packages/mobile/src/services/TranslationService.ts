@@ -520,6 +520,91 @@ class TranslationService {
       console.error('[TranslationService] Preload error:', error);
     }
   }
+
+  /**
+   * Get all translations for a specific entity type
+   * Returns a nested object structure for easy lookup
+   *
+   * @param entityType Type of entity to fetch translations for
+   * @returns Object with entity_code as key, containing fr/en translations
+   *
+   * @example
+   * ```typescript
+   * const translations = await TranslationService.getTranslationsForEntityType('ministry');
+   * // Returns:
+   * // {
+   * //   'M-001': {
+   * //     fr: { name: 'Ministère...', description: '...' },
+   * //     en: { name: 'Ministry...', description: '...' }
+   * //   },
+   * //   ...
+   * // }
+   * ```
+   */
+  static async getTranslationsForEntityType(
+    entityType: EntityType
+  ): Promise<Record<string, {
+    fr?: { name?: string; description?: string; instructions?: string };
+    en?: { name?: string; description?: string; instructions?: string };
+  }>> {
+    try {
+      console.log(`[TranslationService] Loading all ${entityType} translations...`);
+
+      // Query all translations for this entity type (FR and EN)
+      const translations = await db.query<{
+        entity_code: string;
+        language_code: string;
+        field_name: string;
+        translation_text: string;
+      }>(
+        `SELECT entity_code, language_code, field_name, translation_text
+         FROM entity_translations
+         WHERE entity_type = ?
+           AND language_code IN ('fr', 'en')
+         ORDER BY entity_code, language_code, field_name`,
+        [entityType]
+      );
+
+      console.log(`[TranslationService] Found ${translations.length} ${entityType} translations`);
+
+      // Build nested structure
+      const result: Record<string, {
+        fr?: { name?: string; description?: string; instructions?: string };
+        en?: { name?: string; description?: string; instructions?: string };
+      }> = {};
+
+      translations.forEach(row => {
+        const { entity_code, language_code, field_name, translation_text } = row;
+
+        // Initialize entity_code if needed
+        if (!result[entity_code]) {
+          result[entity_code] = {};
+        }
+
+        // Initialize language if needed
+        if (!result[entity_code][language_code as 'fr' | 'en']) {
+          result[entity_code][language_code as 'fr' | 'en'] = {};
+        }
+
+        // Set the field
+        result[entity_code][language_code as 'fr' | 'en']![field_name as 'name' | 'description' | 'instructions'] = translation_text;
+
+        // Cache the translation
+        this.saveToCache(
+          entityType,
+          entity_code,
+          field_name as FieldName,
+          language_code as LanguageCode,
+          translation_text
+        );
+      });
+
+      return result;
+    } catch (error) {
+      console.error(`[TranslationService] Error loading ${entityType} translations:`, error);
+      return {};
+    }
+  }
 }
 
 export default TranslationService;
