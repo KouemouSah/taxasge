@@ -2,10 +2,10 @@
 
 **Date de création** : 2025-11-17
 **Auteur** : Claude Code
-**Statut** : 🟡 EN COURS (65% complété - Phase 1 ✅ + Phase 2 ✅ Routes Integration Complete)
+**Statut** : 🟡 EN COURS (70% complété - Phase 1 ✅ + Phase 2 ✅ + Phase 3 Custom Roles ✅)
 **Priorité** : ⭐⭐⭐ HAUTE
 **Durée estimée** : 5 semaines (25 jours ouvrables)
-**Dernière mise à jour** : 2025-11-17 15:56
+**Dernière mise à jour** : 2025-11-17 16:15
 
 ---
 
@@ -1746,16 +1746,29 @@ assert response.status_code == 403
 - ✅ Legacy permission checking code entièrement remplacé par RBAC
 - ✅ Commit: dddb33f - feat(permissions): Complete Phase 2 - Integrate decorators in all Assignment routes
 
-### **Phase 3 : Rôles + Tests (Semaine 3)** 🟡 PARTIELLEMENT COMPLÉTÉE (Seeds ✅, Tests TODO)
+### **Phase 3 : Rôles + Tests (Semaine 3)** 🟡 PARTIELLEMENT COMPLÉTÉE (Custom Roles ✅, Tests TODO)
 
 - [x] Script `seed_predefined_roles.sql` créé et exécuté
 - [x] Permissions associées aux rôles système (65 grants assignés)
-- [x] Script `seed_permissions.sql` créé et exécuté (35 permissions)
-- [ ] 3 rôles custom exemples créés - **TODO** (actuellement seulement 8 rôles système)
-- [ ] Tests unitaires permissions (>80% coverage) - **TODO**
-- [ ] Tests intégration Assignment + permissions - **TODO**
-- [ ] Tests cas limite (403, permissions expirées, etc.) - **TODO**
-- [ ] Documentation tests - **TODO**
+- [x] Script `seed_permissions.sql` créé et exécuté (35 permissions initiales)
+- [x] 17 nouvelles permissions synchronisées (28 total Assignment permissions)
+- [x] 3 rôles custom exemples créés et configurés:
+  - **supervisor_senior**: 28 permissions (TOUTES), 5 critiques
+  - **supervisor_dgi_junior**: 22 permissions (limitées), 1 critique
+  - **supervisor_readonly**: 13 permissions (lecture seule), 0 critique
+- [x] Script `seed_custom_roles.sql` créé et exécuté
+- [x] Script `sync_assignment_permissions.py` créé et exécuté
+- [ ] Tests unitaires permissions (>80% coverage) - **TODO Phase 4**
+- [ ] Tests intégration Assignment + permissions - **TODO Phase 4**
+- [ ] Tests cas limite (403, permissions expirées, etc.) - **TODO Phase 4**
+- [ ] Documentation tests - **TODO Phase 4**
+
+**Résumé Phase 3:**
+- ✅ 3 rôles custom créés avec permissions graduées (read-only → junior → senior)
+- ✅ 28 permissions Assignment totales en DB
+- ✅ 11 rôles totaux (8 système + 3 custom)
+- ✅ Permissions critiques identifiées (5 total)
+- ✅ Scripts seed reproductibles
 
 ### **Phase 4 : UI Admin (Semaine 4)** 🔵
 
