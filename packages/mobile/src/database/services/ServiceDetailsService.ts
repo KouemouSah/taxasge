@@ -5,7 +5,7 @@
  */
 
 import { DatabaseService } from '../DatabaseService';
-import { TranslationService } from '../services/TranslationService';
+import TranslationService from '../../services/TranslationService';
 
 /**
  * Service Document type based on v_service_documents view
