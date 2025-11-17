@@ -166,22 +166,16 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
             expandedDocuments.push({
               ...doc,
               document_name: cleanNameEs,
-              document_name_fr: cleanNameFr || undefined,
-              document_name_en: cleanNameEn || undefined,
               document_code: `${doc.document_code}-${i + 1}`,
             });
           }
         } else {
           // Single document - also clean it
           const cleanNameEs = namesEs[0].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim();
-          const cleanNameFr = namesFr[0] ? namesFr[0].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim() : undefined;
-          const cleanNameEn = namesEn[0] ? namesEn[0].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim() : undefined;
 
           expandedDocuments.push({
             ...doc,
             document_name: cleanNameEs,
-            document_name_fr: cleanNameFr,
-            document_name_en: cleanNameEn,
           });
         }
       });
@@ -189,19 +183,15 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
       // Split procedures that contain commas into separate entries
       const expandedProcedures: ServiceProcedure[] = [];
       details.procedures.forEach(proc => {
-        // Split all language versions (es, fr, en)
-        const namesEs = proc.procedure_name.split(',').map(n => n.trim()).filter(n => n.length > 0);
-        const namesFr = proc.procedure_name_fr ? proc.procedure_name_fr.split(',').map(n => n.trim()).filter(n => n.length > 0) : [];
-        const namesEn = proc.procedure_name_en ? proc.procedure_name_en.split(',').map(n => n.trim()).filter(n => n.length > 0) : [];
+        // Split procedure names if they contain commas (ES only for now)
+        const namesEs = proc.name_es.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0);
 
         // Use the longest array to determine how many procedures we have
-        const maxLength = Math.max(namesEs.length, namesFr.length, namesEn.length);
+        const maxLength = namesEs.length;
 
         if (maxLength > 1) {
           // Multiple procedures in one line - split them
           for (let i = 0; i < maxLength; i++) {
-            const cleanNameEs = (namesEs[i] || namesEs[0] || '').replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim();
-            const cleanNameFr = (namesFr[i] || '').replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim();
             const cleanNameEn = (namesEn[i] || '').replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim();
 
             expandedProcedures.push({
