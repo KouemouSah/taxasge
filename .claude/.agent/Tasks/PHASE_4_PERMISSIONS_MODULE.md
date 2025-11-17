@@ -1770,10 +1770,25 @@ assert response.status_code == 403
 - ✅ Permissions critiques identifiées (5 total)
 - ✅ Scripts seed reproductibles
 
-### **Phase 4 : UI Admin (Semaine 4)** 🔵
+### **Phase 4 : UI Admin (Semaine 4)** 🟡 70% COMPLÉTÉE
 
-- [ ] Page `/admin/permissions` (liste permissions)
-- [ ] Page `/admin/roles` (liste rôles)
+**Module Frontend** ✅
+- [x] Structure module `packages/web/src/modules/permissions-admin/`
+- [x] Types TypeScript (245 lignes)
+- [x] API Service (296 lignes)
+- [x] React Query hooks (3 fichiers, 500+ lignes)
+  - [x] usePermissions (query + filtres)
+  - [x] useRoles (CRUD + mutations)
+  - [x] useUserPermissions (user perms + temp grants)
+- [x] QueryProvider avec config optimisée
+- [x] Composants UI (3 fichiers, 550+ lignes)
+  - [x] PermissionBadge (display + indicators)
+  - [x] RoleSelector (dropdown + grouping)
+  - [x] PermissionCheckbox (checkbox + confirmation)
+
+**Pages Admin** 🔵 TODO
+- [ ] Page `/admin/permissions` (liste + filtres)
+- [ ] Page `/admin/roles` (CRUD rôles custom)
 - [ ] Modal "Créer Rôle Custom"
 - [ ] Édition rôle existant
 - [ ] Page `/admin/users/{id}/permissions`
@@ -2114,9 +2129,151 @@ app/modules/permissions/
 
 ---
 
+#### **Phase 4 : Frontend UI Admin - Module Permissions-Admin (70% ✅)**
+**Date** : 2025-11-17 (Soir - Suite)
+**Durée** : ~3 heures
+**Statut** : 🟡 EN COURS (Hooks & Components ✅, Pages TODO)
+
+**Réalisations** :
+- ✅ Module frontend créé : `packages/web/src/modules/permissions-admin/`
+- ✅ Architecture en mode module (pattern Next.js + React Query)
+- ✅ 11 fichiers TypeScript créés (~2,186 lignes)
+- ✅ Types TypeScript complets (245 lignes)
+- ✅ API Service avec authentification (296 lignes)
+- ✅ 3 hooks React Query (500+ lignes)
+- ✅ QueryProvider avec config optimisée (96 lignes)
+- ✅ 3 composants UI réutilisables (550+ lignes)
+
+**Structure Module** :
+```
+packages/web/src/modules/permissions-admin/
+├── types/
+│   └── index.ts           (245 lignes - 28 interfaces, 3 constants)
+├── services/
+│   └── api.ts             (296 lignes - ApiClient + 3 API modules)
+├── hooks/
+│   ├── usePermissions.ts  (115 lignes - Query hooks + utilities)
+│   ├── useRoles.ts        (200 lignes - CRUD + mutations + bulk ops)
+│   ├── useUserPermissions.ts (187 lignes - User perms + temp grants)
+│   └── index.ts           (Barrel exports)
+├── components/
+│   ├── PermissionBadge.tsx    (138 lignes - Badge + indicators)
+│   ├── RoleSelector.tsx        (218 lignes - Dropdown + grouping)
+│   ├── PermissionCheckbox.tsx  (222 lignes - Checkbox + confirmation)
+│   └── index.ts                (Barrel exports)
+└── providers/
+    └── QueryProvider.tsx       (96 lignes - React Query setup)
+```
+
+**Types & Interfaces (245 lignes)** :
+- Core types: `Permission`, `Role`, `RolePermission`, `UserPermission`
+- Request types: `CreateRoleRequest`, `UpdateRoleRequest`, `GrantUserPermissionRequest`
+- Response types: `RoleWithPermissions`, `UserWithPermissions`, `PaginatedResponse`
+- UI types: `PermissionCategory`, `RoleStats`, filters
+- Form types: `RoleFormData`, `UserPermissionFormData`
+- Constants: `ENTITY_TYPES`, `PERMISSION_ACTIONS`, `MODULE_NAMES`
+
+**API Service (296 lignes)** :
+- **ApiClient** class avec méthodes HTTP (get, post, put, patch, delete)
+- Bearer token authentication depuis localStorage
+- **permissionsApi** : `getAll()`, `getById()`, `getByResource()`
+- **rolesApi** : CRUD complet + `grantPermission()`, `revokePermission()`
+- **userPermissionsApi** : `getUserPermissions()`, `hasPermission()`, grants/revokes
+
+**React Hooks avec React Query (500+ lignes)** :
+
+**usePermissions.ts (115 lignes)** :
+- `usePermissions(filters?)` - Fetch all permissions avec filtrage
+- `usePermission(id)` - Fetch single permission
+- `usePermissionsByResource()` - Group permissions by resource
+- `useModuleNames()` - Get unique module names
+- `useResources(moduleName?)` - Get unique resources filtered
+- Query keys: `permissionsKeys.*` pour cache management
+
+**useRoles.ts (200 lignes)** :
+- Query hooks: `useRoles()`, `useRole(id)`, `useRolePermissions(roleId)`
+- Mutation hooks: `useCreateRole()`, `useUpdateRole()`, `useDeleteRole()`
+- Permission ops: `useGrantRolePermission()`, `useRevokeRolePermission()`
+- Bulk operations: `useBulkUpdateRolePermissions()` (grant + revoke en batch)
+- Utility hooks: `useEntityTypes()`, `useRoleHasPermission()`
+- Automatic cache invalidation après mutations
+
+**useUserPermissions.ts (187 lignes)** :
+- Query hooks: `useUserPermissions(userId)`, `useHasPermission()`, `useHasPermissions()`
+- Mutation hooks: `useGrantUserPermission()`, `useRevokeUserPermission()`
+- Bulk ops: `useBulkGrantUserPermissions()`
+- Utility hooks:
+  - `useExpiredPermissions()` - Permissions expirées
+  - `useTemporaryPermissions()` - Permissions temporaires actives
+  - `usePermanentPermissions()` - Permissions permanentes
+  - `usePermissionOverrides()` - Overrides (granted/denied)
+
+**QueryProvider (96 lignes)** :
+- QueryClientProvider avec configuration optimisée :
+  - Stale time: 5 minutes (admin panel)
+  - GC time: 10 minutes
+  - No refetch on window focus
+  - Retry: 1 for queries, 0 for mutations
+- Singleton pattern pour browser QueryClient
+- React Query Devtools integration (dev mode only)
+
+**Composants UI (550+ lignes)** :
+
+**PermissionBadge.tsx (138 lignes)** :
+- Display permission avec indicateurs visuels
+- 3 modes: `full` (name complet), `action` (action only), `resource` (resource.action)
+- 3 sizes: `sm`, `md`, `lg`
+- Critical permissions: red border + AlertTriangle icon
+- Tooltips avec description
+- Variant: `PermissionBadgeCompact` pour listes
+
+**RoleSelector.tsx (218 lignes)** :
+- Dropdown riche avec Radix UI Select
+- Grouping par entity type (Global, DGI, Ministry)
+- Filter: system/custom/all roles
+- Entity icons (Globe, Building2)
+- System badges pour rôles système
+- Variant: `SimpleRoleSelector` sans grouping
+
+**PermissionCheckbox.tsx (222 lignes)** :
+- Checkbox pour grant/revoke permissions
+- 3 modes:
+  - `compact`: Single line avec nom
+  - `normal`: Nom + description
+  - `detailed`: Nom + description + module badge + warning
+- **Confirmation dialog** pour permissions critiques
+- `PermissionCheckboxGroup` avec grouping par resource
+
+**Stack Technique** :
+- ✅ @tanstack/react-query v5.51.9 (data fetching + caching)
+- ✅ Radix UI components (shadcn/ui)
+- ✅ Lucide icons (AlertTriangle, Shield, Building2, Globe)
+- ✅ TypeScript strict mode
+- ✅ Fetch API (native, pas axios)
+- ✅ Zod (validation - disponible dans package.json)
+
+**Optimisations** :
+- Cache intelligent avec React Query (5min stale time)
+- Invalidation automatique après mutations
+- Batch operations pour bulk updates
+- Singleton QueryClient pattern
+- No unnecessary re-renders
+
+**Commits** :
+- `424c8c5` - feat(permissions): Add Phase 4 Frontend Module - Hooks & Components
+
+**Prochaines Étapes Phase 4** :
+- [ ] Créer page `/admin/permissions` (liste + filtres)
+- [ ] Créer page `/admin/roles` (CRUD rôles custom)
+- [ ] Créer page `/admin/users/{id}/permissions` (attribution temporaire)
+- [ ] Intégrer avec layout app (navigation, guards)
+- [ ] Tests E2E avec Playwright
+
+---
+
 ### **État Actuel du Système**
 
-**Progression Globale** : **70%** (3/5 phases complètes)
+**Progression Globale** : **75%** (Phase 4 frontend 70% complete)
 
 **Modules Complétés** :
 - ✅ **Phase 1** : Fondations (DB + Code Backend)
@@ -2124,7 +2281,7 @@ app/modules/permissions/
 - ✅ **Phase 3** : Custom Roles + Permission Sync
 
 **Modules Restants** :
-- ⏳ **Phase 4** : UI Admin (Frontend - en mode module)
+- 🟡 **Phase 4** : UI Admin (70% - Hooks & Components ✅, Pages TODO)
 - ⏳ **Phase 5** : Documentation + Tests + Déploiement
 
 **Capacités Actuelles** :
