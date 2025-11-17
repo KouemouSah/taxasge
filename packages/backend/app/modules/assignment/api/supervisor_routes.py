@@ -106,15 +106,8 @@ class WorkloadBalanceResponse(BaseModel):
 # ============================================================================
 # AUTHORIZATION HELPERS
 # ============================================================================
-
-def check_supervisor_permission(current_user: UserResponse):
-    """Verify user is supervisor"""
-    if current_user.role not in ["supervisor_dgi", "supervisor_ministry", "admin"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Permission denied. Supervisor role required (current: {current_user.role})"
-        )
-
+# Note: Authorization is now handled via @require_permission decorators
+# Legacy check_supervisor_permission function has been removed (replaced by RBAC system)
 
 def get_entity_context(current_user: UserResponse) -> tuple[str, Optional[str]]:
     """Get entity type and ID based on supervisor role"""
@@ -264,6 +257,7 @@ async def get_dashboard(
 # ============================================================================
 
 @router.get("/agents", response_model=List[AgentListItem])
+@require_permission("agents.view")
 async def list_agents(
     include_unavailable: bool = Query(False, description="Include unavailable agents"),
     current_user: UserResponse = Depends(get_current_user),
@@ -283,8 +277,6 @@ async def list_agents(
     Query Parameters:
     - include_unavailable: Include unavailable agents (default: false)
     """
-    check_supervisor_permission(current_user)
-
     entity_type, entity_id = get_entity_context(current_user)
     workload_repo = get_workload_repository(db)
 
@@ -332,6 +324,7 @@ async def list_agents(
 
 
 @router.get("/agents/{agent_id}/stats", response_model=AgentAssignmentStats)
+@require_permission("agents.view_performance")
 async def get_agent_stats(
     agent_id: UUID,
     period_days: int = Query(30, ge=1, le=365, description="Statistics period in days"),
@@ -357,8 +350,6 @@ async def get_agent_stats(
     Query Parameters:
     - period_days: Statistics period (default: 30, max: 365)
     """
-    check_supervisor_permission(current_user)
-
     assignment_repo = get_assignment_repository(db)
 
     try:
@@ -379,6 +370,7 @@ async def get_agent_stats(
 
 
 @router.get("/agents/{agent_id}/forecast", response_model=AgentCapacityForecast)
+@require_permission("agents.view_workload")
 async def get_agent_forecast(
     agent_id: UUID,
     horizon_days: int = Query(7, ge=1, le=30, description="Forecast horizon in days"),
@@ -402,8 +394,6 @@ async def get_agent_forecast(
     Query Parameters:
     - horizon_days: Forecast horizon (default: 7, max: 30)
     """
-    check_supervisor_permission(current_user)
-
     workload_repo = get_workload_repository(db)
 
     try:
@@ -434,6 +424,7 @@ async def get_agent_forecast(
 # ============================================================================
 
 @router.get("/workload/balance", response_model=WorkloadBalanceResponse)
+@require_permission("agents.view_workload")
 async def get_workload_balance(
     current_user: UserResponse = Depends(get_current_user),
     db = Depends(get_db_connection)
@@ -459,8 +450,6 @@ async def get_workload_balance(
     - Auto-generated based on balance score
     - Suggests specific reassignments
     """
-    check_supervisor_permission(current_user)
-
     entity_type, entity_id = get_entity_context(current_user)
     workload_repo = get_workload_repository(db)
 
@@ -546,6 +535,7 @@ async def get_workload_balance(
 # ============================================================================
 
 @router.post("/rules", response_model=AssignmentRule, status_code=status.HTTP_201_CREATED)
+@require_permission("rules.create")
 async def create_rule(
     rule_data: AssignmentRuleCreate,
     current_user: UserResponse = Depends(get_current_user),
@@ -576,8 +566,6 @@ async def create_rule(
 
     Created rules start in 'draft' status - must be activated
     """
-    check_supervisor_permission(current_user)
-
     rules_repo = get_rules_repository(db)
 
     try:
@@ -610,6 +598,7 @@ async def create_rule(
 
 
 @router.get("/rules", response_model=List[AssignmentRule])
+@require_permission("rules.view")
 async def list_rules(
     status_filter: Optional[RuleStatus] = Query(None, description="Filter by status"),
     current_user: UserResponse = Depends(get_current_user),
@@ -628,8 +617,6 @@ async def list_rules(
     Query Parameters:
     - status: Filter by status (active, inactive, draft, archived)
     """
-    check_supervisor_permission(current_user)
-
     entity_type, entity_id = get_entity_context(current_user)
     rules_repo = get_rules_repository(db)
 
@@ -654,14 +641,13 @@ async def list_rules(
 
 
 @router.get("/rules/{rule_id}", response_model=AssignmentRule)
+@require_permission("rules.view")
 async def get_rule(
     rule_id: UUID,
     current_user: UserResponse = Depends(get_current_user),
     db = Depends(get_db_connection)
 ):
     """**Get assignment rule by ID**"""
-    check_supervisor_permission(current_user)
-
     rules_repo = get_rules_repository(db)
 
     try:
@@ -686,6 +672,7 @@ async def get_rule(
 
 
 @router.put("/rules/{rule_id}", response_model=AssignmentRule)
+@require_permission("rules.edit")
 async def update_rule(
     rule_id: UUID,
     update_data: AssignmentRuleUpdate,
@@ -693,8 +680,6 @@ async def update_rule(
     db = Depends(get_db_connection)
 ):
     """**Update assignment rule**"""
-    check_supervisor_permission(current_user)
-
     rules_repo = get_rules_repository(db)
 
     try:
@@ -725,14 +710,13 @@ async def update_rule(
 
 
 @router.post("/rules/{rule_id}/activate", response_model=AssignmentRule)
+@require_permission("rules.activate")
 async def activate_rule(
     rule_id: UUID,
     current_user: UserResponse = Depends(get_current_user),
     db = Depends(get_db_connection)
 ):
     """**Activate a rule (draft/inactive → active)**"""
-    check_supervisor_permission(current_user)
-
     rules_repo = get_rules_repository(db)
 
     try:
@@ -759,14 +743,13 @@ async def activate_rule(
 
 
 @router.post("/rules/{rule_id}/deactivate", response_model=AssignmentRule)
+@require_permission("rules.activate")
 async def deactivate_rule(
     rule_id: UUID,
     current_user: UserResponse = Depends(get_current_user),
     db = Depends(get_db_connection)
 ):
     """**Deactivate a rule (active → inactive)**"""
-    check_supervisor_permission(current_user)
-
     rules_repo = get_rules_repository(db)
 
     try:
@@ -793,14 +776,13 @@ async def deactivate_rule(
 
 
 @router.delete("/rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
+@require_permission("rules.delete")
 async def archive_rule(
     rule_id: UUID,
     current_user: UserResponse = Depends(get_current_user),
     db = Depends(get_db_connection)
 ):
     """**Archive a rule (soft delete)**"""
-    check_supervisor_permission(current_user)
-
     rules_repo = get_rules_repository(db)
 
     try:
@@ -827,6 +809,7 @@ async def archive_rule(
 
 
 @router.get("/rules/effectiveness/report", response_model=List[RuleEffectivenessItem])
+@require_permission("rules.view_effectiveness")
 async def get_rules_effectiveness(
     min_applications: int = Query(10, ge=1, description="Minimum applications to include"),
     current_user: UserResponse = Depends(get_current_user),
@@ -836,7 +819,7 @@ async def get_rules_effectiveness(
     **Get rule effectiveness report**
 
     Permissions:
-    - supervisor_dgi, supervisor_ministry, admin
+    - Requires: rules.view_effectiveness
 
     Returns:
     - Rules with effectiveness metrics
@@ -853,8 +836,6 @@ async def get_rules_effectiveness(
     Query Parameters:
     - min_applications: Minimum times_applied (default: 10)
     """
-    check_supervisor_permission(current_user)
-
     entity_type, _ = get_entity_context(current_user)
     rules_repo = get_rules_repository(db)
 
