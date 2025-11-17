@@ -441,6 +441,8 @@ export class CalculatorEngine {
       }
 
       // Evaluate using Function constructor (safer than eval)
+      // ESLint disabled: formula is validated and sanitized above (only allows numbers and math operators)
+      // eslint-disable-next-line no-new-func
       const result = new Function(`'use strict'; return (${safeFormula})`)();
 
       // Validate result

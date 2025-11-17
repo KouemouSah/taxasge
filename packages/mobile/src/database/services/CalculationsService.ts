@@ -230,6 +230,8 @@ class CalculationsService {
       const safeFormula = evaluableFormula.replace(/[^0-9+\-*/().\s]/g, '');
 
       // Using Function is safer than eval
+      // ESLint disabled: formula is validated and sanitized above (only allows numbers and math operators)
+      // eslint-disable-next-line no-new-func
       const result = new Function(`return ${safeFormula}`)();
 
       return parseFloat(result) || 0;
