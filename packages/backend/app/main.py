@@ -59,6 +59,28 @@ async def lifespan(app: FastAPI):
         )
         logger.info("✅ Database connection pool initialized")
 
+        # Initialize permissions system (RBAC)
+        try:
+            # Import and register permissions from all modules
+            from app.modules.permissions.services import initialize_permissions
+            from app.modules.assignment.permissions import register_assignment_permissions
+            from app.api.v1.declarations_permissions import register_declarations_permissions
+
+            # Register all module permissions
+            register_assignment_permissions()
+            register_declarations_permissions()
+
+            # Sync to database
+            async with db_pool.acquire() as conn:
+                sync_result = await initialize_permissions(conn)
+                logger.info(
+                    f"✅ Permissions initialized: {sync_result['created_count']} new, "
+                    f"{sync_result['skipped_count']} existing, "
+                    f"{sync_result['total_count']} total"
+                )
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to initialize permissions (non-blocking): {e}")
+
         # Initialize Redis connection (optional in staging)
         if settings.environment != "staging":
             redis_client = redis.from_url(
@@ -310,6 +332,26 @@ try:
     logger.info("✅ Files router loaded (Firebase Storage)")
 except ImportError as e:
     logger.warning(f"⚠️ Files router not available: {e}")
+
+# Try to load permissions routers (Module 04 - RBAC Permissions System)
+try:
+    from app.modules.permissions import permission_router, role_router, user_permission_router
+    app.include_router(permission_router, prefix="/api/v1", tags=["permissions"])
+    app.include_router(role_router, prefix="/api/v1", tags=["roles"])
+    app.include_router(user_permission_router, prefix="/api/v1", tags=["user-permissions"])
+    routers_loaded.extend(["permissions", "roles", "user_permissions"])
+    logger.info("✅ Permissions routers loaded (RBAC system)")
+except ImportError as e:
+    logger.warning(f"⚠️ Permissions routers not available: {e}")
+
+# Try to load assignment router (Module - Assignment System)
+try:
+    from app.modules.assignment.api.assignment_routes import router as assignment_router
+    app.include_router(assignment_router, tags=["assignments"])
+    routers_loaded.append("assignments")
+    logger.info("✅ Assignment router loaded")
+except ImportError as e:
+    logger.warning(f"⚠️ Assignment router not available: {e}")
 
 if routers_loaded:
     logger.info(f"✅ {len(routers_loaded)} API routers loaded: {', '.join(routers_loaded)}")
