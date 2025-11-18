@@ -21,6 +21,7 @@ import {
 import { favoritesService } from '../database/services/FavoritesService';
 import { FavoriteCard, FavoriteService } from '../components/FavoriteCard';
 import { SwipeActions, SwipeAction } from '../components/SwipeActions';
+import { GradientHeader } from '../components/GradientHeader';
 
 export interface FavoritesScreenProps {
   language: 'es' | 'fr' | 'en';
@@ -409,22 +410,22 @@ export const FavoritesScreen: React.FC<FavoritesScreenProps> = ({
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="light-content" backgroundColor="#004aad" />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backButtonText}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>{texts.title}</Text>
-        <TouchableOpacity
-          style={styles.reorderToggle}
-          onPress={() => setReorderMode(!reorderMode)}>
-          <Text style={styles.reorderToggleText}>
-            {reorderMode ? '✓' : '☰'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+      {/* Modern Header */}
+      <GradientHeader
+        title={texts.title}
+        onBack={onBack}
+        rightComponent={
+          <TouchableOpacity
+            style={styles.headerIconButton}
+            onPress={() => setReorderMode(!reorderMode)}>
+            <Text style={styles.headerIconText}>
+              {reorderMode ? '✓' : '☰'}
+            </Text>
+          </TouchableOpacity>
+        }
+      />
 
       {/* Stats Bar */}
       <View style={styles.statsBar}>
@@ -471,35 +472,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F5F5',
   },
-  header: {
-    flexDirection: 'row',
+  headerIconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
   },
-  backButton: {
-    padding: 8,
-  },
-  backButtonText: {
-    fontSize: 24,
-    color: '#007AFF',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    flex: 1,
-    marginLeft: 8,
-  },
-  reorderToggle: {
-    padding: 8,
-  },
-  reorderToggleText: {
-    fontSize: 20,
-    color: '#007AFF',
+  headerIconText: {
+    fontSize: 18,
   },
   statsBar: {
     flexDirection: 'row',
