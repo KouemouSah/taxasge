@@ -142,11 +142,16 @@ export default function AuthPage() {
           description: `Bienvenue ${response.user.first_name || response.user.email}`,
         })
 
-        // Redirect to dashboard
+        // Redirect to dashboard based on user role
         // Note: Email verification is mandatory during registration,
         // so all accounts are pre-verified. No need to check email_verified here.
         setTimeout(() => {
-          router.push("/dashboard")
+          // Redirect admin users to admin dashboard
+          if (response.user.role === 'admin') {
+            router.push("/dashboard/admin")
+          } else {
+            router.push("/dashboard")
+          }
         }, 500)
       }
     } catch (error: unknown) {
@@ -230,9 +235,14 @@ export default function AuthPage() {
         description: `Bienvenue ${response.user.first_name || response.user.email}`,
       })
 
-      // Redirect to dashboard
+      // Redirect to dashboard based on user role
       setTimeout(() => {
-        router.push("/dashboard")
+        // Redirect admin users to admin dashboard
+        if (response.user.role === 'admin') {
+          router.push("/dashboard/admin")
+        } else {
+          router.push("/dashboard")
+        }
       }, 500)
     } catch (error: unknown) {
       toast({
