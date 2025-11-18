@@ -7,6 +7,8 @@
  * @date 2025-11-18
  */
 
+'use client';
+
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminHeader from '@/components/admin/AdminHeader';
 

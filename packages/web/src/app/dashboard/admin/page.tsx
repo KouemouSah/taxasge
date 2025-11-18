@@ -7,6 +7,8 @@
  * @date 2025-11-18
  */
 
+'use client';
+
 import React from 'react';
 import StatsCards from '@/components/admin/StatsCards';
 import RecentActivity from '@/components/admin/RecentActivity';
