@@ -107,7 +107,7 @@ export default function AdminSidebar() {
         <div className="space-y-1 px-2">
           {navigationItems.map((item, index) => {
             // Group header
-            if ('items' in item) {
+            if ('items' in item && item.items) {
               return (
                 <div key={index} className="pt-4">
                   {!collapsed && (
