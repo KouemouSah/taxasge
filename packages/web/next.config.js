@@ -131,6 +131,16 @@ const nextConfig = {
       },
     };
 
+    // Fix for "self is not defined" error during static export
+    // Define 'self' as 'this' on the server side
+    if (isServer) {
+      config.plugins.push(
+        new webpack.DefinePlugin({
+          'self': 'this',
+        })
+      );
+    }
+
     return config;
   },
 
