@@ -17,6 +17,7 @@ import {
   Image,
   StatusBar,
 } from 'react-native';
+import LottieView from 'lottie-react-native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -26,6 +27,9 @@ interface OnboardingScreenProps {
 }
 
 interface OnboardingSlide {
+  type: 'logo' | 'lottie' | 'lottie-circle' | 'placeholder';
+  lottieSource?: any;
+  backgroundColor?: string;
   image?: any; // React Native ImageSourcePropType
   title: string;
   description: string;
@@ -36,81 +40,93 @@ interface OnboardingSlide {
 const ONBOARDING_DATA: Record<'es' | 'fr' | 'en', OnboardingSlide[]> = {
   es: [
     {
-      // image: require('../../.github/docs-internal/Documentations/MOBILE/Design/2.png'),
+      type: 'logo',
       title: 'Gestión Fiscal Simplificada',
       description: 'Consulta servicios fiscales de Guinea Ecuatorial de forma rápida y sencilla',
     },
     {
-      // image: require('../../.github/docs-internal/Documentations/MOBILE/Design/3.png'),
+      type: 'lottie',
+      lottieSource: require('../assets/animations/calculatrice.json'),
       title: 'Consulta Inteligente',
       description: 'Busca servicios, calcula tasas y accede a información actualizada al instante',
     },
     {
-      // image: require('../../.github/docs-internal/Documentations/MOBILE/Design/4.png'),
+      type: 'lottie',
+      lottieSource: require('../assets/animations/robot.json'),
       title: 'Cálculo Exacto de Tasas',
       description: 'Calculadora integrada para conocer el monto exacto de tus trámites fiscales',
     },
     {
-      // image: require('../../.github/docs-internal/Documentations/MOBILE/Design/5.png'),
+      type: 'lottie-circle',
+      lottieSource: require('../assets/animations/chatbot.json'),
+      backgroundColor: '#FF0000',
       title: 'TaxaBot: Tu Asistente IA',
       description: 'Pregunta en lenguaje natural y recibe respuestas inmediatas sobre servicios fiscales',
     },
     {
-      // image: require('../../.github/docs-internal/Documentations/MOBILE/Design/Inicio.png'),
+      type: 'placeholder',
       title: '¡Comencemos!',
       description: 'Todo listo para gestionar tus trámites fiscales de manera eficiente',
     },
   ],
   fr: [
     {
-      // image: require('../../.github/docs-internal/Documentations/MOBILE/Design/2.png'),
+      type: 'logo',
       title: 'Gestion Fiscale Simplifiée',
       description: 'Consultez les services fiscaux de Guinée Équatoriale rapidement et simplement',
     },
     {
-      // image: require('../../.github/docs-internal/Documentations/MOBILE/Design/3.png'),
+      type: 'lottie',
+      lottieSource: require('../assets/animations/calculatrice.json'),
       title: 'Consultation Intelligente',
       description: 'Recherchez des services, calculez des taxes et accédez aux informations à jour',
     },
     {
-      // image: require('../../.github/docs-internal/Documentations/MOBILE/Design/4.png'),
+      type: 'lottie',
+      lottieSource: require('../assets/animations/robot.json'),
       title: 'Calcul Exact des Taxes',
       description: 'Calculatrice intégrée pour connaître le montant exact de vos démarches fiscales',
     },
     {
-      // image: require('../../.github/docs-internal/Documentations/MOBILE/Design/5.png'),
+      type: 'lottie-circle',
+      lottieSource: require('../assets/animations/chatbot.json'),
+      backgroundColor: '#FF0000',
       title: 'TaxaBot: Votre Assistant IA',
       description: 'Posez des questions en langage naturel et recevez des réponses immédiates',
     },
     {
-      // image: require('../../.github/docs-internal/Documentations/MOBILE/Design/Inicio.png'),
+      type: 'placeholder',
       title: 'Commençons !',
       description: 'Tout est prêt pour gérer vos démarches fiscales efficacement',
     },
   ],
   en: [
     {
-      // image: require('../../.github/docs-internal/Documentations/MOBILE/Design/2.png'),
+      type: 'logo',
       title: 'Simplified Tax Management',
       description: 'Access Equatorial Guinea tax services quickly and easily',
     },
     {
-      // image: require('../../.github/docs-internal/Documentations/MOBILE/Design/3.png'),
+      type: 'lottie',
+      lottieSource: require('../assets/animations/calculatrice.json'),
       title: 'Smart Consultation',
       description: 'Search services, calculate fees and access up-to-date information instantly',
     },
     {
-      // image: require('../../.github/docs-internal/Documentations/MOBILE/Design/4.png'),
+      type: 'lottie',
+      lottieSource: require('../assets/animations/robot.json'),
       title: 'Exact Fee Calculation',
       description: 'Integrated calculator to know the exact amount of your tax procedures',
     },
     {
-      // image: require('../../.github/docs-internal/Documentations/MOBILE/Design/5.png'),
+      type: 'lottie-circle',
+      lottieSource: require('../assets/animations/chatbot.json'),
+      backgroundColor: '#FF0000',
       title: 'TaxaBot: Your AI Assistant',
       description: 'Ask questions in natural language and get immediate answers about tax services',
     },
     {
-      // image: require('../../.github/docs-internal/Documentations/MOBILE/Design/Inicio.png'),
+      type: 'placeholder',
       title: "Let's Start!",
       description: 'Everything is ready to manage your tax procedures efficiently',
     },
@@ -183,8 +199,54 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
         style={styles.scrollView}
       >
         {slides.map((slide, index) => (
-          <View key={index} style={styles.slide}>
-            {slide.image ? (
+          <View
+            key={index}
+            style={[
+              styles.slide,
+              slide.backgroundColor && { backgroundColor: slide.backgroundColor }
+            ]}
+          >
+            {/* Render based on slide type */}
+            {slide.type === 'logo' ? (
+              <View style={styles.firstSlideContainer}>
+                <Image
+                  source={require('../assets/images/taxasge.png')}
+                  style={styles.logoImage}
+                  resizeMode="contain"
+                />
+                <View style={styles.brandingContainer}>
+                  <Text style={styles.brandingTitle}>TaxasGE</Text>
+                  <Text style={styles.brandingSubtitle}>E-Fiscal Servicios</Text>
+                </View>
+                <View style={styles.flagsContainer}>
+                  <Image
+                    source={require('../assets/images/flag.jpg')}
+                    style={styles.flagImage}
+                    resizeMode="contain"
+                  />
+                </View>
+              </View>
+            ) : slide.type === 'lottie' && slide.lottieSource ? (
+              <View style={styles.lottieAnimationContainer}>
+                <LottieView
+                  source={slide.lottieSource}
+                  autoPlay
+                  loop
+                  style={styles.lottieAnimation}
+                />
+              </View>
+            ) : slide.type === 'lottie-circle' && slide.lottieSource ? (
+              <View style={styles.lottieCircleContainer}>
+                <View style={styles.whiteCircle}>
+                  <LottieView
+                    source={slide.lottieSource}
+                    autoPlay
+                    loop
+                    style={styles.lottieAnimationInCircle}
+                  />
+                </View>
+              </View>
+            ) : slide.image ? (
               <Image
                 source={slide.image}
                 style={styles.image}
@@ -195,9 +257,15 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
                 <Text style={styles.placeholderText}>🏛️</Text>
               </View>
             )}
-            <View style={styles.textContainer}>
-              <Text style={styles.title}>{slide.title}</Text>
-              <Text style={styles.description}>{slide.description}</Text>
+
+            {/* Text container - centered for lottie slides, right-aligned for logo */}
+            <View style={slide.type === 'logo' ? styles.textContainer : styles.textContainerCentered}>
+              <Text style={slide.type === 'logo' ? styles.title : styles.titleCentered}>
+                {slide.title}
+              </Text>
+              <Text style={slide.type === 'logo' ? styles.description : styles.descriptionCentered}>
+                {slide.description}
+              </Text>
             </View>
           </View>
         ))}
@@ -251,10 +319,84 @@ const styles = StyleSheet.create({
   slide: {
     width,
     height: height - 200,
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
+    paddingTop: 15, // Distance with top for lottie animations
+    paddingBottom: 10,
   },
+  // First slide specific styles
+  firstSlideContainer: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoImage: {
+    width: width * 1.12, // 40% larger than 0.8
+    height: height * 0.5,
+    marginBottom: 1, // 1px spacing as requested
+  },
+  brandingContainer: {
+    alignItems: 'center',
+    marginBottom: 20, // Medium spacing before flags
+  },
+  brandingTitle: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#2D5016', // Dark green
+    textAlign: 'center',
+  },
+  brandingSubtitle: {
+    fontSize: 18,
+    fontWeight: 'normal',
+    color: '#2D5016', // Dark green
+    textAlign: 'center',
+  },
+  flagsContainer: {
+    marginBottom: 20, // Same medium spacing after flags
+  },
+  flagImage: {
+    width: 80,
+    height: 60,
+  },
+  // Lottie animation styles
+  lottieAnimationContainer: {
+    width: '100%',
+    height: height * 0.4, // 40% of page height
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 5, // 5px distance to text
+  },
+  lottieAnimation: {
+    width: '100%',
+    height: '100%',
+  },
+  // Lottie with circle styles (for chatbot slide)
+  lottieCircleContainer: {
+    width: '100%',
+    height: height * 0.4, // 40% of page height for both circle and lottie
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 5, // 5px distance to text
+  },
+  whiteCircle: {
+    width: width * 0.7,
+    height: width * 0.7,
+    borderRadius: (width * 0.7) / 2,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  lottieAnimationInCircle: {
+    width: '80%',
+    height: '80%',
+  },
+  // Other slides
   image: {
     width: width * 0.8,
     height: height * 0.45,
@@ -269,28 +411,57 @@ const styles = StyleSheet.create({
   placeholderText: {
     fontSize: 80,
   },
+  // Text containers
   textContainer: {
-    alignItems: 'center',
+    alignItems: 'flex-end', // Align to right (for logo slide)
+    alignSelf: 'flex-end',
     paddingHorizontal: 30,
+    width: '100%',
+    marginBottom: 3, // Max 3px spacing to button
   },
+  textContainerCentered: {
+    alignItems: 'center', // Centered for lottie slides
+    paddingHorizontal: 30,
+    width: '100%',
+    marginBottom: 3, // Max 3px spacing to button
+  },
+  // Title styles
   title: {
-    fontSize: 26,
+    fontSize: 32, // Larger title
     fontWeight: 'bold',
     color: '#004aad',
-    textAlign: 'center',
-    marginBottom: 16,
+    textAlign: 'right', // Align right (for logo slide)
+    marginBottom: 12,
+    width: '100%',
   },
+  titleCentered: {
+    fontSize: 32, // Larger title
+    fontWeight: 'bold',
+    color: '#004aad',
+    textAlign: 'center', // Centered for lottie slides
+    marginBottom: 12,
+    width: '100%',
+  },
+  // Description styles
   description: {
-    fontSize: 16,
+    fontSize: 16, // Same size
     color: '#666666',
-    textAlign: 'center',
+    textAlign: 'right', // Align right (for logo slide)
     lineHeight: 24,
+    width: '100%',
+  },
+  descriptionCentered: {
+    fontSize: 16, // Same size
+    color: '#666666',
+    textAlign: 'center', // Centered for lottie slides
+    lineHeight: 24,
+    width: '100%',
   },
   dotsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 3, // Max 3px to button
   },
   dot: {
     width: 10,
@@ -308,11 +479,14 @@ const styles = StyleSheet.create({
   buttonContainer: {
     paddingHorizontal: 40,
     paddingBottom: 40,
+    alignItems: 'center', // Center button
   },
   button: {
     backgroundColor: '#004aad',
     borderRadius: 12,
     paddingVertical: 16,
+    paddingHorizontal: 40,
+    width: '50%', // 50% of container width
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
