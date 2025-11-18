@@ -184,7 +184,27 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
       >
         {slides.map((slide, index) => (
           <View key={index} style={styles.slide}>
-            {slide.image ? (
+            {/* First slide with logo and branding */}
+            {index === 0 ? (
+              <View style={styles.firstSlideContainer}>
+                <Image
+                  source={require('../assets/images/taxasge.png')}
+                  style={styles.logoImage}
+                  resizeMode="contain"
+                />
+                <View style={styles.brandingContainer}>
+                  <Text style={styles.brandingTitle}>TaxasGE</Text>
+                  <Text style={styles.brandingSubtitle}>E-Fiscal Servicios</Text>
+                </View>
+                <View style={styles.flagsContainer}>
+                  <Image
+                    source={require('../assets/images/flag.jpg')}
+                    style={styles.flagImage}
+                    resizeMode="contain"
+                  />
+                </View>
+              </View>
+            ) : slide.image ? (
               <Image
                 source={slide.image}
                 style={styles.image}
@@ -255,6 +275,41 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
   },
+  // First slide specific styles
+  firstSlideContainer: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoImage: {
+    width: width * 1.12, // 40% larger than 0.8
+    height: height * 0.5,
+    marginBottom: 1, // 1px spacing as requested
+  },
+  brandingContainer: {
+    alignItems: 'center',
+    marginBottom: 20, // Medium spacing before flags
+  },
+  brandingTitle: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#2D5016', // Dark green
+    textAlign: 'center',
+  },
+  brandingSubtitle: {
+    fontSize: 18,
+    fontWeight: 'normal',
+    color: '#2D5016', // Dark green
+    textAlign: 'center',
+  },
+  flagsContainer: {
+    marginBottom: 20, // Same medium spacing after flags
+  },
+  flagImage: {
+    width: 80,
+    height: 60,
+  },
+  // Other slides
   image: {
     width: width * 0.8,
     height: height * 0.45,
@@ -270,27 +325,32 @@ const styles = StyleSheet.create({
     fontSize: 80,
   },
   textContainer: {
-    alignItems: 'center',
+    alignItems: 'flex-end', // Align to right
+    alignSelf: 'flex-end',
     paddingHorizontal: 30,
+    width: '100%',
+    marginBottom: 3, // Max 3px spacing to button
   },
   title: {
-    fontSize: 26,
+    fontSize: 32, // Larger title
     fontWeight: 'bold',
     color: '#004aad',
-    textAlign: 'center',
-    marginBottom: 16,
+    textAlign: 'right', // Align right
+    marginBottom: 12,
+    width: '100%',
   },
   description: {
-    fontSize: 16,
+    fontSize: 16, // Same size
     color: '#666666',
-    textAlign: 'center',
+    textAlign: 'right', // Align right
     lineHeight: 24,
+    width: '100%',
   },
   dotsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 3, // Max 3px to button
   },
   dot: {
     width: 10,
@@ -308,11 +368,14 @@ const styles = StyleSheet.create({
   buttonContainer: {
     paddingHorizontal: 40,
     paddingBottom: 40,
+    alignItems: 'center', // Center button
   },
   button: {
     backgroundColor: '#004aad',
     borderRadius: 12,
     paddingVertical: 16,
+    paddingHorizontal: 40,
+    width: '50%', // 50% of container width
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
