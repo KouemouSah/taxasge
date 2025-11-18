@@ -11,7 +11,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
+export function middleware(_request: NextRequest) {
   // With output: 'export', middleware doesn't run during static generation
   // Auth protection should be handled client-side instead
   return NextResponse.next();
