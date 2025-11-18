@@ -72,6 +72,25 @@ export interface FiscalService {
   updated_at?: string;
 }
 
+export interface Ministry {
+  id: string;
+  code?: string;
+  name_es: string;
+  name_fr?: string;
+  name_en?: string;
+  description_es?: string;
+  description_fr?: string;
+  description_en?: string;
+  contact_email?: string;
+  website_url?: string;
+  address_es?: string;
+  address_fr?: string;
+  address_en?: string;
+  color?: string;
+  status?: string;
+  service_count?: number;
+}
+
 export interface SearchFilters {
   searchQuery?: string;
   ministryId?: string;

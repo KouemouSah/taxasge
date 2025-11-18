@@ -20,22 +20,7 @@ import { GradientHeader } from '../components/GradientHeader';
 import { getSection } from '../i18n';
 import { Colors, Spacing, Shadows } from '../theme';
 import DatabaseService from '../database/DatabaseService';
-import { FiscalService, getServiceName } from '../database/services/FiscalServicesService';
-
-interface Ministry {
-  id: string;
-  name_es: string;
-  name_fr?: string;
-  name_en?: string;
-  description_es?: string;
-  description_fr?: string;
-  description_en?: string;
-  contact_email?: string;
-  website_url?: string;
-  address_es?: string;
-  address_fr?: string;
-  address_en?: string;
-}
+import { FiscalService, getServiceName, Ministry } from '../database/services/FiscalServicesService';
 
 interface MinistryStats {
   sectorsCount: number;
