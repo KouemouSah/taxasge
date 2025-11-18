@@ -22,6 +22,7 @@ import { favoritesService } from '../database/services/FavoritesService';
 import { FavoriteCard, FavoriteService } from '../components/FavoriteCard';
 import { SwipeActions, SwipeAction } from '../components/SwipeActions';
 import { GradientHeader } from '../components/GradientHeader';
+import { Icon } from '../components/Icon';
 
 export interface FavoritesScreenProps {
   language: 'es' | 'fr' | 'en';
@@ -336,7 +337,10 @@ export const FavoritesScreen: React.FC<FavoritesScreenProps> = ({
             <TouchableOpacity
               style={styles.editNotesButton}
               onPress={() => handleEditNotes(item)}>
-              <Text style={styles.editNotesButtonText}>📝 {texts.editNotes}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Icon name="edit" size={16} color="#FFFFFF" />
+                <Text style={styles.editNotesButtonText}>{texts.editNotes}</Text>
+              </View>
             </TouchableOpacity>
           </View>
         )}
@@ -447,7 +451,7 @@ export const FavoritesScreen: React.FC<FavoritesScreenProps> = ({
         </View>
       ) : favorites.length === 0 ? (
         <View style={styles.centerContainer}>
-          <Text style={styles.emptyIcon}>⭐</Text>
+          <Icon name="star" size={64} color="#CCC" style={styles.emptyIcon} />
           <Text style={styles.emptyText}>{texts.empty}</Text>
           <Text style={styles.emptySubtitle}>{texts.emptySubtitle}</Text>
         </View>

@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
+import { Icon } from './Icon';
 
 export interface FavoriteService {
   id: number;
@@ -128,7 +129,7 @@ export const FavoriteCard: React.FC<FavoriteCardProps> = ({
           )}
         </View>
         <View style={styles.headerRight}>
-          <Text style={styles.favoriteIcon}>⭐</Text>
+          <Icon name="star-filled" size={24} color="#FFD700" />
         </View>
       </View>
 

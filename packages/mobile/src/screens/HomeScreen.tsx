@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { BottomTabBar, TabName } from '../components/BottomTabBar';
+import { Icon } from '../components/Icon';
 import { getSection } from '../i18n';
 import { HEADER_GRADIENT, GRADIENTS, Colors, Spacing, Shadows } from '../theme';
 import DatabaseService from '../database/DatabaseService';
@@ -127,7 +128,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
 
           {/* Search bar */}
           <View style={styles.searchContainer}>
-            <Text style={styles.searchIcon}>🔍</Text>
+            <Icon name="search" size={20} color="#999999" style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
               placeholder={t.searchPlaceholder}
@@ -163,7 +164,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
                 colors={['#4A90E2', '#357ABD']}
                 style={styles.actionCardGradient}>
                 <View style={styles.actionIconContainer}>
-                  <Text style={styles.actionIcon}>🔍</Text>
+                  <Icon name="search" size={42} color="#FFFFFF" />
                 </View>
                 <Text style={styles.actionLabel}>{t.quickActions.searchServices}</Text>
               </LinearGradient>
@@ -177,7 +178,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
                 colors={['#50C878', '#3EAE63']}
                 style={styles.actionCardGradient}>
                 <View style={styles.actionIconContainer}>
-                  <Text style={styles.actionIcon}>🤖</Text>
+                  <Icon name="robot" size={42} color="#FFFFFF" />
                 </View>
                 <Text style={styles.actionLabel}>{t.quickActions.contactAssistant}</Text>
               </LinearGradient>
@@ -191,7 +192,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
                 colors={['#E91E63', '#C2185B']}
                 style={styles.actionCardGradient}>
                 <View style={styles.actionIconContainer}>
-                  <Text style={styles.actionIcon}>❤️</Text>
+                  <Icon name="heart-filled" size={42} color="#FFFFFF" />
                 </View>
                 <Text style={styles.actionLabel}>{t.quickActions.myFavorites}</Text>
               </LinearGradient>
@@ -205,7 +206,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
                 colors={['#9C27B0', '#7B1FA2']}
                 style={styles.actionCardGradient}>
                 <View style={styles.actionIconContainer}>
-                  <Text style={styles.actionIcon}>🧮</Text>
+                  <Icon name="calculator" size={42} color="#FFFFFF" />
                 </View>
                 <Text style={styles.actionLabel}>{t.quickActions.calculator}</Text>
               </LinearGradient>
@@ -225,7 +226,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
                   onPress={() => onNavigate('serviceDetail', service)}
                   activeOpacity={0.7}>
                   <View style={styles.recentServiceIcon}>
-                    <Text style={styles.recentServiceIconText}>📄</Text>
+                    <Icon name="document" size={20} color="#007AFF" />
                   </View>
                   <View style={styles.recentServiceInfo}>
                     <Text style={styles.recentServiceName} numberOfLines={2}>
@@ -270,7 +271,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
                       styles.ministryIconCircle,
                       { backgroundColor: getMinistryGradient(index)[0] },
                     ]}>
-                    <Text style={styles.ministryIcon}>🏛️</Text>
+                    <Icon name="building" size={28} color="#FFFFFF" />
                   </View>
                   <View style={styles.ministryInfo}>
                     <Text style={styles.ministryName} numberOfLines={2}>

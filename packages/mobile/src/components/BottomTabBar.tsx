@@ -6,13 +6,14 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { Colors } from '../theme';
+import { Icon, IconName } from './Icon';
 
 export type TabName = 'home' | 'search' | 'favorites' | 'profile';
 
 interface Tab {
   name: TabName;
   label: string;
-  icon: string;
+  icon: IconName;
 }
 
 interface BottomTabBarProps {
@@ -23,22 +24,22 @@ interface BottomTabBarProps {
 
 const TABS_CONFIG: Record<'es' | 'fr' | 'en', Tab[]> = {
   es: [
-    { name: 'home', label: 'Inicio', icon: '🏠' },
-    { name: 'search', label: 'Buscar', icon: '🔍' },
-    { name: 'favorites', label: 'Favoritos', icon: '❤️' },
-    { name: 'profile', label: 'Perfil', icon: '👤' },
+    { name: 'home', label: 'Inicio', icon: 'home' },
+    { name: 'search', label: 'Buscar', icon: 'search' },
+    { name: 'favorites', label: 'Favoritos', icon: 'heart-filled' },
+    { name: 'profile', label: 'Perfil', icon: 'user' },
   ],
   fr: [
-    { name: 'home', label: 'Accueil', icon: '🏠' },
-    { name: 'search', label: 'Rechercher', icon: '🔍' },
-    { name: 'favorites', label: 'Favoris', icon: '❤️' },
-    { name: 'profile', label: 'Profil', icon: '👤' },
+    { name: 'home', label: 'Accueil', icon: 'home' },
+    { name: 'search', label: 'Rechercher', icon: 'search' },
+    { name: 'favorites', label: 'Favoris', icon: 'heart-filled' },
+    { name: 'profile', label: 'Profil', icon: 'user' },
   ],
   en: [
-    { name: 'home', label: 'Home', icon: '🏠' },
-    { name: 'search', label: 'Search', icon: '🔍' },
-    { name: 'favorites', label: 'Favorites', icon: '❤️' },
-    { name: 'profile', label: 'Profile', icon: '👤' },
+    { name: 'home', label: 'Home', icon: 'home' },
+    { name: 'search', label: 'Search', icon: 'search' },
+    { name: 'favorites', label: 'Favorites', icon: 'heart-filled' },
+    { name: 'profile', label: 'Profile', icon: 'user' },
   ],
 };
 
@@ -55,7 +56,12 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({ activeTab, onTabPres
             style={styles.tab}
             onPress={() => onTabPress(tab.name)}
             activeOpacity={0.7}>
-            <Text style={[styles.icon, isActive && styles.iconActive]}>{tab.icon}</Text>
+            <Icon
+              name={tab.icon}
+              size={24}
+              color={isActive ? Colors.primary : '#666666'}
+              style={[styles.icon, isActive && styles.iconActive]}
+            />
             <Text style={[styles.label, isActive && styles.labelActive]} numberOfLines={1}>
               {tab.label}
             </Text>
@@ -87,12 +93,10 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   icon: {
-    fontSize: 24,
     marginBottom: 4,
-    opacity: 0.5,
   },
   iconActive: {
-    opacity: 1,
+    // Icon color handled by Icon component
   },
   label: {
     fontSize: 11,

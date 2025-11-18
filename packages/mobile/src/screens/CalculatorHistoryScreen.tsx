@@ -23,6 +23,7 @@ import { calculationHistoryService, CalculationHistoryRecord } from '../database
 import { HistoryCard } from '../components/HistoryCard';
 import { SwipeActions, SwipeAction } from '../components/SwipeActions';
 import { GradientHeader } from '../components/GradientHeader';
+import { Icon } from '../components/Icon';
 
 export interface HistoryScreenProps {
   language: 'es' | 'fr' | 'en';
@@ -498,13 +499,13 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
             <TouchableOpacity
               style={styles.headerIconButton}
               onPress={() => setShowFilters(true)}>
-              <Text style={styles.headerIconText}>🔍</Text>
+              <Icon name="search" size={20} color="#FFFFFF" />
               {hasActiveFilters && <View style={styles.filterBadge} />}
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.headerIconButton}
               onPress={handleExport}>
-              <Text style={styles.headerIconText}>📤</Text>
+              <Icon name="export" size={20} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
         }

@@ -21,6 +21,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { GradientHeader } from '../components/GradientHeader';
+import { Icon } from '../components/Icon';
 import {
   FiscalService,
   getServiceName,
@@ -476,7 +477,7 @@ export const CalculatorScreen: React.FC<CalculatorScreenProps> = ({
         {/* Formula Description */}
         {formulaDescription && typeof formulaDescription === 'string' && formulaDescription.trim() !== '' && (
           <View style={styles.formulaDescriptionSection}>
-            <Text style={styles.formulaDescriptionIcon}>ℹ️</Text>
+            <Icon name="info" size={20} color="#007AFF" style={styles.formulaDescriptionIcon} />
             <Text style={styles.formulaDescriptionText}>{String(formulaDescription)}</Text>
           </View>
         )}

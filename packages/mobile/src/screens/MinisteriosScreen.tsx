@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { GradientHeader } from '../components/GradientHeader';
 import { BottomTabBar, TabName } from '../components/BottomTabBar';
+import { Icon } from '../components/Icon';
 import { Ministry } from '../database/services/FiscalServicesService';
 import DatabaseService from '../database/DatabaseService';
 import { Colors, Spacing, Shadows } from '../theme';
@@ -107,7 +108,7 @@ export const MinisteriosScreen: React.FC<MinisteriosScreenProps> = ({
         activeOpacity={0.8}>
         <View style={[styles.gridCard, { backgroundColor: gradient[0] }]}>
           <View style={styles.gridIconContainer}>
-            <Text style={styles.gridIcon}>🏛️</Text>
+            <Icon name="building" size={40} color="#FFFFFF" />
           </View>
           <View style={styles.gridContent}>
             <Text style={styles.gridTitle} numberOfLines={2}>

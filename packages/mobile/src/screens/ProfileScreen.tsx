@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { GradientHeader } from '../components/GradientHeader';
 import { BottomTabBar, TabName } from '../components/BottomTabBar';
+import { Icon } from '../components/Icon';
 import { getSection } from '../i18n';
 import { Colors, Spacing, Shadows } from '../theme';
 import { APP_CONFIG } from '../config/AppConfig';
@@ -75,7 +76,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({
             style={styles.settingRow}
             onPress={() => setShowLanguageModal(true)}
             activeOpacity={0.7}>
-            <Text style={styles.settingIcon}>🌐</Text>
+            <Icon name="globe" size={24} color="#007AFF" style={styles.settingIcon} />
             <View style={styles.settingContent}>
               <Text style={styles.settingLabel}>{t.settings.selectLanguage}</Text>
               <Text style={styles.settingValue}>{getCurrentLanguageName()}</Text>
@@ -91,7 +92,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({
             style={styles.settingRow}
             onPress={() => onNavigate('history')}
             activeOpacity={0.7}>
-            <Text style={styles.settingIcon}>🕐</Text>
+            <Icon name="clock" size={24} color="#007AFF" style={styles.settingIcon} />
             <View style={styles.settingContent}>
               <Text style={styles.settingLabel}>{t.settings.calculationHistory}</Text>
             </View>
@@ -106,7 +107,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({
             style={styles.settingRow}
             onPress={() => setShowBackgroundModal(true)}
             activeOpacity={0.7}>
-            <Text style={styles.settingIcon}>🎨</Text>
+            <Icon name="palette" size={24} color="#007AFF" style={styles.settingIcon} />
             <View style={styles.settingContent}>
               <Text style={styles.settingLabel}>{t.settings.chatbotBackground}</Text>
               <Text style={styles.settingValue}>{getCurrentBackgroundName()}</Text>
@@ -120,7 +121,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({
           <Text style={styles.sectionTitle}>{t.sections.about}</Text>
 
           <View style={styles.settingRow}>
-            <Text style={styles.settingIcon}>ℹ️</Text>
+            <Icon name="info" size={24} color="#007AFF" style={styles.settingIcon} />
             <View style={styles.settingContent}>
               <Text style={styles.settingLabel}>{t.settings.appVersion}</Text>
               <Text style={styles.settingValue}>1.0.0</Text>
@@ -128,7 +129,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </View>
 
           <TouchableOpacity style={styles.settingRow} activeOpacity={0.7}>
-            <Text style={styles.settingIcon}>📄</Text>
+            <Icon name="document" size={24} color="#007AFF" style={styles.settingIcon} />
             <View style={styles.settingContent}>
               <Text style={styles.settingLabel}>{t.settings.termsOfService}</Text>
             </View>
@@ -136,7 +137,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.settingRow} activeOpacity={0.7}>
-            <Text style={styles.settingIcon}>🔒</Text>
+            <Icon name="lock" size={24} color="#007AFF" style={styles.settingIcon} />
             <View style={styles.settingContent}>
               <Text style={styles.settingLabel}>{t.settings.privacyPolicy}</Text>
             </View>
@@ -172,7 +173,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   setShowLanguageModal(false);
                 }}
                 activeOpacity={0.7}>
-                <Text style={styles.languageFlag}>🇪🇸</Text>
+                <Icon name="flag-es" size={32} color="#000" style={styles.languageFlag} />
                 <Text style={styles.languageLabel}>{t.languages.spanish}</Text>
                 {language === 'es' && <Text style={styles.languageCheck}>✓</Text>}
               </TouchableOpacity>
@@ -184,7 +185,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   setShowLanguageModal(false);
                 }}
                 activeOpacity={0.7}>
-                <Text style={styles.languageFlag}>🇫🇷</Text>
+                <Icon name="flag-fr" size={32} color="#000" style={styles.languageFlag} />
                 <Text style={styles.languageLabel}>{t.languages.french}</Text>
                 {language === 'fr' && <Text style={styles.languageCheck}>✓</Text>}
               </TouchableOpacity>
@@ -196,7 +197,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   setShowLanguageModal(false);
                 }}
                 activeOpacity={0.7}>
-                <Text style={styles.languageFlag}>🇬🇧</Text>
+                <Icon name="flag-gb" size={32} color="#000" style={styles.languageFlag} />
                 <Text style={styles.languageLabel}>{t.languages.english}</Text>
                 {language === 'en' && <Text style={styles.languageCheck}>✓</Text>}
               </TouchableOpacity>

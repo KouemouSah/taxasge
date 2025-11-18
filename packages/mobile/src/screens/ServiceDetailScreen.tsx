@@ -28,6 +28,7 @@ import {
   getStepInstructions
 } from '../database/services/ServiceDetailsService';
 import { GradientHeader } from '../components/GradientHeader';
+import { Icon } from '../components/Icon';
 import { Colors, Spacing, Typography, Shadows } from '../theme';
 
 export interface ServiceDetailScreenProps {
@@ -483,7 +484,10 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.calculateButton}>
-                <Text style={styles.calculateButtonText}>📊 {t.calculate}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Icon name="chart" size={18} color="#FFFFFF" />
+                  <Text style={styles.calculateButtonText}>{t.calculate}</Text>
+                </View>
               </LinearGradient>
             </TouchableOpacity>
           ) : null}
