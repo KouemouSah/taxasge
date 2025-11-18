@@ -1,10 +1,10 @@
 /**
- * TaxasGE Mobile - Service Detail Screen
- * Displays complete details of a fiscal service for data validation
- * Date: 2025-10-17
+ * TaxasGE Mobile - Service Detail Screen (Modern One UI 14 Design)
+ * Completely redesigned with cards, icons, and modern spacing
+ * Date: 2025-11-18
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,24 +12,20 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
-  StatusBar,
   ActivityIndicator,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 import { FiscalService, getServiceName, getServiceDescription, getMinistryName, getCategoryName, getSectorName } from '../database/services/FiscalServicesService';
 import {
-  serviceDetailsService,
   ServiceDocument,
   ServiceProcedure,
   ProcedureStep,
   getDocumentName,
   getProcedureName,
   getStepDescription,
-  getStepInstructions
 } from '../database/services/ServiceDetailsService';
 import { GradientHeader } from '../components/GradientHeader';
-import { Icon } from '../components/Icon';
-import { Colors, Spacing, Typography, Shadows } from '../theme';
+import { Icon, IconName } from '../components/Icon';
+import { Colors, Spacing, BorderRadius, Shadows } from '../theme';
 import { dataCacheService } from '../services/DataCacheService';
 
 export interface ServiceDetailScreenProps {
@@ -41,93 +37,76 @@ export interface ServiceDetailScreenProps {
 
 const TEXTS = {
   es: {
-    title: 'Detalles del Servicio',
-    description: 'Descripción',
-    code: 'Código',
+    title: 'Detalles',
     pricing: 'Tarifas',
     expedition: 'Expedición',
     renewal: 'Renovación',
-    calculationMethod: 'Método de Cálculo',
-    categorySection: 'Categoría',
+    documents: 'Documentos',
+    procedures: 'Procedimientos',
+    information: 'Información',
     category: 'Categoría',
     sector: 'Sector',
     ministry: 'Ministerio',
-    documents: 'Documentos Requeridos',
-    documentsExpedition: 'Documentos Requeridos - Expedición',
-    documentsRenewal: 'Documentos Requeridos - Renovación',
-    documentsBoth: 'Documentos Requeridos - Expedición y Renovación',
-    procedures: 'Procedimientos',
-    proceduresExpedition: 'Procedimientos - Expedición',
-    proceduresRenewal: 'Procedimientos - Renovación',
-    proceduresBoth: 'Procedimientos - Expedición y Renovación',
-    noDocuments: 'No hay documentos registrados',
-    noProcedures: 'No hay procedimientos registrados',
+    calculate: 'Calcular Costo',
+    noDocuments: 'No hay documentos',
+    noProcedures: 'No hay procedimientos',
     steps: 'pasos',
-    estimatedDuration: 'Duración estimada',
-    location: 'Localización',
-    officeHours: 'Horas de apertura',
-    minutes: 'minutos',
-    calculate: 'Calcular',
   },
   fr: {
-    title: 'Détails du Service',
-    description: 'Description',
-    code: 'Code',
+    title: 'Détails',
     pricing: 'Tarifs',
     expedition: 'Expédition',
     renewal: 'Renouvellement',
-    calculationMethod: 'Méthode de Calcul',
-    categorySection: 'Catégorie',
+    documents: 'Documents',
+    procedures: 'Procédures',
+    information: 'Information',
     category: 'Catégorie',
     sector: 'Secteur',
     ministry: 'Ministère',
-    documents: 'Documents Requis',
-    documentsExpedition: 'Documents Requis - Expédition',
-    documentsRenewal: 'Documents Requis - Renouvellement',
-    documentsBoth: 'Documents Requis - Expédition et Renouvellement',
-    procedures: 'Procédures',
-    proceduresExpedition: 'Procédures - Expédition',
-    proceduresRenewal: 'Procédures - Renouvellement',
-    proceduresBoth: 'Procédures - Expédition et Renouvellement',
-    noDocuments: 'Aucun document enregistré',
-    noProcedures: 'Aucune procédure enregistrée',
+    calculate: 'Calculer le Coût',
+    noDocuments: 'Aucun document',
+    noProcedures: 'Aucune procédure',
     steps: 'étapes',
-    estimatedDuration: 'Durée estimée',
-    location: 'Localisation',
-    officeHours: "Heures d'ouverture",
-    minutes: 'minutes',
-    calculate: 'Calculer',
   },
   en: {
-    title: 'Service Details',
-    description: 'Description',
-    code: 'Code',
+    title: 'Details',
     pricing: 'Pricing',
     expedition: 'Expedition',
     renewal: 'Renewal',
-    calculationMethod: 'Calculation Method',
-    categorySection: 'Category',
+    documents: 'Documents',
+    procedures: 'Procedures',
+    information: 'Information',
     category: 'Category',
     sector: 'Sector',
     ministry: 'Ministry',
-    documents: 'Required Documents',
-    documentsExpedition: 'Required Documents - Expedition',
-    documentsRenewal: 'Required Documents - Renewal',
-    documentsBoth: 'Required Documents - Expedition and Renewal',
-    procedures: 'Procedures',
-    proceduresExpedition: 'Procedures - Expedition',
-    proceduresRenewal: 'Procedures - Renewal',
-    proceduresBoth: 'Procedures - Expedition and Renewal',
-    noDocuments: 'No documents registered',
-    noProcedures: 'No procedures registered',
+    calculate: 'Calculate Cost',
+    noDocuments: 'No documents',
+    noProcedures: 'No procedures',
     steps: 'steps',
-    estimatedDuration: 'Estimated duration',
-    location: 'Location',
-    officeHours: 'Office hours',
-    minutes: 'minutes',
-    calculate: 'Calculate',
   },
 };
+
+interface InfoCardProps {
+  icon: IconName;
+  iconColor: string;
+  iconBgColor: string;
+  title: string;
+  children: React.ReactNode;
+}
+
+const InfoCard: React.FC<InfoCardProps> = ({ icon, iconColor, iconBgColor, title, children }) => (
+  <View style={styles.card}>
+    <View style={styles.cardHeader}>
+      <View style={[styles.iconCircle, { backgroundColor: iconBgColor }]}>
+        <Icon name={icon} size={24} color={iconColor} />
+      </View>
+      <Text style={styles.cardTitle}>{title}</Text>
+    </View>
+    <View style={styles.cardContent}>
+      {children}
+    </View>
+  </View>
+);
 
 export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
   service,
@@ -139,6 +118,7 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
   const [documents, setDocuments] = useState<ServiceDocument[]>([]);
   const [procedures, setProcedures] = useState<ServiceProcedure[]>([]);
   const [procedureSteps, setProcedureSteps] = useState<Map<string, ProcedureStep[]>>(new Map());
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     loadServiceDetails();
@@ -147,18 +127,11 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
   const loadServiceDetails = async () => {
     const startTime = Date.now();
     try {
-      console.log('[ServiceDetailScreen] Loading details for service:', service.id);
-      const queryStart = Date.now();
-
-      // Use cache service for faster loading
+      setIsLoading(true);
       const details = await dataCacheService.getServiceDetails(service.id);
-      console.log(`[ServiceDetailScreen] ⏱️  Data fetch took ${Date.now() - queryStart}ms`);
 
-      const processingStart = Date.now();
-
-      // Process documents and procedures in parallel for faster rendering
+      // Process documents and procedures in parallel
       const [expandedDocuments, expandedProcedures] = await Promise.all([
-        // Process documents
         Promise.resolve(details.documents.flatMap(doc => {
           const namesEs = doc.document_name.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0);
           const namesFr = doc.document_name_fr ? doc.document_name_fr.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0) : [];
@@ -183,7 +156,6 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
           }];
         })),
 
-        // Process procedures
         Promise.resolve(details.procedures.flatMap(proc => {
           const namesEs = proc.name_es.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0);
           const namesFr = proc.name_fr ? proc.name_fr.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0) : [];
@@ -209,16 +181,14 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
         })),
       ]);
 
-      console.log(`[ServiceDetailScreen] ⏱️  Processing took ${Date.now() - processingStart}ms`);
-
-      // Update all states simultaneously for instant rendering
       setDocuments(expandedDocuments);
       setProcedures(expandedProcedures);
       setProcedureSteps(details.procedureSteps);
-      console.log(`[ServiceDetailScreen] Loaded ${expandedDocuments.length} documents (from ${details.documents.length}) and ${expandedProcedures.length} procedures (from ${details.procedures.length}) with ${details.procedureSteps.size} procedure templates`);
-      console.log(`[ServiceDetailScreen] ⏱️  Total load time: ${Date.now() - startTime}ms`);
+      console.log(`[ServiceDetailScreen] ⚡ Loaded in ${Date.now() - startTime}ms`);
     } catch (error) {
-      console.error('[ServiceDetailScreen] Error loading details:', error);
+      console.error('[ServiceDetailScreen] Error:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -229,16 +199,7 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
     });
   };
 
-  const formatDate = (dateString: string): string => {
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString(language === 'es' ? 'es-ES' : language === 'fr' ? 'fr-FR' : 'en-US');
-    } catch {
-      return dateString;
-    }
-  };
-
-  // Group documents by type - Memoized to prevent recalculation on every render
+  // Group documents by type
   const expeditionDocs = useMemo(() =>
     documents.filter(doc => doc.is_required_expedition && !doc.is_required_renewal),
     [documents]
@@ -252,513 +213,380 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
     [documents]
   );
 
-  // Group procedures by type with deduplication - Memoized for performance
-  const { deduplicatedExpeditionProcs, deduplicatedRenewalProcs, deduplicatedBothProcs } = useMemo(() => {
-    const expeditionProcs = procedures.filter(proc => proc.applies_to === 'expedition');
-    const renewalProcs = procedures.filter(proc => proc.applies_to === 'renewal');
-    const bothProcs = procedures.filter(proc => proc.applies_to === 'both');
+  // Group procedures
+  const expeditionProcs = useMemo(() =>
+    procedures.filter(proc => proc.applies_to === 'expedition'),
+    [procedures]
+  );
+  const renewalProcs = useMemo(() =>
+    procedures.filter(proc => proc.applies_to === 'renewal'),
+    [procedures]
+  );
+  const bothProcs = useMemo(() =>
+    procedures.filter(proc => proc.applies_to === 'both'),
+    [procedures]
+  );
 
-    // Deduplicate: if expedition and renewal have IDENTICAL procedures, move them to "both"
-    const deduplicatedExpeditionProcs: ServiceProcedure[] = [];
-    const deduplicatedRenewalProcs: ServiceProcedure[] = [];
-    const deduplicatedBothProcs = [...bothProcs];
+  const renderDocumentList = (docs: ServiceDocument[], type: string) => {
+    if (docs.length === 0) return null;
 
-    expeditionProcs.forEach(expProc => {
-      // Find if same procedure exists in renewal
-      const matchingRenewalIndex = renewalProcs.findIndex(
-        renProc => renProc.name_es.trim().toLowerCase() === expProc.name_es.trim().toLowerCase() &&
-                   renProc.template_code.split('-')[0] === expProc.template_code.split('-')[0]
-      );
-
-      if (matchingRenewalIndex !== -1) {
-        // Found duplicate - add to "both" only once
-        const isDuplicateInBoth = deduplicatedBothProcs.some(
-          bothProc => bothProc.name_es.trim().toLowerCase() === expProc.name_es.trim().toLowerCase()
-        );
-        if (!isDuplicateInBoth) {
-          deduplicatedBothProcs.push({ ...expProc, applies_to: 'both' });
-        }
-      } else {
-        // No duplicate - keep in expedition
-        deduplicatedExpeditionProcs.push(expProc);
-      }
-    });
-
-    // Add remaining renewal procedures that weren't duplicates
-    renewalProcs.forEach(renProc => {
-      const isInBoth = deduplicatedBothProcs.some(
-        bothProc => bothProc.name_es.trim().toLowerCase() === renProc.name_es.trim().toLowerCase()
-      );
-      if (!isInBoth) {
-        deduplicatedRenewalProcs.push(renProc);
-      }
-    });
-
-    return { deduplicatedExpeditionProcs, deduplicatedRenewalProcs, deduplicatedBothProcs };
-  }, [procedures]);
-
-  // Group procedures by template_code base and render together
-  const renderProcedureGroup = (procs: ServiceProcedure[], groupIndex: number) => {
-    if (procs.length === 0) return null;
-
-    // Get the base template code (without -1, -2 suffixes)
-    const baseTemplateCode = procs[0].template_code.split('-')[0];
-    const stepsFromDB = procedureSteps.get(baseTemplateCode) || procedureSteps.get(procs[0].template_code) || [];
-
-    // Build final list of steps from ALL procedures in this group
-    const allSteps: Array<{step_number: number, step: ProcedureStep | null, procName?: string}> = [];
-
-    if (stepsFromDB.length === 0) {
-      // No steps in DB - use procedure names as steps
-      procs.forEach(proc => {
-        const cleanProcName = getProcedureName(proc, language).replace(/^\d+[\.\-]\s*/, '').trim();
-        allSteps.push({
-          step_number: allSteps.length + 1,
-          step: null,
-          procName: cleanProcName
-        });
-      });
-    } else {
-      // Steps exist in DB - split them by comma like documents
-      stepsFromDB.forEach(step => {
-        const stepDesc = getStepDescription(step, language);
-
-        // Split step descriptions by comma
-        const descParts = stepDesc.split(',').map((d: string) => d.trim()).filter((d: string) => d.length > 0);
-
-        if (descParts.length > 1) {
-          // Multiple steps in one description - split them
-          descParts.forEach(desc => {
-            const cleanDesc = desc.replace(/^\d+[\.\-]\s*/, '').trim();
-            allSteps.push({
-              step_number: allSteps.length + 1,
-              step: { ...step, description_es: cleanDesc, description_fr: cleanDesc, description_en: cleanDesc },
-              procName: undefined
-            });
-          });
-        } else {
-          // Single step
-          allSteps.push({
-            step_number: allSteps.length + 1,
-            step: step,
-            procName: undefined
-          });
-        }
-      });
-    }
-
-    // Calculate total duration and get location/hours info
-    const totalDuration = stepsFromDB.reduce((sum, s) => sum + (s.estimated_duration_minutes || 0), 0);
-    const locationInfo = stepsFromDB.find(s => s.location_address)?.location_address;
-    const officeHoursInfo = stepsFromDB.find(s => s.office_hours)?.office_hours;
-
-    // Render all steps
     return (
-      <React.Fragment key={groupIndex}>
-        {allSteps.map((stepData, stepIndex) => {
-          const description = stepData.step
-            ? getStepDescription(stepData.step, language).replace(/^\d+[\.\-]\s*/, '').trim()
-            : stepData.procName || '';
-          const instructions = stepData.step
-            ? getStepInstructions(stepData.step, language)
-            : undefined;
-
-          return (
-            <View key={`${groupIndex}-${stepIndex}`} style={styles.listItem}>
-              <Text style={styles.listNumber}>{`${stepData.step_number}.`}</Text>
-              <View style={styles.listContent}>
-                <Text style={styles.listText}>{description}</Text>
-                {instructions ? (
-                  <Text style={styles.listDetail}>{instructions}</Text>
-                ) : null}
-              </View>
-            </View>
-          );
-        })}
-
-        {/* Additional info - Always display with labels */}
-        <View style={styles.procedureInfo}>
-          <Text style={styles.procedureInfoText}>
-            {`${t.estimatedDuration}: ${totalDuration > 0 ? `${totalDuration} ${t.minutes}` : '—'}`}
-          </Text>
-          <Text style={styles.procedureInfoText}>
-            {`${t.location}: ${locationInfo || '—'}`}
-          </Text>
-          <Text style={styles.procedureInfoText}>
-            {`${t.officeHours}: ${officeHoursInfo || 'Lun-Ven : 08h - 16h'}`}
-          </Text>
-        </View>
-      </React.Fragment>
+      <View style={styles.listSection}>
+        {type && <Text style={styles.listSectionTitle}>{type}</Text>}
+        {docs.map((doc, index) => (
+          <View key={`${doc.document_code}-${index}`} style={styles.listItem}>
+            <View style={styles.listItemBullet} />
+            <Text style={styles.listItemText}>{getDocumentName(doc, language)}</Text>
+          </View>
+        ))}
+      </View>
     );
   };
 
-  // Helper function to group procedures by base template_code
-  const groupProceduresByTemplate = (procs: ServiceProcedure[]): ServiceProcedure[][] => {
-    const groups: Map<string, ServiceProcedure[]> = new Map();
+  const renderProcedureList = (procs: ServiceProcedure[], type: string) => {
+    if (procs.length === 0) return null;
 
-    procs.forEach(proc => {
-      const baseTemplateCode = proc.template_code.split('-')[0];
-      if (!groups.has(baseTemplateCode)) {
-        groups.set(baseTemplateCode, []);
-      }
-      groups.get(baseTemplateCode)!.push(proc);
-    });
+    return (
+      <View style={styles.listSection}>
+        {type && <Text style={styles.listSectionTitle}>{type}</Text>}
+        {procs.map((proc, index) => {
+          const steps = procedureSteps.get(proc.id);
+          const stepCount = steps ? steps.length : 0;
 
-    return Array.from(groups.values());
+          return (
+            <View key={`${proc.template_code}-${index}`} style={styles.procedureItem}>
+              <View style={styles.procedureHeader}>
+                <View style={styles.listItemBullet} />
+                <Text style={styles.listItemText}>{getProcedureName(proc, language)}</Text>
+              </View>
+              {stepCount > 0 && (
+                <Text style={styles.stepCount}>  {stepCount} {t.steps}</Text>
+              )}
+            </View>
+          );
+        })}
+      </View>
+    );
   };
 
-  // Get ministry gradient colors or default
-  const getMinistryGradient = () => {
-    if (service.ministry_color) {
-      return [service.ministry_color, service.ministry_color];
-    }
-    return ['#004aad', '#0066cc']; // Default blue gradient
-  };
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <GradientHeader title={t.title} onBack={onBack} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#004aad" />
-
-      {/* Modern Header */}
       <GradientHeader title={t.title} onBack={onBack} />
 
-      {/* Content */}
-      <ScrollView contentContainerStyle={styles.content}>
-        {/* Hero Section with Ministry Gradient */}
-        <LinearGradient
-          colors={getMinistryGradient()}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.heroSection}>
-          <Text style={styles.serviceName}>{getServiceName(service, language)}</Text>
-          {getMinistryName(service, language) ? (
-            <View style={styles.ministryBadge}>
-              <Text style={styles.ministryBadgeText}>{getMinistryName(service, language)}</Text>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Hero Section */}
+        <View style={styles.hero}>
+          <View style={[styles.heroIcon, { backgroundColor: Colors.iconBackground.blue }]}>
+            <Icon name="document" size={40} color={Colors.primary} />
+          </View>
+          <Text style={styles.heroTitle}>{getServiceName(service, language)}</Text>
+          {getServiceDescription(service, language) && (
+            <Text style={styles.heroDescription}>{getServiceDescription(service, language)}</Text>
+          )}
+        </View>
+
+        {/* Pricing Card */}
+        <InfoCard
+          icon="calculator"
+          iconColor="#FF9800"
+          iconBgColor={Colors.iconBackground.orange}
+          title={t.pricing}
+        >
+          <View style={styles.priceRow}>
+            <Text style={styles.priceLabel}>{t.expedition}</Text>
+            <Text style={styles.priceValue}>{formatAmount(service.tasa_expedicion)} XAF</Text>
+          </View>
+          {service.tasa_renovacion && service.tasa_renovacion > 0 && (
+            <View style={styles.priceRow}>
+              <Text style={styles.priceLabel}>{t.renewal}</Text>
+              <Text style={styles.priceValue}>{formatAmount(service.tasa_renovacion)} XAF</Text>
             </View>
-          ) : null}
-        </LinearGradient>
+          )}
+        </InfoCard>
 
-        {/* Description */}
-        {getServiceDescription(service, language) ? (
-          <Section title={t.description}>
-            <Text style={styles.descriptionText}>{getServiceDescription(service, language)}</Text>
-          </Section>
-        ) : null}
-
-        {/* Pricing */}
-        <Section title={t.pricing}>
-          {(service.calculation_method &&
-           service.calculation_method !== 'fixed_amount' &&
-           service.calculation_method !== 'fixed_expedition' &&
-           service.calculation_method !== 'fixed_renewal' &&
-           service.calculation_method !== 'fixed_both') ? (
-            <Field label={t.calculationMethod} value={service.calculation_method} />
-          ) : null}
-          <Field
-            label={t.expedition}
-            value={`${formatAmount(service.tasa_expedicion)} XAF`}
-            highlight
-          />
-          {(service.tasa_renovacion && service.tasa_renovacion > 0) ? (
-            <Field
-              label={t.renewal}
-              value={`${formatAmount(service.tasa_renovacion)} XAF`}
-              highlight
-            />
-          ) : null}
-          {/* Calculate Button - Only show for non-fixed calculation methods */}
-          {(service.calculation_method &&
-           service.calculation_method !== 'fixed_expedition' &&
-           service.calculation_method !== 'fixed_renewal' &&
-           service.calculation_method !== 'fixed_both' &&
-           onCalculate) ? (
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => onCalculate(service)}>
-              <LinearGradient
-                colors={['#40E0D0', '#20CED8']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.calculateButton}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Icon name="chart" size={18} color="#FFFFFF" />
-                  <Text style={styles.calculateButtonText}>{t.calculate}</Text>
-                </View>
-              </LinearGradient>
-            </TouchableOpacity>
-          ) : null}
-        </Section>
-
-        {/* Category Section */}
-        <Section title={t.categorySection}>
-          {getSectorName(service, language) ? <Field label={t.sector} value={getSectorName(service, language)!} /> : null}
-          {getCategoryName(service, language) ? <Field value={getCategoryName(service, language)!} /> : null}
-        </Section>
-
-        {/* Documents - Both */}
-        {bothDocs.length > 0 && (
-          <Section title={t.documentsBoth}>
-            {bothDocs.map((doc, index) => (
-              <View key={index} style={styles.listItem}>
-                <Text style={styles.listNumber}>{`${index + 1}.`}</Text>
-                <View style={styles.listContent}>
-                  <Text style={styles.listText}>{getDocumentName(doc, language)}</Text>
-                </View>
-              </View>
-            ))}
-          </Section>
-        )}
-
-        {/* Documents - Expedition */}
-        {expeditionDocs.length > 0 && (
-          <Section title={t.documentsExpedition}>
-            {expeditionDocs.map((doc, index) => (
-              <View key={index} style={styles.listItem}>
-                <Text style={styles.listNumber}>{`${index + 1}.`}</Text>
-                <View style={styles.listContent}>
-                  <Text style={styles.listText}>{getDocumentName(doc, language)}</Text>
-                </View>
-              </View>
-            ))}
-          </Section>
-        )}
-
-        {/* Documents - Renewal */}
-        {renewalDocs.length > 0 && (
-          <Section title={t.documentsRenewal}>
-            {renewalDocs.map((doc, index) => (
-              <View key={index} style={styles.listItem}>
-                <Text style={styles.listNumber}>{`${index + 1}.`}</Text>
-                <View style={styles.listContent}>
-                  <Text style={styles.listText}>{getDocumentName(doc, language)}</Text>
-                </View>
-              </View>
-            ))}
-          </Section>
-        )}
-
-        {/* Procedures - Both */}
-        {deduplicatedBothProcs.length > 0 && (
-          <Section title={t.proceduresBoth}>
-            {groupProceduresByTemplate(deduplicatedBothProcs).map((group, groupIndex) =>
-              renderProcedureGroup(group, groupIndex)
+        {/* Documents Card */}
+        {(expeditionDocs.length > 0 || renewalDocs.length > 0 || bothDocs.length > 0) && (
+          <InfoCard
+            icon="document"
+            iconColor="#2196F3"
+            iconBgColor={Colors.iconBackground.blue}
+            title={t.documents}
+          >
+            {renderDocumentList(bothDocs, '')}
+            {renderDocumentList(expeditionDocs, expeditionDocs.length > 0 && bothDocs.length > 0 ? t.expedition : '')}
+            {renderDocumentList(renewalDocs, renewalDocs.length > 0 && (bothDocs.length > 0 || expeditionDocs.length > 0) ? t.renewal : '')}
+            {documents.length === 0 && (
+              <Text style={styles.emptyText}>{t.noDocuments}</Text>
             )}
-          </Section>
+          </InfoCard>
         )}
 
-        {/* Procedures - Expedition */}
-        {deduplicatedExpeditionProcs.length > 0 && (
-          <Section title={t.proceduresExpedition}>
-            {groupProceduresByTemplate(deduplicatedExpeditionProcs).map((group, groupIndex) =>
-              renderProcedureGroup(group, groupIndex)
+        {/* Procedures Card */}
+        {(expeditionProcs.length > 0 || renewalProcs.length > 0 || bothProcs.length > 0) && (
+          <InfoCard
+            icon="edit"
+            iconColor="#4CAF50"
+            iconBgColor={Colors.iconBackground.green}
+            title={t.procedures}
+          >
+            {renderProcedureList(bothProcs, '')}
+            {renderProcedureList(expeditionProcs, expeditionProcs.length > 0 && bothProcs.length > 0 ? t.expedition : '')}
+            {renderProcedureList(renewalProcs, renewalProcs.length > 0 && (bothProcs.length > 0 || expeditionProcs.length > 0) ? t.renewal : '')}
+            {procedures.length === 0 && (
+              <Text style={styles.emptyText}>{t.noProcedures}</Text>
             )}
-          </Section>
+          </InfoCard>
         )}
 
-        {/* Procedures - Renewal */}
-        {deduplicatedRenewalProcs.length > 0 && (
-          <Section title={t.proceduresRenewal}>
-            {groupProceduresByTemplate(deduplicatedRenewalProcs).map((group, groupIndex) =>
-              renderProcedureGroup(group, groupIndex)
-            )}
-          </Section>
+        {/* Information Card */}
+        <InfoCard
+          icon="info"
+          iconColor="#9C27B0"
+          iconBgColor={Colors.iconBackground.purple}
+          title={t.information}
+        >
+          {getCategoryName(service, language) && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>{t.category}</Text>
+              <Text style={styles.infoValue}>{getCategoryName(service, language)}</Text>
+            </View>
+          )}
+          {getSectorName(service, language) && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>{t.sector}</Text>
+              <Text style={styles.infoValue}>{getSectorName(service, language)}</Text>
+            </View>
+          )}
+          {getMinistryName(service, language) && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>{t.ministry}</Text>
+              <Text style={styles.infoValue}>{getMinistryName(service, language)}</Text>
+            </View>
+          )}
+        </InfoCard>
+
+        {/* Calculate Button */}
+        {onCalculate && (
+          <TouchableOpacity
+            style={styles.calculateButton}
+            onPress={() => onCalculate(service)}
+            activeOpacity={0.8}
+          >
+            <Icon name="calculator" size={24} color="#FFFFFF" />
+            <Text style={styles.calculateButtonText}>{t.calculate}</Text>
+          </TouchableOpacity>
         )}
+
+        {/* Bottom Spacing */}
+        <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );
 };
 
-// Helper Components
-const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <View style={styles.section}>
-    <Text style={styles.sectionTitle}>{title}</Text>
-    {children}
-  </View>
-);
-
-interface FieldProps {
-  label?: string;
-  value: string;
-  mono?: boolean;
-  multiline?: boolean;
-  highlight?: boolean;
-}
-
-const Field: React.FC<FieldProps> = ({ label, value, mono, multiline, highlight }) => (
-  <View style={styles.field}>
-    {label && <Text style={styles.fieldLabel}>{label}</Text>}
-    <Text
-      style={[
-        styles.fieldValue,
-        mono && styles.fieldValueMono,
-        multiline && styles.fieldValueMultiline,
-        highlight && styles.fieldValueHighlight,
-      ]}>
-      {value || '—'}
-    </Text>
-  </View>
-);
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: Colors.background.secondary,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: Spacing.lg,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
-  // Content
-  content: {
-    paddingBottom: Spacing.xl,
-  },
-
-  // Hero Section
-  heroSection: {
-    paddingHorizontal: Spacing.lg,
+  // Hero Section (One UI 14 style)
+  hero: {
+    alignItems: 'center',
     paddingVertical: Spacing.xl,
     marginBottom: Spacing.md,
   },
-  serviceName: {
-    fontSize: 24,
+  heroIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: BorderRadius.xl,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.lg,
+  },
+  heroTitle: {
+    fontSize: 28,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: Colors.text.primary,
+    textAlign: 'center',
     marginBottom: Spacing.sm,
-    lineHeight: 32,
-    ...Shadows.medium,
-  },
-  ministryBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    borderRadius: 16,
-    alignSelf: 'flex-start',
   },
-  ministryBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+  heroDescription: {
+    fontSize: 16,
+    color: Colors.text.secondary,
+    textAlign: 'center',
+    paddingHorizontal: Spacing.lg,
+    lineHeight: 24,
   },
 
-  // Section
-  section: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+  // Card Style (One UI 14)
+  card: {
+    backgroundColor: Colors.background.card,
+    borderRadius: BorderRadius.xl,
     padding: Spacing.lg,
-    marginHorizontal: Spacing.md,
-    marginBottom: Spacing.md,
-    ...Shadows.small,
+    marginBottom: Spacing.lg,
+    ...Shadows.md,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    marginBottom: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-    paddingBottom: Spacing.sm,
-  },
-
-  // Field
-  field: {
-    marginBottom: 12,
-  },
-  fieldLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#666',
-    marginBottom: 4,
-  },
-  fieldValue: {
-    fontSize: 14,
-    color: '#1A1A1A',
-  },
-  fieldValueMono: {
-    fontFamily: 'monospace',
-    fontSize: 12,
-    color: '#333',
-  },
-  fieldValueMultiline: {
-    lineHeight: 20,
-  },
-  fieldValueHighlight: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#007AFF',
-  },
-
-  // Description
-  descriptionText: {
-    fontSize: 14,
-    color: '#1A1A1A',
-    lineHeight: 20,
-  },
-
-  // List Items
-  listItem: {
+  cardHeader: {
     flexDirection: 'row',
-    marginBottom: 8,
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    marginBottom: Spacing.lg,
   },
-  listNumber: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#007AFF',
-    marginRight: 8,
-    minWidth: 24,
+  iconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius.round,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.md,
   },
-  listContent: {
+  cardTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.text.primary,
     flex: 1,
   },
-  listText: {
-    fontSize: 14,
-    color: '#1A1A1A',
-    lineHeight: 20,
-  },
-  listDetail: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
+  cardContent: {
+    // Content area
   },
 
-  // Procedure Container
-  procedureContainer: {
-    marginBottom: 20,
-    paddingBottom: 16,
+  // Price Row
+  priceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: Colors.neutral.gray200,
   },
-  procedureName: {
-    fontSize: 15,
+  priceLabel: {
+    fontSize: 16,
+    color: Colors.text.secondary,
+    fontWeight: '500',
+  },
+  priceValue: {
+    fontSize: 20,
     fontWeight: '700',
-    color: '#1A1A1A',
-    marginBottom: 12,
-  },
-  procedureInfo: {
-    marginTop: 12,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F5F5F5',
-  },
-  procedureInfoText: {
-    fontSize: 13,
-    color: '#666',
-    marginBottom: 4,
+    color: Colors.primary,
   },
 
-  // Calculate Button
+  // List Section
+  listSection: {
+    marginBottom: Spacing.md,
+  },
+  listSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: Spacing.sm,
+  },
+  listItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: Spacing.sm,
+  },
+  listItemBullet: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.primary,
+    marginTop: 8,
+    marginRight: Spacing.md,
+  },
+  listItemText: {
+    flex: 1,
+    fontSize: 15,
+    color: Colors.text.primary,
+    lineHeight: 22,
+  },
+
+  // Procedure Item
+  procedureItem: {
+    marginBottom: Spacing.sm,
+  },
+  procedureHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  stepCount: {
+    fontSize: 13,
+    color: Colors.text.tertiary,
+    marginLeft: 18,
+    marginTop: 4,
+  },
+
+  // Info Row
+  infoRow: {
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.neutral.gray200,
+  },
+  infoLabel: {
+    fontSize: 13,
+    color: Colors.text.secondary,
+    marginBottom: 4,
+    fontWeight: '500',
+  },
+  infoValue: {
+    fontSize: 16,
+    color: Colors.text.primary,
+    fontWeight: '400',
+  },
+
+  // Empty State
+  emptyText: {
+    fontSize: 15,
+    color: Colors.text.tertiary,
+    textAlign: 'center',
+    paddingVertical: Spacing.lg,
+  },
+
+  // Calculate Button (One UI 14 style)
   calculateButton: {
-    marginTop: Spacing.md,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
+    backgroundColor: Colors.primary,
+    borderRadius: BorderRadius.xl,
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.xl,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    ...Shadows.medium,
+    ...Shadows.lg,
+    marginTop: Spacing.md,
   },
   calculateButtonText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
     color: '#FFFFFF',
+    marginLeft: Spacing.md,
   },
 });
 
