@@ -21,7 +21,8 @@ import {
   Settings,
   LogOut,
   Menu,
-  ChevronRight
+  ChevronRight,
+  Shield
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { authApi } from '@/lib/api/auth'
@@ -70,6 +71,10 @@ export function DashboardSidebar({ className }: DashboardSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { toast } = useToast()
+
+  // Check if user is admin
+  const authData = getAuthData()
+  const isAdmin = authData?.user?.role === 'admin'
 
   const handleLogout = async () => {
     const authData = getAuthData()
@@ -147,6 +152,26 @@ export function DashboardSidebar({ className }: DashboardSidebarProps) {
                 </Link>
               )
             })}
+
+            {/* Admin Panel Link - Only visible for admin users */}
+            {isAdmin && (
+              <>
+                <div className="my-2 border-t" />
+                <Link
+                  href="/dashboard/admin"
+                  className={cn(
+                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all hover:bg-accent',
+                    isActive('/dashboard/admin')
+                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <Shield className="h-5 w-5" />
+                  <span>Administration</span>
+                  {isActive('/dashboard/admin') && <ChevronRight className="ml-auto h-4 w-4" />}
+                </Link>
+              </>
+            )}
           </nav>
         </ScrollArea>
 
