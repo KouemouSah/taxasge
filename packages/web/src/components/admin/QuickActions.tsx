@@ -12,7 +12,6 @@
 import React from 'react';
 import Link from 'next/link';
 import { UserPlus, ShieldPlus, KeyRound, FileText } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const quickActions = [
