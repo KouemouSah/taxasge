@@ -30,6 +30,7 @@ import {
 import { GradientHeader } from '../components/GradientHeader';
 import { Icon } from '../components/Icon';
 import { Colors, Spacing, Typography, Shadows } from '../theme';
+import { dataCacheService } from '../services/DataCacheService';
 
 export interface ServiceDetailScreenProps {
   service: FiscalService;
@@ -148,92 +149,69 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
     try {
       console.log('[ServiceDetailScreen] Loading details for service:', service.id);
       const queryStart = Date.now();
-      const details = await serviceDetailsService.getCompleteDetails(service.id);
-      console.log(`[ServiceDetailScreen] ⏱️  Query took ${Date.now() - queryStart}ms`);
 
-      // Split documents that contain commas into separate entries
-      const expandedDocuments: ServiceDocument[] = [];
-      details.documents.forEach(doc => {
-        // Split document names if they contain commas (all languages)
-        const namesEs = doc.document_name.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0);
-        const namesFr = doc.document_name_fr ? doc.document_name_fr.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0) : [];
-        const namesEn = doc.document_name_en ? doc.document_name_en.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0) : [];
+      // Use cache service for faster loading
+      const details = await dataCacheService.getServiceDetails(service.id);
+      console.log(`[ServiceDetailScreen] ⏱️  Data fetch took ${Date.now() - queryStart}ms`);
 
-        // Use the length to determine how many documents we have
-        const maxLength = namesEs.length;
+      const processingStart = Date.now();
 
-        if (maxLength > 1) {
-          // Multiple documents in one line - split them
-          for (let i = 0; i < maxLength; i++) {
-            const cleanNameEs = (namesEs[i] || namesEs[0] || '').replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim();
-            const cleanNameFr = namesFr[i] ? namesFr[i].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim() : undefined;
-            const cleanNameEn = namesEn[i] ? namesEn[i].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim() : undefined;
+      // Process documents and procedures in parallel for faster rendering
+      const [expandedDocuments, expandedProcedures] = await Promise.all([
+        // Process documents
+        Promise.resolve(details.documents.flatMap(doc => {
+          const namesEs = doc.document_name.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0);
+          const namesFr = doc.document_name_fr ? doc.document_name_fr.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0) : [];
+          const namesEn = doc.document_name_en ? doc.document_name_en.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0) : [];
+          const maxLength = namesEs.length;
 
-            expandedDocuments.push({
+          if (maxLength > 1) {
+            return Array.from({ length: maxLength }, (_, i) => ({
               ...doc,
-              document_name: cleanNameEs,
-              document_name_fr: cleanNameFr,
-              document_name_en: cleanNameEn,
+              document_name: (namesEs[i] || namesEs[0] || '').replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim(),
+              document_name_fr: namesFr[i] ? namesFr[i].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim() : undefined,
+              document_name_en: namesEn[i] ? namesEn[i].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim() : undefined,
               document_code: `${doc.document_code}-${i + 1}`,
-            });
+            }));
           }
-        } else {
-          // Single document - also clean it
-          const cleanNameEs = namesEs[0].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim();
-          const cleanNameFr = namesFr[0] ? namesFr[0].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim() : undefined;
-          const cleanNameEn = namesEn[0] ? namesEn[0].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim() : undefined;
 
-          expandedDocuments.push({
+          return [{
             ...doc,
-            document_name: cleanNameEs,
-            document_name_fr: cleanNameFr,
-            document_name_en: cleanNameEn,
-          });
-        }
-      });
+            document_name: namesEs[0].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim(),
+            document_name_fr: namesFr[0] ? namesFr[0].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim() : undefined,
+            document_name_en: namesEn[0] ? namesEn[0].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim() : undefined,
+          }];
+        })),
 
-      // Split procedures that contain commas into separate entries
-      const expandedProcedures: ServiceProcedure[] = [];
-      details.procedures.forEach(proc => {
-        // Split procedure names if they contain commas
-        const namesEs = proc.name_es.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0);
-        const namesFr = proc.name_fr ? proc.name_fr.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0) : [];
-        const namesEn = proc.name_en ? proc.name_en.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0) : [];
+        // Process procedures
+        Promise.resolve(details.procedures.flatMap(proc => {
+          const namesEs = proc.name_es.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0);
+          const namesFr = proc.name_fr ? proc.name_fr.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0) : [];
+          const namesEn = proc.name_en ? proc.name_en.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0) : [];
+          const maxLength = namesEs.length;
 
-        // Use the longest array to determine how many procedures we have
-        const maxLength = namesEs.length;
-
-        if (maxLength > 1) {
-          // Multiple procedures in one line - split them
-          for (let i = 0; i < maxLength; i++) {
-            const cleanNameEs = (namesEs[i] || namesEs[0] || '').replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim();
-            const cleanNameFr = namesFr[i] ? namesFr[i].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim() : undefined;
-            const cleanNameEn = namesEn[i] ? namesEn[i].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim() : undefined;
-
-            expandedProcedures.push({
+          if (maxLength > 1) {
+            return Array.from({ length: maxLength }, (_, i) => ({
               ...proc,
-              name_es: cleanNameEs,
-              name_fr: cleanNameFr,
-              name_en: cleanNameEn,
+              name_es: (namesEs[i] || namesEs[0] || '').replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim(),
+              name_fr: namesFr[i] ? namesFr[i].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim() : undefined,
+              name_en: namesEn[i] ? namesEn[i].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim() : undefined,
               template_code: `${proc.template_code}-${i + 1}`,
-            });
+            }));
           }
-        } else {
-          // Single procedure - also clean it
-          const cleanNameEs = namesEs[0].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim();
-          const cleanNameFr = namesFr[0] ? namesFr[0].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim() : undefined;
-          const cleanNameEn = namesEn[0] ? namesEn[0].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim() : undefined;
 
-          expandedProcedures.push({
+          return [{
             ...proc,
-            name_es: cleanNameEs,
-            name_fr: cleanNameFr,
-            name_en: cleanNameEn,
-          });
-        }
-      });
+            name_es: namesEs[0].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim(),
+            name_fr: namesFr[0] ? namesFr[0].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim() : undefined,
+            name_en: namesEn[0] ? namesEn[0].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim() : undefined,
+          }];
+        })),
+      ]);
 
-      // Update states immediately - no loading delay
+      console.log(`[ServiceDetailScreen] ⏱️  Processing took ${Date.now() - processingStart}ms`);
+
+      // Update all states simultaneously for instant rendering
       setDocuments(expandedDocuments);
       setProcedures(expandedProcedures);
       setProcedureSteps(details.procedureSteps);

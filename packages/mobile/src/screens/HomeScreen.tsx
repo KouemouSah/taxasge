@@ -24,6 +24,7 @@ import { getSection } from '../i18n';
 import { HEADER_GRADIENT, GRADIENTS, Colors, Spacing, Shadows } from '../theme';
 import DatabaseService from '../database/DatabaseService';
 import { Ministry, FiscalService, getServiceName } from '../database/services/FiscalServicesService';
+import { dataCacheService } from '../services/DataCacheService';
 
 interface HomeScreenProps {
   language: 'es' | 'fr' | 'en';
@@ -42,39 +43,25 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
   }, []);
 
   const loadData = async () => {
+    const startTime = Date.now();
     try {
       setIsLoading(true);
-      const db = DatabaseService.getInstance();
 
-      // Load 4 RANDOM ministries with service count AND 3 most recent services in parallel
-      const [ministries, recent] = await Promise.all([
-        db.query<Ministry>(
-          `SELECT
-            m.id,
-            m.name_es,
-            m.name_fr,
-            m.name_en,
-            COUNT(DISTINCT fs.id) as service_count
-          FROM ministries m
-          LEFT JOIN fiscal_services fs ON fs.ministry_id = m.id AND fs.status = 'active'
-          WHERE m.status = 'active'
-          GROUP BY m.id
-          HAVING service_count > 0
-          ORDER BY RANDOM()
-          LIMIT 4`,
-          []
-        ),
-        db.query<FiscalService>(
-          `SELECT * FROM v_fiscal_services_complete
-           WHERE status = 'active'
-           ORDER BY view_count DESC, updated_at DESC
-           LIMIT 3`,
-          []
-        ),
+      // Use cache service for faster loading, with DB fallback for random ministries
+      const [allMinistries, recentServicesData] = await Promise.all([
+        dataCacheService.getMinistries(),
+        dataCacheService.getPopularServices(3),
       ]);
 
-      setRandomMinistries(ministries);
-      setRecentServices(recent);
+      // Get 4 random ministries from the cached list with service count > 0
+      const ministriesWithServices = allMinistries.filter(m => (m.service_count || 0) > 0);
+      const shuffled = [...ministriesWithServices].sort(() => Math.random() - 0.5);
+      const randomMinistries = shuffled.slice(0, 4);
+
+      setRandomMinistries(randomMinistries);
+      setRecentServices(recentServicesData);
+
+      console.log(`[HomeScreen] ⚡ Data loaded in ${Date.now() - startTime}ms (using cache)`);
     } catch (error) {
       console.error('[HomeScreen] Error loading data:', error);
     } finally {

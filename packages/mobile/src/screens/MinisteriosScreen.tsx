@@ -21,6 +21,7 @@ import { Ministry } from '../database/services/FiscalServicesService';
 import DatabaseService from '../database/DatabaseService';
 import { Colors, Spacing, Shadows } from '../theme';
 import { getSection } from '../i18n';
+import { dataCacheService } from '../services/DataCacheService';
 
 type ViewMode = 'grid' | 'list';
 
@@ -60,25 +61,16 @@ export const MinisteriosScreen: React.FC<MinisteriosScreenProps> = ({
   }, []);
 
   const loadMinistries = async () => {
+    const startTime = Date.now();
     try {
       setIsLoading(true);
-      const db = DatabaseService.getInstance();
 
-      // Load ministries with service count
-      const results = await db.query<Ministry & { service_count: number }>(
-        `SELECT
-          m.*,
-          COUNT(DISTINCT fs.id) as service_count
-        FROM ministries m
-        LEFT JOIN fiscal_services fs ON fs.ministry_id = m.id AND fs.status = 'active'
-        WHERE m.status = 'active'
-        GROUP BY m.id
-        ORDER BY service_count DESC, m.name_es ASC`,
-        []
-      );
+      // Use cache service for instant loading
+      const results = await dataCacheService.getMinistries();
 
       setMinistries(results);
       setError(null);
+      console.log(`[MinisteriosScreen] ⚡ Loaded ${results.length} ministries in ${Date.now() - startTime}ms (using cache)`);
     } catch (err) {
       console.error('[MinisteriosScreen] Error loading ministries:', err);
       setError(t.error);

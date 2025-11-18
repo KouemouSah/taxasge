@@ -43,6 +43,7 @@ import ProfileScreen from './screens/ProfileScreen';
 import MinisteriosScreen from './screens/MinisteriosScreen';
 import MinisterioDetailScreen from './screens/MinisterioDetailScreen';
 import { APP_CONFIG } from './config/AppConfig';
+import { dataCacheService } from './services/DataCacheService';
 
 /**
  * Détecte la langue du système Android/iOS
@@ -275,6 +276,10 @@ const App = () => {
 
       if (onboardingCompleted === 'true') {
         setShowOnboarding(false);
+        // Preload essential data in background for faster UX
+        dataCacheService.preloadEssentialData().catch(err =>
+          console.warn('[App] Background preload failed:', err)
+        );
       }
     } catch (error) {
       console.error('[App] Error checking onboarding status:', error);
@@ -293,6 +298,11 @@ const App = () => {
       console.log('[App] Onboarding completed by user');
       await AsyncStorage.setItem(STORAGE_KEYS.ONBOARDING_COMPLETED, 'true');
       setShowOnboarding(false);
+
+      // Preload essential data immediately after onboarding for faster first use
+      dataCacheService.preloadEssentialData().catch(err =>
+        console.warn('[App] Background preload failed:', err)
+      );
     } catch (error) {
       console.error('[App] Error saving onboarding status:', error);
       // Still proceed even if save fails
