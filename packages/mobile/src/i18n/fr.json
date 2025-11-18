@@ -1,0 +1,151 @@
+{
+  "common": {
+    "back": "Retour",
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "retry": "Réessayer",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "close": "Fermer"
+  },
+  "navigation": {
+    "home": "Accueil",
+    "search": "Rechercher",
+    "favorites": "Favoris",
+    "profile": "Profil"
+  },
+  "homeScreen": {
+    "title": "Explorateur de Ministères",
+    "subtitle": "Votre portail de services gouvernementaux",
+    "searchPlaceholder": "Rechercher ministères ou services...",
+    "quickActionsTitle": "Actions Rapides",
+    "quickActions": {
+      "searchServices": "Rechercher Services",
+      "contactAssistant": "TaxaBot",
+      "myFavorites": "Mes Favoris",
+      "calculator": "Calculatrice"
+    },
+    "recentlyVisitedTitle": "Récemment Visités",
+    "popularMinistriesTitle": "Ministères Populaires",
+    "viewAll": "Voir tous",
+    "services": "services"
+  },
+  "ministeriosScreen": {
+    "title": "Tous les Ministères",
+    "loading": "Chargement des ministères...",
+    "error": "Erreur de chargement des ministères",
+    "services": "services",
+    "noResults": "Aucun ministère trouvé"
+  },
+  "ministerioDetail": {
+    "title": "Détails du Ministère",
+    "servicesAvailable": "services disponibles",
+    "location": "Localisation",
+    "email": "Courriel",
+    "website": "Site web",
+    "notAvailable": "Non disponible",
+    "stats": {
+      "sectors": "Secteurs",
+      "categories": "Catégories",
+      "services": "Services"
+    },
+    "servicesTitle": "Services Fiscaux",
+    "noServices": "Aucun service disponible"
+  },
+  "profileScreen": {
+    "title": "Mon Profil",
+    "memberSince": "Membre depuis",
+    "sections": {
+      "language": "Langue",
+      "history": "Historique",
+      "customization": "Personnalisation",
+      "about": "À propos"
+    },
+    "settings": {
+      "selectLanguage": "Sélectionner la langue",
+      "calculationHistory": "Historique des calculs",
+      "chatbotBackground": "Fond du chatbot",
+      "appVersion": "Version de l'application",
+      "termsOfService": "Conditions d'utilisation",
+      "privacyPolicy": "Politique de confidentialité"
+    },
+    "languages": {
+      "spanish": "Español",
+      "french": "Français",
+      "english": "English"
+    },
+    "backgroundOptions": {
+      "greenPattern": "Vert avec motif",
+      "bluePattern": "Bleu avec motif",
+      "grayPattern": "Gris avec motif"
+    },
+    "selectLanguageTitle": "Sélectionner la Langue",
+    "selectBackgroundTitle": "Fond du Chatbot"
+  },
+  "chatbotScreen": {
+    "title": "Assistant",
+    "assistantName": "TaxaBot",
+    "inputPlaceholder": "Écrire un message...",
+    "greeting": "Bonjour, comment puis-je vous aider?",
+    "needHelp": "J'ai besoin d'informations sur le",
+    "viewDetails": "Voir les détails",
+    "documentsRequired": "Documents requis",
+    "processingTime": "Temps de traitement",
+    "expeditionFee": "Frais d'expédition",
+    "renewalFee": "Frais de renouvellement",
+    "workingDays": "jours ouvrables",
+    "noMessages": "Aucun message pour le moment. Commencez une conversation!"
+  },
+  "serviceDetailScreen": {
+    "title": "Détails du Service",
+    "description": "Description",
+    "pricing": "Tarifs",
+    "expedition": "Expédition",
+    "renewal": "Renouvellement",
+    "calculationMethod": "Méthode de Calcul",
+    "category": "Catégorie",
+    "sector": "Secteur",
+    "ministry": "Ministère",
+    "documents": "Documents Requis",
+    "documentsExpedition": "Documents Requis - Expédition",
+    "documentsRenewal": "Documents Requis - Renouvellement",
+    "documentsBoth": "Documents Requis - Expédition et Renouvellement",
+    "procedures": "Procédures",
+    "proceduresExpedition": "Procédures - Expédition",
+    "proceduresRenewal": "Procédures - Renouvellement",
+    "proceduresBoth": "Procédures - Expédition et Renouvellement",
+    "noDocuments": "Aucun document enregistré",
+    "noProcedures": "Aucune procédure enregistrée",
+    "steps": "étapes",
+    "estimatedDuration": "Durée estimée",
+    "location": "Localisation",
+    "officeHours": "Heures d'ouverture",
+    "minutes": "minutes",
+    "calculate": "Calculer",
+    "getHelp": "Obtenir de l'Aide"
+  },
+  "onboarding": {
+    "skip": "Passer",
+    "next": "Suivant",
+    "getStarted": "Commencer",
+    "screen1": {
+      "title": "Bienvenue à TaxasGE",
+      "subtitle": "Votre portail de services fiscaux de Guinée Équatoriale"
+    },
+    "screen2": {
+      "title": "Consultation Facile",
+      "subtitle": "Accédez aux informations sur les services fiscaux rapidement et facilement"
+    },
+    "screen3": {
+      "title": "Calcul Précis",
+      "subtitle": "Calculez les taxes fiscales avec précision et transparence"
+    },
+    "screen4": {
+      "title": "Assistant Intelligent",
+      "subtitle": "Obtenez une aide personnalisée avec notre chatbot TaxaBot"
+    }
+  }
+}

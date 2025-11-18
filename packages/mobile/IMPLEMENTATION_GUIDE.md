@@ -1,11 +1,50 @@
-/**
- * TaxasGE Mobile - Modern Home Screen
- * Beautiful home screen with search, quick actions, and random ministries
- * Date: 2025-11-17
- * Based on: Inicio.png design + i18n system
- */
+# TaxasGE Mobile - Phase 2 Implementation Guide
 
-import React, { useState, useEffect, useCallback } from 'react';
+## ✅ Completed (Phase 1)
+
+1. **i18n System** - Complete translations in ES/FR/EN
+   - `src/i18n/es.json` - Spanish translations
+   - `src/i18n/fr.json` - French translations
+   - `src/i18n/en.json` - English translations
+   - `src/i18n/index.js` - Helper functions (t, getSection, useTranslation)
+
+2. **Infrastructure Components**
+   - `src/components/GradientHeader.tsx`
+   - `src/components/BottomTabBar.tsx`
+   - `src/components/ModernIcon.tsx`
+   - `src/theme/gradients.ts`
+
+3. **Example Screen**
+   - `src/screens/MinisteriosScreen.tsx` (needs i18n update)
+
+## 🔴 Next Steps - Priority Order
+
+### Step 1: Update MinisteriosScreen to use i18n
+
+**File:** `packages/mobile/src/screens/MinisteriosScreen.tsx`
+
+```typescript
+// Add import at top
+import { getSection } from '../i18n';
+
+// Replace TEXTS constant with:
+const MinisteriosScreen: React.FC<MinisteriosScreenProps> = ({
+  language,
+  onBack,
+  onMinistryPress,
+  onTabPress,
+}) => {
+  const t = getSection(language, 'ministeriosScreen');
+
+  // Use t.title, t.loading, t.error, t.services instead of TEXTS[language]
+```
+
+### Step 2: Update HomeScreen.tsx
+
+**File:** `packages/mobile/src/screens/HomeScreen.tsx`
+
+```typescript
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,75 +57,66 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import { GradientHeader } from '../components/GradientHeader';
 import { BottomTabBar, TabName } from '../components/BottomTabBar';
-import { Icon } from '../components/Icon';
 import { getSection } from '../i18n';
 import { HEADER_GRADIENT, GRADIENTS, Colors, Spacing, Shadows } from '../theme';
+import { Ministry, FiscalService } from '../database/services/FiscalServicesService';
 import DatabaseService from '../database/DatabaseService';
-import { Ministry, FiscalService, getServiceName } from '../database/services/FiscalServicesService';
 
 interface HomeScreenProps {
   language: 'es' | 'fr' | 'en';
   onNavigate: (screen: string, data?: any) => void;
+  onTabPress: (tab: TabName) => void;
 }
 
-const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
+export const HomeScreen: React.FC<HomeScreenProps> = ({
+  language,
+  onNavigate,
+  onTabPress,
+}) => {
   const t = getSection(language, 'homeScreen');
   const [searchQuery, setSearchQuery] = useState('');
-  const [randomMinistries, setRandomMinistries] = useState<Ministry[]>([]);
-  const [recentServices, setRecentServices] = useState<FiscalService[]>([]);
+  const [randomMinistries, setRandomMinistries] = useState<Array<Ministry & { service_count: number }>>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadData();
+    loadRandomMinistries();
   }, []);
 
-  const loadData = async () => {
+  const loadRandomMinistries = async () => {
     try {
       setIsLoading(true);
       const db = DatabaseService.getInstance();
 
-      // Load 4 RANDOM ministries with service count AND 3 most recent services in parallel
-      const [ministries, recent] = await Promise.all([
-        db.query<Ministry>(
-          `SELECT
-            m.id,
-            m.name_es,
-            m.name_fr,
-            m.name_en,
-            COUNT(DISTINCT fs.id) as service_count
-          FROM ministries m
-          LEFT JOIN fiscal_services fs ON fs.ministry_id = m.id AND fs.status = 'active'
-          WHERE m.status = 'active'
-          GROUP BY m.id
-          HAVING service_count > 0
-          ORDER BY RANDOM()
-          LIMIT 4`,
-          []
-        ),
-        db.query<FiscalService>(
-          `SELECT * FROM v_fiscal_services_complete
-           WHERE status = 'active'
-           ORDER BY view_count DESC, updated_at DESC
-           LIMIT 3`,
-          []
-        ),
-      ]);
+      // Load all ministries with service count
+      const allMinistries = await db.query<Ministry & { service_count: number }>(
+        `SELECT
+          m.*,
+          COUNT(DISTINCT fs.id) as service_count
+        FROM ministries m
+        LEFT JOIN fiscal_services fs ON fs.ministry_id = m.id AND fs.status = 'active'
+        WHERE m.status = 'active'
+        GROUP BY m.id
+        HAVING service_count > 0
+        ORDER BY RANDOM()
+        LIMIT 4`,
+        []
+      );
 
-      setRandomMinistries(ministries);
-      setRecentServices(recent);
+      setRandomMinistries(allMinistries);
     } catch (error) {
-      console.error('[HomeScreen] Error loading data:', error);
+      console.error('[HomeScreen] Error loading ministries:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const getMinistryName = useCallback((ministry: Ministry): string => {
+  const getMinistryName = (ministry: Ministry): string => {
     if (language === 'fr' && ministry.name_fr) return ministry.name_fr;
     if (language === 'en' && ministry.name_en) return ministry.name_en;
     return ministry.name_es;
-  }, [language]);
+  };
 
   const getMinistryGradient = (index: number): string[] => {
     const gradients = [
@@ -96,11 +126,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
       GRADIENTS.ministryBlue,
     ];
     return gradients[index % gradients.length];
-  };
-
-  const handleTabPress = (tab: TabName) => {
-    if (tab === 'home') return; // Already on home
-    onNavigate(tab);
   };
 
   return (
@@ -124,11 +149,14 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
                 <Text style={styles.headerSubtitle}>{t.subtitle}</Text>
               </View>
             </View>
+            <TouchableOpacity style={styles.notificationButton}>
+              <Text style={styles.notificationIcon}>🔔</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Search bar */}
           <View style={styles.searchContainer}>
-            <Icon name="search" size={20} color="#999999" style={styles.searchIcon} />
+            <Text style={styles.searchIcon}>🔍</Text>
             <TextInput
               style={styles.searchInput}
               placeholder={t.searchPlaceholder}
@@ -152,7 +180,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
 
       {/* Scrollable content */}
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Quick Actions - ICONS CENTERED */}
+        {/* Quick Actions */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t.quickActionsTitle}</Text>
           <View style={styles.quickActionsGrid}>
@@ -164,7 +192,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
                 colors={['#4A90E2', '#357ABD']}
                 style={styles.actionCardGradient}>
                 <View style={styles.actionIconContainer}>
-                  <Icon name="search" size={42} color="#FFFFFF" />
+                  <Text style={styles.actionIcon}>🔍</Text>
                 </View>
                 <Text style={styles.actionLabel}>{t.quickActions.searchServices}</Text>
               </LinearGradient>
@@ -178,7 +206,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
                 colors={['#50C878', '#3EAE63']}
                 style={styles.actionCardGradient}>
                 <View style={styles.actionIconContainer}>
-                  <Icon name="robot" size={42} color="#FFFFFF" />
+                  <Text style={styles.actionIcon}>🤖</Text>
                 </View>
                 <Text style={styles.actionLabel}>{t.quickActions.contactAssistant}</Text>
               </LinearGradient>
@@ -192,7 +220,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
                 colors={['#E91E63', '#C2185B']}
                 style={styles.actionCardGradient}>
                 <View style={styles.actionIconContainer}>
-                  <Icon name="heart-filled" size={42} color="#FFFFFF" />
+                  <Text style={styles.actionIcon}>❤️</Text>
                 </View>
                 <Text style={styles.actionLabel}>{t.quickActions.myFavorites}</Text>
               </LinearGradient>
@@ -200,64 +228,31 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
 
             <TouchableOpacity
               style={styles.actionCard}
-              onPress={() => onNavigate('history')}
+              onPress={() => onNavigate('appointments')}
               activeOpacity={0.8}>
               <LinearGradient
                 colors={['#9C27B0', '#7B1FA2']}
                 style={styles.actionCardGradient}>
                 <View style={styles.actionIconContainer}>
-                  <Icon name="calculator" size={42} color="#FFFFFF" />
+                  <Text style={styles.actionIcon}>📅</Text>
                 </View>
-                <Text style={styles.actionLabel}>{t.quickActions.calculator}</Text>
+                <Text style={styles.actionLabel}>{t.quickActions.scheduledAppointments}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
         </View>
-
-        {/* Recently Visited Services */}
-        {recentServices.length > 0 && (
-          <View style={[styles.section, { marginTop: Spacing.md }]}>
-            <Text style={styles.sectionTitle}>{t.recentlyVisitedTitle}</Text>
-            <View style={styles.recentServicesContainer}>
-              {recentServices.map((service) => (
-                <TouchableOpacity
-                  key={service.id}
-                  style={styles.recentServiceItem}
-                  onPress={() => onNavigate('serviceDetail', service)}
-                  activeOpacity={0.7}>
-                  <View style={styles.recentServiceIcon}>
-                    <Icon name="document" size={20} color="#007AFF" />
-                  </View>
-                  <View style={styles.recentServiceInfo}>
-                    <Text style={styles.recentServiceName} numberOfLines={2}>
-                      {getServiceName(service, language)}
-                    </Text>
-                    <Text style={styles.recentServicePrice}>
-                      {service.tasa_expedicion ? `${service.tasa_expedicion.toLocaleString()} XAF` : 'N/A'}
-                    </Text>
-                  </View>
-                  <Text style={styles.recentServiceArrow}>→</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        )}
 
         {/* Ministerios Populares - REDUCED SPACING */}
         <View style={[styles.section, { marginTop: Spacing.md }]}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>{t.popularMinistriesTitle}</Text>
             <TouchableOpacity onPress={() => onNavigate('ministerios')}>
-              <Text style={styles.viewAllLink}>
-                {t.viewAll} →
-              </Text>
+              <Text style={styles.viewAllLink}>{t.viewAll} →</Text>
             </TouchableOpacity>
           </View>
 
           {isLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={Colors.primary} />
-            </View>
+            <ActivityIndicator size="large" color={Colors.primary} />
           ) : (
             <View style={styles.ministriesContainer}>
               {randomMinistries.map((ministry, index) => (
@@ -266,12 +261,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
                   style={styles.ministryCard}
                   onPress={() => onNavigate('ministerioDetail', ministry)}
                   activeOpacity={0.8}>
-                  <View
-                    style={[
-                      styles.ministryIconCircle,
-                      { backgroundColor: getMinistryGradient(index)[0] },
-                    ]}>
-                    <Icon name="building" size={28} color="#FFFFFF" />
+                  <View style={[styles.ministryIconCircle, { backgroundColor: getMinistryGradient(index)[0] }]}>
+                    <Text style={styles.ministryIcon}>🏛️</Text>
                   </View>
                   <View style={styles.ministryInfo}>
                     <Text style={styles.ministryName} numberOfLines={2}>
@@ -290,7 +281,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
       </ScrollView>
 
       {/* Bottom Tab Navigation */}
-      <BottomTabBar activeTab="home" onTabPress={handleTabPress} language={language} />
+      <BottomTabBar activeTab="home" onTabPress={onTabPress} language={language} />
     </SafeAreaView>
   );
 };
@@ -336,6 +327,17 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.9)',
     marginTop: 2,
   },
+  notificationButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  notificationIcon: {
+    fontSize: 20,
+  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -368,11 +370,10 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#1A1A1A',
     marginBottom: Spacing.md,
-    letterSpacing: -0.5,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -391,15 +392,15 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   actionCard: {
-    width: '47%',
-    height: 110, // Reduced height (was aspectRatio: 1)
+    width: '48%',
+    aspectRatio: 1,
     borderRadius: 16,
     overflow: 'hidden',
     ...Shadows.md,
   },
   actionCardGradient: {
     flex: 1,
-    padding: Spacing.sm,
+    padding: Spacing.md,
     justifyContent: 'space-between',
     alignItems: 'center',
   },
@@ -409,18 +410,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   actionIcon: {
-    fontSize: 42, // 60% of ~70px card height
+    fontSize: 48,
   },
   actionLabel: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '600',
     color: '#FFFFFF',
     textAlign: 'center',
-    marginTop: 4,
-  },
-  loadingContainer: {
-    padding: Spacing.xl,
-    alignItems: 'center',
   },
   ministriesContainer: {
     gap: Spacing.sm,
@@ -462,50 +458,69 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     marginLeft: Spacing.sm,
   },
-
-  // Recently Visited Services
-  recentServicesContainer: {
-    gap: Spacing.sm,
-  },
-  recentServiceItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: Spacing.md,
-    ...Shadows.sm,
-  },
-  recentServiceIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#F0F0F0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: Spacing.md,
-  },
-  recentServiceIconText: {
-    fontSize: 24,
-  },
-  recentServiceInfo: {
-    flex: 1,
-  },
-  recentServiceName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1A1A1A',
-    marginBottom: 4,
-  },
-  recentServicePrice: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.primary,
-  },
-  recentServiceArrow: {
-    fontSize: 18,
-    color: '#CCCCCC',
-    marginLeft: Spacing.sm,
-  },
 });
 
 export default HomeScreen;
+```
+
+### Step 3: Create MinisterioDetailScreen.tsx
+
+See TODO_UI_REDESIGN.md Section 2 for complete implementation.
+
+### Step 4: Create ProfileScreen.tsx
+
+See TODO_UI_REDESIGN.md Section 3 for complete implementation.
+
+### Step 5: Redesign ChatbotScreen.tsx
+
+See TODO_UI_REDESIGN.md Section 4 for complete implementation.
+
+---
+
+## Usage of i18n System
+
+All new screens should use the i18n system:
+
+```typescript
+import { getSection } from '../i18n';
+
+const MyScreen = ({ language }) => {
+  const t = getSection(language, 'sectionName');
+
+  return (
+    <Text>{t.title}</Text>
+  );
+};
+```
+
+Available sections:
+- `common` - Common UI elements
+- `navigation` - Tab labels
+- `homeScreen` - Home screen
+- `ministeriosScreen` - Ministries list
+- `ministerioDetail` - Ministry detail
+- `profileScreen` - Profile/settings
+- `chatbotScreen` - Chatbot
+- `serviceDetailScreen` - Service detail
+- `onboarding` - Onboarding screens
+
+---
+
+## Testing
+
+After implementation:
+
+```bash
+cd packages/mobile
+npm run lint:check  # Should have 0 errors
+```
+
+---
+
+## Commit Strategy
+
+Commit in logical phases:
+1. i18n system + HomeScreen update
+2. MinisterioDetailScreen + ProfileScreen
+3. ChatbotScreen redesign
+4. Integration + testing

@@ -20,6 +20,8 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { GradientHeader } from '../components/GradientHeader';
+import { Icon } from '../components/Icon';
 import {
   FiscalService,
   getServiceName,
@@ -426,20 +428,13 @@ export const CalculatorScreen: React.FC<CalculatorScreenProps> = ({
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="light-content" backgroundColor="#004aad" />
 
-      {/* Header */}
-      <View style={styles.header}>
-        {onBack && (
-          <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Text style={styles.backButtonText}>←</Text>
-          </TouchableOpacity>
-        )}
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>{String(t.title)}</Text>
-        </View>
-        <View style={styles.headerRight} />
-      </View>
+      {/* Modern Header */}
+      <GradientHeader
+        title={t.title}
+        onBack={onBack}
+      />
 
       <ScrollView contentContainerStyle={styles.content}>
         {/* Calculation Type Selector */}
@@ -482,7 +477,7 @@ export const CalculatorScreen: React.FC<CalculatorScreenProps> = ({
         {/* Formula Description */}
         {formulaDescription && typeof formulaDescription === 'string' && formulaDescription.trim() !== '' && (
           <View style={styles.formulaDescriptionSection}>
-            <Text style={styles.formulaDescriptionIcon}>ℹ️</Text>
+            <Icon name="info" size={20} color="#007AFF" style={styles.formulaDescriptionIcon} />
             <Text style={styles.formulaDescriptionText}>{String(formulaDescription)}</Text>
           </View>
         )}
@@ -604,39 +599,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
-  },
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  backButton: {
-    padding: 8,
-    marginRight: 8,
-  },
-  backButtonText: {
-    fontSize: 24,
-    color: '#007AFF',
-    fontWeight: '600',
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#000',
-  },
-  headerRight: {
-    width: 40,
   },
 
   // Content

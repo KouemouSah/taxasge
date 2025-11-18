@@ -1,0 +1,151 @@
+{
+  "common": {
+    "back": "Volver",
+    "loading": "Cargando...",
+    "error": "Error",
+    "retry": "Reintentar",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "close": "Cerrar"
+  },
+  "navigation": {
+    "home": "Inicio",
+    "search": "Buscar",
+    "favorites": "Favoritos",
+    "profile": "Perfil"
+  },
+  "homeScreen": {
+    "title": "Explorador de Ministerios",
+    "subtitle": "Tu portal de servicios gubernamentales",
+    "searchPlaceholder": "Buscar ministerios o servicios...",
+    "quickActionsTitle": "Acciones Rápidas",
+    "quickActions": {
+      "searchServices": "Buscar Servicios",
+      "contactAssistant": "TaxaBot",
+      "myFavorites": "Mis Favoritos",
+      "calculator": "Calculadora"
+    },
+    "recentlyVisitedTitle": "Recientemente Visitados",
+    "popularMinistriesTitle": "Ministerios Populares",
+    "viewAll": "Ver todos",
+    "services": "servicios"
+  },
+  "ministeriosScreen": {
+    "title": "Todos los Ministerios",
+    "loading": "Cargando ministerios...",
+    "error": "Error al cargar ministerios",
+    "services": "servicios",
+    "noResults": "No se encontraron ministerios"
+  },
+  "ministerioDetail": {
+    "title": "Detalles del Ministerio",
+    "servicesAvailable": "servicios disponibles",
+    "location": "Localizaci�n",
+    "email": "Correo electr�nico",
+    "website": "Sitio web",
+    "notAvailable": "No disponible",
+    "stats": {
+      "sectors": "Sectores",
+      "categories": "Categor�as",
+      "services": "Servicios"
+    },
+    "servicesTitle": "Servicios Fiscales",
+    "noServices": "No hay servicios disponibles"
+  },
+  "profileScreen": {
+    "title": "Mi Perfil",
+    "memberSince": "Miembro desde",
+    "sections": {
+      "language": "Idioma",
+      "history": "Historial",
+      "customization": "Personalizaci�n",
+      "about": "Acerca de"
+    },
+    "settings": {
+      "selectLanguage": "Seleccionar idioma",
+      "calculationHistory": "Historial de c�lculos",
+      "chatbotBackground": "Fondo del chatbot",
+      "appVersion": "Versi�n de la aplicaci�n",
+      "termsOfService": "T�rminos de servicio",
+      "privacyPolicy": "Pol�tica de privacidad"
+    },
+    "languages": {
+      "spanish": "Espa�ol",
+      "french": "Fran�ais",
+      "english": "English"
+    },
+    "backgroundOptions": {
+      "greenPattern": "Verde con patr�n",
+      "bluePattern": "Azul con patr�n",
+      "grayPattern": "Gris con patr�n"
+    },
+    "selectLanguageTitle": "Seleccionar Idioma",
+    "selectBackgroundTitle": "Fondo del Chatbot"
+  },
+  "chatbotScreen": {
+    "title": "Asistente",
+    "assistantName": "TaxaBot",
+    "inputPlaceholder": "Escribir un mensaje...",
+    "greeting": "Hola, �en qu� puedo ayudarte?",
+    "needHelp": "Necesito informaci�n sobre el",
+    "viewDetails": "Ver los detalles",
+    "documentsRequired": "Documentos requeridos",
+    "processingTime": "Tiempo de procesamiento",
+    "expeditionFee": "Tasa de expedici�n",
+    "renewalFee": "Tasa de renovaci�n",
+    "workingDays": "d�as h�biles",
+    "noMessages": "No hay mensajes a�n. �Empieza una conversaci�n!"
+  },
+  "serviceDetailScreen": {
+    "title": "Detalles del Servicio",
+    "description": "Descripci�n",
+    "pricing": "Tarifas",
+    "expedition": "Expedici�n",
+    "renewal": "Renovaci�n",
+    "calculationMethod": "M�todo de C�lculo",
+    "category": "Categor�a",
+    "sector": "Sector",
+    "ministry": "Ministerio",
+    "documents": "Documentos Requeridos",
+    "documentsExpedition": "Documentos Requeridos - Expedici�n",
+    "documentsRenewal": "Documentos Requeridos - Renovaci�n",
+    "documentsBoth": "Documentos Requeridos - Expedici�n y Renovaci�n",
+    "procedures": "Procedimientos",
+    "proceduresExpedition": "Procedimientos - Expedici�n",
+    "proceduresRenewal": "Procedimientos - Renovaci�n",
+    "proceduresBoth": "Procedimientos - Expedici�n y Renovaci�n",
+    "noDocuments": "No hay documentos registrados",
+    "noProcedures": "No hay procedimientos registrados",
+    "steps": "pasos",
+    "estimatedDuration": "Duraci�n estimada",
+    "location": "Localizaci�n",
+    "officeHours": "Horas de apertura",
+    "minutes": "minutos",
+    "calculate": "Calcular",
+    "getHelp": "Obtener Ayuda"
+  },
+  "onboarding": {
+    "skip": "Omitir",
+    "next": "Siguiente",
+    "getStarted": "Comenzar",
+    "screen1": {
+      "title": "Bienvenido a TaxasGE",
+      "subtitle": "Tu portal de servicios fiscales de Guinea Ecuatorial"
+    },
+    "screen2": {
+      "title": "Consulta Sencilla",
+      "subtitle": "Accede a informaci�n de servicios fiscales de manera r�pida y f�cil"
+    },
+    "screen3": {
+      "title": "C�lculo Exacto",
+      "subtitle": "Calcula tasas fiscales con precisi�n y transparencia"
+    },
+    "screen4": {
+      "title": "Asistente Inteligente",
+      "subtitle": "Obt�n ayuda personalizada con nuestro chatbot TaxaBot"
+    }
+  }
+}

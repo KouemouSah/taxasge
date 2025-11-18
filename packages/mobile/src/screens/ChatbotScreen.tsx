@@ -22,8 +22,10 @@ import {
   Text,
   TouchableOpacity,
   Alert,
+  ImageBackground,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import LinearGradient from 'react-native-linear-gradient';
 
 import { chatbotService } from '../services/ChatbotService';
 import {
@@ -38,6 +40,8 @@ import {
   SuggestionChips,
   TypingIndicator,
 } from '../components/chat';
+import { GradientHeader } from '../components/GradientHeader';
+import { Colors, Spacing } from '../theme';
 
 // ============================================
 // CONSTANTS
@@ -357,58 +361,78 @@ export const ChatbotScreen: React.FC<ChatbotScreenProps> = ({ language, onBack, 
     );
   }
 
+  const getHeaderTitle = () => {
+    switch (currentLanguage) {
+      case 'fr':
+        return 'Assistant';
+      case 'en':
+        return 'Assistant';
+      default:
+        return 'Asistente';
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="light-content" backgroundColor="#004aad" />
 
-      {/* Header */}
-      <View style={styles.header}>
-        {onBack && (
-          <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Text style={styles.backButtonText}>←</Text>
+      {/* Modern Header with Logo */}
+      <GradientHeader
+        title={getHeaderTitle()}
+        onBack={onBack}
+        rightComponent={
+          <TouchableOpacity style={styles.clearButton} onPress={handleClearChat}>
+            <Text style={styles.clearButtonIcon}>🗑️</Text>
           </TouchableOpacity>
-        )}
-
-        <View style={styles.headerLeft}>
-          <Text style={styles.headerTitle}>🤖 TaxasBot</Text>
-          <Text style={styles.headerSubtitle}>
-            {currentLanguage === 'es' ? 'Asistente Fiscal' : currentLanguage === 'fr' ? 'Assistant Fiscal' : 'Tax Assistant'}
-          </Text>
-        </View>
-
-        <TouchableOpacity style={styles.clearButton} onPress={handleClearChat}>
-          <Text style={styles.clearButtonText}>🗑️</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Messages */}
-      <FlatList
-        ref={flatListRef}
-        data={messages}
-        renderItem={renderMessage}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.messagesList}
-        ListFooterComponent={renderFooter}
-        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-      />
-
-      {/* Suggestions */}
-      {suggestions.length > 0 && (
-        <SuggestionChips suggestions={suggestions} onSuggestionPress={handleSuggestionPress} />
-      )}
-
-      {/* Input */}
-      <ChatInput
-        onSend={handleSend}
-        disabled={isTyping}
-        placeholder={
-          currentLanguage === 'es'
-            ? 'Escribe tu pregunta...'
-            : currentLanguage === 'fr'
-            ? 'Tapez votre question...'
-            : 'Type your question...'
+        }
+        leftComponent={
+          <View style={styles.logoContainer}>
+            <View style={styles.logoCircle}>
+              <Text style={styles.logoIcon}>🤖</Text>
+            </View>
+          </View>
         }
       />
+
+      {/* Green Background with Pattern Overlay */}
+      <LinearGradient
+        colors={['#40E0D0', '#20CED8']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.backgroundGradient}>
+        {/* Pattern Overlay (90% opacity gray) */}
+        <View style={styles.patternOverlay}>
+          {/* Messages */}
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            renderItem={renderMessage}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.messagesList}
+            ListFooterComponent={renderFooter}
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+            showsVerticalScrollIndicator={false}
+          />
+
+          {/* Suggestions */}
+          {suggestions.length > 0 && (
+            <SuggestionChips suggestions={suggestions} onSuggestionPress={handleSuggestionPress} />
+          )}
+
+          {/* Input */}
+          <ChatInput
+            onSend={handleSend}
+            disabled={isTyping}
+            placeholder={
+              currentLanguage === 'es'
+                ? 'Escribe tu mensaje...'
+                : currentLanguage === 'fr'
+                ? 'Écrire un message...'
+                : 'Type your message...'
+            }
+          />
+        </View>
+      </LinearGradient>
     </SafeAreaView>
   );
 };
@@ -420,63 +444,62 @@ export const ChatbotScreen: React.FC<ChatbotScreenProps> = ({ language, onBack, 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#40E0D0',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#40E0D0',
   },
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#666',
+    color: '#FFFFFF',
   },
 
-  // Header
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  // Logo in Header
+  logoContainer: {
+    marginRight: Spacing.md,
+  },
+  logoCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  backButton: {
-    padding: 8,
-    marginRight: 8,
-  },
-  backButtonText: {
+  logoIcon: {
     fontSize: 24,
-    color: '#007AFF',
-    fontWeight: '600',
   },
-  headerLeft: {
+
+  // Clear button in header
+  clearButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  clearButtonIcon: {
+    fontSize: 20,
+  },
+
+  // Background
+  backgroundGradient: {
     flex: 1,
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#000',
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
-  },
-  clearButton: {
-    padding: 8,
-  },
-  clearButtonText: {
-    fontSize: 20,
+  patternOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(128, 128, 128, 0.05)', // 5% gray overlay for subtle pattern effect
   },
 
   // Messages list
   messagesList: {
     paddingVertical: 12,
+    paddingHorizontal: Spacing.sm,
     flexGrow: 1,
   },
 });

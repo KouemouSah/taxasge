@@ -22,6 +22,8 @@ import {
 import { calculationHistoryService, CalculationHistoryRecord } from '../database/services/CalculationHistoryService';
 import { HistoryCard } from '../components/HistoryCard';
 import { SwipeActions, SwipeAction } from '../components/SwipeActions';
+import { GradientHeader } from '../components/GradientHeader';
+import { Icon } from '../components/Icon';
 
 export interface HistoryScreenProps {
   language: 'es' | 'fr' | 'en';
@@ -486,28 +488,28 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="light-content" backgroundColor="#004aad" />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← </Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>{texts.title}</Text>
-        <View style={styles.headerRight}>
-          <TouchableOpacity
-            style={styles.iconButton}
-            onPress={() => setShowFilters(true)}>
-            <Text style={styles.iconButtonText}>🔍</Text>
-            {hasActiveFilters && <View style={styles.filterBadge} />}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.iconButton}
-            onPress={handleExport}>
-            <Text style={styles.iconButtonText}>📤</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      {/* Modern Header */}
+      <GradientHeader
+        title={texts.title}
+        onBack={onBack}
+        rightComponent={
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.headerIconButton}
+              onPress={() => setShowFilters(true)}>
+              <Icon name="search" size={20} color="#FFFFFF" />
+              {hasActiveFilters && <View style={styles.filterBadge} />}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerIconButton}
+              onPress={handleExport}>
+              <Icon name="export" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+        }
+      />
 
       {/* Stats Bar */}
       <View style={styles.statsBar}>
@@ -553,39 +555,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F5F5',
   },
-  header: {
+  headerActions: {
     flexDirection: 'row',
+    gap: 4,
+  },
+  headerIconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  backButton: {
-    padding: 8,
-  },
-  backButtonText: {
-    fontSize: 24,
-    color: '#007AFF',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    flex: 1,
-    marginLeft: 8,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  iconButton: {
-    padding: 8,
     position: 'relative',
   },
-  iconButtonText: {
-    fontSize: 20,
+  headerIconText: {
+    fontSize: 18,
   },
   filterBadge: {
     position: 'absolute',

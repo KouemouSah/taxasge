@@ -62,7 +62,7 @@ const ONBOARDING_DATA: OnboardingSlide[] = [
     subtitle_fr: 'n\'a jamais été aussi simple. Votre plateforme officielle pour les consultations, déclarations et paiements sécurisés.',
     subtitle_en: 'has never been so simple. Your official platform for consultations, declarations and secure payments.',
     image: require('../assets/images/flag.jpg'),
-    gradientColors: ['#ffffff', '#f8f4ed'],
+    gradientColors: ['#ffffff', '#ffffff'], // Pure white background
     buttonText_es: 'Iniciar',
     buttonText_fr: 'Commencer',
     buttonText_en: 'Start',
@@ -121,6 +121,7 @@ const NewOnboardingScreen: React.FC<NewOnboardingScreenProps> = ({
 
   // Staggered entrance animations
   const logoAnim = useRef(new Animated.Value(0)).current;
+  const logoPulse = useRef(new Animated.Value(1)).current;
   const mediaAnim = useRef(new Animated.Value(0)).current;
   const textAnim = useRef(new Animated.Value(0)).current;
   const buttonAnim = useRef(new Animated.Value(0)).current;
@@ -148,8 +149,28 @@ const NewOnboardingScreen: React.FC<NewOnboardingScreenProps> = ({
         duration: 500,
         useNativeDriver: true,
       }),
-    ]).start();
+    ]).start(() => {
+      // After entrance animation completes, start continuous pulse animation
+      startLogoPulse();
+    });
   }, []);
+
+  const startLogoPulse = () => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(logoPulse, {
+          toValue: 1.05,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(logoPulse, {
+          toValue: 1,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  };
 
   const handleNext = () => {
     if (currentIndex < ONBOARDING_DATA.length - 1) {
@@ -227,12 +248,15 @@ const NewOnboardingScreen: React.FC<NewOnboardingScreenProps> = ({
                 styles.logoContainer,
                 {
                   opacity: logoAnim,
-                  transform: [{
-                    translateY: logoAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [-20, 0],
-                    })
-                  }]
+                  transform: [
+                    {
+                      translateY: logoAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [-20, 0],
+                      })
+                    },
+                    { scale: logoPulse } // Continuous pulse animation
+                  ]
                 }
               ]}
             >

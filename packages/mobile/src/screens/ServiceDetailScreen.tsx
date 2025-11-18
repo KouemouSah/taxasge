@@ -15,6 +15,7 @@ import {
   StatusBar,
   ActivityIndicator,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { FiscalService, getServiceName, getServiceDescription, getMinistryName, getCategoryName, getSectorName } from '../database/services/FiscalServicesService';
 import {
   serviceDetailsService,
@@ -26,6 +27,9 @@ import {
   getStepDescription,
   getStepInstructions
 } from '../database/services/ServiceDetailsService';
+import { GradientHeader } from '../components/GradientHeader';
+import { Icon } from '../components/Icon';
+import { Colors, Spacing, Typography, Shadows } from '../theme';
 
 export interface ServiceDetailScreenProps {
   service: FiscalService;
@@ -134,7 +138,6 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
   const [documents, setDocuments] = useState<ServiceDocument[]>([]);
   const [procedures, setProcedures] = useState<ServiceProcedure[]>([]);
   const [procedureSteps, setProcedureSteps] = useState<Map<string, ProcedureStep[]>>(new Map());
-  const [isLoadingDetails, setIsLoadingDetails] = useState(true);
 
   useEffect(() => {
     loadServiceDetails();
@@ -143,7 +146,6 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
   const loadServiceDetails = async () => {
     const startTime = Date.now();
     try {
-      setIsLoadingDetails(true);
       console.log('[ServiceDetailScreen] Loading details for service:', service.id);
       const queryStart = Date.now();
       const details = await serviceDetailsService.getCompleteDetails(service.id);
@@ -152,8 +154,10 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
       // Split documents that contain commas into separate entries
       const expandedDocuments: ServiceDocument[] = [];
       details.documents.forEach(doc => {
-        // Split document names if they contain commas (ES only for now)
+        // Split document names if they contain commas (all languages)
         const namesEs = doc.document_name.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0);
+        const namesFr = doc.document_name_fr ? doc.document_name_fr.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0) : [];
+        const namesEn = doc.document_name_en ? doc.document_name_en.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0) : [];
 
         // Use the length to determine how many documents we have
         const maxLength = namesEs.length;
@@ -162,20 +166,28 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
           // Multiple documents in one line - split them
           for (let i = 0; i < maxLength; i++) {
             const cleanNameEs = (namesEs[i] || namesEs[0] || '').replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim();
+            const cleanNameFr = namesFr[i] ? namesFr[i].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim() : undefined;
+            const cleanNameEn = namesEn[i] ? namesEn[i].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim() : undefined;
 
             expandedDocuments.push({
               ...doc,
               document_name: cleanNameEs,
+              document_name_fr: cleanNameFr,
+              document_name_en: cleanNameEn,
               document_code: `${doc.document_code}-${i + 1}`,
             });
           }
         } else {
           // Single document - also clean it
           const cleanNameEs = namesEs[0].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim();
+          const cleanNameFr = namesFr[0] ? namesFr[0].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim() : undefined;
+          const cleanNameEn = namesEn[0] ? namesEn[0].replace(/^[-\s]+/, '').replace(/^\d+[\.\-]\s*/, '').trim() : undefined;
 
           expandedDocuments.push({
             ...doc,
             document_name: cleanNameEs,
+            document_name_fr: cleanNameFr,
+            document_name_en: cleanNameEn,
           });
         }
       });
@@ -221,6 +233,7 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
         }
       });
 
+      // Update states immediately - no loading delay
       setDocuments(expandedDocuments);
       setProcedures(expandedProcedures);
       setProcedureSteps(details.procedureSteps);
@@ -228,8 +241,6 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
       console.log(`[ServiceDetailScreen] ⏱️  Total load time: ${Date.now() - startTime}ms`);
     } catch (error) {
       console.error('[ServiceDetailScreen] Error loading details:', error);
-    } finally {
-      setIsLoadingDetails(false);
     }
   };
 
@@ -249,51 +260,64 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
     }
   };
 
-  // Group documents by type
-  const expeditionDocs = documents.filter(doc => doc.is_required_expedition && !doc.is_required_renewal);
-  const renewalDocs = documents.filter(doc => doc.is_required_renewal && !doc.is_required_expedition);
-  const bothDocs = documents.filter(doc => doc.is_required_expedition && doc.is_required_renewal);
+  // Group documents by type - Memoized to prevent recalculation on every render
+  const expeditionDocs = useMemo(() =>
+    documents.filter(doc => doc.is_required_expedition && !doc.is_required_renewal),
+    [documents]
+  );
+  const renewalDocs = useMemo(() =>
+    documents.filter(doc => doc.is_required_renewal && !doc.is_required_expedition),
+    [documents]
+  );
+  const bothDocs = useMemo(() =>
+    documents.filter(doc => doc.is_required_expedition && doc.is_required_renewal),
+    [documents]
+  );
 
-  // Group procedures by type with deduplication
-  const expeditionProcs = procedures.filter(proc => proc.applies_to === 'expedition');
-  const renewalProcs = procedures.filter(proc => proc.applies_to === 'renewal');
-  const bothProcs = procedures.filter(proc => proc.applies_to === 'both');
+  // Group procedures by type with deduplication - Memoized for performance
+  const { deduplicatedExpeditionProcs, deduplicatedRenewalProcs, deduplicatedBothProcs } = useMemo(() => {
+    const expeditionProcs = procedures.filter(proc => proc.applies_to === 'expedition');
+    const renewalProcs = procedures.filter(proc => proc.applies_to === 'renewal');
+    const bothProcs = procedures.filter(proc => proc.applies_to === 'both');
 
-  // Deduplicate: if expedition and renewal have IDENTICAL procedures, move them to "both"
-  const deduplicatedExpeditionProcs: ServiceProcedure[] = [];
-  const deduplicatedRenewalProcs: ServiceProcedure[] = [];
-  const deduplicatedBothProcs = [...bothProcs];
+    // Deduplicate: if expedition and renewal have IDENTICAL procedures, move them to "both"
+    const deduplicatedExpeditionProcs: ServiceProcedure[] = [];
+    const deduplicatedRenewalProcs: ServiceProcedure[] = [];
+    const deduplicatedBothProcs = [...bothProcs];
 
-  expeditionProcs.forEach(expProc => {
-    // Find if same procedure exists in renewal
-    const matchingRenewalIndex = renewalProcs.findIndex(
-      renProc => renProc.name_es.trim().toLowerCase() === expProc.name_es.trim().toLowerCase() &&
-                 renProc.template_code.split('-')[0] === expProc.template_code.split('-')[0]
-    );
-
-    if (matchingRenewalIndex !== -1) {
-      // Found duplicate - add to "both" only once
-      const isDuplicateInBoth = deduplicatedBothProcs.some(
-        bothProc => bothProc.name_es.trim().toLowerCase() === expProc.name_es.trim().toLowerCase()
+    expeditionProcs.forEach(expProc => {
+      // Find if same procedure exists in renewal
+      const matchingRenewalIndex = renewalProcs.findIndex(
+        renProc => renProc.name_es.trim().toLowerCase() === expProc.name_es.trim().toLowerCase() &&
+                   renProc.template_code.split('-')[0] === expProc.template_code.split('-')[0]
       );
-      if (!isDuplicateInBoth) {
-        deduplicatedBothProcs.push({ ...expProc, applies_to: 'both' });
-      }
-    } else {
-      // No duplicate - keep in expedition
-      deduplicatedExpeditionProcs.push(expProc);
-    }
-  });
 
-  // Add remaining renewal procedures that weren't duplicates
-  renewalProcs.forEach(renProc => {
-    const isInBoth = deduplicatedBothProcs.some(
-      bothProc => bothProc.name_es.trim().toLowerCase() === renProc.name_es.trim().toLowerCase()
-    );
-    if (!isInBoth) {
-      deduplicatedRenewalProcs.push(renProc);
-    }
-  });
+      if (matchingRenewalIndex !== -1) {
+        // Found duplicate - add to "both" only once
+        const isDuplicateInBoth = deduplicatedBothProcs.some(
+          bothProc => bothProc.name_es.trim().toLowerCase() === expProc.name_es.trim().toLowerCase()
+        );
+        if (!isDuplicateInBoth) {
+          deduplicatedBothProcs.push({ ...expProc, applies_to: 'both' });
+        }
+      } else {
+        // No duplicate - keep in expedition
+        deduplicatedExpeditionProcs.push(expProc);
+      }
+    });
+
+    // Add remaining renewal procedures that weren't duplicates
+    renewalProcs.forEach(renProc => {
+      const isInBoth = deduplicatedBothProcs.some(
+        bothProc => bothProc.name_es.trim().toLowerCase() === renProc.name_es.trim().toLowerCase()
+      );
+      if (!isInBoth) {
+        deduplicatedRenewalProcs.push(renProc);
+      }
+    });
+
+    return { deduplicatedExpeditionProcs, deduplicatedRenewalProcs, deduplicatedBothProcs };
+  }, [procedures]);
 
   // Group procedures by template_code base and render together
   const renderProcedureGroup = (procs: ServiceProcedure[], groupIndex: number) => {
@@ -387,39 +411,36 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
     return Array.from(groups.values());
   };
 
+  // Get ministry gradient colors or default
+  const getMinistryGradient = () => {
+    if (service.ministry_color) {
+      return [service.ministry_color, service.ministry_color];
+    }
+    return ['#004aad', '#0066cc']; // Default blue gradient
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="light-content" backgroundColor="#004aad" />
 
-      {/* Header */}
-      <View style={styles.header}>
-        {onBack && (
-          <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Text style={styles.backButtonText}>←</Text>
-          </TouchableOpacity>
-        )}
-
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>{t.title}</Text>
-        </View>
-
-        <View style={styles.headerRight} />
-      </View>
+      {/* Modern Header */}
+      <GradientHeader title={t.title} onBack={onBack} />
 
       {/* Content */}
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Service Name & Ministry */}
-        <View style={styles.titleSection}>
-          <View style={styles.titleRow}>
-            <Text style={styles.serviceName}>{getServiceName(service, language)}</Text>
-            {service.ministry_color ? (
-              <View style={[styles.ministryDot, { backgroundColor: service.ministry_color }]} />
-            ) : null}
-          </View>
+        {/* Hero Section with Ministry Gradient */}
+        <LinearGradient
+          colors={getMinistryGradient()}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.heroSection}>
+          <Text style={styles.serviceName}>{getServiceName(service, language)}</Text>
           {getMinistryName(service, language) ? (
-            <Text style={styles.ministryName}>{getMinistryName(service, language)}</Text>
+            <View style={styles.ministryBadge}>
+              <Text style={styles.ministryBadgeText}>{getMinistryName(service, language)}</Text>
+            </View>
           ) : null}
-        </View>
+        </LinearGradient>
 
         {/* Description */}
         {getServiceDescription(service, language) ? (
@@ -456,9 +477,18 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
            service.calculation_method !== 'fixed_both' &&
            onCalculate) ? (
             <TouchableOpacity
-              style={styles.calculateButton}
+              activeOpacity={0.8}
               onPress={() => onCalculate(service)}>
-              <Text style={styles.calculateButtonText}>{t.calculate}</Text>
+              <LinearGradient
+                colors={['#40E0D0', '#20CED8']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.calculateButton}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Icon name="chart" size={18} color="#FFFFFF" />
+                  <Text style={styles.calculateButtonText}>{t.calculate}</Text>
+                </View>
+              </LinearGradient>
             </TouchableOpacity>
           ) : null}
         </Section>
@@ -472,66 +502,50 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
         {/* Documents - Both */}
         {bothDocs.length > 0 && (
           <Section title={t.documentsBoth}>
-            {isLoadingDetails ? (
-              <ActivityIndicator size="small" color="#007AFF" />
-            ) : (
-              bothDocs.map((doc, index) => (
-                <View key={index} style={styles.listItem}>
-                  <Text style={styles.listNumber}>{`${index + 1}.`}</Text>
-                  <View style={styles.listContent}>
-                    <Text style={styles.listText}>{getDocumentName(doc, language)}</Text>
-                  </View>
+            {bothDocs.map((doc, index) => (
+              <View key={index} style={styles.listItem}>
+                <Text style={styles.listNumber}>{`${index + 1}.`}</Text>
+                <View style={styles.listContent}>
+                  <Text style={styles.listText}>{getDocumentName(doc, language)}</Text>
                 </View>
-              ))
-            )}
+              </View>
+            ))}
           </Section>
         )}
 
         {/* Documents - Expedition */}
         {expeditionDocs.length > 0 && (
           <Section title={t.documentsExpedition}>
-            {isLoadingDetails ? (
-              <ActivityIndicator size="small" color="#007AFF" />
-            ) : (
-              expeditionDocs.map((doc, index) => (
-                <View key={index} style={styles.listItem}>
-                  <Text style={styles.listNumber}>{`${index + 1}.`}</Text>
-                  <View style={styles.listContent}>
-                    <Text style={styles.listText}>{getDocumentName(doc, language)}</Text>
-                  </View>
+            {expeditionDocs.map((doc, index) => (
+              <View key={index} style={styles.listItem}>
+                <Text style={styles.listNumber}>{`${index + 1}.`}</Text>
+                <View style={styles.listContent}>
+                  <Text style={styles.listText}>{getDocumentName(doc, language)}</Text>
                 </View>
-              ))
-            )}
+              </View>
+            ))}
           </Section>
         )}
 
         {/* Documents - Renewal */}
         {renewalDocs.length > 0 && (
           <Section title={t.documentsRenewal}>
-            {isLoadingDetails ? (
-              <ActivityIndicator size="small" color="#007AFF" />
-            ) : (
-              renewalDocs.map((doc, index) => (
-                <View key={index} style={styles.listItem}>
-                  <Text style={styles.listNumber}>{`${index + 1}.`}</Text>
-                  <View style={styles.listContent}>
-                    <Text style={styles.listText}>{getDocumentName(doc, language)}</Text>
-                  </View>
+            {renewalDocs.map((doc, index) => (
+              <View key={index} style={styles.listItem}>
+                <Text style={styles.listNumber}>{`${index + 1}.`}</Text>
+                <View style={styles.listContent}>
+                  <Text style={styles.listText}>{getDocumentName(doc, language)}</Text>
                 </View>
-              ))
-            )}
+              </View>
+            ))}
           </Section>
         )}
 
         {/* Procedures - Both */}
         {deduplicatedBothProcs.length > 0 && (
           <Section title={t.proceduresBoth}>
-            {isLoadingDetails ? (
-              <ActivityIndicator size="small" color="#007AFF" />
-            ) : (
-              groupProceduresByTemplate(deduplicatedBothProcs).map((group, groupIndex) =>
-                renderProcedureGroup(group, groupIndex)
-              )
+            {groupProceduresByTemplate(deduplicatedBothProcs).map((group, groupIndex) =>
+              renderProcedureGroup(group, groupIndex)
             )}
           </Section>
         )}
@@ -539,12 +553,8 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
         {/* Procedures - Expedition */}
         {deduplicatedExpeditionProcs.length > 0 && (
           <Section title={t.proceduresExpedition}>
-            {isLoadingDetails ? (
-              <ActivityIndicator size="small" color="#007AFF" />
-            ) : (
-              groupProceduresByTemplate(deduplicatedExpeditionProcs).map((group, groupIndex) =>
-                renderProcedureGroup(group, groupIndex)
-              )
+            {groupProceduresByTemplate(deduplicatedExpeditionProcs).map((group, groupIndex) =>
+              renderProcedureGroup(group, groupIndex)
             )}
           </Section>
         )}
@@ -552,12 +562,8 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
         {/* Procedures - Renewal */}
         {deduplicatedRenewalProcs.length > 0 && (
           <Section title={t.proceduresRenewal}>
-            {isLoadingDetails ? (
-              <ActivityIndicator size="small" color="#007AFF" />
-            ) : (
-              groupProceduresByTemplate(deduplicatedRenewalProcs).map((group, groupIndex) =>
-                renderProcedureGroup(group, groupIndex)
-              )
+            {groupProceduresByTemplate(deduplicatedRenewalProcs).map((group, groupIndex) =>
+              renderProcedureGroup(group, groupIndex)
             )}
           </Section>
         )}
@@ -603,94 +609,57 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
   },
 
-  // Header
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  backButton: {
-    padding: 8,
-    marginRight: 8,
-  },
-  backButtonText: {
-    fontSize: 24,
-    color: '#007AFF',
-    fontWeight: '600',
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#000',
-  },
-  headerRight: {
-    width: 40,
-  },
-
   // Content
   content: {
-    padding: 16,
+    paddingBottom: Spacing.xl,
   },
 
-  // Title Section
-  titleSection: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
+  // Hero Section
+  heroSection: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.xl,
+    marginBottom: Spacing.md,
   },
   serviceName: {
-    flex: 1,
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '700',
-    color: '#1A1A1A',
-    marginRight: 12,
+    color: '#FFFFFF',
+    marginBottom: Spacing.sm,
+    lineHeight: 32,
+    ...Shadows.medium,
   },
-  ministryDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    marginTop: 4,
+  ministryBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: 16,
+    alignSelf: 'flex-start',
   },
-  ministryName: {
-    fontSize: 14,
-    color: '#666',
+  ministryBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
 
   // Section
   section: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderRadius: 16,
+    padding: Spacing.lg,
+    marginHorizontal: Spacing.md,
+    marginBottom: Spacing.md,
+    ...Shadows.small,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: '#1A1A1A',
-    marginBottom: 12,
+    marginBottom: Spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
-    paddingBottom: 8,
+    paddingBottom: Spacing.sm,
   },
 
   // Field
@@ -782,12 +751,13 @@ const styles = StyleSheet.create({
 
   // Calculate Button
   calculateButton: {
-    marginTop: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
+    marginTop: Spacing.md,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
+    ...Shadows.medium,
   },
   calculateButtonText: {
     fontSize: 16,

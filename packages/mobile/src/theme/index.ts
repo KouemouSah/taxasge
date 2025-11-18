@@ -7,6 +7,7 @@
 export { Colors } from './colors';
 export { Typography } from './typography';
 export { Spacing } from './spacing';
+export { GRADIENTS, HEADER_GRADIENT, CHATBOT_GRADIENT } from './gradients';
 
 // Shadow presets
 export const Shadows = {
