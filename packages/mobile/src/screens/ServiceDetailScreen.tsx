@@ -137,7 +137,6 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
   const [documents, setDocuments] = useState<ServiceDocument[]>([]);
   const [procedures, setProcedures] = useState<ServiceProcedure[]>([]);
   const [procedureSteps, setProcedureSteps] = useState<Map<string, ProcedureStep[]>>(new Map());
-  const [isLoadingDetails, setIsLoadingDetails] = useState(true);
 
   useEffect(() => {
     loadServiceDetails();
@@ -146,7 +145,6 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
   const loadServiceDetails = async () => {
     const startTime = Date.now();
     try {
-      setIsLoadingDetails(true);
       console.log('[ServiceDetailScreen] Loading details for service:', service.id);
       const queryStart = Date.now();
       const details = await serviceDetailsService.getCompleteDetails(service.id);
@@ -234,6 +232,7 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
         }
       });
 
+      // Update states immediately - no loading delay
       setDocuments(expandedDocuments);
       setProcedures(expandedProcedures);
       setProcedureSteps(details.procedureSteps);
@@ -241,8 +240,6 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
       console.log(`[ServiceDetailScreen] ⏱️  Total load time: ${Date.now() - startTime}ms`);
     } catch (error) {
       console.error('[ServiceDetailScreen] Error loading details:', error);
-    } finally {
-      setIsLoadingDetails(false);
     }
   };
 
@@ -488,66 +485,50 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
         {/* Documents - Both */}
         {bothDocs.length > 0 && (
           <Section title={t.documentsBoth}>
-            {isLoadingDetails ? (
-              <ActivityIndicator size="small" color="#007AFF" />
-            ) : (
-              bothDocs.map((doc, index) => (
-                <View key={index} style={styles.listItem}>
-                  <Text style={styles.listNumber}>{`${index + 1}.`}</Text>
-                  <View style={styles.listContent}>
-                    <Text style={styles.listText}>{getDocumentName(doc, language)}</Text>
-                  </View>
+            {bothDocs.map((doc, index) => (
+              <View key={index} style={styles.listItem}>
+                <Text style={styles.listNumber}>{`${index + 1}.`}</Text>
+                <View style={styles.listContent}>
+                  <Text style={styles.listText}>{getDocumentName(doc, language)}</Text>
                 </View>
-              ))
-            )}
+              </View>
+            ))}
           </Section>
         )}
 
         {/* Documents - Expedition */}
         {expeditionDocs.length > 0 && (
           <Section title={t.documentsExpedition}>
-            {isLoadingDetails ? (
-              <ActivityIndicator size="small" color="#007AFF" />
-            ) : (
-              expeditionDocs.map((doc, index) => (
-                <View key={index} style={styles.listItem}>
-                  <Text style={styles.listNumber}>{`${index + 1}.`}</Text>
-                  <View style={styles.listContent}>
-                    <Text style={styles.listText}>{getDocumentName(doc, language)}</Text>
-                  </View>
+            {expeditionDocs.map((doc, index) => (
+              <View key={index} style={styles.listItem}>
+                <Text style={styles.listNumber}>{`${index + 1}.`}</Text>
+                <View style={styles.listContent}>
+                  <Text style={styles.listText}>{getDocumentName(doc, language)}</Text>
                 </View>
-              ))
-            )}
+              </View>
+            ))}
           </Section>
         )}
 
         {/* Documents - Renewal */}
         {renewalDocs.length > 0 && (
           <Section title={t.documentsRenewal}>
-            {isLoadingDetails ? (
-              <ActivityIndicator size="small" color="#007AFF" />
-            ) : (
-              renewalDocs.map((doc, index) => (
-                <View key={index} style={styles.listItem}>
-                  <Text style={styles.listNumber}>{`${index + 1}.`}</Text>
-                  <View style={styles.listContent}>
-                    <Text style={styles.listText}>{getDocumentName(doc, language)}</Text>
-                  </View>
+            {renewalDocs.map((doc, index) => (
+              <View key={index} style={styles.listItem}>
+                <Text style={styles.listNumber}>{`${index + 1}.`}</Text>
+                <View style={styles.listContent}>
+                  <Text style={styles.listText}>{getDocumentName(doc, language)}</Text>
                 </View>
-              ))
-            )}
+              </View>
+            ))}
           </Section>
         )}
 
         {/* Procedures - Both */}
         {deduplicatedBothProcs.length > 0 && (
           <Section title={t.proceduresBoth}>
-            {isLoadingDetails ? (
-              <ActivityIndicator size="small" color="#007AFF" />
-            ) : (
-              groupProceduresByTemplate(deduplicatedBothProcs).map((group, groupIndex) =>
-                renderProcedureGroup(group, groupIndex)
-              )
+            {groupProceduresByTemplate(deduplicatedBothProcs).map((group, groupIndex) =>
+              renderProcedureGroup(group, groupIndex)
             )}
           </Section>
         )}
@@ -555,12 +536,8 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
         {/* Procedures - Expedition */}
         {deduplicatedExpeditionProcs.length > 0 && (
           <Section title={t.proceduresExpedition}>
-            {isLoadingDetails ? (
-              <ActivityIndicator size="small" color="#007AFF" />
-            ) : (
-              groupProceduresByTemplate(deduplicatedExpeditionProcs).map((group, groupIndex) =>
-                renderProcedureGroup(group, groupIndex)
-              )
+            {groupProceduresByTemplate(deduplicatedExpeditionProcs).map((group, groupIndex) =>
+              renderProcedureGroup(group, groupIndex)
             )}
           </Section>
         )}
@@ -568,12 +545,8 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
         {/* Procedures - Renewal */}
         {deduplicatedRenewalProcs.length > 0 && (
           <Section title={t.proceduresRenewal}>
-            {isLoadingDetails ? (
-              <ActivityIndicator size="small" color="#007AFF" />
-            ) : (
-              groupProceduresByTemplate(deduplicatedRenewalProcs).map((group, groupIndex) =>
-                renderProcedureGroup(group, groupIndex)
-              )
+            {groupProceduresByTemplate(deduplicatedRenewalProcs).map((group, groupIndex) =>
+              renderProcedureGroup(group, groupIndex)
             )}
           </Section>
         )}
