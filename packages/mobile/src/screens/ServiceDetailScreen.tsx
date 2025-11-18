@@ -15,6 +15,7 @@ import {
   StatusBar,
   ActivityIndicator,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { FiscalService, getServiceName, getServiceDescription, getMinistryName, getCategoryName, getSectorName } from '../database/services/FiscalServicesService';
 import {
   serviceDetailsService,
@@ -26,6 +27,8 @@ import {
   getStepDescription,
   getStepInstructions
 } from '../database/services/ServiceDetailsService';
+import { GradientHeader } from '../components/GradientHeader';
+import { Colors, Spacing, Typography, Shadows } from '../theme';
 
 export interface ServiceDetailScreenProps {
   service: FiscalService;
@@ -397,39 +400,36 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
     return Array.from(groups.values());
   };
 
+  // Get ministry gradient colors or default
+  const getMinistryGradient = () => {
+    if (service.ministry_color) {
+      return [service.ministry_color, service.ministry_color];
+    }
+    return ['#004aad', '#0066cc']; // Default blue gradient
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="light-content" backgroundColor="#004aad" />
 
-      {/* Header */}
-      <View style={styles.header}>
-        {onBack && (
-          <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Text style={styles.backButtonText}>←</Text>
-          </TouchableOpacity>
-        )}
-
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>{t.title}</Text>
-        </View>
-
-        <View style={styles.headerRight} />
-      </View>
+      {/* Modern Header */}
+      <GradientHeader title={t.title} onBack={onBack} />
 
       {/* Content */}
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Service Name & Ministry */}
-        <View style={styles.titleSection}>
-          <View style={styles.titleRow}>
-            <Text style={styles.serviceName}>{getServiceName(service, language)}</Text>
-            {service.ministry_color ? (
-              <View style={[styles.ministryDot, { backgroundColor: service.ministry_color }]} />
-            ) : null}
-          </View>
+        {/* Hero Section with Ministry Gradient */}
+        <LinearGradient
+          colors={getMinistryGradient()}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.heroSection}>
+          <Text style={styles.serviceName}>{getServiceName(service, language)}</Text>
           {getMinistryName(service, language) ? (
-            <Text style={styles.ministryName}>{getMinistryName(service, language)}</Text>
+            <View style={styles.ministryBadge}>
+              <Text style={styles.ministryBadgeText}>{getMinistryName(service, language)}</Text>
+            </View>
           ) : null}
-        </View>
+        </LinearGradient>
 
         {/* Description */}
         {getServiceDescription(service, language) ? (
@@ -466,9 +466,15 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
            service.calculation_method !== 'fixed_both' &&
            onCalculate) ? (
             <TouchableOpacity
-              style={styles.calculateButton}
+              activeOpacity={0.8}
               onPress={() => onCalculate(service)}>
-              <Text style={styles.calculateButtonText}>{t.calculate}</Text>
+              <LinearGradient
+                colors={['#40E0D0', '#20CED8']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.calculateButton}>
+                <Text style={styles.calculateButtonText}>📊 {t.calculate}</Text>
+              </LinearGradient>
             </TouchableOpacity>
           ) : null}
         </Section>
@@ -613,94 +619,57 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
   },
 
-  // Header
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  backButton: {
-    padding: 8,
-    marginRight: 8,
-  },
-  backButtonText: {
-    fontSize: 24,
-    color: '#007AFF',
-    fontWeight: '600',
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#000',
-  },
-  headerRight: {
-    width: 40,
-  },
-
   // Content
   content: {
-    padding: 16,
+    paddingBottom: Spacing.xl,
   },
 
-  // Title Section
-  titleSection: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
+  // Hero Section
+  heroSection: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.xl,
+    marginBottom: Spacing.md,
   },
   serviceName: {
-    flex: 1,
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '700',
-    color: '#1A1A1A',
-    marginRight: 12,
+    color: '#FFFFFF',
+    marginBottom: Spacing.sm,
+    lineHeight: 32,
+    ...Shadows.medium,
   },
-  ministryDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    marginTop: 4,
+  ministryBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: 16,
+    alignSelf: 'flex-start',
   },
-  ministryName: {
-    fontSize: 14,
-    color: '#666',
+  ministryBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
 
   // Section
   section: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderRadius: 16,
+    padding: Spacing.lg,
+    marginHorizontal: Spacing.md,
+    marginBottom: Spacing.md,
+    ...Shadows.small,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: '#1A1A1A',
-    marginBottom: 12,
+    marginBottom: Spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
-    paddingBottom: 8,
+    paddingBottom: Spacing.sm,
   },
 
   // Field
@@ -792,12 +761,13 @@ const styles = StyleSheet.create({
 
   // Calculate Button
   calculateButton: {
-    marginTop: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
+    marginTop: Spacing.md,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
+    ...Shadows.medium,
   },
   calculateButtonText: {
     fontSize: 16,
