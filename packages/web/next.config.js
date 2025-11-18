@@ -132,11 +132,13 @@ const nextConfig = {
     };
 
     // Fix for "self is not defined" error during static export
-    // Define 'self' as 'this' on the server side
+    // Inject polyfill at the top of server bundles
     if (isServer) {
       config.plugins.push(
-        new webpack.DefinePlugin({
-          'self': 'this',
+        new webpack.BannerPlugin({
+          banner: 'if (typeof self === "undefined") { global.self = global; }',
+          raw: true,
+          entryOnly: false,
         })
       );
     }
