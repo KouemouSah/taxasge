@@ -259,51 +259,64 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
     }
   };
 
-  // Group documents by type
-  const expeditionDocs = documents.filter(doc => doc.is_required_expedition && !doc.is_required_renewal);
-  const renewalDocs = documents.filter(doc => doc.is_required_renewal && !doc.is_required_expedition);
-  const bothDocs = documents.filter(doc => doc.is_required_expedition && doc.is_required_renewal);
+  // Group documents by type - Memoized to prevent recalculation on every render
+  const expeditionDocs = useMemo(() =>
+    documents.filter(doc => doc.is_required_expedition && !doc.is_required_renewal),
+    [documents]
+  );
+  const renewalDocs = useMemo(() =>
+    documents.filter(doc => doc.is_required_renewal && !doc.is_required_expedition),
+    [documents]
+  );
+  const bothDocs = useMemo(() =>
+    documents.filter(doc => doc.is_required_expedition && doc.is_required_renewal),
+    [documents]
+  );
 
-  // Group procedures by type with deduplication
-  const expeditionProcs = procedures.filter(proc => proc.applies_to === 'expedition');
-  const renewalProcs = procedures.filter(proc => proc.applies_to === 'renewal');
-  const bothProcs = procedures.filter(proc => proc.applies_to === 'both');
+  // Group procedures by type with deduplication - Memoized for performance
+  const { deduplicatedExpeditionProcs, deduplicatedRenewalProcs, deduplicatedBothProcs } = useMemo(() => {
+    const expeditionProcs = procedures.filter(proc => proc.applies_to === 'expedition');
+    const renewalProcs = procedures.filter(proc => proc.applies_to === 'renewal');
+    const bothProcs = procedures.filter(proc => proc.applies_to === 'both');
 
-  // Deduplicate: if expedition and renewal have IDENTICAL procedures, move them to "both"
-  const deduplicatedExpeditionProcs: ServiceProcedure[] = [];
-  const deduplicatedRenewalProcs: ServiceProcedure[] = [];
-  const deduplicatedBothProcs = [...bothProcs];
+    // Deduplicate: if expedition and renewal have IDENTICAL procedures, move them to "both"
+    const deduplicatedExpeditionProcs: ServiceProcedure[] = [];
+    const deduplicatedRenewalProcs: ServiceProcedure[] = [];
+    const deduplicatedBothProcs = [...bothProcs];
 
-  expeditionProcs.forEach(expProc => {
-    // Find if same procedure exists in renewal
-    const matchingRenewalIndex = renewalProcs.findIndex(
-      renProc => renProc.name_es.trim().toLowerCase() === expProc.name_es.trim().toLowerCase() &&
-                 renProc.template_code.split('-')[0] === expProc.template_code.split('-')[0]
-    );
-
-    if (matchingRenewalIndex !== -1) {
-      // Found duplicate - add to "both" only once
-      const isDuplicateInBoth = deduplicatedBothProcs.some(
-        bothProc => bothProc.name_es.trim().toLowerCase() === expProc.name_es.trim().toLowerCase()
+    expeditionProcs.forEach(expProc => {
+      // Find if same procedure exists in renewal
+      const matchingRenewalIndex = renewalProcs.findIndex(
+        renProc => renProc.name_es.trim().toLowerCase() === expProc.name_es.trim().toLowerCase() &&
+                   renProc.template_code.split('-')[0] === expProc.template_code.split('-')[0]
       );
-      if (!isDuplicateInBoth) {
-        deduplicatedBothProcs.push({ ...expProc, applies_to: 'both' });
-      }
-    } else {
-      // No duplicate - keep in expedition
-      deduplicatedExpeditionProcs.push(expProc);
-    }
-  });
 
-  // Add remaining renewal procedures that weren't duplicates
-  renewalProcs.forEach(renProc => {
-    const isInBoth = deduplicatedBothProcs.some(
-      bothProc => bothProc.name_es.trim().toLowerCase() === renProc.name_es.trim().toLowerCase()
-    );
-    if (!isInBoth) {
-      deduplicatedRenewalProcs.push(renProc);
-    }
-  });
+      if (matchingRenewalIndex !== -1) {
+        // Found duplicate - add to "both" only once
+        const isDuplicateInBoth = deduplicatedBothProcs.some(
+          bothProc => bothProc.name_es.trim().toLowerCase() === expProc.name_es.trim().toLowerCase()
+        );
+        if (!isDuplicateInBoth) {
+          deduplicatedBothProcs.push({ ...expProc, applies_to: 'both' });
+        }
+      } else {
+        // No duplicate - keep in expedition
+        deduplicatedExpeditionProcs.push(expProc);
+      }
+    });
+
+    // Add remaining renewal procedures that weren't duplicates
+    renewalProcs.forEach(renProc => {
+      const isInBoth = deduplicatedBothProcs.some(
+        bothProc => bothProc.name_es.trim().toLowerCase() === renProc.name_es.trim().toLowerCase()
+      );
+      if (!isInBoth) {
+        deduplicatedRenewalProcs.push(renProc);
+      }
+    });
+
+    return { deduplicatedExpeditionProcs, deduplicatedRenewalProcs, deduplicatedBothProcs };
+  }, [procedures]);
 
   // Group procedures by template_code base and render together
   const renderProcedureGroup = (procs: ServiceProcedure[], groupIndex: number) => {

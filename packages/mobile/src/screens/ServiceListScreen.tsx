@@ -354,6 +354,20 @@ Via TaxasGE Mobile`;
     }
   }, [userId, favoriteIds]);
 
+  // Memoize calculation methods extraction for performance
+  const calculationMethodsData = useMemo(() => {
+    const methodsMap: Record<string, number> = {};
+    allServices.forEach(service => {
+      if (service.calculation_method) {
+        methodsMap[service.calculation_method] = (methodsMap[service.calculation_method] || 0) + 1;
+      }
+    });
+    return Object.entries(methodsMap).map(([method, count]) => ({
+      method,
+      count,
+    }));
+  }, [allServices]);
+
   // Load filter options
   useEffect(() => {
     const loadFilterOptions = async () => {
@@ -364,34 +378,22 @@ Via TaxasGE Mobile`;
           fiscalServicesService.getServiceTypes(),
         ]);
 
-        // Extract calculation methods from services
-        const methodsMap: Record<string, number> = {};
-        allServices.forEach(service => {
-          if (service.calculation_method) {
-            methodsMap[service.calculation_method] = (methodsMap[service.calculation_method] || 0) + 1;
-          }
-        });
-        const methodsData = Object.entries(methodsMap).map(([method, count]) => ({
-          method,
-          count,
-        }));
-
         console.log('[ServicesListScreen] Loaded filter options:', {
           ministries: ministriesData.length,
           categories: categoriesData.length,
           serviceTypes: typesData.length,
-          calculationMethods: methodsData.length
+          calculationMethods: calculationMethodsData.length
         });
         setMinistries(ministriesData);
         setCategories(categoriesData);
         setServiceTypes(typesData);
-        setCalculationMethods(methodsData);
+        setCalculationMethods(calculationMethodsData);
       } catch (err) {
         console.error('Error loading filter options:', err);
       }
     };
     loadFilterOptions();
-  }, [allServices]);
+  }, [calculationMethodsData]);
 
   // Debug: Log when modal opens
   useEffect(() => {

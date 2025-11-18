@@ -5,7 +5,7 @@
  * Based on: Inicio.png design + i18n system
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -81,11 +81,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
     }
   };
 
-  const getMinistryName = (ministry: Ministry): string => {
+  const getMinistryName = useCallback((ministry: Ministry): string => {
     if (language === 'fr' && ministry.name_fr) return ministry.name_fr;
     if (language === 'en' && ministry.name_en) return ministry.name_en;
     return ministry.name_es;
-  };
+  }, [language]);
 
   const getMinistryGradient = (index: number): string[] => {
     const gradients = [
