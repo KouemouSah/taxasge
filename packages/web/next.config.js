@@ -1,4 +1,10 @@
 /** @type {import('next').NextConfig} */
+
+// Polyfill for 'self' in Node.js environment during static export
+if (typeof self === 'undefined') {
+  global.self = global;
+}
+
 // Temporarily disable PWA to fix Webpack issues in development
 // const withPWA = require('next-pwa')({
 //   dest: 'public',
@@ -130,16 +136,6 @@ const nextConfig = {
         },
       },
     };
-
-    // Fix for "self is not defined" error during static export
-    // Use ProvidePlugin to automatically replace 'self' with 'global' in server code
-    if (isServer) {
-      config.plugins.push(
-        new webpack.ProvidePlugin({
-          self: 'global',
-        })
-      );
-    }
 
     return config;
   },
