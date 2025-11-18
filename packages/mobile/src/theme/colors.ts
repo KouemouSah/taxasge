@@ -5,8 +5,11 @@
  */
 
 export const Colors = {
-  // Primary Brand Colors
-  primary: {
+  // Primary color (blue - most used)
+  primary: '#004aad',      // Main primary color
+
+  // Brand Colors
+  brand: {
     red: '#d10d00',       // Primary - Attention, Action
     blue: '#004aad',      // Trust, Security
     green: '#499003',     // Innovation, AI

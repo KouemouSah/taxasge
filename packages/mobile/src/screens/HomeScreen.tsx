@@ -164,7 +164,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
                 colors={['#4A90E2', '#357ABD']}
                 style={styles.actionCardGradient}>
                 <View style={styles.actionIconContainer}>
-                  <Icon name="search" size={42} color="#FFFFFF" />
+                  <Icon name="search" size={54} color="#FFFFFF" />
                 </View>
                 <Text style={styles.actionLabel}>{t.quickActions.searchServices}</Text>
               </LinearGradient>
@@ -178,7 +178,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
                 colors={['#50C878', '#3EAE63']}
                 style={styles.actionCardGradient}>
                 <View style={styles.actionIconContainer}>
-                  <Icon name="robot" size={42} color="#FFFFFF" />
+                  <Icon name="chat" size={54} color="#FFFFFF" />
                 </View>
                 <Text style={styles.actionLabel}>{t.quickActions.contactAssistant}</Text>
               </LinearGradient>
@@ -192,7 +192,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
                 colors={['#E91E63', '#C2185B']}
                 style={styles.actionCardGradient}>
                 <View style={styles.actionIconContainer}>
-                  <Icon name="heart-filled" size={42} color="#FFFFFF" />
+                  <Icon name="heart-filled" size={54} color="#FFFFFF" />
                 </View>
                 <Text style={styles.actionLabel}>{t.quickActions.myFavorites}</Text>
               </LinearGradient>
@@ -206,7 +206,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
                 colors={['#9C27B0', '#7B1FA2']}
                 style={styles.actionCardGradient}>
                 <View style={styles.actionIconContainer}>
-                  <Icon name="calculator" size={42} color="#FFFFFF" />
+                  <Icon name="calculator" size={54} color="#FFFFFF" />
                 </View>
                 <Text style={styles.actionLabel}>{t.quickActions.calculator}</Text>
               </LinearGradient>

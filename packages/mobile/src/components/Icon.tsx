@@ -17,6 +17,7 @@ export type IconName =
   | 'document'
   | 'calculator'
   | 'robot'
+  | 'chat'
   | 'chart'
   | 'edit'
   | 'star'
@@ -45,6 +46,7 @@ const ICONS: Record<IconName, string> = {
   document: '☰',    // Document/list symbol
   calculator: '⊞',  // Calculator grid
   robot: '⚙',       // Bot/settings gear
+  chat: '💬',       // Chat bubble for TaxaBot
   chart: '▤',       // Chart/graph symbol
   edit: '✎',        // Edit pencil
   star: '☆',        // Empty star

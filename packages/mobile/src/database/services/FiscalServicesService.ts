@@ -97,6 +97,7 @@ export interface SearchFilters {
   sectorId?: string;
   categoryId?: string;
   serviceType?: string;
+  calculationMethod?: string;
   minAmount?: number;
   maxAmount?: number;
   onlineOnly?: boolean;
