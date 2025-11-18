@@ -132,13 +132,13 @@ const nextConfig = {
     };
 
     // Fix for "self is not defined" error during static export
-    // Provide fallback for self on the server side
+    // Use ProvidePlugin to automatically replace 'self' with 'global' in server code
     if (isServer) {
-      config.resolve = config.resolve || {};
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        self: false,
-      };
+      config.plugins.push(
+        new webpack.ProvidePlugin({
+          self: 'global',
+        })
+      );
     }
 
     return config;
