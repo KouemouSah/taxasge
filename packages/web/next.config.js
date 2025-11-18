@@ -132,15 +132,13 @@ const nextConfig = {
     };
 
     // Fix for "self is not defined" error during static export
-    // Inject polyfill at the top of server bundles
+    // Provide fallback for self on the server side
     if (isServer) {
-      config.plugins.push(
-        new webpack.BannerPlugin({
-          banner: 'if (typeof self === "undefined") { global.self = global; }',
-          raw: true,
-          entryOnly: false,
-        })
-      );
+      config.resolve = config.resolve || {};
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        self: false,
+      };
     }
 
     return config;
