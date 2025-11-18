@@ -341,13 +341,31 @@ export const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({
         });
       });
     } else {
-      // Steps exist in DB - use them
+      // Steps exist in DB - split them by comma like documents
       stepsFromDB.forEach(step => {
-        allSteps.push({
-          step_number: allSteps.length + 1,
-          step: step,
-          procName: undefined
-        });
+        const stepDesc = getStepDescription(step, language);
+
+        // Split step descriptions by comma
+        const descParts = stepDesc.split(',').map((d: string) => d.trim()).filter((d: string) => d.length > 0);
+
+        if (descParts.length > 1) {
+          // Multiple steps in one description - split them
+          descParts.forEach(desc => {
+            const cleanDesc = desc.replace(/^\d+[\.\-]\s*/, '').trim();
+            allSteps.push({
+              step_number: allSteps.length + 1,
+              step: { ...step, description_es: cleanDesc, description_fr: cleanDesc, description_en: cleanDesc },
+              procName: undefined
+            });
+          });
+        } else {
+          // Single step
+          allSteps.push({
+            step_number: allSteps.length + 1,
+            step: step,
+            procName: undefined
+          });
+        }
       });
     }
 
