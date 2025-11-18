@@ -21,13 +21,14 @@
     "title": "Explorador de Ministerios",
     "subtitle": "Tu portal de servicios gubernamentales",
     "searchPlaceholder": "Buscar ministerios o servicios...",
-    "quickActionsTitle": "Acciones Rápidas",
+    "quickActionsTitle": "Acciones RÃ¡pidas",
     "quickActions": {
       "searchServices": "Buscar Servicios",
-      "contactAssistant": "Contactar Asistente",
+      "contactAssistant": "TaxaBot",
       "myFavorites": "Mis Favoritos",
-      "scheduledAppointments": "Citas Programadas"
+      "calculator": "Calculadora"
     },
+    "recentlyVisitedTitle": "Recientemente Visitados",
     "popularMinistriesTitle": "Ministerios Populares",
     "viewAll": "Ver todos",
     "services": "servicios"
@@ -42,13 +43,13 @@
   "ministerioDetail": {
     "title": "Detalles del Ministerio",
     "servicesAvailable": "servicios disponibles",
-    "location": "Localización",
-    "email": "Correo electrónico",
+    "location": "Localizaciï¿½n",
+    "email": "Correo electrï¿½nico",
     "website": "Sitio web",
     "notAvailable": "No disponible",
     "stats": {
       "sectors": "Sectores",
-      "categories": "Categorías",
+      "categories": "Categorï¿½as",
       "services": "Servicios"
     },
     "servicesTitle": "Servicios Fiscales",
@@ -60,26 +61,26 @@
     "sections": {
       "language": "Idioma",
       "history": "Historial",
-      "customization": "Personalización",
+      "customization": "Personalizaciï¿½n",
       "about": "Acerca de"
     },
     "settings": {
       "selectLanguage": "Seleccionar idioma",
-      "calculationHistory": "Historial de cálculos",
+      "calculationHistory": "Historial de cï¿½lculos",
       "chatbotBackground": "Fondo del chatbot",
-      "appVersion": "Versión de la aplicación",
-      "termsOfService": "Términos de servicio",
-      "privacyPolicy": "Política de privacidad"
+      "appVersion": "Versiï¿½n de la aplicaciï¿½n",
+      "termsOfService": "Tï¿½rminos de servicio",
+      "privacyPolicy": "Polï¿½tica de privacidad"
     },
     "languages": {
-      "spanish": "Español",
-      "french": "Français",
+      "spanish": "Espaï¿½ol",
+      "french": "Franï¿½ais",
       "english": "English"
     },
     "backgroundOptions": {
-      "greenPattern": "Verde con patrón",
-      "bluePattern": "Azul con patrón",
-      "grayPattern": "Gris con patrón"
+      "greenPattern": "Verde con patrï¿½n",
+      "bluePattern": "Azul con patrï¿½n",
+      "grayPattern": "Gris con patrï¿½n"
     },
     "selectLanguageTitle": "Seleccionar Idioma",
     "selectBackgroundTitle": "Fondo del Chatbot"
@@ -88,39 +89,39 @@
     "title": "Asistente",
     "assistantName": "TaxaBot",
     "inputPlaceholder": "Escribir un mensaje...",
-    "greeting": "Hola, ¿en qué puedo ayudarte?",
-    "needHelp": "Necesito información sobre el",
+    "greeting": "Hola, ï¿½en quï¿½ puedo ayudarte?",
+    "needHelp": "Necesito informaciï¿½n sobre el",
     "viewDetails": "Ver los detalles",
     "documentsRequired": "Documentos requeridos",
     "processingTime": "Tiempo de procesamiento",
-    "expeditionFee": "Tasa de expedición",
-    "renewalFee": "Tasa de renovación",
-    "workingDays": "días hábiles",
-    "noMessages": "No hay mensajes aún. ¡Empieza una conversación!"
+    "expeditionFee": "Tasa de expediciï¿½n",
+    "renewalFee": "Tasa de renovaciï¿½n",
+    "workingDays": "dï¿½as hï¿½biles",
+    "noMessages": "No hay mensajes aï¿½n. ï¿½Empieza una conversaciï¿½n!"
   },
   "serviceDetailScreen": {
     "title": "Detalles del Servicio",
-    "description": "Descripción",
+    "description": "Descripciï¿½n",
     "pricing": "Tarifas",
-    "expedition": "Expedición",
-    "renewal": "Renovación",
-    "calculationMethod": "Método de Cálculo",
-    "category": "Categoría",
+    "expedition": "Expediciï¿½n",
+    "renewal": "Renovaciï¿½n",
+    "calculationMethod": "Mï¿½todo de Cï¿½lculo",
+    "category": "Categorï¿½a",
     "sector": "Sector",
     "ministry": "Ministerio",
     "documents": "Documentos Requeridos",
-    "documentsExpedition": "Documentos Requeridos - Expedición",
-    "documentsRenewal": "Documentos Requeridos - Renovación",
-    "documentsBoth": "Documentos Requeridos - Expedición y Renovación",
+    "documentsExpedition": "Documentos Requeridos - Expediciï¿½n",
+    "documentsRenewal": "Documentos Requeridos - Renovaciï¿½n",
+    "documentsBoth": "Documentos Requeridos - Expediciï¿½n y Renovaciï¿½n",
     "procedures": "Procedimientos",
-    "proceduresExpedition": "Procedimientos - Expedición",
-    "proceduresRenewal": "Procedimientos - Renovación",
-    "proceduresBoth": "Procedimientos - Expedición y Renovación",
+    "proceduresExpedition": "Procedimientos - Expediciï¿½n",
+    "proceduresRenewal": "Procedimientos - Renovaciï¿½n",
+    "proceduresBoth": "Procedimientos - Expediciï¿½n y Renovaciï¿½n",
     "noDocuments": "No hay documentos registrados",
     "noProcedures": "No hay procedimientos registrados",
     "steps": "pasos",
-    "estimatedDuration": "Duración estimada",
-    "location": "Localización",
+    "estimatedDuration": "Duraciï¿½n estimada",
+    "location": "Localizaciï¿½n",
     "officeHours": "Horas de apertura",
     "minutes": "minutos",
     "calculate": "Calcular",
@@ -136,15 +137,15 @@
     },
     "screen2": {
       "title": "Consulta Sencilla",
-      "subtitle": "Accede a información de servicios fiscales de manera rápida y fácil"
+      "subtitle": "Accede a informaciï¿½n de servicios fiscales de manera rï¿½pida y fï¿½cil"
     },
     "screen3": {
-      "title": "Cálculo Exacto",
-      "subtitle": "Calcula tasas fiscales con precisión y transparencia"
+      "title": "Cï¿½lculo Exacto",
+      "subtitle": "Calcula tasas fiscales con precisiï¿½n y transparencia"
     },
     "screen4": {
       "title": "Asistente Inteligente",
-      "subtitle": "Obtén ayuda personalizada con nuestro chatbot TaxaBot"
+      "subtitle": "Obtï¿½n ayuda personalizada con nuestro chatbot TaxaBot"
     }
   }
 }

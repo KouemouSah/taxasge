@@ -24,10 +24,11 @@
     "quickActionsTitle": "Quick Actions",
     "quickActions": {
       "searchServices": "Search Services",
-      "contactAssistant": "Contact Assistant",
+      "contactAssistant": "TaxaBot",
       "myFavorites": "My Favorites",
-      "scheduledAppointments": "Scheduled Appointments"
+      "calculator": "Calculator"
     },
+    "recentlyVisitedTitle": "Recently Visited",
     "popularMinistriesTitle": "Popular Ministries",
     "viewAll": "View all",
     "services": "services"

@@ -22,14 +22,7 @@ import { BottomTabBar, TabName } from '../components/BottomTabBar';
 import { getSection } from '../i18n';
 import { HEADER_GRADIENT, GRADIENTS, Colors, Spacing, Shadows } from '../theme';
 import DatabaseService from '../database/DatabaseService';
-
-interface Ministry {
-  id: string;
-  name_es: string;
-  name_fr?: string;
-  name_en?: string;
-  service_count: number;
-}
+import { Ministry, FiscalService, getServiceName } from '../database/services/FiscalServicesService';
 
 interface HomeScreenProps {
   language: 'es' | 'fr' | 'en';
@@ -40,38 +33,49 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
   const t = getSection(language, 'homeScreen');
   const [searchQuery, setSearchQuery] = useState('');
   const [randomMinistries, setRandomMinistries] = useState<Ministry[]>([]);
+  const [recentServices, setRecentServices] = useState<FiscalService[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadRandomMinistries();
+    loadData();
   }, []);
 
-  const loadRandomMinistries = async () => {
+  const loadData = async () => {
     try {
       setIsLoading(true);
       const db = DatabaseService.getInstance();
 
-      // Load 4 RANDOM ministries with service count
-      const ministries = await db.query<Ministry>(
-        `SELECT
-          m.id,
-          m.name_es,
-          m.name_fr,
-          m.name_en,
-          COUNT(DISTINCT fs.id) as service_count
-        FROM ministries m
-        LEFT JOIN fiscal_services fs ON fs.ministry_id = m.id AND fs.status = 'active'
-        WHERE m.status = 'active'
-        GROUP BY m.id
-        HAVING service_count > 0
-        ORDER BY RANDOM()
-        LIMIT 4`,
-        []
-      );
+      // Load 4 RANDOM ministries with service count AND 3 most recent services in parallel
+      const [ministries, recent] = await Promise.all([
+        db.query<Ministry>(
+          `SELECT
+            m.id,
+            m.name_es,
+            m.name_fr,
+            m.name_en,
+            COUNT(DISTINCT fs.id) as service_count
+          FROM ministries m
+          LEFT JOIN fiscal_services fs ON fs.ministry_id = m.id AND fs.status = 'active'
+          WHERE m.status = 'active'
+          GROUP BY m.id
+          HAVING service_count > 0
+          ORDER BY RANDOM()
+          LIMIT 4`,
+          []
+        ),
+        db.query<FiscalService>(
+          `SELECT * FROM v_fiscal_services_complete
+           WHERE status = 'active'
+           ORDER BY view_count DESC, updated_at DESC
+           LIMIT 3`,
+          []
+        ),
+      ]);
 
       setRandomMinistries(ministries);
+      setRecentServices(recent);
     } catch (error) {
-      console.error('[HomeScreen] Error loading ministries:', error);
+      console.error('[HomeScreen] Error loading data:', error);
     } finally {
       setIsLoading(false);
     }
@@ -119,9 +123,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
                 <Text style={styles.headerSubtitle}>{t.subtitle}</Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.notificationButton}>
-              <Text style={styles.notificationIcon}>🔔</Text>
-            </TouchableOpacity>
           </View>
 
           {/* Search bar */}
@@ -204,13 +205,42 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
                 colors={['#9C27B0', '#7B1FA2']}
                 style={styles.actionCardGradient}>
                 <View style={styles.actionIconContainer}>
-                  <Text style={styles.actionIcon}>📅</Text>
+                  <Text style={styles.actionIcon}>🧮</Text>
                 </View>
-                <Text style={styles.actionLabel}>{t.quickActions.scheduledAppointments}</Text>
+                <Text style={styles.actionLabel}>{t.quickActions.calculator}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Recently Visited Services */}
+        {recentServices.length > 0 && (
+          <View style={[styles.section, { marginTop: Spacing.md }]}>
+            <Text style={styles.sectionTitle}>{t.recentlyVisitedTitle}</Text>
+            <View style={styles.recentServicesContainer}>
+              {recentServices.map((service) => (
+                <TouchableOpacity
+                  key={service.id}
+                  style={styles.recentServiceItem}
+                  onPress={() => onNavigate('serviceDetail', service)}
+                  activeOpacity={0.7}>
+                  <View style={styles.recentServiceIcon}>
+                    <Text style={styles.recentServiceIconText}>📄</Text>
+                  </View>
+                  <View style={styles.recentServiceInfo}>
+                    <Text style={styles.recentServiceName} numberOfLines={2}>
+                      {getServiceName(service, language)}
+                    </Text>
+                    <Text style={styles.recentServicePrice}>
+                      {service.tasa_expedicion ? `${service.tasa_expedicion.toLocaleString()} XAF` : 'N/A'}
+                    </Text>
+                  </View>
+                  <Text style={styles.recentServiceArrow}>→</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Ministerios Populares - REDUCED SPACING */}
         <View style={[styles.section, { marginTop: Spacing.md }]}>
@@ -305,17 +335,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.9)',
     marginTop: 2,
   },
-  notificationButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  notificationIcon: {
-    fontSize: 20,
-  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -348,10 +367,11 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
     color: '#1A1A1A',
     marginBottom: Spacing.md,
+    letterSpacing: -0.5,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -370,15 +390,15 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   actionCard: {
-    width: '48%',
-    aspectRatio: 1,
+    width: '47%',
+    height: 110, // Reduced height (was aspectRatio: 1)
     borderRadius: 16,
     overflow: 'hidden',
     ...Shadows.md,
   },
   actionCardGradient: {
     flex: 1,
-    padding: Spacing.md,
+    padding: Spacing.sm,
     justifyContent: 'space-between',
     alignItems: 'center',
   },
@@ -388,13 +408,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   actionIcon: {
-    fontSize: 48,
+    fontSize: 42, // 60% of ~70px card height
   },
   actionLabel: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
     color: '#FFFFFF',
     textAlign: 'center',
+    marginTop: 4,
   },
   loadingContainer: {
     padding: Spacing.xl,
@@ -438,6 +459,50 @@ const styles = StyleSheet.create({
   ministryArrow: {
     fontSize: 18,
     color: Colors.primary,
+    marginLeft: Spacing.sm,
+  },
+
+  // Recently Visited Services
+  recentServicesContainer: {
+    gap: Spacing.sm,
+  },
+  recentServiceItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: Spacing.md,
+    ...Shadows.sm,
+  },
+  recentServiceIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F0F0F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.md,
+  },
+  recentServiceIconText: {
+    fontSize: 24,
+  },
+  recentServiceInfo: {
+    flex: 1,
+  },
+  recentServiceName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    marginBottom: 4,
+  },
+  recentServicePrice: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.primary,
+  },
+  recentServiceArrow: {
+    fontSize: 18,
+    color: '#CCCCCC',
     marginLeft: Spacing.sm,
   },
 });
