@@ -1,10 +1,5 @@
 /** @type {import('next').NextConfig} */
 
-// Polyfill for 'self' in Node.js environment during static export
-if (typeof self === 'undefined') {
-  global.self = global;
-}
-
 // Temporarily disable PWA to fix Webpack issues in development
 // const withPWA = require('next-pwa')({
 //   dest: 'public',
@@ -118,24 +113,34 @@ const nextConfig = {
 
   // Webpack configuration
   webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
-    config.optimization.splitChunks = {
-      chunks: 'all',
-      cacheGroups: {
-        default: false,
-        vendors: false,
-        vendor: {
-          name: 'vendor',
-          chunks: 'all',
-          test: /node_modules/,
+    // Fix 'self is not defined' error for server-side bundles (static export)
+    if (isServer) {
+      // Use 'global' instead of 'self' for server-side webpack chunks
+      config.output.globalObject = 'global';
+
+      // Disable splitChunks for server-side to avoid chunk loading issues
+      config.optimization.splitChunks = false;
+    } else {
+      // Keep splitChunks for client-side
+      config.optimization.splitChunks = {
+        chunks: 'all',
+        cacheGroups: {
+          default: false,
+          vendors: false,
+          vendor: {
+            name: 'vendor',
+            chunks: 'all',
+            test: /node_modules/,
+          },
+          common: {
+            name: 'common',
+            minChunks: 2,
+            chunks: 'all',
+            enforce: true,
+          },
         },
-        common: {
-          name: 'common',
-          minChunks: 2,
-          chunks: 'all',
-          enforce: true,
-        },
-      },
-    };
+      };
+    }
 
     return config;
   },
