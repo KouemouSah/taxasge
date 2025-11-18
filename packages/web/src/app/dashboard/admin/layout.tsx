@@ -1,42 +1,23 @@
 /**
  * Admin Dashboard Layout
- * Protects admin routes and provides consistent layout with sidebar
+ * Provides consistent layout with sidebar for admin pages
  *
  * @module dashboard/admin
  * @author Claude Code
  * @date 2025-11-18
  */
 
-import { redirect } from 'next/navigation';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminHeader from '@/components/admin/AdminHeader';
 
-// This would normally come from your auth context
-// For now, we'll create a placeholder
-async function getServerSession() {
-  // TODO: Implement actual session retrieval
-  // This is a placeholder - in production, use next-auth or your auth solution
-  return null;
-}
-
-export default async function AdminLayout({
+export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Get current user session
-  const session = await getServerSession();
-
-  // Check if user is authenticated
-  if (!session) {
-    redirect('/auth/login');
-  }
-
-  // Check if user has admin role
-  // TODO: Implement actual role check from session
-  // if (session.user.role?.code !== 'ADMIN') {
-  //   redirect('/dashboard');
-  // }
+  // Note: With output: 'export', we cannot use server-side authentication
+  // Auth protection should be handled client-side or via middleware
+  // TODO: Implement client-side auth check with useEffect + router.push
 
   return (
     <div className="flex h-screen bg-gray-50">
