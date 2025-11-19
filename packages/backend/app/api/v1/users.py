@@ -22,56 +22,9 @@ from app.database.connection import get_database
 router = APIRouter()
 
 
-# Dependency to get current user from token
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> UserResponse:
-    """Get current authenticated user"""
-    try:
-        # For now, use mock admin user - will be enhanced with JWT decoding
-        mock_user = await user_repository.find_by_email("libressai@gmail.com")
-        if not mock_user:
-            # Create mock admin user if not exists
-            from app.models.user import UserProfile
-            from uuid import uuid4
-
-            mock_data = {
-                "id": str(uuid4()),
-                "email": "libressai@gmail.com",
-                "role": UserRole.admin,
-                "status": UserStatus.active,
-                "first_name": "System",
-                "last_name": "Administrator",
-                "phone": None,
-                "address": None,
-                "city": None,
-                "country": "GQ",
-                "language": "es",
-                "avatar_url": None,
-                "created_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow(),
-                "last_login": None,
-                "citizen_profile": None,
-                "business_profile": None
-            }
-            mock_user = UserResponse(**mock_data)
-
-        return mock_user
-    except Exception as e:
-        logger.error(f"L Error getting current user: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials"
-        )
-
-
-# Dependency for admin access
-async def require_admin(current_user: UserResponse = Depends(get_current_user)) -> UserResponse:
-    """Require admin role"""
-    if current_user.role not in [UserRole.admin, UserRole.operator]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
-        )
-    return current_user
+# NOTE: Authentication moved to app.core.auth (JWT-based, no mocks)
+# Import get_current_user from app.core.auth
+from app.core.auth import get_current_user, get_current_admin_user as require_admin
 
 
 @router.get("/")
