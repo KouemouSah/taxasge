@@ -23,8 +23,14 @@ router = APIRouter()
 
 
 # NOTE: Authentication moved to app.core.auth (JWT-based, no mocks)
-# Import get_current_user from app.core.auth
-from app.core.auth import get_current_user, get_current_admin_user as require_admin
+# Re-export for backward compatibility with tests
+from app.core.auth import (
+    get_current_user,
+    get_current_admin_user as require_admin
+)
+
+# Make get_current_user available for patching in tests
+__all__ = ["router", "get_current_user", "require_admin"]
 
 
 @router.get("/")
