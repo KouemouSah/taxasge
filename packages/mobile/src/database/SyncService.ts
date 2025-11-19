@@ -36,20 +36,6 @@ interface ProgressiveSyncResult extends SyncResult {
   tablesSync: string[];
 }
 
-interface FiscalService {
-  id: string;
-  code: string;
-  name_es: string;
-  name_fr?: string;
-  name_en?: string;
-  service_type?: string;
-  tasa_expedicion?: number;
-  tasa_renovacion?: number;
-  calculation_method?: string;
-  category_id?: string;
-  [key: string]: any;
-}
-
 class SyncService {
   private supabase: SupabaseClient;
   private isSyncing: boolean = false;
@@ -321,62 +307,62 @@ class SyncService {
         if (selectColumns === '*') {
           // Full table sync - add ID conversion and defaults
           mapped = data.map(item => {
-            const result: any = { ...item };
+            const mappedItem: any = { ...item };
 
             // CRITICAL: Convert INTEGER IDs to TEXT - only for fields that exist
-            if ('id' in result && result.id) result.id = String(result.id);
-            if ('ministry_id' in result && result.ministry_id) result.ministry_id = String(result.ministry_id);
-            if ('sector_id' in result && result.sector_id) result.sector_id = String(result.sector_id);
-            if ('category_id' in result && result.category_id) result.category_id = String(result.category_id);
-            if ('fiscal_service_id' in result && result.fiscal_service_id) result.fiscal_service_id = String(result.fiscal_service_id);
-            if ('template_id' in result && result.template_id) result.template_id = String(result.template_id);
-            if ('procedure_template_id' in result && result.procedure_template_id) result.procedure_template_id = String(result.procedure_template_id);
-            if ('document_template_id' in result && result.document_template_id) result.document_template_id = String(result.document_template_id);
+            if ('id' in mappedItem && mappedItem.id) mappedItem.id = String(mappedItem.id);
+            if ('ministry_id' in mappedItem && mappedItem.ministry_id) mappedItem.ministry_id = String(mappedItem.ministry_id);
+            if ('sector_id' in mappedItem && mappedItem.sector_id) mappedItem.sector_id = String(mappedItem.sector_id);
+            if ('category_id' in mappedItem && mappedItem.category_id) mappedItem.category_id = String(mappedItem.category_id);
+            if ('fiscal_service_id' in mappedItem && mappedItem.fiscal_service_id) mappedItem.fiscal_service_id = String(mappedItem.fiscal_service_id);
+            if ('template_id' in mappedItem && mappedItem.template_id) mappedItem.template_id = String(mappedItem.template_id);
+            if ('procedure_template_id' in mappedItem && mappedItem.procedure_template_id) mappedItem.procedure_template_id = String(mappedItem.procedure_template_id);
+            if ('document_template_id' in mappedItem && mappedItem.document_template_id) mappedItem.document_template_id = String(mappedItem.document_template_id);
 
             // Convert booleans to integers - only for fields that exist
-            if ('is_active' in result && typeof result.is_active === 'boolean') {
-              result.is_active = result.is_active ? 1 : 0;
+            if ('is_active' in mappedItem && typeof mappedItem.is_active === 'boolean') {
+              mappedItem.is_active = mappedItem.is_active ? 1 : 0;
             }
-            if ('is_optional' in result && typeof result.is_optional === 'boolean') {
-              result.is_optional = result.is_optional ? 1 : 0;
+            if ('is_optional' in mappedItem && typeof mappedItem.is_optional === 'boolean') {
+              mappedItem.is_optional = mappedItem.is_optional ? 1 : 0;
             }
-            if ('requires_appointment' in result && typeof result.requires_appointment === 'boolean') {
-              result.requires_appointment = result.requires_appointment ? 1 : 0;
+            if ('requires_appointment' in mappedItem && typeof mappedItem.requires_appointment === 'boolean') {
+              mappedItem.requires_appointment = mappedItem.requires_appointment ? 1 : 0;
             }
-            if ('can_be_done_online' in result && typeof result.can_be_done_online === 'boolean') {
-              result.can_be_done_online = result.can_be_done_online ? 1 : 0;
+            if ('can_be_done_online' in mappedItem && typeof mappedItem.can_be_done_online === 'boolean') {
+              mappedItem.can_be_done_online = mappedItem.can_be_done_online ? 1 : 0;
             }
-            if ('is_mandatory' in result && typeof result.is_mandatory === 'boolean') {
-              result.is_mandatory = result.is_mandatory ? 1 : 0;
+            if ('is_mandatory' in mappedItem && typeof mappedItem.is_mandatory === 'boolean') {
+              mappedItem.is_mandatory = mappedItem.is_mandatory ? 1 : 0;
             }
-            if ('accepts_digital_copy' in result && typeof result.accepts_digital_copy === 'boolean') {
-              result.accepts_digital_copy = result.accepts_digital_copy ? 1 : 0;
+            if ('accepts_digital_copy' in mappedItem && typeof mappedItem.accepts_digital_copy === 'boolean') {
+              mappedItem.accepts_digital_copy = mappedItem.accepts_digital_copy ? 1 : 0;
             }
-            if ('is_required' in result && typeof result.is_required === 'boolean') {
-              result.is_required = result.is_required ? 1 : 0;
+            if ('is_required' in mappedItem && typeof mappedItem.is_required === 'boolean') {
+              mappedItem.is_required = mappedItem.is_required ? 1 : 0;
             }
 
             // Add defaults for timestamp fields if missing
-            if (!result.created_at) result.created_at = new Date().toISOString();
-            if (!result.updated_at) result.updated_at = new Date().toISOString();
+            if (!mappedItem.created_at) mappedItem.created_at = new Date().toISOString();
+            if (!mappedItem.updated_at) mappedItem.updated_at = new Date().toISOString();
 
-            return result;
+            return mappedItem;
           });
         } else {
           // Explicit column mapping - convert only present fields
           mapped = data.map(item => {
-            const result: any = { ...item };
+            const mappedItem: any = { ...item };
             // Convert IDs
-            if ('id' in result) result.id = String(result.id);
-            if ('fiscal_service_id' in result) result.fiscal_service_id = String(result.fiscal_service_id);
+            if ('id' in mappedItem) mappedItem.id = String(mappedItem.id);
+            if ('fiscal_service_id' in mappedItem) mappedItem.fiscal_service_id = String(mappedItem.fiscal_service_id);
             // Convert booleans
-            if ('is_active' in result && typeof result.is_active === 'boolean') {
-              result.is_active = result.is_active ? 1 : 0;
+            if ('is_active' in mappedItem && typeof mappedItem.is_active === 'boolean') {
+              mappedItem.is_active = mappedItem.is_active ? 1 : 0;
             }
-            if ('is_auto_generated' in result && typeof result.is_auto_generated === 'boolean') {
-              result.is_auto_generated = result.is_auto_generated ? 1 : 0;
+            if ('is_auto_generated' in mappedItem && typeof mappedItem.is_auto_generated === 'boolean') {
+              mappedItem.is_auto_generated = mappedItem.is_auto_generated ? 1 : 0;
             }
-            return result;
+            return mappedItem;
           });
         }
 

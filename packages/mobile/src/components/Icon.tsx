@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { Text, TextStyle, StyleProp } from 'react-native';
+import { Text, TextStyle, StyleProp, StyleSheet } from 'react-native';
 
 export type IconName =
   | 'home'
@@ -84,11 +84,10 @@ export const Icon: React.FC<IconProps> = ({
   return (
     <Text
       style={[
+        styles.icon,
         {
           fontSize: size,
           color: color,
-          fontWeight: '400',
-          textAlign: 'center',
           lineHeight: size,
         },
         style,
@@ -98,5 +97,12 @@ export const Icon: React.FC<IconProps> = ({
     </Text>
   );
 };
+
+const styles = StyleSheet.create({
+  icon: {
+    fontWeight: '400',
+    textAlign: 'center',
+  },
+});
 
 export default Icon;

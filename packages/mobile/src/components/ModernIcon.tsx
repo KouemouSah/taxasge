@@ -69,12 +69,14 @@ export const ModernIcon: React.FC<ModernIconProps> = ({
     'arrow-forward': '→',
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const iconSymbol = iconMap[name] || '?';
 
   return (
     <View
       style={[
         styles.container,
+        // eslint-disable-next-line react-native/no-inline-styles
         {
           width: size,
           height: size,
@@ -85,7 +87,7 @@ export const ModernIcon: React.FC<ModernIconProps> = ({
       ]}>
       <View style={styles.iconWrapper}>
         {/* Using text emoji as fallback - ideally use SVG icons */}
-        <View style={{ width: size * 0.8, height: size * 0.8, justifyContent: 'center', alignItems: 'center' }}>
+        <View style={[styles.iconPlaceholder, { width: size * 0.8, height: size * 0.8 }]}>
           {/* Icon placeholder - would be replaced with actual icon library */}
           <View style={[styles.iconCircle, { width: size * 0.6, height: size * 0.6, backgroundColor: color }]} />
         </View>
@@ -100,6 +102,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   iconWrapper: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iconPlaceholder: {
     justifyContent: 'center',
     alignItems: 'center',
   },
