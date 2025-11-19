@@ -45,6 +45,7 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import auditLogsApi from '@/modules/audit-logs-admin/services/api'
 import type { AuditLog, AuditAction } from '@/modules/audit-logs-admin/types'
+import { BackendUnavailableAlert } from '@/components/admin/BackendUnavailableAlert'
 
 export default function AuditLogsPage() {
   const { toast } = useToast()
@@ -53,6 +54,7 @@ export default function AuditLogsPage() {
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [actionFilter, setActionFilter] = useState<'all' | AuditAction>('all')
+  const [isBackendUnavailable, setIsBackendUnavailable] = useState(false)
 
   // Fetch audit logs
   const fetchLogs = async () => {
@@ -72,8 +74,16 @@ export default function AuditLogsPage() {
 
       const data = await auditLogsApi.getAll(params)
       setLogs(data)
+      setIsBackendUnavailable(false)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load audit logs')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load audit logs'
+      setError(errorMessage)
+
+      // Check if it's a network error
+      if (errorMessage.includes('fetch') || errorMessage.includes('Network') || errorMessage.includes('Failed to load')) {
+        setIsBackendUnavailable(true)
+      }
+
       toast({
         variant: 'destructive',
         title: 'Erreur',
@@ -155,6 +165,9 @@ export default function AuditLogsPage() {
           Consulter l&apos;historique des actions système
         </p>
       </div>
+
+      {/* Backend Unavailable Alert */}
+      {isBackendUnavailable && <BackendUnavailableAlert />}
 
       {/* Statistics */}
       <div className="grid gap-4 md:grid-cols-4">

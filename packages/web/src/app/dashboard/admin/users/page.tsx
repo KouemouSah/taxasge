@@ -34,6 +34,7 @@ import { useToast } from '@/hooks/use-toast'
 import usersApi from '@/modules/users-admin/services/api'
 import type { User, UserRole } from '@/modules/users-admin/types'
 import { CreateUserDialog } from '@/modules/users-admin/components/CreateUserDialog'
+import { BackendUnavailableAlert } from '@/components/admin/BackendUnavailableAlert'
 
 export default function UsersPage() {
   const { toast } = useToast()
@@ -43,6 +44,7 @@ export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState<'all' | UserRole>('all')
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [isBackendUnavailable, setIsBackendUnavailable] = useState(false)
 
   // Fetch users
   const fetchUsers = async () => {
@@ -62,8 +64,16 @@ export default function UsersPage() {
 
       const data = await usersApi.getAll(params)
       setUsers(data)
+      setIsBackendUnavailable(false)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load users')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load users'
+      setError(errorMessage)
+
+      // Check if it's a network error
+      if (errorMessage.includes('fetch') || errorMessage.includes('Network') || errorMessage.includes('Failed to load')) {
+        setIsBackendUnavailable(true)
+      }
+
       toast({
         variant: 'destructive',
         title: 'Erreur',
@@ -86,6 +96,11 @@ export default function UsersPage() {
       accountant: { label: 'Comptable', className: 'bg-blue-100 text-blue-700' },
       business: { label: 'Entreprise', className: 'bg-green-100 text-green-700' },
       citizen: { label: 'Citoyen', className: 'bg-gray-100 text-gray-700' },
+      supervisor_dgi: { label: 'Superviseur DGI', className: 'bg-indigo-100 text-indigo-700' },
+      supervisor_senior: { label: 'Superviseur Senior', className: 'bg-pink-100 text-pink-700' },
+      supervisor_junior_dgi: { label: 'Superviseur Junior DGI', className: 'bg-cyan-100 text-cyan-700' },
+      supervisor_readonly: { label: 'Superviseur Lecture Seule', className: 'bg-slate-100 text-slate-700' },
+      ministry_agent: { label: 'Agent Ministère', className: 'bg-teal-100 text-teal-700' },
     }
 
     const config = roleConfig[role]
@@ -123,6 +138,9 @@ export default function UsersPage() {
           Gérer les utilisateurs du système
         </p>
       </div>
+
+      {/* Backend Unavailable Alert */}
+      {isBackendUnavailable && <BackendUnavailableAlert />}
 
       {/* Statistics */}
       <div className="grid gap-4 md:grid-cols-4">
@@ -188,7 +206,7 @@ export default function UsersPage() {
                 />
               </div>
               <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v as typeof roleFilter)}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder="Filtrer par rôle" />
                 </SelectTrigger>
                 <SelectContent>
@@ -196,6 +214,11 @@ export default function UsersPage() {
                   <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="dgi_agent">Agent DGI</SelectItem>
                   <SelectItem value="accountant">Comptable</SelectItem>
+                  <SelectItem value="supervisor_dgi">Superviseur DGI</SelectItem>
+                  <SelectItem value="supervisor_senior">Superviseur Senior</SelectItem>
+                  <SelectItem value="supervisor_junior_dgi">Superviseur Junior DGI</SelectItem>
+                  <SelectItem value="supervisor_readonly">Superviseur Lecture Seule</SelectItem>
+                  <SelectItem value="ministry_agent">Agent Ministère</SelectItem>
                   <SelectItem value="business">Entreprise</SelectItem>
                   <SelectItem value="citizen">Citoyen</SelectItem>
                 </SelectContent>

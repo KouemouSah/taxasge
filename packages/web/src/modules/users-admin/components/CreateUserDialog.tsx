@@ -147,9 +147,14 @@ export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDi
                   <SelectValue placeholder="Sélectionner un rôle" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="admin">Administrateur</SelectItem>
                   <SelectItem value="dgi_agent">Agent DGI</SelectItem>
                   <SelectItem value="accountant">Comptable</SelectItem>
-                  <SelectItem value="admin">Administrateur</SelectItem>
+                  <SelectItem value="supervisor_dgi">Superviseur DGI</SelectItem>
+                  <SelectItem value="supervisor_senior">Superviseur Senior</SelectItem>
+                  <SelectItem value="supervisor_junior_dgi">Superviseur Junior DGI</SelectItem>
+                  <SelectItem value="supervisor_readonly">Superviseur Lecture Seule</SelectItem>
+                  <SelectItem value="ministry_agent">Agent Ministère</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground">

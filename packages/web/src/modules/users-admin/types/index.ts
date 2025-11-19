@@ -7,7 +7,17 @@
  * @date 2025-11-19
  */
 
-export type UserRole = 'citizen' | 'business' | 'accountant' | 'admin' | 'dgi_agent'
+export type UserRole =
+  | 'citizen'
+  | 'business'
+  | 'accountant'
+  | 'admin'
+  | 'dgi_agent'
+  | 'supervisor_junior_dgi'
+  | 'supervisor_readonly'
+  | 'supervisor_senior'
+  | 'ministry_agent'
+  | 'supervisor_dgi'
 
 export interface User {
   id: string

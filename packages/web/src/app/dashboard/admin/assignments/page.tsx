@@ -32,6 +32,7 @@ import { ClipboardList, RefreshCw, AlertTriangle, CheckCircle2, Clock, XCircle }
 import { useToast } from '@/hooks/use-toast'
 import assignmentsApi from '@/modules/assignments-admin/services/api'
 import type { Assignment, AssignmentStatus } from '@/modules/assignments-admin/types'
+import { BackendUnavailableAlert } from '@/components/admin/BackendUnavailableAlert'
 
 export default function AssignmentsPage() {
   const { toast } = useToast()
@@ -39,6 +40,7 @@ export default function AssignmentsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<'all' | AssignmentStatus>('all')
+  const [isBackendUnavailable, setIsBackendUnavailable] = useState(false)
 
   // Fetch assignments
   const fetchAssignments = async () => {
@@ -54,8 +56,16 @@ export default function AssignmentsPage() {
 
       const data = await assignmentsApi.getAll(params)
       setAssignments(data)
+      setIsBackendUnavailable(false)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load assignments')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load assignments'
+      setError(errorMessage)
+
+      // Check if it's a network error
+      if (errorMessage.includes('fetch') || errorMessage.includes('Network') || errorMessage.includes('Failed to load')) {
+        setIsBackendUnavailable(true)
+      }
+
       toast({
         variant: 'destructive',
         title: 'Erreur',
@@ -140,6 +150,9 @@ export default function AssignmentsPage() {
           Gérer les assignments de déclarations aux agents
         </p>
       </div>
+
+      {/* Backend Unavailable Alert */}
+      {isBackendUnavailable && <BackendUnavailableAlert />}
 
       {/* Statistics */}
       <div className="grid gap-4 md:grid-cols-4">
