@@ -269,12 +269,13 @@ async def change_password(
         )
 
 
-@router.get("/users", response_model=UserListResponse)
+@router.get("", response_model=UserListResponse)
 async def list_users(
     page: int = Query(1, ge=1, description="Page number"),
     size: int = Query(20, ge=1, le=100, description="Page size"),
     role: Optional[UserRole] = Query(None, description="Filter by role"),
     status: Optional[UserStatus] = Query(None, description="Filter by status"),
+    search: Optional[str] = Query(None, description="Search query"),
     admin_user: UserResponse = Depends(require_admin)
 ):
     """List all users with pagination (admin only)"""
@@ -285,6 +286,10 @@ async def list_users(
             filters["role"] = role.value
         if status:
             filters["status"] = status.value
+
+        # Add search filter if provided
+        if search:
+            filters["search"] = search
 
         # Calculate offset
         offset = (page - 1) * size
@@ -305,16 +310,16 @@ async def list_users(
             user_id=admin_user.id,
             action="list_users",
             resource="users",
-            metadata={"page": page, "size": size, "filters": filters},
+            metadata={"page": page, "page_size": size, "filters": filters},
             timestamp=datetime.utcnow()
         )
         await user_repository.log_user_activity(activity)
 
         return UserListResponse(
-            users=users,
+            items=users,
             total=total,
             page=page,
-            size=size,
+            page_size=size,
             pages=pages
         )
 
@@ -326,7 +331,7 @@ async def list_users(
         )
 
 
-@router.post("/users", response_model=UserResponse)
+@router.post("", response_model=UserResponse)
 async def create_user(
     user_create: UserCreate,
     admin_user: UserResponse = Depends(require_admin)
@@ -377,7 +382,7 @@ async def create_user(
         )
 
 
-@router.get("/users/{user_id}", response_model=UserResponse)
+@router.get("/{user_id}", response_model=UserResponse)
 async def get_user(
     user_id: str = Path(..., description="User ID"),
     current_user: UserResponse = Depends(get_current_user)
@@ -420,7 +425,7 @@ async def get_user(
         )
 
 
-@router.put("/users/{user_id}", response_model=UserResponse)
+@router.put("/{user_id}", response_model=UserResponse)
 async def update_user(
     user_id: str = Path(..., description="User ID"),
     user_update: UserUpdate = ...,
@@ -503,7 +508,7 @@ async def update_user(
         )
 
 
-@router.delete("/users/{user_id}", status_code=status.HTTP_200_OK)
+@router.delete("/{user_id}", status_code=status.HTTP_200_OK)
 async def delete_user(
     user_id: str = Path(..., description="User ID"),
     admin_user: UserResponse = Depends(require_admin)
@@ -554,7 +559,7 @@ async def delete_user(
         )
 
 
-@router.get("/users/search", response_model=List[UserResponse])
+@router.get("/search", response_model=List[UserResponse])
 async def search_users(
     q: Optional[str] = Query(None, description="Search query"),
     role: Optional[UserRole] = Query(None, description="Filter by role"),
@@ -607,7 +612,7 @@ async def search_users(
         )
 
 
-@router.get("/users/stats", response_model=UserStats)
+@router.get("/stats", response_model=UserStats)
 async def get_user_stats(admin_user: UserResponse = Depends(require_admin)):
     """Get user statistics (admin only)"""
     try:
@@ -632,7 +637,7 @@ async def get_user_stats(admin_user: UserResponse = Depends(require_admin)):
         )
 
 
-@router.get("/users/{user_id}/activities", response_model=List[UserActivity])
+@router.get("/{user_id}/activities", response_model=List[UserActivity])
 async def get_user_activities(
     user_id: str = Path(..., description="User ID"),
     limit: int = Query(50, ge=1, le=200, description="Maximum activities"),

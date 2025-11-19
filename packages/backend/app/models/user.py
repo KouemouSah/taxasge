@@ -17,6 +17,11 @@ class UserRole(str, Enum):
     accountant = "accountant"
     admin = "admin"
     dgi_agent = "dgi_agent"
+    supervisor_junior_dgi = "supervisor_junior_dgi"
+    supervisor_readonly = "supervisor_readonly"
+    supervisor_senior = "supervisor_senior"
+    ministry_agent = "ministry_agent"
+    supervisor_dgi = "supervisor_dgi"
 
 
 class UserStatus(str, Enum):
@@ -168,10 +173,10 @@ class UserResponse(BaseModel):
 
 class UserListResponse(BaseModel):
     """Model for paginated user list response"""
-    users: List[UserResponse] = Field(..., description="List of users")
+    items: List[UserResponse] = Field(..., description="List of users")
     total: int = Field(..., description="Total number of users")
     page: int = Field(..., description="Current page number")
-    size: int = Field(..., description="Page size")
+    page_size: int = Field(..., description="Page size")
     pages: int = Field(..., description="Total number of pages")
 
 
