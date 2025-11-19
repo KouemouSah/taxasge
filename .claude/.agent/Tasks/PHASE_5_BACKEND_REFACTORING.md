@@ -2,10 +2,10 @@
 
 **Date de création** : 2025-11-19
 **Auteur** : Claude Code
-**Statut** : 🔴 EN COURS (0% - Démarrage)
+**Statut** : 🟡 EN COURS (15% - PHASE 1 Terminée)
 **Priorité** : ⭐⭐⭐ CRITIQUE
-**Durée estimée** : 3-4 jours
-**Dernière mise à jour** : 2025-11-19 (Création)
+**Durée estimée** : 2-3 semaines (refactoring complet de 13 modules)
+**Dernière mise à jour** : 2025-11-19 18:40 (Inventaire complet ajouté)
 
 ---
 
@@ -57,14 +57,82 @@ L'analyse complète du backend (packages/backend/app/) a révélé que plusieurs
 
 ## 📊 ÉTAT DES LIEUX ACTUEL
 
-### **Modules Backend Existants**
+### **🔍 INVENTAIRE COMPLET DES MODULES BACKEND**
+
+#### **Modules Actuels (app/modules/)**
+
+| Module | Fichiers | Status | Architecture | Priorité Refactoring |
+|--------|----------|--------|--------------|----------------------|
+| **permissions** | 21 fichiers .py | ✅ MODULARISÉ | api/ + models/ + repositories/ + services/ + middleware/ | ✅ Aucune |
+| **assignment** | 5 fichiers .py | ✅ MODULARISÉ | api/ + models/ + repositories/ + services/ | ✅ Aucune |
+
+#### **APIs v1 (app/api/v1/)** - À Refactoriser
+
+| Fichier API | Services Associés | Core/Utils | Status | Priorité |
+|-------------|-------------------|------------|--------|----------|
+| **users.py** (23 KB) | - | - | ⚠️ BUGS CORRIGÉS | 🟡 BASSE (déjà fixé) |
+| **auth.py** (44 KB) | auth_service.py, jwt_service.py, session_service.py | - | ⚠️ DISPERSÉ | ⭐⭐⭐ HAUTE |
+| **two_factor.py** (10 KB) | two_factor_service.py | - | ⚠️ DISPERSÉ | ⭐⭐ MOYENNE |
+| **documents.py** (39 KB) | extraction_service.py, ocr_service.py | core/documents/ | ⚠️ DISPERSÉ | ⭐⭐⭐ HAUTE |
+| **files.py** (25 KB) | firebase_storage_service.py | - | ⚠️ DISPERSÉ | ⭐⭐ MOYENNE |
+| **declarations.py** (15 KB) | - | - | ⚠️ DISPERSÉ | ⭐⭐ MOYENNE |
+| **declarations_permissions.py** (5 KB) | - | - | ⚠️ DISPERSÉ | ⭐⭐ MOYENNE |
+| **fiscal_services.py** (19 KB) | - | - | ⚠️ DISPERSÉ | ⭐⭐ MOYENNE |
+| **fiscal_services_new.py** (19 KB) | - | - | ⚠️ DISPERSÉ | ⭐⭐ MOYENNE |
+| **fiscal_services_search_db.py** (26 KB) | - | - | ⚠️ DISPERSÉ | ⭐⭐ MOYENNE |
+| **payments.py** (7 KB) | payment_service.py, bange_service.py | - | ⚠️ DISPERSÉ | ⭐⭐ MOYENNE |
+| **taxes.py** (21 KB) | tax_service.py | - | ⚠️ DISPERSÉ | ⭐ BASSE |
+| **ai.py** + **ai_services.py** (24 KB) | ai_service.py | - | ⚠️ DISPERSÉ | ⭐ BASSE |
+| **homepage.py** (12 KB) | - | - | ⚠️ DISPERSÉ | ⭐ BASSE |
+| **admin.py** (4 KB) | - | - | ⚠️ DISPERSÉ | ⭐ BASSE |
+
+#### **Services (app/services/)** - À Intégrer dans Modules
+
+| Service | Taille | Module Cible | Utilisé par |
+|---------|--------|--------------|-------------|
+| auth_service.py | 34 KB | **auth** | auth.py |
+| jwt_service.py | 10 KB | **auth** | auth.py, middleware |
+| session_service.py | 11 KB | **auth** | auth.py |
+| two_factor_service.py | 14 KB | **auth** (ou two_factor) | two_factor.py |
+| password_service.py | 8 KB | **auth** | auth.py, users.py |
+| ocr_service.py | 23 KB | **documents** | documents.py |
+| extraction_service.py | 28 KB | **documents** | documents.py |
+| firebase_storage_service.py | 42 KB | **files** | files.py, documents.py |
+| email_service.py | 18 KB | **notifications** | auth.py, users.py |
+| payment_service.py | 0 KB (vide) | **payments** | payments.py |
+| bange_service.py | 15 KB | **payments** | payments.py |
+| tax_service.py | 0 KB (vide) | **taxes** | taxes.py |
+| ai_service.py | 0 KB (vide) | **ai** | ai.py |
+| translation_service.py | 12 KB | **translations** | Divers |
+| notification_service.py | 0 KB (vide) | **notifications** | À implémenter |
+
+#### **Core (app/core/)** - Structure Existante
+
+| Dossier | Contenu | Module Cible | Status |
+|---------|---------|--------------|--------|
+| **core/documents/** | extractors/, mappers/, templates/ | **documents** | ✅ Structure prête |
+| core/auth.py | get_current_user, dependencies | **auth** | ⚠️ À moduler |
+| core/database.py | DB connections | - | ✅ OK |
+
+### **Modules Backend Existants (Résumé)**
 
 | Module | Emplacement | Status | Routes | Commentaire |
 |--------|-------------|--------|--------|-------------|
 | **Permissions** | `app/modules/permissions/` | ✅ COMPLET | `/api/v1/permissions`, `/api/v1/roles`, `/api/v1/user-permissions` | Module RBAC fully implemented in PHASE_4 |
 | **Assignment** | `app/modules/assignment/` | ✅ COMPLET | `/api/v1/assignments` | Routes: manual, auto, get, start, complete, reassign |
-| **Users** | `app/api/v1/users.py` | ⚠️ BUGS | `/api/v1/users` | Path doubling + response format mismatch |
+| **Users** | `app/api/v1/users.py` | ✅ CORRIGÉ | `/api/v1/users` | Path doubling + response format FIXED (PHASE 1) |
+| **Auth** | `app/api/v1/auth.py` + services | ⚠️ DISPERSÉ | `/api/v1/auth` | À modulariser (44KB + 4 services) |
+| **Documents** | `app/api/v1/documents.py` + core | ⚠️ DISPERSÉ | `/api/v1/documents` | À modulariser (OCR + extraction) |
 | **Audit-logs** | ❌ ABSENT | ❌ ABSENT | ❌ ABSENT | Module à créer entièrement |
+| **Files** | `app/api/v1/files.py` + service | ⚠️ DISPERSÉ | `/api/v1/files` | À modulariser |
+| **Declarations** | `app/api/v1/declarations.py` | ⚠️ DISPERSÉ | `/api/v1/declarations` | À modulariser |
+| **Fiscal Services** | 3 fichiers API v1 | ⚠️ DISPERSÉ | `/api/v1/fiscal-services` | À consolider + modulariser |
+| **Payments** | `app/api/v1/payments.py` + services | ⚠️ DISPERSÉ | `/api/v1/payments` | À modulariser (BANGE integration) |
+| **Two-Factor** | `app/api/v1/two_factor.py` + service | ⚠️ DISPERSÉ | `/api/v1/auth/2fa` | À intégrer dans auth module |
+| **AI** | 2 fichiers API + service | ⚠️ DISPERSÉ | `/api/v1/ai` | À modulariser |
+| **Taxes** | `app/api/v1/taxes.py` + service | ⚠️ DISPERSÉ | `/api/v1/taxes` | À modulariser |
+| **Homepage** | `app/api/v1/homepage.py` | ⚠️ DISPERSÉ | `/api/v1/homepage` | À modulariser (stats dashboard) |
+| **Admin** | `app/api/v1/admin.py` | ⚠️ DISPERSÉ | `/api/v1/admin` | À modulariser |
 
 ### **Enregistrement des Routes (main.py)**
 
@@ -320,6 +388,302 @@ packages/backend/app/modules/
 3. **Dependency Injection** : via FastAPI Depends()
 4. **Permission Middleware** : @require_permission decorator
 5. **Audit Logging** : Automatique via middleware
+
+---
+
+## 📦 CRÉATION DES STRUCTURES DE MODULES
+
+### **Modules Prioritaires à Créer/Refactoriser**
+
+| # | Module | Priorité | Durée | Fichiers à Migrer | Services à Intégrer |
+|---|--------|----------|-------|-------------------|---------------------|
+| 1 | **audit_logs** | ⭐⭐⭐ CRITIQUE | 8h | ❌ Aucun (nouveau) | ❌ Aucun (nouveau) |
+| 2 | **auth** | ⭐⭐⭐ HAUTE | 12h | auth.py (44KB), two_factor.py (10KB), core/auth.py | auth_service.py, jwt_service.py, session_service.py, two_factor_service.py, password_service.py |
+| 3 | **documents** | ⭐⭐⭐ HAUTE | 10h | documents.py (39KB) | ocr_service.py, extraction_service.py, core/documents/* |
+| 4 | **files** | ⭐⭐ MOYENNE | 6h | files.py (25KB) | firebase_storage_service.py |
+| 5 | **declarations** | ⭐⭐ MOYENNE | 8h | declarations.py (15KB), declarations_permissions.py (5KB) | ❌ (logique dans routes) |
+| 6 | **fiscal_services** | ⭐⭐ MOYENNE | 10h | fiscal_services.py, fiscal_services_new.py, fiscal_services_search_db.py (64KB total) | ❌ (logique dans routes) |
+| 7 | **payments** | ⭐⭐ MOYENNE | 8h | payments.py (7KB) | payment_service.py, bange_service.py |
+| 8 | **notifications** | ⭐ BASSE | 6h | ❌ Aucun | email_service.py, notification_service.py |
+| 9 | **taxes** | ⭐ BASSE | 6h | taxes.py (21KB) | tax_service.py |
+| 10 | **ai** | ⭐ BASSE | 6h | ai.py, ai_services.py (24KB) | ai_service.py |
+| 11 | **homepage** | ⭐ BASSE | 4h | homepage.py (12KB) | ❌ (stats only) |
+| 12 | **admin** | ⭐ BASSE | 4h | admin.py (4KB) | ❌ (utils only) |
+| 13 | **translations** | ⭐ BASSE | 4h | ❌ Aucun | translation_service.py |
+
+**Total estimé:** ~92 heures (≈ 2-3 semaines de travail)
+
+### **Structures de Modules à Créer**
+
+#### **1. Module audit_logs** (PRIORITÉ 1 - CRITIQUE)
+
+```
+app/modules/audit_logs/
+├── __init__.py
+├── api/
+│   └── audit_log_routes.py
+├── models/
+│   └── audit_log.py
+├── repositories/
+│   └── audit_log_repository.py
+├── services/
+│   └── audit_log_service.py
+├── middleware/
+│   └── audit_middleware.py  # Logging automatique
+└── permissions.py
+```
+
+**Fonctionnalités:**
+- Enregistrement automatique de toutes les actions
+- API GET /audit-logs (pagination, filtres)
+- API GET /audit-logs/user/{id} (audit trail user)
+- Export audit logs (CSV, JSON)
+- Permissions: `audit_logs.view`, `audit_logs.export`
+
+#### **2. Module auth** (PRIORITÉ 2 - HAUTE)
+
+```
+app/modules/auth/
+├── __init__.py
+├── api/
+│   ├── auth_routes.py         # Migrer depuis api/v1/auth.py
+│   └── two_factor_routes.py   # Migrer depuis api/v1/two_factor.py
+├── models/
+│   ├── auth.py
+│   ├── session.py
+│   └── two_factor.py
+├── repositories/
+│   ├── session_repository.py
+│   └── two_factor_repository.py
+├── services/
+│   ├── auth_service.py        # Migrer depuis services/
+│   ├── jwt_service.py         # Migrer depuis services/
+│   ├── session_service.py     # Migrer depuis services/
+│   ├── two_factor_service.py  # Migrer depuis services/
+│   └── password_service.py    # Migrer depuis services/
+├── middleware/
+│   ├── jwt_middleware.py
+│   └── session_middleware.py
+└── permissions.py
+```
+
+**Fonctionnalités:**
+- Login/Logout
+- JWT token management
+- Session management
+- Two-Factor Authentication (TOTP)
+- Password reset
+- Email verification
+
+#### **3. Module documents** (PRIORITÉ 3 - HAUTE)
+
+```
+app/modules/documents/
+├── __init__.py
+├── api/
+│   └── document_routes.py     # Migrer depuis api/v1/documents.py
+├── models/
+│   ├── document.py
+│   ├── extraction.py
+│   └── ocr.py
+├── repositories/
+│   └── document_repository.py
+├── services/
+│   ├── ocr_service.py         # Migrer depuis services/
+│   ├── extraction_service.py  # Migrer depuis services/
+│   └── template_service.py
+├── extractors/                 # Migrer depuis core/documents/extractors/
+│   ├── base.py
+│   ├── declarations/
+│   ├── fiscal_services/
+│   └── zone_label_extractor.py
+├── mappers/                    # Migrer depuis core/documents/mappers/
+│   ├── base.py
+│   └── declaration_mapper.py
+├── templates/                  # Migrer depuis core/documents/templates/
+└── permissions.py
+```
+
+**Fonctionnalités:**
+- OCR document processing (Gemini AI)
+- Template-based extraction
+- Zone/label extraction
+- Declaration mapping
+- Document validation
+
+#### **4. Module files** (PRIORITÉ 4 - MOYENNE)
+
+```
+app/modules/files/
+├── __init__.py
+├── api/
+│   └── file_routes.py         # Migrer depuis api/v1/files.py
+├── models/
+│   └── file.py
+├── repositories/
+│   └── file_repository.py
+├── services/
+│   ├── storage_service.py     # Migrer depuis firebase_storage_service.py
+│   └── upload_service.py
+└── permissions.py
+```
+
+**Fonctionnalités:**
+- Firebase Storage upload/download
+- File metadata management
+- Temporary URLs generation
+- File validation (size, type)
+
+#### **5. Module declarations** (PRIORITÉ 5 - MOYENNE)
+
+```
+app/modules/declarations/
+├── __init__.py
+├── api/
+│   ├── declaration_routes.py  # Migrer depuis api/v1/declarations.py
+│   └── correction_routes.py
+├── models/
+│   ├── declaration.py
+│   ├── iva.py
+│   ├── irpf.py
+│   ├── petroleum.py
+│   └── correction.py
+├── repositories/
+│   ├── declaration_repository.py
+│   └── correction_repository.py
+├── services/
+│   ├── declaration_service.py
+│   ├── validation_service.py
+│   └── submission_service.py
+└── permissions.py              # Migrer depuis declarations_permissions.py
+```
+
+**Fonctionnalités:**
+- CRUD declarations (IVA, IRPF, Petroleum, etc.)
+- Validation métier
+- Soumission workflow
+- Corrections/Amendments
+
+#### **6. Module fiscal_services** (PRIORITÉ 6 - MOYENNE)
+
+```
+app/modules/fiscal_services/
+├── __init__.py
+├── api/
+│   ├── service_routes.py      # Consolider 3 fichiers API v1
+│   └── search_routes.py
+├── models/
+│   ├── fiscal_service.py
+│   └── service_data.py
+├── repositories/
+│   ├── service_repository.py
+│   └── search_repository.py
+├── services/
+│   ├── service_service.py
+│   └── search_service.py
+└── permissions.py
+```
+
+**Fonctionnalités:**
+- Catalogue 547 services fiscaux
+- Recherche multi-critères
+- Service submission workflow
+- JSON data management
+
+#### **7. Module payments** (PRIORITÉ 7 - MOYENNE)
+
+```
+app/modules/payments/
+├── __init__.py
+├── api/
+│   ├── payment_routes.py      # Migrer depuis api/v1/payments.py
+│   └── bange_routes.py
+├── models/
+│   ├── payment.py
+│   ├── payment_plan.py
+│   └── receipt.py
+├── repositories/
+│   ├── payment_repository.py
+│   └── receipt_repository.py
+├── services/
+│   ├── payment_service.py     # Migrer depuis services/
+│   ├── bange_service.py       # Migrer depuis services/
+│   └── receipt_service.py
+└── permissions.py
+```
+
+**Fonctionnalités:**
+- Payment processing
+- BANGE mobile payments integration
+- Payment plans (installments)
+- Receipt generation
+
+#### **8. Module notifications** (PRIORITÉ 8 - BASSE)
+
+```
+app/modules/notifications/
+├── __init__.py
+├── api/
+│   └── notification_routes.py
+├── models/
+│   ├── notification.py
+│   └── email.py
+├── repositories/
+│   └── notification_repository.py
+├── services/
+│   ├── email_service.py       # Migrer depuis services/
+│   └── notification_service.py # Migrer depuis services/
+└── permissions.py
+```
+
+**Fonctionnalités:**
+- Email notifications
+- SMS notifications (future)
+- Push notifications (future)
+- Notification templates
+
+#### **9-13. Autres Modules (PRIORITÉ BASSE)**
+
+**Module taxes:**
+```
+app/modules/taxes/
+├── api/tax_routes.py
+├── models/tax.py
+├── services/tax_service.py
+└── permissions.py
+```
+
+**Module ai:**
+```
+app/modules/ai/
+├── api/ai_routes.py
+├── models/conversation.py
+├── services/ai_service.py
+└── permissions.py
+```
+
+**Module homepage:**
+```
+app/modules/homepage/
+├── api/homepage_routes.py
+├── services/stats_service.py
+└── permissions.py
+```
+
+**Module admin:**
+```
+app/modules/admin/
+├── api/admin_routes.py
+└── services/admin_service.py
+```
+
+**Module translations:**
+```
+app/modules/translations/
+├── api/translation_routes.py
+├── services/translation_service.py
+└── locales/
+```
 
 ---
 
