@@ -29,22 +29,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Users, RefreshCw, AlertTriangle, Search, Shield, Ban } from 'lucide-react'
+import { Users, RefreshCw, AlertTriangle, Search, Shield, Ban, UserPlus } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-
-type UserRole = 'citizen' | 'business' | 'accountant' | 'admin' | 'dgi_agent'
-
-interface User {
-  id: string
-  email: string
-  first_name: string
-  last_name: string
-  role: UserRole
-  is_active: boolean
-  two_factor_enabled: boolean
-  created_at: string
-  last_login?: string
-}
+import usersApi from '@/modules/users-admin/services/api'
+import type { User, UserRole } from '@/modules/users-admin/types'
+import { CreateUserDialog } from '@/modules/users-admin/components/CreateUserDialog'
 
 export default function UsersPage() {
   const { toast } = useToast()
@@ -53,6 +42,7 @@ export default function UsersPage() {
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState<'all' | UserRole>('all')
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
 
   // Fetch users
   const fetchUsers = async () => {
@@ -60,64 +50,18 @@ export default function UsersPage() {
     setError(null)
 
     try {
-      // Mock data - will be replaced with API call
-      const mockData: User[] = [
-        {
-          id: '1',
-          email: 'sah@emacsah.com',
-          first_name: 'Admin',
-          last_name: 'System',
-          role: 'admin',
-          is_active: true,
-          two_factor_enabled: true,
-          created_at: '2025-01-01T00:00:00Z',
-          last_login: '2025-11-19T10:00:00Z',
-        },
-        {
-          id: '2',
-          email: 'agent@dgi.cm',
-          first_name: 'Agent',
-          last_name: 'DGI',
-          role: 'dgi_agent',
-          is_active: true,
-          two_factor_enabled: false,
-          created_at: '2025-02-15T00:00:00Z',
-          last_login: '2025-11-18T14:30:00Z',
-        },
-        {
-          id: '3',
-          email: 'citizen@example.com',
-          first_name: 'Jean',
-          last_name: 'Dupont',
-          role: 'citizen',
-          is_active: true,
-          two_factor_enabled: false,
-          created_at: '2025-03-01T00:00:00Z',
-          last_login: '2025-11-19T09:15:00Z',
-        },
-        {
-          id: '4',
-          email: 'business@company.cm',
-          first_name: 'Marie',
-          last_name: 'Martin',
-          role: 'business',
-          is_active: true,
-          two_factor_enabled: true,
-          created_at: '2025-03-10T00:00:00Z',
-        },
-        {
-          id: '5',
-          email: 'inactive@example.com',
-          first_name: 'Inactive',
-          last_name: 'User',
-          role: 'citizen',
-          is_active: false,
-          two_factor_enabled: false,
-          created_at: '2025-01-15T00:00:00Z',
-        },
-      ]
+      const params: { role?: UserRole; search?: string } = {}
 
-      setUsers(mockData)
+      if (roleFilter !== 'all') {
+        params.role = roleFilter
+      }
+
+      if (searchQuery) {
+        params.search = searchQuery
+      }
+
+      const data = await usersApi.getAll(params)
+      setUsers(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load users')
       toast({
@@ -256,6 +200,10 @@ export default function UsersPage() {
                   <SelectItem value="citizen">Citoyen</SelectItem>
                 </SelectContent>
               </Select>
+              <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
+                <UserPlus className="h-4 w-4 mr-2" />
+                Créer un utilisateur
+              </Button>
               <Button variant="outline" size="sm" onClick={fetchUsers}>
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Actualiser
@@ -350,19 +298,12 @@ export default function UsersPage() {
         </CardContent>
       </Card>
 
-      {/* Info Card */}
-      <Card className="border-blue-200 bg-blue-50/50">
-        <CardHeader>
-          <CardTitle className="text-blue-700 text-base">
-            Note de développement
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-blue-600">
-            Cette page affiche actuellement des données de test. L&apos;intégration avec l&apos;API backend sera effectuée une fois le module permissions déployé sur Cloud Run.
-          </p>
-        </CardContent>
-      </Card>
+      {/* Create User Dialog */}
+      <CreateUserDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onSuccess={fetchUsers}
+      />
     </div>
   )
 }

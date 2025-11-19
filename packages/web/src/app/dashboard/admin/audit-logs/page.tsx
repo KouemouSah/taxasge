@@ -43,33 +43,8 @@ import {
   Settings,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-
-type AuditAction =
-  | 'user.login'
-  | 'user.logout'
-  | 'user.register'
-  | 'user.update'
-  | 'user.delete'
-  | 'role.create'
-  | 'role.update'
-  | 'role.delete'
-  | 'permission.grant'
-  | 'permission.revoke'
-  | 'settings.update'
-
-interface AuditLog {
-  id: string
-  user_id: string
-  user_email: string
-  action: AuditAction
-  resource_type: string
-  resource_id?: string
-  details?: string
-  ip_address?: string
-  user_agent?: string
-  timestamp: string
-  success: boolean
-}
+import auditLogsApi from '@/modules/audit-logs-admin/services/api'
+import type { AuditLog, AuditAction } from '@/modules/audit-logs-admin/types'
 
 export default function AuditLogsPage() {
   const { toast } = useToast()
@@ -85,96 +60,18 @@ export default function AuditLogsPage() {
     setError(null)
 
     try {
-      // Mock data - will be replaced with API call
-      const mockData: AuditLog[] = [
-        {
-          id: '1',
-          user_id: '1',
-          user_email: 'sah@emacsah.com',
-          action: 'user.login',
-          resource_type: 'user',
-          resource_id: '1',
-          details: 'Connexion réussie avec 2FA',
-          ip_address: '192.168.1.1',
-          user_agent: 'Mozilla/5.0',
-          timestamp: '2025-11-19T10:00:00Z',
-          success: true,
-        },
-        {
-          id: '2',
-          user_id: '1',
-          user_email: 'sah@emacsah.com',
-          action: 'role.create',
-          resource_type: 'role',
-          resource_id: 'role-123',
-          details: 'Création du rôle "Superviseur Junior DGI"',
-          ip_address: '192.168.1.1',
-          timestamp: '2025-11-19T09:45:00Z',
-          success: true,
-        },
-        {
-          id: '3',
-          user_id: '2',
-          user_email: 'agent@dgi.cm',
-          action: 'user.login',
-          resource_type: 'user',
-          resource_id: '2',
-          details: 'Tentative de connexion échouée - mot de passe incorrect',
-          ip_address: '192.168.1.5',
-          timestamp: '2025-11-18T14:30:00Z',
-          success: false,
-        },
-        {
-          id: '4',
-          user_id: '3',
-          user_email: 'citizen@example.com',
-          action: 'user.register',
-          resource_type: 'user',
-          resource_id: '3',
-          details: 'Nouveau compte créé',
-          ip_address: '192.168.1.10',
-          timestamp: '2025-11-18T12:00:00Z',
-          success: true,
-        },
-        {
-          id: '5',
-          user_id: '1',
-          user_email: 'sah@emacsah.com',
-          action: 'permission.grant',
-          resource_type: 'permission',
-          resource_id: 'perm-456',
-          details: 'Permission "roles.create" accordée au rôle admin',
-          ip_address: '192.168.1.1',
-          timestamp: '2025-11-18T11:30:00Z',
-          success: true,
-        },
-        {
-          id: '6',
-          user_id: '1',
-          user_email: 'sah@emacsah.com',
-          action: 'user.update',
-          resource_type: 'user',
-          resource_id: '2',
-          details: 'Rôle modifié: citizen -> admin',
-          ip_address: '192.168.1.1',
-          timestamp: '2025-11-18T10:15:00Z',
-          success: true,
-        },
-        {
-          id: '7',
-          user_id: '2',
-          user_email: 'agent@dgi.cm',
-          action: 'user.logout',
-          resource_type: 'user',
-          resource_id: '2',
-          details: 'Déconnexion',
-          ip_address: '192.168.1.5',
-          timestamp: '2025-11-17T18:00:00Z',
-          success: true,
-        },
-      ]
+      const params: { action?: AuditAction; search?: string } = {}
 
-      setLogs(mockData)
+      if (actionFilter !== 'all') {
+        params.action = actionFilter
+      }
+
+      if (searchQuery) {
+        params.search = searchQuery
+      }
+
+      const data = await auditLogsApi.getAll(params)
+      setLogs(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load audit logs')
       toast({
@@ -193,7 +90,7 @@ export default function AuditLogsPage() {
   }, [])
 
   const getActionBadge = (action: AuditAction, success: boolean) => {
-    const actionConfig: Record<AuditAction, { icon: React.ReactNode; label: string; className: string }> = {
+    const actionConfig: Partial<Record<AuditAction, { icon: React.ReactNode; label: string; className: string }>> = {
       'user.login': { icon: <LogIn className="h-3 w-3" />, label: 'Connexion', className: 'bg-blue-100 text-blue-700' },
       'user.logout': { icon: <LogOut className="h-3 w-3" />, label: 'Déconnexion', className: 'bg-gray-100 text-gray-700' },
       'user.register': { icon: <UserPlus className="h-3 w-3" />, label: 'Inscription', className: 'bg-green-100 text-green-700' },
@@ -205,9 +102,18 @@ export default function AuditLogsPage() {
       'permission.grant': { icon: <Shield className="h-3 w-3" />, label: 'Perm. Accordée', className: 'bg-green-100 text-green-700' },
       'permission.revoke': { icon: <Shield className="h-3 w-3" />, label: 'Perm. Révoquée', className: 'bg-orange-100 text-orange-700' },
       'settings.update': { icon: <Settings className="h-3 w-3" />, label: 'Config', className: 'bg-blue-100 text-blue-700' },
+      'declaration.create': { icon: <FileText className="h-3 w-3" />, label: 'Créer Décl.', className: 'bg-green-100 text-green-700' },
+      'declaration.update': { icon: <Edit className="h-3 w-3" />, label: 'Modif. Décl.', className: 'bg-yellow-100 text-yellow-700' },
+      'declaration.submit': { icon: <FileText className="h-3 w-3" />, label: 'Soumettre Décl.', className: 'bg-blue-100 text-blue-700' },
+      'declaration.approve': { icon: <FileText className="h-3 w-3" />, label: 'Approuver Décl.', className: 'bg-green-100 text-green-700' },
+      'declaration.reject': { icon: <FileText className="h-3 w-3" />, label: 'Rejeter Décl.', className: 'bg-red-100 text-red-700' },
     }
 
-    const config = actionConfig[action]
+    const config = actionConfig[action] || {
+      icon: <FileText className="h-3 w-3" />,
+      label: action,
+      className: 'bg-gray-100 text-gray-700'
+    }
     const className = success ? config.className : 'bg-red-100 text-red-700'
 
     return (
@@ -408,19 +314,6 @@ export default function AuditLogsPage() {
         </CardContent>
       </Card>
 
-      {/* Info Card */}
-      <Card className="border-blue-200 bg-blue-50/50">
-        <CardHeader>
-          <CardTitle className="text-blue-700 text-base">
-            Note de développement
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-blue-600">
-            Cette page affiche actuellement des données de test. L&apos;intégration avec l&apos;API backend sera effectuée une fois le module audit déployé sur Cloud Run.
-          </p>
-        </CardContent>
-      </Card>
     </div>
   )
 }

@@ -30,21 +30,8 @@ import {
 } from '@/components/ui/select'
 import { ClipboardList, RefreshCw, AlertTriangle, CheckCircle2, Clock, XCircle } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-
-// Assignment status types
-type AssignmentStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled'
-
-interface Assignment {
-  id: string
-  declaration_id: string
-  assignee_id: string
-  assignee_name: string
-  status: AssignmentStatus
-  priority: 'low' | 'medium' | 'high' | 'urgent'
-  assigned_at: string
-  completed_at?: string
-  cancelled_at?: string
-}
+import assignmentsApi from '@/modules/assignments-admin/services/api'
+import type { Assignment, AssignmentStatus } from '@/modules/assignments-admin/types'
 
 export default function AssignmentsPage() {
   const { toast } = useToast()
@@ -59,40 +46,14 @@ export default function AssignmentsPage() {
     setError(null)
 
     try {
-      // For now, show mock data since the API endpoint needs to be verified
-      // TODO: Replace with actual API call when endpoint is confirmed
-      const mockData: Assignment[] = [
-        {
-          id: '1',
-          declaration_id: 'DECL-2025-001',
-          assignee_id: 'agent-1',
-          assignee_name: 'Agent DGI 1',
-          status: 'in_progress',
-          priority: 'high',
-          assigned_at: '2025-11-19T10:00:00Z',
-        },
-        {
-          id: '2',
-          declaration_id: 'DECL-2025-002',
-          assignee_id: 'agent-2',
-          assignee_name: 'Agent DGI 2',
-          status: 'pending',
-          priority: 'medium',
-          assigned_at: '2025-11-19T11:00:00Z',
-        },
-        {
-          id: '3',
-          declaration_id: 'DECL-2025-003',
-          assignee_id: 'agent-1',
-          assignee_name: 'Agent DGI 1',
-          status: 'completed',
-          priority: 'low',
-          assigned_at: '2025-11-18T09:00:00Z',
-          completed_at: '2025-11-19T08:00:00Z',
-        },
-      ]
+      const params: { status?: AssignmentStatus } = {}
 
-      setAssignments(mockData)
+      if (statusFilter !== 'all') {
+        params.status = statusFilter
+      }
+
+      const data = await assignmentsApi.getAll(params)
+      setAssignments(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load assignments')
       toast({
@@ -316,20 +277,6 @@ export default function AssignmentsPage() {
         </CardContent>
       </Card>
 
-      {/* Info Card */}
-      <Card className="border-blue-200 bg-blue-50/50">
-        <CardHeader>
-          <CardTitle className="text-blue-700 text-base">
-            Note de développement
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-blue-600">
-            Cette page affiche actuellement des données de test. L&apos;intégration avec l&apos;API backend
-            du module assignment sera effectuée lors de la prochaine itération.
-          </p>
-        </CardContent>
-      </Card>
     </div>
   )
 }
