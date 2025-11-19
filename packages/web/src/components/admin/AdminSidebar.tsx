@@ -23,6 +23,7 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  ClipboardList,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { clearAuthData } from '@/lib/auth/storage';
@@ -52,6 +53,11 @@ const navigationItems = [
         title: 'Permissions',
         href: '/dashboard/admin/permissions',
         icon: Key,
+      },
+      {
+        title: 'Assignments',
+        href: '/dashboard/admin/assignments',
+        icon: ClipboardList,
       },
     ],
   },
