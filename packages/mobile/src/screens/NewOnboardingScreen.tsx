@@ -66,8 +66,8 @@ const ONBOARDING_DATA: OnboardingSlide[] = [
     buttonText_es: 'Iniciar',
     buttonText_fr: 'Commencer',
     buttonText_en: 'Start',
-    buttonColor: Colors.primary.red,
-    textColor: Colors.primary.green,
+    buttonColor: Colors.brand.red,
+    textColor: Colors.brand.green,
     diagonalPattern: false,
   },
   {
@@ -100,7 +100,7 @@ const ONBOARDING_DATA: OnboardingSlide[] = [
     buttonText_es: 'Ver cómo TaxaBot le asiste',
     buttonText_fr: 'Voir comment TaxaBot vous assiste',
     buttonText_en: 'See how TaxaBot assists you',
-    buttonColor: Colors.primary.yellow,
+    buttonColor: Colors.brand.yellow,
     textColor: '#ffffff',
     diagonalPattern: true,
   },
@@ -369,8 +369,8 @@ const NewOnboardingScreen: React.FC<NewOnboardingScreenProps> = ({
                   {
                     color:
                       item.buttonColor === '#ffffff'
-                        ? Colors.primary.blue
-                        : item.buttonColor === Colors.primary.yellow
+                        ? Colors.brand.blue
+                        : item.buttonColor === Colors.brand.yellow
                         ? Colors.text.primary
                         : Colors.neutral.white,
                   },
@@ -385,8 +385,8 @@ const NewOnboardingScreen: React.FC<NewOnboardingScreenProps> = ({
                     {
                       color:
                         item.buttonColor === '#ffffff'
-                          ? Colors.primary.blue
-                          : item.buttonColor === Colors.primary.yellow
+                          ? Colors.brand.blue
+                          : item.buttonColor === Colors.brand.yellow
                           ? Colors.text.primary
                           : Colors.neutral.white,
                     },
@@ -433,7 +433,7 @@ const NewOnboardingScreen: React.FC<NewOnboardingScreenProps> = ({
                 opacity,
                 backgroundColor:
                   currentIndex === 0
-                    ? Colors.primary.green
+                    ? Colors.brand.green
                     : Colors.neutral.white,
               },
             ]}
@@ -515,7 +515,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   lottieCircleBackground: {
-    backgroundColor: Colors.primary.greenLight,
+    backgroundColor: Colors.brand.greenLight,
     borderRadius: LOTTIE_SIZE / 2,
     padding: Spacing.lg,
   },

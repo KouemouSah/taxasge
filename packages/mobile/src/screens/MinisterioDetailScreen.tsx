@@ -54,7 +54,7 @@ export const MinisterioDetailScreen: React.FC<MinisterioDetailScreenProps> = ({
   const loadMinistryDetails = async () => {
     try {
       setIsLoading(true);
-      const db = DatabaseService.getInstance();
+      const db = DatabaseService;
 
       // Load stats in parallel
       const [sectorsResult, categoriesResult, servicesResult, servicesList] = await Promise.all([

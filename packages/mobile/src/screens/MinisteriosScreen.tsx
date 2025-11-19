@@ -52,7 +52,7 @@ export const MinisteriosScreen: React.FC<MinisteriosScreenProps> = ({
 }) => {
   const t = getSection(language, 'ministeriosScreen');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const [ministries, setMinistries] = useState<Ministry[]>([]);
+  const [ministries, setMinistries] = useState<Array<Ministry & { service_count: number }>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -68,7 +68,7 @@ export const MinisteriosScreen: React.FC<MinisteriosScreenProps> = ({
       // Use cache service for instant loading
       const results = await dataCacheService.getMinistries();
 
-      setMinistries(results);
+      setMinistries(results as Array<Ministry & { service_count: number }>);
       setError(null);
       console.log(`[MinisteriosScreen] ⚡ Loaded ${results.length} ministries in ${Date.now() - startTime}ms (using cache)`);
     } catch (err) {

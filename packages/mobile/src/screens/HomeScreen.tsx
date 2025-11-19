@@ -21,7 +21,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { BottomTabBar, TabName } from '../components/BottomTabBar';
 import { Icon } from '../components/Icon';
 import { getSection } from '../i18n';
-import { HEADER_GRADIENT, GRADIENTS, Colors, Spacing, Shadows } from '../theme';
+import { HEADER_GRADIENT, GRADIENTS, Colors, Spacing, Shadows, BorderRadius } from '../theme';
 import DatabaseService from '../database/DatabaseService';
 import { Ministry, FiscalService, getServiceName } from '../database/services/FiscalServicesService';
 import { dataCacheService } from '../services/DataCacheService';
@@ -34,7 +34,7 @@ interface HomeScreenProps {
 const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
   const t = getSection(language, 'homeScreen');
   const [searchQuery, setSearchQuery] = useState('');
-  const [randomMinistries, setRandomMinistries] = useState<Ministry[]>([]);
+  const [randomMinistries, setRandomMinistries] = useState<Array<Ministry & { service_count: number }>>([]);
   const [recentServices, setRecentServices] = useState<FiscalService[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -54,7 +54,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
       ]);
 
       // Get 4 random ministries from the cached list with service count > 0
-      const ministriesWithServices = allMinistries.filter(m => (m.service_count || 0) > 0);
+      const ministriesWithServices = allMinistries.filter(m => (m.service_count || 0) > 0) as Array<Ministry & { service_count: number }>;
       const shuffled = [...ministriesWithServices].sort(() => Math.random() - 0.5);
       const randomMinistries = shuffled.slice(0, 4);
 

@@ -693,7 +693,6 @@ Via TaxasGE Mobile`;
       <GradientHeader
         title={TEXTS[language].title}
         onBack={onBack}
-        subtitle={`${filteredServices.length} / ${allServices.length} ${TEXTS[language].subtitle}`}
       />
 
       {/* Search and Filters */}
