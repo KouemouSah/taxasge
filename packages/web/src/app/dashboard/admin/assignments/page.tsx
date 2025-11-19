@@ -107,6 +107,7 @@ export default function AssignmentsPage() {
 
   useEffect(() => {
     fetchAssignments()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const getStatusBadge = (status: AssignmentStatus) => {
