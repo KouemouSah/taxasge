@@ -15,11 +15,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
-  StatusBar,
   StyleSheet,
-  SafeAreaView,
-  TouchableOpacity,
-  ScrollView,
   Platform,
   NativeModules,
   ActivityIndicator,
@@ -31,9 +27,7 @@ import { DatabaseProvider } from './providers/DatabaseProvider';
 import { ServicesProvider } from './providers/ServicesProvider';
 import { ChatbotScreen } from './screens/ChatbotScreen';
 import HomeScreen from './screens/HomeScreen';
-import { OnboardingScreen } from './screens/OnboardingScreen';
 import NewOnboardingScreen from './screens/NewOnboardingScreen';
-import { PlaceholderScreen } from './screens/PlaceholderScreen';
 import ServiceListScreen from './screens/ServiceListScreen';
 import ServiceDetailScreen from './screens/ServiceDetailScreen';
 import FavoritesScreen from './screens/FavoritesScreen';
@@ -81,66 +75,6 @@ const getSystemLanguage = () => {
 };
 
 /**
- * Textes multilingues pour toute l'application
- */
-const TEXTS = {
-  es: {
-    title: 'TaxasGE Mobile',
-    subtitle: 'Gestión Fiscal - Guinea Ecuatorial',
-    menuTitle: 'Menú Principal',
-    chatbotButton: 'Asistente Chatbot',
-    chatbotSubtitle: 'Haz tus preguntas sobre servicios fiscales',
-    searchButton: 'Buscar Servicios',
-    searchSubtitle: 'Explora y filtra todos los servicios fiscales',
-    calculatorButton: 'Calculadora',
-    calculatorSubtitle: 'Selecciona un servicio primero',
-    favoritesButton: 'Favoritos',
-    favoritesSubtitle: 'Accede a tus servicios guardados',
-    historyButton: 'Historial',
-    historySubtitle: 'Revisa tus cálculos anteriores',
-    comingSoon: 'Próximamente',
-    footer1: 'Versión MVP1 - Chatbot FAQ',
-    footer2: 'Base de datos: SQLite v3',
-  },
-  fr: {
-    title: 'TaxasGE Mobile',
-    subtitle: 'Gestion Fiscale - Guinée Équatoriale',
-    menuTitle: 'Menu Principal',
-    chatbotButton: 'Assistant Chatbot',
-    chatbotSubtitle: 'Posez vos questions sur les services fiscaux',
-    searchButton: 'Rechercher Services',
-    searchSubtitle: 'Explorez et filtrez tous les services fiscaux',
-    calculatorButton: 'Calculatrice',
-    calculatorSubtitle: 'Sélectionnez un service d\'abord',
-    favoritesButton: 'Favoris',
-    favoritesSubtitle: 'Accédez à vos services enregistrés',
-    historyButton: 'Historique',
-    historySubtitle: 'Consultez vos calculs précédents',
-    comingSoon: 'Bientôt disponible',
-    footer1: 'Version MVP1 - Chatbot FAQ',
-    footer2: 'Base de données : SQLite v3',
-  },
-  en: {
-    title: 'TaxasGE Mobile',
-    subtitle: 'Tax Management - Equatorial Guinea',
-    menuTitle: 'Main Menu',
-    chatbotButton: 'Chatbot Assistant',
-    chatbotSubtitle: 'Ask your questions about tax services',
-    searchButton: 'Search Services',
-    searchSubtitle: 'Browse and filter all tax services',
-    calculatorButton: 'Calculator',
-    calculatorSubtitle: 'Select a service first',
-    favoritesButton: 'Favorites',
-    favoritesSubtitle: 'Access your saved services',
-    historyButton: 'History',
-    historySubtitle: 'Review your previous calculations',
-    comingSoon: 'Coming soon',
-    footer1: 'Version MVP1 - Chatbot FAQ',
-    footer2: 'Database: SQLite v3',
-  },
-};
-
-/**
  * Storage keys for app state
  */
 const STORAGE_KEYS = {
@@ -158,6 +92,7 @@ const App = () => {
   const [currentLanguage, setCurrentLanguage] = useState('es');
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
   const [syncPhase, setSyncPhase] = useState(0);
   const [selectedService, setSelectedService] = useState(null);
   const [selectedMinistry, setSelectedMinistry] = useState(null);
