@@ -138,7 +138,10 @@ export const permissionsApi = {
       queryParams.append("is_critical", String(params.is_critical));
 
     const query = queryParams.toString();
-    return client.get<Permission[]>(`/permissions${query ? `?${query}` : ""}`);
+    const response = await client.get<{ items: Permission[]; total: number; page: number; page_size: number }>(`/permissions${query ? `?${query}` : ""}`);
+
+    // Extract permissions array from paginated response
+    return response.items || [];
   },
 
   /**
@@ -181,7 +184,10 @@ export const rolesApi = {
       queryParams.append("is_system", String(params.is_system));
 
     const query = queryParams.toString();
-    return client.get<Role[]>(`/roles${query ? `?${query}` : ""}`);
+    const response = await client.get<{ items: Role[]; total: number; page: number; page_size: number }>(`/roles${query ? `?${query}` : ""}`);
+
+    // Extract roles array from paginated response
+    return response.items || [];
   },
 
   /**
