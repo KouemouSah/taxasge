@@ -14,7 +14,7 @@ from app.modules.users.models import (
 )
 from app.modules.users.repositories import UserRepository
 from app.modules.auth.middleware.auth_middleware import get_current_user
-from app.services.password_service import password_service
+from app.modules.auth.services.password_service import PasswordService
 from app.database.connection import get_database
 
 # Create router
@@ -156,6 +156,7 @@ async def change_password(
             )
 
         # Verify old password
+        password_service = PasswordService()
         if not password_service.verify_password(
             password_change.old_password,
             result["password_hash"]
