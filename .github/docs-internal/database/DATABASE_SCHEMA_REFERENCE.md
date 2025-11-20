@@ -3,7 +3,7 @@
 TAXASGE DATABASE SCHEMA - COMPLETE REFERENCE
 ====================================================================================================
 
-Extracted on: 2025-11-12 02:26:17
+Extracted on: 2025-11-20 11:04:48
 Database: Supabase PostgreSQL
 Project: taxasge-dev
 
@@ -13,6 +13,10 @@ Project: taxasge-dev
 
   - adjustment_reasons                       Catalogue des raisons prédéfinies pour ajustements de montants
   - agent_performance_stats                  No description
+  - agent_work_queue                         Work queue for agent load balancing with dynamic priority calculation based on SLA, amount, and complexity
+  - agent_workloads                          Suivi en temps réel de la charge de travail des agents
+  - assignment_rules                         Règles configurables pour l'auto-assignation intelligente
+  - assignments                              Historique complet des assignations de déclarations aux agents
   - audit_logs                               No description
   - bank_configurations                      Configuration des intégrations bancaires (API, webhooks, comptes)
   - bank_transactions                        Transactions bancaires reçues des banques (webhooks ou réconciliation manuelle)
@@ -21,10 +25,12 @@ Project: taxasge-dev
   - companies                                No description
   - declaration_amount_adjustments           Audit trail de tous les ajustements de montants (historique complet)
   - declaration_corrections                  Audit trail des corrections apportées aux déclarations (rectificatives)
-  - declaration_data_generic                 NIVEAU 2 - Données JSONB génériques pour 7 autres types de déclarations (<1% volume)
   - declaration_irpf_data                    NIVEAU 1 - Données structurées IRPF (5% volume) - Impôt sur le Revenu
-  - declaration_iva_data                     NIVEAU 1 - Données structurées IVA (90% volume) - Après validation OCR Tesseract ou saisie manuelle
-  - declaration_petroliferos_data            NIVEAU 1 - Données structurées Pétrolifères (4% volume, GROS MONTANTS) - 6 sous-types
+  - declaration_iva_details                  NIVEAU 1 - Données structurées IVA (90% volume) - Après validation OCR Tesseract ou saisie manuelle
+  - declaration_other_details                NIVEAU 2 - Données JSONB génériques pour 7 autres types de déclarations (<1% volume)
+  - declaration_petroliferos_details         NIVEAU 1 - Données structurées Pétrolifères (4% volume, GROS MONTANTS) - 6 sous-types
+  - declaration_retencion_details            Détails des déclarations de Retención a la Fuente (3%, 5%, 10%) - Structure avec array fournisseurs en JSONB
+  - document_processing_queue                Async processing queue for OCR with retry logic, exponential backoff, and Cloud Vision→Tesseract fallback
   - document_templates                       Templates documents - Avec validity_duration_months (v4.1 fix)
   - document_templates_backup_20251017       No description
   - entity_translations                      Traductions optimisées - ENUM strict + codes courts (-40%% storage)
@@ -44,10 +50,14 @@ Project: taxasge-dev
   - payment_validation_audit                 No description
   - payments                                 Table centrale polymorphe pour TOUS les paiements (services fiscaux et déclarations)
   - pending_registrations                    Stores email verification codes. Expires after 15 minutes. Minimal by design.
+  - permission_audit_log                     Historique complet de tous les changements de permissions (audit trail)
+  - permissions                              Catalogue centralisé de toutes les permissions de l'application
   - procedure_template_steps                 No description
   - procedure_template_steps_backup_20251017 No description
   - procedure_templates                      Templates procédures - Architecture radicale 58.7%% économie
   - refresh_tokens                           Refresh tokens for JWT authentication with revocation support
+  - role_permissions                         Permissions associées à chaque rôle
+  - roles                                    Rôles personnalisables pour attribution de permissions groupées
   - sectors                                  No description
   - service_document_assignments             No description
   - service_keywords                         No description
@@ -63,6 +73,7 @@ Project: taxasge-dev
   - user_company_roles                       No description
   - user_favorites                           No description
   - user_ministry_assignments                No description
+  - user_permissions                         Permissions spécifiques par utilisateur (override du rôle)
   - users                                    No description
   - workflow_transitions                     No description
 
@@ -80,6 +91,29 @@ agent_action_type:
   - escalate
   - unlock_release
   - assign_to_colleague
+
+agent_availability_enum:
+  - available
+  - on_leave
+  - sick_leave
+  - training
+  - mission
+  - temporarily_unavailable
+
+assignment_method_enum:
+  - auto
+  - manual
+  - self_assigned
+  - escalated
+
+assignment_status_enum:
+  - assigned
+  - in_progress
+  - pending_review
+  - completed
+  - reassigned
+  - cancelled
+  - rejected
 
 attachment_type_enum:
   - declaration_form
@@ -128,6 +162,20 @@ declaration_type_enum:
   - withholding_5pct_oil_mining_residents
   - minimum_fiscal_oil_mining
   - withholding_10pct_oil_mining_nonresidents
+  - iva_destajo
+  - iva_real
+  - retencion_3pct_petrolero
+  - retencion_5pct_petrolero
+  - retencion_10pct_no_residentes_petrolero
+  - retencion_10pct_no_residentes_comun
+  - imp_prod_petroleros_ivs
+  - imp_prod_petroleros_fmi
+  - imp_sueldos_petrolero
+  - imp_sueldos_comun
+  - cuota_min_petrolera
+  - cuota_min_comun
+  - impreso_comun
+  - impreso_liquidacion
 
 escalation_level:
   - low
@@ -178,6 +226,22 @@ payment_workflow_status:
   - cancelled_by_agent
   - expired
 
+reassignment_reason_enum:
+  - workload_imbalance
+  - agent_unavailable
+  - specialization_mismatch
+  - quality_issue
+  - deadline_missed
+  - agent_request
+  - supervisor_decision
+  - complexity_change
+
+rule_status_enum:
+  - active
+  - inactive
+  - draft
+  - archived
+
 service_status_enum:
   - active
   - inactive
@@ -203,11 +267,16 @@ translatable_entity_type:
   - procedure_step
   - document_template
 
+type_compte_enum:
+  - cuenta_propia
+  - cuenta_empresa
+
 user_role_enum:
   - citizen
   - business
   - accountant
   - admin
+  - supervisor
   - dgi_agent
   - ministry_agent
 
@@ -216,6 +285,13 @@ user_status_enum:
   - suspended
   - pending_verification
   - deactivated
+
+workload_status_enum:
+  - available
+  - normal
+  - busy
+  - overloaded
+  - unavailable
 
 ====================================================================================================
 3. DETAILED TABLE SCHEMAS
@@ -281,6 +357,229 @@ Primary Key: agent_id
 
 Foreign Keys:
   - agent_id → ministry_agents.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+----------------------------------------------------------------------------------------------------
+Table: AGENT_WORK_QUEUE
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+item_type                           varchar(20)               NO                                       
+item_id                             uuid                      NO                                       
+ministry_id                         integer                   NO                                       
+amount                              numeric                   YES                                      
+declaration_type                    varchar(50)               YES                                      
+priority_score                      integer                   NO         0                             
+  └─ Description: Dynamic priority score (0-100): +30 if amount>1M, +20 if SLA<6h, +15 if retry>=2, +10 if IVA, +10 if escalated
+sla_deadline                        timestamp with time zone  NO                                       
+  └─ Description: Service Level Agreement deadline: 48h for declarations, 24h for payments
+sla_status                          varchar(20)               YES        'on_time'::character varying  
+assigned_to                         uuid                      YES                                      
+assigned_at                         timestamp with time zone  YES                                      
+locked_until                        timestamp with time zone  YES                                      
+escalated                           boolean                   YES        false                         
+escalated_at                        timestamp with time zone  YES                                      
+escalated_by                        uuid                      YES                                      
+escalation_reason                   text                      YES                                      
+status                              varchar(20)               NO         'pending'::character varying  
+completed_at                        timestamp with time zone  YES                                      
+completed_by                        uuid                      YES                                      
+retry_count                         integer                   YES        0                             
+max_retries                         integer                   YES        3                             
+created_at                          timestamp with time zone  NO         now()                         
+updated_at                          timestamp with time zone  NO         now()                         
+
+Primary Key: id
+
+Foreign Keys:
+  - assigned_to → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - completed_by → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - escalated_by → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - ministry_id → ministries.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+Unique Constraints:
+  - unique_queue_item: (item_type, item_id)
+
+Indexes:
+  - unique_queue_item
+    CREATE UNIQUE INDEX unique_queue_item ON public.agent_work_queue USING btree (item_type, item_id)
+  - idx_queue_status_priority
+    CREATE INDEX idx_queue_status_priority ON public.agent_work_queue USING btree (status, priority_score DESC, sla_deadline) WHERE ((status)::text = ANY ((ARRAY['pending'::character varying, 'assigned'::character varying])::text[]))
+  - idx_queue_ministry_pending
+    CREATE INDEX idx_queue_ministry_pending ON public.agent_work_queue USING btree (ministry_id, status, priority_score DESC) WHERE ((status)::text = 'pending'::text)
+  - idx_queue_assigned_agent
+    CREATE INDEX idx_queue_assigned_agent ON public.agent_work_queue USING btree (assigned_to, status) WHERE ((assigned_to IS NOT NULL) AND ((status)::text = ANY ((ARRAY['assigned'::character varying, 'in_progress'::character varying])::text[])))
+  - idx_queue_sla_critical
+    CREATE INDEX idx_queue_sla_critical ON public.agent_work_queue USING btree (sla_status, sla_deadline) WHERE (((sla_status)::text = ANY ((ARRAY['warning'::character varying, 'critical'::character varying, 'breached'::character varying])::text[])) AND ((status)::text <> 'completed'::text))
+  - idx_queue_escalated
+    CREATE INDEX idx_queue_escalated ON public.agent_work_queue USING btree (escalated, escalated_at DESC) WHERE (escalated = true)
+
+----------------------------------------------------------------------------------------------------
+Table: AGENT_WORKLOADS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+agent_id                            uuid                      NO                                       
+current_assignments                 integer                   YES        0                             
+pending_declarations                integer                   YES        0                             
+in_progress_declarations            integer                   YES        0                             
+max_concurrent_assignments          integer                   YES        20                            
+capacity_percentage                 numeric                   YES        0.00                          
+workload_status                     workload_status_enum      YES        'available'::workload_status_e
+availability                        agent_availability_enum   YES        'available'::agent_availabilit
+availability_reason                 text                      YES                                      
+unavailable_until                   timestamp with time zone  YES                                      
+avg_processing_time_hours           numeric                   YES                                      
+avg_daily_completions               numeric                   YES        0.00                          
+completion_rate_7d                  numeric                   YES        0.00                          
+quality_score_avg                   numeric                   YES        0.00                          
+success_rate                        numeric                   YES        0.0000                        
+deadline_compliance_rate            numeric                   YES        0.0000                        
+active_specializations              jsonb                     YES        '[]'::jsonb                   
+preferred_declaration_types         jsonb                     YES        '[]'::jsonb                   
+oldest_pending_assignment_date      timestamp with time zone  YES                                      
+avg_pending_duration_hours          numeric                   YES                                      
+last_assignment_at                  timestamp with time zone  YES                                      
+last_completion_at                  timestamp with time zone  YES                                      
+last_updated_at                     timestamp with time zone  YES        now()                         
+
+Primary Key: id
+
+Foreign Keys:
+  - agent_id → users.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+Unique Constraints:
+  - agent_workloads_agent_id_key: (agent_id)
+
+Indexes:
+  - agent_workloads_agent_id_key
+    CREATE UNIQUE INDEX agent_workloads_agent_id_key ON public.agent_workloads USING btree (agent_id)
+  - idx_agent_workloads_agent_id
+    CREATE INDEX idx_agent_workloads_agent_id ON public.agent_workloads USING btree (agent_id)
+  - idx_agent_workloads_status
+    CREATE INDEX idx_agent_workloads_status ON public.agent_workloads USING btree (workload_status)
+  - idx_agent_workloads_availability
+    CREATE INDEX idx_agent_workloads_availability ON public.agent_workloads USING btree (availability)
+  - idx_agent_workloads_capacity
+    CREATE INDEX idx_agent_workloads_capacity ON public.agent_workloads USING btree (capacity_percentage)
+  - idx_agent_workloads_specializations
+    CREATE INDEX idx_agent_workloads_specializations ON public.agent_workloads USING gin (active_specializations)
+  - idx_agent_workloads_last_assignment
+    CREATE INDEX idx_agent_workloads_last_assignment ON public.agent_workloads USING btree (last_assignment_at) WHERE (last_assignment_at IS NOT NULL)
+
+----------------------------------------------------------------------------------------------------
+Table: ASSIGNMENT_RULES
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+name                                varchar(200)              NO                                       
+description                         text                      YES                                      
+priority                            integer                   YES        50                            
+entity_type                         varchar(50)               NO                                       
+entity_id                           varchar(100)              YES                                      
+conditions                          jsonb                     NO                                       
+actions                             jsonb                     NO                                       
+status                              rule_status_enum          YES        'draft'::rule_status_enum     
+times_applied                       integer                   YES        0                             
+times_matched                       integer                   YES        0                             
+successful_assignments              integer                   YES        0                             
+failed_assignments                  integer                   YES        0                             
+success_rate                        numeric                   YES        0.0000                        
+last_applied_at                     timestamp with time zone  YES                                      
+created_by                          uuid                      NO                                       
+created_at                          timestamp with time zone  YES        now()                         
+updated_at                          timestamp with time zone  YES        now()                         
+updated_by                          uuid                      YES                                      
+
+Primary Key: id
+
+Foreign Keys:
+  - created_by → users.id (ON UPDATE NO ACTION, ON DELETE RESTRICT)
+  - updated_by → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+
+Indexes:
+  - idx_assignment_rules_status
+    CREATE INDEX idx_assignment_rules_status ON public.assignment_rules USING btree (status)
+  - idx_assignment_rules_priority
+    CREATE INDEX idx_assignment_rules_priority ON public.assignment_rules USING btree (priority) WHERE (status = 'active'::rule_status_enum)
+  - idx_assignment_rules_entity
+    CREATE INDEX idx_assignment_rules_entity ON public.assignment_rules USING btree (entity_type, entity_id)
+  - idx_assignment_rules_conditions
+    CREATE INDEX idx_assignment_rules_conditions ON public.assignment_rules USING gin (conditions)
+  - idx_assignment_rules_created_by
+    CREATE INDEX idx_assignment_rules_created_by ON public.assignment_rules USING btree (created_by)
+
+----------------------------------------------------------------------------------------------------
+Table: ASSIGNMENTS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+declaration_id                      uuid                      NO                                       
+declaration_type                    varchar(50)               NO                                       
+agent_id                            uuid                      NO                                       
+assigned_by                         uuid                      NO                                       
+assignment_method                   assignment_method_enum    YES        'manual'::assignment_method_en
+status                              assignment_status_enum    YES        'assigned'::assignment_status_
+notes                               text                      YES                                      
+auto_assignment_score               numeric                   YES                                      
+score_breakdown                     jsonb                     YES                                      
+rule_applied_id                     uuid                      YES                                      
+assigned_at                         timestamp with time zone  YES        now()                         
+started_at                          timestamp with time zone  YES                                      
+completed_at                        timestamp with time zone  YES                                      
+processing_duration_hours           numeric                   YES                                      
+deadline                            timestamp with time zone  YES                                      
+deadline_met                        boolean                   YES                                      
+priority_level                      integer                   YES        5                             
+reassigned_to                       uuid                      YES                                      
+reassigned_at                       timestamp with time zone  YES                                      
+reassignment_reason                 reassignment_reason_enum  YES                                      
+reassignment_notes                  text                      YES                                      
+validation_status                   varchar(20)               YES                                      
+quality_score                       numeric                   YES                                      
+created_at                          timestamp with time zone  YES        now()                         
+updated_at                          timestamp with time zone  YES        now()                         
+
+Primary Key: id
+
+Foreign Keys:
+  - agent_id → users.id (ON UPDATE NO ACTION, ON DELETE RESTRICT)
+  - assigned_by → users.id (ON UPDATE NO ACTION, ON DELETE RESTRICT)
+  - reassigned_to → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - rule_applied_id → assignment_rules.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+
+Indexes:
+  - idx_assignments_declaration
+    CREATE INDEX idx_assignments_declaration ON public.assignments USING btree (declaration_id, declaration_type)
+  - idx_assignments_agent_id
+    CREATE INDEX idx_assignments_agent_id ON public.assignments USING btree (agent_id)
+  - idx_assignments_assigned_by
+    CREATE INDEX idx_assignments_assigned_by ON public.assignments USING btree (assigned_by)
+  - idx_assignments_status
+    CREATE INDEX idx_assignments_status ON public.assignments USING btree (status)
+  - idx_assignments_assignment_method
+    CREATE INDEX idx_assignments_assignment_method ON public.assignments USING btree (assignment_method)
+  - idx_assignments_deadline
+    CREATE INDEX idx_assignments_deadline ON public.assignments USING btree (deadline) WHERE (deadline IS NOT NULL)
+  - idx_assignments_priority
+    CREATE INDEX idx_assignments_priority ON public.assignments USING btree (priority_level DESC)
+  - idx_assignments_rule_applied
+    CREATE INDEX idx_assignments_rule_applied ON public.assignments USING btree (rule_applied_id) WHERE (rule_applied_id IS NOT NULL)
+  - idx_assignments_created_at
+    CREATE INDEX idx_assignments_created_at ON public.assignments USING btree (created_at DESC)
+  - idx_assignments_agent_status
+    CREATE INDEX idx_assignments_agent_status ON public.assignments USING btree (agent_id, status)
 
 ----------------------------------------------------------------------------------------------------
 Table: AUDIT_LOGS
@@ -562,49 +861,6 @@ Indexes:
     CREATE INDEX idx_declaration_corrections_status ON public.declaration_corrections USING btree (status)
 
 ----------------------------------------------------------------------------------------------------
-Table: DECLARATION_DATA_GENERIC
-----------------------------------------------------------------------------------------------------
-
-
-Column                              Type                      Nullable   Default                       
-----------------------------------------------------------------------------------------------------
-id                                  uuid                      NO         gen_random_uuid()             
-tax_declaration_id                  uuid                      NO                                       
-form_template_id                    uuid                      YES                                      
-declaration_subtype                 varchar(100)              NO                                       
-  └─ Description: Type: iva_destajo, cuota_min_comun, sueldos_petrolero, sueldos_comun, residentes_comun_10, impreso_comun, impreso_liquidacion
-data                                jsonb                     NO                                       
-  └─ Description: Données complètes en JSONB (structure flexible selon sous-type)
-calculated_amount                   numeric                   YES                                      
-adjusted_amount                     numeric                   YES                                      
-adjustment_reason_id                integer                   YES                                      
-adjustment_reason_custom            text                      YES                                      
-adjusted_by                         uuid                      YES                                      
-adjusted_at                         timestamp with time zone  YES                                      
-final_amount                        numeric                   YES                                      
-created_at                          timestamp with time zone  NO         now()                         
-updated_at                          timestamp with time zone  NO         now()                         
-
-Primary Key: id
-
-Foreign Keys:
-  - adjusted_by → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
-  - adjustment_reason_id → adjustment_reasons.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
-  - form_template_id → form_templates.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
-  - tax_declaration_id → tax_declarations.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
-
-Unique Constraints:
-  - declaration_data_generic_tax_declaration_id_key: (tax_declaration_id)
-
-Indexes:
-  - declaration_data_generic_tax_declaration_id_key
-    CREATE UNIQUE INDEX declaration_data_generic_tax_declaration_id_key ON public.declaration_data_generic USING btree (tax_declaration_id)
-  - idx_declaration_data_generic_tax_declaration_id
-    CREATE INDEX idx_declaration_data_generic_tax_declaration_id ON public.declaration_data_generic USING btree (tax_declaration_id)
-  - idx_declaration_data_generic_subtype
-    CREATE INDEX idx_declaration_data_generic_subtype ON public.declaration_data_generic USING btree (declaration_subtype)
-
-----------------------------------------------------------------------------------------------------
 Table: DECLARATION_IRPF_DATA
 ----------------------------------------------------------------------------------------------------
 
@@ -661,7 +917,7 @@ Indexes:
     CREATE INDEX idx_declaration_irpf_data_tax_declaration_id ON public.declaration_irpf_data USING btree (tax_declaration_id)
 
 ----------------------------------------------------------------------------------------------------
-Table: DECLARATION_IVA_DATA
+Table: DECLARATION_IVA_DETAILS
 ----------------------------------------------------------------------------------------------------
 
 
@@ -673,10 +929,12 @@ iva_dev_01_base                     numeric                   YES        0
 iva_dev_02_tipo                     numeric                   YES        15.00                         
 iva_dev_03_cuota                    numeric                   YES                                      
 iva_dev_04_base                     numeric                   YES        0                             
-iva_dev_05_tipo                     numeric                   YES        6.00                          
+iva_dev_05_tipo                     numeric                   YES        5.00                          
+  └─ Description: Tipo IVA pour tranche 5% (campo 05) - PDFs officiels
 iva_dev_06_cuota                    numeric                   YES                                      
 iva_dev_07_base                     numeric                   YES        0                             
-iva_dev_08_tipo                     numeric                   YES        1.50                          
+iva_dev_08_tipo                     numeric                   YES        0.00                          
+  └─ Description: Tipo IVA pour tranche 0% (campo 08) - PDFs officiels
 iva_dev_09_cuota                    numeric                   YES                                      
 iva_dev_10_base                     numeric                   YES        0                             
 iva_dev_11_tipo                     numeric                   YES        15.00                         
@@ -707,6 +965,14 @@ total_a_ingresar                    numeric                   YES
   └─ Description: Montant total à payer (final_amount + pénalités)
 created_at                          timestamp with time zone  NO         now()                         
 updated_at                          timestamp with time zone  NO         now()                         
+iva_dev_19_base                     numeric                   YES        0                             
+  └─ Description: Campo 19: Base imponible Adquisiciones Intracomunitarias (IVA REAL uniquement)
+iva_dev_19_tipo                     numeric                   YES                                      
+  └─ Description: Campo 19: Tipo % Adquisiciones Intracomunitarias (IVA REAL uniquement)
+iva_dev_020_cuota                   numeric                   YES                                      
+  └─ Description: Campo 020: Cuota Adquisiciones Intracomunitarias = campo_19_base × campo_19_tipo / 100 (IVA REAL uniquement)
+iva_subtype                         varchar(20)               YES        'destajo'::character varying  
+  └─ Description: Sous-type IVA: destajo (simplifié) ou real (complet avec déductions)
 
 Primary Key: id
 
@@ -716,16 +982,63 @@ Foreign Keys:
   - tax_declaration_id → tax_declarations.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
 
 Unique Constraints:
-  - declaration_iva_data_tax_declaration_id_key: (tax_declaration_id)
+  - declaration_iva_details_tax_declaration_id_key: (tax_declaration_id)
 
 Indexes:
-  - declaration_iva_data_tax_declaration_id_key
-    CREATE UNIQUE INDEX declaration_iva_data_tax_declaration_id_key ON public.declaration_iva_data USING btree (tax_declaration_id)
-  - idx_declaration_iva_data_tax_declaration_id
-    CREATE INDEX idx_declaration_iva_data_tax_declaration_id ON public.declaration_iva_data USING btree (tax_declaration_id)
+  - declaration_iva_details_tax_declaration_id_key
+    CREATE UNIQUE INDEX declaration_iva_details_tax_declaration_id_key ON public.declaration_iva_details USING btree (tax_declaration_id)
+  - idx_declaration_iva_details_tax_declaration_id
+    CREATE INDEX idx_declaration_iva_details_tax_declaration_id ON public.declaration_iva_details USING btree (tax_declaration_id)
+  - idx_iva_details_subtype
+    CREATE INDEX idx_iva_details_subtype ON public.declaration_iva_details USING btree (iva_subtype)
 
 ----------------------------------------------------------------------------------------------------
-Table: DECLARATION_PETROLIFEROS_DATA
+Table: DECLARATION_OTHER_DETAILS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+tax_declaration_id                  uuid                      NO                                       
+form_template_id                    uuid                      YES                                      
+form_code                           varchar(100)              NO                                       
+  └─ Description: Type: iva_destajo, cuota_min_comun, sueldos_petrolero, sueldos_comun, residentes_comun_10, impreso_comun, impreso_liquidacion
+form_data                           jsonb                     NO                                       
+  └─ Description: Données complètes en JSONB (structure flexible selon sous-type)
+calculated_amount                   numeric                   YES                                      
+adjusted_amount                     numeric                   YES                                      
+adjustment_reason_id                integer                   YES                                      
+adjustment_reason_custom            text                      YES                                      
+adjusted_by                         uuid                      YES                                      
+adjusted_at                         timestamp with time zone  YES                                      
+final_amount                        numeric                   YES                                      
+created_at                          timestamp with time zone  NO         now()                         
+updated_at                          timestamp with time zone  NO         now()                         
+
+Primary Key: id
+
+Foreign Keys:
+  - adjusted_by → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - adjustment_reason_id → adjustment_reasons.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - form_template_id → form_templates.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - tax_declaration_id → tax_declarations.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+Unique Constraints:
+  - declaration_other_details_tax_declaration_id_key: (tax_declaration_id)
+
+Indexes:
+  - declaration_other_details_tax_declaration_id_key
+    CREATE UNIQUE INDEX declaration_other_details_tax_declaration_id_key ON public.declaration_other_details USING btree (tax_declaration_id)
+  - idx_declaration_data_generic_tax_declaration_id
+    CREATE INDEX idx_declaration_data_generic_tax_declaration_id ON public.declaration_other_details USING btree (tax_declaration_id)
+  - idx_declaration_data_generic_subtype
+    CREATE INDEX idx_declaration_data_generic_subtype ON public.declaration_other_details USING btree (form_code)
+  - idx_other_details_form_data_gin
+    CREATE INDEX idx_other_details_form_data_gin ON public.declaration_other_details USING gin (form_data)
+
+----------------------------------------------------------------------------------------------------
+Table: DECLARATION_PETROLIFEROS_DETAILS
 ----------------------------------------------------------------------------------------------------
 
 
@@ -764,15 +1077,117 @@ Foreign Keys:
   - tax_declaration_id → tax_declarations.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
 
 Unique Constraints:
-  - declaration_petroliferos_data_tax_declaration_id_key: (tax_declaration_id)
+  - declaration_petroliferos_details_tax_declaration_id_key: (tax_declaration_id)
 
 Indexes:
-  - declaration_petroliferos_data_tax_declaration_id_key
-    CREATE UNIQUE INDEX declaration_petroliferos_data_tax_declaration_id_key ON public.declaration_petroliferos_data USING btree (tax_declaration_id)
+  - declaration_petroliferos_details_tax_declaration_id_key
+    CREATE UNIQUE INDEX declaration_petroliferos_details_tax_declaration_id_key ON public.declaration_petroliferos_details USING btree (tax_declaration_id)
   - idx_declaration_petroliferos_data_tax_declaration_id
-    CREATE INDEX idx_declaration_petroliferos_data_tax_declaration_id ON public.declaration_petroliferos_data USING btree (tax_declaration_id)
+    CREATE INDEX idx_declaration_petroliferos_data_tax_declaration_id ON public.declaration_petroliferos_details USING btree (tax_declaration_id)
   - idx_declaration_petroliferos_data_subtype
-    CREATE INDEX idx_declaration_petroliferos_data_subtype ON public.declaration_petroliferos_data USING btree (petroleum_declaration_subtype)
+    CREATE INDEX idx_declaration_petroliferos_data_subtype ON public.declaration_petroliferos_details USING btree (petroleum_declaration_subtype)
+
+----------------------------------------------------------------------------------------------------
+Table: DECLARATION_RETENCION_DETAILS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+tax_declaration_id                  uuid                      NO                                       
+retencion_subtype                   varchar(50)               NO                                       
+  └─ Description: Sous-type de rétention: 3pct_petrolero, 5pct_petrolero, 10pct_no_residentes_petrolero, 10pct_no_residentes_comun
+tasa_retencion                      numeric                   NO                                       
+  └─ Description: Taux de rétention: 3, 5, ou 10%
+proveedores                         jsonb                     NO         '[]'::jsonb                   
+  └─ Description: Array JSONB de fournisseurs: [{nombre, nif, actividad, monto_bruto}, ...] (max 7)
+total_servicios_sujetos             numeric                   NO         0                             
+  └─ Description: Campo 01: Somme des monto_bruto (services sujets à rétention)
+total_gastos_reembolsados           numeric                   YES        0                             
+  └─ Description: Campo 02: Gastos reembolsados 0% (non soumis à rétention)
+sub_total                           numeric                   NO         0                             
+  └─ Description: Campo 03: total_servicios_sujetos × tasa_retencion / 100
+recargo_base                        numeric                   YES        0                             
+recargo_tipo                        numeric                   YES        0                             
+recargo_cuota                       numeric                   YES        0                             
+  └─ Description: Campo 04: Pénalité recargo Art. 315.1
+interes_demora_base                 numeric                   YES        0                             
+interes_demora_tipo                 numeric                   YES        0                             
+interes_demora_cuota                numeric                   YES        0                             
+  └─ Description: Campo 05: Intérêt de retard Art. 315.5
+total_a_ingresar                    numeric                   NO         0                             
+  └─ Description: Campo 06: sub_total + recargo_cuota + interes_demora_cuota
+created_at                          timestamp with time zone  NO         now()                         
+updated_at                          timestamp with time zone  NO         now()                         
+
+Primary Key: id
+
+Foreign Keys:
+  - tax_declaration_id → tax_declarations.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+Unique Constraints:
+  - declaration_retencion_details_tax_declaration_id_key: (tax_declaration_id)
+
+Indexes:
+  - declaration_retencion_details_tax_declaration_id_key
+    CREATE UNIQUE INDEX declaration_retencion_details_tax_declaration_id_key ON public.declaration_retencion_details USING btree (tax_declaration_id)
+  - idx_retencion_details_tax_declaration
+    CREATE INDEX idx_retencion_details_tax_declaration ON public.declaration_retencion_details USING btree (tax_declaration_id)
+  - idx_retencion_details_subtype
+    CREATE INDEX idx_retencion_details_subtype ON public.declaration_retencion_details USING btree (retencion_subtype)
+  - idx_retencion_details_tasa
+    CREATE INDEX idx_retencion_details_tasa ON public.declaration_retencion_details USING btree (tasa_retencion)
+  - idx_retencion_proveedores_gin
+    CREATE INDEX idx_retencion_proveedores_gin ON public.declaration_retencion_details USING gin (proveedores)
+  - idx_retencion_details_total
+    CREATE INDEX idx_retencion_details_total ON public.declaration_retencion_details USING btree (total_a_ingresar)
+
+----------------------------------------------------------------------------------------------------
+Table: DOCUMENT_PROCESSING_QUEUE
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+uploaded_file_id                    uuid                      NO                                       
+form_template_id                    uuid                      YES                                      
+processing_type                     varchar(30)               NO         'ocr_extraction'::character va
+ocr_engine_primary                  varchar(30)               YES        'cloud_vision'::character vary
+ocr_engine_fallback                 varchar(30)               YES        'tesseract'::character varying
+status                              varchar(20)               NO         'pending'::character varying  
+retry_count                         integer                   YES        0                             
+max_retries                         integer                   YES        5                             
+next_retry_at                       timestamp with time zone  YES                                      
+  └─ Description: Next retry timestamp with exponential backoff: NOW() + (10s * 3^retry_count)
+result_data                         jsonb                     YES                                      
+error_message                       text                      YES                                      
+error_code                          varchar(50)               YES                                      
+error_count                         integer                   YES        0                             
+processing_started_at               timestamp with time zone  YES                                      
+processing_completed_at             timestamp with time zone  YES                                      
+processing_duration_ms              integer                   YES                                      
+priority                            varchar(10)               YES        'normal'::character varying   
+created_at                          timestamp with time zone  NO         now()                         
+updated_at                          timestamp with time zone  NO         now()                         
+metadata                            jsonb                     YES        '{}'::jsonb                   
+
+Primary Key: id
+
+Foreign Keys:
+  - form_template_id → form_templates.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - uploaded_file_id → uploaded_files.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+Indexes:
+  - idx_doc_queue_status_priority
+    CREATE INDEX idx_doc_queue_status_priority ON public.document_processing_queue USING btree (status, priority DESC, next_retry_at) WHERE ((status)::text = ANY ((ARRAY['pending'::character varying, 'failed'::character varying])::text[]))
+  - idx_doc_queue_retry
+    CREATE INDEX idx_doc_queue_retry ON public.document_processing_queue USING btree (next_retry_at) WHERE (((status)::text = 'failed'::text) AND (retry_count < max_retries))
+  - idx_doc_queue_uploaded_file
+    CREATE INDEX idx_doc_queue_uploaded_file ON public.document_processing_queue USING btree (uploaded_file_id)
+  - idx_doc_queue_dead_letter
+    CREATE INDEX idx_doc_queue_dead_letter ON public.document_processing_queue USING btree (status, error_code) WHERE ((status)::text = 'dead_letter'::text)
 
 ----------------------------------------------------------------------------------------------------
 Table: DOCUMENT_TEMPLATES
@@ -881,6 +1296,22 @@ review_notes                        text                      YES
 submitted_at                        timestamp with time zone  YES                                      
 created_at                          timestamp with time zone  NO         now()                         
 updated_at                          timestamp with time zone  NO         now()                         
+type_compte                         type_compte_enum          YES                                      
+  └─ Description: Type de compte pour le paiement (saisi manuellement par utilisateur): compte_propia (particulier) ou cuenta_empresa (entreprise)
+date_emission                       date                      YES                                      
+  └─ Description: Date d'émission du document (extraite par OCR, proche du numéro de nota)
+organisme_emetteur                  text                      YES                                      
+  └─ Description: Organisme émetteur du document (ex: MINISTERIO DE SEGURIDAD NACIONAL)
+departement_emetteur                text                      YES                                      
+  └─ Description: Département émetteur (ex: DIRECCION GENERAL DE EXTRANJERIA Y FRONTERAS)
+compte_destinataire                 text                      YES                                      
+  └─ Description: Compte bancaire destinataire (ex: Cuenta de la TESORERIA GENERAL DEL ESTADO)
+signataire                          text                      YES                                      
+  └─ Description: Nom du signataire du document (ex: EL JEFE DE LA SECCION)
+code_reference                      text                      YES                                      
+  └─ Description: Code de référence manuscrit (ex: AA0516 visible sur l'image)
+tampon_officiel                     boolean                   YES        false                         
+  └─ Description: Indicateur de présence du tampon officiel (détecté par OCR image analysis)
 
 Primary Key: id
 
@@ -901,6 +1332,14 @@ Indexes:
     CREATE INDEX idx_fiscal_service_data_status ON public.fiscal_service_data USING btree (status)
   - idx_fiscal_service_data_payment_id
     CREATE INDEX idx_fiscal_service_data_payment_id ON public.fiscal_service_data USING btree (payment_id) WHERE (payment_id IS NOT NULL)
+  - idx_fiscal_service_data_unique_numero_nota
+    CREATE UNIQUE INDEX idx_fiscal_service_data_unique_numero_nota ON public.fiscal_service_data USING btree (user_id, numero_nota) WHERE (numero_nota IS NOT NULL)
+  - idx_fiscal_service_data_date_emission
+    CREATE INDEX idx_fiscal_service_data_date_emission ON public.fiscal_service_data USING btree (date_emission) WHERE (date_emission IS NOT NULL)
+  - idx_fiscal_service_data_type_compte
+    CREATE INDEX idx_fiscal_service_data_type_compte ON public.fiscal_service_data USING btree (type_compte) WHERE (type_compte IS NOT NULL)
+  - idx_fiscal_service_data_organisme
+    CREATE INDEX idx_fiscal_service_data_organisme ON public.fiscal_service_data USING btree (organisme_emetteur) WHERE (organisme_emetteur IS NOT NULL)
 
 ----------------------------------------------------------------------------------------------------
 Table: FISCAL_SERVICES
@@ -955,6 +1394,8 @@ created_at                          timestamp with time zone  YES        now()
 updated_at                          timestamp with time zone  YES        now()                         
 created_by                          uuid                      YES                                      
 updated_by                          uuid                      YES                                      
+search_vector                       tsvector                  YES                                      
+  └─ Description: Full-text search vector (Spanish). Auto-updated via trigger. Weight A for name_es, B for description_es.
 
 Primary Key: id
 
@@ -974,6 +1415,8 @@ Indexes:
     CREATE INDEX idx_fiscal_services_active ON public.fiscal_services USING btree (status, service_type) WHERE (status = 'active'::service_status_enum)
   - idx_fiscal_services_category
     CREATE INDEX idx_fiscal_services_category ON public.fiscal_services USING btree (category_id, status)
+  - idx_fiscal_services_search_vector
+    CREATE INDEX idx_fiscal_services_search_vector ON public.fiscal_services USING gin (search_vector)
 
 ----------------------------------------------------------------------------------------------------
 Table: FORM_TEMPLATES
@@ -1546,6 +1989,82 @@ Indexes:
     CREATE INDEX idx_pending_registrations_expires_at ON public.pending_registrations USING btree (expires_at)
 
 ----------------------------------------------------------------------------------------------------
+Table: PERMISSION_AUDIT_LOG
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         uuid_generate_v4()            
+action                              varchar(50)               NO                                       
+  └─ Description: Type de modification (INSERT, UPDATE, DELETE)
+table_name                          varchar(50)               NO                                       
+  └─ Description: Table concernée par la modification
+record_id                           text                      YES                                      
+user_id                             uuid                      YES                                      
+permission_id                       uuid                      YES                                      
+old_value                           jsonb                     YES                                      
+  └─ Description: Ancienne valeur (JSONB) avant modification
+new_value                           jsonb                     YES                                      
+  └─ Description: Nouvelle valeur (JSONB) après modification
+changed_by                          uuid                      YES                                      
+changed_at                          timestamp without time zone YES        now()                         
+
+Primary Key: id
+
+Foreign Keys:
+  - changed_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - permission_id → permissions.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - user_id → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+
+Indexes:
+  - idx_permission_audit_log_user
+    CREATE INDEX idx_permission_audit_log_user ON public.permission_audit_log USING btree (user_id)
+  - idx_permission_audit_log_permission
+    CREATE INDEX idx_permission_audit_log_permission ON public.permission_audit_log USING btree (permission_id)
+  - idx_permission_audit_log_changed_at
+    CREATE INDEX idx_permission_audit_log_changed_at ON public.permission_audit_log USING btree (changed_at)
+  - idx_permission_audit_log_table
+    CREATE INDEX idx_permission_audit_log_table ON public.permission_audit_log USING btree (table_name)
+
+----------------------------------------------------------------------------------------------------
+Table: PERMISSIONS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         uuid_generate_v4()            
+name                                varchar(100)              NO                                       
+  └─ Description: Nom unique de la permission (format: resource.action)
+resource                            varchar(50)               NO                                       
+  └─ Description: Ressource concernée (assignment, declaration, etc.)
+action                              varchar(50)               NO                                       
+  └─ Description: Action autorisée (view, create, edit, delete, etc.)
+description                         text                      YES                                      
+is_critical                         boolean                   YES        false                         
+  └─ Description: Si TRUE, UI affiche un warning lors de l'attribution
+module_name                         varchar(50)               YES                                      
+  └─ Description: Nom du module qui a déclaré cette permission
+created_at                          timestamp without time zone YES        now()                         
+updated_at                          timestamp without time zone YES        now()                         
+
+Primary Key: id
+
+Unique Constraints:
+  - permissions_name_key: (name)
+
+Indexes:
+  - permissions_name_key
+    CREATE UNIQUE INDEX permissions_name_key ON public.permissions USING btree (name)
+  - idx_permissions_resource
+    CREATE INDEX idx_permissions_resource ON public.permissions USING btree (resource)
+  - idx_permissions_name
+    CREATE INDEX idx_permissions_name ON public.permissions USING btree (name)
+  - idx_permissions_module
+    CREATE INDEX idx_permissions_module ON public.permissions USING btree (module_name)
+
+----------------------------------------------------------------------------------------------------
 Table: PROCEDURE_TEMPLATE_STEPS
 ----------------------------------------------------------------------------------------------------
 
@@ -1682,6 +2201,74 @@ Indexes:
     CREATE INDEX idx_refresh_tokens_is_revoked ON public.refresh_tokens USING btree (is_revoked)
   - idx_refresh_tokens_expires_at
     CREATE INDEX idx_refresh_tokens_expires_at ON public.refresh_tokens USING btree (expires_at)
+
+----------------------------------------------------------------------------------------------------
+Table: ROLE_PERMISSIONS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+role_id                             uuid                      NO                                       
+permission_id                       uuid                      NO                                       
+granted                             boolean                   YES        true                          
+  └─ Description: FALSE permet de refuser explicitement une permission héritée
+created_at                          timestamp without time zone YES        now()                         
+created_by                          uuid                      YES                                      
+  └─ Description: Admin qui a assigné cette permission au rôle
+
+Primary Key: role_id, permission_id
+
+Foreign Keys:
+  - created_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - permission_id → permissions.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+  - role_id → roles.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+Indexes:
+  - idx_role_permissions_role
+    CREATE INDEX idx_role_permissions_role ON public.role_permissions USING btree (role_id)
+  - idx_role_permissions_permission
+    CREATE INDEX idx_role_permissions_permission ON public.role_permissions USING btree (permission_id)
+
+----------------------------------------------------------------------------------------------------
+Table: ROLES
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         uuid_generate_v4()            
+name                                varchar(100)              NO                                       
+code                                varchar(50)               NO                                       
+  └─ Description: Code unique du rôle (utilisé dans le code)
+entity_type                         varchar(50)               YES                                      
+  └─ Description: Type d'entité (DGI, Ministry, NULL pour global)
+description                         text                      YES                                      
+is_system                           boolean                   YES        false                         
+  └─ Description: Rôles système protégés (citizen, admin, etc.) - ne peuvent pas être modifiés/supprimés
+created_at                          timestamp without time zone YES        now()                         
+updated_at                          timestamp without time zone YES        now()                         
+created_by                          uuid                      YES                                      
+  └─ Description: Utilisateur qui a créé le rôle (NULL pour rôles système)
+
+Primary Key: id
+
+Foreign Keys:
+  - created_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+
+Unique Constraints:
+  - roles_code_key: (code)
+  - roles_name_key: (name)
+
+Indexes:
+  - roles_name_key
+    CREATE UNIQUE INDEX roles_name_key ON public.roles USING btree (name)
+  - roles_code_key
+    CREATE UNIQUE INDEX roles_code_key ON public.roles USING btree (code)
+  - idx_roles_code
+    CREATE INDEX idx_roles_code ON public.roles USING btree (code)
+  - idx_roles_entity_type
+    CREATE INDEX idx_roles_entity_type ON public.roles USING btree (entity_type)
 
 ----------------------------------------------------------------------------------------------------
 Table: SECTORS
@@ -1943,7 +2530,7 @@ refresh_token                       text                      NO
   └─ Description: JWT refresh token
 status                              varchar(20)               NO         'active'::character varying   
   └─ Description: Session status: active, expired, or revoked
-ip_address                          varchar(45)               YES                                      
+ip_address                          inet                      YES                                      
   └─ Description: Client IP address
 user_agent                          text                      YES                                      
   └─ Description: Client user agent string
@@ -1958,6 +2545,10 @@ last_activity                       timestamp with time zone  YES        now()
 revoked_at                          timestamp with time zone  YES                                      
   └─ Description: Session revocation timestamp (if revoked)
 updated_at                          timestamp with time zone  YES        now()                         
+context_data                        jsonb                     NO         '{}'::jsonb                   
+  └─ Description: JSONB storage for user session context (form drafts, payment state, navigation) to resume interrupted workflows
+termination_reason                  varchar(50)               YES                                      
+  └─ Description: Reason for session termination: logout, timeout, forced, security_breach, device_limit
 
 Primary Key: id
 
@@ -1966,6 +2557,10 @@ Foreign Keys:
   - user_id → users.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
 
 Indexes:
+  - idx_sessions_active_user
+    CREATE INDEX idx_sessions_active_user ON public.sessions USING btree (user_id, status) WHERE ((status)::text = 'active'::text)
+  - idx_sessions_termination
+    CREATE INDEX idx_sessions_termination ON public.sessions USING btree (termination_reason, revoked_at) WHERE (termination_reason IS NOT NULL)
   - sessions_id_key
     CREATE UNIQUE INDEX sessions_id_key ON public.sessions USING btree (id)
   - idx_sessions_user_id
@@ -1978,6 +2573,8 @@ Indexes:
     CREATE INDEX idx_sessions_status ON public.sessions USING btree (status)
   - idx_sessions_expires_at
     CREATE INDEX idx_sessions_expires_at ON public.sessions USING btree (expires_at)
+  - idx_sessions_context_data
+    CREATE INDEX idx_sessions_context_data ON public.sessions USING gin (context_data)
 
 ----------------------------------------------------------------------------------------------------
 Table: STEPS_COUNT
@@ -2167,6 +2764,28 @@ requires_ocr                        boolean                   NO         false
 ocr_status                          varchar(20)               YES        'pending'::character varying  
   └─ Description: Statut de l'extraction OCR (pending, processing, completed, failed, skipped)
 uploaded_at                         timestamp with time zone  NO         now()                         
+original_filename                   varchar(255)              YES                                      
+file_url                            text                      YES                                      
+file_hash                           varchar(64)               YES                                      
+document_type                       varchar(50)               YES                                      
+document_subtype                    varchar(50)               YES                                      
+description                         text                      YES                                      
+processing_mode                     varchar(20)               YES        'server_processing'::character
+ocr_text                            text                      YES                                      
+ocr_confidence                      numeric                   YES                                      
+ocr_provider                        varchar(20)               YES                                      
+extraction_status                   varchar(20)               YES        'pending'::character varying  
+extracted_data                      jsonb                     YES                                      
+extraction_confidence               numeric                   YES                                      
+form_mapping                        jsonb                     YES                                      
+processing_started_at               timestamp with time zone  YES                                      
+processing_completed_at             timestamp with time zone  YES                                      
+processing_duration_ms              integer                   YES                                      
+access_level                        varchar(20)               YES        'private'::character varying  
+validation_status                   varchar(20)               YES        'pending'::character varying  
+related_to_type                     varchar(50)               YES                                      
+related_to_id                       uuid                      YES                                      
+updated_at                          timestamp with time zone  YES        now()                         
 
 Primary Key: id
 
@@ -2187,6 +2806,20 @@ Indexes:
     CREATE INDEX idx_uploaded_files_tax_declaration_id ON public.uploaded_files USING btree (tax_declaration_id) WHERE (tax_declaration_id IS NOT NULL)
   - idx_uploaded_files_ocr_status
     CREATE INDEX idx_uploaded_files_ocr_status ON public.uploaded_files USING btree (ocr_status) WHERE (requires_ocr = true)
+  - idx_uploaded_files_document_type
+    CREATE INDEX idx_uploaded_files_document_type ON public.uploaded_files USING btree (document_type) WHERE (document_type IS NOT NULL)
+  - idx_uploaded_files_extraction_status
+    CREATE INDEX idx_uploaded_files_extraction_status ON public.uploaded_files USING btree (extraction_status)
+  - idx_uploaded_files_form_mapping
+    CREATE INDEX idx_uploaded_files_form_mapping ON public.uploaded_files USING gin (form_mapping) WHERE (form_mapping IS NOT NULL)
+  - idx_uploaded_files_extracted_data
+    CREATE INDEX idx_uploaded_files_extracted_data ON public.uploaded_files USING gin (extracted_data) WHERE (extracted_data IS NOT NULL)
+  - idx_uploaded_files_user_statuses
+    CREATE INDEX idx_uploaded_files_user_statuses ON public.uploaded_files USING btree (user_id, extraction_status, validation_status)
+  - idx_uploaded_files_processing_times
+    CREATE INDEX idx_uploaded_files_processing_times ON public.uploaded_files USING btree (processing_started_at, processing_completed_at) WHERE (processing_completed_at IS NOT NULL)
+  - idx_uploaded_files_document_subtype
+    CREATE INDEX idx_uploaded_files_document_subtype ON public.uploaded_files USING btree (document_subtype) WHERE (document_subtype IS NOT NULL)
 
 ----------------------------------------------------------------------------------------------------
 Table: USER_COMPANY_ROLES
@@ -2262,6 +2895,40 @@ Indexes:
     CREATE INDEX idx_ministry_assignments_pending ON public.user_ministry_assignments USING btree (status, assigned_at) WHERE ((status)::text = 'pending'::text)
 
 ----------------------------------------------------------------------------------------------------
+Table: USER_PERMISSIONS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+user_id                             uuid                      NO                                       
+permission_id                       uuid                      NO                                       
+granted                             boolean                   YES        true                          
+  └─ Description: TRUE = permission accordée, FALSE = permission refusée (override)
+granted_by                          uuid                      YES                                      
+  └─ Description: Admin qui a accordé/refusé cette permission
+granted_at                          timestamp without time zone YES        now()                         
+expires_at                          timestamp without time zone YES                                      
+  └─ Description: Expiration automatique pour permissions temporaires
+reason                              text                      YES                                      
+  └─ Description: Raison de l'attribution (pour audit et traçabilité)
+
+Primary Key: user_id, permission_id
+
+Foreign Keys:
+  - granted_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - permission_id → permissions.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+  - user_id → users.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+Indexes:
+  - idx_user_permissions_user
+    CREATE INDEX idx_user_permissions_user ON public.user_permissions USING btree (user_id)
+  - idx_user_permissions_permission
+    CREATE INDEX idx_user_permissions_permission ON public.user_permissions USING btree (permission_id)
+  - idx_user_permissions_expires
+    CREATE INDEX idx_user_permissions_expires ON public.user_permissions USING btree (expires_at) WHERE (expires_at IS NOT NULL)
+
+----------------------------------------------------------------------------------------------------
 Table: USERS
 ----------------------------------------------------------------------------------------------------
 
@@ -2315,8 +2982,22 @@ two_factor_backup_codes             jsonb                     YES
   └─ Description: Array of 10 backup codes for 2FA recovery (hashed)
 last_failed_ip                      varchar(45)               YES                                      
   └─ Description: IP address of last failed login attempt (used to reset counter if IP changes)
+supervisor_id                       uuid                      YES                                      
+  └─ Description: ID du superviseur de cet agent (hiérarchie)
+department_id                       varchar(100)              YES                                      
+  └─ Description: ID du département (DGI-DEPT-MALABO, MIN001-DEPT-FISCAL, etc.)
+specializations                     jsonb                     YES        '[]'::jsonb                   
+  └─ Description: Spécialisations de l'agent (ex: ["declaration_iva_destajo", "sector_petrolero"])
+max_concurrent_assignments          integer                   YES        20                            
+  └─ Description: Nombre maximum d'assignations simultanées pour cet agent
+role_id                             uuid                      YES                                      
+  └─ Description: Référence vers table roles (nouvelle logique granulaire). Si NULL, utilise role VARCHAR.
 
 Primary Key: id
+
+Foreign Keys:
+  - role_id → roles.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - supervisor_id → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
 
 Unique Constraints:
   - users_email_key: (email)
@@ -2347,6 +3028,14 @@ Indexes:
     CREATE INDEX idx_users_email_verified ON public.users USING btree (email_verified) WHERE (email_verified = true)
   - idx_users_locked_until
     CREATE INDEX idx_users_locked_until ON public.users USING btree (locked_until) WHERE (locked_until IS NOT NULL)
+  - idx_users_role_id
+    CREATE INDEX idx_users_role_id ON public.users USING btree (role_id) WHERE (role_id IS NOT NULL)
+  - idx_users_supervisor_id
+    CREATE INDEX idx_users_supervisor_id ON public.users USING btree (supervisor_id) WHERE (supervisor_id IS NOT NULL)
+  - idx_users_department_id
+    CREATE INDEX idx_users_department_id ON public.users USING btree (department_id) WHERE (department_id IS NOT NULL)
+  - idx_users_specializations
+    CREATE INDEX idx_users_specializations ON public.users USING gin (specializations)
 
 ----------------------------------------------------------------------------------------------------
 Table: WORKFLOW_TRANSITIONS
@@ -2378,7 +3067,26 @@ Indexes:
 ====================================================================================================
 
 
-No views found in public schema
+View: v_active_assignments
+Definition:  SELECT a.id AS assignment_id,
+    a.declaration_id,
+    a.declaration_type,
+    a.status,
+    a.priority_level,
+    a.assigned_at,
+    a.deadline,
+        CASE
+            WHEN ((a.deadline IS NOT NU...
+
+View: v_available_agents
+Definition:  SELECT u.id AS agent_id,
+    u.full_name AS agent_name,
+    u.email,
+    u.department_id,
+    u.supervisor_id,
+    u.specializations,
+    u.max_concurrent_assignments,
+    COALESCE(aw.current_assignm...
 
 ====================================================================================================
 5. FUNCTIONS
@@ -2394,11 +3102,32 @@ Returns: boolean
 Function: assign_procedure_template
 Returns: boolean
 
+Function: audit_role_permissions
+Returns: trigger
+
+Function: audit_user_permissions
+Returns: trigger
+
+Function: calculate_next_retry
+Returns: trigger
+
 Function: calculate_payment_ministry
+Returns: trigger
+
+Function: calculate_processing_duration
+Returns: trigger
+
+Function: calculate_queue_priority
 Returns: trigger
 
 Function: cleanup_expired_locks
 Returns: integer
+
+Function: cleanup_expired_permissions
+Returns: integer
+
+Function: fiscal_services_search_vector_update
+Returns: trigger
 
 Function: generate_idempotency_key
 Returns: character varying
@@ -2727,6 +3456,9 @@ Returns: internal
 Function: gtrgm_union
 Returns: USER-DEFINED
 
+Function: increment_retry_count
+Returns: trigger
+
 Function: lock_payment_for_agent
 Returns: jsonb
 
@@ -2787,16 +3519,28 @@ Returns: trigger
 Function: unlock_payment_by_agent
 Returns: jsonb
 
+Function: update_capacity_percentage
+Returns: trigger
+
+Function: update_fiscal_service_data_updated_at
+Returns: trigger
+
 Function: update_refresh_tokens_updated_at
 Returns: trigger
 
 Function: update_sessions_updated_at
 Returns: trigger
 
+Function: update_sla_status
+Returns: trigger
+
 Function: update_translations_updated_at
 Returns: trigger
 
 Function: update_updated_at_column
+Returns: trigger
+
+Function: validate_fiscal_service_montants
 Returns: trigger
 
 Function: word_similarity
@@ -2819,6 +3563,17 @@ Returns: boolean
 ====================================================================================================
 
 agent_performance_stats.agent_id → ministry_agents.id
+agent_work_queue.assigned_to → users.id
+agent_work_queue.completed_by → users.id
+agent_work_queue.escalated_by → users.id
+agent_work_queue.ministry_id → ministries.id
+agent_workloads.agent_id → users.id
+assignment_rules.created_by → users.id
+assignment_rules.updated_by → users.id
+assignments.agent_id → users.id
+assignments.assigned_by → users.id
+assignments.reassigned_to → users.id
+assignments.rule_applied_id → assignment_rules.id
 audit_logs.user_id → users.id
 bank_transactions.payment_id → payments.id
 bank_transactions.reconciled_by → users.id
@@ -2834,19 +3589,22 @@ declaration_amount_adjustments.tax_declaration_id → tax_declarations.id
 declaration_corrections.approved_by → users.id
 declaration_corrections.original_declaration_id → tax_declarations.id
 declaration_corrections.rectificative_declaration_id → tax_declarations.id
-declaration_data_generic.adjusted_by → users.id
-declaration_data_generic.adjustment_reason_id → adjustment_reasons.id
-declaration_data_generic.form_template_id → form_templates.id
-declaration_data_generic.tax_declaration_id → tax_declarations.id
 declaration_irpf_data.adjusted_by → users.id
 declaration_irpf_data.adjustment_reason_id → adjustment_reasons.id
 declaration_irpf_data.tax_declaration_id → tax_declarations.id
-declaration_iva_data.adjusted_by → users.id
-declaration_iva_data.adjustment_reason_id → adjustment_reasons.id
-declaration_iva_data.tax_declaration_id → tax_declarations.id
-declaration_petroliferos_data.adjusted_by → users.id
-declaration_petroliferos_data.adjustment_reason_id → adjustment_reasons.id
-declaration_petroliferos_data.tax_declaration_id → tax_declarations.id
+declaration_iva_details.adjusted_by → users.id
+declaration_iva_details.adjustment_reason_id → adjustment_reasons.id
+declaration_iva_details.tax_declaration_id → tax_declarations.id
+declaration_other_details.adjusted_by → users.id
+declaration_other_details.adjustment_reason_id → adjustment_reasons.id
+declaration_other_details.form_template_id → form_templates.id
+declaration_other_details.tax_declaration_id → tax_declarations.id
+declaration_petroliferos_details.adjusted_by → users.id
+declaration_petroliferos_details.adjustment_reason_id → adjustment_reasons.id
+declaration_petroliferos_details.tax_declaration_id → tax_declarations.id
+declaration_retencion_details.tax_declaration_id → tax_declarations.id
+document_processing_queue.form_template_id → form_templates.id
+document_processing_queue.uploaded_file_id → uploaded_files.id
 fiscal_service_data.fiscal_service_id → fiscal_services.id
 fiscal_service_data.ocr_extraction_id → ocr_extraction_results.id
 fiscal_service_data.payment_id → payments.id
@@ -2884,9 +3642,16 @@ payments.installment_id → payment_installments.id
 payments.payment_plan_id → payment_plans.id
 payments.tax_declaration_id → tax_declarations.id
 payments.user_id → users.id
+permission_audit_log.changed_by → users.id
+permission_audit_log.permission_id → permissions.id
+permission_audit_log.user_id → users.id
 procedure_template_steps.template_id → procedure_templates.id
 refresh_tokens.session_id → sessions.id
 refresh_tokens.user_id → users.id
+role_permissions.created_by → users.id
+role_permissions.permission_id → permissions.id
+role_permissions.role_id → roles.id
+roles.created_by → users.id
 sectors.ministry_id → ministries.id
 service_document_assignments.document_template_id → document_templates.id
 service_document_assignments.fiscal_service_id → fiscal_services.id
@@ -2920,3 +3685,8 @@ user_ministry_assignments.assigned_by → users.id
 user_ministry_assignments.ministry_id → ministries.id
 user_ministry_assignments.revoked_by → users.id
 user_ministry_assignments.user_id → users.id
+user_permissions.granted_by → users.id
+user_permissions.permission_id → permissions.id
+user_permissions.user_id → users.id
+users.role_id → roles.id
+users.supervisor_id → users.id
