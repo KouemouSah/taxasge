@@ -9,11 +9,10 @@
  * - Phase completion callbacks
  */
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { ActivityIndicator, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { db } from '../database/DatabaseManager';
 import { syncService } from '../database/SyncService';
-import type { ProgressiveSyncResult } from '../database/SyncService';
 import { loadChatbotFAQSeed } from '../database/seed/chatbotFaqSeed';
 
 interface DatabaseContextValue {
@@ -59,14 +58,7 @@ export const DatabaseProvider: React.FC<DatabaseProviderProps> = ({
   const [stats, setStats] = useState<Record<string, number>>({});
   const [retryCount, setRetryCount] = useState(0);
 
-  /**
-   * Initialize database on mount
-   */
-  useEffect(() => {
-    initializeDatabase();
-  }, []);
-
-  const initializeDatabase = async () => {
+  const initializeDatabase = useCallback(async () => {
     try {
       console.log('[DatabaseProvider] Initializing database...');
 
@@ -106,7 +98,15 @@ export const DatabaseProvider: React.FC<DatabaseProviderProps> = ({
       setError(errorMsg);
       onError?.(err instanceof Error ? err : new Error(errorMsg));
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSync, userId, onInitialized, onError]);
+
+  /**
+   * Initialize database on mount
+   */
+  useEffect(() => {
+    initializeDatabase();
+  }, [initializeDatabase]);
 
   /**
    * Check if auto-sync is needed

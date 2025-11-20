@@ -21,6 +21,11 @@ export interface ServicesProviderProps {
   children: ReactNode;
 }
 
+// Configuration constants
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
+const INITIAL_LOAD = 50; // Quick initial load
+const FULL_LOAD = 1000; // Full background load
+
 /**
  * Services Provider Component
  * Manages global state for fiscal services with intelligent caching and progressive loading
@@ -31,10 +36,6 @@ export const ServicesProvider: React.FC<ServicesProviderProps> = ({ children }) 
   const [error, setError] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [lastLoadTime, setLastLoadTime] = useState<number>(0);
-
-  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
-  const INITIAL_LOAD = 50; // Quick initial load
-  const FULL_LOAD = 1000; // Full background load
 
   /**
    * Load fiscal services with intelligent caching and progressive loading

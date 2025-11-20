@@ -8,7 +8,6 @@ import {
   calculationsService,
   Calculation,
   CalculationParams,
-  CalculationBreakdown,
 } from '../database/services/CalculationsService';
 import { FiscalService } from '../database/services/FiscalServicesService';
 
@@ -106,7 +105,7 @@ export function useCalculations(userId?: string) {
         throw error;
       }
     },
-    [userId]
+    [userId, loadHistory]
   );
 
   /**
