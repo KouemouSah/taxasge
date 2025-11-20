@@ -966,6 +966,98 @@ app/modules/documents/
 
 ---
 
+## ✅ EXTRACTION SCHÉMA DATABASE (TÂCHE 4 - TERMINÉE)
+
+### Contexte
+
+Extraction complète du schéma PostgreSQL de Supabase pour documentation de référence.
+
+### Exécution
+
+**Script utilisé**: `.github/docs-internal/database/extract_full_schema.py`
+
+```bash
+cd C:/taxasge/.github/docs-internal/database
+python extract_full_schema.py
+```
+
+**Résultat**:
+- ✅ Extraction réussie
+- Date: 2025-11-20 11:04:48
+- Total tables: 65
+- Total enum types: 23
+- Fichier généré: `DATABASE_SCHEMA_REFERENCE.md`
+
+### Tables Extraites (65 tables)
+
+**Nouvelles tables depuis dernière extraction**:
+1. `agent_work_queue` - File d'attente avec priorité dynamique
+2. `agent_workloads` - Suivi charge de travail agents en temps réel
+3. `assignment_rules` - Règles configurables auto-assignation
+4. `assignments` - Historique assignations déclarations
+5. `declaration_retencion_details` - Détails déclarations Retención (3%, 5%, 10%)
+6. `document_processing_queue` - Queue OCR async avec retry
+7. `permission_audit_log` - Audit trail changements permissions
+8. `permissions` - Catalogue centralisé permissions
+9. `role_permissions` - Associations rôle-permission
+10. `roles` - Rôles personnalisables
+11. `user_permissions` - Permissions spécifiques utilisateur
+
+**Tables principales**:
+- Déclarations: `tax_declarations`, `declaration_iva_details`, `declaration_irpf_data`, etc.
+- Documents: `uploaded_files`, `ocr_extraction_results`, `document_templates`
+- Services fiscaux: `fiscal_services`, `fiscal_service_data`
+- Paiements: `payments`, `payment_plans`, `payment_installments`
+- Utilisateurs: `users`, `roles`, `permissions`, `sessions`
+- Workflow: `agent_work_queue`, `assignments`, `ministry_agents`
+
+### Contenu du Schéma
+
+**Section 1**: Liste complète des 65 tables avec descriptions
+
+**Section 2**: 23 types ENUM définis:
+- `agent_action_type`, `agent_availability_enum`
+- `declaration_status_enum`, `declaration_type_enum`
+- `payment_status_enum`, `payment_method_enum`
+- `user_role_enum`, `user_status_enum`
+- etc.
+
+**Section 3**: Schémas détaillés par table:
+- Colonnes (nom, type, nullable, default)
+- Primary keys
+- Foreign keys avec ON UPDATE/DELETE
+- Unique constraints
+- Indexes pour performance
+
+**Section 4**: Views (si existantes)
+
+**Section 5**: Functions personnalisées
+
+**Section 6**: Résumé des relations entre tables
+
+### Statistiques
+
+- **+770 lignes** ajoutées au fichier
+- **Tables documentées**: 65/65 (100%)
+- **Relations FK**: Toutes documentées
+- **Indexes**: Tous listés
+
+### Bénéfices
+
+- ✅ Documentation complète et à jour du schéma DB
+- ✅ Référence pour développement backend
+- ✅ Facilite onboarding nouveaux développeurs
+- ✅ Aide au debugging et optimisation
+- ✅ Base pour migrations futures
+
+### Commit
+
+`git commit -m "docs(database): Update DATABASE_SCHEMA_REFERENCE.md with latest schema"`
+- Commit: `253c9ac`
+- Pushed to: `origin/develop`
+
+---
+
 ## 🎯 PROCHAINES ÉTAPES
 
 ### Immédiat (Critique)
