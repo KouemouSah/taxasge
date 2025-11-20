@@ -1,7 +1,7 @@
 # RAPPORT D'EXÉCUTION PHASE 5
 **Date**: 2025-11-20 (Mise à jour continue)
 **Auteur**: Claude Code Expert
-**Status**: 🟢 EN COURS - MIGRATION AUTH TERMINÉE
+**Status**: 🟢 EN COURS - MODULES AUTH + ADMIN MIGRÉS
 
 ---
 
@@ -22,6 +22,17 @@
 4. **Router registration** - main.py mis à jour
 5. **Commit & Push** - d8c3f03 "feat(backend): Migrate auth to modular architecture"
 
+**✅ TÂCHE 2.4 - Validation Lien Backend-Frontend** (TERMINÉE):
+1. **Synchronisation authApi.ts** - Import endpoints depuis shared
+2. **4 méthodes ajoutées** - requestPasswordReset, resetPassword, refreshToken, logout
+3. **Import corrigé** - forgot-password/page.tsx
+
+**✅ TÂCHE 3.1 - Refactorisation Module Admin** (TERMINÉE):
+1. **Structure modulaire** - `app/modules/admin/` créée (3 sous-répertoires)
+2. **Migration** - 2 routers (admin_routes: 114 lignes, user_management_routes: 635 lignes)
+3. **Router registration** - main.py mis à jour
+4. **Endpoints.ts** - Ajout DIAGNOSTICS et MIGRATIONS
+
 ### ⏳ Statut Actuel
 
 **Commits réalisés**:
@@ -30,6 +41,7 @@
 - `0eb38df` - Mise à jour endpoints.ts (shared)
 - `efcebc6` - Ajout endpoints.ts update au rapport
 - `ef426c7` - Synchronisation authApi.ts avec endpoints (frontend)
+- [EN COURS] - Migration admin vers structure modulaire
 
 **En attente**: Validation déploiement GitHub Actions (géré par utilisateur)
 
@@ -234,6 +246,94 @@ from app.modules.auth.models.auth_models import TokenRefreshRequest
 
 **Commit**: `ef426c7`
 **Fichiers modifiés**: 2 files, 96 insertions(+), 10 deletions(-)
+
+---
+
+## ✅ TÂCHE 3.1 - REFACTORISATION MODULE ADMIN (TERMINÉE)
+
+### Structure Modulaire Créée
+
+**Architecture**:
+```
+app/modules/admin/
+├── __init__.py
+├── api/
+│   ├── __init__.py (exports: admin_router, user_management_router)
+│   ├── admin_routes.py (114 lignes - diagnostics & migrations)
+│   └── user_management_routes.py (635 lignes - user CRUD)
+├── services/
+│   └── __init__.py
+└── models/
+    └── __init__.py
+```
+
+### Fichiers Migrés
+
+**1. admin_routes.py** (diagnostics & migrations):
+- Source: `app/api/v1/admin.py` (114 lignes)
+- Destination: `app/modules/admin/api/admin_routes.py`
+- Endpoints:
+  - `POST /api/v1/admin/migrate/grandfather-users` - Migration 002
+  - `GET /api/v1/admin/diagnostic/secrets` - Vérification configuration SMTP
+- Tag mis à jour: `["Admin - Diagnostics"]`
+
+**2. user_management_routes.py** (gestion utilisateurs):
+- Source: `app/api/v1/users.py` (635 lignes)
+- Destination: `app/modules/admin/api/user_management_routes.py`
+- Endpoints principaux:
+  - `GET /api/v1/users/` - Liste utilisateurs
+  - `GET /api/v1/users/profile` - Profil utilisateur
+  - `PUT /api/v1/users/profile` - Mise à jour profil
+  - `POST /api/v1/users/profile/change-password` - Changement mot de passe
+  - `POST /api/v1/users/profile/avatar` - Upload avatar
+  - Endpoints CRUD complets pour admin
+- Tag mis à jour: `["Admin - User Management"]`
+- Import HTTPBearer corrigé
+
+### Modifications main.py
+
+**Router Registration**:
+```python
+# Try to load admin routers (Module - Admin System)
+try:
+    from app.modules.admin.api import admin_router, user_management_router
+    app.include_router(admin_router, prefix="/api/v1/admin", tags=["admin-diagnostics"])
+    app.include_router(user_management_router, prefix="/api/v1/users", tags=["user-management"])
+    routers_loaded.extend(["admin", "users"])
+    logger.info("✅ Admin routers loaded (diagnostics + user management)")
+except ImportError as e:
+    logger.warning(f"⚠️ Admin routers not available: {e}")
+```
+
+**Endpoints Documentation** (ligne 254):
+- Ajout: `"admin": "/api/v1/admin/ - Admin diagnostics and migrations (RESTRICTED)"`
+
+### Mise à jour endpoints.ts
+
+**Fichier**: `packages/shared/constants/endpoints.ts`
+
+**Ajouts à ADMIN_ENDPOINTS**:
+```typescript
+// Diagnostics et Migrations (Module: app/modules/admin/api/admin_routes.py)
+DIAGNOSTICS: {
+  SECRETS: '/api/v1/admin/diagnostic/secrets',
+},
+
+MIGRATIONS: {
+  GRANDFATHER_USERS: '/api/v1/admin/migrate/grandfather-users',
+},
+```
+
+**Bénéfices**:
+- ✅ Structure modulaire cohérente (auth, permissions, assignment, admin)
+- ✅ Séparation claire: diagnostics vs user management
+- ✅ Endpoints centralisés dans shared
+- ✅ Tags documentés pour OpenAPI
+- ✅ Imports corrigés (HTTPBearer)
+
+**Prochaines étapes**:
+- Supprimer anciens fichiers `app/api/v1/admin.py` et `app/api/v1/users.py` après validation
+- Vérifier aucun import cassé
 
 ---
 

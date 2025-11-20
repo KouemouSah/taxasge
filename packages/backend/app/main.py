@@ -251,6 +251,7 @@ async def api_v1_info():
         "available_endpoints": {
             "auth": "/api/v1/auth/ - Authentication and authorization",
             "fiscal_services": "/api/v1/fiscal-services/ - 547 fiscal services catalog",
+            "admin": "/api/v1/admin/ - Admin diagnostics and migrations (RESTRICTED)",
             "users": "/api/v1/users/ - User management and profiles (CRUD)",
             "taxes": "/api/v1/taxes/ - Tax service management (administrative)",
             "declarations": "/api/v1/declarations/ - Tax declarations workflow",
@@ -288,14 +289,15 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ Fiscal services router not available: {e}")
 
-# Try to load users router
+# Try to load admin routers (Module - Admin System)
 try:
-    from app.api.v1 import users
-    app.include_router(users.router, prefix="/api/v1/users", tags=["user-management"])
-    routers_loaded.append("users")
-    logger.info("✅ Users router loaded")
+    from app.modules.admin.api import admin_router, user_management_router
+    app.include_router(admin_router, prefix="/api/v1/admin", tags=["admin-diagnostics"])
+    app.include_router(user_management_router, prefix="/api/v1/users", tags=["user-management"])
+    routers_loaded.extend(["admin", "users"])
+    logger.info("✅ Admin routers loaded (diagnostics + user management)")
 except ImportError as e:
-    logger.warning(f"⚠️ Users router not available: {e}")
+    logger.warning(f"⚠️ Admin routers not available: {e}")
 
 # Try to load two_factor router (TASK-M01-011)
 try:

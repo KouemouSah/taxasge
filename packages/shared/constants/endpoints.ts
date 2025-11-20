@@ -270,6 +270,15 @@ export const ADMIN_ENDPOINTS = {
     SEARCH_USERS: '/admin/users/api/search',
     USAGE_STATS: '/admin/analytics/api/usage-stats',
   },
+
+  // Diagnostics et Migrations (Module: app/modules/admin/api/admin_routes.py)
+  DIAGNOSTICS: {
+    SECRETS: '/api/v1/admin/diagnostic/secrets',
+  },
+
+  MIGRATIONS: {
+    GRANDFATHER_USERS: '/api/v1/admin/migrate/grandfather-users',
+  },
 } as const;
 
 // === ENDPOINTS GATEWAY ===
