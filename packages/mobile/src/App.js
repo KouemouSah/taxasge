@@ -96,6 +96,7 @@ const App = () => {
   const [syncPhase, setSyncPhase] = useState(0);
   const [selectedService, setSelectedService] = useState(null);
   const [selectedMinistry, setSelectedMinistry] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [navigationHistory, setNavigationHistory] = useState(['home']);
 
   /**
@@ -281,9 +282,11 @@ const App = () => {
             // data is the ministry object
             navigateTo(screen, data);
           } else if (screen === 'search') {
-            // data contains filter parameters
+            // data contains search query {query: string}
+            if (data && data.query) {
+              setSearchQuery(data.query);
+            }
             navigateTo(screen);
-            // TODO: Pass filter parameters to ServiceListScreen when implemented
           } else {
             navigateTo(screen);
           }
@@ -328,7 +331,11 @@ const App = () => {
     return (
       <ServiceListScreen
         language={currentLanguage}
-        onBack={navigateBack}
+        initialSearchQuery={searchQuery}
+        onBack={() => {
+          setSearchQuery(''); // Clear search query on back
+          navigateBack();
+        }}
         onServicePress={(service) => {
           console.log('[App] Service selected:', service.name_es);
           navigateTo('serviceDetail', service);

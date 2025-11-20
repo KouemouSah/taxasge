@@ -17,8 +17,7 @@ import {
 import { GradientHeader } from '../components/GradientHeader';
 import { BottomTabBar, TabName } from '../components/BottomTabBar';
 import { Icon } from '../components/Icon';
-import { Ministry } from '../database/services/FiscalServicesService';
-import DatabaseService from '../database/DatabaseService';
+import { Ministry, fiscalServicesService } from '../database/services/FiscalServicesService';
 import { Colors, Spacing, Shadows } from '../theme';
 import { getSection } from '../i18n';
 import { dataCacheService } from '../services/DataCacheService';
@@ -65,12 +64,32 @@ export const MinisteriosScreen: React.FC<MinisteriosScreenProps> = ({
     try {
       setIsLoading(true);
 
-      // Use cache service for instant loading
-      const results = await dataCacheService.getMinistries();
+      let results: Array<Ministry & { service_count: number }> = [];
 
-      setMinistries(results as Array<Ministry & { service_count: number }>);
+      try {
+        // Try cache service first for instant loading
+        results = await dataCacheService.getMinistries() as Array<Ministry & { service_count: number }>;
+        console.log(`[MinisteriosScreen] ⚡ Loaded ${results.length} ministries in ${Date.now() - startTime}ms (using cache)`);
+      } catch (cacheErr) {
+        console.warn('[MinisteriosScreen] Cache failed, falling back to database:', cacheErr);
+
+        // Fallback to direct database query using fiscalServicesService
+        const ministriesData = await fiscalServicesService.getMinistries();
+
+        results = ministriesData.map(ministry => ({
+          id: ministry.id,
+          code: ministry.code,
+          name_es: ministry.name,
+          name_fr: ministry.name_fr,
+          name_en: ministry.name_en,
+          service_count: ministry.count,
+        })) as Array<Ministry & { service_count: number }>;
+
+        console.log(`[MinisteriosScreen] ⚡ Loaded ${results.length} ministries in ${Date.now() - startTime}ms (using database)`);
+      }
+
+      setMinistries(results);
       setError(null);
-      console.log(`[MinisteriosScreen] ⚡ Loaded ${results.length} ministries in ${Date.now() - startTime}ms (using cache)`);
     } catch (err) {
       console.error('[MinisteriosScreen] Error loading ministries:', err);
       setError(t.error);
