@@ -122,9 +122,9 @@ class ReceiptService:
 
             # Government details
             "treasury": {
-                "name": "Trésor Public de la République de Guinée",
-                "address": "Conakry, Guinée",
-                "phone": "+224 XXX XXX XXX",
+                "name": "Trésor Public de la République de Guinée Equatoriale",
+                "address": "Malabo, Guinée Equatoriale",
+                "phone": "+240 XXX XXX XXX",
             },
 
             # Generation metadata
