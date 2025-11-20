@@ -384,6 +384,15 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ Declarations router not available: {e}")
 
+# Try to load companies router (Module - Companies System - Phase 3)
+try:
+    from app.modules.companies.api import company_router
+    app.include_router(company_router, prefix="/api/v1/companies", tags=["companies"])
+    routers_loaded.append("companies")
+    logger.info("✅ Companies router loaded (business management)")
+except ImportError as e:
+    logger.warning(f"⚠️ Companies router not available: {e}")
+
 if routers_loaded:
     logger.info(f"✅ {len(routers_loaded)} API routers loaded: {', '.join(routers_loaded)}")
 else:
