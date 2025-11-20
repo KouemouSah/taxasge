@@ -282,12 +282,12 @@ try:
 except ImportError as e:
     logger.error(f"❌ Failed to load auth router: {e}")
 
-# Try to load fiscal_services router
+# Try to load fiscal_services router (Module - Fiscal Services - Phase 3)
 try:
-    from app.api.v1 import fiscal_services
-    app.include_router(fiscal_services.router, prefix="/api/v1/fiscal-services", tags=["fiscal-services"])
+    from app.modules.fiscal_services.api import fiscal_service_router
+    app.include_router(fiscal_service_router, prefix="/api/v1/fiscal-services", tags=["fiscal-services"])
     routers_loaded.append("fiscal_services")
-    logger.info("✅ Fiscal services router loaded")
+    logger.info("✅ Fiscal services router loaded (850 services catalog)")
 except ImportError as e:
     logger.warning(f"⚠️ Fiscal services router not available: {e}")
 
