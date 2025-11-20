@@ -3,6 +3,7 @@ Permission Service - Business logic for permission checking and management
 """
 from typing import List, Optional, Dict, Any
 from fastapi import HTTPException, status
+from loguru import logger
 
 from app.modules.permissions.repositories.permission_repository import PermissionRepository
 from app.modules.permissions.repositories.role_repository import RoleRepository
@@ -12,6 +13,7 @@ from app.modules.permissions.models.permission import (
     PermissionUpdate,
     PermissionResponse,
 )
+from app.repositories.user_repository import UserRepository
 
 
 class PermissionService:
@@ -34,6 +36,7 @@ class PermissionService:
         self.permission_repo = permission_repo
         self.role_repo = role_repo
         self.user_permission_repo = user_permission_repo
+        self.user_repo = UserRepository()
 
     async def has_permission(
         self,
@@ -44,8 +47,9 @@ class PermissionService:
         Check if a user has a specific permission
 
         This checks:
-        1. User-specific permission overrides (highest priority)
-        2. Role-based permissions (if no override)
+        1. **ADMIN AUTO-APPROVAL**: If user is admin, automatically return True
+        2. User-specific permission overrides (highest priority)
+        3. Role-based permissions (if no override)
 
         Args:
             user_id: User UUID
@@ -54,6 +58,16 @@ class PermissionService:
         Returns:
             True if user has permission, False otherwise
         """
+        # CRITICAL: Admins have ALL permissions automatically
+        try:
+            user = await self.user_repo.find_by_id(user_id)
+            if user and user.role == "admin":
+                logger.debug(f"Admin user {user_id} auto-granted permission: {permission_name}")
+                return True
+        except Exception as e:
+            logger.warning(f"Could not check admin status for user {user_id}: {e}")
+
+        # For non-admins, check normal permissions
         return await self.user_permission_repo.has_permission(user_id, permission_name)
 
     async def check_permission(

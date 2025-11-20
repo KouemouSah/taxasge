@@ -121,6 +121,9 @@ async def get_current_admin_user(
     """
     Dependency to require admin role
 
+    **IMPORTANT:** Admins have FULL ACCESS to ALL modules automatically.
+    See .github/docs-internal/ADMIN_PERMISSIONS.md for details.
+
     Args:
         current_user: Current authenticated user
 
@@ -136,3 +139,41 @@ async def get_current_admin_user(
             detail="Admin access required"
         )
     return current_user
+
+
+def require_admin(
+    current_user: UserResponse = Depends(get_current_user),
+) -> UserResponse:
+    """
+    Alias for get_current_admin_user (for backward compatibility)
+
+    Admins have FULL ACCESS to ALL modules automatically.
+
+    Args:
+        current_user: Current authenticated user
+
+    Returns:
+        UserResponse: Current admin user
+
+    Raises:
+        HTTPException 403: If user is not an admin
+    """
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    return current_user
+
+
+def is_admin(user: UserResponse) -> bool:
+    """
+    Helper function to check if a user is admin
+
+    Args:
+        user: User object
+
+    Returns:
+        True if user is admin
+    """
+    return user.role == "admin"
