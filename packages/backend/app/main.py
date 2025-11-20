@@ -393,6 +393,15 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ Companies router not available: {e}")
 
+# Try to load payments router (Module - Payments System - Phase 3 - BANGE Integration)
+try:
+    from app.modules.payments.api import payment_router
+    app.include_router(payment_router, prefix="/api/v1/payments", tags=["payments"])
+    routers_loaded.append("payments")
+    logger.info("✅ Payments router loaded (BANGE mobile payments)")
+except ImportError as e:
+    logger.warning(f"⚠️ Payments router not available: {e}")
+
 if routers_loaded:
     logger.info(f"✅ {len(routers_loaded)} API routers loaded: {', '.join(routers_loaded)}")
 else:
