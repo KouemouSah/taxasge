@@ -1,131 +1,357 @@
-"""Calculation Service - Calculate fiscal service amounts"""
+"""
+Calculation Service - Calculate fiscal service amounts
 
-from typing import Dict, Any, Optional
+Implements all calculation methods from CalculationMethodEnum:
+- fixed_expedition, fixed_renewal, fixed_both
+- percentage_based, unit_based
+- tiered_rates, formula_based, fixed_plus_unit
+"""
+
+from typing import Dict, Any, Optional, List
 from loguru import logger
 import asyncpg
 
-from app.modules.fiscal_services.models import CalculationType
+from app.modules.fiscal_services.models.fiscal_service import (
+    CalculationMethodEnum,
+    CalculationInput,
+    CalculationResult,
+    CalculationBreakdown,
+    RateTier,
+)
 
 
 class CalculationService:
-    """Service for calculating fiscal service amounts"""
+    """Service for calculating fiscal service amounts based on database configuration"""
 
     async def calculate(
         self,
         conn: asyncpg.Connection,
-        service_id: str,
-        input_data: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        calculation_input: CalculationInput,
+    ) -> CalculationResult:
         """
-        Calculate amount for fiscal service
+        Calculate amount for fiscal service based on its configuration
 
         Args:
             conn: Database connection
-            service_id: Fiscal service ID
-            input_data: Input values for calculation
+            calculation_input: Calculation parameters
 
         Returns:
-            Dict with calculation result and breakdown
+            CalculationResult with detailed breakdown
+
+        Raises:
+            ValueError: If service not found or invalid configuration
         """
-        # Get service
+        # Get fiscal service from database
         service = await conn.fetchrow(
-            "SELECT * FROM fiscal_services WHERE id = $1", service_id
+            """
+            SELECT * FROM fiscal_services
+            WHERE id = $1 AND status = 'active'
+            """,
+            calculation_input.fiscal_service_id
         )
+
         if not service:
-            raise ValueError(f"Service {service_id} not found")
+            raise ValueError(
+                f"Fiscal service {calculation_input.fiscal_service_id} not found or inactive"
+            )
 
         service_dict = dict(service)
-        calculation_type = service_dict["calculation_type"]
-        base_amount = service_dict.get("base_amount") or 0
+        calculation_method = service_dict["calculation_method"]
+        is_renewal = calculation_input.is_renewal
 
-        # NOTE: fiscal_service_data → MODULE DECLARATIONS (user declarations)
-        # Calculation uses service configuration (base_amount, calculation_type)
-        # NOT user declaration data
+        logger.info(
+            f"Calculating {calculation_method} for service {service_dict['service_code']} "
+            f"(renewal={is_renewal})"
+        )
 
-        result = {
-            "fiscal_service_id": service_id,
-            "service_name": service_dict["name_fr"],
-            "base_amount": base_amount,
-            "calculation_type": calculation_type,
-            "breakdown": {},
-        }
+        # Route to appropriate calculation method
+        if calculation_method == CalculationMethodEnum.FIXED_EXPEDITION.value:
+            breakdown = await self._calculate_fixed_expedition(service_dict, is_renewal)
 
-        # Calculate based on type
-        if calculation_type == CalculationType.FIXED.value:
-            result["calculated_amount"] = base_amount
-            result["breakdown"]["type"] = "fixed"
-            result["breakdown"]["amount"] = base_amount
+        elif calculation_method == CalculationMethodEnum.FIXED_RENEWAL.value:
+            breakdown = await self._calculate_fixed_renewal(service_dict, is_renewal)
 
-        elif calculation_type == CalculationType.PERCENTAGE.value:
-            # Percentage of a base value
-            base_value = input_data.get("base_value", 0)
-            percentage = base_amount  # base_amount stores the percentage
-            calculated = (base_value * percentage) / 100
+        elif calculation_method == CalculationMethodEnum.FIXED_BOTH.value:
+            breakdown = await self._calculate_fixed_both(service_dict, is_renewal)
 
-            result["calculated_amount"] = calculated
-            result["breakdown"]["type"] = "percentage"
-            result["breakdown"]["base_value"] = base_value
-            result["breakdown"]["percentage"] = percentage
-            result["breakdown"]["formula"] = f"{base_value} × {percentage}% = {calculated}"
+        elif calculation_method == CalculationMethodEnum.PERCENTAGE_BASED.value:
+            breakdown = await self._calculate_percentage_based(
+                service_dict, is_renewal, calculation_input
+            )
 
-        elif calculation_type == CalculationType.PROGRESSIVE.value:
-            # Progressive rates (like income tax)
-            total_amount = input_data.get("total_amount", 0)
-            calculated = await self._calculate_progressive(conn, service_id, total_amount)
+        elif calculation_method == CalculationMethodEnum.UNIT_BASED.value:
+            breakdown = await self._calculate_unit_based(
+                service_dict, is_renewal, calculation_input
+            )
 
-            result["calculated_amount"] = calculated
-            result["breakdown"]["type"] = "progressive"
-            result["breakdown"]["total_amount"] = total_amount
-            result["breakdown"]["calculated"] = calculated
+        elif calculation_method == CalculationMethodEnum.TIERED_RATES.value:
+            breakdown = await self._calculate_tiered_rates(
+                service_dict, is_renewal, calculation_input
+            )
 
-        elif calculation_type == CalculationType.CUSTOM.value:
-            # Custom calculation based on multiple fields
-            calculated = await self._calculate_custom(conn, service_id, input_data)
+        elif calculation_method == CalculationMethodEnum.FORMULA_BASED.value:
+            breakdown = await self._calculate_formula_based(
+                service_dict, is_renewal, calculation_input
+            )
 
-            result["calculated_amount"] = calculated
-            result["breakdown"]["type"] = "custom"
-            result["breakdown"]["input_data"] = input_data
-            result["breakdown"]["calculated"] = calculated
+        elif calculation_method == CalculationMethodEnum.FIXED_PLUS_UNIT.value:
+            breakdown = await self._calculate_fixed_plus_unit(
+                service_dict, is_renewal, calculation_input
+            )
 
         else:
-            result["calculated_amount"] = base_amount
-            result["breakdown"]["type"] = "default"
+            raise ValueError(f"Unknown calculation method: {calculation_method}")
 
-        logger.info(f"Calculated {calculation_type} for service {service_id}: {result['calculated_amount']}")
+        # Build result
+        result = CalculationResult(
+            fiscal_service_id=service_dict["id"],
+            service_code=service_dict["service_code"],
+            service_name=service_dict["name_es"],
+            calculation_method=CalculationMethodEnum(calculation_method),
+            breakdown=breakdown,
+            amount_gnf=breakdown.total,
+            currency="GNF",
+        )
+
+        logger.info(
+            f"Calculated amount for {service_dict['service_code']}: {breakdown.total} GNF"
+        )
+
         return result
 
-    async def _calculate_progressive(
-        self, conn: asyncpg.Connection, service_id: str, total_amount: float
-    ) -> float:
-        """
-        Calculate progressive rates
-        Simple progressive tax example
-        """
-        # Simple progressive brackets (Guinea tax system example)
-        if total_amount <= 1000000:
-            return total_amount * 0.05  # 5%
-        elif total_amount <= 5000000:
-            return 50000 + ((total_amount - 1000000) * 0.10)  # 10% above 1M
+    # ═══════════════════════════════════════════════════════════════════════
+    # Fixed Amount Methods
+    # ═══════════════════════════════════════════════════════════════════════
+
+    async def _calculate_fixed_expedition(
+        self, service: Dict[str, Any], is_renewal: bool
+    ) -> CalculationBreakdown:
+        """Fixed fee for first issuance only"""
+        if is_renewal:
+            amount = 0.0
+            note = "No fee for renewal (fixed_expedition only)"
         else:
-            return 450000 + ((total_amount - 5000000) * 0.15)  # 15% above 5M
+            amount = service.get("tasa_expedicion") or 0.0
+            note = "Fixed expedition fee"
 
-    async def _calculate_custom(
-        self,
-        conn: asyncpg.Connection,
-        service_id: str,
-        input_data: Dict[str, Any],
-    ) -> float:
+        return CalculationBreakdown(
+            method=CalculationMethodEnum.FIXED_EXPEDITION,
+            is_renewal=is_renewal,
+            base_fee=amount,
+            subtotal=amount,
+            total=amount,
+        )
+
+    async def _calculate_fixed_renewal(
+        self, service: Dict[str, Any], is_renewal: bool
+    ) -> CalculationBreakdown:
+        """Fixed fee for renewal only"""
+        if is_renewal:
+            amount = service.get("tasa_renovacion") or 0.0
+            note = "Fixed renewal fee"
+        else:
+            amount = 0.0
+            note = "No fee for first expedition (fixed_renewal only)"
+
+        return CalculationBreakdown(
+            method=CalculationMethodEnum.FIXED_RENEWAL,
+            is_renewal=is_renewal,
+            base_fee=amount,
+            subtotal=amount,
+            total=amount,
+        )
+
+    async def _calculate_fixed_both(
+        self, service: Dict[str, Any], is_renewal: bool
+    ) -> CalculationBreakdown:
+        """Same fixed fee for both expedition and renewal"""
+        # For fixed_both, tasa_expedicion should be set
+        amount = service.get("tasa_expedicion") or 0.0
+
+        return CalculationBreakdown(
+            method=CalculationMethodEnum.FIXED_BOTH,
+            is_renewal=is_renewal,
+            base_fee=amount,
+            subtotal=amount,
+            total=amount,
+        )
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # Variable Amount Methods
+    # ═══════════════════════════════════════════════════════════════════════
+
+    async def _calculate_percentage_based(
+        self, service: Dict[str, Any], is_renewal: bool, input_data: CalculationInput
+    ) -> CalculationBreakdown:
+        """Percentage of a base value"""
+        if input_data.base_value is None:
+            raise ValueError("base_value required for percentage_based calculation")
+
+        percentage = service.get("percentage_rate") or 0.0
+        base_value = input_data.base_value
+
+        amount = (base_value * percentage) / 100
+
+        return CalculationBreakdown(
+            method=CalculationMethodEnum.PERCENTAGE_BASED,
+            is_renewal=is_renewal,
+            variable_amount=amount,
+            formula_used=f"{base_value} × {percentage}% = {amount}",
+            subtotal=amount,
+            total=amount,
+        )
+
+    async def _calculate_unit_based(
+        self, service: Dict[str, Any], is_renewal: bool, input_data: CalculationInput
+    ) -> CalculationBreakdown:
+        """Price per unit × quantity"""
+        if input_data.quantity is None:
+            raise ValueError("quantity required for unit_based calculation")
+
+        unit_price = service.get("unit_price") or 0.0
+        quantity = input_data.quantity
+
+        amount = unit_price * quantity
+
+        return CalculationBreakdown(
+            method=CalculationMethodEnum.UNIT_BASED,
+            is_renewal=is_renewal,
+            variable_amount=amount,
+            formula_used=f"{unit_price} × {quantity} units = {amount}",
+            subtotal=amount,
+            total=amount,
+        )
+
+    async def _calculate_tiered_rates(
+        self, service: Dict[str, Any], is_renewal: bool, input_data: CalculationInput
+    ) -> CalculationBreakdown:
+        """Progressive rate tiers (like income tax)"""
+        if input_data.total_amount is None:
+            raise ValueError("total_amount required for tiered_rates calculation")
+
+        total_amount = input_data.total_amount
+        rate_tiers = service.get("rate_tiers") or []
+
+        if not rate_tiers:
+            raise ValueError("rate_tiers not configured for this service")
+
+        # Apply progressive tiers
+        calculated_amount = 0.0
+        tiers_applied = []
+
+        for tier in rate_tiers:
+            min_val = tier.get("min_value", 0)
+            max_val = tier.get("max_value")  # None = unlimited
+            rate = tier.get("rate", 0)
+
+            # Determine amount in this tier
+            if max_val is None:
+                # Last tier - unlimited
+                if total_amount > min_val:
+                    tier_amount = total_amount - min_val
+                    tier_tax = tier_amount * (rate / 100)
+                    calculated_amount += tier_tax
+                    tiers_applied.append({
+                        "tier": f"{min_val}+",
+                        "amount_in_tier": tier_amount,
+                        "rate": rate,
+                        "tax": tier_tax,
+                    })
+            else:
+                # Regular tier with max
+                if total_amount > min_val:
+                    tier_amount = min(total_amount, max_val) - min_val
+                    tier_tax = tier_amount * (rate / 100)
+                    calculated_amount += tier_tax
+                    tiers_applied.append({
+                        "tier": f"{min_val}-{max_val}",
+                        "amount_in_tier": tier_amount,
+                        "rate": rate,
+                        "tax": tier_tax,
+                    })
+
+        return CalculationBreakdown(
+            method=CalculationMethodEnum.TIERED_RATES,
+            is_renewal=is_renewal,
+            variable_amount=calculated_amount,
+            tiers_applied=tiers_applied,
+            subtotal=calculated_amount,
+            total=calculated_amount,
+        )
+
+    async def _calculate_formula_based(
+        self, service: Dict[str, Any], is_renewal: bool, input_data: CalculationInput
+    ) -> CalculationBreakdown:
         """
-        Calculate custom formula based on service configuration
-        Uses input_data provided by user
+        Custom formula calculation
+
+        Uses calculation_config JSONB field which should contain:
+        {
+            "formula": "base_value * factor + fixed_amount",
+            "variables": {
+                "factor": 0.05,
+                "fixed_amount": 10000
+            }
+        }
         """
-        # Simple custom calculation based on input data
-        # Real implementation depends on service-specific logic
-        total = 0
+        calculation_config = service.get("calculation_config")
+        if not calculation_config:
+            raise ValueError("calculation_config not set for formula_based method")
 
-        # Sum all numeric values in input_data
-        for key, value in input_data.items():
-            if isinstance(value, (int, float)):
-                total += value
+        # Simple formula evaluation (extend as needed)
+        variables = input_data.variables or {}
+        config_vars = calculation_config.get("variables", {})
 
-        return total
+        # Merge user variables with config variables
+        all_vars = {**config_vars, **variables}
+
+        formula = calculation_config.get("formula", "")
+
+        # Basic formula evaluation (can be extended with safe_eval or similar)
+        # For now, support simple operations
+        try:
+            # Create local namespace with variables
+            namespace = {**all_vars}
+            amount = eval(formula, {"__builtins__": {}}, namespace)
+        except Exception as e:
+            logger.error(f"Formula evaluation error: {e}")
+            raise ValueError(f"Invalid formula: {formula}")
+
+        return CalculationBreakdown(
+            method=CalculationMethodEnum.FORMULA_BASED,
+            is_renewal=is_renewal,
+            variable_amount=amount,
+            formula_used=formula,
+            subtotal=amount,
+            total=amount,
+        )
+
+    async def _calculate_fixed_plus_unit(
+        self, service: Dict[str, Any], is_renewal: bool, input_data: CalculationInput
+    ) -> CalculationBreakdown:
+        """Base fixed fee + per-unit charge"""
+        if input_data.quantity is None:
+            raise ValueError("quantity required for fixed_plus_unit calculation")
+
+        # Base fee depends on expedition vs renewal
+        if is_renewal:
+            base_fee = service.get("tasa_renovacion") or 0.0
+        else:
+            base_fee = service.get("tasa_expedicion") or 0.0
+
+        # Per-unit charge
+        unit_price = service.get("unit_price") or 0.0
+        quantity = input_data.quantity
+        variable_amount = unit_price * quantity
+
+        total = base_fee + variable_amount
+
+        return CalculationBreakdown(
+            method=CalculationMethodEnum.FIXED_PLUS_UNIT,
+            is_renewal=is_renewal,
+            base_fee=base_fee,
+            variable_amount=variable_amount,
+            formula_used=f"{base_fee} + ({unit_price} × {quantity}) = {total}",
+            subtotal=total,
+            total=total,
+        )
