@@ -20,8 +20,8 @@ from app.models.document import (
     DocumentProcessingStats, DocumentOCRStatus, DocumentExtractionStatus,
     DocumentValidationStatus, DocumentAccessLevel, DocumentType
 )
-from app.core.documents.extractors import TemplateBasedExtractor, DeclarationDatabaseMapper
-from app.core.documents.extractors.template_loader import template_loader
+from app.modules.documents.extractors import TemplateBasedExtractor, DeclarationDatabaseMapper
+from app.modules.documents.extractors.template_loader import template_loader
 from app.services.ocr_service import ocr_service
 from app.services.firebase_storage_service import firebase_storage_service
 

@@ -12,7 +12,7 @@ import json
 from app.repositories.base import BaseRepository
 from app.services.firebase_storage_service import firebase_storage_service
 from app.services.ocr_service import ocr_service
-from app.core.documents.extractors.template_loader import template_loader
+from app.modules.documents.extractors.template_loader import template_loader
 from app.models.tax import (
     FiscalService, FiscalServiceCreate, FiscalServiceUpdate, FiscalServiceSearchFilter,
     FiscalServiceStats, Ministry, Sector, Category, Subcategory
@@ -558,7 +558,7 @@ class FiscalServiceRepository(BaseRepository[FiscalService]):
 
             # Step 4: Extract structured data using FiscalServiceExtractor
             logger.debug(f"Step 4: Extracting structured data")
-            from app.core.documents.extractors.fiscal_services import FiscalServiceExtractor
+            from app.modules.documents.extractors.fiscal_services import FiscalServiceExtractor
 
             extractor = FiscalServiceExtractor(service_type)
             extraction_result = await extractor.extract(
@@ -582,7 +582,7 @@ class FiscalServiceRepository(BaseRepository[FiscalService]):
 
             # Step 5: Map to database format using FiscalServiceDatabaseMapper
             logger.debug(f"Step 5: Mapping to database format")
-            from app.core.documents.extractors.fiscal_services import FiscalServiceDatabaseMapper
+            from app.modules.documents.extractors.fiscal_services import FiscalServiceDatabaseMapper
 
             mapper = FiscalServiceDatabaseMapper(service_type)
             mapped_data = mapper.map_to_database(

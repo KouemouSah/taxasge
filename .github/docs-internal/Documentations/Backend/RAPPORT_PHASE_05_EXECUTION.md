@@ -848,6 +848,124 @@ curl -X POST .../api/v1/auth/login/2fa-verify \
 
 ---
 
+---
+
+## ✅ MIGRATION EXTRACTORS/MAPPERS/TEMPLATES VERS MODULE DOCUMENTS (BONUS - TERMINÉE)
+
+### Contexte
+
+Les fichiers extractors, mappers, et templates se trouvaient dans `app/core/documents/` mais devaient être dans le module documents pour cohérence architecturale.
+
+### Fichiers Migrés
+
+**1. Extractors (app/core/documents/extractors/ → app/modules/documents/extractors/)**:
+- `base.py` - Classe de base BaseExtractor
+- `template_loader.py` - Chargement templates JSON depuis Firebase
+- `zone_label_extractor.py` - Extraction hybride label/pattern
+- `declarations/__init__.py` - Exports extractors déclarations
+- `declarations/declaration_form_extractor.py` - Extractor unifié 13 formulaires
+- `declarations/iva_extractor.py` - Extractor IVA legacy
+- `fiscal_services/__init__.py` - Exports extractors services fiscaux
+- `fiscal_services/fiscal_service_extractor.py` - Extractor nota de ingreso
+
+**2. Mappers (app/core/documents/mappers/ → app/modules/documents/mappers/)**:
+- `base.py` - Classe de base BaseFormMapper
+- `declaration_mapper.py` - Mapping vers formulaires frontend (IVA, IRPF, etc.)
+
+**3. Templates (app/core/documents/templates/ → app/modules/documents/templates/)**:
+- `__init__.py` - DECLARATIONS_DIR, FISCAL_SERVICES_DIR
+- `declarations/` - Templates JSON 13 formulaires fiscaux
+- `fiscal_services/` - Templates JSON services fiscaux
+
+### Imports Mis à Jour
+
+**Fichiers dans app/modules/documents/**:
+- `extractors/__init__.py`: `app.core.documents.extractors` → `app.modules.documents.extractors`
+- `extractors/template_loader.py`: `app.core.documents.templates` → `app.modules.documents.templates`
+- `extractors/zone_label_extractor.py`: Tous imports mis à jour
+- `extractors/declarations/__init__.py`: Tous imports mis à jour
+- `extractors/declarations/declaration_form_extractor.py`: Tous imports mis à jour
+- `extractors/declarations/iva_extractor.py`: Tous imports mis à jour
+- `extractors/fiscal_services/__init__.py`: Tous imports mis à jour
+- `extractors/fiscal_services/fiscal_service_extractor.py`: Tous imports mis à jour
+- `mappers/__init__.py`: Tous imports mis à jour
+- `mappers/declaration_mapper.py`: Tous imports mis à jour
+
+**Fichiers dans app/modules/documents/repositories/**:
+- `document_repository.py`: `app.core.documents.extractors` → `app.modules.documents.extractors`
+
+**Fichiers dans app/modules/documents/api/**:
+- `document_routes.py`: `app.core.documents.extractors` → `app.modules.documents.extractors`
+
+**Fichiers legacy dans app/repositories/** (pour compatibilité):
+- `document_repository.py`: Imports mis à jour
+- `declaration_repository.py`: Imports mis à jour
+- `fiscal_service_repository.py`: Imports mis à jour (3 occurrences)
+- `tax_declaration_repository.py`: Imports mis à jour (3 occurrences)
+
+**Fichiers legacy dans app/api/v1/**:
+- `documents.py`: Imports mis à jour
+
+### Structure Complète Module Documents
+
+```
+app/modules/documents/
+├── __init__.py
+├── api/
+│   ├── __init__.py
+│   └── document_routes.py (974 lignes - 14 endpoints)
+├── models/
+│   ├── __init__.py
+│   └── document.py (342 lignes)
+├── repositories/
+│   ├── __init__.py
+│   └── document_repository.py (766 lignes)
+├── services/
+│   └── __init__.py
+├── extractors/                    # ⭐ NOUVEAU
+│   ├── __init__.py
+│   ├── base.py
+│   ├── template_loader.py
+│   ├── zone_label_extractor.py
+│   ├── declarations/
+│   │   ├── __init__.py
+│   │   ├── declaration_form_extractor.py
+│   │   └── iva_extractor.py
+│   └── fiscal_services/
+│       ├── __init__.py
+│       └── fiscal_service_extractor.py
+├── mappers/                       # ⭐ NOUVEAU
+│   ├── __init__.py
+│   ├── base.py
+│   └── declaration_mapper.py
+└── templates/                     # ⭐ NOUVEAU
+    ├── __init__.py
+    ├── declarations/
+    │   └── *.json (13 templates)
+    └── fiscal_services/
+        └── *.json (templates)
+```
+
+### Vérification
+
+- ✅ Tous les imports `app.core.documents` en dehors de `app/core/documents/` sont mis à jour
+- ✅ Les 20 imports restants sont dans `app/core/documents/` (legacy directory)
+- ✅ Module documents est maintenant complet et autonome
+- ✅ Endpoints.ts déjà mis à jour lors de la création de documentsApi.ts
+
+### Bénéfices
+
+- ✅ Architecture cohérente: toute la logique documents dans un seul module
+- ✅ Template-based extraction intégrée au module
+- ✅ Facilite future migration complète (suppression app/core/documents/)
+- ✅ Séparation claire: core (infrastructure) vs modules (business logic)
+
+### Commit
+
+`git commit -m "refactor(documents): Migrate extractors/mappers/templates to documents module"`
+
+---
+
 ## 🎯 PROCHAINES ÉTAPES
 
 ### Immédiat (Critique)

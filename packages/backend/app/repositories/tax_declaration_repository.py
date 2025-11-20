@@ -12,7 +12,7 @@ from loguru import logger
 from app.database.connection import get_database
 from app.services.firebase_storage_service import firebase_storage_service
 from app.services.ocr_service import ocr_service
-from app.core.documents.extractors.template_loader import template_loader
+from app.modules.documents.extractors.template_loader import template_loader
 
 
 class TaxDeclarationRepository:
@@ -75,7 +75,7 @@ class TaxDeclarationRepository:
                 raise Exception(f"Template not found: {declaration_type}")
 
             # Step 4: Extract using TemplateBasedExtractor
-            from app.core.documents.extractors.declarations import TemplateBasedExtractor
+            from app.modules.documents.extractors.declarations import TemplateBasedExtractor
 
             extractor = TemplateBasedExtractor(template)
             extraction_result = await extractor.extract(
@@ -90,7 +90,7 @@ class TaxDeclarationRepository:
                 raise Exception(f"Extraction failed: {extraction_result.errors}")
 
             # Step 5: Map to database using DeclarationDatabaseMapper
-            from app.core.documents.extractors.declarations import DeclarationDatabaseMapper
+            from app.modules.documents.extractors.declarations import DeclarationDatabaseMapper
 
             mapper = DeclarationDatabaseMapper(declaration_type)
             mapped_data = mapper.map_to_database(

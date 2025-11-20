@@ -33,9 +33,9 @@ from app.services.firebase_storage_service import (
 )
 from app.services.ocr_service import ocr_service
 from app.services.extraction_service import extraction_service
-from app.core.documents.extractors import TemplateBasedExtractor
-from app.core.documents.extractors.fiscal_services import FiscalServiceExtractor
-from app.core.documents.extractors.template_loader import template_loader
+from app.modules.documents.extractors import TemplateBasedExtractor
+from app.modules.documents.extractors.fiscal_services import FiscalServiceExtractor
+from app.modules.documents.extractors.template_loader import template_loader
 from app.api.v1.auth import require_admin, require_operator, get_current_user, get_current_user_optional
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
