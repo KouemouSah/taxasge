@@ -375,6 +375,15 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ Documents router not available: {e}")
 
+# Try to load declarations router (Module - Declarations System - Phase 3)
+try:
+    from app.modules.declarations.api import declaration_router
+    app.include_router(declaration_router, prefix="/api/v1/declarations", tags=["declarations"])
+    routers_loaded.append("declarations")
+    logger.info("✅ Declarations router loaded (28 types, MVP Phase 3.1)")
+except ImportError as e:
+    logger.warning(f"⚠️ Declarations router not available: {e}")
+
 if routers_loaded:
     logger.info(f"✅ {len(routers_loaded)} API routers loaded: {', '.join(routers_loaded)}")
 else:
