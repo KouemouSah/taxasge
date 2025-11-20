@@ -5,7 +5,10 @@ Business logic for document processing (OCR, extraction, validation)
 Services:
 - OCRService: Tesseract and Google Document AI OCR processing
   - Tesseract: Free OCR for simple documents
-  - Google Document AI: Premium AI with specialized processors (form_parser, invoice_parser, expense_parser)
+  - Google Document AI: Premium AI with FORM_PARSER processor ONLY
+    * Universal form field extraction (key-value pairs)
+    * Works for ALL document types: IVA, IRPF, invoices, receipts, tax forms
+    * Automatic field detection (no document-specific logic needed)
 
 - DocumentService: Document processing orchestration (upload → OCR → extraction → validation)
   - Coordinates StorageService + OCRService

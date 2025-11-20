@@ -7,7 +7,8 @@ Table: ocr_extraction_results
 OCR Engines:
 - Tesseract: Free, open-source OCR (good for simple documents)
 - Google Document AI: Premium AI-powered document processing (structured extraction)
-  - Processors: form_parser, invoice_parser, expense_parser, general_processor
+  - Processor: form_parser ONLY (universal form field extraction)
+  - Extracts key-value pairs from all document types
   - Better accuracy for tax forms, invoices, receipts
   - Structured data extraction with field detection
 """
@@ -39,7 +40,6 @@ class OCRService:
         file_path: str,
         document_type: str,
         use_document_ai: bool = False,
-        processor_type: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Process document with OCR
@@ -48,35 +48,30 @@ class OCRService:
             file_id: uploaded_files.id
             file_path: Path to file (local or Firebase Storage URL)
             document_type: Type of document (iva, irpf, nota_ingreso, invoice, receipt, etc.)
-            use_document_ai: Use Google Document AI (fallback to Tesseract if false)
-            processor_type: Document AI processor type (form_parser, invoice_parser, expense_parser, general_processor)
+            use_document_ai: Use Google Document AI form_parser (fallback to Tesseract if false)
 
         Returns:
             {
                 "extraction_id": str,
                 "file_id": str,
                 "raw_text": str,
-                "structured_data": dict,
+                "structured_data": dict,  # Key-value pairs extracted by form_parser
                 "confidence": float,
                 "ocr_engine": str,
-                "processor_type": str (if Document AI)
+                "processor_type": "form_parser" (if Document AI)
             }
         """
         extraction_id = str(uuid.uuid4())
 
-        # Auto-select processor type based on document_type
-        if use_document_ai and not processor_type:
-            processor_type = self._get_processor_for_document_type(document_type)
-
         try:
             if use_document_ai and self.document_ai_enabled:
-                result = await self._process_with_document_ai(file_path, processor_type)
+                result = await self._process_with_document_ai(file_path)
                 ocr_engine = "document_ai"
             else:
                 result = await self._process_with_tesseract(file_path)
                 ocr_engine = "tesseract"
 
-            logger.info(f"OCR processed file {file_id} with {ocr_engine} (processor: {processor_type})")
+            logger.info(f"OCR processed file {file_id} with {ocr_engine}")
 
             response = {
                 "extraction_id": extraction_id,
@@ -88,8 +83,8 @@ class OCRService:
                 "processing_time_ms": result.get("processing_time_ms", 0),
             }
 
-            if processor_type:
-                response["processor_type"] = processor_type
+            if use_document_ai:
+                response["processor_type"] = "form_parser"
 
             return response
 
@@ -104,28 +99,6 @@ class OCRService:
                 "ocr_engine": "none",
                 "error": str(e),
             }
-
-    def _get_processor_for_document_type(self, document_type: str) -> str:
-        """
-        Select appropriate Document AI processor based on document type
-
-        Args:
-            document_type: Document type (iva, irpf, nota_ingreso, invoice, receipt)
-
-        Returns:
-            Processor type (form_parser, invoice_parser, expense_parser, general_processor)
-        """
-        processor_mapping = {
-            "iva": "form_parser",  # IVA declaration form
-            "irpf": "form_parser",  # IRPF tax form
-            "nota_ingreso": "invoice_parser",  # Payment receipt/invoice
-            "invoice": "invoice_parser",
-            "receipt": "expense_parser",
-            "factura": "invoice_parser",
-            "recibo": "expense_parser",
-        }
-
-        return processor_mapping.get(document_type, "general_processor")
 
     async def _process_with_tesseract(self, file_path: str) -> Dict[str, Any]:
         """
@@ -161,25 +134,23 @@ class OCRService:
     async def _process_with_document_ai(
         self,
         file_path: str,
-        processor_type: str = "general_processor",
     ) -> Dict[str, Any]:
         """
-        Process document with Google Document AI
+        Process document with Google Document AI form_parser
 
-        Document AI processors:
-        - form_parser: Extract form fields (IVA, IRPF tax forms)
-        - invoice_parser: Extract invoice data (amount, date, vendor, line items)
-        - expense_parser: Extract receipt data (total, date, merchant)
-        - general_processor: General OCR with layout understanding
+        form_parser processor:
+        - Universal form field extraction (key-value pairs)
+        - Works for all document types: IVA, IRPF, invoices, receipts, tax forms
+        - Extracts field names and values automatically
+        - No need for document-specific logic
 
         Args:
             file_path: Path to file (local or Firebase Storage URL)
-            processor_type: Processor to use
 
         Returns:
             {
                 "raw_text": str,
-                "structured_data": dict,
+                "structured_data": dict,  # Key-value pairs from form fields
                 "confidence": float,
                 "processing_time_ms": int
             }
@@ -187,15 +158,16 @@ class OCRService:
         import time
         start_time = time.time()
 
-        # TODO: Implement Google Document AI integration
+        # TODO: Implement Google Document AI form_parser integration
         # from google.cloud import documentai_v1 as documentai
         #
         # # Create processor client
         # client = documentai.DocumentProcessorServiceClient()
         #
-        # # Get processor path
+        # # Get form_parser processor path
         # # Format: projects/{project}/locations/{location}/processors/{processor_id}
-        # processor_name = f"projects/{self.project_id}/locations/{self.location}/processors/{processor_id}"
+        # # IMPORTANT: Use ONLY form_parser processor
+        # processor_name = f"projects/{self.project_id}/locations/{self.location}/processors/{form_parser_processor_id}"
         #
         # # Read document
         # with open(file_path, 'rb') as document_file:
@@ -212,73 +184,75 @@ class OCRService:
         #     raw_document=raw_document
         # )
         #
-        # # Process document
+        # # Process document with form_parser
         # result = client.process_document(request=request)
         # document = result.document
         #
-        # # Extract text
+        # # Extract raw text
         # raw_text = document.text
         #
-        # # Extract structured data based on processor type
+        # # Extract form fields (key-value pairs)
         # structured_data = {}
+        # for page in document.pages:
+        #     for field in page.form_fields:
+        #         # Get field name
+        #         field_name = ""
+        #         if field.field_name.text_anchor:
+        #             field_name = self._get_text_from_anchor(field.field_name.text_anchor, raw_text)
         #
-        # if processor_type == "invoice_parser":
-        #     structured_data = {
-        #         "invoice_number": self._extract_entity(document, "invoice_id"),
-        #         "invoice_date": self._extract_entity(document, "invoice_date"),
-        #         "total_amount": self._extract_entity(document, "total_amount"),
-        #         "supplier_name": self._extract_entity(document, "supplier_name"),
-        #         "line_items": self._extract_line_items(document),
-        #     }
-        # elif processor_type == "form_parser":
-        #     # Extract form fields (key-value pairs)
-        #     structured_data = {
-        #         field.field_name.text_anchor.content: field.field_value.text_anchor.content
-        #         for page in document.pages
-        #         for field in page.form_fields
-        #     }
-        # elif processor_type == "expense_parser":
-        #     structured_data = {
-        #         "total": self._extract_entity(document, "total_amount"),
-        #         "date": self._extract_entity(document, "receipt_date"),
-        #         "merchant": self._extract_entity(document, "supplier_name"),
-        #     }
+        #         # Get field value
+        #         field_value = ""
+        #         if field.field_value.text_anchor:
+        #             field_value = self._get_text_from_anchor(field.field_value.text_anchor, raw_text)
         #
-        # # Calculate confidence
-        # confidence = document.entities[0].confidence if document.entities else 0.0
+        #         if field_name:
+        #             structured_data[field_name.strip()] = field_value.strip()
+        #
+        # # Calculate average confidence
+        # confidences = [field.field_name.confidence for page in document.pages for field in page.form_fields]
+        # confidence = sum(confidences) / len(confidences) if confidences else 0.0
 
-        # Mock result for now
-        raw_text = f"Mock OCR text from Google Document AI ({processor_type})"
-        structured_data = {}
-
-        if processor_type == "invoice_parser":
-            structured_data = {
-                "invoice_number": "MOCK-INV-123",
-                "invoice_date": "2025-01-20",
-                "total_amount": "150000 XAF",
-                "supplier_name": "Mock Supplier",
-            }
-        elif processor_type == "form_parser":
-            structured_data = {
-                "NIF": "MOCK-NIF-123456",
-                "Montant": "150000",
-                "Date": "2025-01-20",
-            }
-        elif processor_type == "expense_parser":
-            structured_data = {
-                "total": "150000 XAF",
-                "date": "2025-01-20",
-                "merchant": "Mock Merchant",
-            }
+        # Mock result for now - form_parser returns key-value pairs
+        raw_text = "Mock OCR text from Google Document AI (form_parser)"
+        structured_data = {
+            "NIF": "MOCK-NIF-123456",
+            "Nom": "Test Company",
+            "Montant": "150000",
+            "Date": "2025-01-20",
+            "Type de déclaration": "IVA",
+            "Période": "Janvier 2025",
+        }
 
         processing_time_ms = int((time.time() - start_time) * 1000)
 
         return {
             "raw_text": raw_text,
             "structured_data": structured_data,
-            "confidence": 0.95,  # Document AI typically has higher confidence
+            "confidence": 0.95,  # Document AI form_parser has high confidence
             "processing_time_ms": processing_time_ms,
         }
+
+    def _get_text_from_anchor(self, text_anchor, full_text: str) -> str:
+        """
+        Helper to extract text from Document AI text anchor
+
+        Args:
+            text_anchor: Document AI text anchor
+            full_text: Full document text
+
+        Returns:
+            Extracted text segment
+        """
+        # TODO: Implement text extraction from anchor
+        # if not text_anchor.text_segments:
+        #     return ""
+        # segments = []
+        # for segment in text_anchor.text_segments:
+        #     start_index = segment.start_index if segment.start_index else 0
+        #     end_index = segment.end_index if segment.end_index else len(full_text)
+        #     segments.append(full_text[start_index:end_index])
+        # return "".join(segments)
+        return ""
 
     async def extract_with_template(
         self,
