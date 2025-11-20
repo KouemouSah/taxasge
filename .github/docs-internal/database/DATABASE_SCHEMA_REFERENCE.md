@@ -3,7 +3,7 @@
 TAXASGE DATABASE SCHEMA - COMPLETE REFERENCE
 ====================================================================================================
 
-Extracted on: 2025-11-20 11:04:48
+Extracted on: 2025-11-20 17:37:08
 Database: Supabase PostgreSQL
 Project: taxasge-dev
 
@@ -132,6 +132,12 @@ calculation_method_enum:
   - tiered_rates
   - formula_based
   - fixed_plus_unit
+
+company_role_enum:
+  - company_owner
+  - company_admin
+  - company_accountant
+  - company_member
 
 declaration_status_enum:
   - draft
@@ -2830,7 +2836,8 @@ Column                              Type                      Nullable   Default
 ----------------------------------------------------------------------------------------------------
 user_id                             uuid                      NO                                       
 company_id                          uuid                      NO                                       
-role                                varchar(50)               NO                                       
+role                                company_role_enum         NO                                       
+  └─ Description: Company role (company_owner, company_admin, company_accountant, company_member). DISTINCT from users.role (system roles).
 is_active                           boolean                   YES        true                          
 assigned_at                         timestamp with time zone  YES        now()                         
 
@@ -2839,6 +2846,12 @@ Primary Key: user_id, company_id
 Foreign Keys:
   - company_id → companies.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
   - user_id → users.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+Indexes:
+  - idx_user_company_roles_role
+    CREATE INDEX idx_user_company_roles_role ON public.user_company_roles USING btree (role)
+  - idx_user_company_roles_company_role
+    CREATE INDEX idx_user_company_roles_company_role ON public.user_company_roles USING btree (company_id, role)
 
 ----------------------------------------------------------------------------------------------------
 Table: USER_FAVORITES
