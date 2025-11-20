@@ -15,14 +15,43 @@ export const API_CONFIG = {
 // === ENDPOINTS PUBLICS ===
 
 export const PUBLIC_ENDPOINTS = {
-  // Authentification
+  // Authentification (Module: app/modules/auth)
   AUTH: {
-    LOGIN: '/api/v1/public/auth/login',
-    REGISTER: '/api/v1/public/auth/register',
-    REFRESH: '/api/v1/public/auth/refresh',
-    FORGOT_PASSWORD: '/api/v1/public/auth/forgot-password',
-    RESET_PASSWORD: '/api/v1/public/auth/reset-password',
-    VERIFY_EMAIL: '/api/v1/public/auth/verify-email',
+    // Login & Registration
+    LOGIN: '/api/v1/auth/login',
+    REGISTER: '/api/v1/auth/register',
+    REQUEST_VERIFICATION_CODE: '/api/v1/auth/request-verification-code',
+
+    // Token Management
+    REFRESH: '/api/v1/auth/refresh',
+    LOGOUT: '/api/v1/auth/logout',
+
+    // Password Management
+    FORGOT_PASSWORD: '/api/v1/auth/forgot-password',
+    RESET_PASSWORD: '/api/v1/auth/reset-password',
+    VERIFY_RESET_TOKEN: '/api/v1/auth/verify-reset-token',
+
+    // Email Verification
+    VERIFY_EMAIL: '/api/v1/auth/verify-email',
+    RESEND_VERIFICATION: '/api/v1/auth/resend-verification',
+
+    // Two-Factor Authentication (2FA)
+    TWO_FACTOR: {
+      SETUP: '/api/v1/auth/2fa/setup',
+      ENABLE: '/api/v1/auth/2fa/enable',
+      VERIFY: '/api/v1/auth/2fa/verify',
+      DISABLE: '/api/v1/auth/2fa/disable',
+      LOGIN_VERIFY: '/api/v1/auth/login/2fa-verify',
+      STATUS: '/api/v1/auth/2fa/status',
+    },
+
+    // Session Management
+    SESSIONS: {
+      LIST: '/api/v1/auth/sessions',
+      CURRENT: '/api/v1/auth/sessions/current',
+      REVOKE: (sessionId: string) => `/api/v1/auth/sessions/${sessionId}`,
+      REVOKE_ALL: '/api/v1/auth/sessions/revoke-all',
+    },
   },
 
   // Services fiscaux (lecture seule)
@@ -68,13 +97,24 @@ export const PUBLIC_ENDPOINTS = {
 // === ENDPOINTS AUTHENTIFIÉS ===
 
 export const AUTHENTICATED_ENDPOINTS = {
-  // Profil utilisateur
+  // Profil utilisateur (Module: app/api/v1/users)
   PROFILE: {
-    GET: '/api/v1/profile',
-    UPDATE: '/api/v1/profile',
-    AVATAR: '/api/v1/profile/avatar',
-    DELETE: '/api/v1/profile',
-    CHANGE_PASSWORD: '/api/v1/profile/change-password',
+    GET: '/api/v1/users/profile',
+    UPDATE: '/api/v1/users/profile',
+    AVATAR: '/api/v1/users/profile/avatar',
+    DELETE: '/api/v1/users/profile',
+    CHANGE_PASSWORD: '/api/v1/users/profile/change-password',
+  },
+
+  // Gestion utilisateurs
+  USERS: {
+    LIST: '/api/v1/users',
+    CREATE: '/api/v1/users',
+    DETAIL: (id: string) => `/api/v1/users/${id}`,
+    UPDATE: (id: string) => `/api/v1/users/${id}`,
+    DELETE: (id: string) => `/api/v1/users/${id}`,
+    SEARCH: '/api/v1/users/search',
+    BY_ROLE: (role: string) => `/api/v1/users/role/${role}`,
   },
 
   // Historique utilisateur
@@ -112,6 +152,61 @@ export const AUTHENTICATED_ENDPOINTS = {
     CONFIRM: (id: string) => `/api/v1/payments/${id}/confirm`,
     CANCEL: (id: string) => `/api/v1/payments/${id}/cancel`,
     RECEIPT: (id: string) => `/api/v1/payments/${id}/receipt`,
+  },
+
+  // Permissions (Module: app/modules/permissions)
+  PERMISSIONS: {
+    LIST: '/api/v1/permissions',
+    CREATE: '/api/v1/permissions',
+    DETAIL: (id: string) => `/api/v1/permissions/${id}`,
+    UPDATE: (id: string) => `/api/v1/permissions/${id}`,
+    DELETE: (id: string) => `/api/v1/permissions/${id}`,
+    SYNC: '/api/v1/permissions/sync',
+  },
+
+  // Rôles (Module: app/modules/permissions)
+  ROLES: {
+    LIST: '/api/v1/roles',
+    CREATE: '/api/v1/roles',
+    DETAIL: (id: string) => `/api/v1/roles/${id}`,
+    UPDATE: (id: string) => `/api/v1/roles/${id}`,
+    DELETE: (id: string) => `/api/v1/roles/${id}`,
+    PERMISSIONS: (roleId: string) => `/api/v1/roles/${roleId}/permissions`,
+    ASSIGN_PERMISSION: (roleId: string) => `/api/v1/roles/${roleId}/permissions`,
+    REMOVE_PERMISSION: (roleId: string, permissionId: string) =>
+      `/api/v1/roles/${roleId}/permissions/${permissionId}`,
+  },
+
+  // User Permissions (Module: app/modules/permissions)
+  USER_PERMISSIONS: {
+    GET: (userId: string) => `/api/v1/user-permissions/${userId}`,
+    ASSIGN: (userId: string) => `/api/v1/user-permissions/${userId}`,
+    REVOKE: (userId: string, permissionId: string) =>
+      `/api/v1/user-permissions/${userId}/${permissionId}`,
+    CHECK: (userId: string, permissionId: string) =>
+      `/api/v1/user-permissions/${userId}/check/${permissionId}`,
+  },
+
+  // Assignments (Module: app/modules/assignment)
+  ASSIGNMENTS: {
+    LIST: '/api/v1/assignments',
+    CREATE: '/api/v1/assignments',
+    DETAIL: (id: string) => `/api/v1/assignments/${id}`,
+    UPDATE: (id: string) => `/api/v1/assignments/${id}`,
+    DELETE: (id: string) => `/api/v1/assignments/${id}`,
+    BY_USER: (userId: string) => `/api/v1/assignments/user/${userId}`,
+    BY_ASSIGNEE: (assigneeId: string) => `/api/v1/assignments/assignee/${assigneeId}`,
+    STATISTICS: '/api/v1/assignments/statistics',
+  },
+
+  // Supervisors (Module: app/modules/assignment)
+  SUPERVISORS: {
+    LIST: '/api/v1/supervisors',
+    CREATE: '/api/v1/supervisors',
+    DETAIL: (id: string) => `/api/v1/supervisors/${id}`,
+    UPDATE: (id: string) => `/api/v1/supervisors/${id}`,
+    DELETE: (id: string) => `/api/v1/supervisors/${id}`,
+    HIERARCHY: '/api/v1/supervisors/hierarchy',
   },
 } as const;
 
