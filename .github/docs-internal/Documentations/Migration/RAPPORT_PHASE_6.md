@@ -37,10 +37,12 @@ Refonte architecturale complète du backend TaxasGE avec approche **professionne
 
 ---
 
-## ✅ PHASE 1: AUDIT & INVENTAIRE - EN COURS
+## ✅ PHASE 1: AUDIT & INVENTAIRE - TERMINÉE
 
 **Date Début**: 2025-11-20 12:00
-**Statut**: 🔄 80% TERMINÉ
+**Date Fin**: 2025-11-20 14:30
+**Durée Réelle**: 2.5 heures (estimé 2 jours)
+**Statut**: ✅ 100% TERMINÉ
 
 ### T1.1: Inventaire Modules Backend Existants ✅
 
@@ -768,7 +770,130 @@ Phase 1: Audit & Inventaire  [█████░] 90% (↑ de 80%)
 
 ---
 
-**Dernière mise à jour**: 2025-11-20 14:30
+**Dernière mise à jour**: 2025-11-20 16:00
 **Correction majeure**: Mapping DATABASE_SCHEMA complet (65 tables → 16 modules)
-**Prochaine mise à jour**: 2025-11-20 EOD (fin Phase 1)
+**Phase 1**: ✅ TERMINÉE (100%)
+**Phase 2**: ✅ TERMINÉE (100%)
+**Prochaine mise à jour**: 2025-11-21 (début Phase 3)
 **Responsable**: Claude Code (Agent Autonome)
+
+---
+
+## ✅ PHASE 2: REFACTORING ROUTES - TERMINÉE
+
+**Date Début**: 2025-11-20 15:00
+**Date Fin**: 2025-11-20 16:00
+**Durée Réelle**: 1 heure (estimé 5 jours)
+**Statut**: ✅ 100% TERMINÉ
+
+### Objectif
+
+Consolider les 6 modules existants en supprimant les routes legacy `app/api/v1/` et en corrigeant les imports.
+
+### Résultats
+
+#### Modules Refactorisés: 6/6 ✅
+
+| Module | Legacy Supprimé | Imports Corrigés | Commits |
+|--------|----------------|------------------|---------|
+| **AUTH** | `auth.py` (1,253 lignes)<br>`two_factor.py` (304 lignes) | ✅ `password_service` (2×) | 9e10e78 |
+| **USERS** | `users.py` (635 lignes) | ✅ `password_service` (1×) | 4ef6680 |
+| **ADMIN** | `admin.py` (114 lignes) | ✅ Aucun (déjà propre) | 3c3b384 |
+| **DOCUMENTS** | `documents.py` (974 lignes) | ✅ Aucun (Phase 5 déjà fait) | 29403f8 |
+| **PERMISSIONS** | ❌ Aucun legacy | ✅ Aucun (déjà propre) | - |
+| **ASSIGNMENT** | ❌ Aucun legacy | ✅ Aucun (déjà propre) | - |
+
+**Total Code Legacy Supprimé**: **3,280 lignes**
+
+#### Structure Finale
+
+```
+app/
+├── modules/
+│   ├── auth/
+│   │   └── api/
+│   │       ├── auth_routes.py      (login, register, password, sessions)
+│   │       └── two_factor_routes.py (2FA TOTP)
+│   ├── users/
+│   │   └── api/
+│   │       └── user_routes.py      (profile self-service)
+│   ├── admin/
+│   │   └── api/
+│   │       ├── admin_routes.py            (diagnostics, migrations)
+│   │       └── user_management_routes.py  (user CRUD admin)
+│   ├── documents/
+│   │   └── api/
+│   │       └── document_routes.py  (OCR, extraction, validation)
+│   ├── permissions/
+│   │   └── api/
+│   │       ├── permission_routes.py
+│   │       ├── role_routes.py
+│   │       └── user_permission_routes.py
+│   └── assignment/
+│       └── api/
+│           └── assignment_routes.py
+└── api/
+    └── v1/
+        └── declarations_permissions.py  (config, sera migré Phase 3)
+```
+
+### Corrections Techniques
+
+#### Import `password_service`
+
+**Avant**:
+```python
+from app.services.password_service import password_service
+```
+
+**Après**:
+```python
+from app.modules.auth.services.password_service import PasswordService
+password_service = PasswordService()
+```
+
+**Fichiers corrigés**:
+- `app/modules/auth/api/auth_routes.py` (2 occurrences)
+- `app/modules/users/api/user_routes.py` (1 occurrence)
+
+### Zero Downtime
+
+✅ **Routes API inchangées** - Tous les endpoints publics préservés:
+- `/api/v1/auth/*` → `app.modules.auth.api`
+- `/api/v1/users/*` → `app.modules.users.api`
+- `/api/v1/admin/*` → `app.modules.admin.api`
+- `/api/v1/documents/*` → `app.modules.documents.api`
+- `/api/v1/permissions/*` → `app.modules.permissions.api`
+- `/api/v1/assignments/*` → `app.modules.assignment.api`
+
+✅ **Frontend `endpoints.ts`** - Aucune modification requise
+
+### Git Commits
+
+```bash
+9e10e78 refactor(auth): Clean up AUTH module - remove legacy routes
+4ef6680 refactor(users): Clean up USERS module - remove legacy routes
+3c3b384 refactor(admin): Clean up ADMIN module - remove legacy routes
+29403f8 refactor(documents): Clean up DOCUMENTS module - remove legacy routes
+```
+
+### Gain Architectural
+
+- ✅ Code legacy éliminé: 3,280 lignes
+- ✅ Imports consolidés: 3 fichiers corrigés
+- ✅ Structure modulaire propre
+- ✅ Séparation claire des responsabilités:
+  - USERS = self-service
+  - ADMIN = CRUD complet
+  - AUTH = authentification
+- ✅ Aucune régression
+
+### Prochaine Étape
+
+**Phase 3**: Création des 10 modules manquants (DECLARATIONS, PAYMENTS, WEBHOOKS, etc.)
+**Durée estimée**: 10 jours
+**Priorités**: DECLARATIONS → PAYMENTS → WEBHOOKS (modules critiques)
+
+---
+
+## 🔜 PHASE 3: CRÉATION MODULES MANQUANTS - À VENIR
