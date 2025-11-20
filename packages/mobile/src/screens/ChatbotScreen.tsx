@@ -22,7 +22,6 @@ import {
   Text,
   TouchableOpacity,
   Alert,
-  ImageBackground,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import LinearGradient from 'react-native-linear-gradient';
@@ -32,7 +31,6 @@ import {
   ChatMessage,
   ChatbotLanguage,
   ChatbotAction,
-  DEFAULT_CHATBOT_CONFIG,
 } from '../types/chatbot.types';
 import {
   MessageBubble,
@@ -41,7 +39,7 @@ import {
   TypingIndicator,
 } from '../components/chat';
 import { GradientHeader } from '../components/GradientHeader';
-import { Colors, Spacing } from '../theme';
+import { Spacing } from '../theme';
 
 // ============================================
 // CONSTANTS
@@ -85,6 +83,7 @@ export const ChatbotScreen: React.FC<ChatbotScreenProps> = ({ language, onBack, 
 
   useEffect(() => {
     loadSavedSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -94,6 +93,7 @@ export const ChatbotScreen: React.FC<ChatbotScreenProps> = ({ language, onBack, 
       // Regenerate welcome message and suggestions in new language
       showWelcomeMessage();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [language]);
 
   useEffect(() => {
