@@ -9,7 +9,7 @@ from loguru import logger
 from typing import Dict, Any
 import asyncpg
 
-from app.api.v1.auth import get_current_user
+from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.database.connection import get_database as get_db
 from app.core.secrets import validate_secrets_available
 from app.config import get_settings

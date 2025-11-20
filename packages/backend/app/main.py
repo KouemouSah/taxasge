@@ -272,8 +272,8 @@ routers_loaded = []
 
 # Try to load auth router (Module 1 - Critical)
 try:
-    from app.api.v1 import auth
-    app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
+    from app.modules.auth.api import auth_router
+    app.include_router(auth_router, prefix="/api/v1/auth", tags=["authentication"])
     routers_loaded.append("auth")
     logger.info("✅ Auth router loaded")
 except ImportError as e:
@@ -299,8 +299,8 @@ except ImportError as e:
 
 # Try to load two_factor router (TASK-M01-011)
 try:
-    from app.api.v1 import two_factor
-    app.include_router(two_factor.router, prefix="/api/v1/auth", tags=["two-factor-authentication"])
+    from app.modules.auth.api import two_factor_router
+    app.include_router(two_factor_router, prefix="/api/v1/auth", tags=["two-factor-authentication"])
     routers_loaded.append("two_factor")
     logger.info("✅ Two-Factor Authentication router loaded")
 except ImportError as e:

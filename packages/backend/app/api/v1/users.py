@@ -24,7 +24,7 @@ router = APIRouter()
 
 # NOTE: Authentication moved to app.core.auth (JWT-based, no mocks)
 # Re-export for backward compatibility with tests
-from app.core.auth import (
+from app.modules.auth.middleware.auth_middleware import (
     get_current_user,
     get_current_admin_user as require_admin
 )
@@ -160,7 +160,7 @@ async def change_password(
     **Source:** UC-USER-010 (.github/docs-internal/Documentations/Backend/use_cases/02_USERS.md)
     """
     try:
-        from app.services.password_service import PasswordService
+        from app.modules.auth.services.password_service import PasswordService
         password_service = PasswordService()
 
         # 1. Get current password hash from DB
@@ -297,7 +297,7 @@ async def create_user(
 ):
     """Create new user (admin only)"""
     try:
-        from app.services.password_service import PasswordService
+        from app.modules.auth.services.password_service import PasswordService
         password_service = PasswordService()
 
         # Check if user already exists

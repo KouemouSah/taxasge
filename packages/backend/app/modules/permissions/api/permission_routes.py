@@ -5,7 +5,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from uuid import UUID
 
-from app.core.auth import get_current_user
+from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.core.database import get_db_connection
 from app.models.user import UserResponse
 from app.modules.permissions.models.permission import (

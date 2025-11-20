@@ -16,7 +16,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from loguru import logger
 from typing import Dict, Any
 
-from app.services.two_factor_service import TwoFactorService, get_two_factor_service
+from app.modules.auth.services.two_factor_service import TwoFactorService, get_two_factor_service
 from app.modules.auth.services.password_service import PasswordService
 from app.repositories.user_repository import UserRepository
 from app.modules.auth.models.two_factor_models import (

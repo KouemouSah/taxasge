@@ -12,7 +12,7 @@ from datetime import datetime
 import json
 
 from app.models.user import UserResponse
-from app.api.v1.auth import get_current_user, get_current_user_optional, require_admin
+from app.modules.auth.middleware.auth_middleware import get_current_user, get_current_user_optional, require_admin
 from app.services.ai_service import ai_service
 from app.services.translation_service import translation_service
 

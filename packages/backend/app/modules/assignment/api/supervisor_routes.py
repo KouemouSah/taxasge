@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field
 
-from app.core.auth import get_current_user
+from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.models.user import UserResponse
 from app.modules.assignment.models.assignment_history import (
     Assignment,
