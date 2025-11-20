@@ -1,7 +1,7 @@
 # RAPPORT D'EXÉCUTION PHASE 5
 **Date**: 2025-11-20 (Mise à jour continue)
 **Auteur**: Claude Code Expert
-**Status**: 🟢 EN COURS - MODULES AUTH + ADMIN MIGRÉS
+**Status**: 🟢 EN COURS - MODULES AUTH + ADMIN + USERS MIGRÉS
 
 ---
 
@@ -33,6 +33,12 @@
 3. **Router registration** - main.py mis à jour
 4. **Endpoints.ts** - Ajout DIAGNOSTICS et MIGRATIONS
 
+**✅ BONUS - Refactorisation Module Users** (TERMINÉE):
+1. **Structure modulaire** - `app/modules/users/` créée (4 sous-répertoires)
+2. **Migration** - models (223 lignes), repositories (1047 lignes), routes (352 lignes)
+3. **Séparation users/admin** - URLs claires: `/api/v1/users/profile` vs `/api/v1/admin/users`
+4. **Endpoints.ts** - Refactorisation PROFILE et ADMIN_USERS
+
 ### ⏳ Statut Actuel
 
 **Commits réalisés**:
@@ -41,7 +47,8 @@
 - `0eb38df` - Mise à jour endpoints.ts (shared)
 - `efcebc6` - Ajout endpoints.ts update au rapport
 - `ef426c7` - Synchronisation authApi.ts avec endpoints (frontend)
-- [EN COURS] - Migration admin vers structure modulaire
+- `bcc7982` - Migration admin vers structure modulaire
+- [EN COURS] - Migration users vers structure modulaire + séparation users/admin
 
 **En attente**: Validation déploiement GitHub Actions (géré par utilisateur)
 
@@ -334,6 +341,115 @@ MIGRATIONS: {
 **Prochaines étapes**:
 - Supprimer anciens fichiers `app/api/v1/admin.py` et `app/api/v1/users.py` après validation
 - Vérifier aucun import cassé
+
+---
+
+## ✅ REFACTORISATION MODULE USERS (BONUS - TERMINÉE)
+
+### Structure Modulaire Créée
+
+**Architecture**:
+```
+app/modules/users/
+├── __init__.py
+├── api/
+│   ├── __init__.py (exports: user_routes)
+│   └── user_routes.py (352 lignes - self-service profile)
+├── models/
+│   ├── __init__.py (exports: UserRole, UserStatus, UserProfile, etc.)
+│   └── user.py (223 lignes - copied from app/models/user.py)
+├── repositories/
+│   ├── __init__.py (exports: UserRepository)
+│   └── user_repository.py (1047 lignes - copied from app/repositories/user_repository.py)
+└── services/
+    └── __init__.py
+```
+
+### Séparation Users vs Admin
+
+**Avant (problème)**:
+- Tout dans `/api/v1/users` - endpoints mélangés users + admin
+- Pas de séparation claire des responsabilités
+
+**Après (solution)**:
+1. **Module Users** (`app/modules/users/`) - Self-service:
+   - `GET /api/v1/users/profile` - Voir son profil
+   - `PUT /api/v1/users/profile` - Modifier son profil
+   - `POST /api/v1/users/profile/change-password` - Changer son mot de passe
+   - `POST /api/v1/users/profile/avatar` - Upload avatar
+   - `DELETE /api/v1/users/profile/avatar` - Supprimer avatar
+
+2. **Module Admin** (`app/modules/admin/`) - Administration:
+   - Déplacé vers `/api/v1/admin/users` (au lieu de `/api/v1/users`)
+   - `GET /api/v1/admin/users` - Liste tous les utilisateurs (admin only)
+   - `POST /api/v1/admin/users` - Créer utilisateur (admin only)
+   - `PUT /api/v1/admin/users/{id}` - Modifier utilisateur (admin only)
+   - `DELETE /api/v1/admin/users/{id}` - Supprimer utilisateur (admin only)
+   - `GET /api/v1/admin/users/stats` - Statistiques (admin only)
+
+### Modifications main.py
+
+**Router Registration**:
+```python
+# Try to load users router (Module - Users System)
+try:
+    from app.modules.users.api import user_routes
+    app.include_router(user_routes, prefix="/api/v1/users", tags=["users"])
+    routers_loaded.append("users")
+    logger.info("✅ Users router loaded (profile management)")
+except ImportError as e:
+    logger.warning(f"⚠️ Users router not available: {e}")
+
+# Try to load admin routers (Module - Admin System)
+try:
+    from app.modules.admin.api import admin_router, user_management_router
+    app.include_router(admin_router, prefix="/api/v1/admin", tags=["admin-diagnostics"])
+    app.include_router(user_management_router, prefix="/api/v1/admin/users", tags=["admin-user-management"])
+    routers_loaded.extend(["admin", "admin_users"])
+    logger.info("✅ Admin routers loaded (diagnostics + user management)")
+except ImportError as e:
+    logger.warning(f"⚠️ Admin routers not available: {e}")
+```
+
+### Mise à jour endpoints.ts
+
+**Fichier**: `packages/shared/constants/endpoints.ts`
+
+**Modifications**:
+```typescript
+// Profil utilisateur (Module: app/modules/users/api/user_routes.py)
+PROFILE: {
+  GET: '/api/v1/users/profile',
+  UPDATE: '/api/v1/users/profile',
+  CHANGE_PASSWORD: '/api/v1/users/profile/change-password',
+  AVATAR: {
+    UPLOAD: '/api/v1/users/profile/avatar',
+    DELETE: '/api/v1/users/profile/avatar',
+  },
+},
+
+// Gestion utilisateurs (Admin only - Module: app/modules/admin/api/user_management_routes.py)
+ADMIN_USERS: {
+  LIST: '/api/v1/admin/users',
+  CREATE: '/api/v1/admin/users',
+  DETAIL: (id: string) => `/api/v1/admin/users/${id}`,
+  UPDATE: (id: string) => `/api/v1/admin/users/${id}`,
+  DELETE: (id: string) => `/api/v1/admin/users/${id}`,
+  SEARCH: '/api/v1/admin/users/search',
+  BY_ROLE: (role: string) => `/api/v1/admin/users/role/${role}`,
+  STATS: '/api/v1/admin/users/stats',
+  ACTIVITIES: (id: string) => `/api/v1/admin/users/${id}/activities`,
+},
+```
+
+### Bénéfices
+
+- ✅ Séparation claire users (self-service) vs admin (CRUD)
+- ✅ URLs claires: `/api/v1/users/profile` (users) vs `/api/v1/admin/users` (admin)
+- ✅ Sécurité renforcée: endpoints admin isolés sous `/admin`
+- ✅ Architecture cohérente: auth, permissions, assignment, admin, users
+- ✅ Models et repositories dans module users
+- ✅ Endpoints centralisés (shared/constants)
 
 ---
 

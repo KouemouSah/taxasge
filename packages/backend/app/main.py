@@ -251,8 +251,9 @@ async def api_v1_info():
         "available_endpoints": {
             "auth": "/api/v1/auth/ - Authentication and authorization",
             "fiscal_services": "/api/v1/fiscal-services/ - 547 fiscal services catalog",
+            "users": "/api/v1/users/ - User profile management (self-service)",
             "admin": "/api/v1/admin/ - Admin diagnostics and migrations (RESTRICTED)",
-            "users": "/api/v1/users/ - User management and profiles (CRUD)",
+            "admin_users": "/api/v1/admin/users/ - Admin user management (CRUD, RESTRICTED)",
             "taxes": "/api/v1/taxes/ - Tax service management (administrative)",
             "declarations": "/api/v1/declarations/ - Tax declarations workflow",
             "payments": "/api/v1/payments/ - BANGE mobile payments integration",
@@ -289,12 +290,21 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ Fiscal services router not available: {e}")
 
+# Try to load users router (Module - Users System)
+try:
+    from app.modules.users.api import user_routes
+    app.include_router(user_routes, prefix="/api/v1/users", tags=["users"])
+    routers_loaded.append("users")
+    logger.info("✅ Users router loaded (profile management)")
+except ImportError as e:
+    logger.warning(f"⚠️ Users router not available: {e}")
+
 # Try to load admin routers (Module - Admin System)
 try:
     from app.modules.admin.api import admin_router, user_management_router
     app.include_router(admin_router, prefix="/api/v1/admin", tags=["admin-diagnostics"])
-    app.include_router(user_management_router, prefix="/api/v1/users", tags=["user-management"])
-    routers_loaded.extend(["admin", "users"])
+    app.include_router(user_management_router, prefix="/api/v1/admin/users", tags=["admin-user-management"])
+    routers_loaded.extend(["admin", "admin_users"])
     logger.info("✅ Admin routers loaded (diagnostics + user management)")
 except ImportError as e:
     logger.warning(f"⚠️ Admin routers not available: {e}")

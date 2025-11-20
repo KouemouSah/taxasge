@@ -97,24 +97,28 @@ export const PUBLIC_ENDPOINTS = {
 // === ENDPOINTS AUTHENTIFIÉS ===
 
 export const AUTHENTICATED_ENDPOINTS = {
-  // Profil utilisateur (Module: app/api/v1/users)
+  // Profil utilisateur (Module: app/modules/users/api/user_routes.py)
   PROFILE: {
     GET: '/api/v1/users/profile',
     UPDATE: '/api/v1/users/profile',
-    AVATAR: '/api/v1/users/profile/avatar',
-    DELETE: '/api/v1/users/profile',
     CHANGE_PASSWORD: '/api/v1/users/profile/change-password',
+    AVATAR: {
+      UPLOAD: '/api/v1/users/profile/avatar',
+      DELETE: '/api/v1/users/profile/avatar',
+    },
   },
 
-  // Gestion utilisateurs
-  USERS: {
-    LIST: '/api/v1/users',
-    CREATE: '/api/v1/users',
-    DETAIL: (id: string) => `/api/v1/users/${id}`,
-    UPDATE: (id: string) => `/api/v1/users/${id}`,
-    DELETE: (id: string) => `/api/v1/users/${id}`,
-    SEARCH: '/api/v1/users/search',
-    BY_ROLE: (role: string) => `/api/v1/users/role/${role}`,
+  // Gestion utilisateurs (Admin only - Module: app/modules/admin/api/user_management_routes.py)
+  ADMIN_USERS: {
+    LIST: '/api/v1/admin/users',
+    CREATE: '/api/v1/admin/users',
+    DETAIL: (id: string) => `/api/v1/admin/users/${id}`,
+    UPDATE: (id: string) => `/api/v1/admin/users/${id}`,
+    DELETE: (id: string) => `/api/v1/admin/users/${id}`,
+    SEARCH: '/api/v1/admin/users/search',
+    BY_ROLE: (role: string) => `/api/v1/admin/users/role/${role}`,
+    STATS: '/api/v1/admin/users/stats',
+    ACTIVITIES: (id: string) => `/api/v1/admin/users/${id}/activities`,
   },
 
   // Historique utilisateur
