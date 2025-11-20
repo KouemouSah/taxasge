@@ -35,197 +35,30 @@ __all__ = ["router", "get_current_user", "require_admin"]
 
 @router.get("/")
 async def get_users_info():
-    """Get users API information"""
+    """
+    Get admin users API information
+
+    ADMIN ONLY - User management endpoints
+    For self-service user endpoints, see /api/v1/users
+    """
     return {
-        "message": "TaxasGE Users Management API",
+        "message": "TaxasGE Admin - User Management API",
         "version": "1.0.0",
+        "note": "ADMIN ONLY - Requires admin role",
+        "self_service": "See /api/v1/users for user self-service endpoints",
         "endpoints": {
-            "list": "GET /users - List all users (admin)",
-            "profile": "GET /profile - Get current user profile",
-            "create": "POST /users - Create new user (admin)",
-            "update": "PUT /users/{user_id} - Update user",
-            "delete": "DELETE /users/{user_id} - Delete user (admin)",
-            "search": "GET /users/search - Search users",
-            "stats": "GET /users/stats - User statistics (admin)",
-            "activities": "GET /users/{user_id}/activities - User activities"
+            "list": "GET /admin/users - List all users (admin)",
+            "create": "POST /admin/users - Create new user (admin)",
+            "get": "GET /admin/users/{user_id} - Get user by ID (admin)",
+            "update": "PUT /admin/users/{user_id} - Update user (admin)",
+            "delete": "DELETE /admin/users/{user_id} - Delete user (admin)",
+            "search": "GET /admin/users/search - Search users (admin)",
+            "stats": "GET /admin/users/stats - User statistics (admin)",
+            "activities": "GET /admin/users/{user_id}/activities - User activities (admin)"
         },
         "roles": [role.value for role in UserRole],
         "status": [status.value for status in UserStatus]
     }
-
-
-@router.get("/profile", response_model=UserResponse)
-async def get_user_profile(current_user: UserResponse = Depends(get_current_user)):
-    """Get current user profile"""
-    try:
-        # Log activity
-        activity = UserActivity(
-            user_id=current_user.id,
-            action="view_profile",
-            resource="user_profile",
-            timestamp=datetime.utcnow()
-        )
-        await user_repository.log_user_activity(activity)
-
-        return current_user
-    except Exception as e:
-        logger.error(f"L Error getting user profile: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error retrieving user profile"
-        )
-
-
-@router.put("/profile", response_model=UserResponse)
-async def update_user_profile(
-    user_update: UserUpdate,
-    current_user: UserResponse = Depends(get_current_user)
-):
-    """
-    Update current user profile
-
-    **VALIDATION:**
-    - Email format: EmailStr (RFC 5322)
-    - Email uniqueness: 409 Conflict if duplicate
-    - Phone E.164 format: +240XXXXXXXXX
-    - Protected fields: status (admin only)
-
-    **Source:** UC-USER-002 (.github/docs-internal/Documentations/Backend/use_cases/02_USERS.md)
-    """
-    try:
-        # Convert update model to dict, excluding None values
-        update_data = {
-            k: v for k, v in user_update.dict(exclude_unset=True).items()
-            if v is not None
-        }
-
-        # Email uniqueness check (UC-USER-002 requirement)
-        if "email" in update_data and update_data["email"] != current_user.email:
-            existing_user = await user_repository.find_by_email(update_data["email"])
-            if existing_user:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="Email already in use"
-                )
-
-        # Non-admin users cannot update status
-        if current_user.role not in [UserRole.admin, UserRole.operator] and "status" in update_data:
-            del update_data["status"]
-
-        if not update_data:
-            return current_user
-
-        updated_user = await user_repository.update(current_user.id, update_data)
-        if not updated_user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
-            )
-
-        # Log activity
-        activity = UserActivity(
-            user_id=current_user.id,
-            action="update_profile",
-            resource="user_profile",
-            metadata={"updated_fields": list(update_data.keys())},
-            timestamp=datetime.utcnow()
-        )
-        await user_repository.log_user_activity(activity)
-
-        return updated_user
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"L Error updating user profile: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error updating user profile"
-        )
-
-
-@router.post("/password", status_code=status.HTTP_200_OK)
-async def change_password(
-    password_change: PasswordChange,
-    current_user: UserResponse = Depends(get_current_user)
-):
-    """
-    Change user password
-
-    **SECURITY:**
-    - Requires old password verification
-    - Validates new password strength
-    - Uses bcrypt hashing (12 rounds)
-
-    **Source:** UC-USER-010 (.github/docs-internal/Documentations/Backend/use_cases/02_USERS.md)
-    """
-    try:
-        from app.modules.auth.services.password_service import PasswordService
-        password_service = PasswordService()
-
-        # 1. Get current password hash from DB
-        try:
-            current_password_hash = await user_repository.get_password_hash(current_user.id)
-        except ValueError as e:
-            logger.error(f"L Error getting password hash: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
-            )
-
-        # 2. Verify old password
-        if not password_service.verify_password(
-            password_change.old_password,
-            current_password_hash
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Current password is incorrect"
-            )
-
-        # 3. Validate new password strength
-        strength_check = password_service.check_password_strength(password_change.new_password)
-        if not strength_check["valid"]:
-            error_details = {
-                "message": "Password does not meet security requirements",
-                "issues": strength_check["issues"],
-                "suggestions": strength_check["suggestions"]
-            }
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=error_details
-            )
-
-        # 4. Hash new password (bcrypt)
-        new_password_hash = password_service.hash_password(password_change.new_password)
-
-        # 5. Update password
-        success = await user_repository.update_password(current_user.id, new_password_hash)
-        if not success:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to update password"
-            )
-
-        # 6. Log activity
-        activity = UserActivity(
-            user_id=current_user.id,
-            action="change_password",
-            resource="user_password",
-            timestamp=datetime.utcnow()
-        )
-        await user_repository.log_user_activity(activity)
-
-        return {"message": "Password updated successfully"}
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"L Error changing password: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error changing password"
-        )
 
 
 @router.get("", response_model=UserListResponse)
