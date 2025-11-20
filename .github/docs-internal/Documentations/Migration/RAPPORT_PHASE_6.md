@@ -638,6 +638,137 @@ Endpoints Specs:     194   (100%)
 
 ---
 
-**Dernière mise à jour**: 2025-11-20 13:00
+## 🔄 CORRECTION MAJEURE - DATABASE_SCHEMA COMME SOURCE DE VÉRITÉ
+
+**Date**: 2025-11-20 14:00
+**Déclencheur**: Validation user "se fier au schéma de la base de données comme source de vérité"
+
+### Problème Identifié
+
+Analyse initiale basée sur RAPPORT_PRIORITE_* incomp&#x6C;ète par rapport au schéma DB réel.
+
+### Action Corrective
+
+Création document **DATABASE_SCHEMA_MODULES_MAPPING.md** analysant les **65 tables** complètement.
+
+### Corrections Apportées
+
+#### Modules Identifiés: 16 (au lieu de 14)
+
+**Modules Ajoutés** (2 nouveaux):
+15. **IMPORTS** - import_batches, import_batch_items
+16. **SYSTEM** - system_rules, adjustment_reasons, audit_logs
+
+**Modules Enrichis**:
+- **FISCAL_SERVICES**: 9 tables (au lieu de 2)
+  - Ajout: ministries, sectors, categories, service_keywords, service_document_assignments, service_procedure_assignments, steps_count
+- **AGENTS**: 6 tables confirmées
+  - agent_work_queue, agent_workloads, agent_performance_stats, ministry_agents, ministry_validation_config, user_ministry_assignments
+- **DOCUMENTS**: 5 tables
+  - uploaded_files, ocr_extraction_results, document_processing_queue, document_templates, form_templates
+- **USERS**: 2 tables
+  - users, user_favorites
+
+### Tables DB - Mapping Complet
+
+```
+Total Tables Analysées:     65/65  (100%)
+Total Enums Analysés:       23/23  (100%)
+Modules Mappés:             16/16  (100%)
+
+Répartition:
+  - AUTH:              4 tables (users, sessions, refresh_tokens, pending_registrations)
+  - PERMISSIONS:       5 tables (permissions, roles, role_permissions, user_permissions, permission_audit_log)
+  - DOCUMENTS:         5 tables
+  - DECLARATIONS:      9 tables 🔴 (tax_declarations + 5 details + 3 audit)
+  - PAYMENTS:          7 tables 🔴
+  - WEBHOOKS:          2 tables 🔴
+  - FISCAL_SERVICES:   9 tables 🟡 (⚠️ ENRICHI)
+  - AGENTS:            6 tables 🟡
+  - ASSIGNMENT:        3 tables
+  - PROCEDURES:        2 tables 🟢
+  - IMPORTS:           2 tables 🟢 (⭐ NOUVEAU)
+  - COMPANIES:         2 tables 🟢
+  - TRANSLATIONS:      2 tables 🟢
+  - SYSTEM:            3 tables 🟢 (⭐ NOUVEAU)
+  - USERS:             2 tables
+  - ADMIN:             0 tables (cross-cutting)
+```
+
+### Enums Identifiés (23)
+
+```
+1.  agent_action_type (8 valeurs)
+2.  agent_availability_enum (6 valeurs)
+3.  assignment_method_enum (4 valeurs)
+4.  assignment_status_enum (7 valeurs)
+5.  attachment_type_enum (6 valeurs)
+6.  calculation_method_enum (8 valeurs)
+7.  declaration_status_enum (6 valeurs)
+8.  declaration_type_enum (28 valeurs!) ⚠️ Très important
+9.  escalation_level (4 valeurs)
+10. ocr_engine_enum (2 valeurs)
+11. payment_method_enum (5 valeurs)
+12. payment_status_enum (6+ valeurs)
+13. ... (10 autres enums)
+```
+
+**Enum Critique**: `declaration_type_enum` avec **28 types** différents:
+- iva_destajo, iva_real
+- retencion_3pct_petrolero, retencion_5pct_petrolero, retencion_10pct
+- imp_prod_petroleros_ivs, imp_prod_petroleros_fmi
+- imp_sueldos_petrolero, imp_sueldos_comun
+- cuota_min_petrolera, cuota_min_comun
+- impreso_comun, impreso_liquidacion
+- etc.
+
+### Impact sur Planning
+
+**Effort Modules Backend** (révisé):
+```
+Refactoring (6 modules):     5.0 jours (inchangé)
+Création P1 (3 modules):     5.5 jours (inchangé)
+Création P2 (2 modules):     3.0 jours (inchangé)
+Création P3 (3 modules):     1.5 jours (↑ +1j pour imports)
+Création P4 (2 modules):     1.0 jour  (↑ +0.5j pour system)
+───────────────────────────────────────────
+TOTAL MODULES:              16.0 jours
+```
+
+**Timeline Globale**: 33 jours (inchangé, buffer suffisant)
+
+### Documents Créés
+
+1. ✅ **DATABASE_SCHEMA_MODULES_MAPPING.md** (1,200 lignes)
+   - Mapping complet 65 tables → 16 modules
+   - Enums détaillés par module
+   - Dépendances inter-modules
+   - Effort estimé par module
+
+### État Phase 1 Révisé
+
+```
+Phase 1: Audit & Inventaire  [█████░] 90% (↑ de 80%)
+
+✅ T1.1: Inventaire modules existants
+✅ T1.2: Routes legacy analysées
+✅ T1.3: Database schema (65 tables) ⭐ COMPLÉTÉ
+✅ T1.4: Rapports analysés
+✅ T1.5: Matrice dépendances
+✅ T1.6: Mapping DB → Modules ⭐ NOUVEAU
+⏳ T1.7: Validation finale (en cours)
+```
+
+### Actions Suivantes
+
+1. ✅ Mapping DB → Modules terminé
+2. ⏳ Commit corrections
+3. ⏳ Finaliser Phase 1
+4. ⏳ Démarrer Phase 2 (Refactoring)
+
+---
+
+**Dernière mise à jour**: 2025-11-20 14:30
+**Correction majeure**: Mapping DATABASE_SCHEMA complet (65 tables → 16 modules)
 **Prochaine mise à jour**: 2025-11-20 EOD (fin Phase 1)
 **Responsable**: Claude Code (Agent Autonome)
