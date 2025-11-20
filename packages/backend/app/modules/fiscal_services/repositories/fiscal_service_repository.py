@@ -119,12 +119,7 @@ class FiscalServiceRepository:
         )
         service_dict["keywords"] = [k["keyword"] for k in keywords]
 
-        # Get calculable fields
-        fields = await conn.fetch(
-            "SELECT * FROM fiscal_service_data WHERE fiscal_service_id = $1 ORDER BY field_name",
-            service_id,
-        )
-        service_dict["calculable_fields"] = [dict(f) for f in fields]
+        # NOTE: fiscal_service_data → MODULE DECLARATIONS (user data, not catalog)
 
         # Get required documents
         docs = await conn.fetch(
@@ -202,7 +197,6 @@ class FiscalServiceRepository:
                 service["id"],
             )
             service["keywords"] = [k["keyword"] for k in keywords]
-            service["calculable_fields"] = []
             service["required_documents"] = []
             services.append(service)
 
@@ -298,7 +292,6 @@ class FiscalServiceRepository:
                 service["id"],
             )
             service["keywords"] = [k["keyword"] for k in keywords]
-            service["calculable_fields"] = []
             service["required_documents"] = []
             services.append(service)
 
@@ -332,7 +325,6 @@ class FiscalServiceRepository:
                 service["id"],
             )
             service["keywords"] = [k["keyword"] for k in keywords]
-            service["calculable_fields"] = []
             service["required_documents"] = []
             services.append(service)
 
@@ -366,7 +358,6 @@ class FiscalServiceRepository:
                 service["id"],
             )
             service["keywords"] = [k["keyword"] for k in keywords]
-            service["calculable_fields"] = []
             service["required_documents"] = []
             services.append(service)
 
@@ -421,10 +412,7 @@ class FiscalServiceRepository:
         await conn.execute(
             "DELETE FROM service_keywords WHERE fiscal_service_id = $1", service_id
         )
-        # Delete service data
-        await conn.execute(
-            "DELETE FROM fiscal_service_data WHERE fiscal_service_id = $1", service_id
-        )
+        # NOTE: fiscal_service_data → MODULE DECLARATIONS (not deleted here)
         # Delete document assignments
         await conn.execute(
             "DELETE FROM service_document_assignments WHERE fiscal_service_id = $1",

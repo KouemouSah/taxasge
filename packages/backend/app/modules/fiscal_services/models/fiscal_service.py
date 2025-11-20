@@ -83,18 +83,9 @@ class FiscalServiceUpdate(BaseModel):
     keywords: Optional[List[str]] = None
 
 
-class FiscalServiceDataResponse(BaseModel):
-    """Fiscal service calculable data"""
-    id: str
-    fiscal_service_id: str
-    field_name: str
-    field_type: str  # number, percentage, boolean
-    is_required: bool
-    default_value: Optional[str] = None
-    min_value: Optional[float] = None
-    max_value: Optional[float] = None
-    description_fr: Optional[str] = None
-    description_en: Optional[str] = None
+# NOTE: fiscal_service_data table → MODULE DECLARATIONS (user declarations)
+# Cette table contient les déclarations utilisateur (numero_nota, montant, etc.)
+# Elle n'est PAS dans le module FISCAL_SERVICES qui est le CATALOGUE
 
 
 class FiscalServiceResponse(FiscalServiceBase):
@@ -113,7 +104,6 @@ class FiscalServiceResponse(FiscalServiceBase):
     # Related data
     keywords: List[str] = []
     required_documents: List[str] = []
-    calculable_fields: List[FiscalServiceDataResponse] = []
 
 
 class FiscalServiceListResponse(BaseModel):

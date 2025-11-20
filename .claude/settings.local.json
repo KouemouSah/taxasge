@@ -5,7 +5,13 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(gh run list:*)"
+      "Bash(gh run list:*)",
+      "Bash(python extract_full_schema.py:*)",
+      "Bash(python3:*)",
+      "Bash(\"/c/Users/User/AppData/Local/Programs/Python/Python312/python.exe\" --version)",
+      "Bash(\"/c/Users/User/AppData/Roaming/Python/Python312/Scripts/python.exe\" --version)",
+      "Bash(\"/c/Program Files/Odoo 17/python/python.exe\" extract_full_schema.py)",
+      "Bash(git restore:*)"
     ],
     "deny": [],
     "ask": []

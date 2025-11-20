@@ -38,11 +38,9 @@ class CalculationService:
         calculation_type = service_dict["calculation_type"]
         base_amount = service_dict.get("base_amount") or 0
 
-        # Get calculable fields
-        fields = await conn.fetch(
-            "SELECT * FROM fiscal_service_data WHERE fiscal_service_id = $1",
-            service_id,
-        )
+        # NOTE: fiscal_service_data → MODULE DECLARATIONS (user declarations)
+        # Calculation uses service configuration (base_amount, calculation_type)
+        # NOT user declaration data
 
         result = {
             "fiscal_service_id": service_id,
@@ -82,7 +80,7 @@ class CalculationService:
 
         elif calculation_type == CalculationType.CUSTOM.value:
             # Custom calculation based on multiple fields
-            calculated = await self._calculate_custom(conn, service_id, input_data, fields)
+            calculated = await self._calculate_custom(conn, service_id, input_data)
 
             result["calculated_amount"] = calculated
             result["breakdown"]["type"] = "custom"
@@ -101,10 +99,9 @@ class CalculationService:
     ) -> float:
         """
         Calculate progressive rates
-        TODO: Implement progressive tax brackets from fiscal_service_data table
+        Simple progressive tax example
         """
-        # For now, simple progressive example
-        # Real implementation would use fiscal_service_data for brackets
+        # Simple progressive brackets (Guinea tax system example)
         if total_amount <= 1000000:
             return total_amount * 0.05  # 5%
         elif total_amount <= 5000000:
@@ -117,66 +114,18 @@ class CalculationService:
         conn: asyncpg.Connection,
         service_id: str,
         input_data: Dict[str, Any],
-        fields: list,
     ) -> float:
         """
-        Calculate custom formula based on multiple fields
+        Calculate custom formula based on service configuration
+        Uses input_data provided by user
         """
+        # Simple custom calculation based on input data
+        # Real implementation depends on service-specific logic
         total = 0
-        for field in fields:
-            field_dict = dict(field)
-            field_name = field_dict["field_name"]
-            field_type = field_dict["field_type"]
 
-            value = input_data.get(field_name)
-            if value is None:
-                if field_dict["is_required"]:
-                    raise ValueError(f"Required field {field_name} is missing")
-                value = field_dict.get("default_value", 0)
-
-            # Add to total based on field type
-            if field_type == "number":
-                total += float(value)
-            elif field_type == "percentage":
-                # Assume percentage applies to a base value
-                base = input_data.get(f"{field_name}_base", 0)
-                total += (float(base) * float(value)) / 100
+        # Sum all numeric values in input_data
+        for key, value in input_data.items():
+            if isinstance(value, (int, float)):
+                total += value
 
         return total
-
-    def validate_input_data(
-        self, fields: list, input_data: Dict[str, Any]
-    ) -> tuple[bool, Optional[str]]:
-        """
-        Validate input data against required fields
-
-        Returns:
-            (is_valid, error_message)
-        """
-        for field in fields:
-            field_dict = dict(field)
-            field_name = field_dict["field_name"]
-            is_required = field_dict["is_required"]
-
-            if is_required and field_name not in input_data:
-                return False, f"Required field {field_name} is missing"
-
-            if field_name in input_data:
-                value = input_data[field_name]
-                field_type = field_dict["field_type"]
-
-                # Type validation
-                if field_type == "number" and not isinstance(value, (int, float)):
-                    return False, f"Field {field_name} must be a number"
-
-                # Range validation
-                min_value = field_dict.get("min_value")
-                max_value = field_dict.get("max_value")
-
-                if min_value is not None and value < min_value:
-                    return False, f"Field {field_name} must be >= {min_value}"
-
-                if max_value is not None and value > max_value:
-                    return False, f"Field {field_name} must be <= {max_value}"
-
-        return True, None
