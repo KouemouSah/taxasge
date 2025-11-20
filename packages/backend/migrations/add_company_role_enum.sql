@@ -1,24 +1,24 @@
 -- ============================================================================
--- MIGRATION: Add company_role_enum for user_company_roles table
+-- MIGRATION: Convert user_company_roles.role from VARCHAR to ENUM
 -- ============================================================================
 -- Date: 2025-01-20
--- Description: Create ENUM type for company roles to ensure data integrity
---   and distinguish company roles from system user roles
+-- Description: Change user_company_roles.role column type from VARCHAR to ENUM
+--   to ensure data integrity and restrict to 4 allowed values
 --
--- Company Roles (STRICTLY for user_company_roles table):
+-- Company Roles (STRICTLY for user_company_roles.role column):
 --   - company_owner: Full permissions, can transfer ownership, delete company
 --   - company_admin: Manage members, declarations, payments (except ownership)
 --   - company_accountant: Financial focus (declarations, payments, approval)
 --   - company_member: Basic access (own declarations only)
 --
--- System User Roles (users.role - DIFFERENT):
---   - citizen, business, accountant, admin
+-- System User Roles (users.role - DIFFERENT, NOT affected by this migration):
+--   - citizen, business, accountant, admin (uses user_role_enum)
 -- ============================================================================
 
 BEGIN;
 
 -- ============================================================================
--- STEP 1: Create company_role_enum type
+-- STEP 1: Create company_role_enum type (if not exists)
 -- ============================================================================
 
 DO $$ BEGIN
@@ -28,52 +28,87 @@ DO $$ BEGIN
         'company_accountant',
         'company_member'
     );
+    RAISE NOTICE 'Created company_role_enum type';
 EXCEPTION
-    WHEN duplicate_object THEN null;
+    WHEN duplicate_object THEN
+        RAISE NOTICE 'company_role_enum type already exists, skipping creation';
 END $$;
 
 COMMENT ON TYPE company_role_enum IS
-    'Roles for company members (user_company_roles table). STRICTLY for companies, distinct from system user roles.';
+    'Company member roles for user_company_roles.role column. DISTINCT from users.role (user_role_enum).';
 
 -- ============================================================================
--- STEP 2: Migrate existing data (if table exists with VARCHAR role)
+-- STEP 2: Update existing VARCHAR values to new prefixed names
 -- ============================================================================
 
--- Check if user_company_roles table exists
 DO $$
 BEGIN
     IF EXISTS (
         SELECT 1 FROM information_schema.tables
         WHERE table_name = 'user_company_roles'
     ) THEN
-        -- Check if role column is VARCHAR (needs migration)
+        -- Only update if column is VARCHAR
         IF EXISTS (
             SELECT 1 FROM information_schema.columns
             WHERE table_name = 'user_company_roles'
             AND column_name = 'role'
             AND data_type = 'character varying'
         ) THEN
-            -- Update existing values to new prefixed names
+            -- Migrate old values to new prefixed values
             UPDATE user_company_roles
             SET role = CASE
                 WHEN role = 'owner' THEN 'company_owner'
                 WHEN role = 'admin' THEN 'company_admin'
                 WHEN role = 'accountant' THEN 'company_accountant'
                 WHEN role = 'member' THEN 'company_member'
-                ELSE 'company_member'  -- Default fallback
+                WHEN role LIKE 'company_%' THEN role  -- Already migrated
+                ELSE 'company_member'  -- Default fallback for unknown values
             END;
 
-            -- Change column type to ENUM
+            RAISE NOTICE 'Updated existing role values to prefixed names';
+        ELSE
+            RAISE NOTICE 'role column is not VARCHAR, skipping value update';
+        END IF;
+    ELSE
+        RAISE NOTICE 'user_company_roles table does not exist, skipping value update';
+    END IF;
+END $$;
+
+-- ============================================================================
+-- STEP 3: Change column type from VARCHAR to ENUM
+-- ============================================================================
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_name = 'user_company_roles'
+    ) THEN
+        -- Check if column is VARCHAR (needs type change)
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'user_company_roles'
+            AND column_name = 'role'
+            AND data_type = 'character varying'
+        ) THEN
+            -- Change column type: VARCHAR → company_role_enum
             ALTER TABLE user_company_roles
                 ALTER COLUMN role TYPE company_role_enum
                 USING role::company_role_enum;
 
-            RAISE NOTICE 'Migrated user_company_roles.role from VARCHAR to company_role_enum';
+            RAISE NOTICE 'Changed user_company_roles.role from VARCHAR to company_role_enum';
+        ELSIF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'user_company_roles'
+            AND column_name = 'role'
+            AND udt_name = 'company_role_enum'
+        ) THEN
+            RAISE NOTICE 'user_company_roles.role is already company_role_enum, no change needed';
         ELSE
-            RAISE NOTICE 'user_company_roles.role is already company_role_enum or another type';
+            RAISE WARNING 'user_company_roles.role has unexpected type, manual review needed';
         END IF;
     ELSE
-        RAISE NOTICE 'user_company_roles table does not exist yet';
+        RAISE NOTICE 'user_company_roles table does not exist, skipping column type change';
     END IF;
 END $$;
 
