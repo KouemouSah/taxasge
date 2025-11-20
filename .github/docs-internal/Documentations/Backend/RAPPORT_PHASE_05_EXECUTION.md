@@ -39,6 +39,12 @@
 3. **Séparation users/admin** - URLs claires: `/api/v1/users/profile` vs `/api/v1/admin/users`
 4. **Endpoints.ts** - Refactorisation PROFILE et ADMIN_USERS
 
+**✅ LIEN BACKEND-FRONTEND USERS/ADMIN** (TERMINÉE):
+1. **userApi.ts** - 159 lignes (self-service profile)
+2. **adminApi.ts** - 262 lignes (admin CRUD + diagnostics)
+3. **index.ts** - Exports centralisés + types
+4. **MAJ users-admin/api.ts** - Endpoints corrigés `/admin/users`
+
 ### ⏳ Statut Actuel
 
 **Commits réalisés**:
@@ -48,7 +54,8 @@
 - `efcebc6` - Ajout endpoints.ts update au rapport
 - `ef426c7` - Synchronisation authApi.ts avec endpoints (frontend)
 - `bcc7982` - Migration admin vers structure modulaire
-- [EN COURS] - Migration users vers structure modulaire + séparation users/admin
+- `8c27b24` - Migration users vers structure modulaire
+- [EN COURS] - Lien backend-frontend users/admin
 
 **En attente**: Validation déploiement GitHub Actions (géré par utilisateur)
 
@@ -450,6 +457,69 @@ ADMIN_USERS: {
 - ✅ Architecture cohérente: auth, permissions, assignment, admin, users
 - ✅ Models et repositories dans module users
 - ✅ Endpoints centralisés (shared/constants)
+
+---
+
+## ✅ LIEN BACKEND-FRONTEND USERS/ADMIN (TERMINÉ)
+
+### Fichiers API Frontend Créés
+
+**1. packages/web/lib/api/userApi.ts** (159 lignes):
+- Client axios pour endpoints users self-service
+- Import depuis `AUTHENTICATED_ENDPOINTS`
+- Méthodes:
+  - `getProfile()` - GET /api/v1/users/profile
+  - `updateProfile()` - PUT /api/v1/users/profile
+  - `changePassword()` - POST /api/v1/users/profile/change-password
+  - `uploadAvatar()` - POST /api/v1/users/profile/avatar
+  - `deleteAvatar()` - DELETE /api/v1/users/profile/avatar
+- Intercepteurs auth automatiques (token)
+
+**2. packages/web/lib/api/adminApi.ts** (262 lignes):
+- Client axios pour endpoints admin
+- Import depuis `AUTHENTICATED_ENDPOINTS` + `ADMIN_ENDPOINTS`
+- Méthodes users management:
+  - `getUsers()` - GET /api/v1/admin/users (pagination)
+  - `getUser()` - GET /api/v1/admin/users/{id}
+  - `createUser()` - POST /api/v1/admin/users
+  - `updateUser()` - PUT /api/v1/admin/users/{id}
+  - `deleteUser()` - DELETE /api/v1/admin/users/{id}
+  - `searchUsers()` - GET /api/v1/admin/users/search
+  - `getUsersByRole()` - GET /api/v1/admin/users/role/{role}
+  - `getUserStats()` - GET /api/v1/admin/users/stats
+  - `getUserActivities()` - GET /api/v1/admin/users/{id}/activities
+- Méthodes diagnostics:
+  - `checkSecrets()` - GET /api/v1/admin/diagnostic/secrets
+  - `runGrandfatherMigration()` - POST /api/v1/admin/migrate/grandfather-users
+
+**3. packages/web/lib/api/index.ts** (40 lignes):
+- Exports centralisés: authApi, userApi, adminApi
+- Re-exports des types TypeScript
+
+**4. packages/web/src/modules/users-admin/services/api.ts** (MAJ):
+- Mise à jour endpoints: `/users` → `/admin/users`
+- Documentation endpoints backend
+- Tous les appels utilisent maintenant `ADMIN_USERS_BASE = "/admin/users"`
+
+### Types TypeScript Définis
+
+**userApi.ts**:
+- UserProfile, UserUpdate, PasswordChange
+
+**adminApi.ts**:
+- User, UserListResponse, UserCreate, UserUpdate
+- UserStats, UserActivity
+- DiagnosticsResponse, MigrationResponse
+
+### Bénéfices
+
+- ✅ API clients typés TypeScript
+- ✅ Intercepteurs auth automatiques
+- ✅ Import depuis shared/constants (single source of truth)
+- ✅ Séparation claire users vs admin au niveau frontend
+- ✅ Gestion erreurs centralisée (401 → redirect login)
+- ✅ Dashboard admin utilise maintenant `/api/v1/admin/users`
+- ✅ Cohérence backend ↔ frontend
 
 ---
 

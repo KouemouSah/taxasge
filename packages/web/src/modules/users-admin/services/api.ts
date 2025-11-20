@@ -1,10 +1,13 @@
 /**
  * Users Admin API Service
- * Handles all API calls to the backend users endpoints
+ * Handles all API calls to the backend admin users endpoints
  *
  * @module users-admin/services
  * @author Claude Code
  * @date 2025-11-19
+ *
+ * IMPORTANT: Uses /api/v1/admin/users endpoints (admin-only operations)
+ * Backend: app/modules/admin/api/user_management_routes.py
  */
 
 import type {
@@ -21,6 +24,7 @@ import type {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const API_VERSION = "/api/v1";
+const ADMIN_USERS_BASE = "/admin/users"; // Admin-only users endpoints
 
 // =============================================================================
 // HTTP CLIENT
@@ -121,6 +125,7 @@ const client = new ApiClient(API_BASE_URL + API_VERSION);
 export const usersApi = {
   /**
    * Get all users with optional filters
+   * ENDPOINT: GET /api/v1/admin/users
    */
   getAll: async (params?: {
     role?: UserRole;
@@ -139,7 +144,7 @@ export const usersApi = {
 
     const query = queryParams.toString();
     const response = await client.get<PaginatedUsersResponse>(
-      `/users${query ? `?${query}` : ""}`
+      `${ADMIN_USERS_BASE}${query ? `?${query}` : ""}`
     );
 
     // Extract users array from paginated response
@@ -148,37 +153,42 @@ export const usersApi = {
 
   /**
    * Get user by ID
+   * ENDPOINT: GET /api/v1/admin/users/{id}
    */
   getById: async (id: string): Promise<User> => {
-    return client.get<User>(`/users/${id}`);
+    return client.get<User>(`${ADMIN_USERS_BASE}/${id}`);
   },
 
   /**
    * Create new user
+   * ENDPOINT: POST /api/v1/admin/users
    */
   create: async (data: CreateUserRequest): Promise<User> => {
-    return client.post<User>("/users", data);
+    return client.post<User>(ADMIN_USERS_BASE, data);
   },
 
   /**
    * Update user
+   * ENDPOINT: PUT /api/v1/admin/users/{id}
    */
   update: async (id: string, data: UpdateUserRequest): Promise<User> => {
-    return client.put<User>(`/users/${id}`, data);
+    return client.put<User>(`${ADMIN_USERS_BASE}/${id}`, data);
   },
 
   /**
    * Delete user
+   * ENDPOINT: DELETE /api/v1/admin/users/{id}
    */
   delete: async (id: string): Promise<void> => {
-    return client.delete<void>(`/users/${id}`);
+    return client.delete<void>(`${ADMIN_USERS_BASE}/${id}`);
   },
 
   /**
    * Activate/Deactivate user
+   * ENDPOINT: PATCH /api/v1/admin/users/{id}
    */
   setActive: async (id: string, is_active: boolean): Promise<User> => {
-    return client.patch<User>(`/users/${id}`, { is_active });
+    return client.patch<User>(`${ADMIN_USERS_BASE}/${id}`, { is_active });
   },
 };
 
