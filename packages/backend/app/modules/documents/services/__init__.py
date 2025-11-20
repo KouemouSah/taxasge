@@ -3,9 +3,20 @@ Document Services for TaxasGE Backend
 Business logic for document processing (OCR, extraction, validation)
 
 Services:
-- OCRService: Tesseract and Google Cloud Vision OCR processing
+- OCRService: Tesseract and Google Document AI OCR processing
+  - Tesseract: Free OCR for simple documents
+  - Google Document AI: Premium AI with specialized processors (form_parser, invoice_parser, expense_parser)
+
 - DocumentService: Document processing orchestration (upload → OCR → extraction → validation)
-- StorageService: Supabase Storage integration (upload, download, delete files)
+  - Coordinates StorageService + OCRService
+  - Full pipeline with queue management
+
+- StorageService: Firebase Storage (GCP) integration
+  - Follows storage.rules bucket structure
+  - Path types: user-documents, profile-pictures, temp-uploads, etc.
+  - Metadata and size validation (5MB docs, 2MB images)
+
+Project: taxasge-dev (dev), taxasge-pro (prod)
 """
 
 from app.modules.documents.services.ocr_service import OCRService

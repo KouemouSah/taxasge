@@ -23,10 +23,16 @@ from app.modules.documents.services.storage_service import StorageService
 class DocumentService:
     """Orchestration service for document processing pipeline"""
 
-    def __init__(self):
-        """Initialize document service with dependencies"""
-        self.ocr_service = OCRService()
-        self.storage_service = StorageService()
+    def __init__(self, project_id: str = "taxasge-dev"):
+        """
+        Initialize document service with dependencies
+
+        Args:
+            project_id: GCP/Firebase project ID (taxasge-dev or taxasge-pro)
+        """
+        self.project_id = project_id
+        self.ocr_service = OCRService(project_id=project_id)
+        self.storage_service = StorageService(project_id=project_id)
 
     async def process_uploaded_document(
         self,
@@ -34,8 +40,9 @@ class DocumentService:
         file_path: str,
         filename: str,
         document_type: str,
-        related_declaration_id: Optional[str] = None,
-        use_google_vision: bool = False,
+        application_id: Optional[str] = None,
+        use_document_ai: bool = False,
+        storage_type: str = "user-documents",
     ) -> Dict[str, Any]:
         """
         Process uploaded document through full pipeline
@@ -44,14 +51,16 @@ class DocumentService:
             user_id: User who uploaded the document
             file_path: Local file path to upload
             filename: Original filename
-            document_type: Type (iva, irpf, nota_ingreso, etc.)
-            related_declaration_id: Optional FK to tax_declarations or fiscal_service_data
-            use_google_vision: Use Google Vision instead of Tesseract
+            document_type: Type (iva, irpf, nota_ingreso, invoice, receipt, etc.)
+            application_id: FK to tax_declarations or fiscal_service_data (required for user-documents)
+            use_document_ai: Use Google Document AI instead of Tesseract
+            storage_type: Firebase Storage path type (user-documents, temp-uploads, etc.)
 
         Returns:
             {
                 "file_id": str,
                 "storage_url": str,
+                "storage_path": str,
                 "ocr_result": dict,
                 "extraction_result": dict,
                 "queue_status": str
@@ -60,25 +69,30 @@ class DocumentService:
         file_id = str(uuid.uuid4())
 
         try:
-            # Step 1: Upload to Supabase Storage
+            # Step 1: Upload to Firebase Storage
             logger.info(f"Uploading document {filename} for user {user_id}")
             storage_result = await self.storage_service.upload_file(
                 file_path=file_path,
                 filename=filename,
                 user_id=user_id,
-                bucket_name="documents",
+                storage_type=storage_type,
+                application_id=application_id,
+                metadata={
+                    "documentType": document_type,
+                    "fileId": file_id,
+                },
             )
 
             # TODO: Save to uploaded_files table
             # INSERT INTO uploaded_files (id, user_id, filename, file_path, file_type, file_size, uploaded_at)
 
-            # Step 2: OCR Processing
-            logger.info(f"Processing OCR for document {file_id}")
+            # Step 2: OCR Processing with Document AI
+            logger.info(f"Processing OCR for document {file_id} (Document AI: {use_document_ai})")
             ocr_result = await self.ocr_service.process_document(
                 file_id=file_id,
                 file_path=storage_result["url"],
                 document_type=document_type,
-                use_google_vision=use_google_vision,
+                use_document_ai=use_document_ai,
             )
 
             # TODO: Save to ocr_extraction_results table
@@ -103,6 +117,8 @@ class DocumentService:
                 "file_id": file_id,
                 "filename": filename,
                 "storage_url": storage_result["url"],
+                "storage_path": storage_result["path"],
+                "bucket": storage_result["bucket"],
                 "ocr_result": ocr_result,
                 "extraction_result": extraction_result,
                 "queue_status": "queued",
@@ -180,14 +196,14 @@ class DocumentService:
     async def reprocess_document(
         self,
         file_id: str,
-        use_google_vision: bool = True,
+        use_document_ai: bool = True,
     ) -> Dict[str, Any]:
         """
         Reprocess document with different OCR engine
 
         Args:
             file_id: Document file ID
-            use_google_vision: Switch to Google Vision
+            use_document_ai: Switch to Google Document AI
 
         Returns:
             New OCR result
@@ -196,12 +212,12 @@ class DocumentService:
         # TODO: Rerun OCR with different engine
         # TODO: Update ocr_extraction_results
 
-        logger.info(f"Reprocessing document {file_id} with Google Vision: {use_google_vision}")
+        logger.info(f"Reprocessing document {file_id} with Document AI: {use_document_ai}")
 
         return {
             "file_id": file_id,
             "reprocessed": True,
-            "ocr_engine": "google_vision" if use_google_vision else "tesseract",
+            "ocr_engine": "document_ai" if use_document_ai else "tesseract",
         }
 
     async def delete_document(
