@@ -402,6 +402,15 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ Payments router not available: {e}")
 
+# Try to load webhooks router (Module - Webhooks System - Phase 3 - BANGE Callbacks)
+try:
+    from app.modules.webhooks.api import webhook_router
+    app.include_router(webhook_router, prefix="/api/v1/webhooks", tags=["webhooks"])
+    routers_loaded.append("webhooks")
+    logger.info("✅ Webhooks router loaded (BANGE callbacks + reconciliation)")
+except ImportError as e:
+    logger.warning(f"⚠️ Webhooks router not available: {e}")
+
 if routers_loaded:
     logger.info(f"✅ {len(routers_loaded)} API routers loaded: {', '.join(routers_loaded)}")
 else:
