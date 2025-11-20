@@ -25,9 +25,11 @@
 ### ⏳ Statut Actuel
 
 **Commits réalisés**:
-- `d8c3f03` - Migration auth vers structure modulaire
+- `d8c3f03` - Migration auth vers structure modulaire (backend)
 - `bea9288` - Mise à jour rapports et checklist
 - `0eb38df` - Mise à jour endpoints.ts (shared)
+- `efcebc6` - Ajout endpoints.ts update au rapport
+- `ef426c7` - Synchronisation authApi.ts avec endpoints (frontend)
 
 **En attente**: Validation déploiement GitHub Actions (géré par utilisateur)
 
@@ -201,6 +203,37 @@ from app.modules.auth.models.auth_models import TokenRefreshRequest
 
 **Commit**: `0eb38df`
 **Fichiers modifiés**: 1 file, 108 insertions(+), 13 deletions(-)
+
+---
+
+## ✅ TÂCHE 2.4 - VALIDATION LIEN BACKEND-FRONTEND (TERMINÉE)
+
+### Synchronisation authApi.ts
+
+**Fichier**: `packages/web/lib/api/authApi.ts`
+
+**Modifications**:
+1. **Import endpoints shared**: `import { PUBLIC_ENDPOINTS } from '@taxasge/shared/constants/endpoints'`
+2. **BaseURL simplifié**: Suppression du hardcoding `/api/v1/auth`
+3. **Utilisation constantes**: Tous les endpoints utilisent PUBLIC_ENDPOINTS.AUTH.*
+
+**Méthodes ajoutées**:
+- `requestPasswordReset()` - Demande réinitialisation mot de passe
+- `resetPassword()` - Réinitialiser mot de passe
+- `refreshToken()` - Rafraîchir access token
+- `logout()` - Déconnexion avec révocation tokens
+
+**Corrections**:
+- Fixed import dans `forgot-password/page.tsx`: `@/lib/api/auth` → `@/lib/api/authApi`
+
+**Bénéfices**:
+- ✅ Endpoints centralisés (shared/constants/endpoints.ts)
+- ✅ Synchronisation automatique backend ↔ frontend
+- ✅ Réduction duplication code
+- ✅ Maintenance simplifiée
+
+**Commit**: `ef426c7`
+**Fichiers modifiés**: 2 files, 96 insertions(+), 10 deletions(-)
 
 ---
 
