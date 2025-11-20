@@ -41,8 +41,8 @@ class MembershipService:
                 "error": Optional[str]
             }
         """
-        # Cannot demote owner
-        if current_role == CompanyMemberRole.OWNER and new_role != CompanyMemberRole.OWNER:
+        # Cannot demote company_owner
+        if current_role == CompanyMemberRole.COMPANY_OWNER and new_role != CompanyMemberRole.COMPANY_OWNER:
             return {
                 "is_valid": False,
                 "error": "Cannot demote company owner. Transfer ownership first.",
@@ -50,10 +50,10 @@ class MembershipService:
 
         # Role hierarchy levels
         role_levels = {
-            CompanyMemberRole.OWNER: 4,
-            CompanyMemberRole.ADMIN: 3,
-            CompanyMemberRole.ACCOUNTANT: 2,
-            CompanyMemberRole.MEMBER: 1,
+            CompanyMemberRole.COMPANY_OWNER: 4,
+            CompanyMemberRole.COMPANY_ADMIN: 3,
+            CompanyMemberRole.COMPANY_ACCOUNTANT: 2,
+            CompanyMemberRole.COMPANY_MEMBER: 1,
         }
 
         requester_level = role_levels[requester_role]
@@ -112,7 +112,7 @@ class MembershipService:
             "previous_owner_id": current_owner_id,
             "new_owner_id": new_owner_id,
             "transferred_at": datetime.utcnow(),
-            "previous_owner_role": CompanyMemberRole.ADMIN.value,
+            "previous_owner_role": CompanyMemberRole.COMPANY_ADMIN.value,
         }
 
     def invite_member(
@@ -204,7 +204,7 @@ class MembershipService:
         return {
             "company_id": "mock-company-id",
             "user_id": user_id,
-            "role": CompanyMemberRole.MEMBER.value,
+            "role": CompanyMemberRole.COMPANY_MEMBER.value,
             "accepted_at": datetime.utcnow(),
         }
 
@@ -259,7 +259,7 @@ class MembershipService:
             "can_transfer_ownership": False,
         }
 
-        if role == CompanyMemberRole.OWNER:
+        if role == CompanyMemberRole.COMPANY_OWNER:
             # Owner has all permissions
             permissions.update({
                 "can_create_declarations": True,
@@ -273,7 +273,7 @@ class MembershipService:
                 "can_delete_company": True,
                 "can_transfer_ownership": True,
             })
-        elif role == CompanyMemberRole.ADMIN:
+        elif role == CompanyMemberRole.COMPANY_ADMIN:
             # Admin can manage most things except ownership
             permissions.update({
                 "can_create_declarations": True,
@@ -285,7 +285,7 @@ class MembershipService:
                 "can_change_roles": True,  # Limited to accountant/member
                 "can_update_company": True,
             })
-        elif role == CompanyMemberRole.ACCOUNTANT:
+        elif role == CompanyMemberRole.COMPANY_ACCOUNTANT:
             # Accountant focuses on financial operations
             permissions.update({
                 "can_create_declarations": True,
@@ -293,7 +293,7 @@ class MembershipService:
                 "can_approve_declarations": True,
                 "can_manage_payments": True,
             })
-        elif role == CompanyMemberRole.MEMBER:
+        elif role == CompanyMemberRole.COMPANY_MEMBER:
             # Member has basic access
             permissions.update({
                 "can_create_declarations": True,

@@ -136,10 +136,10 @@ class CompanyService:
             return False
 
         role_hierarchy = {
-            CompanyMemberRole.OWNER.value: 4,
-            CompanyMemberRole.ADMIN.value: 3,
-            CompanyMemberRole.ACCOUNTANT.value: 2,
-            CompanyMemberRole.MEMBER.value: 1,
+            CompanyMemberRole.COMPANY_OWNER.value: 4,
+            CompanyMemberRole.COMPANY_ADMIN.value: 3,
+            CompanyMemberRole.COMPANY_ACCOUNTANT.value: 2,
+            CompanyMemberRole.COMPANY_MEMBER.value: 1,
         }
 
         user_level = role_hierarchy.get(user_role, 0)
@@ -172,11 +172,11 @@ class CompanyService:
         Returns:
             True if can modify
         """
-        if user_role == CompanyMemberRole.OWNER.value:
+        if user_role == CompanyMemberRole.COMPANY_OWNER.value:
             return True
 
-        if user_role == CompanyMemberRole.ADMIN.value:
-            return target_role in [CompanyMemberRole.ACCOUNTANT, CompanyMemberRole.MEMBER]
+        if user_role == CompanyMemberRole.COMPANY_ADMIN.value:
+            return target_role in [CompanyMemberRole.COMPANY_ACCOUNTANT, CompanyMemberRole.COMPANY_MEMBER]
 
         return False
 

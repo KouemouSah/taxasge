@@ -71,7 +71,7 @@ class APIRegistry:
 
         logger.info("📝 Registering TaxasGE API services...")
 
-        # === SERVICES FISCAUX (547 services réels) ===
+        # === SERVICES FISCAUX (850 services réels) ===
         await self._register_fiscal_services()
 
         # === HIÉRARCHIE ADMINISTRATIVE ===
@@ -104,7 +104,7 @@ class APIRegistry:
         logger.info(f"✅ {len(self.routes)} routes registered across {len(self.services)} services")
 
     async def _register_fiscal_services(self):
-        """Services fiscaux - 547 services disponibles"""
+        """Services fiscaux - 846 services disponibles"""
         fiscal_routes = {
             # Services publics
             "GET /api/v1/services": RouteConfig(

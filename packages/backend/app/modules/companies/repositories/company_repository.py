@@ -22,8 +22,8 @@ class CompanyRepository:
             company.phone, company.address, company.city, company.industry
         )
 
-        # Add owner as member
-        await self.add_member(conn, dict(result)["id"], owner_id, CompanyMemberRole.OWNER)
+        # Add owner as member with company_owner role
+        await self.add_member(conn, dict(result)["id"], owner_id, CompanyMemberRole.COMPANY_OWNER)
 
         return dict(result)
 

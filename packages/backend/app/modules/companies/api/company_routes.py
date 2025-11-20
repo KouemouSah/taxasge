@@ -82,8 +82,8 @@ async def update_company(
     user_id = current_user["sub"]
 
     role = await company_repository.check_membership(db, company_id, user_id)
-    if role not in ["owner", "admin"]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Requires owner/admin role")
+    if role not in ["company_owner", "company_admin"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Requires company_owner or company_admin role")
 
     updated = await company_repository.update(db, company_id, update_data)
     if not updated:
@@ -103,8 +103,8 @@ async def delete_company(
     user_id = current_user["sub"]
 
     role = await company_repository.check_membership(db, company_id, user_id)
-    if role != "owner":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Requires owner role")
+    if role != "company_owner":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Requires company_owner role")
 
     deleted = await company_repository.delete(db, company_id)
     if not deleted:
@@ -143,8 +143,8 @@ async def add_company_member(
     user_id = current_user["sub"]
 
     user_role = await company_repository.check_membership(db, company_id, user_id)
-    if user_role not in ["owner", "admin"]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Requires owner/admin role")
+    if user_role not in ["company_owner", "company_admin"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Requires company_owner or company_admin role")
 
     result = await company_repository.add_member(db, company_id, member_user_id, role)
     logger.info(f"User {user_id} added member {member_user_id} to company {company_id}")
@@ -162,10 +162,10 @@ async def remove_company_member(
     user_id = current_user["sub"]
 
     user_role = await company_repository.check_membership(db, company_id, user_id)
-    if user_role not in ["owner", "admin"]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Requires owner/admin role")
+    if user_role not in ["company_owner", "company_admin"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Requires company_owner or company_admin role")
 
-    if member_user_id == user_id and user_role == "owner":
+    if member_user_id == user_id and user_role == "company_owner":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Owner cannot remove self")
 
     removed = await company_repository.remove_member(db, company_id, member_user_id)

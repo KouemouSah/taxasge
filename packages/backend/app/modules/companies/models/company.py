@@ -7,11 +7,24 @@ from enum import Enum
 
 
 class CompanyMemberRole(str, Enum):
-    """Company member roles"""
-    OWNER = "owner"
-    ADMIN = "admin"
-    ACCOUNTANT = "accountant"
-    MEMBER = "member"
+    """
+    Company member roles (STRICTLY for user_company_roles table)
+
+    IMPORTANT: These are DISTINCT from system user roles (citizen, business, accountant, admin)
+    Prefixed with 'company_' to avoid confusion.
+
+    Hierarchy: company_owner > company_admin > company_accountant > company_member
+
+    Roles:
+    - company_owner: Full permissions (transfer ownership, delete company, manage all)
+    - company_admin: Manage members, declarations, payments (except ownership transfer/deletion)
+    - company_accountant: Financial focus (declarations, payments, approval)
+    - company_member: Basic access (own declarations only)
+    """
+    COMPANY_OWNER = "company_owner"
+    COMPANY_ADMIN = "company_admin"
+    COMPANY_ACCOUNTANT = "company_accountant"
+    COMPANY_MEMBER = "company_member"
 
 
 class CompanyBase(BaseModel):
