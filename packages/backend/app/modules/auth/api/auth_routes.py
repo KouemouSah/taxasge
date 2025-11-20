@@ -862,7 +862,7 @@ async def change_password(
             )
 
         # Verify current password
-        from app.services.password_service import PasswordService
+        from app.modules.auth.services.password_service import PasswordService
         password_service = PasswordService()
         is_valid = password_service.verify_password(
             password=request.current_password,
@@ -987,7 +987,7 @@ async def verify_password_change(request: PasswordChangeVerifyRequest):
             )
 
         # Hash the new password
-        from app.services.password_service import PasswordService
+        from app.modules.auth.services.password_service import PasswordService
         password_service = PasswordService()
         new_password_hash = password_service.hash_password(request.new_password)
 
