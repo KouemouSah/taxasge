@@ -24,7 +24,12 @@
 
 ### ⏳ Statut Actuel
 
-**En attente**: Validation déploiement GitHub Actions
+**Commits réalisés**:
+- `d8c3f03` - Migration auth vers structure modulaire
+- `bea9288` - Mise à jour rapports et checklist
+- `0eb38df` - Mise à jour endpoints.ts (shared)
+
+**En attente**: Validation déploiement GitHub Actions (géré par utilisateur)
 
 ---
 
@@ -167,6 +172,35 @@ from app.modules.auth.models.auth_models import TokenRefreshRequest
 - 17 nouveaux fichiers créés
 
 **Push**: ✅ Poussé vers `origin/develop`
+
+---
+
+## ✅ MISE À JOUR FRONTEND - endpoints.ts (TERMINÉE)
+
+### Modifications Apportées
+
+**Fichier**: `packages/shared/constants/endpoints.ts`
+
+**Endpoints Auth Ajoutés**:
+- Login, register, 2FA (setup, enable, verify, disable)
+- Token management (refresh, logout)
+- Password management (forgot, reset, verify)
+- Email verification (verify, resend)
+- Session management (list, current, revoke, revoke-all)
+
+**Endpoints Modules Ajoutés**:
+- **Permissions**: CRUD + sync
+- **Roles**: CRUD + permissions assignment
+- **User Permissions**: get, assign, revoke, check
+- **Assignments**: CRUD + statistics
+- **Supervisors**: CRUD + hierarchy
+
+**Endpoints Users Mis à Jour**:
+- Profile: `/api/v1/users/profile` (au lieu de `/api/v1/profile`)
+- Users management: list, create, update, delete, search
+
+**Commit**: `0eb38df`
+**Fichiers modifiés**: 1 file, 108 insertions(+), 13 deletions(-)
 
 ---
 
