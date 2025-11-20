@@ -212,6 +212,24 @@ export const AUTHENTICATED_ENDPOINTS = {
     DELETE: (id: string) => `/api/v1/supervisors/${id}`,
     HIERARCHY: '/api/v1/supervisors/hierarchy',
   },
+
+  // Documents (Module: app/modules/documents)
+  DOCUMENTS: {
+    INFO: '/api/v1/documents',
+    UPLOAD: '/api/v1/documents/upload',
+    LIST: '/api/v1/documents/list',
+    DETAIL: (id: string) => `/api/v1/documents/${id}`,
+    DOWNLOAD: (id: string) => `/api/v1/documents/${id}/download`,
+    UPDATE: (id: string) => `/api/v1/documents/${id}`,
+    DELETE: (id: string) => `/api/v1/documents/${id}`,
+    PROCESS: (id: string) => `/api/v1/documents/${id}/process`,
+    OCR: (id: string) => `/api/v1/documents/${id}/ocr`,
+    EXTRACT: (id: string) => `/api/v1/documents/${id}/extract`,
+    VALIDATE: (id: string) => `/api/v1/documents/${id}/validate`,
+    RETRY: (id: string) => `/api/v1/documents/${id}/retry`,
+    SEARCH: '/api/v1/documents/search',
+    STATS: '/api/v1/documents/stats',
+  },
 } as const;
 
 // === ENDPOINTS ADMIN ===

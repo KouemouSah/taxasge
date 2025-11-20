@@ -7,6 +7,7 @@
 export { authApi, default as auth } from './authApi';
 export { userApi, default as user } from './userApi';
 export { adminApi, default as admin } from './adminApi';
+export { documentsApi, default as documents } from './documentsApi';
 
 // Re-export types
 export type {
@@ -35,3 +36,15 @@ export type {
   DiagnosticsResponse,
   MigrationResponse,
 } from './adminApi';
+
+export type {
+  Document,
+  DocumentListResponse,
+  DocumentUploadResponse,
+  DocumentProcessRequest,
+  OCRResponse,
+  ExtractionResponse,
+  ValidationResponse,
+  DocumentStats,
+  DocumentSearchFilter,
+} from './documentsApi';

@@ -51,6 +51,11 @@
 3. **Endpoints** - Upload, OCR, extraction, validation, search, stats
 4. **Router registration** - main.py mis à jour
 
+**✅ LIEN BACKEND-FRONTEND DOCUMENTS** (TERMINÉE):
+1. **endpoints.ts** - 14 endpoints documents dans AUTHENTICATED_ENDPOINTS
+2. **documentsApi.ts** - 360 lignes (client API complet)
+3. **index.ts** - Exports + types documents
+
 ### ⏳ Statut Actuel
 
 **Commits réalisés**:
@@ -62,7 +67,8 @@
 - `bcc7982` - Migration admin vers structure modulaire
 - `8c27b24` - Migration users vers structure modulaire
 - `ef09d54` - Création API clients frontend users/admin
-- [EN COURS] - Migration documents vers structure modulaire
+- `d2c3deb` - Migration documents vers structure modulaire
+- [EN COURS] - Lien backend-frontend documents (endpoints.ts + documentsApi.ts)
 
 **En attente**: Validation déploiement GitHub Actions (géré par utilisateur)
 
@@ -612,6 +618,78 @@ except ImportError as e:
 - ✅ Architecture unifiée pour tous les modules
 
 **Total modules migrés**: 6 (auth, permissions, assignment, admin, users, documents)
+
+---
+
+## ✅ LIEN BACKEND-FRONTEND DOCUMENTS (TERMINÉ)
+
+### Fichiers Créés
+
+**1. packages/shared/constants/endpoints.ts** (MAJ):
+- Ajout section DOCUMENTS dans AUTHENTICATED_ENDPOINTS
+- 14 endpoints documents:
+  - `INFO` - GET /api/v1/documents
+  - `UPLOAD` - POST /api/v1/documents/upload
+  - `LIST` - GET /api/v1/documents/list
+  - `DETAIL` - GET /api/v1/documents/{id}
+  - `DOWNLOAD` - GET /api/v1/documents/{id}/download
+  - `UPDATE` - PUT /api/v1/documents/{id}
+  - `DELETE` - DELETE /api/v1/documents/{id}
+  - `PROCESS` - POST /api/v1/documents/{id}/process
+  - `OCR` - POST /api/v1/documents/{id}/ocr
+  - `EXTRACT` - POST /api/v1/documents/{id}/extract
+  - `VALIDATE` - POST /api/v1/documents/{id}/validate
+  - `RETRY` - POST /api/v1/documents/{id}/retry
+  - `SEARCH` - POST /api/v1/documents/search
+  - `STATS` - GET /api/v1/documents/stats
+
+**2. packages/web/lib/api/documentsApi.ts** (360 lignes):
+- Client axios pour endpoints documents
+- Import depuis `AUTHENTICATED_ENDPOINTS.DOCUMENTS`
+- 14 méthodes alignées sur backend:
+  - `getInfo()` - Informations API
+  - `upload()` - Upload avec auto-processing
+  - `list()` - Liste documents avec pagination
+  - `getById()` - Détails document
+  - `download()` - Téléchargement fichier (Blob)
+  - `update()` - Mise à jour métadonnées
+  - `delete()` - Suppression document
+  - `process()` - Pipeline complet (OCR + extraction + validation)
+  - `runOCR()` - Extraction OCR seule
+  - `extract()` - Extraction données structurées
+  - `validate()` - Validation document
+  - `retry()` - Retry processing échoué
+  - `search()` - Recherche avancée avec filtres
+  - `getStats()` - Statistiques processing
+- Timeout: 60 secondes (opérations OCR/processing longues)
+- Intercepteurs auth automatiques
+
+**3. packages/web/lib/api/index.ts** (MAJ):
+- Export documentsApi
+- Re-exports types: Document, DocumentListResponse, DocumentUploadResponse, OCRResponse, ExtractionResponse, ValidationResponse, DocumentStats, DocumentSearchFilter
+
+### Types TypeScript Définis
+
+**documentsApi.ts**:
+- Document: Modèle complet document
+- DocumentListResponse: Liste paginée
+- DocumentUploadResponse: Résultat upload
+- DocumentProcessRequest: Options processing
+- OCRResponse: Résultat OCR
+- ExtractionResponse: Résultat extraction
+- ValidationResponse: Résultat validation
+- DocumentStats: Statistiques globales
+- DocumentSearchFilter: Filtres recherche
+
+### Bénéfices
+
+- ✅ API client typé TypeScript pour documents
+- ✅ 14 méthodes alignées sur backend
+- ✅ Import depuis shared/constants (single source)
+- ✅ Timeout adapté aux opérations OCR/processing
+- ✅ Gestion upload fichiers (FormData)
+- ✅ Download fichiers (responseType: 'blob')
+- ✅ Cohérence backend ↔ frontend
 
 ---
 
