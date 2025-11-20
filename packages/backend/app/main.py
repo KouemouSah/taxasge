@@ -254,6 +254,7 @@ async def api_v1_info():
             "users": "/api/v1/users/ - User profile management (self-service)",
             "admin": "/api/v1/admin/ - Admin diagnostics and migrations (RESTRICTED)",
             "admin_users": "/api/v1/admin/users/ - Admin user management (CRUD, RESTRICTED)",
+            "documents": "/api/v1/documents/ - Document upload, OCR, extraction, validation",
             "taxes": "/api/v1/taxes/ - Tax service management (administrative)",
             "declarations": "/api/v1/declarations/ - Tax declarations workflow",
             "payments": "/api/v1/payments/ - BANGE mobile payments integration",
@@ -364,6 +365,15 @@ try:
     logger.info("✅ Assignment router loaded")
 except ImportError as e:
     logger.warning(f"⚠️ Assignment router not available: {e}")
+
+# Try to load documents router (Module - Documents System)
+try:
+    from app.modules.documents.api import document_routes
+    app.include_router(document_routes, prefix="/api/v1/documents", tags=["documents"])
+    routers_loaded.append("documents")
+    logger.info("✅ Documents router loaded (OCR, extraction, validation)")
+except ImportError as e:
+    logger.warning(f"⚠️ Documents router not available: {e}")
 
 if routers_loaded:
     logger.info(f"✅ {len(routers_loaded)} API routers loaded: {', '.join(routers_loaded)}")
