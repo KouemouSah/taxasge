@@ -30,11 +30,64 @@ from app.modules.fiscal_services.models.fiscal_service import (
     FiscalServiceListResponse,
 )
 
+from app.modules.fiscal_services.models.templates import (
+    # ENUMs
+    TranslatableEntityType,
+
+    # Document Templates
+    DocumentTemplateBase,
+    DocumentTemplateCreate,
+    DocumentTemplateUpdate,
+    DocumentTemplateResponse,
+    DocumentTemplateListResponse,
+
+    # Procedure Templates
+    ProcedureTemplateBase,
+    ProcedureTemplateCreate,
+    ProcedureTemplateUpdate,
+    ProcedureTemplateResponse,
+    ProcedureTemplateListResponse,
+    ProcedureTemplateWithSteps,
+
+    # Procedure Steps
+    ProcedureStepBase,
+    ProcedureStepCreate,
+    ProcedureStepUpdate,
+    ProcedureStepResponse,
+
+    # Service Document Assignments
+    ServiceDocumentAssignmentBase,
+    ServiceDocumentAssignmentCreate,
+    ServiceDocumentAssignmentUpdate,
+    ServiceDocumentAssignmentResponse,
+
+    # Service Procedure Assignments
+    ServiceProcedureAssignmentBase,
+    ServiceProcedureAssignmentCreate,
+    ServiceProcedureAssignmentUpdate,
+    ServiceProcedureAssignmentResponse,
+
+    # Service Keywords
+    ServiceKeywordBase,
+    ServiceKeywordCreate,
+    ServiceKeywordUpdate,
+    ServiceKeywordResponse,
+    ServiceKeywordBulkCreate,
+
+    # Entity Translations
+    EntityTranslationBase,
+    EntityTranslationCreate,
+    EntityTranslationUpdate,
+    EntityTranslationResponse,
+    EntityTranslationBulk,
+)
+
 __all__ = [
     # ENUMs
     "ServiceTypeEnum",
     "CalculationMethodEnum",
     "ServiceStatusEnum",
+    "TranslatableEntityType",
 
     # Categories
     "CategoryBase",
@@ -58,4 +111,51 @@ __all__ = [
     # Search and Filtering
     "FiscalServiceFilter",
     "FiscalServiceListResponse",
+
+    # Document Templates
+    "DocumentTemplateBase",
+    "DocumentTemplateCreate",
+    "DocumentTemplateUpdate",
+    "DocumentTemplateResponse",
+    "DocumentTemplateListResponse",
+
+    # Procedure Templates
+    "ProcedureTemplateBase",
+    "ProcedureTemplateCreate",
+    "ProcedureTemplateUpdate",
+    "ProcedureTemplateResponse",
+    "ProcedureTemplateListResponse",
+    "ProcedureTemplateWithSteps",
+
+    # Procedure Steps
+    "ProcedureStepBase",
+    "ProcedureStepCreate",
+    "ProcedureStepUpdate",
+    "ProcedureStepResponse",
+
+    # Service Document Assignments
+    "ServiceDocumentAssignmentBase",
+    "ServiceDocumentAssignmentCreate",
+    "ServiceDocumentAssignmentUpdate",
+    "ServiceDocumentAssignmentResponse",
+
+    # Service Procedure Assignments
+    "ServiceProcedureAssignmentBase",
+    "ServiceProcedureAssignmentCreate",
+    "ServiceProcedureAssignmentUpdate",
+    "ServiceProcedureAssignmentResponse",
+
+    # Service Keywords
+    "ServiceKeywordBase",
+    "ServiceKeywordCreate",
+    "ServiceKeywordUpdate",
+    "ServiceKeywordResponse",
+    "ServiceKeywordBulkCreate",
+
+    # Entity Translations
+    "EntityTranslationBase",
+    "EntityTranslationCreate",
+    "EntityTranslationUpdate",
+    "EntityTranslationResponse",
+    "EntityTranslationBulk",
 ]
