@@ -88,7 +88,7 @@ Used for intelligent load balancing and agent selection algorithms.';
 CREATE OR REPLACE VIEW v_available_agents_by_ministry AS
 SELECT
     m.id as ministry_id,
-    m.code as ministry_code,
+    m.ministry_code,
     m.name_es as ministry_name,
 
     -- Agent counts
@@ -112,15 +112,15 @@ SELECT
     ) as ministry_load_percentage,
 
     -- Performance average
-    AVG(aps.quality_score) as avg_quality_score,
-    AVG(aps.avg_processing_time_hours) as avg_processing_hours
+    AVG(aps.sla_respect_percentage) as avg_quality_score,
+    AVG(aps.avg_processing_minutes / 60.0) as avg_processing_hours
 
 FROM ministries m
 LEFT JOIN ministry_agents ma ON m.id = ma.ministry_id
 LEFT JOIN agent_workloads aw ON ma.user_id = aw.agent_id
 LEFT JOIN agent_performance_stats aps ON ma.id = aps.agent_id
 WHERE m.is_active = TRUE
-GROUP BY m.id, m.code, m.name_es
+GROUP BY m.id, m.ministry_code, m.name_es
 ORDER BY available_capacity DESC;
 
 COMMENT ON VIEW v_available_agents_by_ministry IS
