@@ -116,36 +116,46 @@ SELECT
     (
         SELECT json_agg(
             json_build_object(
-                'payment_id', p.id,
-                'user_name', u.full_name,
-                'user_email', u.email,
-                'amount', p.amount,
-                'bank_reference', p.bank_reference,
-                'paid_at', p.paid_at,
-                'declaration_type', d.declaration_type,
-                'match_score',
-                    CASE
-                        WHEN p.bank_reference = bt.bank_reference THEN 100
-                        WHEN p.amount = bt.amount THEN 80
-                        WHEN ABS(p.amount - bt.amount) < 100 THEN 60
-                        ELSE 40
-                    END
+                'payment_id', matches.payment_id,
+                'user_name', matches.user_name,
+                'user_email', matches.user_email,
+                'amount', matches.amount,
+                'bank_reference', matches.bank_reference,
+                'paid_at', matches.paid_at,
+                'declaration_type', matches.declaration_type,
+                'match_score', matches.match_score
             )
         )
-        FROM payments p
-        JOIN users u ON p.user_id = u.id
-        JOIN tax_declarations d ON p.tax_declaration_id = d.id
-        WHERE p.bank_transaction_id IS NULL
-        AND p.status = 'completed'
-        AND ABS(p.amount - bt.amount) < 1000  -- Within 1000 CFA tolerance
-        AND ABS(EXTRACT(EPOCH FROM (p.paid_at - bt.bank_transaction_date))) < 86400 * 3  -- Within 3 days
-        ORDER BY
-            CASE
-                WHEN p.bank_reference = bt.bank_reference THEN 1
-                WHEN p.amount = bt.amount THEN 2
-                ELSE 3
-            END
-        LIMIT 5
+        FROM (
+            SELECT
+                p.id as payment_id,
+                u.full_name as user_name,
+                u.email as user_email,
+                p.amount,
+                p.bank_reference,
+                p.paid_at,
+                d.declaration_type,
+                CASE
+                    WHEN p.bank_reference = bt.bank_reference THEN 100
+                    WHEN p.amount = bt.amount THEN 80
+                    WHEN ABS(p.amount - bt.amount) < 100 THEN 60
+                    ELSE 40
+                END as match_score
+            FROM payments p
+            JOIN users u ON p.user_id = u.id
+            JOIN tax_declarations d ON p.tax_declaration_id = d.id
+            WHERE p.bank_transaction_id IS NULL
+            AND p.status = 'completed'
+            AND ABS(p.amount - bt.amount) < 1000  -- Within 1000 CFA tolerance
+            AND ABS(EXTRACT(EPOCH FROM (p.paid_at - bt.bank_transaction_date))) < 86400 * 3  -- Within 3 days
+            ORDER BY
+                CASE
+                    WHEN p.bank_reference = bt.bank_reference THEN 1
+                    WHEN p.amount = bt.amount THEN 2
+                    ELSE 3
+                END
+            LIMIT 5
+        ) matches
     ) as suggested_matches,
 
     -- Match count
