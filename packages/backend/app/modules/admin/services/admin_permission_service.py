@@ -86,10 +86,15 @@ class AdminPermissionService:
         ],
         "documents": [
             "documents.view",
+            "documents.view_all",
             "documents.upload",
             "documents.delete",
+            "documents.delete_any",
             "documents.download",
-            "documents.view_all",
+            "documents.download_all",
+            "documents.process",
+            "documents.process_any",
+            "documents.view_stats",
         ],
         "audit": [
             "audit.view",

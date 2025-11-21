@@ -42,6 +42,7 @@ from app.modules.auth.middleware.auth_middleware import (
     get_current_admin_user as require_admin,
     get_current_operator_user as require_operator
 )
+from app.modules.permissions.middleware.permission_middleware import require_permission
 
 router = APIRouter(tags=["Documents"])
 
@@ -352,7 +353,12 @@ async def get_document(
     document_id: UUID = Path(..., description="Document ID"),
     current_user: UserResponse = Depends(get_current_user)
 ):
-    """Get document details by ID"""
+    """
+    Get document details by ID
+
+    Users can view their own documents
+    Admins with documents.view_all permission can view any document
+    """
     try:
         document = await document_repository.get_by_id(document_id)
         if not document:
@@ -361,12 +367,17 @@ async def get_document(
                 detail="Document not found"
             )
 
-        # Check access permissions
+        # Check access permissions: ownership OR admin permission
         if document.user_id != current_user.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied"
-            )
+            from app.modules.permissions.services.permission_service import get_permission_service
+            perm_service = get_permission_service()
+            has_admin_perm = await perm_service.has_permission(str(current_user.id), "documents.view_all")
+
+            if not has_admin_perm:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied"
+                )
 
         # Convert to response
         response = DocumentResponse(**document.dict())
@@ -390,7 +401,12 @@ async def download_document(
     document_id: UUID = Path(..., description="Document ID"),
     current_user: UserResponse = Depends(get_current_user)
 ):
-    """Download original document file"""
+    """
+    Download original document file
+
+    Users can download their own documents
+    Admins with documents.download permission can download any document
+    """
     try:
         document = await document_repository.get_by_id(document_id)
         if not document:
@@ -399,12 +415,17 @@ async def download_document(
                 detail="Document not found"
             )
 
-        # Check access permissions
+        # Check access permissions: ownership OR admin permission
         if document.user_id != current_user.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied"
-            )
+            from app.modules.permissions.services.permission_service import get_permission_service
+            perm_service = get_permission_service()
+            has_admin_perm = await perm_service.has_permission(str(current_user.id), "documents.download_all")
+
+            if not has_admin_perm:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied"
+                )
 
         # Get signed URL from Firebase Storage
         download_url = await firebase_storage_service.get_signed_url(
@@ -965,9 +986,10 @@ async def get_processing_stats(
 
 @router.get("/stats/admin", response_model=Dict[str, Any])
 async def get_admin_stats(
-    current_user: UserResponse = Depends(require_admin)
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(require_permission("documents.view_stats"))
 ):
-    """Get global processing statistics (admin only)"""
+    """Get global processing statistics - Requires documents.view_stats permission"""
     try:
         stats = await document_repository.get_global_stats()
         return stats
