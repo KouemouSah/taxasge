@@ -346,3 +346,159 @@ class DeclarationRepository:
         except Exception as e:
             logger.error(f"Error submitting declaration {declaration_id}: {str(e)}")
             raise
+
+    # ========================================================================
+    # METHODS USING DATABASE VIEWS - Optimized queries with pre-joined data
+    # ========================================================================
+
+    async def get_complete_by_id(
+        self,
+        conn: asyncpg.Connection,
+        declaration_id: str,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get complete declaration details using v_declarations_complete view
+
+        This view includes:
+        - All declaration fields
+        - User info (email, name, phone)
+        - Payment info (amount_paid, amount_due)
+        - Type-specific details (IVA, IRPF, Petroliferos, Retencion)
+        - Agent assignment info
+
+        Args:
+            conn: Database connection
+            declaration_id: Declaration UUID
+
+        Returns:
+            Complete declaration data or None if not found
+        """
+        try:
+            query = """
+                SELECT * FROM v_declarations_complete
+                WHERE id = $1
+            """
+
+            result = await conn.fetchrow(query, declaration_id)
+            return dict(result) if result else None
+
+        except Exception as e:
+            logger.error(f"Error fetching complete declaration {declaration_id}: {str(e)}")
+            raise
+
+    async def list_complete_by_user(
+        self,
+        conn: asyncpg.Connection,
+        user_id: str,
+        status: Optional[DeclarationStatus] = None,
+        declaration_type: Optional[DeclarationType] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[List[Dict[str, Any]], int]:
+        """
+        List complete declarations for a user using v_declarations_complete view
+
+        Args:
+            conn: Database connection
+            user_id: User UUID
+            status: Optional status filter
+            declaration_type: Optional type filter
+            limit: Max results
+            offset: Pagination offset
+
+        Returns:
+            Tuple of (declarations list, total count)
+        """
+        try:
+            # Build WHERE clause
+            where_conditions = ["user_id = $1"]
+            params = [user_id]
+
+            if status:
+                where_conditions.append(f"status = ${len(params) + 1}")
+                params.append(status.value)
+
+            if declaration_type:
+                where_conditions.append(f"declaration_type = ${len(params) + 1}")
+                params.append(declaration_type.value)
+
+            where_clause = " AND ".join(where_conditions)
+
+            # Count query
+            count_query = f"""
+                SELECT COUNT(*) FROM v_declarations_complete
+                WHERE {where_clause}
+            """
+            total = await conn.fetchval(count_query, *params)
+
+            # Data query
+            params.extend([limit, offset])
+            data_query = f"""
+                SELECT * FROM v_declarations_complete
+                WHERE {where_clause}
+                ORDER BY created_at DESC
+                LIMIT ${len(params) - 1} OFFSET ${len(params)}
+            """
+
+            results = await conn.fetch(data_query, *params)
+            declarations = [dict(r) for r in results]
+
+            return declarations, total
+
+        except Exception as e:
+            logger.error(f"Error listing complete declarations for user {user_id}: {str(e)}")
+            raise
+
+    async def list_pending_review(
+        self,
+        conn: asyncpg.Connection,
+        priority: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[List[Dict[str, Any]], int]:
+        """
+        List declarations pending review using v_declarations_pending_review view
+
+        This view includes priority calculation and SLA tracking.
+
+        Args:
+            conn: Database connection
+            priority: Optional priority filter (HIGH, MEDIUM, LOW)
+            limit: Max results
+            offset: Pagination offset
+
+        Returns:
+            Tuple of (declarations list, total count)
+        """
+        try:
+            where_clause = ""
+            params = []
+
+            if priority:
+                where_clause = "WHERE priority = $1"
+                params.append(priority)
+
+            # Count query
+            count_query = f"""
+                SELECT COUNT(*) FROM v_declarations_pending_review
+                {where_clause}
+            """
+            total = await conn.fetchval(count_query, *params)
+
+            # Data query
+            params.extend([limit, offset])
+            data_query = f"""
+                SELECT * FROM v_declarations_pending_review
+                {where_clause}
+                ORDER BY priority, submitted_at ASC
+                LIMIT ${len(params) - 1} OFFSET ${len(params)}
+            """
+
+            results = await conn.fetch(data_query, *params)
+            declarations = [dict(r) for r in results]
+
+            return declarations, total
+
+        except Exception as e:
+            logger.error(f"Error listing pending review declarations: {str(e)}")
+            raise
