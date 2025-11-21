@@ -204,11 +204,13 @@ GROUP BY u.role
 ORDER BY
     CASE u.role
         WHEN 'admin' THEN 1
-        WHEN 'super_admin' THEN 2
-        WHEN 'ministry_agent' THEN 3
-        WHEN 'business' THEN 4
-        WHEN 'citizen' THEN 5
-        ELSE 6
+        WHEN 'supervisor' THEN 2
+        WHEN 'dgi_agent' THEN 3
+        WHEN 'ministry_agent' THEN 4
+        WHEN 'accountant' THEN 5
+        WHEN 'business' THEN 6
+        WHEN 'citizen' THEN 7
+        ELSE 8
     END;
 
 COMMENT ON VIEW v_role_capabilities_summary IS
