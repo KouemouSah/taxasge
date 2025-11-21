@@ -389,3 +389,163 @@ class WorkloadRepository:
         """
         results = await conn.fetch(query)
         return len(results)
+
+    # ========================================================================
+    # METHODS USING DATABASE VIEWS - Optimized queries with pre-joined data
+    # ========================================================================
+
+    async def get_workload_dashboard(
+        self,
+        conn: asyncpg.Connection,
+        agent_id: Optional[str] = None,
+        ministry_id: Optional[int] = None,
+        load_level: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[List[Dict[str, Any]], int]:
+        """
+        Get agent workload dashboard using v_agents_workload_dashboard view
+
+        This view includes:
+        - Agent info (name, email, ministry)
+        - Real-time workload metrics
+        - Capacity calculations
+        - Performance metrics
+        - Availability status
+
+        Args:
+            conn: Database connection
+            agent_id: Optional filter by specific agent
+            ministry_id: Optional filter by ministry
+            load_level: Optional filter (LOW, MEDIUM, HIGH, FULL)
+            limit: Max results
+            offset: Pagination offset
+
+        Returns:
+            Tuple of (agents list, total count)
+        """
+        try:
+            where_conditions = []
+            params = []
+
+            if agent_id:
+                where_conditions.append(f"user_id = ${len(params) + 1}")
+                params.append(agent_id)
+
+            if ministry_id:
+                where_conditions.append(f"ministry_id = ${len(params) + 1}")
+                params.append(ministry_id)
+
+            if load_level:
+                where_conditions.append(f"load_level = ${len(params) + 1}")
+                params.append(load_level)
+
+            where_clause = f"WHERE {' AND '.join(where_conditions)}" if where_conditions else ""
+
+            # Count query
+            count_query = f"""
+                SELECT COUNT(*) FROM v_agents_workload_dashboard
+                {where_clause}
+            """
+            total = await conn.fetchval(count_query, *params)
+
+            # Data query
+            params.extend([limit, offset])
+            data_query = f"""
+                SELECT * FROM v_agents_workload_dashboard
+                {where_clause}
+                ORDER BY capacity_percentage ASC, is_active DESC
+                LIMIT ${len(params) - 1} OFFSET ${len(params)}
+            """
+
+            results = await conn.fetch(data_query, *params)
+            agents = [dict(r) for r in results]
+
+            return agents, total
+
+        except Exception as e:
+            logger.error(f"Error fetching workload dashboard: {str(e)}")
+            raise
+
+    async def list_available_agents_by_ministry(
+        self,
+        conn: asyncpg.Connection,
+    ) -> List[Dict[str, Any]]:
+        """
+        List available agents grouped by ministry using v_available_agents_by_ministry view
+
+        This view includes:
+        - Ministry-level aggregations
+        - Total/active/available agent counts
+        - Capacity metrics per ministry
+        - Average performance metrics
+
+        Returns:
+            List of ministry availability data
+        """
+        try:
+            query = """
+                SELECT * FROM v_available_agents_by_ministry
+                ORDER BY available_capacity DESC
+            """
+
+            results = await conn.fetch(query)
+            return [dict(r) for r in results]
+
+        except Exception as e:
+            logger.error(f"Error fetching available agents by ministry: {str(e)}")
+            raise
+
+    async def get_agent_performance_rankings(
+        self,
+        conn: asyncpg.Connection,
+        ministry_id: Optional[int] = None,
+        performance_tier: Optional[str] = None,
+        limit: int = 50,
+    ) -> List[Dict[str, Any]]:
+        """
+        Get agent performance rankings using v_agent_performance_rankings view
+
+        This view includes:
+        - Composite performance scores
+        - Overall and ministry-specific rankings
+        - Performance tiers (EXCELLENT, GOOD, AVERAGE, NEEDS_IMPROVEMENT)
+        - Processing metrics
+
+        Args:
+            conn: Database connection
+            ministry_id: Optional filter by ministry
+            performance_tier: Optional filter by tier
+            limit: Max results
+
+        Returns:
+            List of ranked agents
+        """
+        try:
+            where_conditions = []
+            params = []
+
+            if ministry_id:
+                where_conditions.append(f"ministry_id = ${len(params) + 1}")
+                params.append(ministry_id)
+
+            if performance_tier:
+                where_conditions.append(f"performance_tier = ${len(params) + 1}")
+                params.append(performance_tier)
+
+            where_clause = f"WHERE {' AND '.join(where_conditions)}" if where_conditions else ""
+
+            params.append(limit)
+            query = f"""
+                SELECT * FROM v_agent_performance_rankings
+                {where_clause}
+                ORDER BY performance_score DESC
+                LIMIT ${len(params)}
+            """
+
+            results = await conn.fetch(query, *params)
+            return [dict(r) for r in results]
+
+        except Exception as e:
+            logger.error(f"Error fetching agent performance rankings: {str(e)}")
+            raise
