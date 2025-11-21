@@ -30,6 +30,7 @@ from app.modules.agents.services import (
     WorkloadService,
 )
 from app.modules.auth.middleware.auth_middleware import get_current_user
+from app.modules.permissions.middleware.permission_middleware import require_permission
 from app.database.connection import get_database
 
 router = APIRouter(tags=["Agents"])
@@ -53,8 +54,9 @@ async def create_agent(
     agent: MinistryAgentCreate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db = Depends(get_database),
+    _: None = Depends(require_permission("agents.create"))
 ):
-    """Create new ministry agent"""
+    """Create new ministry agent - Requires agents.create permission"""
     user_id = current_user["sub"]
 
     # Set assigned_by if not provided
@@ -107,8 +109,9 @@ async def update_agent(
     update_data: MinistryAgentUpdate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db = Depends(get_database),
+    _: None = Depends(require_permission("agents.update"))
 ):
-    """Update agent configuration"""
+    """Update agent configuration - Requires agents.update permission"""
     updated = await agent_repository.update(db, agent_id, update_data)
     if not updated:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
@@ -123,8 +126,9 @@ async def deactivate_agent(
     reason: Optional[str] = None,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db = Depends(get_database),
+    _: None = Depends(require_permission("agents.deactivate"))
 ):
-    """Deactivate agent"""
+    """Deactivate agent - Requires agents.deactivate permission"""
     user_id = current_user["sub"]
 
     success = await agent_repository.deactivate(db, agent_id, user_id, reason)
@@ -159,8 +163,9 @@ async def create_assignment(
     assignment: AssignmentCreate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db = Depends(get_database),
+    _: None = Depends(require_permission("assignments.create"))
 ):
-    """Create new assignment"""
+    """Create new assignment - Requires assignments.create permission"""
     user_id = current_user["sub"]
 
     # Set assigned_by if not provided
@@ -225,8 +230,9 @@ async def update_assignment(
     update_data: AssignmentUpdate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db = Depends(get_database),
+    _: None = Depends(require_permission("assignments.update"))
 ):
-    """Update assignment"""
+    """Update assignment - Requires assignments.update permission"""
     updated = await assignment_repository.update_assignment(db, assignment_id, update_data)
     if not updated:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
@@ -268,8 +274,9 @@ async def reassign_assignment(
     notes: Optional[str] = None,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db = Depends(get_database),
+    _: None = Depends(require_permission("assignments.reassign"))
 ):
-    """Reassign to another agent"""
+    """Reassign to another agent - Requires assignments.reassign permission"""
     assignment = await assignment_repository.get_assignment_by_id(db, assignment_id)
     if not assignment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
@@ -389,8 +396,9 @@ async def update_agent_workload(
     update_data: AgentWorkloadUpdate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db = Depends(get_database),
+    _: None = Depends(require_permission("agents.manage_workload"))
 ):
-    """Update agent workload"""
+    """Update agent workload - Requires agents.manage_workload permission"""
     updated = await workload_repository.update_workload(db, agent_id, update_data)
     if not updated:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workload not found")

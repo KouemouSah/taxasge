@@ -24,13 +24,11 @@ router = APIRouter(tags=["Admin - User Management"])
 
 # NOTE: Authentication moved to app.core.auth (JWT-based, no mocks)
 # Re-export for backward compatibility with tests
-from app.modules.auth.middleware.auth_middleware import (
-    get_current_user,
-    get_current_admin_user as require_admin
-)
+from app.modules.auth.middleware.auth_middleware import get_current_user
+from app.modules.permissions.middleware.permission_middleware import require_permission
 
 # Make get_current_user available for patching in tests
-__all__ = ["router", "get_current_user", "require_admin"]
+__all__ = ["router", "get_current_user"]
 
 
 @router.get("/")
@@ -68,9 +66,10 @@ async def list_users(
     role: Optional[UserRole] = Query(None, description="Filter by role"),
     status: Optional[UserStatus] = Query(None, description="Filter by status"),
     search: Optional[str] = Query(None, description="Search query"),
-    admin_user: UserResponse = Depends(require_admin)
+    admin_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(require_permission("users.view_all"))
 ):
-    """List all users with pagination (admin only)"""
+    """List all users with pagination - Requires users.view_all permission"""
     try:
         # Build filters
         filters = {}
@@ -126,9 +125,10 @@ async def list_users(
 @router.post("", response_model=UserResponse)
 async def create_user(
     user_create: UserCreate,
-    admin_user: UserResponse = Depends(require_admin)
+    admin_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(require_permission("users.create"))
 ):
-    """Create new user (admin only)"""
+    """Create new user - Requires users.create permission"""
     try:
         from app.modules.auth.services.password_service import PasswordService
         password_service = PasswordService()
@@ -179,14 +179,24 @@ async def get_user(
     user_id: str = Path(..., description="User ID"),
     current_user: UserResponse = Depends(get_current_user)
 ):
-    """Get user by ID"""
+    """
+    Get user by ID
+
+    Users can view their own profile, or any profile with users.view permission
+    """
     try:
-        # Users can only view their own profile unless they're admin
-        if current_user.id != user_id and current_user.role not in [UserRole.admin, UserRole.operator]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied"
-            )
+        # Users can view their own profile without special permission
+        # For viewing other users, check permission
+        if current_user.id != user_id:
+            # This will check users.view permission (admins auto-approved)
+            from app.modules.permissions.services.permission_service import get_permission_service
+            perm_service = get_permission_service()
+            has_perm = await perm_service.has_permission(current_user.id, "users.view")
+            if not has_perm:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied"
+                )
 
         user = await user_repository.find_by_id(user_id)
         if not user:
@@ -230,23 +240,36 @@ async def update_user(
     - Email format: EmailStr (RFC 5322)
     - Email uniqueness: 409 Conflict if duplicate
     - Phone E.164 format: +240XXXXXXXXX
-    - Protected fields: status (admin only)
+    - Protected fields: status (requires users.update_any permission)
 
     **Source:** UC-USER-002 (.github/docs-internal/Documentations/Backend/use_cases/02_USERS.md)
     """
     try:
-        # Users can only update their own profile unless they're admin
-        if current_user.id != user_id and current_user.role not in [UserRole.admin, UserRole.operator]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied"
-            )
+        # Users can update their own profile without special permission
+        # For updating other users, check permission
+        if current_user.id != user_id:
+            from app.modules.permissions.services.permission_service import get_permission_service
+            perm_service = get_permission_service()
+            has_perm = await perm_service.has_permission(current_user.id, "users.update_any")
+            if not has_perm:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied"
+                )
 
-        # Non-admin users cannot update status
+        # Only users with users.update_any can update status
         update_data = {
             k: v for k, v in user_update.dict(exclude_unset=True).items()
             if v is not None
         }
+
+        # Check if user can modify protected fields
+        if current_user.id != user_id and "status" in update_data:
+            from app.modules.permissions.services.permission_service import get_permission_service
+            perm_service = get_permission_service()
+            has_perm = await perm_service.has_permission(current_user.id, "users.update_any")
+            if not has_perm:
+                del update_data["status"]
 
         # Get target user for email comparison
         target_user = await user_repository.find_by_id(user_id)
@@ -264,9 +287,6 @@ async def update_user(
                     status_code=status.HTTP_409_CONFLICT,
                     detail="Email already in use"
                 )
-
-        if current_user.role not in [UserRole.admin, UserRole.operator] and "status" in update_data:
-            del update_data["status"]
 
         if not update_data:
             return target_user
@@ -303,9 +323,10 @@ async def update_user(
 @router.delete("/{user_id}", status_code=status.HTTP_200_OK)
 async def delete_user(
     user_id: str = Path(..., description="User ID"),
-    admin_user: UserResponse = Depends(require_admin)
+    admin_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(require_permission("users.delete"))
 ):
-    """Delete user by ID (admin only)"""
+    """Delete user by ID - Requires users.delete permission"""
     try:
         # Check if user exists
         user = await user_repository.find_by_id(user_id)
@@ -358,16 +379,11 @@ async def search_users(
     status: Optional[UserStatus] = Query(None, description="Filter by status"),
     country: Optional[str] = Query(None, description="Filter by country"),
     limit: int = Query(20, ge=1, le=100, description="Maximum results"),
-    current_user: UserResponse = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(require_permission("users.search"))
 ):
-    """Search users"""
+    """Search users - Requires users.search permission"""
     try:
-        # Only admin and operators can search all users
-        if current_user.role not in [UserRole.admin, UserRole.operator]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Insufficient permissions"
-            )
 
         search_filter = UserSearchFilter(
             search_query=q,
@@ -405,8 +421,11 @@ async def search_users(
 
 
 @router.get("/stats", response_model=UserStats)
-async def get_user_stats(admin_user: UserResponse = Depends(require_admin)):
-    """Get user statistics (admin only)"""
+async def get_user_stats(
+    admin_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(require_permission("users.view_stats"))
+):
+    """Get user statistics - Requires users.view_stats permission"""
     try:
         stats = await user_repository.get_user_stats()
 
@@ -435,14 +454,23 @@ async def get_user_activities(
     limit: int = Query(50, ge=1, le=200, description="Maximum activities"),
     current_user: UserResponse = Depends(get_current_user)
 ):
-    """Get user activity history"""
+    """
+    Get user activity history
+
+    Users can view their own activities, or any user's activities with users.view_any_activities permission
+    """
     try:
-        # Users can only view their own activities unless they're admin
-        if current_user.id != user_id and current_user.role not in [UserRole.admin, UserRole.operator]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied"
-            )
+        # Users can view their own activities without special permission
+        # For viewing other users' activities, check permission
+        if current_user.id != user_id:
+            from app.modules.permissions.services.permission_service import get_permission_service
+            perm_service = get_permission_service()
+            has_perm = await perm_service.has_permission(current_user.id, "users.view_any_activities")
+            if not has_perm:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied"
+                )
 
         activities = await user_repository.get_user_activities(user_id, limit)
 

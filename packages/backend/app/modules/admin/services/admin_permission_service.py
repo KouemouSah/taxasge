@@ -16,14 +16,26 @@ class AdminPermissionService:
 
     # Permissions définies par module
     MODULE_PERMISSIONS = {
+        "admin": [
+            "admin.run_migrations",
+            "admin.view_diagnostics",
+            "admin.view_secrets",
+            "admin.maintenance",
+        ],
         "users": [
             "users.view",
+            "users.view_all",
             "users.create",
             "users.update",
+            "users.update_any",
             "users.delete",
             "users.manage_roles",
             "users.reset_password",
             "users.unlock_account",
+            "users.search",
+            "users.view_stats",
+            "users.view_activities",
+            "users.view_any_activities",
         ],
         "companies": [
             "companies.view",

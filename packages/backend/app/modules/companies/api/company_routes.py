@@ -11,6 +11,7 @@ from app.modules.companies.models import (
 )
 from app.modules.companies.repositories import CompanyRepository
 from app.modules.auth.middleware.auth_middleware import get_current_user
+from app.modules.permissions.middleware.permission_middleware import require_permission
 from app.database.connection import get_database
 
 router = APIRouter(tags=["Companies"])
@@ -99,12 +100,25 @@ async def delete_company(
     current_user: Dict[str, Any] = Depends(get_current_user),
     db = Depends(get_database),
 ):
-    """Delete company (owner only)"""
+    """
+    Delete company
+
+    Requires either:
+    - company_owner role in the company, OR
+    - companies.delete permission (admin override)
+    """
     user_id = current_user["sub"]
 
-    role = await company_repository.check_membership(db, company_id, user_id)
-    if role != "company_owner":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Requires company_owner role")
+    # Check if user has admin permission to delete any company
+    from app.modules.permissions.services.permission_service import get_permission_service
+    perm_service = get_permission_service()
+    has_admin_perm = await perm_service.has_permission(user_id, "companies.delete")
+
+    if not has_admin_perm:
+        # Non-admins must be company owner
+        role = await company_repository.check_membership(db, company_id, user_id)
+        if role != "company_owner":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Requires company_owner role or companies.delete permission")
 
     deleted = await company_repository.delete(db, company_id)
     if not deleted:
@@ -139,12 +153,25 @@ async def add_company_member(
     current_user: Dict[str, Any] = Depends(get_current_user),
     db = Depends(get_database),
 ):
-    """Add member to company (owner/admin only)"""
+    """
+    Add member to company
+
+    Requires either:
+    - company_owner or company_admin role in the company, OR
+    - companies.manage_members permission (admin override)
+    """
     user_id = current_user["sub"]
 
-    user_role = await company_repository.check_membership(db, company_id, user_id)
-    if user_role not in ["company_owner", "company_admin"]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Requires company_owner or company_admin role")
+    # Check if user has admin permission to manage any company's members
+    from app.modules.permissions.services.permission_service import get_permission_service
+    perm_service = get_permission_service()
+    has_admin_perm = await perm_service.has_permission(user_id, "companies.manage_members")
+
+    if not has_admin_perm:
+        # Non-admins must be company owner or admin
+        user_role = await company_repository.check_membership(db, company_id, user_id)
+        if user_role not in ["company_owner", "company_admin"]:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Requires company_owner/company_admin role or companies.manage_members permission")
 
     result = await company_repository.add_member(db, company_id, member_user_id, role)
     logger.info(f"User {user_id} added member {member_user_id} to company {company_id}")

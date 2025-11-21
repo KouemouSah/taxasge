@@ -10,6 +10,7 @@ from typing import Dict, Any
 import asyncpg
 
 from app.modules.auth.middleware.auth_middleware import get_current_user
+from app.modules.permissions.middleware.permission_middleware import require_permission
 from app.database.connection import get_database as get_db
 from app.core.secrets import validate_secrets_available
 from app.config import get_settings
@@ -22,13 +23,14 @@ security = HTTPBearer()
 async def migrate_grandfather_users(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     current_user: Dict[str, Any] = Depends(get_current_user),
-    db: asyncpg.Connection = Depends(get_db)
+    db: asyncpg.Connection = Depends(get_db),
+    _: None = Depends(require_permission("admin.run_migrations"))
 ):
     """
     Execute Migration 002: Grandfather existing users
     Sets email_verified=TRUE for users created before 2025-11-03
 
-    ADMIN ONLY - Requires authentication
+    ADMIN ONLY - Requires admin.run_migrations permission
     """
     try:
         user_id = current_user["sub"]
@@ -71,13 +73,14 @@ async def migrate_grandfather_users(
 @router.get("/diagnostic/secrets", response_model=Dict[str, Any])
 async def check_secrets_configuration(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    _: None = Depends(require_permission("admin.view_diagnostics"))
 ):
     """
     Diagnostic endpoint: Check secrets configuration status
 
     SECURITY NOTE: Does NOT expose secret values, only status
-    ADMIN ONLY - Requires authentication
+    ADMIN ONLY - Requires admin.view_diagnostics permission
     """
     try:
         user_id = current_user["sub"]
