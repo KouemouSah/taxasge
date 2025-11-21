@@ -238,7 +238,7 @@ SELECT
     bt.bank_reference as bank_confirmed_reference,
     bt.bank_transaction_date,
     bt.reconciled_at,
-    bt.reconciled_by_user_id,
+    bt.reconciled_by,
 
     -- Payment plan info
     pp.id as payment_plan_id,
