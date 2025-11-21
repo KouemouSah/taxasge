@@ -52,6 +52,45 @@ class ServiceStatusEnum(str, Enum):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# MINISTRIES Models (for hierarchy)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class MinistryResponse(BaseModel):
+    """Ministry response model"""
+    id: int
+    code: str = Field(..., max_length=10, description="Unique ministry code")
+    name_es: str = Field(..., max_length=255, description="Ministry name (Spanish)")
+    description_es: Optional[str] = Field(None, description="Ministry description (Spanish)")
+    is_active: bool = Field(True, description="Whether ministry is active")
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SECTORS Models (for hierarchy)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class SectorResponse(BaseModel):
+    """Sector response model"""
+    id: int
+    code: str = Field(..., max_length=10, description="Unique sector code")
+    ministry_id: int = Field(..., description="Parent ministry ID")
+    name_es: str = Field(..., max_length=255, description="Sector name (Spanish)")
+    description_es: Optional[str] = Field(None, description="Sector description (Spanish)")
+    is_active: bool = Field(True, description="Whether sector is active")
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # CATEGORIES Models
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -262,6 +301,15 @@ class FiscalServiceFilter(BaseModel):
     search_term: Optional[str] = Field(None, description="Full-text search in name/description")
     min_amount: Optional[float] = Field(None, ge=0)
     max_amount: Optional[float] = Field(None, ge=0)
+
+
+# Alias for compatibility with routes
+FiscalServiceSearchRequest = FiscalServiceFilter
+
+
+# Aliases for compatibility with calculation routes
+CalculateServiceRequest = CalculationInput
+CalculateServiceResponse = CalculationResult
 
 
 class FiscalServiceListResponse(BaseModel):

@@ -6,6 +6,10 @@ from app.modules.fiscal_services.models.fiscal_service import (
     CalculationMethodEnum,
     ServiceStatusEnum,
 
+    # Hierarchy Models
+    MinistryResponse,
+    SectorResponse,
+
     # Categories
     CategoryBase,
     CategoryCreate,
@@ -28,6 +32,9 @@ from app.modules.fiscal_services.models.fiscal_service import (
     # Search and Filtering
     FiscalServiceFilter,
     FiscalServiceListResponse,
+    FiscalServiceSearchRequest,  # Alias for FiscalServiceFilter
+    CalculateServiceRequest,      # Alias for CalculationInput
+    CalculateServiceResponse,     # Alias for CalculationResult
 
     # Complete Models
     FiscalServiceCreateComplete,
@@ -94,6 +101,10 @@ __all__ = [
     "ServiceStatusEnum",
     "TranslatableEntityType",
 
+    # Hierarchy Models
+    "MinistryResponse",
+    "SectorResponse",
+
     # Categories
     "CategoryBase",
     "CategoryCreate",
@@ -116,6 +127,9 @@ __all__ = [
     # Search and Filtering
     "FiscalServiceFilter",
     "FiscalServiceListResponse",
+    "FiscalServiceSearchRequest",  # Alias
+    "CalculateServiceRequest",      # Alias
+    "CalculateServiceResponse",     # Alias
 
     # Complete Models
     "FiscalServiceCreateComplete",
