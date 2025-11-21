@@ -71,10 +71,10 @@ SELECT
 
 FROM tax_declarations d
 LEFT JOIN users u ON d.user_id = u.id
-LEFT JOIN declaration_iva_details iva ON d.id = iva.declaration_id
-LEFT JOIN declaration_irpf_data irpf ON d.id = irpf.declaration_id
-LEFT JOIN declaration_petroliferos_details petro ON d.id = petro.declaration_id
-LEFT JOIN declaration_retencion_details ret ON d.id = ret.declaration_id
+LEFT JOIN declaration_iva_details iva ON d.id = iva.tax_declaration_id
+LEFT JOIN declaration_irpf_data irpf ON d.id = irpf.tax_declaration_id
+LEFT JOIN declaration_petroliferos_details petro ON d.id = petro.tax_declaration_id
+LEFT JOIN declaration_retencion_details ret ON d.id = ret.tax_declaration_id
 LEFT JOIN payments p ON d.id = p.tax_declaration_id
 LEFT JOIN assignments a ON d.id = a.declaration_id AND a.status = 'active'
 LEFT JOIN ministry_agents ma ON a.agent_id = ma.id;
