@@ -173,7 +173,7 @@ SELECT
     END as met_sla
 
 FROM assignments a
-JOIN ministry_agents ma ON a.agent_id = ma.id
+JOIN ministry_agents ma ON a.agent_id = ma.user_id
 JOIN ministries m ON ma.ministry_id = m.id
 JOIN tax_declarations d ON a.declaration_id = d.id
 ORDER BY a.assigned_at DESC;
@@ -303,7 +303,7 @@ SELECT
 
 FROM agent_work_queue awq
 JOIN ministries m ON awq.ministry_id = m.id
-LEFT JOIN ministry_agents ma ON awq.assigned_to = ma.id
+LEFT JOIN ministry_agents ma ON awq.assigned_to = ma.user_id
 WHERE awq.status = 'pending'
 AND awq.item_type = 'declaration'
 ORDER BY awq.priority_score DESC, awq.created_at ASC;

@@ -77,7 +77,7 @@ LEFT JOIN declaration_petroliferos_details petro ON d.id = petro.tax_declaration
 LEFT JOIN declaration_retencion_details ret ON d.id = ret.tax_declaration_id
 LEFT JOIN payments p ON d.id = p.tax_declaration_id
 LEFT JOIN assignments a ON d.id = a.declaration_id AND a.status IN ('assigned', 'in_progress')
-LEFT JOIN ministry_agents ma ON a.agent_id = ma.id;
+LEFT JOIN ministry_agents ma ON a.agent_id = ma.user_id;
 
 -- Index recommendations for performance
 CREATE INDEX IF NOT EXISTS idx_tax_declarations_user_status
