@@ -69,7 +69,7 @@ SELECT
 FROM ministry_agents ma
 JOIN users u ON ma.user_id = u.id
 JOIN ministries m ON ma.ministry_id = m.id
-LEFT JOIN agent_workloads aw ON ma.id = aw.agent_id
+LEFT JOIN agent_workloads aw ON ma.user_id = aw.agent_id
 LEFT JOIN agent_performance_stats aps ON ma.id = aps.agent_id
 ORDER BY capacity_percentage ASC, ma.is_active DESC;
 
@@ -117,7 +117,7 @@ SELECT
 
 FROM ministries m
 LEFT JOIN ministry_agents ma ON m.id = ma.ministry_id
-LEFT JOIN agent_workloads aw ON ma.id = aw.agent_id
+LEFT JOIN agent_workloads aw ON ma.user_id = aw.agent_id
 LEFT JOIN agent_performance_stats aps ON ma.id = aps.agent_id
 WHERE m.is_active = TRUE
 GROUP BY m.id, m.code, m.name_es
@@ -311,7 +311,7 @@ SELECT
     (
         SELECT COUNT(*)
         FROM ministry_agents ma2
-        JOIN agent_workloads aw2 ON ma2.id = aw2.agent_id
+        JOIN agent_workloads aw2 ON ma2.user_id = aw2.agent_id
         WHERE ma2.ministry_id = awq.ministry_id
         AND ma2.is_active = TRUE
         AND aw2.current_assignments < aw2.max_concurrent_assignments
