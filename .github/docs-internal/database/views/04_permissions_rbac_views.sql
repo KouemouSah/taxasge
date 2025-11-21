@@ -155,19 +155,24 @@ SELECT
     (
         SELECT json_agg(
             json_build_object(
-                'permission_name', p.name,
-                'module', p.module_name,
-                'grant_count', COUNT(*)
+                'permission_name', perms.permission_name,
+                'module', perms.module_name,
+                'grant_count', perms.grant_count
             )
-            ORDER BY COUNT(*) DESC
         )
-        FROM user_permissions up2
-        JOIN users u2 ON up2.user_id = u2.id
-        JOIN permissions p ON up2.permission_id = p.id
-        WHERE u2.role = u.role
-        GROUP BY p.name, p.module_name
-        ORDER BY COUNT(*) DESC
-        LIMIT 10
+        FROM (
+            SELECT
+                p.name as permission_name,
+                p.module_name,
+                COUNT(*) as grant_count
+            FROM user_permissions up2
+            JOIN users u2 ON up2.user_id = u2.id
+            JOIN permissions p ON up2.permission_id = p.id
+            WHERE u2.role = u.role
+            GROUP BY p.name, p.module_name
+            ORDER BY COUNT(*) DESC
+            LIMIT 10
+        ) perms
     ) as top_10_permissions,
 
     -- Module access distribution
