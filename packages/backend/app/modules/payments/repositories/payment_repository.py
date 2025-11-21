@@ -208,3 +208,151 @@ class PaymentRepository:
         plan_dict["installments"] = [dict(i) for i in installments]
 
         return plan_dict
+
+    # ========================================================================
+    # METHODS USING DATABASE VIEWS - Optimized queries with pre-joined data
+    # ========================================================================
+
+    async def list_payments_with_declarations(
+        self,
+        conn: asyncpg.Connection,
+        user_id: Optional[str] = None,
+        status: Optional[str] = None,
+        payment_method: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[List[Dict[str, Any]], int]:
+        """
+        List payments with declaration details using v_payments_with_declarations view
+
+        This view includes:
+        - Payment info
+        - Declaration details (type, amounts, status)
+        - User info
+        - Bank reconciliation status
+
+        Args:
+            conn: Database connection
+            user_id: Optional filter by user
+            status: Optional filter by payment status
+            payment_method: Optional filter by payment method
+            limit: Max results
+            offset: Pagination offset
+
+        Returns:
+            Tuple of (payments list, total count)
+        """
+        try:
+            where_conditions = []
+            params = []
+
+            if user_id:
+                where_conditions.append(f"user_id = ${len(params) + 1}")
+                params.append(user_id)
+
+            if status:
+                where_conditions.append(f"status = ${len(params) + 1}")
+                params.append(status)
+
+            if payment_method:
+                where_conditions.append(f"payment_method = ${len(params) + 1}")
+                params.append(payment_method)
+
+            where_clause = f"WHERE {' AND '.join(where_conditions)}" if where_conditions else ""
+
+            # Count query
+            count_query = f"""
+                SELECT COUNT(*) FROM v_payments_with_declarations
+                {where_clause}
+            """
+            total = await conn.fetchval(count_query, *params)
+
+            # Data query
+            params.extend([limit, offset])
+            data_query = f"""
+                SELECT * FROM v_payments_with_declarations
+                {where_clause}
+                ORDER BY payment_date DESC
+                LIMIT ${len(params) - 1} OFFSET ${len(params)}
+            """
+
+            results = await conn.fetch(data_query, *params)
+            payments = [dict(r) for r in results]
+
+            return payments, total
+
+        except Exception as e:
+            logger.error(f"Error listing payments with declarations: {str(e)}")
+            raise
+
+    async def get_payment_plan_with_status(
+        self,
+        conn: asyncpg.Connection,
+        plan_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+        status: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[List[Dict[str, Any]], int]:
+        """
+        Get payment plans with installment status using v_payment_plan_installment_status view
+
+        This view includes:
+        - Payment plan details
+        - Installment summary (paid/pending/overdue counts)
+        - Payment status calculations
+        - Recent payments and upcoming installments (as JSON)
+
+        Args:
+            conn: Database connection
+            plan_id: Optional specific plan ID
+            user_id: Optional filter by user
+            status: Optional filter by plan status
+            limit: Max results
+            offset: Pagination offset
+
+        Returns:
+            Tuple of (payment plans list, total count)
+        """
+        try:
+            where_conditions = []
+            params = []
+
+            if plan_id:
+                where_conditions.append(f"plan_id = ${len(params) + 1}")
+                params.append(plan_id)
+
+            if user_id:
+                where_conditions.append(f"user_id = ${len(params) + 1}")
+                params.append(user_id)
+
+            if status:
+                where_conditions.append(f"plan_status = ${len(params) + 1}")
+                params.append(status)
+
+            where_clause = f"WHERE {' AND '.join(where_conditions)}" if where_conditions else ""
+
+            # Count query
+            count_query = f"""
+                SELECT COUNT(*) FROM v_payment_plan_installment_status
+                {where_clause}
+            """
+            total = await conn.fetchval(count_query, *params)
+
+            # Data query
+            params.extend([limit, offset])
+            data_query = f"""
+                SELECT * FROM v_payment_plan_installment_status
+                {where_clause}
+                ORDER BY created_at DESC
+                LIMIT ${len(params) - 1} OFFSET ${len(params)}
+            """
+
+            results = await conn.fetch(data_query, *params)
+            plans = [dict(r) for r in results]
+
+            return plans, total
+
+        except Exception as e:
+            logger.error(f"Error fetching payment plans with status: {str(e)}")
+            raise
