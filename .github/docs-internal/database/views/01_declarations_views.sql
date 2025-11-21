@@ -154,7 +154,7 @@ SELECT
     CASE
         WHEN EXISTS (
             SELECT 1 FROM assignments a
-            WHERE a.declaration_id = d.id AND a.status IN ('pending', 'in_progress')
+            WHERE a.declaration_id = d.id AND a.status IN ('assigned', 'in_progress', 'pending_review')
         ) THEN TRUE
         ELSE FALSE
     END as has_active_assignment
