@@ -3,7 +3,7 @@
 TAXASGE DATABASE SCHEMA - COMPLETE REFERENCE
 ====================================================================================================
 
-Extracted on: 2025-11-20 17:37:08
+Extracted on: 2025-11-21 19:53:16
 Database: Supabase PostgreSQL
 Project: taxasge-dev
 
@@ -1963,6 +1963,10 @@ Indexes:
     CREATE INDEX idx_payments_payment_plan_id ON public.payments USING btree (payment_plan_id) WHERE (payment_plan_id IS NOT NULL)
   - idx_payments_created_at
     CREATE INDEX idx_payments_created_at ON public.payments USING btree (created_at DESC)
+  - idx_payments_user_status
+    CREATE INDEX idx_payments_user_status ON public.payments USING btree (user_id, status)
+  - idx_payments_declaration
+    CREATE INDEX idx_payments_declaration ON public.payments USING btree (tax_declaration_id)
 
 ----------------------------------------------------------------------------------------------------
 Table: PENDING_REGISTRATIONS
@@ -2691,6 +2695,10 @@ Indexes:
     CREATE INDEX idx_tax_declarations_user ON public.tax_declarations USING btree (user_id, fiscal_year, status)
   - idx_tax_declarations_type
     CREATE INDEX idx_tax_declarations_type ON public.tax_declarations USING btree (declaration_type, fiscal_year, status)
+  - idx_tax_declarations_user_status
+    CREATE INDEX idx_tax_declarations_user_status ON public.tax_declarations USING btree (user_id, status)
+  - idx_tax_declarations_type_status
+    CREATE INDEX idx_tax_declarations_type_status ON public.tax_declarations USING btree (declaration_type, status)
 
 ----------------------------------------------------------------------------------------------------
 Table: TRANSLATIONS
@@ -3091,6 +3099,45 @@ Definition:  SELECT a.id AS assignment_id,
         CASE
             WHEN ((a.deadline IS NOT NU...
 
+View: v_agent_assignment_history
+Definition:  SELECT a.id AS assignment_id,
+    a.declaration_id,
+    a.agent_id,
+    u.full_name AS agent_name,
+    ma.ministry_id,
+    m.name_es AS ministry_name,
+    d.declaration_type,
+    d.calculated_tax AS ...
+
+View: v_agent_performance_rankings
+Definition:  WITH agent_stats AS (
+         SELECT ma.id AS agent_id,
+            u.full_name,
+            ma.ministry_id,
+            m.name_es AS ministry_name,
+            aps.current_month_processed,
+        ...
+
+View: v_agent_work_queue_priority
+Definition:  SELECT awq.id AS queue_id,
+    awq.ministry_id,
+    m.name_es AS ministry_name,
+    awq.item_id AS declaration_id,
+    awq.declaration_type,
+    awq.amount AS calculated_tax,
+    awq.priority_score A...
+
+View: v_agents_workload_dashboard
+Definition:  SELECT ma.id AS agent_id,
+    ma.user_id,
+    u.full_name AS agent_name,
+    u.email AS agent_email,
+    ma.ministry_id,
+    m.name_es AS ministry_name,
+    ma.is_active,
+    aw.current_assignments,
+...
+
 View: v_available_agents
 Definition:  SELECT u.id AS agent_id,
     u.full_name AS agent_name,
@@ -3100,6 +3147,163 @@ Definition:  SELECT u.id AS agent_id,
     u.specializations,
     u.max_concurrent_assignments,
     COALESCE(aw.current_assignm...
+
+View: v_available_agents_by_ministry
+Definition:  SELECT m.id AS ministry_id,
+    m.ministry_code,
+    m.name_es AS ministry_name,
+    count(ma.id) AS total_agents,
+    count(
+        CASE
+            WHEN (ma.is_active = true) THEN 1
+            EL...
+
+View: v_bank_reconciliation_matching
+Definition:  SELECT id AS bank_transaction_id,
+    bank_code,
+    bank_reference,
+    bank_transaction_date,
+    amount AS bank_amount,
+    currency,
+    account_number,
+    account_holder_name AS bank_account_ho...
+
+View: v_declaration_statistics_by_type
+Definition:  WITH declaration_payments AS (
+         SELECT d.id,
+            d.declaration_type,
+            d.status,
+            d.calculated_tax,
+            d.net_tax_due,
+            d.processed_at,
+       ...
+
+View: v_declarations_complete
+Definition:  SELECT d.id,
+    d.user_id,
+    d.declaration_type,
+    d.fiscal_year,
+    d.fiscal_period,
+    d.status,
+    d.taxable_base,
+    d.calculated_tax,
+    d.net_tax_due,
+    COALESCE(( SELECT sum(p2.amo...
+
+View: v_declarations_pending_review
+Definition:  SELECT d.id,
+    d.declaration_type,
+    d.user_id,
+    u.full_name AS user_name,
+    u.email AS user_email,
+    d.taxable_base,
+    d.calculated_tax,
+    d.submitted_at,
+    d.created_at,
+        CA...
+
+View: v_declarations_with_payments
+Definition:  SELECT d.id AS declaration_id,
+    d.declaration_type,
+    d.user_id,
+    u.full_name AS user_name,
+    d.fiscal_year,
+    d.fiscal_period,
+    d.calculated_tax,
+    d.net_tax_due,
+    COALESCE(( SEL...
+
+View: v_failed_payments_recovery
+Definition:  SELECT p.id AS payment_id,
+    p.tax_declaration_id,
+    p.user_id,
+    u.full_name AS user_name,
+    u.email AS user_email,
+    u.phone_number AS user_phone,
+    d.declaration_type,
+    d.fiscal_yea...
+
+View: v_overprivileged_users_detection
+Definition:  WITH user_permission_stats AS (
+         SELECT u.id AS user_id,
+            u.email,
+            u.full_name,
+            u.role,
+            count(DISTINCT up.permission_id) AS permission_count,
+  ...
+
+View: v_payment_plans_tracking
+Definition:  WITH installment_stats AS (
+         SELECT payment_installments.payment_plan_id,
+            count(*) AS total_installments,
+            count(
+                CASE
+                    WHEN ((paymen...
+
+View: v_payments_lifecycle_dashboard
+Definition:  SELECT p.id AS payment_id,
+    p.tax_declaration_id,
+    p.user_id,
+    u.email AS user_email,
+    u.full_name AS user_name,
+    u.phone_number AS user_phone,
+    d.declaration_type,
+    d.fiscal_yea...
+
+View: v_permission_gaps_analysis
+Definition:  WITH role_expected_permissions AS (
+         SELECT 'ministry_agent'::text AS role,
+            ARRAY['agents.view'::text, 'assignments.view'::text, 'declarations.view'::text, 'documents.view'::text]...
+
+View: v_permission_grants_audit
+Definition:  SELECT up.user_id,
+    u.email AS user_email,
+    u.full_name AS user_name,
+    u.role AS user_role,
+    up.permission_id,
+    p.name AS permission_name,
+    p.module_name AS permission_module,
+    p...
+
+View: v_permission_usage_analytics
+Definition:  SELECT p.id AS permission_id,
+    p.name AS permission_name,
+    p.module_name,
+    p.description,
+    count(DISTINCT up.user_id) AS users_with_permission,
+    count(up.user_id) AS total_grants,
+    ...
+
+View: v_reconciliation_health_metrics
+Definition:  SELECT now() AS snapshot_time,
+    ( SELECT count(*) AS count
+           FROM bank_transactions
+          WHERE (bank_transactions.payment_id IS NULL)) AS unreconciled_transactions,
+    ( SELECT coun...
+
+View: v_revenue_analytics
+Definition:  SELECT date_trunc('day'::text, p.paid_at) AS payment_date,
+    date_trunc('week'::text, p.paid_at) AS payment_week,
+    date_trunc('month'::text, p.paid_at) AS payment_month,
+    date_trunc('quarter'...
+
+View: v_role_capabilities_summary
+Definition:  SELECT u.role,
+    count(DISTINCT u.id) AS total_users,
+    count(DISTINCT
+        CASE
+            WHEN (u.status = 'active'::user_status_enum) THEN u.id
+            ELSE NULL::uuid
+        END) AS ...
+
+View: v_user_effective_permissions
+Definition:  SELECT u.id AS user_id,
+    u.email,
+    u.full_name,
+    u.role,
+    (u.status = 'active'::user_status_enum) AS user_active,
+    ((u.role)::text = 'admin'::text) AS is_admin,
+    COALESCE(json_agg(D...
 
 ====================================================================================================
 5. FUNCTIONS
