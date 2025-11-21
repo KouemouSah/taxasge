@@ -14,11 +14,10 @@ CREATE OR REPLACE VIEW v_agents_workload_dashboard AS
 SELECT
     ma.id as agent_id,
     ma.user_id,
-    ma.full_name as agent_name,
-    ma.email as agent_email,
+    u.full_name as agent_name,
+    u.email as agent_email,
     ma.ministry_id,
     m.name_es as ministry_name,
-    ma.sectors_of_competence,
     ma.is_active,
 
     -- Workload metrics
@@ -62,6 +61,7 @@ SELECT
     aw.updated_at as last_workload_update
 
 FROM ministry_agents ma
+JOIN users u ON ma.user_id = u.id
 JOIN ministries m ON ma.ministry_id = m.id
 LEFT JOIN agent_workloads aw ON ma.id = aw.agent_id
 LEFT JOIN agent_performance_stats aps ON ma.id = aps.agent_id
@@ -132,7 +132,7 @@ SELECT
     a.id as assignment_id,
     a.declaration_id,
     a.agent_id,
-    ma.full_name as agent_name,
+    u.full_name as agent_name,
     ma.ministry_id,
     m.name_es as ministry_name,
 
@@ -174,6 +174,7 @@ SELECT
 
 FROM assignments a
 JOIN ministry_agents ma ON a.agent_id = ma.user_id
+JOIN users u ON ma.user_id = u.id
 JOIN ministries m ON ma.ministry_id = m.id
 JOIN tax_declarations d ON a.declaration_id = d.id
 ORDER BY a.assigned_at DESC;
@@ -192,7 +193,7 @@ CREATE OR REPLACE VIEW v_agent_performance_rankings AS
 WITH agent_stats AS (
     SELECT
         ma.id as agent_id,
-        ma.full_name,
+        u.full_name,
         ma.ministry_id,
         m.name_es as ministry_name,
 
@@ -215,7 +216,8 @@ WITH agent_stats AS (
         ) as performance_score
 
     FROM ministry_agents ma
-    JOIN ministries m ON ma.ministry_id = m.ministry_id
+    JOIN users u ON ma.user_id = u.id
+    JOIN ministries m ON ma.ministry_id = m.id
     LEFT JOIN agent_performance_stats aps ON ma.id = aps.agent_id
     WHERE ma.is_active = TRUE
     AND aps.total_assignments_completed > 0
@@ -279,7 +281,7 @@ SELECT
 
     -- Assigned agent (if any)
     awq.assigned_to as locked_for_agent_id,
-    ma.full_name as locked_agent_name,
+    u.full_name as locked_agent_name,
     awq.locked_until,
 
     -- Status
@@ -304,6 +306,7 @@ SELECT
 FROM agent_work_queue awq
 JOIN ministries m ON awq.ministry_id = m.id
 LEFT JOIN ministry_agents ma ON awq.assigned_to = ma.user_id
+LEFT JOIN users u ON ma.user_id = u.id
 WHERE awq.status = 'pending'
 AND awq.item_type = 'declaration'
 ORDER BY awq.priority_score DESC, awq.created_at ASC;

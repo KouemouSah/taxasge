@@ -65,7 +65,7 @@ SELECT
     -- Agent assignment
     a.id as assignment_id,
     a.agent_id,
-    ma.full_name as agent_name,
+    u_agent.full_name as agent_name,
     a.assigned_at,
     a.status as assignment_status
 
@@ -77,7 +77,8 @@ LEFT JOIN declaration_petroliferos_details petro ON d.id = petro.tax_declaration
 LEFT JOIN declaration_retencion_details ret ON d.id = ret.tax_declaration_id
 LEFT JOIN payments p ON d.id = p.tax_declaration_id
 LEFT JOIN assignments a ON d.id = a.declaration_id AND a.status IN ('assigned', 'in_progress')
-LEFT JOIN ministry_agents ma ON a.agent_id = ma.user_id;
+LEFT JOIN ministry_agents ma ON a.agent_id = ma.user_id
+LEFT JOIN users u_agent ON ma.user_id = u_agent.id;
 
 -- Index recommendations for performance
 CREATE INDEX IF NOT EXISTS idx_tax_declarations_user_status
