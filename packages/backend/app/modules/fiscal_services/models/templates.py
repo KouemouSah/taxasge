@@ -23,7 +23,13 @@ from enum import Enum
 
 
 class TranslatableEntityType(str, Enum):
-    """Types of entities that can be translated"""
+    """
+    Types of entities that can be translated
+
+    IMPORTANT: Translations are ONLY used for the site's UI language
+    (not for user data or search). They allow displaying the same
+    entity in French, English, etc. based on user's language preference.
+    """
     MINISTRY = "ministry"
     SECTOR = "sector"
     CATEGORY = "category"
@@ -255,12 +261,23 @@ class ServiceProcedureAssignmentResponse(ServiceProcedureAssignmentBase):
 
 
 class ServiceKeywordBase(BaseModel):
-    """Base service keyword model"""
+    """
+    Base service keyword model
+
+    IMPORTANT: Keywords are EXCLUSIVELY for search functionality.
+    They help users find services using different terms in different languages.
+    Examples:
+    - Service "Permiso de Residencia" might have keywords:
+      - "residencia", "permiso" (es)
+      - "residence", "permit" (en)
+      - "résidence", "permis" (fr)
+    This improves search results when users type in their preferred language.
+    """
     fiscal_service_id: int = Field(..., description="FK to fiscal_services")
-    keyword: str = Field(..., max_length=100, description="Search keyword")
+    keyword: str = Field(..., max_length=100, description="Search keyword (lowercase)")
     language_code: str = Field(..., max_length=2, description="ISO 639-1 language code (es, fr, en)")
-    weight: int = Field(1, ge=1, le=10, description="Search weight/importance (1-10)")
-    is_auto_generated: bool = Field(False, description="Whether keyword was auto-generated")
+    weight: int = Field(1, ge=1, le=10, description="Search weight/importance (1-10, higher = more relevant)")
+    is_auto_generated: bool = Field(False, description="Whether keyword was auto-generated from entity names")
 
 
 class ServiceKeywordCreate(ServiceKeywordBase):
@@ -298,14 +315,36 @@ class ServiceKeywordBulkCreate(BaseModel):
 
 
 class EntityTranslationBase(BaseModel):
-    """Base entity translation model"""
+    """
+    Base entity translation model
+
+    USAGE: Translations for the WEBSITE UI ONLY (not for search or user data)
+
+    Purpose: Display entity information in the user's preferred language
+    Example:
+    - Base data (Spanish):
+      - name_es: "Permiso de Residencia"
+      - description_es: "Documento para residir en el país"
+
+    - Translations (for UI):
+      - entity_translations:
+        - (en, name): "Residence Permit"
+        - (en, description): "Document to reside in the country"
+        - (fr, name): "Permis de Résidence"
+        - (fr, description): "Document pour résider dans le pays"
+
+    When user selects English UI → Display "Residence Permit"
+    When user selects French UI → Display "Permis de Résidence"
+
+    NOTE: This is separate from keywords (which are for search only)
+    """
     entity_type: TranslatableEntityType = Field(..., description="Type of entity being translated")
     entity_code: str = Field(..., max_length=100, description="Unique code of the entity")
-    language_code: str = Field(..., max_length=5, description="ISO 639-1 language code (es, fr, en)")
-    field_name: str = Field(..., max_length=30, description="Field being translated (name, description, etc)")
-    translation_text: str = Field(..., description="Translated text")
-    translation_source: str = Field("manual", max_length=20, description="Source: manual, google, deepl, etc")
-    translation_quality: Optional[float] = Field(None, ge=0, le=1, description="Quality score 0-1")
+    language_code: str = Field(..., max_length=5, description="Target language (fr, en, pt, etc - NOT source language es)")
+    field_name: str = Field(..., max_length=30, description="Field being translated (name, description, notes, etc)")
+    translation_text: str = Field(..., description="Translated text in target language")
+    translation_source: str = Field("manual", max_length=20, description="Translation method: manual, google_translate, deepl, chatgpt")
+    translation_quality: Optional[float] = Field(None, ge=0, le=1, description="Quality score 0-1 (1=perfect, 0.5=machine, 0=poor)")
 
 
 class EntityTranslationCreate(EntityTranslationBase):

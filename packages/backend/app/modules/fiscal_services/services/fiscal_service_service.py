@@ -5,6 +5,30 @@ Handles complex operations:
 - Creating fiscal services with documents, procedures, keywords, and translations
 - Updating services with cascading updates
 - Managing service assignments
+
+IMPORTANT CLARIFICATIONS:
+
+1. **KEYWORDS** (service_keywords):
+   - Purpose: SEARCH ONLY
+   - Improve search functionality in multiple languages
+   - Example: "Permiso de Residencia" has keywords:
+     * Spanish: "residencia", "permiso", "temporal"
+     * English: "residence", "permit", "temporary"
+     * French: "résidence", "permis", "temporaire"
+   - Users searching "residence" will find "Permiso de Residencia"
+
+2. **TRANSLATIONS** (entity_translations):
+   - Purpose: WEBSITE UI LANGUAGE ONLY
+   - Display entity info in user's preferred interface language
+   - Example: User selects French UI → shows "Permis de Résidence"
+   - NOT used for search or user-generated content
+   - Source data is always in Spanish (name_es, description_es)
+   - Translations provide French/English/Portuguese UI versions
+
+3. **DOCUMENT/PROCEDURE ASSIGNMENTS**:
+   - Link services to required documents and procedures
+   - Specify if required for expedition vs renewal
+   - Control display order in UI
 """
 
 from typing import Optional, List, Dict, Any
