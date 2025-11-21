@@ -33,6 +33,7 @@ from app.modules.declarations.models import (
 )
 from app.modules.declarations.repositories import DeclarationRepository
 from app.modules.auth.middleware.auth_middleware import get_current_user
+from app.modules.permissions.middleware.permission_middleware import require_permission
 from app.database.connection import get_database
 
 # Create router
@@ -194,11 +195,13 @@ async def get_declaration(
 
     **Authentication**: Required (Bearer token)
 
-    **Permissions**: User can only view own declarations
+    **Permissions**:
+    - Users can view their own declarations
+    - declarations.view permission allows viewing any declaration (admin)
 
     **Security**:
-    - Validates ownership (user_id)
-    - Returns 404 if not found or not owned
+    - Validates ownership (user_id) OR admin permission
+    - Returns 404 if not found or not authorized
 
     Returns:
         DeclarationResponse: Declaration with related data
@@ -214,12 +217,18 @@ async def get_declaration(
                 detail="Declaration not found",
             )
 
-        # Security: Check ownership
+        # Security: Check ownership OR admin permission
         if declaration["user_id"] != user_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not authorized to view this declaration",
-            )
+            # Check if user has admin permission to view any declaration
+            from app.modules.permissions.services.permission_service import get_permission_service
+            perm_service = get_permission_service()
+            has_admin_perm = await perm_service.has_permission(user_id, "declarations.view_all")
+
+            if not has_admin_perm:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Not authorized to view this declaration",
+                )
 
         return DeclarationResponse(**declaration)
 
@@ -246,11 +255,13 @@ async def update_declaration(
 
     **Authentication**: Required (Bearer token)
 
-    **Permissions**: User can only update own declarations
+    **Permissions**:
+    - Users can update their own DRAFT declarations
+    - declarations.update permission allows updating any declaration (admin)
 
     **Business Rules**:
     - Only DRAFT declarations can be updated by users
-    - Agents can update any status (add notes, change status)
+    - Admins with declarations.update can update any status
     - Partial updates supported (only changed fields)
 
     Returns:
@@ -268,19 +279,24 @@ async def update_declaration(
                 detail="Declaration not found",
             )
 
-        # Security: Check ownership
-        if declaration["user_id"] != user_id:
+        # Check if user has admin permission
+        from app.modules.permissions.services.permission_service import get_permission_service
+        perm_service = get_permission_service()
+        has_admin_perm = await perm_service.has_permission(user_id, "declarations.update")
+
+        # Security: Check ownership OR admin permission
+        if declaration["user_id"] != user_id and not has_admin_perm:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to update this declaration",
             )
 
-        # Business rule: Only DRAFT can be updated by users
-        # (Agents can update via separate endpoint - future)
-        if declaration["status"] != "draft":
+        # Business rule: Only DRAFT can be updated by regular users
+        # Admins can update any status
+        if declaration["status"] != "draft" and not has_admin_perm:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Only DRAFT declarations can be updated",
+                detail="Only DRAFT declarations can be updated by users",
             )
 
         # Update declaration
@@ -318,10 +334,13 @@ async def delete_declaration(
 
     **Authentication**: Required (Bearer token)
 
-    **Permissions**: User can only delete own DRAFT declarations
+    **Permissions**:
+    - Users can delete their own DRAFT declarations
+    - declarations.delete permission allows deleting any declaration (admin)
 
     **Business Rules**:
-    - Only DRAFT declarations can be deleted
+    - Only DRAFT declarations can be deleted by regular users
+    - Admins can delete any status
     - Soft delete (status = cancelled)
     - Audit trail preserved
 
@@ -340,18 +359,24 @@ async def delete_declaration(
                 detail="Declaration not found",
             )
 
-        # Security: Check ownership
-        if declaration["user_id"] != user_id:
+        # Check if user has admin permission
+        from app.modules.permissions.services.permission_service import get_permission_service
+        perm_service = get_permission_service()
+        has_admin_perm = await perm_service.has_permission(user_id, "declarations.delete")
+
+        # Security: Check ownership OR admin permission
+        if declaration["user_id"] != user_id and not has_admin_perm:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to delete this declaration",
             )
 
-        # Business rule: Only DRAFT can be deleted
-        if declaration["status"] != "draft":
+        # Business rule: Only DRAFT can be deleted by regular users
+        # Admins can delete any status
+        if declaration["status"] != "draft" and not has_admin_perm:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Only DRAFT declarations can be deleted",
+                detail="Only DRAFT declarations can be deleted by users",
             )
 
         # Soft delete

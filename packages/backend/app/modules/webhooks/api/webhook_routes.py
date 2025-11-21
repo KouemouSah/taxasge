@@ -24,6 +24,7 @@ from app.modules.webhooks.models import (
 from app.modules.webhooks.repositories import WebhookRepository
 from app.modules.webhooks.services import HMACService
 from app.modules.auth.middleware.auth_middleware import get_current_user
+from app.modules.permissions.middleware.permission_middleware import require_permission
 from app.database.connection import get_database
 
 router = APIRouter(tags=["Webhooks"])
@@ -122,11 +123,9 @@ async def list_unreconciled_transactions(
     page_size: int = Query(20, ge=1, le=100),
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
+    _: None = Depends(require_permission("webhooks.view"))
 ):
-    """List unreconciled bank transactions (admin only)"""
-    role = current_user.get("role")
-    if role not in ["admin", "super_admin"]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    """List unreconciled bank transactions - Requires webhooks.view permission"""
 
     offset = (page - 1) * page_size
     transactions, total = await repository.list_unreconciled(db, page_size, offset)
@@ -144,11 +143,9 @@ async def get_bank_transaction(
     transaction_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
+    _: None = Depends(require_permission("webhooks.view"))
 ):
-    """Get bank transaction by ID (admin only)"""
-    role = current_user.get("role")
-    if role not in ["admin", "super_admin"]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    """Get bank transaction by ID - Requires webhooks.view permission"""
 
     transaction = await repository.get_transaction_by_id(db, transaction_id)
     if not transaction:
@@ -162,19 +159,16 @@ async def manual_reconcile(
     reconcile: ReconcileRequest,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
+    _: None = Depends(require_permission("webhooks.update"))
 ):
     """
-    Manual reconciliation (admin only)
+    Manual reconciliation - Requires webhooks.update permission
 
     Liens bidirectionnels:
     - bank_transactions.payment_id → payments.id
     - payments.bank_transaction_id → bank_transactions.id
     """
     user_id = current_user["sub"]
-    role = current_user.get("role")
-
-    if role not in ["admin", "super_admin"]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
     try:
         result = await repository.reconcile(
@@ -211,11 +205,9 @@ async def create_bank_configuration(
     config: BankConfigurationCreate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
+    _: None = Depends(require_permission("webhooks.create"))
 ):
-    """Create bank configuration (super admin only)"""
-    role = current_user.get("role")
-    if role != "super_admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Super admin access required")
+    """Create bank configuration - Requires webhooks.create permission"""
 
     result = await repository.create_bank_config(db, config)
     logger.info(f"Super admin {current_user['sub']} created bank config {config.bank_code}")
@@ -228,11 +220,9 @@ async def update_bank_configuration(
     update_data: BankConfigurationUpdate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
+    _: None = Depends(require_permission("webhooks.update"))
 ):
-    """Update bank configuration (super admin only)"""
-    role = current_user.get("role")
-    if role != "super_admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Super admin access required")
+    """Update bank configuration - Requires webhooks.update permission"""
 
     updated = await repository.update_bank_config(db, config_id, update_data)
     if not updated:

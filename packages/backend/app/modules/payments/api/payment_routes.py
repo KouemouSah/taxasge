@@ -23,6 +23,7 @@ from app.modules.payments.models import (
 )
 from app.modules.payments.repositories import PaymentRepository
 from app.modules.auth.middleware.auth_middleware import get_current_user
+from app.modules.permissions.middleware.permission_middleware import require_permission
 from app.database.connection import get_database
 
 router = APIRouter(tags=["Payments"])
@@ -117,15 +118,25 @@ async def update_payment(
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
 ):
-    """Update payment status (admin/system only)"""
+    """
+    Update payment status
+
+    Users can update their own payments (limited fields)
+    Admins with payments.update permission can update any payment (all fields)
+    """
     user_id = current_user["sub"]
 
     payment = await repository.get_by_id(db, payment_id)
     if not payment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
 
-    # Check ownership or admin
-    if payment["user_id"] != user_id and current_user.get("role") not in ["admin", "super_admin"]:
+    # Check if user has admin permission
+    from app.modules.permissions.services.permission_service import get_permission_service
+    perm_service = get_permission_service()
+    has_admin_perm = await perm_service.has_permission(user_id, "payments.update")
+
+    # Check ownership OR admin permission
+    if payment["user_id"] != user_id and not has_admin_perm:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
 
     updated = await repository.update(db, payment_id, update_data)

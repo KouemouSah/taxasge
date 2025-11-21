@@ -20,6 +20,7 @@ from app.modules.fiscal_services.models import (
 from app.modules.fiscal_services.repositories import FiscalServiceRepository
 from app.modules.fiscal_services.services import CalculationService
 from app.modules.auth.middleware.auth_middleware import get_current_user
+from app.modules.permissions.middleware.permission_middleware import require_permission
 from app.database.connection import get_database
 
 router = APIRouter(tags=["Fiscal Services"])
@@ -160,13 +161,10 @@ async def create_fiscal_service(
     service: FiscalServiceCreate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
+    _: None = Depends(require_permission("fiscal_services.create"))
 ):
-    """Create new fiscal service (admin only)"""
+    """Create new fiscal service - Requires fiscal_services.create permission"""
     user_id = current_user["sub"]
-    role = current_user.get("role")
-
-    if role not in ["admin", "super_admin"]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
     # Check if code already exists
     existing = await repository.get_by_code(db, service.code)
@@ -184,13 +182,10 @@ async def update_fiscal_service(
     update_data: FiscalServiceUpdate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
+    _: None = Depends(require_permission("fiscal_services.update"))
 ):
-    """Update fiscal service (admin only)"""
+    """Update fiscal service - Requires fiscal_services.update permission"""
     user_id = current_user["sub"]
-    role = current_user.get("role")
-
-    if role not in ["admin", "super_admin"]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
     updated = await repository.update(db, service_id, update_data)
     if not updated:
@@ -205,13 +200,10 @@ async def delete_fiscal_service(
     service_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
+    _: None = Depends(require_permission("fiscal_services.delete"))
 ):
-    """Delete fiscal service (admin only)"""
+    """Delete fiscal service - Requires fiscal_services.delete permission"""
     user_id = current_user["sub"]
-    role = current_user.get("role")
-
-    if role not in ["admin", "super_admin"]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
     deleted = await repository.delete(db, service_id)
     if not deleted:

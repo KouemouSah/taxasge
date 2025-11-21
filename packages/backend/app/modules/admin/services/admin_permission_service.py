@@ -104,6 +104,13 @@ class AdminPermissionService:
             "system.view_diagnostics",
             "system.maintenance",
         ],
+        "fiscal_services": [
+            "fiscal_services.view",
+            "fiscal_services.create",
+            "fiscal_services.update",
+            "fiscal_services.delete",
+            "fiscal_services.manage",
+        ],
         "webhooks": [
             "webhooks.view",
             "webhooks.create",
