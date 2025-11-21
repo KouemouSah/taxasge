@@ -19,7 +19,7 @@ SELECT
     -- User info
     u.email as user_email,
     u.full_name as user_name,
-    u.phone as user_phone,
+    u.phone_number as user_phone,
 
     -- Declaration info
     d.declaration_type,
@@ -53,7 +53,7 @@ SELECT
     bt.bank_reference as bank_confirmed_reference,
     bt.bank_transaction_date,
     bt.reconciled_at,
-    bt.reconciled_by_user_id,
+    bt.reconciled_by,
 
     -- Timing metrics
     EXTRACT(EPOCH FROM (p.paid_at - p.created_at)) / 3600 as hours_to_payment,
@@ -61,26 +61,16 @@ SELECT
 
     -- Payment plan info (if applicable)
     pp.id as payment_plan_id,
-    pp.total_installments,
-    pp.installments_paid,
-    pp.next_due_date,
-    pp.plan_status,
-
-    -- Outstanding amount calculation
-    (d.calculated_tax - COALESCE(d.amount_paid, 0)) as outstanding_amount,
-
-    -- Payment completeness
-    CASE
-        WHEN d.amount_due <= 0 THEN 'FULLY_PAID'
-        WHEN d.amount_paid > 0 THEN 'PARTIALLY_PAID'
-        ELSE 'UNPAID'
-    END as payment_completeness
+    pp.number_of_installments,
+    pp.status as plan_status,
+    pp.total_paid,
+    pp.remaining_balance
 
 FROM payments p
 JOIN users u ON p.user_id = u.id
 JOIN tax_declarations d ON p.tax_declaration_id = d.id
 LEFT JOIN bank_transactions bt ON p.bank_transaction_id = bt.id
-LEFT JOIN payment_plans pp ON p.id = pp.payment_id
+LEFT JOIN payment_plans pp ON d.id = pp.tax_declaration_id
 ORDER BY p.created_at DESC;
 
 -- Index for performance
@@ -207,7 +197,7 @@ SELECT
     d.user_id,
     u.full_name as user_name,
     u.email as user_email,
-    u.phone as user_phone,
+    u.phone_number as user_phone,
 
     -- Declaration info
     d.declaration_type,
@@ -382,7 +372,7 @@ SELECT
     -- User info
     u.full_name as user_name,
     u.email as user_email,
-    u.phone as user_phone,
+    u.phone_number as user_phone,
 
     -- Declaration info
     d.declaration_type,
