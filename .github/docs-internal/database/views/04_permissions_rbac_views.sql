@@ -16,7 +16,7 @@ SELECT
     u.email,
     u.full_name,
     u.role,
-    u.is_active as user_active,
+    (u.status = 'active') as user_active,
 
     -- Admin flag
     (u.role = 'admin') as is_admin,
@@ -27,9 +27,9 @@ SELECT
             DISTINCT jsonb_build_object(
                 'permission_id', up.permission_id,
                 'permission_name', p.name,
-                'module', p.module,
+                'module', p.module_name,
                 'granted_at', up.granted_at,
-                'granted_by', up.granted_by_user_id,
+                'granted_by', up.granted_by,
                 'granter_name', granter.full_name
             )
         ) FILTER (WHERE up.permission_id IS NOT NULL),
@@ -41,7 +41,7 @@ SELECT
 
     -- All modules user has access to (from explicit permissions)
     COALESCE(
-        json_agg(DISTINCT p.module) FILTER (WHERE p.module IS NOT NULL),
+        json_agg(DISTINCT p.module_name) FILTER (WHERE p.module_name IS NOT NULL),
         '[]'::json
     ) as accessible_modules,
 
@@ -55,20 +55,20 @@ SELECT
     END as role_capability_level,
 
     -- Last activity
-    u.last_login_at,
+    u.last_login,
     u.updated_at as profile_updated_at
 
 FROM users u
 LEFT JOIN user_permissions up ON u.id = up.user_id
 LEFT JOIN permissions p ON up.permission_id = p.id
-LEFT JOIN users granter ON up.granted_by_user_id = granter.id
+LEFT JOIN users granter ON up.granted_by = granter.id
 GROUP BY
     u.id,
     u.email,
     u.full_name,
     u.role,
-    u.is_active,
-    u.last_login_at,
+    u.status,
+    u.last_login,
     u.updated_at
 ORDER BY u.role, u.email;
 
@@ -91,11 +91,11 @@ SELECT
 
     up.permission_id,
     p.name as permission_name,
-    p.module as permission_module,
+    p.module_name as permission_module,
     p.description as permission_description,
 
     up.granted_at,
-    up.granted_by_user_id,
+    up.granted_by,
     granter.full_name as granted_by_name,
     granter.email as granted_by_email,
     granter.role as granted_by_role,
@@ -105,11 +105,11 @@ SELECT
 
     -- Categorization
     CASE
-        WHEN p.module = 'admin' THEN 'SYSTEM_ADMINISTRATION'
-        WHEN p.module IN ('users', 'companies') THEN 'USER_MANAGEMENT'
-        WHEN p.module IN ('declarations', 'payments') THEN 'FINANCIAL_OPERATIONS'
-        WHEN p.module IN ('agents', 'assignments') THEN 'AGENT_OPERATIONS'
-        WHEN p.module = 'documents' THEN 'DOCUMENT_MANAGEMENT'
+        WHEN p.module_name = 'admin' THEN 'SYSTEM_ADMINISTRATION'
+        WHEN p.module_name IN ('users', 'companies') THEN 'USER_MANAGEMENT'
+        WHEN p.module_name IN ('declarations', 'payments') THEN 'FINANCIAL_OPERATIONS'
+        WHEN p.module_name IN ('agents', 'assignments') THEN 'AGENT_OPERATIONS'
+        WHEN p.module_name = 'documents' THEN 'DOCUMENT_MANAGEMENT'
         ELSE 'OTHER'
     END as permission_category,
 
@@ -125,7 +125,7 @@ SELECT
 FROM user_permissions up
 JOIN users u ON up.user_id = u.id
 JOIN permissions p ON up.permission_id = p.id
-LEFT JOIN users granter ON up.granted_by_user_id = granter.id
+LEFT JOIN users granter ON up.granted_by = granter.id
 ORDER BY up.granted_at DESC;
 
 COMMENT ON VIEW v_permission_grants_audit IS
@@ -144,8 +144,8 @@ SELECT
 
     -- User counts
     COUNT(DISTINCT u.id) as total_users,
-    COUNT(DISTINCT CASE WHEN u.is_active = true THEN u.id END) as active_users,
-    COUNT(DISTINCT CASE WHEN u.is_active = false THEN u.id END) as inactive_users,
+    COUNT(DISTINCT CASE WHEN u.status = 'active' THEN u.id END) as active_users,
+    COUNT(DISTINCT CASE WHEN u.status != 'active' THEN u.id END) as inactive_users,
 
     -- Permission grants
     COUNT(DISTINCT up.permission_id) as unique_permissions_granted,
@@ -156,7 +156,7 @@ SELECT
         SELECT json_agg(
             json_build_object(
                 'permission_name', p.name,
-                'module', p.module,
+                'module', p.module_name,
                 'grant_count', COUNT(*)
             )
             ORDER BY COUNT(*) DESC
@@ -165,7 +165,7 @@ SELECT
         JOIN users u2 ON up2.user_id = u2.id
         JOIN permissions p ON up2.permission_id = p.id
         WHERE u2.role = u.role
-        GROUP BY p.name, p.module
+        GROUP BY p.name, p.module_name
         ORDER BY COUNT(*) DESC
         LIMIT 10
     ) as top_10_permissions,
@@ -173,20 +173,20 @@ SELECT
     -- Module access distribution
     (
         SELECT json_object_agg(
-            p.module,
+            p.module_name,
             COUNT(DISTINCT up2.user_id)
         )
         FROM user_permissions up2
         JOIN users u2 ON up2.user_id = u2.id
         JOIN permissions p ON up2.permission_id = p.id
         WHERE u2.role = u.role
-        GROUP BY p.module
+        GROUP BY p.module_name
     ) as module_access_distribution,
 
     -- Activity metrics
-    AVG(EXTRACT(DAY FROM NOW() - u.last_login_at)) as avg_days_since_last_login,
-    COUNT(CASE WHEN u.last_login_at >= NOW() - INTERVAL '7 days' THEN 1 END) as active_last_7_days,
-    COUNT(CASE WHEN u.last_login_at >= NOW() - INTERVAL '30 days' THEN 1 END) as active_last_30_days
+    AVG(EXTRACT(DAY FROM NOW() - u.last_login)) as avg_days_since_last_login,
+    COUNT(CASE WHEN u.last_login >= NOW() - INTERVAL '7 days' THEN 1 END) as active_last_7_days,
+    COUNT(CASE WHEN u.last_login >= NOW() - INTERVAL '30 days' THEN 1 END) as active_last_30_days
 
 FROM users u
 LEFT JOIN user_permissions up ON u.id = up.user_id
@@ -215,7 +215,7 @@ CREATE OR REPLACE VIEW v_permission_usage_analytics AS
 SELECT
     p.id as permission_id,
     p.name as permission_name,
-    p.module,
+    p.module_name,
     p.description,
 
     -- Grant statistics
@@ -229,8 +229,8 @@ SELECT
     COUNT(DISTINCT CASE WHEN u.role = 'citizen' THEN u.id END) as citizen_count,
 
     -- Activity metrics
-    COUNT(DISTINCT CASE WHEN u.last_login_at >= NOW() - INTERVAL '30 days' THEN u.id END) as active_users_30d,
-    COUNT(DISTINCT CASE WHEN u.last_login_at >= NOW() - INTERVAL '7 days' THEN u.id END) as active_users_7d,
+    COUNT(DISTINCT CASE WHEN u.last_login >= NOW() - INTERVAL '30 days' THEN u.id END) as active_users_30d,
+    COUNT(DISTINCT CASE WHEN u.last_login >= NOW() - INTERVAL '7 days' THEN u.id END) as active_users_7d,
 
     -- Grant timing
     MIN(up.granted_at) as first_granted,
@@ -248,7 +248,7 @@ SELECT
     -- Recommendation
     CASE
         WHEN COUNT(DISTINCT up.user_id) = 0 THEN 'Consider removing if truly unused'
-        WHEN COUNT(DISTINCT CASE WHEN u.last_login_at >= NOW() - INTERVAL '90 days' THEN u.id END) = 0
+        WHEN COUNT(DISTINCT CASE WHEN u.last_login >= NOW() - INTERVAL '90 days' THEN u.id END) = 0
             THEN 'No active users - review necessity'
         ELSE 'Active usage - keep'
     END as recommendation
@@ -256,8 +256,8 @@ SELECT
 FROM permissions p
 LEFT JOIN user_permissions up ON p.id = up.permission_id
 LEFT JOIN users u ON up.user_id = u.id
-GROUP BY p.id, p.name, p.module, p.description
-ORDER BY COUNT(DISTINCT up.user_id) DESC, p.module, p.name;
+GROUP BY p.id, p.name, p.module_name, p.description
+ORDER BY COUNT(DISTINCT up.user_id) DESC, p.module_name, p.name;
 
 COMMENT ON VIEW v_permission_usage_analytics IS
 'Permission usage analytics with grant counts, user distribution, and optimization recommendations.
@@ -277,11 +277,11 @@ WITH user_permission_stats AS (
         u.full_name,
         u.role,
         COUNT(DISTINCT up.permission_id) as permission_count,
-        COUNT(DISTINCT p.module) as module_count,
+        COUNT(DISTINCT p.module_name) as module_count,
         -- High-risk permissions
         COUNT(CASE WHEN p.name LIKE '%delete%' THEN 1 END) as delete_permissions,
         COUNT(CASE WHEN p.name LIKE '%admin%' THEN 1 END) as admin_permissions,
-        COUNT(CASE WHEN p.module = 'system' THEN 1 END) as system_permissions
+        COUNT(CASE WHEN p.module_name = 'system' THEN 1 END) as system_permissions
     FROM users u
     LEFT JOIN user_permissions up ON u.id = up.user_id
     LEFT JOIN permissions p ON up.permission_id = p.id
@@ -377,7 +377,7 @@ SELECT
     u.email,
     u.full_name,
     u.role,
-    u.is_active,
+    (u.status = 'active') as is_active,
 
     -- Expected permissions for role
     rep.expected_permissions,
@@ -413,22 +413,22 @@ SELECT
     ) as gap_count,
 
     -- Last login (for prioritization)
-    u.last_login_at,
-    EXTRACT(DAY FROM NOW() - u.last_login_at) as days_since_login
+    u.last_login,
+    EXTRACT(DAY FROM NOW() - u.last_login) as days_since_login
 
 FROM users u
 LEFT JOIN role_expected_permissions rep ON u.role = rep.role
 LEFT JOIN user_permissions up ON u.id = up.user_id
 LEFT JOIN permissions p ON up.permission_id = p.id
 WHERE u.role != 'admin'  -- Admins have all permissions
-AND u.is_active = true
+AND u.status = 'active'
 GROUP BY
     u.id,
     u.email,
     u.full_name,
     u.role,
-    u.is_active,
-    u.last_login_at,
+    u.status,
+    u.last_login,
     rep.expected_permissions
 HAVING (
     SELECT COUNT(ep)
@@ -440,7 +440,7 @@ HAVING (
         WHERE up2.user_id = u.id
     )
 ) > 0
-ORDER BY gap_count DESC, u.last_login_at DESC;
+ORDER BY gap_count DESC, u.last_login DESC;
 
 COMMENT ON VIEW v_permission_gaps_analysis IS
 'Identifies users missing expected permissions for their role.
