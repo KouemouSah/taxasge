@@ -48,28 +48,38 @@ SELECT
     u.phone_number as user_phone,
 
     -- IVA details (if applicable)
-    iva.taxable_sales,
-    iva.exempt_sales,
-    iva.iva_charged,
-    iva.iva_paid,
-    iva.iva_to_pay,
+    iva.iva_dev_014_total as iva_total_devengado,
+    iva.iva_ded_07_total as iva_total_deducible,
+    iva.calculated_amount as iva_calculated_amount,
+    iva.final_amount as iva_final_amount,
+    iva.total_a_ingresar as iva_total_a_ingresar,
+    iva.iva_subtype,
 
     -- IRPF details (if applicable)
-    irpf.gross_income,
-    irpf.deductions,
-    irpf.taxable_income,
-    irpf.tax_rate,
-    irpf.tax_withheld,
+    irpf.total_revenus_bruts as irpf_gross_income,
+    irpf.total_deductions as irpf_deductions,
+    irpf.base_liquidable as irpf_taxable_income,
+    irpf.tipo_gravamen as irpf_tax_rate,
+    irpf.retenues_a_la_source as irpf_tax_withheld,
+    irpf.calculated_amount as irpf_calculated_amount,
+    irpf.final_amount as irpf_final_amount,
+    irpf.total_a_ingresar as irpf_total_a_ingresar,
 
     -- Petroliferos details (if applicable)
-    petro.product_type as petro_product_type,
-    petro.volume_liters as petro_volume,
-    petro.unit_rate as petro_rate,
+    petro.petroleum_declaration_subtype as petro_subtype,
+    petro.cantidad_producto as petro_quantity,
+    petro.unidad_medida as petro_unit,
+    petro.precio_unitario as petro_unit_price,
+    petro.calculated_amount as petro_calculated_amount,
+    petro.final_amount as petro_final_amount,
+    petro.total_a_ingresar as petro_total_a_ingresar,
 
     -- Retencion details (if applicable)
-    ret.total_payments as retencion_total_payments,
-    ret.total_retention as retencion_total_retention,
-    ret.retention_rate as retencion_rate,
+    ret.retencion_subtype,
+    ret.tasa_retencion as retencion_rate,
+    ret.total_servicios_sujetos as retencion_services_subject,
+    ret.sub_total as retencion_subtotal,
+    ret.total_a_ingresar as retencion_total_a_ingresar,
 
     -- Payment info
     p.id as payment_id,
