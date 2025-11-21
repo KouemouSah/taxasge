@@ -178,14 +178,19 @@ SELECT
     -- Module access distribution
     (
         SELECT json_object_agg(
-            p.module_name,
-            COUNT(DISTINCT up2.user_id)
+            mod.module_name,
+            mod.user_count
         )
-        FROM user_permissions up2
-        JOIN users u2 ON up2.user_id = u2.id
-        JOIN permissions p ON up2.permission_id = p.id
-        WHERE u2.role = u.role
-        GROUP BY p.module_name
+        FROM (
+            SELECT
+                p.module_name,
+                COUNT(DISTINCT up2.user_id) as user_count
+            FROM user_permissions up2
+            JOIN users u2 ON up2.user_id = u2.id
+            JOIN permissions p ON up2.permission_id = p.id
+            WHERE u2.role = u.role
+            GROUP BY p.module_name
+        ) mod
     ) as module_access_distribution,
 
     -- Activity metrics
