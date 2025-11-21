@@ -271,3 +271,71 @@ class FiscalServiceListResponse(BaseModel):
     page: int
     page_size: int
     total_pages: int
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Complete Service Creation Models
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class FiscalServiceCreateComplete(BaseModel):
+    """
+    Complete fiscal service creation with all related entities
+
+    Use this for creating a fiscal service with:
+    - Basic service info
+    - Document assignments
+    - Procedure assignments
+    - Keywords
+    - Translations (optional)
+    """
+    # Main service data
+    service: FiscalServiceCreate
+
+    # Related entities
+    document_assignments: Optional[List[Dict[str, Any]]] = Field(
+        default=[],
+        description="Documents required for this service"
+    )
+    procedure_assignments: Optional[List[Dict[str, Any]]] = Field(
+        default=[],
+        description="Procedures required for this service"
+    )
+    keywords: Optional[List[Dict[str, Any]]] = Field(
+        default=[],
+        description="Search keywords (multilingual)"
+    )
+    translations: Optional[List[Dict[str, Any]]] = Field(
+        default=[],
+        description="Translations for other languages"
+    )
+
+
+class FiscalServiceUpdateComplete(BaseModel):
+    """
+    Complete fiscal service update with cascading updates
+    """
+    # Main service updates
+    service: FiscalServiceUpdate
+
+    # Document assignments
+    add_document_assignments: Optional[List[Dict[str, Any]]] = None
+    remove_document_ids: Optional[List[int]] = None
+
+    # Procedure assignments
+    add_procedure_assignments: Optional[List[Dict[str, Any]]] = None
+    remove_procedure_ids: Optional[List[int]] = None
+
+    # Keywords
+    add_keywords: Optional[List[Dict[str, Any]]] = None
+    remove_keyword_ids: Optional[List[int]] = None
+
+
+class FiscalServiceCompleteResponse(FiscalServiceResponse):
+    """
+    Complete fiscal service response with all related data
+    """
+    document_assignments: List[Dict[str, Any]] = []
+    procedure_assignments: List[Dict[str, Any]] = []
+    keywords: List[Dict[str, Any]] = []
+    translations: List[Dict[str, Any]] = []

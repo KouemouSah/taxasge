@@ -28,6 +28,11 @@ from app.modules.fiscal_services.models.fiscal_service import (
     # Search and Filtering
     FiscalServiceFilter,
     FiscalServiceListResponse,
+
+    # Complete Models
+    FiscalServiceCreateComplete,
+    FiscalServiceUpdateComplete,
+    FiscalServiceCompleteResponse,
 )
 
 from app.modules.fiscal_services.models.templates import (
@@ -111,6 +116,11 @@ __all__ = [
     # Search and Filtering
     "FiscalServiceFilter",
     "FiscalServiceListResponse",
+
+    # Complete Models
+    "FiscalServiceCreateComplete",
+    "FiscalServiceUpdateComplete",
+    "FiscalServiceCompleteResponse",
 
     # Document Templates
     "DocumentTemplateBase",
