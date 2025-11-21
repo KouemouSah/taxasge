@@ -19,7 +19,7 @@ SELECT
     (u.status = 'active') as user_active,
 
     -- Admin flag
-    (u.role = 'admin') as is_admin,
+    (u.role::text = 'admin') as is_admin,
 
     -- Explicit permissions granted
     COALESCE(
@@ -429,10 +429,10 @@ SELECT
     EXTRACT(DAY FROM NOW() - u.last_login) as days_since_login
 
 FROM users u
-LEFT JOIN role_expected_permissions rep ON u.role = rep.role
+LEFT JOIN role_expected_permissions rep ON u.role::text = rep.role
 LEFT JOIN user_permissions up ON u.id = up.user_id
 LEFT JOIN permissions p ON up.permission_id = p.id
-WHERE u.role != 'admin'  -- Admins have all permissions
+WHERE u.role::text != 'admin'  -- Admins have all permissions
 AND u.status = 'active'
 GROUP BY
     u.id,
