@@ -270,30 +270,29 @@ SELECT
     awq.id as queue_id,
     awq.ministry_id,
     m.name_es as ministry_name,
-    awq.declaration_id,
-    d.declaration_type,
-    d.calculated_tax,
+    awq.item_id as declaration_id,
+    awq.declaration_type,
+    awq.amount as calculated_tax,
 
     -- Priority calculation
-    awq.calculated_priority,
-    awq.complexity_score,
-    awq.amount_score,
-    awq.sla_score,
+    awq.priority_score as calculated_priority,
+    awq.sla_status,
+    awq.sla_deadline,
 
     -- Time metrics
     awq.created_at as queued_at,
     EXTRACT(EPOCH FROM (NOW() - awq.created_at)) / 3600 as hours_in_queue,
 
-    -- Recommended agent (if locked)
-    awq.locked_for_agent_id,
+    -- Assigned agent (if any)
+    awq.assigned_to as locked_for_agent_id,
     ma.full_name as locked_agent_name,
     awq.locked_until,
 
     -- Status
     CASE
-        WHEN awq.locked_for_agent_id IS NOT NULL AND awq.locked_until > NOW()
+        WHEN awq.assigned_to IS NOT NULL AND awq.locked_until > NOW()
         THEN 'LOCKED'
-        WHEN awq.locked_for_agent_id IS NOT NULL AND awq.locked_until <= NOW()
+        WHEN awq.assigned_to IS NOT NULL AND awq.locked_until <= NOW()
         THEN 'LOCK_EXPIRED'
         ELSE 'AVAILABLE'
     END as queue_status,
@@ -310,11 +309,11 @@ SELECT
     ) as available_agents_count
 
 FROM agent_work_queue awq
-JOIN ministries m ON awq.ministry_id = m.ministry_id
-JOIN tax_declarations d ON awq.declaration_id = d.id
-LEFT JOIN ministry_agents ma ON awq.locked_for_agent_id = ma.id
+JOIN ministries m ON awq.ministry_id = m.id
+LEFT JOIN ministry_agents ma ON awq.assigned_to = ma.id
 WHERE awq.status = 'pending'
-ORDER BY awq.calculated_priority DESC, awq.created_at ASC;
+AND awq.item_type = 'declaration'
+ORDER BY awq.priority_score DESC, awq.created_at ASC;
 
 COMMENT ON VIEW v_agent_work_queue_priority IS
 'Prioritized work queue with smart assignment recommendations and agent availability.
