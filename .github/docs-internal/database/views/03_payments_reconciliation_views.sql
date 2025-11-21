@@ -252,38 +252,54 @@ SELECT
     (
         SELECT json_agg(
             json_build_object(
-                'installment_number', i.installment_number,
-                'amount_due', i.amount_due,
-                'amount_paid', i.amount_paid,
-                'due_date', i.due_date,
-                'paid_at', i.paid_at,
-                'status', i.status
+                'installment_number', inst.installment_number,
+                'amount_due', inst.amount_due,
+                'amount_paid', inst.amount_paid,
+                'due_date', inst.due_date,
+                'paid_at', inst.paid_at,
+                'status', inst.status
             )
-            ORDER BY i.installment_number DESC
         )
-        FROM payment_installments i
-        WHERE i.payment_plan_id = pp.id
-        AND i.status = 'paid'
-        ORDER BY i.installment_number DESC
-        LIMIT 3
+        FROM (
+            SELECT
+                i.installment_number,
+                i.amount_due,
+                i.amount_paid,
+                i.due_date,
+                i.paid_at,
+                i.status
+            FROM payment_installments i
+            WHERE i.payment_plan_id = pp.id
+            AND i.status = 'paid'
+            ORDER BY i.installment_number DESC
+            LIMIT 3
+        ) inst
     ) as recent_payments,
 
     -- Get upcoming installments
     (
         SELECT json_agg(
             json_build_object(
-                'installment_number', i.installment_number,
-                'amount', i.amount,
-                'due_date', i.due_date,
-                'status', i.status
+                'installment_number', inst.installment_number,
+                'amount_due', inst.amount_due,
+                'remaining_amount', inst.remaining_amount,
+                'due_date', inst.due_date,
+                'status', inst.status
             )
-            ORDER BY i.due_date ASC
         )
-        FROM payment_installments i
-        WHERE i.payment_plan_id = pp.id
-        AND i.status = 'pending'
-        ORDER BY i.due_date ASC
-        LIMIT 3
+        FROM (
+            SELECT
+                i.installment_number,
+                i.amount_due,
+                i.remaining_amount,
+                i.due_date,
+                i.status
+            FROM payment_installments i
+            WHERE i.payment_plan_id = pp.id
+            AND i.status = 'pending'
+            ORDER BY i.due_date ASC
+            LIMIT 3
+        ) inst
     ) as upcoming_installments
 
 FROM payment_plans pp
