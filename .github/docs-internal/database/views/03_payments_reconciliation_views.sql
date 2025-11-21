@@ -246,7 +246,7 @@ SELECT
     END as payment_status,
 
     -- Days until next payment
-    EXTRACT(DAY FROM (ist.next_due_date - CURRENT_DATE)) as days_until_next_payment,
+    (ist.next_due_date - CURRENT_DATE) as days_until_next_payment,
 
     -- Get last 3 installment payments
     (
