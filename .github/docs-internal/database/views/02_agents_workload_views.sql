@@ -23,9 +23,8 @@ SELECT
     -- Workload metrics
     aw.current_assignments,
     aw.max_concurrent_assignments,
-    aw.assignments_in_progress,
-    aw.assignments_pending,
-    aw.total_completed,
+    aw.in_progress_declarations,
+    aw.pending_declarations,
 
     -- Capacity calculation
     ROUND(
@@ -48,17 +47,24 @@ SELECT
         ELSE TRUE
     END as can_accept_new_assignments,
 
-    -- Performance metrics
-    aps.total_assignments_completed,
-    aps.total_processing_time_hours,
-    aps.avg_processing_time_hours,
-    aps.approval_rate,
-    aps.rejection_rate,
-    aps.quality_score,
+    -- Performance metrics (calculated from agent_performance_stats)
+    aps.current_month_processed as total_assignments_current_month,
+    (aps.avg_processing_minutes / 60.0) as avg_processing_time_hours,
+    CASE
+        WHEN aps.current_month_processed > 0
+        THEN ROUND((aps.current_month_approved::numeric / aps.current_month_processed) * 100, 2)
+        ELSE 0
+    END as approval_rate,
+    CASE
+        WHEN aps.current_month_processed > 0
+        THEN ROUND((aps.current_month_rejected::numeric / aps.current_month_processed) * 100, 2)
+        ELSE 0
+    END as rejection_rate,
+    aps.sla_respect_percentage as quality_score,
 
     -- Time metrics
-    EXTRACT(EPOCH FROM (NOW() - aw.updated_at)) / 3600 as hours_since_last_update,
-    aw.updated_at as last_workload_update
+    EXTRACT(EPOCH FROM (NOW() - aw.last_updated_at)) / 3600 as hours_since_last_update,
+    aw.last_updated_at as last_workload_update
 
 FROM ministry_agents ma
 JOIN users u ON ma.user_id = u.id
@@ -146,8 +152,8 @@ SELECT
     a.assigned_at,
     a.started_at,
     a.completed_at,
-    a.assigned_by_user_id,
-    a.priority,
+    a.assigned_by,
+    a.priority_level,
     a.notes,
 
     -- Timing metrics
@@ -198,19 +204,27 @@ WITH agent_stats AS (
         m.name_es as ministry_name,
 
         -- Performance metrics
-        aps.total_assignments_completed,
-        aps.approval_rate,
-        aps.avg_processing_time_hours,
-        aps.quality_score,
+        aps.current_month_processed,
+        CASE
+            WHEN aps.current_month_processed > 0
+            THEN ROUND((aps.current_month_approved::numeric / aps.current_month_processed) * 100, 2)
+            ELSE 0
+        END as approval_rate,
+        (aps.avg_processing_minutes / 60.0) as avg_processing_time_hours,
+        aps.sla_respect_percentage as quality_score,
 
         -- Calculate composite score (0-100)
         (
-            (aps.quality_score * 0.4) +
-            (aps.approval_rate * 0.3) +
+            (aps.sla_respect_percentage * 0.4) +
             (CASE
-                WHEN aps.avg_processing_time_hours <= 12 THEN 30
-                WHEN aps.avg_processing_time_hours <= 18 THEN 20
-                WHEN aps.avg_processing_time_hours <= 24 THEN 10
+                WHEN aps.current_month_processed > 0
+                THEN (aps.current_month_approved::numeric / aps.current_month_processed) * 30
+                ELSE 0
+            END) +
+            (CASE
+                WHEN (aps.avg_processing_minutes / 60.0) <= 12 THEN 30
+                WHEN (aps.avg_processing_minutes / 60.0) <= 18 THEN 20
+                WHEN (aps.avg_processing_minutes / 60.0) <= 24 THEN 10
                 ELSE 0
             END)
         ) as performance_score
@@ -220,14 +234,14 @@ WITH agent_stats AS (
     JOIN ministries m ON ma.ministry_id = m.id
     LEFT JOIN agent_performance_stats aps ON ma.id = aps.agent_id
     WHERE ma.is_active = TRUE
-    AND aps.total_assignments_completed > 0
+    AND aps.current_month_processed > 0
 )
 SELECT
     agent_id,
     full_name,
     ministry_id,
     ministry_name,
-    total_assignments_completed,
+    current_month_processed,
     approval_rate,
     avg_processing_time_hours,
     quality_score,
