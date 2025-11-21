@@ -253,7 +253,8 @@ SELECT
         SELECT json_agg(
             json_build_object(
                 'installment_number', i.installment_number,
-                'amount', i.amount,
+                'amount_due', i.amount_due,
+                'amount_paid', i.amount_paid,
                 'due_date', i.due_date,
                 'paid_at', i.paid_at,
                 'status', i.status
