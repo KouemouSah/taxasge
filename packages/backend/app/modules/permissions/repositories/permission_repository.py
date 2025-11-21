@@ -395,3 +395,187 @@ class PermissionRepository:
             List of critical permission dicts
         """
         return await self.get_all(is_critical=True, limit=1000)
+
+    # ========================================================================
+    # METHODS USING DATABASE VIEWS - Optimized queries with pre-joined data
+    # ========================================================================
+
+    async def get_user_effective_permissions(
+        self,
+        user_id: str,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get user's effective permissions using v_user_effective_permissions view
+
+        This view includes:
+        - User info (email, name, role)
+        - Explicit permissions granted
+        - All accessible modules
+        - Role capability level
+        - Admin flag
+
+        Args:
+            user_id: User UUID
+
+        Returns:
+            Complete user permissions data or None
+        """
+        async with self.db.pool.acquire() as conn:
+            query = """
+                SELECT * FROM v_user_effective_permissions
+                WHERE user_id = $1
+            """
+            result = await conn.fetchrow(query, user_id)
+            return dict(result) if result else None
+
+    async def list_users_effective_permissions(
+        self,
+        role: Optional[str] = None,
+        is_admin: Optional[bool] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[List[Dict[str, Any]], int]:
+        """
+        List users with their effective permissions
+
+        Args:
+            role: Optional filter by role
+            is_admin: Optional filter admins
+            limit: Max results
+            offset: Pagination offset
+
+        Returns:
+            Tuple of (users list, total count)
+        """
+        async with self.db.pool.acquire() as conn:
+            where_conditions = []
+            params = []
+
+            if role:
+                where_conditions.append(f"role = ${len(params) + 1}")
+                params.append(role)
+
+            if is_admin is not None:
+                where_conditions.append(f"is_admin = ${len(params) + 1}")
+                params.append(is_admin)
+
+            where_clause = f"WHERE {' AND '.join(where_conditions)}" if where_conditions else ""
+
+            # Count query
+            count_query = f"""
+                SELECT COUNT(*) FROM v_user_effective_permissions
+                {where_clause}
+            """
+            total = await conn.fetchval(count_query, *params)
+
+            # Data query
+            params.extend([limit, offset])
+            data_query = f"""
+                SELECT * FROM v_user_effective_permissions
+                {where_clause}
+                ORDER BY role, email
+                LIMIT ${len(params) - 1} OFFSET ${len(params)}
+            """
+
+            results = await conn.fetch(data_query, *params)
+            users = [dict(r) for r in results]
+
+            return users, total
+
+    async def get_permission_usage_analytics(
+        self,
+        permission_id: Optional[str] = None,
+        module: Optional[str] = None,
+        usage_category: Optional[str] = None,
+        limit: int = 100,
+    ) -> List[Dict[str, Any]]:
+        """
+        Get permission usage analytics using v_permission_usage_analytics view
+
+        This view includes:
+        - Grant statistics by permission
+        - User distribution by role
+        - Usage categories (UNUSED, RARELY_USED, etc.)
+        - Recommendations for permission lifecycle
+
+        Args:
+            permission_id: Optional filter by permission
+            module: Optional filter by module
+            usage_category: Optional filter (UNUSED, RARELY_USED, MODERATELY_USED, WIDELY_USED)
+            limit: Max results
+
+        Returns:
+            List of permission analytics
+        """
+        async with self.db.pool.acquire() as conn:
+            where_conditions = []
+            params = []
+
+            if permission_id:
+                where_conditions.append(f"permission_id = ${len(params) + 1}")
+                params.append(permission_id)
+
+            if module:
+                where_conditions.append(f"module = ${len(params) + 1}")
+                params.append(module)
+
+            if usage_category:
+                where_conditions.append(f"usage_category = ${len(params) + 1}")
+                params.append(usage_category)
+
+            where_clause = f"WHERE {' AND '.join(where_conditions)}" if where_conditions else ""
+
+            params.append(limit)
+            query = f"""
+                SELECT * FROM v_permission_usage_analytics
+                {where_clause}
+                ORDER BY users_with_permission DESC
+                LIMIT ${len(params)}
+            """
+
+            results = await conn.fetch(query, *params)
+            return [dict(r) for r in results]
+
+    async def detect_overprivileged_users(
+        self,
+        min_risk_score: int = 20,
+        risk_level: Optional[str] = None,
+        limit: int = 50,
+    ) -> List[Dict[str, Any]]:
+        """
+        Detect overprivileged users using v_overprivileged_users_detection view
+
+        This view includes:
+        - Risk score calculation
+        - Permission counts by type
+        - Risk levels (LOW, MEDIUM, HIGH, CRITICAL)
+        - Recommendations for remediation
+
+        Args:
+            min_risk_score: Minimum risk score threshold
+            risk_level: Optional filter (LOW, MEDIUM, HIGH, CRITICAL)
+            limit: Max results
+
+        Returns:
+            List of potentially overprivileged users
+        """
+        async with self.db.pool.acquire() as conn:
+            where_conditions = [f"risk_score >= ${1}"]
+            params = [min_risk_score]
+
+            if risk_level:
+                where_conditions.append(f"risk_level = ${len(params) + 1}")
+                params.append(risk_level)
+
+            where_clause = f"WHERE {' AND '.join(where_conditions)}"
+
+            params.append(limit)
+            query = f"""
+                SELECT * FROM v_overprivileged_users_detection
+                {where_clause}
+                ORDER BY risk_score DESC
+                LIMIT ${len(params)}
+            """
+
+            results = await conn.fetch(query, *params)
+            return [dict(r) for r in results]
