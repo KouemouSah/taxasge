@@ -189,13 +189,22 @@ Uses amount, reference, and timing to suggest payment matches with confidence sc
 -- Usage: Payment plan dashboard, reminder scheduling
 -- =====================================================================
 CREATE OR REPLACE VIEW v_payment_plans_tracking AS
+WITH installment_stats AS (
+    SELECT
+        payment_plan_id,
+        COUNT(*) as total_installments,
+        COUNT(CASE WHEN status = 'paid' THEN 1 END) as installments_paid,
+        COUNT(CASE WHEN status = 'pending' THEN 1 END) as remaining_installments,
+        MIN(CASE WHEN status = 'pending' THEN due_date END) as next_due_date
+    FROM payment_installments
+    GROUP BY payment_plan_id
+)
 SELECT
     pp.id as plan_id,
-    pp.payment_id,
     pp.tax_declaration_id,
 
-    -- User info
-    p.user_id,
+    -- User info (from declaration)
+    d.user_id,
     u.full_name as user_name,
     u.email as user_email,
     u.phone as user_phone,
@@ -207,37 +216,37 @@ SELECT
 
     -- Plan details
     pp.total_amount,
-    pp.total_installments,
-    pp.installments_paid,
-    pp.remaining_installments,
+    pp.number_of_installments as total_installments,
+    ist.installments_paid,
+    ist.remaining_installments,
     pp.installment_amount,
-    pp.start_date,
-    pp.next_due_date,
-    pp.plan_status,
+    pp.first_installment_due_date as start_date,
+    ist.next_due_date,
+    pp.status as plan_status,
     pp.created_at as plan_created,
 
     -- Progress metrics
     ROUND(
-        (pp.installments_paid::numeric / NULLIF(pp.total_installments, 0)) * 100,
+        (ist.installments_paid::numeric / NULLIF(pp.number_of_installments, 0)) * 100,
         2
     ) as completion_percentage,
 
     -- Amount tracking
-    (pp.installments_paid * pp.installment_amount) as amount_paid_so_far,
-    (pp.remaining_installments * pp.installment_amount) as amount_remaining,
+    pp.total_paid as amount_paid_so_far,
+    pp.remaining_balance as amount_remaining,
 
     -- Status calculations
     CASE
-        WHEN pp.plan_status = 'completed' THEN 'COMPLETED'
-        WHEN pp.plan_status = 'cancelled' THEN 'CANCELLED'
-        WHEN pp.next_due_date < CURRENT_DATE THEN 'OVERDUE'
-        WHEN pp.next_due_date = CURRENT_DATE THEN 'DUE_TODAY'
-        WHEN pp.next_due_date <= CURRENT_DATE + INTERVAL '7 days' THEN 'DUE_SOON'
+        WHEN pp.status = 'completed' THEN 'COMPLETED'
+        WHEN pp.status = 'cancelled' THEN 'CANCELLED'
+        WHEN ist.next_due_date < CURRENT_DATE THEN 'OVERDUE'
+        WHEN ist.next_due_date = CURRENT_DATE THEN 'DUE_TODAY'
+        WHEN ist.next_due_date <= CURRENT_DATE + INTERVAL '7 days' THEN 'DUE_SOON'
         ELSE 'ACTIVE'
     END as payment_status,
 
     -- Days until next payment
-    EXTRACT(DAY FROM (pp.next_due_date - CURRENT_DATE)) as days_until_next_payment,
+    EXTRACT(DAY FROM (ist.next_due_date - CURRENT_DATE)) as days_until_next_payment,
 
     -- Get last 3 installment payments
     (
@@ -251,7 +260,7 @@ SELECT
             )
             ORDER BY i.installment_number DESC
         )
-        FROM installments i
+        FROM payment_installments i
         WHERE i.payment_plan_id = pp.id
         AND i.status = 'paid'
         ORDER BY i.installment_number DESC
@@ -269,7 +278,7 @@ SELECT
             )
             ORDER BY i.due_date ASC
         )
-        FROM installments i
+        FROM payment_installments i
         WHERE i.payment_plan_id = pp.id
         AND i.status = 'pending'
         ORDER BY i.due_date ASC
@@ -277,18 +286,18 @@ SELECT
     ) as upcoming_installments
 
 FROM payment_plans pp
-JOIN payments p ON pp.payment_id = p.id
-JOIN users u ON p.user_id = u.id
+JOIN installment_stats ist ON pp.id = ist.payment_plan_id
 JOIN tax_declarations d ON pp.tax_declaration_id = d.id
-WHERE pp.plan_status IN ('active', 'overdue')
+JOIN users u ON d.user_id = u.id
+WHERE pp.status IN ('active', 'overdue')
 ORDER BY
     CASE
-        WHEN pp.next_due_date < CURRENT_DATE THEN 1
-        WHEN pp.next_due_date = CURRENT_DATE THEN 2
-        WHEN pp.next_due_date <= CURRENT_DATE + INTERVAL '7 days' THEN 3
+        WHEN ist.next_due_date < CURRENT_DATE THEN 1
+        WHEN ist.next_due_date = CURRENT_DATE THEN 2
+        WHEN ist.next_due_date <= CURRENT_DATE + INTERVAL '7 days' THEN 3
         ELSE 4
     END,
-    pp.next_due_date ASC;
+    ist.next_due_date ASC;
 
 COMMENT ON VIEW v_payment_plans_tracking IS
 'Active payment plans with installment tracking, progress metrics, and due date monitoring.
