@@ -20,7 +20,6 @@ SELECT
     m.name_es as ministry_name,
     ma.sectors_of_competence,
     ma.is_active,
-    ma.availability_status,
 
     -- Workload metrics
     aw.current_assignments,
@@ -46,7 +45,6 @@ SELECT
     (aw.max_concurrent_assignments - aw.current_assignments) as available_capacity,
     CASE
         WHEN ma.is_active = false THEN FALSE
-        WHEN ma.availability_status != 'available' THEN FALSE
         WHEN aw.current_assignments >= aw.max_concurrent_assignments THEN FALSE
         ELSE TRUE
     END as can_accept_new_assignments,
@@ -69,10 +67,7 @@ LEFT JOIN agent_workloads aw ON ma.id = aw.agent_id
 LEFT JOIN agent_performance_stats aps ON ma.id = aps.agent_id
 ORDER BY capacity_percentage ASC, ma.is_active DESC;
 
--- Index for performance
-CREATE INDEX IF NOT EXISTS idx_agents_active_availability
-    ON ministry_agents(is_active, availability_status)
-    WHERE is_active = TRUE;
+-- Index for performance (is_active already indexed in base schema)
 
 COMMENT ON VIEW v_agents_workload_dashboard IS
 'Real-time agent workload dashboard with capacity, performance metrics, and assignment availability.
@@ -95,7 +90,6 @@ SELECT
     COUNT(CASE WHEN ma.is_active = TRUE THEN 1 END) as active_agents,
     COUNT(CASE
         WHEN ma.is_active = TRUE
-        AND ma.availability_status = 'available'
         AND aw.current_assignments < aw.max_concurrent_assignments
         THEN 1
     END) as available_agents,
@@ -304,7 +298,6 @@ SELECT
         JOIN agent_workloads aw2 ON ma2.id = aw2.agent_id
         WHERE ma2.ministry_id = awq.ministry_id
         AND ma2.is_active = TRUE
-        AND ma2.availability_status = 'available'
         AND aw2.current_assignments < aw2.max_concurrent_assignments
     ) as available_agents_count
 
