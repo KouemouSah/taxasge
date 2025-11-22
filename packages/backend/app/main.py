@@ -421,6 +421,15 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ Communications router not available: {e}")
 
+# Try to load chatbot router (Module - AI-powered assistance)
+try:
+    from app.modules.chatbot import chatbot_router
+    app.include_router(chatbot_router, prefix="/api/v1/chatbot", tags=["chatbot"])
+    routers_loaded.append("chatbot")
+    logger.info("✅ Chatbot router loaded (AI assistance, search, recommendations)")
+except ImportError as e:
+    logger.warning(f"⚠️ Chatbot router not available: {e}")
+
 if routers_loaded:
     logger.info(f"✅ {len(routers_loaded)} API routers loaded: {', '.join(routers_loaded)}")
 else:
