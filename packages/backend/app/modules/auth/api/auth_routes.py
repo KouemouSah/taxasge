@@ -309,7 +309,7 @@ async def request_verification_code(request: RequestVerificationRequest):
     try:
         from app.utils.email_validator import EmailValidator
         from app.repositories.pending_registration_repository import PendingRegistrationRepository
-        from app.services.email_service import EmailService
+        from app.modules.communications.services.email_service import EmailService
         from app.config import get_settings
         from app.repositories.user_repository import UserRepository
         import random
@@ -889,7 +889,7 @@ async def change_password(
         )
 
         # Send verification email
-        from app.services.email_service import EmailService
+        from app.modules.communications.services.email_service import EmailService
         from app.config import get_settings
         settings = get_settings()
 
@@ -1116,7 +1116,7 @@ async def resend_verification_email(
             verification_code = pending_record.get("verification_code")
 
         # Resend verification email
-        from app.services.email_service import EmailService
+        from app.modules.communications.services.email_service import EmailService
         from app.config import get_settings
         settings = get_settings()
 
