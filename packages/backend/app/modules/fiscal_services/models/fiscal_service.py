@@ -307,6 +307,30 @@ class FiscalServiceFilter(BaseModel):
 FiscalServiceSearchRequest = FiscalServiceFilter
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# Statistics Models
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class FiscalServiceStats(BaseModel):
+    """
+    Statistics model for fiscal services
+
+    Provides comprehensive statistics for admin dashboards
+    """
+    total_services: int = Field(..., description="Total number of services")
+    active_services: int = Field(..., description="Number of active services")
+    inactive_services: int = Field(..., description="Number of inactive services")
+    services_by_type: Dict[str, int] = Field(..., description="Services count by service_type")
+    services_by_category: Dict[str, int] = Field(..., description="Services count by category")
+    services_by_ministry: Dict[str, int] = Field(..., description="Services count by ministry")
+    services_by_status: Dict[str, int] = Field(..., description="Services count by status")
+    average_processing_time: float = Field(..., description="Average processing time in days")
+    most_used_services: List[Dict[str, Any]] = Field(..., description="Top 10 most used services")
+    total_calculations: int = Field(..., description="Total number of calculations performed")
+    total_views: int = Field(..., description="Total number of service views")
+
+
 # Aliases for compatibility with calculation routes
 CalculateServiceRequest = CalculationInput
 CalculateServiceResponse = CalculationResult

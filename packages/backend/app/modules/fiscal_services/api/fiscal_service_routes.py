@@ -16,6 +16,7 @@ from app.modules.fiscal_services.models import (
     FiscalServiceSearchRequest,
     CalculateServiceRequest,
     CalculateServiceResponse,
+    FiscalServiceStats,
 )
 from app.modules.fiscal_services.repositories import FiscalServiceRepository
 from app.modules.fiscal_services.services import CalculationService
@@ -211,3 +212,164 @@ async def delete_fiscal_service(
 
     logger.info(f"Admin {user_id} deleted fiscal service {service_id}")
     return {"message": "Fiscal service deleted successfully"}
+
+
+# ========== STATISTICS & ADMIN UTILITIES ==========
+
+@router.get("/admin/stats", response_model=FiscalServiceStats)
+async def get_fiscal_services_statistics(
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+    _: None = Depends(require_permission("fiscal_services.view_stats"))
+):
+    """
+    Get comprehensive fiscal services statistics
+
+    Requires fiscal_services.view_stats permission
+
+    **Migrated from legacy /api/v1/taxes/stats/overview**
+
+    Returns:
+        - Total services count
+        - Active/inactive breakdown
+        - Services by type, category, ministry, status
+        - Average processing time
+        - Most used services (top 10)
+        - Total calculations and views
+    """
+    user_id = current_user["sub"]
+
+    try:
+        stats = await repository.get_statistics(db)
+
+        logger.info(f"Admin {user_id} retrieved fiscal services statistics")
+        return FiscalServiceStats(**stats)
+
+    except Exception as e:
+        logger.error(f"Error getting fiscal services statistics: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error retrieving statistics: {str(e)}"
+        )
+
+
+@router.post("/admin/bulk/import", status_code=status.HTTP_201_CREATED)
+async def bulk_import_fiscal_services(
+    services: List[FiscalServiceCreate],
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+    _: None = Depends(require_permission("fiscal_services.bulk_import"))
+):
+    """
+    Bulk import fiscal services
+
+    Requires fiscal_services.bulk_import permission
+
+    **Migrated from legacy /api/v1/taxes/bulk/import**
+
+    Limits:
+        - Maximum 100 services per request
+
+    Returns:
+        - successful_imports: Number of successfully imported services
+        - failed_imports: Number of failed imports
+        - Details of failed services
+    """
+    user_id = current_user["sub"]
+
+    if len(services) > 100:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Bulk import limited to 100 services per request"
+        )
+
+    try:
+        results = await repository.bulk_create(db, services, user_id)
+
+        logger.info(
+            f"Admin {user_id} bulk imported {results['successful']}/{len(services)} services"
+        )
+
+        return {
+            "success": True,
+            "total_processed": len(services),
+            "successful_imports": results["successful"],
+            "failed_imports": results["failed"],
+            "failed_services": results.get("errors", []),
+            "message": f"Successfully imported {results['successful']}/{len(services)} services"
+        }
+
+    except Exception as e:
+        logger.error(f"Error in bulk import: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error processing bulk import: {str(e)}"
+        )
+
+
+@router.post("/admin/bulk/update-status")
+async def bulk_update_service_status(
+    service_ids: List[str],
+    new_status: str,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+    _: None = Depends(require_permission("fiscal_services.bulk_update"))
+):
+    """
+    Bulk update service status
+
+    Requires fiscal_services.bulk_update permission
+
+    **Migrated from legacy /api/v1/taxes/bulk/update-status**
+
+    Limits:
+        - Maximum 50 services per request
+
+    Args:
+        service_ids: List of service IDs to update
+        new_status: New status (active, inactive, deprecated, under_review)
+
+    Returns:
+        - updated_count: Number of successfully updated services
+        - failed_updates: Number of failed updates
+    """
+    user_id = current_user["sub"]
+
+    if len(service_ids) > 50:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Bulk status update limited to 50 services per request"
+        )
+
+    # Validate status
+    from app.modules.fiscal_services.models import ServiceStatusEnum
+    try:
+        status_enum = ServiceStatusEnum(new_status)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid status: {new_status}. Valid values: {[s.value for s in ServiceStatusEnum]}"
+        )
+
+    try:
+        results = await repository.bulk_update_status(db, service_ids, status_enum, user_id)
+
+        logger.info(
+            f"Admin {user_id} bulk updated status for {results['updated']}/{len(service_ids)} services to {new_status}"
+        )
+
+        return {
+            "success": True,
+            "total_requested": len(service_ids),
+            "updated_count": results["updated"],
+            "failed_updates": results["failed"],
+            "new_status": new_status,
+            "message": f"Successfully updated {results['updated']}/{len(service_ids)} services"
+        }
+
+    except Exception as e:
+        logger.error(f"Error in bulk status update: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error processing bulk update: {str(e)}"
+        )

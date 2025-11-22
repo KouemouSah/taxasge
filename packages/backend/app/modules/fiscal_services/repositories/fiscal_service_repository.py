@@ -435,7 +435,187 @@ class FiscalServiceRepository:
         """Increment usage counter"""
         await conn.execute(
             """UPDATE fiscal_services
-               SET usage_count = usage_count + 1, last_used_at = NOW()
+               SET calculation_count = calculation_count + 1, updated_at = NOW()
                WHERE id = $1""",
             service_id,
         )
+
+    async def get_statistics(self, conn: asyncpg.Connection) -> Dict[str, Any]:
+        """
+        Get comprehensive fiscal services statistics
+
+        Migrated from legacy /api/v1/taxes/stats/overview
+        Aligned with DATABASE_SCHEMA_REFERENCE.md
+        """
+        # Total counts by status
+        status_counts = await conn.fetch("""
+            SELECT status, COUNT(*) as count
+            FROM fiscal_services
+            GROUP BY status
+        """)
+
+        total_services = sum(row["count"] for row in status_counts)
+        active_services = next((row["count"] for row in status_counts if row["status"] == "active"), 0)
+        inactive_services = total_services - active_services
+
+        # Services by type
+        type_counts = await conn.fetch("""
+            SELECT service_type, COUNT(*) as count
+            FROM fiscal_services
+            GROUP BY service_type
+            ORDER BY count DESC
+        """)
+
+        # Services by category
+        category_counts = await conn.fetch("""
+            SELECT c.name_es, COUNT(fs.id) as count
+            FROM fiscal_services fs
+            JOIN categories c ON fs.category_id = c.id
+            GROUP BY c.id, c.name_es
+            ORDER BY count DESC
+        """)
+
+        # Services by ministry
+        ministry_counts = await conn.fetch("""
+            SELECT m.name_es, COUNT(fs.id) as count
+            FROM fiscal_services fs
+            JOIN categories c ON fs.category_id = c.id
+            JOIN sectors s ON c.sector_id = s.id
+            JOIN ministries m ON s.ministry_id = m.id
+            GROUP BY m.id, m.name_es
+            ORDER BY count DESC
+        """)
+
+        # Average processing time
+        avg_processing = await conn.fetchval("""
+            SELECT COALESCE(AVG(processing_time_days), 1.0)
+            FROM fiscal_services
+            WHERE processing_time_days IS NOT NULL
+        """)
+
+        # Most used services (top 10)
+        most_used = await conn.fetch("""
+            SELECT id, service_code, name_es, calculation_count, view_count
+            FROM fiscal_services
+            WHERE status = 'active'
+            ORDER BY calculation_count DESC, view_count DESC
+            LIMIT 10
+        """)
+
+        # Total stats
+        totals = await conn.fetchrow("""
+            SELECT
+                COALESCE(SUM(calculation_count), 0) as total_calculations,
+                COALESCE(SUM(view_count), 0) as total_views
+            FROM fiscal_services
+        """)
+
+        return {
+            "total_services": total_services,
+            "active_services": active_services,
+            "inactive_services": inactive_services,
+            "services_by_type": {row["service_type"]: row["count"] for row in type_counts},
+            "services_by_category": {row["name_es"]: row["count"] for row in category_counts},
+            "services_by_ministry": {row["name_es"]: row["count"] for row in ministry_counts},
+            "services_by_status": {row["status"]: row["count"] for row in status_counts},
+            "average_processing_time": float(avg_processing),
+            "most_used_services": [dict(row) for row in most_used],
+            "total_calculations": totals["total_calculations"],
+            "total_views": totals["total_views"],
+        }
+
+    async def bulk_create(
+        self, conn: asyncpg.Connection, services: List[Any], created_by: str
+    ) -> Dict[str, Any]:
+        """
+        Bulk create fiscal services
+
+        Migrated from legacy /api/v1/taxes/bulk/import
+        Aligned with DATABASE_SCHEMA_REFERENCE.md
+
+        Args:
+            conn: Database connection
+            services: List of FiscalServiceCreate models
+            created_by: User ID creating the services
+
+        Returns:
+            Dict with successful and failed counts
+        """
+        successful = 0
+        failed = 0
+        errors = []
+
+        for service in services:
+            try:
+                # Check if code already exists
+                existing = await self.get_by_code(conn, service.code)
+                if existing:
+                    failed += 1
+                    errors.append({
+                        "code": service.code,
+                        "error": "Service code already exists"
+                    })
+                    continue
+
+                # Create service
+                await self.create(conn, service)
+                successful += 1
+
+            except Exception as e:
+                failed += 1
+                errors.append({
+                    "code": service.code if hasattr(service, 'code') else "unknown",
+                    "error": str(e)
+                })
+
+        return {
+            "successful": successful,
+            "failed": failed,
+            "errors": errors
+        }
+
+    async def bulk_update_status(
+        self,
+        conn: asyncpg.Connection,
+        service_ids: List[str],
+        new_status: Any,
+        updated_by: str
+    ) -> Dict[str, int]:
+        """
+        Bulk update service status
+
+        Migrated from legacy /api/v1/taxes/bulk/update-status
+        Aligned with DATABASE_SCHEMA_REFERENCE.md
+
+        Args:
+            conn: Database connection
+            service_ids: List of service IDs to update
+            new_status: New ServiceStatusEnum value
+            updated_by: User ID performing the update
+
+        Returns:
+            Dict with updated and failed counts
+        """
+        updated = 0
+        failed = 0
+
+        for service_id in service_ids:
+            try:
+                result = await conn.execute("""
+                    UPDATE fiscal_services
+                    SET status = $1, updated_at = NOW(), updated_by = $2
+                    WHERE id = $3
+                """, new_status.value, updated_by, service_id)
+
+                if result == "UPDATE 1":
+                    updated += 1
+                else:
+                    failed += 1
+
+            except Exception:
+                failed += 1
+
+        return {
+            "updated": updated,
+            "failed": failed
+        }

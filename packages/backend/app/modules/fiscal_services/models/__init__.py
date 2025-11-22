@@ -36,6 +36,9 @@ from app.modules.fiscal_services.models.fiscal_service import (
     CalculateServiceRequest,      # Alias for CalculationInput
     CalculateServiceResponse,     # Alias for CalculationResult
 
+    # Statistics
+    FiscalServiceStats,
+
     # Complete Models
     FiscalServiceCreateComplete,
     FiscalServiceUpdateComplete,
@@ -130,6 +133,9 @@ __all__ = [
     "FiscalServiceSearchRequest",  # Alias
     "CalculateServiceRequest",      # Alias
     "CalculateServiceResponse",     # Alias
+
+    # Statistics
+    "FiscalServiceStats",
 
     # Complete Models
     "FiscalServiceCreateComplete",
