@@ -25,5 +25,9 @@ Priorité: 🔴 CRITIQUE P1
 """
 
 from app.modules.declarations.api.declaration_routes import router as declaration_router
+from app.modules.declarations.permissions import register_declarations_permissions
+
+# Register permissions at module import
+register_declarations_permissions()
 
 __all__ = ["declaration_router"]

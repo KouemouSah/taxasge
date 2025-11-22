@@ -64,7 +64,7 @@ async def lifespan(app: FastAPI):
             # Import and register permissions from all modules
             from app.modules.permissions.services import initialize_permissions
             from app.modules.assignment.permissions import register_assignment_permissions
-            from app.api.v1.declarations_permissions import register_declarations_permissions
+            from app.modules.declarations.permissions import register_declarations_permissions
 
             # Register all module permissions
             register_assignment_permissions()
