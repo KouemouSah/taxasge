@@ -1,19 +1,22 @@
 """
 Email Service for TaxasGE Backend
-Handles email sending via SMTP (Gmail) for communications
+Handles email sending via SMTP with templating support
+
 Module: Communications
 """
 
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from typing import Optional, List
+from typing import Optional
 from datetime import datetime
 from loguru import logger
 
+from app.modules.communications.services.template_service import get_template_service
+
 
 class EmailService:
-    """Service for sending emails via SMTP"""
+    """Service for sending emails via SMTP with template support"""
 
     def __init__(
         self,
@@ -44,6 +47,9 @@ class EmailService:
         self.smtp_use_tls = smtp_use_tls
         self.smtp_from_email = smtp_from_email or smtp_username
         self.smtp_from_name = smtp_from_name
+
+        # Initialize template service
+        self.template_service = get_template_service()
 
         # Validate configuration
         if not all([smtp_host, smtp_port, smtp_username, smtp_password]):
@@ -135,7 +141,11 @@ class EmailService:
             return False
 
     def send_verification_code(
-        self, to_email: str, verification_code: str, user_name: Optional[str] = None
+        self,
+        to_email: str,
+        verification_code: str,
+        user_name: Optional[str] = None,
+        language: str = "es",
     ) -> bool:
         """
         Send email verification code
@@ -144,56 +154,28 @@ class EmailService:
             to_email: Recipient email address
             verification_code: 6-digit verification code
             user_name: User's name (optional)
+            language: Language code (es/fr/en, default: es)
 
         Returns:
             bool: True if email sent successfully, False otherwise
         """
-        subject = "TaxasGE - Verify Your Email Address"
+        from app.modules.communications.services.email_content import get_email_content
 
-        greeting = f"Hello {user_name}," if user_name else "Hello,"
+        content = get_email_content("verification_email", language)
+        subject = content["subject"]
 
-        body_html = f"""
-        <html>
-            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <h2 style="color: #2563eb;">Email Verification</h2>
-                    <p>{greeting}</p>
-                    <p>Thank you for registering with TaxasGE. Please verify your email address by entering the following code:</p>
-                    <div style="background-color: #f3f4f6; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px;">
-                        <h1 style="margin: 0; color: #2563eb; letter-spacing: 8px; font-size: 32px;">{verification_code}</h1>
-                    </div>
-                    <p>This code will expire in <strong>15 minutes</strong>.</p>
-                    <p>If you didn't request this code, please ignore this email.</p>
-                    <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-                    <p style="color: #6b7280; font-size: 12px;">
-                        This is an automated message from TaxasGE Platform. Please do not reply to this email.
-                    </p>
-                </div>
-            </body>
-        </html>
-        """
+        html, plain_text = self.template_service.render_verification_email(
+            user_name, verification_code, language
+        )
 
-        body_text = f"""
-        Email Verification
-
-        {greeting}
-
-        Thank you for registering with TaxasGE. Please verify your email address by entering the following code:
-
-        {verification_code}
-
-        This code will expire in 15 minutes.
-
-        If you didn't request this code, please ignore this email.
-
-        ---
-        This is an automated message from TaxasGE Platform.
-        """
-
-        return self.send_email(to_email, subject, body_html, body_text)
+        return self.send_email(to_email, subject, html, plain_text)
 
     def send_password_reset_email(
-        self, to_email: str, reset_token: str, user_name: Optional[str] = None
+        self,
+        to_email: str,
+        reset_token: str,
+        user_name: Optional[str] = None,
+        language: str = "es",
     ) -> bool:
         """
         Send password reset email with reset link
@@ -202,15 +184,14 @@ class EmailService:
             to_email: Recipient email address
             reset_token: Password reset token
             user_name: User's name (optional)
+            language: Language code (es/fr/en, default: es)
 
         Returns:
             bool: True if email sent successfully, False otherwise
         """
-        subject = "TaxasGE - Password Reset Request"
-
-        # Frontend password reset URL
-        # Uses environment variable or defaults to Firebase hosting
+        from app.modules.communications.services.email_content import get_email_content
         from app.config import get_settings
+
         settings = get_settings()
 
         # Determine frontend URL based on environment
@@ -224,61 +205,20 @@ class EmailService:
         # IMPORTANT: URL must match Next.js route structure
         reset_url = f"{frontend_url}/auth/reset-password/confirm?token={reset_token}"
 
-        greeting = f"Hello {user_name}," if user_name else "Hello,"
+        content = get_email_content("password_reset", language)
+        subject = content["subject"]
 
-        body_html = f"""
-        <html>
-            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <h2 style="color: #2563eb;">Password Reset Request</h2>
-                    <p>{greeting}</p>
-                    <p>We received a request to reset your password for your TaxasGE account.</p>
-                    <p>Click the button below to reset your password:</p>
-                    <div style="text-align: center; margin: 30px 0;">
-                        <a href="{reset_url}"
-                           style="background-color: #2563eb; color: white; padding: 12px 30px;
-                                  text-decoration: none; border-radius: 6px; display: inline-block;
-                                  font-weight: bold;">
-                            Reset Password
-                        </a>
-                    </div>
-                    <p>Or copy and paste this link into your browser:</p>
-                    <p style="background-color: #f3f4f6; padding: 10px; word-break: break-all; border-radius: 4px;">
-                        {reset_url}
-                    </p>
-                    <p>This link will expire in <strong>1 hour</strong>.</p>
-                    <p>If you didn't request a password reset, please ignore this email and your password will remain unchanged.</p>
-                    <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-                    <p style="color: #6b7280; font-size: 12px;">
-                        This is an automated message from TaxasGE Platform. Please do not reply to this email.
-                    </p>
-                </div>
-            </body>
-        </html>
-        """
+        html, plain_text = self.template_service.render_password_reset_email(
+            user_name, reset_url, language
+        )
 
-        body_text = f"""
-        Password Reset Request
-
-        {greeting}
-
-        We received a request to reset your password for your TaxasGE account.
-
-        Click the link below to reset your password:
-        {reset_url}
-
-        This link will expire in 1 hour.
-
-        If you didn't request a password reset, please ignore this email and your password will remain unchanged.
-
-        ---
-        This is an automated message from TaxasGE Platform.
-        """
-
-        return self.send_email(to_email, subject, body_html, body_text)
+        return self.send_email(to_email, subject, html, plain_text)
 
     def send_password_reset_confirmation(
-        self, to_email: str, user_name: Optional[str] = None
+        self,
+        to_email: str,
+        user_name: Optional[str] = None,
+        language: str = "es",
     ) -> bool:
         """
         Send password reset confirmation email
@@ -286,59 +226,28 @@ class EmailService:
         Args:
             to_email: Recipient email address
             user_name: User's name (optional)
+            language: Language code (es/fr/en, default: es)
 
         Returns:
             bool: True if email sent successfully, False otherwise
         """
-        subject = "TaxasGE - Password Successfully Reset"
+        from app.modules.communications.services.email_content import get_email_content
 
-        greeting = f"Hello {user_name}," if user_name else "Hello,"
+        content = get_email_content("password_reset_confirmation", language)
+        subject = content["subject"]
 
-        body_html = f"""
-        <html>
-            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <h2 style="color: #10b981;">Password Reset Successful</h2>
-                    <p>{greeting}</p>
-                    <p>Your password has been successfully reset.</p>
-                    <p>You can now log in to your TaxasGE account using your new password.</p>
-                    <p>If you didn't make this change, please contact our support team immediately.</p>
-                    <div style="text-align: center; margin: 30px 0;">
-                        <a href="https://taxasge.com/login"
-                           style="background-color: #2563eb; color: white; padding: 12px 30px;
-                                  text-decoration: none; border-radius: 6px; display: inline-block;
-                                  font-weight: bold;">
-                            Log In to TaxasGE
-                        </a>
-                    </div>
-                    <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-                    <p style="color: #6b7280; font-size: 12px;">
-                        This is an automated message from TaxasGE Platform. Please do not reply to this email.
-                    </p>
-                </div>
-            </body>
-        </html>
-        """
+        html, plain_text = self.template_service.render_password_reset_confirmation_email(
+            user_name, language
+        )
 
-        body_text = f"""
-        Password Reset Successful
-
-        {greeting}
-
-        Your password has been successfully reset.
-
-        You can now log in to your TaxasGE account using your new password.
-
-        If you didn't make this change, please contact our support team immediately.
-
-        ---
-        This is an automated message from TaxasGE Platform.
-        """
-
-        return self.send_email(to_email, subject, body_html, body_text)
+        return self.send_email(to_email, subject, html, plain_text)
 
     def send_2fa_code(
-        self, to_email: str, code: str, user_name: Optional[str] = None
+        self,
+        to_email: str,
+        code: str,
+        user_name: Optional[str] = None,
+        language: str = "es",
     ) -> bool:
         """
         Send 2FA verification code via email (backup method)
@@ -347,56 +256,28 @@ class EmailService:
             to_email: Recipient email address
             code: 6-digit 2FA code
             user_name: User's name (optional)
+            language: Language code (es/fr/en, default: es)
 
         Returns:
             bool: True if email sent successfully, False otherwise
         """
-        subject = "TaxasGE - Two-Factor Authentication Code"
+        from app.modules.communications.services.email_content import get_email_content
 
-        greeting = f"Hello {user_name}," if user_name else "Hello,"
+        content = get_email_content("2fa_code", language)
+        subject = content["subject"]
 
-        body_html = f"""
-        <html>
-            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <h2 style="color: #2563eb;">Two-Factor Authentication</h2>
-                    <p>{greeting}</p>
-                    <p>Your two-factor authentication code is:</p>
-                    <div style="background-color: #f3f4f6; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px;">
-                        <h1 style="margin: 0; color: #2563eb; letter-spacing: 8px; font-size: 32px;">{code}</h1>
-                    </div>
-                    <p>This code will expire in <strong>5 minutes</strong>.</p>
-                    <p>If you didn't request this code, someone may be trying to access your account. Please secure your account immediately.</p>
-                    <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-                    <p style="color: #6b7280; font-size: 12px;">
-                        This is an automated message from TaxasGE Platform. Please do not reply to this email.
-                    </p>
-                </div>
-            </body>
-        </html>
-        """
+        html, plain_text = self.template_service.render_2fa_code_email(
+            user_name, code, language
+        )
 
-        body_text = f"""
-        Two-Factor Authentication
-
-        {greeting}
-
-        Your two-factor authentication code is:
-
-        {code}
-
-        This code will expire in 5 minutes.
-
-        If you didn't request this code, someone may be trying to access your account. Please secure your account immediately.
-
-        ---
-        This is an automated message from TaxasGE Platform.
-        """
-
-        return self.send_email(to_email, subject, body_html, body_text)
+        return self.send_email(to_email, subject, html, plain_text)
 
     def send_account_lockout_notification(
-        self, to_email: str, user_name: Optional[str] = None, locked_until: datetime = None
+        self,
+        to_email: str,
+        user_name: Optional[str] = None,
+        locked_until: datetime = None,
+        language: str = "es",
     ) -> bool:
         """
         Send account lockout notification email
@@ -405,60 +286,28 @@ class EmailService:
             to_email: Recipient email address
             user_name: User's name (optional)
             locked_until: Timestamp when account will be unlocked
+            language: Language code (es/fr/en, default: es)
 
         Returns:
             bool: True if email sent successfully, False otherwise
         """
-        subject = "TaxasGE - Account Temporarily Locked"
-
-        greeting = f"Hello {user_name}," if user_name else "Hello,"
+        from datetime import timezone as tz
+        from app.modules.communications.services.email_content import get_email_content
 
         # Calculate remaining time
-        from datetime import timezone as tz
         if locked_until:
             remaining_minutes = int((locked_until - datetime.now(tz.utc)).total_seconds() / 60)
         else:
             remaining_minutes = 10
 
-        body_html = f"""
-        <html>
-            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <h2 style="color: #dc2626;">Account Temporarily Locked</h2>
-                    <p>{greeting}</p>
-                    <p>Your TaxasGE account has been temporarily locked due to multiple failed login attempts.</p>
-                    <div style="background-color: #fee2e2; padding: 20px; border-left: 4px solid #dc2626; margin: 20px 0; border-radius: 4px;">
-                        <p style="margin: 0; font-weight: bold;">Your account will be automatically unlocked in {remaining_minutes} minutes.</p>
-                    </div>
-                    <p><strong>If this was you:</strong> Please wait {remaining_minutes} minutes before trying to log in again. Make sure you're using the correct password.</p>
-                    <p><strong>If this wasn't you:</strong> Someone may be trying to access your account. We recommend changing your password after the lockout period expires.</p>
-                    <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-                    <p style="color: #6b7280; font-size: 12px;">
-                        This is an automated security message from TaxasGE Platform. Please do not reply to this email.
-                    </p>
-                </div>
-            </body>
-        </html>
-        """
+        content = get_email_content("account_lockout", language)
+        subject = content["subject"]
 
-        body_text = f"""
-        Account Temporarily Locked
+        html, plain_text = self.template_service.render_account_lockout_email(
+            user_name, remaining_minutes, language
+        )
 
-        {greeting}
-
-        Your TaxasGE account has been temporarily locked due to multiple failed login attempts.
-
-        Your account will be automatically unlocked in {remaining_minutes} minutes.
-
-        If this was you: Please wait {remaining_minutes} minutes before trying to log in again. Make sure you're using the correct password.
-
-        If this wasn't you: Someone may be trying to access your account. We recommend changing your password after the lockout period expires.
-
-        ---
-        This is an automated security message from TaxasGE Platform.
-        """
-
-        return self.send_email(to_email, subject, body_html, body_text)
+        return self.send_email(to_email, subject, html, plain_text)
 
 
 # ============================================================================

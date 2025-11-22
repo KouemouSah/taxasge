@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="{{ language or 'es' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ subject }}</title>
+    <style>
+        /* Reset styles */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            background-color: #f5f5f5;
+        }
+
+        /* Container */
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+        }
+
+        /* Header with logo */
+        .email-header {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .logo {
+            max-width: 180px;
+            height: auto;
+        }
+
+        /* Content area */
+        .email-body {
+            padding: 40px 30px;
+        }
+
+        h1, h2 {
+            color: #2563eb;
+            margin-top: 0;
+        }
+
+        h2 {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        p {
+            margin: 15px 0;
+            color: #4b5563;
+        }
+
+        /* Code/Token display */
+        .code-box {
+            background-color: #f3f4f6;
+            padding: 25px;
+            text-align: center;
+            margin: 30px 0;
+            border-radius: 8px;
+            border: 2px dashed #d1d5db;
+        }
+
+        .code {
+            font-size: 36px;
+            font-weight: bold;
+            color: #2563eb;
+            letter-spacing: 8px;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Button */
+        .button {
+            display: inline-block;
+            background-color: #2563eb;
+            color: #ffffff !important;
+            padding: 14px 32px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            margin: 20px 0;
+            transition: background-color 0.3s;
+        }
+
+        .button:hover {
+            background-color: #1e40af;
+        }
+
+        /* Alert boxes */
+        .alert-box {
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 6px;
+            border-left: 4px solid;
+        }
+
+        .alert-info {
+            background-color: #eff6ff;
+            border-color: #2563eb;
+            color: #1e40af;
+        }
+
+        .alert-warning {
+            background-color: #fef3c7;
+            border-color: #f59e0b;
+            color: #b45309;
+        }
+
+        .alert-danger {
+            background-color: #fee2e2;
+            border-color: #dc2626;
+            color: #991b1b;
+        }
+
+        .alert-success {
+            background-color: #d1fae5;
+            border-color: #10b981;
+            color: #065f46;
+        }
+
+        /* Link box */
+        .link-box {
+            background-color: #f9fafb;
+            padding: 15px;
+            word-break: break-all;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        /* Footer */
+        .email-footer {
+            background-color: #f9fafb;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .email-footer p {
+            margin: 8px 0;
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        .email-footer a {
+            color: #2563eb;
+            text-decoration: none;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid #e5e7eb;
+            margin: 30px 0;
+        }
+
+        /* Responsive */
+        @media only screen and (max-width: 600px) {
+            .email-body {
+                padding: 30px 20px;
+            }
+
+            .code {
+                font-size: 28px;
+                letter-spacing: 4px;
+            }
+
+            h2 {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <!-- Header with logo -->
+        <div class="email-header">
+            <img src="{{ logo_url }}" alt="TaxasGE" class="logo">
+        </div>
+
+        <!-- Main content -->
+        <div class="email-body">
+            {% block content %}
+            <!-- Template-specific content goes here -->
+            {% endblock %}
+        </div>
+
+        <!-- Footer -->
+        <div class="email-footer">
+            <p>{{ footer_text }}</p>
+            <p>
+                <a href="https://taxasge.com">taxasge.com</a> |
+                <a href="https://taxasge.com/support">{{ support_text }}</a>
+            </p>
+            <p style="margin-top: 20px; font-size: 11px;">
+                &copy; {{ current_year }} TaxasGE Platform. {{ rights_reserved }}
+            </p>
+        </div>
+    </div>
+</body>
+</html>
