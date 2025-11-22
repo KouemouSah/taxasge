@@ -338,15 +338,6 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ Homepage router not available: {e}")
 
-# Try to load files router (Module 03 - Firebase Storage file management)
-try:
-    from app.api.v1 import files
-    app.include_router(files.router, prefix="/api/v1", tags=["files"])
-    routers_loaded.append("files")
-    logger.info("✅ Files router loaded (Firebase Storage)")
-except ImportError as e:
-    logger.warning(f"⚠️ Files router not available: {e}")
-
 # Try to load permissions routers (Module 04 - RBAC Permissions System)
 try:
     from app.modules.permissions import permission_router, role_router, user_permission_router

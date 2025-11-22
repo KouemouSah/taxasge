@@ -761,6 +761,35 @@ class DocumentRepository(BaseRepository[Document]):
                 "traceback": traceback.format_exc()
             }
 
+    async def delete(self, document_id: str) -> bool:
+        """
+        Delete document from database (hard delete)
+
+        Args:
+            document_id: Document UUID
+
+        Returns:
+            True if deleted successfully, False otherwise
+        """
+        try:
+            query = """
+                DELETE FROM uploaded_files
+                WHERE id = $1
+                RETURNING id
+            """
+            result = await self.db.fetchrow(query, document_id)
+
+            if result:
+                logger.info(f"Deleted document {document_id} from database")
+                return True
+            else:
+                logger.warning(f"Document {document_id} not found for deletion")
+                return False
+
+        except Exception as e:
+            logger.error(f"Failed to delete document {document_id}: {e}")
+            return False
+
 
 # Singleton instance
 document_repository = DocumentRepository()

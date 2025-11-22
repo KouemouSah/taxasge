@@ -1000,3 +1000,108 @@ async def get_admin_stats(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve statistics"
         )
+
+
+# ============================================================================
+# FILE MANAGEMENT
+# ============================================================================
+
+@router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_document(
+    document_id: str = Path(..., description="Document UUID"),
+    hard_delete: bool = Query(False, description="Permanently delete from storage (admin only)"),
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Delete document (soft delete by default, hard delete for admins)
+
+    Soft delete (default):
+    - Updates access_level to 'deleted' in database
+    - File remains in storage (for audit/recovery)
+    - Only document owner or admin can delete
+
+    Hard delete (admin only with hard_delete=true):
+    - Removes file from Firebase Storage
+    - Deletes record from database
+    - Cannot be recovered
+
+    Args:
+        document_id: Document UUID
+        hard_delete: If true, permanently delete (admin only)
+        current_user: Authenticated user
+
+    Returns:
+        204 No Content on success
+    """
+    try:
+        # Get document
+        document = await document_repository.get_by_id(document_id)
+
+        if not document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Document {document_id} not found"
+            )
+
+        # Check permissions
+        is_owner = str(document.get("user_id")) == str(current_user.id)
+        is_admin = current_user.role in ["admin", "super_admin"]
+
+        if not is_owner and not is_admin:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to delete this document"
+            )
+
+        # Hard delete (admin only)
+        if hard_delete:
+            if not is_admin:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Hard delete requires admin privileges"
+                )
+
+            # Delete from Firebase Storage
+            file_path = document.get("file_path")
+            if file_path:
+                try:
+                    await firebase_storage_service.delete_file(file_path)
+                    logger.info(f"Deleted file from storage: {file_path}")
+                except Exception as e:
+                    logger.warning(f"Failed to delete file from storage: {e}")
+                    # Continue with DB deletion even if storage delete fails
+
+            # Delete from database (CASCADE will handle FK relationships)
+            deleted = await document_repository.delete(document_id)
+            if not deleted:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to delete document from database"
+                )
+
+            logger.info(f"Hard deleted document {document_id} by admin {current_user.id}")
+
+        # Soft delete (default)
+        else:
+            # Update access_level to 'deleted'
+            update_data = DocumentUpdate(access_level=DocumentAccessLevel.deleted)
+            updated = await document_repository.update(document_id, update_data)
+
+            if not updated:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to soft delete document"
+                )
+
+            logger.info(f"Soft deleted document {document_id} by user {current_user.id}")
+
+        return None  # 204 No Content
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete document failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete document: {str(e)}"
+        )
