@@ -11,7 +11,9 @@
       "Bash(\"/c/Users/User/AppData/Local/Programs/Python/Python312/python.exe\" --version)",
       "Bash(\"/c/Users/User/AppData/Roaming/Python/Python312/Scripts/python.exe\" --version)",
       "Bash(\"/c/Program Files/Odoo 17/python/python.exe\" extract_full_schema.py)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(git checkout:*)",
+      "Bash(git stash:*)"
     ],
     "deny": [],
     "ask": []

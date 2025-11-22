@@ -30,8 +30,10 @@ from app.modules.declarations.models import (
     DeclarationResponse,
     DeclarationListResponse,
     DeclarationStatus,
+    DeclarationWorkflowStatus,
 )
 from app.modules.declarations.repositories import DeclarationRepository
+from app.modules.declarations.services import get_declaration_service
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.permissions.middleware.permission_middleware import require_permission
 from app.database.connection import get_database
@@ -40,8 +42,9 @@ from app.database.connection import get_database
 router = APIRouter(tags=["Declarations"])
 security = HTTPBearer()
 
-# Initialize repository
+# Initialize repository and service
 declaration_repository = DeclarationRepository()
+declaration_service = get_declaration_service()
 
 
 @router.get("/", response_model=Dict[str, Any])
@@ -486,4 +489,71 @@ async def submit_declaration(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to submit declaration: {str(e)}",
+        )
+
+
+@router.get("/{declaration_id}/workflow", response_model=DeclarationWorkflowStatus)
+async def get_declaration_workflow_status(
+    declaration_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db = Depends(get_database),
+):
+    """
+    Get workflow status for a declaration
+
+    Returns current stage, completed stages, and available next actions.
+
+    **Authentication**: Required (Bearer token)
+
+    **Permissions**:
+    - Users can view workflow for their own declarations
+    - declarations.view permission allows viewing any workflow (admin)
+
+    **Business Logic** (Service Layer):
+    - Determines current stage based on status
+    - Calculates completion for each stage
+    - Provides context-aware next actions
+
+    Returns:
+        DeclarationWorkflowStatus: Workflow state with stages and actions
+    """
+    try:
+        user_id = current_user["sub"]
+
+        # Check ownership and authorization
+        declaration = await declaration_repository.get_by_id(db, declaration_id)
+
+        if not declaration:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Declaration not found",
+            )
+
+        # Security: Check ownership OR admin permission
+        if declaration["user_id"] != user_id:
+            from app.modules.permissions.services.permission_service import get_permission_service
+            perm_service = get_permission_service()
+            has_admin_perm = await perm_service.has_permission(user_id, "declarations.view_all")
+
+            if not has_admin_perm:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Not authorized to view this declaration workflow",
+                )
+
+        # Get workflow status from service (business logic)
+        workflow_status = await declaration_service.get_workflow_status(db, declaration_id)
+
+        logger.info(f"User {user_id} retrieved workflow status for declaration {declaration_id}")
+
+        return workflow_status
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting workflow status for declaration {declaration_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get workflow status: {str(e)}",
         )

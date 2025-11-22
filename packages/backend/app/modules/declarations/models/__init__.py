@@ -16,6 +16,8 @@ from app.modules.declarations.models.declaration import (
     DeclarationListResponse,
     DeclarationStatus,
     DeclarationType,
+    WorkflowStage,
+    DeclarationWorkflowStatus,
 )
 
 from app.modules.declarations.models.fiscal_service_declaration import (
@@ -47,6 +49,8 @@ __all__ = [
     "DeclarationListResponse",
     "DeclarationStatus",
     "DeclarationType",
+    "WorkflowStage",
+    "DeclarationWorkflowStatus",
 
     # Fiscal Service Declarations (Nota de Ingreso)
     "FiscalServiceDataBase",

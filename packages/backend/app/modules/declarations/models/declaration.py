@@ -81,93 +81,104 @@ class DeclarationType(str, Enum):
 
 
 class DeclarationBase(BaseModel):
-    """Base model for tax declaration"""
+    """
+    Base model for tax declaration
+
+    ALIGNED WITH DATABASE_SCHEMA_REFERENCE.md table: tax_declarations
+    """
 
     # Identifiers
     user_id: str = Field(..., description="User UUID owning the declaration")
     company_id: Optional[str] = Field(None, description="Company UUID (for business users)")
 
-    # Declaration metadata
+    # Declaration metadata - ALIGNED WITH DB
     declaration_type: DeclarationType = Field(..., description="Type of declaration (28 types)")
-    fiscal_period_start: date = Field(..., description="Start date of fiscal period")
-    fiscal_period_end: date = Field(..., description="End date of fiscal period")
-    tax_year: int = Field(..., ge=2000, le=2100, description="Tax year (YYYY)")
+    fiscal_year: int = Field(..., ge=2000, le=2100, description="Fiscal year (YYYY) - DB: fiscal_year")
+    fiscal_period: Optional[str] = Field(None, max_length=20, description="Fiscal period (varchar) - DB: fiscal_period")
+    declaration_deadline: Optional[date] = Field(None, description="Declaration deadline - DB: declaration_deadline")
 
-    # Financial data
-    total_income: Optional[Decimal] = Field(None, ge=0, description="Total income/revenue")
-    total_deductions: Optional[Decimal] = Field(None, ge=0, description="Total deductions")
-    taxable_amount: Optional[Decimal] = Field(None, ge=0, description="Taxable amount (base)")
-    tax_rate: Optional[Decimal] = Field(None, ge=0, le=100, description="Tax rate (%)")
-    calculated_tax: Optional[Decimal] = Field(None, ge=0, description="Calculated tax amount")
+    # Financial data - ALIGNED WITH DB
+    taxable_base: Optional[Decimal] = Field(None, ge=0, description="Taxable base - DB: taxable_base")
+    calculated_tax: Optional[Decimal] = Field(None, ge=0, description="Calculated tax - DB: calculated_tax")
+    deductions: Optional[Decimal] = Field(None, ge=0, description="Deductions - DB: deductions")
+    credits: Optional[Decimal] = Field(None, ge=0, description="Credits - DB: credits")
+    net_tax_due: Optional[Decimal] = Field(None, ge=0, description="Net tax due - DB: net_tax_due")
 
-    # Status and validation
-    status: DeclarationStatus = Field(default=DeclarationStatus.DRAFT, description="Declaration status")
+    # Status and validation - ALIGNED WITH DB
+    status: DeclarationStatus = Field(default=DeclarationStatus.DRAFT, description="Declaration status - DB: status")
 
-    # OCR and documents
-    source_document_id: Optional[str] = Field(None, description="Source document UUID (if OCR)")
-    ocr_confidence_score: Optional[Decimal] = Field(None, ge=0, le=100, description="OCR confidence (%)")
+    # Additional data (JSONB) - ALIGNED WITH DB
+    declared_data: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Declared data (JSONB) - DB: declared_data")
+    supporting_documents: Optional[List[str]] = Field(default_factory=list, description="Supporting documents (JSONB array) - DB: supporting_documents")
 
-    # Additional data (JSONB)
-    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Additional metadata")
+    # Agent/Processor notes - ALIGNED WITH DB
+    taxpayer_notes: Optional[str] = Field(None, description="Taxpayer notes - DB: taxpayer_notes")
+    processor_notes: Optional[str] = Field(None, description="Processor notes - DB: processor_notes")
+    rejection_reason: Optional[str] = Field(None, description="Rejection reason - DB: rejection_reason")
 
-    # Agent comments
-    agent_notes: Optional[str] = Field(None, max_length=2000, description="Agent validation notes")
-    rejection_reason: Optional[str] = Field(None, max_length=1000, description="Rejection reason")
+    # Digital signature - ALIGNED WITH DB
+    digital_signature: Optional[str] = Field(None, description="Digital signature - DB: digital_signature")
+
+    # Declaration nature - ALIGNED WITH DB
+    declaration_nature: Optional[str] = Field("original", max_length=20, description="Nature: original, rectificative, complementaire, annulation - DB: declaration_nature")
+    original_declaration_id: Optional[str] = Field(None, description="Reference to original declaration if rectificative - DB: original_declaration_id")
 
 
 class DeclarationCreate(DeclarationBase):
     """Schema for creating a new declaration"""
 
     # Optional fields for draft creation
-    total_income: Optional[Decimal] = Field(None, ge=0)
-    fiscal_period_start: Optional[date] = None
-    fiscal_period_end: Optional[date] = None
+    taxable_base: Optional[Decimal] = Field(None, ge=0)
+    fiscal_period: Optional[str] = None
 
-    @validator('tax_year', pre=True, always=True)
-    def set_default_tax_year(cls, v):
+    @validator('fiscal_year', pre=True, always=True)
+    def set_default_fiscal_year(cls, v):
         """Default to current year if not provided"""
         return v or datetime.now().year
 
 
 class DeclarationUpdate(BaseModel):
-    """Schema for updating an existing declaration"""
+    """Schema for updating an existing declaration - ALIGNED WITH DB"""
 
-    # Financial data (all optional for partial updates)
-    total_income: Optional[Decimal] = Field(None, ge=0)
-    total_deductions: Optional[Decimal] = Field(None, ge=0)
-    taxable_amount: Optional[Decimal] = Field(None, ge=0)
-    tax_rate: Optional[Decimal] = Field(None, ge=0, le=100)
+    # Financial data (all optional for partial updates) - ALIGNED WITH DB
+    taxable_base: Optional[Decimal] = Field(None, ge=0)
     calculated_tax: Optional[Decimal] = Field(None, ge=0)
+    deductions: Optional[Decimal] = Field(None, ge=0)
+    credits: Optional[Decimal] = Field(None, ge=0)
+    net_tax_due: Optional[Decimal] = Field(None, ge=0)
 
-    # Status updates
+    # Status updates - ALIGNED WITH DB
     status: Optional[DeclarationStatus] = None
-    agent_notes: Optional[str] = Field(None, max_length=2000)
-    rejection_reason: Optional[str] = Field(None, max_length=1000)
+    taxpayer_notes: Optional[str] = Field(None)
+    processor_notes: Optional[str] = Field(None)
+    rejection_reason: Optional[str] = Field(None)
 
-    # Metadata updates
-    metadata: Optional[Dict[str, Any]] = None
+    # Data updates - ALIGNED WITH DB
+    declared_data: Optional[Dict[str, Any]] = None
+    supporting_documents: Optional[List[str]] = None
 
 
 class DeclarationResponse(DeclarationBase):
-    """Schema for declaration response"""
+    """Schema for declaration response - ALIGNED WITH DB"""
 
-    # Database fields
-    id: str = Field(..., description="Declaration UUID")
-    created_at: datetime = Field(..., description="Creation timestamp")
-    updated_at: datetime = Field(..., description="Last update timestamp")
-    submitted_at: Optional[datetime] = Field(None, description="Submission timestamp")
-    reviewed_at: Optional[datetime] = Field(None, description="Review timestamp")
+    # Database fields - ALIGNED WITH DB
+    id: str = Field(..., description="Declaration UUID - DB: id")
+    declaration_number: str = Field(..., description="Declaration number (unique) - DB: declaration_number")
+    created_at: datetime = Field(..., description="Creation timestamp - DB: created_at")
+    updated_at: datetime = Field(..., description="Last update timestamp - DB: updated_at")
+    submitted_at: Optional[datetime] = Field(None, description="Submission timestamp - DB: submitted_at")
+    processed_at: Optional[datetime] = Field(None, description="Processing timestamp - DB: processed_at")
 
-    # Reviewer info
-    reviewed_by_user_id: Optional[str] = Field(None, description="Agent UUID who reviewed")
+    # Processor info - ALIGNED WITH DB
+    processed_by: Optional[str] = Field(None, description="Processor/Agent UUID - DB: processed_by")
 
-    # Payment info
-    payment_id: Optional[str] = Field(None, description="Associated payment UUID")
-    payment_status: Optional[str] = Field(None, description="Payment status")
+    # Signature - ALIGNED WITH DB
+    signature_timestamp: Optional[datetime] = Field(None, description="Signature timestamp - DB: signature_timestamp")
 
     # Related entities (populated by joins)
     user_email: Optional[str] = Field(None, description="User email (from join)")
     company_name: Optional[str] = Field(None, description="Company name (from join)")
+    processor_name: Optional[str] = Field(None, description="Processor name (from join)")
 
     class Config:
         from_attributes = True
@@ -181,3 +192,27 @@ class DeclarationListResponse(BaseModel):
     page: int = Field(..., ge=1, description="Current page")
     page_size: int = Field(..., ge=1, le=100, description="Items per page")
     total_pages: int = Field(..., ge=0, description="Total pages")
+
+
+class WorkflowStage(BaseModel):
+    """Single workflow stage"""
+    stage: str = Field(..., description="Stage identifier")
+    name: str = Field(..., description="Stage display name")
+    completed: bool = Field(..., description="Whether this stage is completed")
+
+
+class DeclarationWorkflowStatus(BaseModel):
+    """
+    Workflow status for a declaration
+    Business logic for tracking declaration progress through stages
+    """
+    declaration_id: str = Field(..., description="Declaration UUID")
+    current_stage: str = Field(..., description="Current workflow stage")
+    stages: List[WorkflowStage] = Field(..., description="All workflow stages with completion status")
+    next_actions: List[str] = Field(..., description="Available actions for current stage")
+
+    # Additional context
+    status: DeclarationStatus = Field(..., description="Current declaration status")
+    submitted_at: Optional[datetime] = Field(None, description="Submission timestamp")
+    processed_at: Optional[datetime] = Field(None, description="Processing timestamp")
+    processed_by: Optional[str] = Field(None, description="Processor UUID")
