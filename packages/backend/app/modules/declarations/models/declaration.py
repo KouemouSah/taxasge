@@ -95,7 +95,7 @@ class DeclarationBase(BaseModel):
     declaration_type: DeclarationType = Field(..., description="Type of declaration (28 types)")
     fiscal_year: int = Field(..., ge=2000, le=2100, description="Fiscal year (YYYY) - DB: fiscal_year")
     fiscal_period: Optional[str] = Field(None, max_length=20, description="Fiscal period (varchar) - DB: fiscal_period")
-    declaration_deadline: Optional[date] = Field(None, description="Declaration deadline - DB: declaration_deadline")
+    declaration_deadline: date = Field(..., description="Declaration deadline (NOT NULL) - DB: declaration_deadline")
 
     # Financial data - ALIGNED WITH DB
     taxable_base: Optional[Decimal] = Field(None, ge=0, description="Taxable base - DB: taxable_base")
@@ -108,8 +108,8 @@ class DeclarationBase(BaseModel):
     status: DeclarationStatus = Field(default=DeclarationStatus.DRAFT, description="Declaration status - DB: status")
 
     # Additional data (JSONB) - ALIGNED WITH DB
-    declared_data: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Declared data (JSONB) - DB: declared_data")
-    supporting_documents: Optional[List[str]] = Field(default_factory=list, description="Supporting documents (JSONB array) - DB: supporting_documents")
+    declared_data: Dict[str, Any] = Field(default_factory=dict, description="Declared data (JSONB NOT NULL DEFAULT '{{}}') - DB: declared_data")
+    supporting_documents: Optional[List[str]] = Field(default_factory=list, description="Supporting documents (JSONB array, nullable) - DB: supporting_documents")
 
     # Agent/Processor notes - ALIGNED WITH DB
     taxpayer_notes: Optional[str] = Field(None, description="Taxpayer notes - DB: taxpayer_notes")
@@ -125,16 +125,35 @@ class DeclarationBase(BaseModel):
 
 
 class DeclarationCreate(DeclarationBase):
-    """Schema for creating a new declaration"""
+    """
+    Schema for creating a new declaration
+
+    Note: declaration_deadline is required by DB but can be set to a default value
+    during creation (e.g., fiscal_year end date + grace period)
+    """
 
     # Optional fields for draft creation
     taxable_base: Optional[Decimal] = Field(None, ge=0)
     fiscal_period: Optional[str] = None
+    declaration_deadline: Optional[date] = None  # Can be calculated from fiscal_year if not provided
 
     @validator('fiscal_year', pre=True, always=True)
     def set_default_fiscal_year(cls, v):
         """Default to current year if not provided"""
         return v or datetime.now().year
+
+    @validator('declaration_deadline', pre=True, always=True)
+    def set_default_deadline(cls, v, values):
+        """
+        Set default deadline if not provided
+        Default: End of fiscal year + 3 months grace period
+        """
+        if v is None and 'fiscal_year' in values:
+            from datetime import date
+            fiscal_year = values['fiscal_year']
+            # Default: March 31st of following year (typical tax deadline)
+            return date(fiscal_year + 1, 3, 31)
+        return v
 
 
 class DeclarationUpdate(BaseModel):
