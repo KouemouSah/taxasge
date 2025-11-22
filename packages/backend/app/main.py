@@ -154,6 +154,14 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
+# Language detection middleware - Detects user language from headers/query
+try:
+    from app.modules.translations.middleware.language_middleware import language_middleware
+    app.middleware("http")(language_middleware)
+    logger.info("✅ Language detection middleware configured")
+except ImportError as e:
+    logger.warning(f"⚠️ Language detection middleware not available: {e}")
+
 # Dependency to get database connection
 async def get_db():
     if db_pool is None:
@@ -258,6 +266,7 @@ async def api_v1_info():
             "taxes": "/api/v1/taxes/ - Tax service management (administrative)",
             "declarations": "/api/v1/declarations/ - Tax declarations workflow",
             "payments": "/api/v1/payments/ - BANGE mobile payments integration",
+            "translations": "/api/v1/translations/ - System translations (ENUMs, UI, Forms, Messages)",
             "ai": "/api/v1/ai/ - AI assistant conversations",
             "notifications": "/api/v1/notifications/ - Multi-channel notifications"
         },
@@ -410,6 +419,15 @@ try:
     logger.info("✅ Webhooks router loaded (BANGE callbacks + reconciliation)")
 except ImportError as e:
     logger.warning(f"⚠️ Webhooks router not available: {e}")
+
+# Try to load translations router (Module - Translations System - System translations)
+try:
+    from app.modules.translations.api.translation_routes import router as translation_router
+    app.include_router(translation_router, prefix="/api/v1", tags=["translations"])
+    routers_loaded.append("translations")
+    logger.info("✅ Translations router loaded (ENUMs, UI, Forms, Messages)")
+except ImportError as e:
+    logger.warning(f"⚠️ Translations router not available: {e}")
 
 if routers_loaded:
     logger.info(f"✅ {len(routers_loaded)} API routers loaded: {', '.join(routers_loaded)}")
