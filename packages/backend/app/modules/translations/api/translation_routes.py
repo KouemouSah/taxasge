@@ -1,20 +1,23 @@
 """
-Translation API Routes - CRUD operations for translations
+Translation API Routes - CRUD operations for system translations
 
 Endpoints:
-- GET /translations/languages - List supported languages
-- GET /translations/{entity_type}/{entity_id} - Get entity translations
+- GET /translations/categories - List all categories
+- GET /translations/stats - Get translation statistics
+- GET /translations/export/{category} - Export category as JSON
+- GET /translations - Search/list translations
+- GET /translations/{translation_id} - Get translation by ID
 - POST /translations - Create translation
-- POST /translations/batch - Create translation set
+- POST /translations/batch - Create multiple translations
 - PUT /translations/{translation_id} - Update translation
 - DELETE /translations/{translation_id} - Delete translation
-- DELETE /translations/{entity_type}/{entity_id} - Delete all entity translations
 
-Module: Translations
+Module: Translations (System translations for ENUMs, UI, Forms, Messages)
+
+Note: entity_translations (for fiscal services) is in fiscal_services module
 """
 
 from typing import List, Optional
-from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from loguru import logger
 
@@ -22,10 +25,10 @@ from app.modules.translations.models.translation import (
     TranslationCreate,
     TranslationUpdate,
     TranslationResponse,
-    TranslationSetCreate,
-    EntityTranslationsResponse,
+    TranslationBatchCreate,
+    TranslationSearchParams,
+    TranslationListResponse,
 )
-from app.modules.translations.models.language import Language
 from app.modules.translations.services.translation_service import TranslationService
 from app.modules.translations.services.language_service import LanguageService
 from app.modules.translations.middleware.language_middleware import detect_language
@@ -35,38 +38,104 @@ router = APIRouter(prefix="/translations", tags=["Translations"])
 
 
 # ============================================================================
-# LANGUAGE ENDPOINTS
+# UTILITY ENDPOINTS
 # ============================================================================
 
-@router.get("/languages")
-async def list_supported_languages():
+@router.get("/categories")
+async def list_categories():
     """
-    Get list of supported languages
+    Get list of all translation categories
 
     Returns:
-        List of language information
+        List of unique category strings
     """
-    language_service = LanguageService()
-    return {
-        "languages": language_service.get_language_info(),
-        "default": language_service.get_default_language().value,
-    }
+    service = TranslationService()
+
+    try:
+        # TODO: Get connection from dependency
+        # categories = await service.get_all_categories(conn)
+        # return {"categories": categories}
+
+        raise HTTPException(
+            status_code=501,
+            detail="Database connection dependency not yet implemented"
+        )
+
+    except Exception as e:
+        logger.error(f"Error fetching categories: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/stats")
+async def get_translation_stats():
+    """
+    Get translation statistics
+
+    Returns:
+        Statistics about translations (counts, sources, etc.)
+    """
+    service = TranslationService()
+
+    try:
+        # TODO: Get connection from dependency
+        # stats = await service.get_translation_stats(conn)
+        # return stats
+
+        raise HTTPException(
+            status_code=501,
+            detail="Database connection dependency not yet implemented"
+        )
+
+    except Exception as e:
+        logger.error(f"Error fetching stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/export/{category}")
+async def export_category_json(category: str):
+    """
+    Export all translations for a category as JSON
+
+    Useful for frontend i18n files
+
+    Args:
+        category: Category to export (enum, ui.menu, etc.)
+
+    Returns:
+        JSON structure: {key_code: {es: "...", fr: "...", en: "..."}}
+    """
+    service = TranslationService()
+
+    try:
+        # TODO: Get connection from dependency
+        # data = await service.export_category_json(conn, category)
+        # return data
+
+        raise HTTPException(
+            status_code=501,
+            detail="Database connection dependency not yet implemented"
+        )
+
+    except Exception as e:
+        logger.error(f"Error exporting category {category}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ============================================================================
-# TRANSLATION ENDPOINTS
+# CRUD ENDPOINTS
 # ============================================================================
 
 @router.post("/", response_model=TranslationResponse)
 async def create_translation(
     translation: TranslationCreate,
     # conn: asyncpg.Connection = Depends(get_db_connection),  # TODO: Add dependency
+    # current_user: User = Depends(get_current_user),  # TODO: Add dependency
 ):
     """
     Create a single translation
 
     Args:
-        translation: Translation data
+        translation: Translation data (category, key_code, es, fr, en)
 
     Returns:
         Created translation
@@ -74,8 +143,8 @@ async def create_translation(
     service = TranslationService()
 
     try:
-        # TODO: Get connection from dependency
-        # result = await service.create_translation(conn, translation)
+        # TODO: Get connection and user from dependency
+        # result = await service.create_translation(conn, translation, current_user.id)
         # return result
 
         raise HTTPException(
@@ -89,27 +158,25 @@ async def create_translation(
 
 
 @router.post("/batch")
-async def create_translation_set(
-    translation_set: TranslationSetCreate,
+async def create_translation_batch(
+    batch: TranslationBatchCreate,
     # conn: asyncpg.Connection = Depends(get_db_connection),  # TODO: Add dependency
+    # current_user: User = Depends(get_current_user),  # TODO: Add dependency
 ):
     """
-    Create a translation set (all languages for one field)
+    Create multiple translations at once
 
     Args:
-        translation_set: Translation set data
+        batch: Batch of translations
 
     Returns:
-        List of created translations
+        List of created translations with count
     """
     service = TranslationService()
 
     try:
-        # Validate
-        translation_set.validate_translations()
-
-        # TODO: Get connection from dependency
-        # results = await service.create_translation_set(conn, translation_set)
+        # TODO: Get connection and user from dependency
+        # results = await service.batch_create(conn, batch, current_user.id)
         # return {"created": len(results), "translations": results}
 
         raise HTTPException(
@@ -120,42 +187,53 @@ async def create_translation_set(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Error creating translation set: {e}")
+        logger.error(f"Error creating translation batch: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{entity_type}/{entity_id}")
-async def get_entity_translations(
-    entity_type: str,
-    entity_id: UUID,
-    request: Request,
+@router.get("/", response_model=TranslationListResponse)
+async def search_translations(
+    category: Optional[str] = Query(None, description="Filter by category"),
+    key_code: Optional[str] = Query(None, description="Search in key_code"),
+    context: Optional[str] = Query(None, description="Filter by context"),
+    search_term: Optional[str] = Query(None, description="Full-text search"),
+    limit: int = Query(100, ge=1, le=500, description="Max results"),
+    offset: int = Query(0, ge=0, description="Pagination offset"),
     # conn: asyncpg.Connection = Depends(get_db_connection),  # TODO: Add dependency
 ):
     """
-    Get all translations for an entity in detected language
+    Search and list translations
 
     Args:
-        entity_type: Type of entity
-        entity_id: Entity UUID
-        request: Request (for language detection)
+        category: Optional category filter
+        key_code: Optional key_code search (partial match)
+        context: Optional context filter
+        search_term: Optional full-text search in translations
+        limit: Max results
+        offset: Pagination offset
 
     Returns:
-        Entity translations
+        Paginated list of translations
     """
     service = TranslationService()
-    language = detect_language(request)
 
     try:
-        # TODO: Get connection from dependency
-        # translations = await service.get_entity_translations(
-        #     conn, entity_type, entity_id, language
-        # )
+        search_params = TranslationSearchParams(
+            category=category,
+            key_code=key_code,
+            context=context,
+            search_term=search_term,
+            limit=limit,
+            offset=offset,
+        )
 
+        # TODO: Get connection from dependency
+        # translations, total = await service.search_translations(conn, search_params)
         # return {
-        #     "entity_type": entity_type,
-        #     "entity_id": str(entity_id),
-        #     "language": language.value,
         #     "translations": translations,
+        #     "total": total,
+        #     "limit": limit,
+        #     "offset": offset,
         # }
 
         raise HTTPException(
@@ -164,62 +242,60 @@ async def get_entity_translations(
         )
 
     except Exception as e:
-        logger.error(f"Error fetching entity translations: {e}")
+        logger.error(f"Error searching translations: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{entity_type}/{entity_id}/all")
-async def get_all_entity_translations(
-    entity_type: str,
-    entity_id: UUID,
+@router.get("/{translation_id}", response_model=TranslationResponse)
+async def get_translation(
+    translation_id: int,
     # conn: asyncpg.Connection = Depends(get_db_connection),  # TODO: Add dependency
 ):
     """
-    Get all translations for an entity (all fields, all languages)
+    Get translation by ID
 
     Args:
-        entity_type: Type of entity
-        entity_id: Entity UUID
+        translation_id: Translation ID
 
     Returns:
-        Complete entity translations
+        Translation details
     """
     service = TranslationService()
 
     try:
         # TODO: Get connection from dependency
-        # translations = await service.get_all_entity_translations(
-        #     conn, entity_type, entity_id
-        # )
+        # translation = await service.get_translation_by_id(conn, translation_id)
 
-        # return {
-        #     "entity_type": entity_type,
-        #     "entity_id": str(entity_id),
-        #     "translations": translations,
-        # }
+        # if translation is None:
+        #     raise HTTPException(status_code=404, detail="Translation not found")
+
+        # return translation
 
         raise HTTPException(
             status_code=501,
             detail="Database connection dependency not yet implemented"
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error fetching all entity translations: {e}")
+        logger.error(f"Error fetching translation {translation_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.put("/{translation_id}", response_model=TranslationResponse)
 async def update_translation(
-    translation_id: UUID,
+    translation_id: int,
     update_data: TranslationUpdate,
     # conn: asyncpg.Connection = Depends(get_db_connection),  # TODO: Add dependency
+    # current_user: User = Depends(get_current_user),  # TODO: Add dependency
 ):
     """
-    Update translation content
+    Update translation
 
     Args:
-        translation_id: Translation UUID
-        update_data: Update data
+        translation_id: Translation ID
+        update_data: Update data (es, fr, en, description, source)
 
     Returns:
         Updated translation
@@ -227,8 +303,10 @@ async def update_translation(
     service = TranslationService()
 
     try:
-        # TODO: Get connection from dependency
-        # result = await service.update_translation(conn, translation_id, update_data)
+        # TODO: Get connection and user from dependency
+        # result = await service.update_translation(
+        #     conn, translation_id, update_data, current_user.id
+        # )
 
         # if result is None:
         #     raise HTTPException(status_code=404, detail="Translation not found")
@@ -243,20 +321,20 @@ async def update_translation(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error updating translation: {e}")
+        logger.error(f"Error updating translation {translation_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.delete("/{translation_id}")
 async def delete_translation(
-    translation_id: UUID,
+    translation_id: int,
     # conn: asyncpg.Connection = Depends(get_db_connection),  # TODO: Add dependency
 ):
     """
     Delete a translation
 
     Args:
-        translation_id: Translation UUID
+        translation_id: Translation ID
 
     Returns:
         Success message
@@ -280,42 +358,24 @@ async def delete_translation(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error deleting translation: {e}")
+        logger.error(f"Error deleting translation {translation_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/{entity_type}/{entity_id}")
-async def delete_entity_translations(
-    entity_type: str,
-    entity_id: UUID,
-    # conn: asyncpg.Connection = Depends(get_db_connection),  # TODO: Add dependency
-):
-    """
-    Delete all translations for an entity
+# ============================================================================
+# LANGUAGE DETECTION (reuse from previous implementation)
+# ============================================================================
 
-    Args:
-        entity_type: Type of entity
-        entity_id: Entity UUID
+@router.get("/languages")
+async def list_supported_languages():
+    """
+    Get list of supported languages
 
     Returns:
-        Number of deleted translations
+        List of language information
     """
-    service = TranslationService()
-
-    try:
-        # TODO: Get connection from dependency
-        # count = await service.delete_entity_translations(conn, entity_type, entity_id)
-
-        # return {
-        #     "message": f"Deleted {count} translations",
-        #     "count": count,
-        # }
-
-        raise HTTPException(
-            status_code=501,
-            detail="Database connection dependency not yet implemented"
-        )
-
-    except Exception as e:
-        logger.error(f"Error deleting entity translations: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    language_service = LanguageService()
+    return {
+        "languages": language_service.get_language_info(),
+        "default": language_service.get_default_language().value,
+    }
