@@ -178,15 +178,64 @@ class Settings(BaseSettings):
     # ========================================================================
     # AI/ML SETTINGS
     # ========================================================================
-    
-    # TensorFlow Lite Model
+
+    # TensorFlow Lite Model (Legacy - deprecated)
     AI_MODEL_PATH: str = Field(default="assets/ml/taxasge_model.tflite", env="AI_MODEL_PATH")
     AI_TOKENIZER_PATH: str = Field(default="assets/ml/tokenizer.json", env="AI_TOKENIZER_PATH")
     AI_INTENTS_PATH: str = Field(default="assets/ml/intents.json", env="AI_INTENTS_PATH")
-    
+
     # AI Configuration
     AI_MAX_TOKENS: int = Field(default=512, env="AI_MAX_TOKENS")
     AI_CONFIDENCE_THRESHOLD: float = Field(default=0.7, env="AI_CONFIDENCE_THRESHOLD")
+
+    # ========================================================================
+    # GOOGLE CLOUD AI / VERTEX AI SETTINGS
+    # ========================================================================
+
+    # Google Cloud Project (inherited from Cloud Run environment)
+    GOOGLE_CLOUD_PROJECT: str = Field(
+        default="taxasge",
+        env="GOOGLE_CLOUD_PROJECT"
+    )
+    GOOGLE_CLOUD_LOCATION: str = Field(
+        default="us-central1",
+        env="GOOGLE_CLOUD_LOCATION"
+    )
+
+    # Gemini Models Configuration
+    GEMINI_CHAT_MODEL: str = Field(
+        default="gemini-1.5-flash",
+        env="GEMINI_CHAT_MODEL"
+    )
+    GEMINI_PRO_MODEL: str = Field(
+        default="gemini-1.5-pro",
+        env="GEMINI_PRO_MODEL"
+    )
+    GEMINI_EMBEDDING_MODEL: str = Field(
+        default="text-embedding-004",
+        env="GEMINI_EMBEDDING_MODEL"
+    )
+
+    # Gemini Generation Configuration
+    GEMINI_MAX_OUTPUT_TOKENS: int = Field(default=2048, env="GEMINI_MAX_OUTPUT_TOKENS")
+    GEMINI_TEMPERATURE: float = Field(default=0.3, env="GEMINI_TEMPERATURE")
+    GEMINI_TOP_P: float = Field(default=0.95, env="GEMINI_TOP_P")
+    GEMINI_TOP_K: int = Field(default=40, env="GEMINI_TOP_K")
+
+    # Embedding Configuration
+    EMBEDDING_DIMENSIONS: int = Field(default=768, env="EMBEDDING_DIMENSIONS")
+    EMBEDDING_BATCH_SIZE: int = Field(default=250, env="EMBEDDING_BATCH_SIZE")
+
+    # Semantic Search Configuration
+    SEMANTIC_SEARCH_TOP_K: int = Field(default=5, env="SEMANTIC_SEARCH_TOP_K")
+    SEMANTIC_SEARCH_SIMILARITY_THRESHOLD: float = Field(
+        default=0.7,
+        env="SEMANTIC_SEARCH_SIMILARITY_THRESHOLD"
+    )
+
+    # RAG Configuration
+    RAG_MAX_CONTEXT_SERVICES: int = Field(default=5, env="RAG_MAX_CONTEXT_SERVICES")
+    RAG_CONVERSATION_HISTORY_LENGTH: int = Field(default=5, env="RAG_CONVERSATION_HISTORY_LENGTH")
     
     # ========================================================================
     # EXTERNAL SERVICES
@@ -332,13 +381,40 @@ class Settings(BaseSettings):
     
     @property
     def ai_config(self) -> Dict[str, Any]:
-        """Get AI/ML configuration"""
+        """Get AI/ML configuration (legacy)"""
         return {
             "model_path": self.AI_MODEL_PATH,
             "tokenizer_path": self.AI_TOKENIZER_PATH,
             "intents_path": self.AI_INTENTS_PATH,
             "max_tokens": self.AI_MAX_TOKENS,
             "confidence_threshold": self.AI_CONFIDENCE_THRESHOLD
+        }
+
+    @property
+    def gemini_config(self) -> Dict[str, Any]:
+        """Get Gemini AI configuration"""
+        return {
+            "project": self.GOOGLE_CLOUD_PROJECT,
+            "location": self.GOOGLE_CLOUD_LOCATION,
+            "chat_model": self.GEMINI_CHAT_MODEL,
+            "pro_model": self.GEMINI_PRO_MODEL,
+            "embedding_model": self.GEMINI_EMBEDDING_MODEL,
+            "max_output_tokens": self.GEMINI_MAX_OUTPUT_TOKENS,
+            "temperature": self.GEMINI_TEMPERATURE,
+            "top_p": self.GEMINI_TOP_P,
+            "top_k": self.GEMINI_TOP_K,
+        }
+
+    @property
+    def rag_config(self) -> Dict[str, Any]:
+        """Get RAG configuration"""
+        return {
+            "embedding_dimensions": self.EMBEDDING_DIMENSIONS,
+            "embedding_batch_size": self.EMBEDDING_BATCH_SIZE,
+            "search_top_k": self.SEMANTIC_SEARCH_TOP_K,
+            "similarity_threshold": self.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD,
+            "max_context_services": self.RAG_MAX_CONTEXT_SERVICES,
+            "conversation_history_length": self.RAG_CONVERSATION_HISTORY_LENGTH,
         }
     
     # ========================================================================

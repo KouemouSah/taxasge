@@ -1,10 +1,19 @@
 """
 Chatbot Repositories
 
-TODO: Create repositories when DB tables are added for:
-- Conversation history
-- User feedback
-- AI usage statistics
+Includes:
+- Semantic search repository for vector similarity search
+- TODO: Conversation history repository
+- TODO: User feedback repository
+- TODO: AI usage statistics repository
 """
 
-__all__ = []
+from app.modules.chatbot.repositories.semantic_search_repository import (
+    SemanticSearchRepository,
+    create_semantic_search_repository
+)
+
+__all__ = [
+    "SemanticSearchRepository",
+    "create_semantic_search_repository",
+]
