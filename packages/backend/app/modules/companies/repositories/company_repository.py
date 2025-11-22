@@ -1,4 +1,15 @@
-"""Company repository - Data access layer"""
+"""
+Company Repository - Data access layer for companies and user_company_roles
+
+ALIGNED WITH DATABASE_SCHEMA_REFERENCE.md
+Tables: companies, user_company_roles
+
+IMPORTANT NOTES:
+- companies table does NOT have owner_user_id column
+- Owner is tracked via user_company_roles with role=company_owner
+- user_company_roles has composite PK: (user_id, company_id)
+- Field names: legal_name (not name), assigned_at (not added_at)
+"""
 
 from typing import Optional, List, Dict, Any
 from loguru import logger
@@ -8,18 +19,38 @@ from app.modules.companies.models import CompanyCreate, CompanyUpdate, CompanyMe
 
 
 class CompanyRepository:
-    """Repository for companies and members"""
+    """Repository for companies and members - ALIGNED WITH DB SCHEMA"""
 
     async def create(self, conn: asyncpg.Connection, company: CompanyCreate, owner_id: str) -> Dict[str, Any]:
-        """Create company"""
+        """
+        Create company
+
+        ALIGNED WITH DATABASE_SCHEMA_REFERENCE.md
+        Note: owner_user_id does NOT exist in companies table.
+        Owner is tracked via user_company_roles with role=company_owner
+        """
         query = """
-            INSERT INTO companies (owner_user_id, name, tax_id, email, phone, address, city, industry, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+            INSERT INTO companies (
+                legal_name, tax_id, trade_name, primary_sector_id,
+                email, phone, address, city,
+                is_active, is_verified,
+                created_at, updated_at
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
             RETURNING *
         """
         result = await conn.fetchrow(
-            query, owner_id, company.name, company.tax_id, company.email,
-            company.phone, company.address, company.city, company.industry
+            query,
+            company.legal_name,
+            company.tax_id,
+            company.trade_name,
+            company.primary_sector_id,
+            company.email,
+            company.phone,
+            company.address,
+            company.city,
+            company.is_active,
+            company.is_verified
         )
 
         # Add owner as member with company_owner role
@@ -91,11 +122,17 @@ class CompanyRepository:
         return result == "DELETE 1"
 
     async def add_member(self, conn: asyncpg.Connection, company_id: str, user_id: str, role: CompanyMemberRole) -> Dict[str, Any]:
-        """Add member to company"""
+        """
+        Add member to company
+
+        ALIGNED WITH DATABASE_SCHEMA_REFERENCE.md
+        Table: user_company_roles
+        Composite PK: (user_id, company_id)
+        """
         query = """
-            INSERT INTO user_company_roles (company_id, user_id, role, added_at)
-            VALUES ($1, $2, $3, NOW())
-            ON CONFLICT (company_id, user_id) DO UPDATE SET role = $3
+            INSERT INTO user_company_roles (company_id, user_id, role, is_active, assigned_at)
+            VALUES ($1, $2, $3, TRUE, NOW())
+            ON CONFLICT (user_id, company_id) DO UPDATE SET role = $3, is_active = TRUE
             RETURNING *
         """
         result = await conn.fetchrow(query, company_id, user_id, role.value)
@@ -110,13 +147,18 @@ class CompanyRepository:
         return result == "DELETE 1"
 
     async def get_members(self, conn: asyncpg.Connection, company_id: str) -> List[Dict[str, Any]]:
-        """Get company members"""
+        """
+        Get company members
+
+        ALIGNED WITH DATABASE_SCHEMA_REFERENCE.md
+        Table: user_company_roles
+        """
         query = """
             SELECT ucr.*, u.email as user_email, u.first_name || ' ' || u.last_name as user_name
             FROM user_company_roles ucr
             JOIN users u ON ucr.user_id = u.id
             WHERE ucr.company_id = $1
-            ORDER BY ucr.added_at
+            ORDER BY ucr.assigned_at
         """
         results = await conn.fetch(query, company_id)
         return [dict(r) for r in results]
