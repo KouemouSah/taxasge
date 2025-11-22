@@ -267,6 +267,7 @@ async def api_v1_info():
             "declarations": "/api/v1/declarations/ - Tax declarations workflow",
             "payments": "/api/v1/payments/ - BANGE mobile payments integration",
             "translations": "/api/v1/translations/ - System translations (ENUMs, UI, Forms, Messages)",
+            "communications": "/api/v1/communications/ - Email, SMS, Push notification services",
             "ai": "/api/v1/ai/ - AI assistant conversations",
             "notifications": "/api/v1/notifications/ - Multi-channel notifications"
         },
@@ -428,6 +429,15 @@ try:
     logger.info("✅ Translations router loaded (ENUMs, UI, Forms, Messages)")
 except ImportError as e:
     logger.warning(f"⚠️ Translations router not available: {e}")
+
+# Try to load communications router (Module - Communications System - Email/SMS/Push)
+try:
+    from app.modules.communications.api import router as communication_router
+    app.include_router(communication_router, prefix="/api/v1", tags=["communications"])
+    routers_loaded.append("communications")
+    logger.info("✅ Communications router loaded (Email, SMS, Push notifications)")
+except ImportError as e:
+    logger.warning(f"⚠️ Communications router not available: {e}")
 
 if routers_loaded:
     logger.info(f"✅ {len(routers_loaded)} API routers loaded: {', '.join(routers_loaded)}")

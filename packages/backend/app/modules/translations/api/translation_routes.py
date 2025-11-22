@@ -17,9 +17,10 @@ Module: Translations (System translations for ENUMs, UI, Forms, Messages)
 Note: entity_translations (for fiscal services) is in fiscal_services module
 """
 
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from loguru import logger
+import asyncpg
 
 from app.modules.translations.models.translation import (
     TranslationCreate,
@@ -32,6 +33,8 @@ from app.modules.translations.models.translation import (
 from app.modules.translations.services.translation_service import TranslationService
 from app.modules.translations.services.language_service import LanguageService
 from app.modules.translations.middleware.language_middleware import detect_language
+from app.database.connection import get_database as get_db
+from app.modules.auth.middleware.auth_middleware import get_current_user
 
 
 router = APIRouter(prefix="/translations", tags=["Translations"])
@@ -42,7 +45,9 @@ router = APIRouter(prefix="/translations", tags=["Translations"])
 # ============================================================================
 
 @router.get("/categories")
-async def list_categories():
+async def list_categories(
+    conn: asyncpg.Connection = Depends(get_db),
+):
     """
     Get list of all translation categories
 
@@ -52,14 +57,8 @@ async def list_categories():
     service = TranslationService()
 
     try:
-        # TODO: Get connection from dependency
-        # categories = await service.get_all_categories(conn)
-        # return {"categories": categories}
-
-        raise HTTPException(
-            status_code=501,
-            detail="Database connection dependency not yet implemented"
-        )
+        categories = await service.get_all_categories(conn)
+        return {"categories": categories}
 
     except Exception as e:
         logger.error(f"Error fetching categories: {e}")
@@ -67,7 +66,9 @@ async def list_categories():
 
 
 @router.get("/stats")
-async def get_translation_stats():
+async def get_translation_stats(
+    conn: asyncpg.Connection = Depends(get_db),
+):
     """
     Get translation statistics
 
@@ -77,14 +78,8 @@ async def get_translation_stats():
     service = TranslationService()
 
     try:
-        # TODO: Get connection from dependency
-        # stats = await service.get_translation_stats(conn)
-        # return stats
-
-        raise HTTPException(
-            status_code=501,
-            detail="Database connection dependency not yet implemented"
-        )
+        stats = await service.get_translation_stats(conn)
+        return stats
 
     except Exception as e:
         logger.error(f"Error fetching stats: {e}")
@@ -92,7 +87,10 @@ async def get_translation_stats():
 
 
 @router.get("/export/{category}")
-async def export_category_json(category: str):
+async def export_category_json(
+    category: str,
+    conn: asyncpg.Connection = Depends(get_db),
+):
     """
     Export all translations for a category as JSON
 
@@ -107,14 +105,8 @@ async def export_category_json(category: str):
     service = TranslationService()
 
     try:
-        # TODO: Get connection from dependency
-        # data = await service.export_category_json(conn, category)
-        # return data
-
-        raise HTTPException(
-            status_code=501,
-            detail="Database connection dependency not yet implemented"
-        )
+        data = await service.export_category_json(conn, category)
+        return data
 
     except Exception as e:
         logger.error(f"Error exporting category {category}: {e}")
@@ -128,8 +120,8 @@ async def export_category_json(category: str):
 @router.post("/", response_model=TranslationResponse)
 async def create_translation(
     translation: TranslationCreate,
-    # conn: asyncpg.Connection = Depends(get_db_connection),  # TODO: Add dependency
-    # current_user: User = Depends(get_current_user),  # TODO: Add dependency
+    conn: asyncpg.Connection = Depends(get_db),
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ):
     """
     Create a single translation
@@ -143,14 +135,9 @@ async def create_translation(
     service = TranslationService()
 
     try:
-        # TODO: Get connection and user from dependency
-        # result = await service.create_translation(conn, translation, current_user.id)
-        # return result
-
-        raise HTTPException(
-            status_code=501,
-            detail="Database connection dependency not yet implemented"
-        )
+        user_id = current_user.get("sub")
+        result = await service.create_translation(conn, translation, user_id)
+        return result
 
     except Exception as e:
         logger.error(f"Error creating translation: {e}")
@@ -160,8 +147,8 @@ async def create_translation(
 @router.post("/batch")
 async def create_translation_batch(
     batch: TranslationBatchCreate,
-    # conn: asyncpg.Connection = Depends(get_db_connection),  # TODO: Add dependency
-    # current_user: User = Depends(get_current_user),  # TODO: Add dependency
+    conn: asyncpg.Connection = Depends(get_db),
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ):
     """
     Create multiple translations at once
@@ -175,14 +162,9 @@ async def create_translation_batch(
     service = TranslationService()
 
     try:
-        # TODO: Get connection and user from dependency
-        # results = await service.batch_create(conn, batch, current_user.id)
-        # return {"created": len(results), "translations": results}
-
-        raise HTTPException(
-            status_code=501,
-            detail="Database connection dependency not yet implemented"
-        )
+        user_id = current_user.get("sub")
+        results = await service.batch_create(conn, batch, user_id)
+        return {"created": len(results), "translations": results}
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -199,7 +181,7 @@ async def search_translations(
     search_term: Optional[str] = Query(None, description="Full-text search"),
     limit: int = Query(100, ge=1, le=500, description="Max results"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
-    # conn: asyncpg.Connection = Depends(get_db_connection),  # TODO: Add dependency
+    conn: asyncpg.Connection = Depends(get_db),
 ):
     """
     Search and list translations
@@ -227,19 +209,13 @@ async def search_translations(
             offset=offset,
         )
 
-        # TODO: Get connection from dependency
-        # translations, total = await service.search_translations(conn, search_params)
-        # return {
-        #     "translations": translations,
-        #     "total": total,
-        #     "limit": limit,
-        #     "offset": offset,
-        # }
-
-        raise HTTPException(
-            status_code=501,
-            detail="Database connection dependency not yet implemented"
-        )
+        translations, total = await service.search_translations(conn, search_params)
+        return {
+            "translations": translations,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+        }
 
     except Exception as e:
         logger.error(f"Error searching translations: {e}")
@@ -249,7 +225,7 @@ async def search_translations(
 @router.get("/{translation_id}", response_model=TranslationResponse)
 async def get_translation(
     translation_id: int,
-    # conn: asyncpg.Connection = Depends(get_db_connection),  # TODO: Add dependency
+    conn: asyncpg.Connection = Depends(get_db),
 ):
     """
     Get translation by ID
@@ -263,18 +239,12 @@ async def get_translation(
     service = TranslationService()
 
     try:
-        # TODO: Get connection from dependency
-        # translation = await service.get_translation_by_id(conn, translation_id)
+        translation = await service.get_translation_by_id(conn, translation_id)
 
-        # if translation is None:
-        #     raise HTTPException(status_code=404, detail="Translation not found")
+        if translation is None:
+            raise HTTPException(status_code=404, detail="Translation not found")
 
-        # return translation
-
-        raise HTTPException(
-            status_code=501,
-            detail="Database connection dependency not yet implemented"
-        )
+        return translation
 
     except HTTPException:
         raise
@@ -287,8 +257,8 @@ async def get_translation(
 async def update_translation(
     translation_id: int,
     update_data: TranslationUpdate,
-    # conn: asyncpg.Connection = Depends(get_db_connection),  # TODO: Add dependency
-    # current_user: User = Depends(get_current_user),  # TODO: Add dependency
+    conn: asyncpg.Connection = Depends(get_db),
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ):
     """
     Update translation
@@ -303,20 +273,15 @@ async def update_translation(
     service = TranslationService()
 
     try:
-        # TODO: Get connection and user from dependency
-        # result = await service.update_translation(
-        #     conn, translation_id, update_data, current_user.id
-        # )
-
-        # if result is None:
-        #     raise HTTPException(status_code=404, detail="Translation not found")
-
-        # return result
-
-        raise HTTPException(
-            status_code=501,
-            detail="Database connection dependency not yet implemented"
+        user_id = current_user.get("sub")
+        result = await service.update_translation(
+            conn, translation_id, update_data, user_id
         )
+
+        if result is None:
+            raise HTTPException(status_code=404, detail="Translation not found")
+
+        return result
 
     except HTTPException:
         raise
@@ -328,7 +293,7 @@ async def update_translation(
 @router.delete("/{translation_id}")
 async def delete_translation(
     translation_id: int,
-    # conn: asyncpg.Connection = Depends(get_db_connection),  # TODO: Add dependency
+    conn: asyncpg.Connection = Depends(get_db),
 ):
     """
     Delete a translation
@@ -342,18 +307,12 @@ async def delete_translation(
     service = TranslationService()
 
     try:
-        # TODO: Get connection from dependency
-        # deleted = await service.delete_translation(conn, translation_id)
+        deleted = await service.delete_translation(conn, translation_id)
 
-        # if not deleted:
-        #     raise HTTPException(status_code=404, detail="Translation not found")
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Translation not found")
 
-        # return {"message": "Translation deleted successfully"}
-
-        raise HTTPException(
-            status_code=501,
-            detail="Database connection dependency not yet implemented"
-        )
+        return {"message": "Translation deleted successfully"}
 
     except HTTPException:
         raise
