@@ -502,3 +502,392 @@ class DeclarationRepository:
         except Exception as e:
             logger.error(f"Error listing pending review declarations: {str(e)}")
             raise
+
+    # ========================================================================
+    # BUSINESS LOGIC METHODS - Workflow and operations
+    # ========================================================================
+
+    async def find_by_declaration_number(
+        self,
+        conn: asyncpg.Connection,
+        declaration_number: str,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Find declaration by declaration number
+
+        Args:
+            conn: Database connection
+            declaration_number: Declaration number (unique identifier)
+
+        Returns:
+            Declaration data or None if not found
+        """
+        try:
+            query = """
+                SELECT * FROM tax_declarations
+                WHERE declaration_number = $1
+            """
+            result = await conn.fetchrow(query, declaration_number)
+            return dict(result) if result else None
+
+        except Exception as e:
+            logger.error(f"Error finding declaration by number {declaration_number}: {str(e)}")
+            raise
+
+    async def assign_to_agent(
+        self,
+        conn: asyncpg.Connection,
+        declaration_id: str,
+        agent_id: str,
+    ) -> bool:
+        """
+        Assign declaration to an agent
+
+        Args:
+            conn: Database connection
+            declaration_id: Declaration UUID
+            agent_id: Agent UUID
+
+        Returns:
+            True if assigned successfully
+        """
+        try:
+            query = """
+                UPDATE tax_declarations
+                SET
+                    assigned_agent_id = $2,
+                    assigned_at = NOW(),
+                    status = 'in_review',
+                    updated_at = NOW()
+                WHERE id = $1
+                RETURNING id
+            """
+            result = await conn.fetchrow(query, declaration_id, agent_id)
+
+            if result:
+                logger.info(f"Assigned declaration {declaration_id} to agent {agent_id}")
+                return True
+
+            return False
+
+        except Exception as e:
+            logger.error(f"Error assigning declaration {declaration_id}: {str(e)}")
+            raise
+
+    async def approve_declaration(
+        self,
+        conn: asyncpg.Connection,
+        declaration_id: str,
+        agent_id: str,
+        agent_notes: Optional[str] = None,
+    ) -> bool:
+        """
+        Approve declaration
+
+        Args:
+            conn: Database connection
+            declaration_id: Declaration UUID
+            agent_id: Agent who approved
+            agent_notes: Optional approval notes
+
+        Returns:
+            True if approved successfully
+        """
+        try:
+            query = """
+                UPDATE tax_declarations
+                SET
+                    status = 'approved',
+                    approved_at = NOW(),
+                    approved_by = $2,
+                    agent_notes = COALESCE($3, agent_notes),
+                    updated_at = NOW()
+                WHERE id = $1 AND status = 'in_review'
+                RETURNING id
+            """
+            result = await conn.fetchrow(query, declaration_id, agent_id, agent_notes)
+
+            if result:
+                logger.info(f"Approved declaration {declaration_id} by agent {agent_id}")
+                return True
+
+            return False
+
+        except Exception as e:
+            logger.error(f"Error approving declaration {declaration_id}: {str(e)}")
+            raise
+
+    async def reject_declaration(
+        self,
+        conn: asyncpg.Connection,
+        declaration_id: str,
+        agent_id: str,
+        rejection_reason: str,
+    ) -> bool:
+        """
+        Reject declaration
+
+        Args:
+            conn: Database connection
+            declaration_id: Declaration UUID
+            agent_id: Agent who rejected
+            rejection_reason: Reason for rejection
+
+        Returns:
+            True if rejected successfully
+        """
+        try:
+            query = """
+                UPDATE tax_declarations
+                SET
+                    status = 'rejected',
+                    rejected_at = NOW(),
+                    rejected_by = $2,
+                    rejection_reason = $3,
+                    updated_at = NOW()
+                WHERE id = $1 AND status = 'in_review'
+                RETURNING id
+            """
+            result = await conn.fetchrow(query, declaration_id, agent_id, rejection_reason)
+
+            if result:
+                logger.info(f"Rejected declaration {declaration_id} by agent {agent_id}")
+                return True
+
+            return False
+
+        except Exception as e:
+            logger.error(f"Error rejecting declaration {declaration_id}: {str(e)}")
+            raise
+
+    async def get_stats(
+        self,
+        conn: asyncpg.Connection,
+        user_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Get declaration statistics
+
+        Args:
+            conn: Database connection
+            user_id: Optional user filter (None for global stats)
+
+        Returns:
+            Statistics dictionary
+        """
+        try:
+            where_clause = "WHERE user_id = $1" if user_id else ""
+            params = [user_id] if user_id else []
+
+            # Total count
+            count_query = f"SELECT COUNT(*) FROM tax_declarations {where_clause}"
+            total = await conn.fetchval(count_query, *params)
+
+            # By status
+            status_query = f"""
+                SELECT status, COUNT(*) as count
+                FROM tax_declarations
+                {where_clause}
+                GROUP BY status
+            """
+            status_results = await conn.fetch(status_query, *params)
+            by_status = {row['status']: row['count'] for row in status_results}
+
+            # By type
+            type_query = f"""
+                SELECT declaration_type, COUNT(*) as count
+                FROM tax_declarations
+                {where_clause}
+                GROUP BY declaration_type
+            """
+            type_results = await conn.fetch(type_query, *params)
+            by_type = {row['declaration_type']: row['count'] for row in type_results}
+
+            # Average processing time (hours)
+            avg_query = f"""
+                SELECT AVG(EXTRACT(EPOCH FROM (approved_at - submitted_at))/3600) as avg_hours
+                FROM tax_declarations
+                {where_clause}
+                AND submitted_at IS NOT NULL
+                AND approved_at IS NOT NULL
+            """
+            avg_hours = await conn.fetchval(avg_query, *params)
+
+            return {
+                "total": total,
+                "by_status": by_status,
+                "by_type": by_type,
+                "average_processing_hours": float(avg_hours) if avg_hours else 0,
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting declaration stats: {str(e)}")
+            raise
+
+    async def search(
+        self,
+        conn: asyncpg.Connection,
+        search_term: Optional[str] = None,
+        user_id: Optional[str] = None,
+        status: Optional[DeclarationStatus] = None,
+        declaration_type: Optional[DeclarationType] = None,
+        date_from: Optional[datetime] = None,
+        date_to: Optional[datetime] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[List[Dict[str, Any]], int]:
+        """
+        Advanced search for declarations
+
+        Args:
+            conn: Database connection
+            search_term: Optional text search
+            user_id: Optional user filter
+            status: Optional status filter
+            declaration_type: Optional type filter
+            date_from: Optional start date
+            date_to: Optional end date
+            limit: Max results
+            offset: Pagination offset
+
+        Returns:
+            Tuple of (declarations list, total count)
+        """
+        try:
+            # Build WHERE conditions
+            where_conditions = []
+            params = []
+
+            if user_id:
+                where_conditions.append(f"d.user_id = ${len(params) + 1}")
+                params.append(user_id)
+
+            if status:
+                where_conditions.append(f"d.status = ${len(params) + 1}")
+                params.append(status.value)
+
+            if declaration_type:
+                where_conditions.append(f"d.declaration_type = ${len(params) + 1}")
+                params.append(declaration_type.value)
+
+            if date_from:
+                where_conditions.append(f"d.created_at >= ${len(params) + 1}")
+                params.append(date_from)
+
+            if date_to:
+                where_conditions.append(f"d.created_at <= ${len(params) + 1}")
+                params.append(date_to)
+
+            if search_term:
+                where_conditions.append(f"(d.metadata::text ILIKE ${len(params) + 1} OR d.agent_notes ILIKE ${len(params) + 1})")
+                params.append(f"%{search_term}%")
+
+            where_clause = f"WHERE {' AND '.join(where_conditions)}" if where_conditions else ""
+
+            # Count query
+            count_query = f"""
+                SELECT COUNT(*) FROM tax_declarations d
+                {where_clause}
+            """
+            total = await conn.fetchval(count_query, *params)
+
+            # Data query
+            params.extend([limit, offset])
+            data_query = f"""
+                SELECT
+                    d.*,
+                    u.email as user_email,
+                    c.name as company_name
+                FROM tax_declarations d
+                LEFT JOIN users u ON d.user_id = u.id
+                LEFT JOIN companies c ON d.company_id = c.id
+                {where_clause}
+                ORDER BY d.created_at DESC
+                LIMIT ${len(params) - 1} OFFSET ${len(params)}
+            """
+
+            results = await conn.fetch(data_query, *params)
+            declarations = [dict(r) for r in results]
+
+            return declarations, total
+
+        except Exception as e:
+            logger.error(f"Error searching declarations: {str(e)}")
+            raise
+
+    # ========================================================================
+    # AUDIT TRAIL - Activity logging
+    # ========================================================================
+
+    async def log_activity(
+        self,
+        conn: asyncpg.Connection,
+        user_id: str,
+        action: str,
+        entity_id: str,
+        old_values: Optional[Dict[str, Any]] = None,
+        new_values: Optional[Dict[str, Any]] = None,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
+    ) -> None:
+        """
+        Log declaration activity to audit_logs table
+
+        Args:
+            conn: Database connection
+            user_id: User performing the action
+            action: Action performed (created, updated, submitted, approved, rejected, etc.)
+            entity_id: Declaration ID (UUID)
+            old_values: Previous values (for updates)
+            new_values: New values (for updates/creates)
+            ip_address: Client IP address
+            user_agent: Client user agent
+
+        Business Rules:
+            - Uses generic audit_logs table (entity_type='declaration')
+            - Stores old/new values as JSONB for complete audit trail
+            - Records timestamp, IP, and user agent for security
+
+        Example:
+            await repo.log_activity(
+                conn=conn,
+                user_id="user-uuid",
+                action="submitted",
+                entity_id="decl-uuid",
+                new_values={"status": "submitted", "submitted_at": "2025-11-22T10:00:00Z"}
+            )
+        """
+        try:
+            query = """
+                INSERT INTO audit_logs (
+                    user_id,
+                    entity_type,
+                    entity_id,
+                    action,
+                    old_values,
+                    new_values,
+                    ip_address,
+                    user_agent,
+                    created_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+            """
+
+            # Convert dicts to JSON (asyncpg handles JSONB automatically)
+            await conn.execute(
+                query,
+                user_id,
+                "declaration",  # entity_type
+                entity_id,
+                action,
+                old_values,  # JSONB
+                new_values,  # JSONB
+                ip_address,
+                user_agent,
+            )
+
+            logger.debug(f"Audit log created: user={user_id}, action={action}, entity={entity_id}")
+
+        except Exception as e:
+            # Log but don't fail the operation if audit logging fails
+            logger.error(f"Error logging declaration activity: {str(e)}")
+            # Don't re-raise - audit logging should not break business operations
