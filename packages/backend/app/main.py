@@ -329,15 +329,6 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ Two-Factor Authentication router not available: {e}")
 
-# Try to load taxes router (optional - has known issues)
-try:
-    from app.api.v1 import taxes
-    app.include_router(taxes.router, prefix="/api/v1/taxes", tags=["tax-management"])
-    routers_loaded.append("taxes")
-    logger.info("✅ Taxes router loaded")
-except ImportError as e:
-    logger.warning(f"⚠️ Taxes router not available (non-blocking): {e}")
-
 # Try to load homepage router (for dynamic statistics and category directory)
 try:
     from app.api.v1 import homepage
