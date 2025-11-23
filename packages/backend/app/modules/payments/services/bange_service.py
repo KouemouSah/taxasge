@@ -1,208 +1,420 @@
 """
-BANGE Service - Mobile Money Payment Integration
-
-Intégration API BANGE pour initier paiements mobiles
+BANGE Payment Service for TaxasGE Backend
+Integration with BANGE payment gateway for Equatorial Guinea
 """
 
-from typing import Dict, Any, Optional
-from loguru import logger
-from decimal import Decimal
 import httpx
-import uuid
+import hashlib
+import hmac
+from typing import Dict, Optional, Any
+from decimal import Decimal
+from datetime import datetime, timedelta
+from loguru import logger
+from uuid import uuid4
+
+from app.core.config import get_settings
+from app.modules.payments.models.payment import (
+    BANGEPaymentRequest, BANGEPaymentResponse, BANGEWebhookData,
+    PaymentResponse, PaymentStatus
+)
 
 
-class BangeService:
-    """Service for BANGE API integration"""
+class BANGEService:
+    """BANGE Payment Gateway Service"""
 
-    def __init__(self, api_endpoint: str = None, api_key: str = None):
+    def __init__(self):
+        self.settings = get_settings()
+        self.base_url = self.settings.bange_api_url or "https://api.bange.gq"
+        self.merchant_id = self.settings.bange_merchant_id
+        self.api_key = self.settings.bange_api_key
+        self.webhook_secret = self.settings.bange_webhook_secret
+        self.timeout = 30  # 30 seconds timeout
+
+    async def create_payment(self, payment_request: BANGEPaymentRequest) -> Optional[BANGEPaymentResponse]:
         """
-        Initialize BANGE service
+        Create payment with BANGE gateway
 
         Args:
-            api_endpoint: BANGE API URL (from bank_configurations)
-            api_key: BANGE API key (from bank_configurations.api_key_encrypted)
-        """
-        self.api_endpoint = api_endpoint or "https://api.bange.gn/v1"
-        self.api_key = api_key
-        self.timeout = 30.0
-
-    async def initiate_payment(
-        self,
-        payment_id: str,
-        amount: Decimal,
-        currency: str,
-        phone_number: str,
-        reference: str,
-        description: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """
-        Initiate BANGE mobile money payment
-
-        Args:
-            payment_id: Internal payment UUID
-            amount: Amount to charge
-            currency: Currency (XAF)
-            phone_number: Customer phone number
-            reference: Unique reference (payment.bank_reference)
-            description: Payment description
+            payment_request: Payment request data
 
         Returns:
-            {
-                "success": bool,
-                "bange_reference": str,
-                "status": str,
-                "message": str,
-                "transaction_id": str
-            }
+            BANGE payment response or None if failed
         """
-        if not self.api_key:
-            logger.error("BANGE API key not configured")
-            return {
-                "success": False,
-                "status": "error",
-                "message": "BANGE API key not configured",
+        try:
+            # Prepare request data
+            request_data = {
+                "merchant_id": self.merchant_id,
+                "amount": float(payment_request.amount),
+                "currency": payment_request.currency.value,
+                "description": payment_request.description,
+                "reference": payment_request.reference,
+                "callback_url": payment_request.callback_url,
+                "return_url": payment_request.return_url,
+                "customer": {
+                    "email": payment_request.customer_email,
+                    "phone": payment_request.customer_phone
+                },
+                "metadata": payment_request.metadata or {},
+                "expires_in": 3600  # 1 hour expiration
             }
 
-        payload = {
-            "merchant_reference": reference,
-            "amount": float(amount),
-            "currency": currency,
-            "phone_number": phone_number,
-            "description": description or f"Payment {payment_id}",
-            "callback_url": f"{self.api_endpoint}/webhooks/bange",
-            "metadata": {
-                "payment_id": payment_id,
-            },
-        }
+            # Add signature for security
+            signature = self._generate_signature(request_data)
+            request_data["signature"] = signature
 
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-        }
-
-        try:
+            # Make API call
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
-                    f"{self.api_endpoint}/payments/initiate",
-                    json=payload,
-                    headers=headers,
+                    f"{self.base_url}/payments",
+                    json=request_data,
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json"
+                    }
                 )
 
-                if response.status_code == 200:
-                    data = response.json()
-                    logger.info(f"BANGE payment initiated: {reference}, transaction_id: {data.get('transaction_id')}")
-                    return {
-                        "success": True,
-                        "bange_reference": data.get("reference"),
-                        "status": data.get("status", "pending"),
-                        "message": "Payment initiated successfully",
-                        "transaction_id": data.get("transaction_id"),
-                    }
+                if response.status_code == 201:
+                    response_data = response.json()
+
+                    return BANGEPaymentResponse(
+                        payment_id=response_data["payment_id"],
+                        payment_url=response_data["payment_url"],
+                        reference=response_data["reference"],
+                        status=response_data["status"],
+                        amount=Decimal(str(response_data["amount"])),
+                        currency=response_data["currency"],
+                        expires_at=datetime.fromisoformat(response_data["expires_at"]) if response_data.get("expires_at") else None,
+                        created_at=datetime.fromisoformat(response_data["created_at"])
+                    )
                 else:
-                    logger.error(f"BANGE API error: {response.status_code} - {response.text}")
-                    return {
-                        "success": False,
-                        "status": "error",
-                        "message": f"BANGE API error: {response.status_code}",
-                    }
+                    logger.error(f"BANGE payment creation failed: {response.status_code} - {response.text}")
+                    return None
 
-        except httpx.TimeoutException:
-            logger.error(f"BANGE API timeout for payment {payment_id}")
-            return {
-                "success": False,
-                "status": "timeout",
-                "message": "BANGE API timeout",
-            }
         except Exception as e:
-            logger.error(f"BANGE API exception: {e}")
-            return {
-                "success": False,
-                "status": "error",
-                "message": str(e),
-            }
+            logger.error(f"Error creating BANGE payment: {e}")
+            return None
 
-    async def check_payment_status(
-        self,
-        bange_reference: str
-    ) -> Dict[str, Any]:
+    async def verify_payment(self, payment_id: str) -> Optional[Dict[str, Any]]:
         """
-        Check payment status with BANGE
+        Verify payment status with BANGE
 
         Args:
-            bange_reference: BANGE transaction reference
+            payment_id: BANGE payment ID
 
         Returns:
-            {
-                "status": str (pending, success, failed),
-                "amount": Decimal,
-                "updated_at": datetime
-            }
+            Payment verification data or None if failed
         """
-        if not self.api_key:
-            logger.error("BANGE API key not configured")
-            return {"status": "error", "message": "API key not configured"}
-
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-        }
-
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.get(
-                    f"{self.api_endpoint}/payments/{bange_reference}",
-                    headers=headers,
+                    f"{self.base_url}/payments/{payment_id}",
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}"
+                    }
                 )
 
                 if response.status_code == 200:
-                    data = response.json()
-                    return {
-                        "status": data.get("status"),
-                        "amount": Decimal(str(data.get("amount", 0))),
-                        "updated_at": data.get("updated_at"),
-                    }
+                    return response.json()
                 else:
-                    logger.error(f"BANGE status check error: {response.status_code}")
-                    return {"status": "error", "message": "Failed to check status"}
+                    logger.error(f"BANGE payment verification failed: {response.status_code} - {response.text}")
+                    return None
 
         except Exception as e:
-            logger.error(f"BANGE status check exception: {e}")
-            return {"status": "error", "message": str(e)}
+            logger.error(f"Error verifying BANGE payment {payment_id}: {e}")
+            return None
 
-    async def cancel_payment(
-        self,
-        bange_reference: str
-    ) -> Dict[str, Any]:
+    async def cancel_payment(self, payment_id: str, reason: str = "Cancelled by user") -> bool:
         """
-        Cancel pending BANGE payment
+        Cancel payment with BANGE
 
         Args:
-            bange_reference: BANGE transaction reference
+            payment_id: BANGE payment ID
+            reason: Cancellation reason
 
         Returns:
-            {"success": bool, "message": str}
+            True if successful, False otherwise
         """
-        if not self.api_key:
-            return {"success": False, "message": "API key not configured"}
-
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-        }
-
         try:
+            request_data = {
+                "reason": reason
+            }
+
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
-                    f"{self.api_endpoint}/payments/{bange_reference}/cancel",
-                    headers=headers,
+                    f"{self.base_url}/payments/{payment_id}/cancel",
+                    json=request_data,
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json"
+                    }
+                )
+
+                if response.status_code in [200, 204]:
+                    logger.info(f"BANGE payment {payment_id} cancelled successfully")
+                    return True
+                else:
+                    logger.error(f"BANGE payment cancellation failed: {response.status_code} - {response.text}")
+                    return False
+
+        except Exception as e:
+            logger.error(f"Error cancelling BANGE payment {payment_id}: {e}")
+            return False
+
+    async def initiate_refund(self, payment_id: str, amount: Decimal, reason: str) -> Optional[Dict[str, Any]]:
+        """
+        Initiate refund with BANGE
+
+        Args:
+            payment_id: Original payment ID
+            amount: Refund amount
+            reason: Refund reason
+
+        Returns:
+            Refund data or None if failed
+        """
+        try:
+            request_data = {
+                "amount": float(amount),
+                "reason": reason,
+                "refund_reference": f"REF-{uuid4().hex[:8].upper()}"
+            }
+
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.post(
+                    f"{self.base_url}/payments/{payment_id}/refund",
+                    json=request_data,
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json"
+                    }
+                )
+
+                if response.status_code == 201:
+                    refund_data = response.json()
+                    logger.info(f"BANGE refund initiated for payment {payment_id}: {refund_data['refund_id']}")
+                    return refund_data
+                else:
+                    logger.error(f"BANGE refund initiation failed: {response.status_code} - {response.text}")
+                    return None
+
+        except Exception as e:
+            logger.error(f"Error initiating BANGE refund for payment {payment_id}: {e}")
+            return None
+
+    def verify_webhook_signature(self, payload: bytes, signature: str) -> bool:
+        """
+        Verify BANGE webhook signature
+
+        Args:
+            payload: Raw webhook payload
+            signature: Webhook signature from headers
+
+        Returns:
+            True if signature is valid, False otherwise
+        """
+        try:
+            if not self.webhook_secret:
+                logger.warning("BANGE webhook secret not configured")
+                return False
+
+            # Calculate expected signature
+            expected_signature = hmac.new(
+                self.webhook_secret.encode('utf-8'),
+                payload,
+                hashlib.sha256
+            ).hexdigest()
+
+            # Compare signatures (constant-time comparison)
+            return hmac.compare_digest(
+                f"sha256={expected_signature}",
+                signature
+            )
+
+        except Exception as e:
+            logger.error(f"Error verifying BANGE webhook signature: {e}")
+            return False
+
+    def parse_webhook_data(self, payload: Dict[str, Any]) -> Optional[BANGEWebhookData]:
+        """
+        Parse BANGE webhook payload
+
+        Args:
+            payload: Webhook payload data
+
+        Returns:
+            Parsed webhook data or None if invalid
+        """
+        try:
+            return BANGEWebhookData(
+                payment_id=payload["payment_id"],
+                reference=payload["reference"],
+                status=payload["status"],
+                amount=Decimal(str(payload["amount"])),
+                currency=payload["currency"],
+                customer_email=payload.get("customer", {}).get("email"),
+                paid_at=datetime.fromisoformat(payload["paid_at"]) if payload.get("paid_at") else None,
+                metadata=payload.get("metadata", {})
+            )
+
+        except Exception as e:
+            logger.error(f"Error parsing BANGE webhook data: {e}")
+            return None
+
+    async def get_payment_methods(self) -> List[Dict[str, Any]]:
+        """
+        Get available payment methods from BANGE
+
+        Returns:
+            List of available payment methods
+        """
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.get(
+                    f"{self.base_url}/payment-methods",
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}"
+                    }
                 )
 
                 if response.status_code == 200:
-                    logger.info(f"BANGE payment cancelled: {bange_reference}")
-                    return {"success": True, "message": "Payment cancelled"}
+                    return response.json().get("payment_methods", [])
                 else:
-                    return {"success": False, "message": "Failed to cancel payment"}
+                    logger.error(f"Failed to get BANGE payment methods: {response.status_code}")
+                    return []
 
         except Exception as e:
-            logger.error(f"BANGE cancel exception: {e}")
-            return {"success": False, "message": str(e)}
+            logger.error(f"Error getting BANGE payment methods: {e}")
+            return []
+
+    async def get_exchange_rates(self) -> Dict[str, Decimal]:
+        """
+        Get current exchange rates from BANGE
+
+        Returns:
+            Dictionary of exchange rates
+        """
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.get(
+                    f"{self.base_url}/exchange-rates",
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}"
+                    }
+                )
+
+                if response.status_code == 200:
+                    rates_data = response.json()
+                    return {
+                        currency: Decimal(str(rate))
+                        for currency, rate in rates_data.get("rates", {}).items()
+                    }
+                else:
+                    logger.error(f"Failed to get BANGE exchange rates: {response.status_code}")
+                    return {}
+
+        except Exception as e:
+            logger.error(f"Error getting BANGE exchange rates: {e}")
+            return {}
+
+    def map_bange_status_to_internal(self, bange_status: str) -> PaymentStatus:
+        """
+        Map BANGE payment status to internal status enum
+
+        Args:
+            bange_status: BANGE payment status
+
+        Returns:
+            Internal payment status enum
+        """
+        status_mapping = {
+            "pending": PaymentStatus.PENDING,
+            "processing": PaymentStatus.PROCESSING,
+            "completed": PaymentStatus.COMPLETED,
+            "paid": PaymentStatus.COMPLETED,
+            "success": PaymentStatus.COMPLETED,
+            "failed": PaymentStatus.FAILED,
+            "error": PaymentStatus.FAILED,
+            "cancelled": PaymentStatus.CANCELLED,
+            "expired": PaymentStatus.FAILED,
+            "refunded": PaymentStatus.REFUNDED
+        }
+
+        return status_mapping.get(bange_status.lower(), PaymentStatus.FAILED)
+
+    def _generate_signature(self, data: Dict[str, Any]) -> str:
+        """
+        Generate HMAC signature for BANGE API request
+
+        Args:
+            data: Request data
+
+        Returns:
+            HMAC signature
+        """
+        try:
+            # Create canonical string from request data
+            canonical_string = self._create_canonical_string(data)
+
+            # Generate HMAC signature
+            signature = hmac.new(
+                self.api_key.encode('utf-8'),
+                canonical_string.encode('utf-8'),
+                hashlib.sha256
+            ).hexdigest()
+
+            return signature
+
+        except Exception as e:
+            logger.error(f"Error generating BANGE signature: {e}")
+            return ""
+
+    def _create_canonical_string(self, data: Dict[str, Any]) -> str:
+        """
+        Create canonical string for signature generation
+
+        Args:
+            data: Request data
+
+        Returns:
+            Canonical string
+        """
+        # Sort keys and create canonical string
+        sorted_keys = sorted(data.keys())
+        canonical_parts = []
+
+        for key in sorted_keys:
+            if key != "signature":  # Exclude signature field itself
+                value = data[key]
+                if isinstance(value, dict):
+                    # For nested objects, convert to JSON string
+                    import json
+                    value = json.dumps(value, sort_keys=True, separators=(',', ':'))
+                canonical_parts.append(f"{key}={value}")
+
+        return "&".join(canonical_parts)
+
+    async def health_check(self) -> bool:
+        """
+        Check BANGE API health status
+
+        Returns:
+            True if API is healthy, False otherwise
+        """
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                response = await client.get(
+                    f"{self.base_url}/health",
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}"
+                    }
+                )
+
+                return response.status_code == 200
+
+        except Exception as e:
+            logger.error(f"BANGE health check failed: {e}")
+            return False
+
+
+# Global BANGE service instance
+bange_service = BANGEService()
