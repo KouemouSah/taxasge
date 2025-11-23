@@ -26,13 +26,13 @@ from app.modules.documents.models.document import (
 )
 from app.modules.users.models import UserResponse
 from app.modules.documents.repositories.document_repository import document_repository
-from app.modules.documents.services.storage_service import (
+from app.services.firebase_storage_service import (
     firebase_storage_service,
     UploadResult,
     get_taxasge_folder_info
 )
-from app.modules.documents.services.ocr_service import ocr_service
-from app.modules.documents.services.extraction_service import extraction_service
+from app.services.ocr_service import ocr_service
+from app.services.extraction_service import extraction_service
 from app.modules.documents.extractors import TemplateBasedExtractor
 from app.modules.documents.extractors.fiscal_services import FiscalServiceExtractor
 from app.modules.documents.extractors.template_loader import template_loader
