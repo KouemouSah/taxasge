@@ -15,7 +15,7 @@ from loguru import logger
 import json
 
 from app.repositories.base import BaseRepository
-from app.models.document import (
+from app.modules.documents.models.document import (
     Document, DocumentCreate, DocumentUpdate, DocumentSearchFilter,
     DocumentProcessingStats, DocumentOCRStatus, DocumentExtractionStatus,
     DocumentValidationStatus, DocumentAccessLevel, DocumentType
