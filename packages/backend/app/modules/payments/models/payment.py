@@ -6,7 +6,7 @@ Aligned with DATABASE_SCHEMA_REFERENCE.md
 """
 
 from pydantic import BaseModel, Field, validator
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime, date
 from decimal import Decimal
 from enum import Enum
@@ -158,3 +158,100 @@ class PaymentPlanResponse(BaseModel):
     created_at: datetime
 
     installments: List[InstallmentResponse] = []
+
+
+# ========== BANGE INTEGRATION MODELS ==========
+
+class BANGEPaymentRequest(BaseModel):
+    """BANGE payment request model for gateway integration"""
+    amount: Decimal = Field(..., ge=0, description="Payment amount")
+    currency: str = Field(default="XAF", description="Payment currency (XAF, EUR, USD)")
+    description: str = Field(..., max_length=500, description="Payment description")
+    reference: str = Field(..., description="Unique payment reference")
+    customer_email: Optional[str] = Field(None, description="Customer email")
+    customer_phone: Optional[str] = Field(None, description="Customer phone")
+    callback_url: Optional[str] = Field(None, description="Payment callback URL")
+    return_url: Optional[str] = Field(None, description="Return URL after payment")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
+
+
+class BANGEPaymentResponse(BaseModel):
+    """BANGE payment response model from gateway"""
+    payment_id: str = Field(..., description="BANGE payment ID")
+    payment_url: str = Field(..., description="Payment URL for redirection")
+    reference: str = Field(..., description="Payment reference")
+    status: str = Field(..., description="Payment status")
+    amount: Decimal = Field(..., description="Payment amount")
+    currency: str = Field(..., description="Payment currency")
+    expires_at: Optional[datetime] = Field(None, description="Payment expiration time")
+    created_at: datetime = Field(..., description="Payment creation time")
+
+
+class BANGEWebhookData(BaseModel):
+    """BANGE webhook notification data"""
+    payment_id: str = Field(..., description="BANGE payment ID")
+    reference: str = Field(..., description="Payment reference")
+    status: str = Field(..., description="Payment status: completed, failed, cancelled")
+    amount: Decimal = Field(..., description="Payment amount")
+    currency: str = Field(..., description="Payment currency")
+    paid_at: Optional[datetime] = Field(None, description="Payment completion timestamp")
+    transaction_id: Optional[str] = Field(None, description="Bank transaction ID")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
+    signature: str = Field(..., description="HMAC signature for verification")
+
+
+# ========== SEARCH AND FILTERING ==========
+
+class PaymentSearchFilter(BaseModel):
+    """Model for payment search and filtering"""
+    user_id: Optional[str] = Field(None, description="Filter by user UUID")
+    tax_declaration_id: Optional[str] = Field(None, description="Filter by declaration UUID")
+    fiscal_service_id: Optional[int] = Field(None, description="Filter by fiscal service ID")
+    payment_type: Optional[PaymentType] = Field(None, description="Filter by payment type")
+    payment_method: Optional[PaymentMethod] = Field(None, description="Filter by payment method")
+    status: Optional[PaymentStatus] = Field(None, description="Filter by status")
+    min_amount: Optional[Decimal] = Field(None, ge=0, description="Minimum amount filter")
+    max_amount: Optional[Decimal] = Field(None, ge=0, description="Maximum amount filter")
+    currency: Optional[str] = Field(None, description="Filter by currency (XAF, EUR, USD)")
+    created_after: Optional[datetime] = Field(None, description="Created after date")
+    created_before: Optional[datetime] = Field(None, description="Created before date")
+    reference_search: Optional[str] = Field(None, description="Search by bank reference")
+    page: int = Field(default=1, ge=1, description="Page number")
+    page_size: int = Field(default=20, ge=1, le=100, description="Page size")
+
+
+# ========== STATISTICS ==========
+
+class PaymentStats(BaseModel):
+    """Model for payment statistics and metrics"""
+    # Count metrics
+    total_payments: int = Field(..., description="Total number of payments")
+    successful_payments: int = Field(..., description="Number of completed payments")
+    failed_payments: int = Field(..., description="Number of failed payments")
+    pending_payments: int = Field(..., description="Number of pending payments")
+
+    # Amount metrics
+    total_amount: Decimal = Field(..., description="Total payment amount (all)")
+    successful_amount: Decimal = Field(..., description="Total successful amount")
+    pending_amount: Decimal = Field(..., description="Total pending amount")
+    average_amount: Decimal = Field(..., description="Average payment amount")
+
+    # By payment method
+    payments_by_method: Dict[str, int] = Field(..., description="Payments count by method")
+    amount_by_method: Dict[str, Decimal] = Field(..., description="Amount by payment method")
+
+    # By payment type (full, partial, installment)
+    payments_by_type: Dict[str, int] = Field(..., description="Payments count by type")
+    amount_by_type: Dict[str, Decimal] = Field(..., description="Amount by payment type")
+
+    # Time-based metrics
+    payments_today: int = Field(..., description="Payments today")
+    payments_this_week: int = Field(..., description="Payments this week")
+    payments_this_month: int = Field(..., description="Payments this month")
+
+    # Success rate
+    success_rate: float = Field(..., ge=0, le=100, description="Payment success rate percentage")
+
+    # Daily and monthly trends
+    daily_trend: List[Dict[str, Any]] = Field(default_factory=list, description="Daily payment trends")
+    monthly_revenue: List[Dict[str, Any]] = Field(default_factory=list, description="Monthly revenue trends")

@@ -13,9 +13,9 @@ from loguru import logger
 from uuid import uuid4
 
 from app.core.config import get_settings
-from app.models.payment import (
+from app.modules.payments.models.payment import (
     BANGEPaymentRequest, BANGEPaymentResponse, BANGEWebhookData,
-    Payment, PaymentStatusEnum, CurrencyEnum
+    PaymentResponse, PaymentStatus
 )
 
 
@@ -82,7 +82,7 @@ class BANGEService:
                         reference=response_data["reference"],
                         status=response_data["status"],
                         amount=Decimal(str(response_data["amount"])),
-                        currency=CurrencyEnum(response_data["currency"]),
+                        currency=response_data["currency"],
                         expires_at=datetime.fromisoformat(response_data["expires_at"]) if response_data.get("expires_at") else None,
                         created_at=datetime.fromisoformat(response_data["created_at"])
                     )
@@ -250,7 +250,7 @@ class BANGEService:
                 reference=payload["reference"],
                 status=payload["status"],
                 amount=Decimal(str(payload["amount"])),
-                currency=CurrencyEnum(payload["currency"]),
+                currency=payload["currency"],
                 customer_email=payload.get("customer", {}).get("email"),
                 paid_at=datetime.fromisoformat(payload["paid_at"]) if payload.get("paid_at") else None,
                 metadata=payload.get("metadata", {})
@@ -316,7 +316,7 @@ class BANGEService:
             logger.error(f"Error getting BANGE exchange rates: {e}")
             return {}
 
-    def map_bange_status_to_internal(self, bange_status: str) -> PaymentStatusEnum:
+    def map_bange_status_to_internal(self, bange_status: str) -> PaymentStatus:
         """
         Map BANGE payment status to internal status enum
 
@@ -327,19 +327,19 @@ class BANGEService:
             Internal payment status enum
         """
         status_mapping = {
-            "pending": PaymentStatusEnum.pending,
-            "processing": PaymentStatusEnum.processing,
-            "completed": PaymentStatusEnum.completed,
-            "paid": PaymentStatusEnum.completed,
-            "success": PaymentStatusEnum.completed,
-            "failed": PaymentStatusEnum.failed,
-            "error": PaymentStatusEnum.failed,
-            "cancelled": PaymentStatusEnum.cancelled,
-            "expired": PaymentStatusEnum.failed,
-            "refunded": PaymentStatusEnum.refunded
+            "pending": PaymentStatus.PENDING,
+            "processing": PaymentStatus.PROCESSING,
+            "completed": PaymentStatus.COMPLETED,
+            "paid": PaymentStatus.COMPLETED,
+            "success": PaymentStatus.COMPLETED,
+            "failed": PaymentStatus.FAILED,
+            "error": PaymentStatus.FAILED,
+            "cancelled": PaymentStatus.CANCELLED,
+            "expired": PaymentStatus.FAILED,
+            "refunded": PaymentStatus.REFUNDED
         }
 
-        return status_mapping.get(bange_status.lower(), PaymentStatusEnum.failed)
+        return status_mapping.get(bange_status.lower(), PaymentStatus.FAILED)
 
     def _generate_signature(self, data: Dict[str, Any]) -> str:
         """
