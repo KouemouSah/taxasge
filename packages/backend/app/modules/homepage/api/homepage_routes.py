@@ -26,12 +26,11 @@ async def get_db(request: Request) -> asyncpg.Connection:
 
 async def get_redis_optional(request: Request) -> Optional[redis.Redis]:
     """
-    Get optional Redis connection from global variable in main.py
+    Get optional Redis connection from app state
 
     Returns None if Redis unavailable (graceful fallback)
     """
-    from main import redis_client
-    return redis_client
+    return getattr(request.app.state, 'redis', None)
 
 
 async def get_homepage_service(

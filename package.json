@@ -20,7 +20,7 @@
     "dev": "concurrently \"yarn dev:web\" \"yarn dev:backend\"",
     "dev:web": "yarn workspace web dev",
     "dev:mobile": "yarn workspace mobile start",
-    "dev:backend": "cd packages/backend && python gateway/main.py",
+    "dev:backend": "cd packages/backend && python -m app.main",
     "dev:full": "concurrently \"yarn dev:web\" \"yarn dev:backend\" \"yarn dev:mobile\"",
     "build": "yarn build:web && yarn build:backend",
     "build:web": "yarn workspace web build",
