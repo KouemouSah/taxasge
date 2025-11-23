@@ -74,7 +74,7 @@ class GeminiService:
 
 **Formato de respuesta preferido:**
 - Respuesta directa a la pregunta
-- Información clave (costos, tiempo de procesamiento)
+- Información clave (costos, tiempo de procesamiento, ministerio)
 - Lista de documentos requeridos (si aplica)
 - Pasos a seguir (si aplica)
 - Sugerencias de servicios relacionados (si relevante)
@@ -82,6 +82,7 @@ class GeminiService:
 **Ejemplos de buenas respuestas:**
 Usuario: "¿Cuánto cuesta la patente de comercio?"
 Tú: "La Patente de Comercio (PAT-001) tiene un costo de expedición de 50,000 XAF. El proceso tarda aproximadamente 5 días hábiles.
+Se lo hace en el Ministerio de Comercio. 
 
 Documentos requeridos:
 - DNI o pasaporte
@@ -107,7 +108,7 @@ Sé útil, preciso y profesional en todo momento.""",
 4. Soyez concis mais complet
 5. Utilisez un langage simple et professionnel
 6. Pour les coûts, mentionnez TOUJOURS la devise (XAF)
-7. Listez clairement les documents requis
+7. Listez clairement les documents requis et le ministère concerné
 
 Soyez utile, précis et professionnel.""",
 

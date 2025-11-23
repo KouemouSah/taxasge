@@ -143,7 +143,7 @@ document_processing_state ENUM (
    │  - processing_state = 'uploaded'
    └─ Trigger: OCR pipeline
 
-3. OCR Automatique (Tesseract / Cloud Vision)
+3. OCR Automatique (Tesseract / Document AI)
    ├─ État: 'ocr_processing'
    ├─ Extraction:
    │  - Numéro reçu: "N° 1.804/20"
@@ -165,9 +165,12 @@ document_processing_state ENUM (
    └─ État: 'extraction_completed'
 
 5. Validation Utilisateur (UI)
-   ├─ Affichage données extraites
-   ├─ User corrige si nécessaire (user_corrections JSONB)
+   Auto-fill formulaire web
+   ├─ form_auto_fill_data = extracted_data : Affichage données extraites
+   ├─ User voit: champs pré-remplis    
+   ├─ User corrige si nécessaire (user_corrections OCR JSONB)
    └─ État: 'validation_completed'
+
 
 ┌─────────────────────────────────────────────────────────────────┐
 │ PHASE 2: PAIEMENT DIRECT (Pas d'approbation avant paiement)    │
@@ -292,7 +295,7 @@ document_processing_state ENUM (
    │ 2a. User upload PDF/image formulaire pré-rempli           │
    │ 2b. OCR + AI Extraction                                   │
    │     ├─ Tesseract: extraction texte brut                   │
-   │     ├─ AI (Claude/GPT): parsing structuré                 │
+   │     ├─ AI (Document AI - Form parser): parsing structuré                 │
    │     ├─ Reconnaissance champs:                             │
    │     │  - "Base Imponible 01": 1500000                     │
    │     │  - "Tipo 02": 15%                                   │
@@ -355,7 +358,7 @@ document_processing_state ENUM (
    │    status = 'under_review'
    └─ Transition: 'submitted' → 'under_review'
 
-7. Vérification Déclaration par Agent
+7. Vérification Déclaration par Agent_dgi
    ├─ Agent examine:
    │  a) Cohérence montants (auto-calculs)
    │  b) Documents justificatifs (factures)
@@ -422,7 +425,7 @@ document_processing_state ENUM (
     ├─ Agent voit: paiement IVA validé par banque
     └─ Vérification: montant payé = montant déclaré ✓
 
-15. Confirmation Paiement par Agent
+15. Confirmation Paiement par Agent trésor exclusivement
     ├─ Agent vérifie:
     │  - Transaction bancaire valide
     │  - Montant correct
@@ -433,7 +436,7 @@ document_processing_state ENUM (
          confirmed_by_agent_id = 123,
          confirmed_at = NOW()
 
-16. Clôture Déclaration
+16. Clôture Déclaration - agent_dgi exclusivement
     ├─ UPDATE tax_declarations SET
     │    status = 'closed',
     │    closed_at = NOW(),

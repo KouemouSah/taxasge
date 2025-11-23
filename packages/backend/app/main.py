@@ -329,12 +329,12 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ Two-Factor Authentication router not available: {e}")
 
-# Try to load homepage router (for dynamic statistics and category directory)
+# Try to load homepage router (Module - Homepage Statistics & Category Directory)
 try:
-    from app.api.v1 import homepage
-    app.include_router(homepage.router, prefix="/api/v1/homepage", tags=["homepage"])
+    from app.modules.homepage import homepage_router
+    app.include_router(homepage_router, prefix="/api/v1/homepage", tags=["homepage"])
     routers_loaded.append("homepage")
-    logger.info("✅ Homepage router loaded")
+    logger.info("✅ Homepage router loaded (v2.0 - optimized 3-tier architecture)")
 except ImportError as e:
     logger.warning(f"⚠️ Homepage router not available: {e}")
 

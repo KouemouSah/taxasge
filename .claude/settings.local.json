@@ -13,7 +13,10 @@
       "Bash(\"/c/Program Files/Odoo 17/python/python.exe\" extract_full_schema.py)",
       "Bash(git restore:*)",
       "Bash(git checkout:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(git rm:*)",
+      "Bash(gcloud auth:*)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []

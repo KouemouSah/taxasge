@@ -161,17 +161,99 @@ jobs:
           channelId: staging
           entryPoint: packages/web
 
-  # Job 4: Post-deployment verification
+  # Job 4: Generate Embeddings (RAG Setup)
+  populate-embeddings:
+    name: Generate Embeddings for RAG
+    runs-on: ubuntu-latest
+    needs: deploy-backend
+    continue-on-error: true  # Don't fail deployment if embeddings fail
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Check if embeddings need generation
+        id: check-embeddings
+        run: |
+          # Check if v_embedding_status view exists and get stats
+          NEEDS_GENERATION=$(gcloud sql connect taxasge-db-staging --quiet --user=postgres << 'EOF' || echo "true"
+          SELECT CASE
+            WHEN coverage_percentage < 100 THEN 'true'
+            ELSE 'false'
+          END as needs_generation
+          FROM v_embedding_status;
+          EOF
+          )
+          echo "needs_generation=${NEEDS_GENERATION}" >> $GITHUB_OUTPUT
+          echo "Embeddings generation needed: ${NEEDS_GENERATION}"
+
+      - name: Generate embeddings via Cloud Run Job
+        if: steps.check-embeddings.outputs.needs_generation == 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          echo "🤖 Creating Cloud Run Job for embedding generation..."
+
+          # Delete existing job if it exists
+          gcloud run jobs delete populate-embeddings-staging \
+            --region ${{ env.BACKEND_REGION }} \
+            --quiet || echo "No existing job to delete"
+
+          # Create and execute Cloud Run Job
+          gcloud run jobs create populate-embeddings-staging \
+            --image gcr.io/${{ env.PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:latest \
+            --region ${{ env.BACKEND_REGION }} \
+            --set-env-vars="DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+            --set-env-vars="GOOGLE_CLOUD_PROJECT=${{ env.PROJECT_ID }}" \
+            --set-env-vars="GOOGLE_CLOUD_LOCATION=${{ env.BACKEND_REGION }}" \
+            --set-env-vars="GEMINI_EMBEDDING_MODEL=text-embedding-004" \
+            --command="python" \
+            --args="scripts/populate_embeddings.py,--batch-size,250" \
+            --max-retries=1 \
+            --task-timeout=30m \
+            --memory=1Gi \
+            --cpu=2 \
+            --execute-now \
+            --wait
+
+          echo "✅ Embedding generation completed!"
+
+      - name: Verify embedding coverage
+        if: steps.check-embeddings.outputs.needs_generation == 'true'
+        run: |
+          echo "📊 Checking embedding coverage..."
+          gcloud sql connect taxasge-db-staging --quiet --user=postgres << 'EOF' || echo "⚠️ Could not verify coverage"
+          SELECT
+            total_services,
+            total_with_embeddings,
+            coverage_percentage,
+            total_needs_update
+          FROM v_embedding_status;
+          EOF
+
+  # Job 5: Post-deployment verification
   verify-deployment:
     name: Verify Staging Deployment
     runs-on: ubuntu-latest
-    needs: [deploy-backend, deploy-frontend]
+    needs: [deploy-backend, deploy-frontend, populate-embeddings]
+    if: always()  # Run even if embeddings job fails
 
     steps:
       - name: Check backend health
         run: |
           echo "Checking backend health endpoint..."
           curl -f https://taxasge-backend-staging.run.app/health || echo "Health check failed (expected if secrets not configured)"
+
+      - name: Check chatbot endpoints
+        run: |
+          echo "🤖 Checking chatbot RAG endpoints..."
+          curl -f https://taxasge-backend-staging.run.app/api/v1/chatbot/ || echo "Chatbot info endpoint check"
 
       - name: Check frontend deployment
         run: |
@@ -186,8 +268,14 @@ jobs:
           echo "  - Backend:  https://taxasge-backend-staging.run.app"
           echo "  - Frontend: https://taxasge-dev--staging.web.app"
           echo "  - Docs:     https://taxasge-dev--staging.web.app/docs"
+          echo "  - Chatbot:  https://taxasge-backend-staging.run.app/api/v1/chatbot/"
+          echo ""
+          echo "🤖 RAG Chatbot:"
+          echo "  - Status: ${{ needs.populate-embeddings.result }}"
+          echo "  - Endpoints: /chat, /chat/stream, /search, /recommend"
           echo ""
           echo "🔍 Next steps:"
           echo "  1. Verify functionality manually"
-          echo "  2. Run smoke tests"
-          echo "  3. If all good, merge to main for production deployment"
+          echo "  2. Test chatbot RAG responses"
+          echo "  3. Run smoke tests"
+          echo "  4. If all good, merge to main for production deployment"
