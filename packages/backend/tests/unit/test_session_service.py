@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-from app.services.session_service import SessionService
+from app.modules.auth.services.session_service import SessionService
 from app.modules.auth.models.auth_models import SessionResponse, SessionStatus
 
 

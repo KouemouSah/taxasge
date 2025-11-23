@@ -82,7 +82,7 @@ def password_service():
     Fixture: Password service instance for testing
     TASK-M01-005 STEP 1: Password security fixes
     """
-    from app.services.password_service import PasswordService
+    from app.modules.auth.services.password_service import PasswordService
     return PasswordService()
 
 

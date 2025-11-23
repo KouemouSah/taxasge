@@ -21,7 +21,7 @@ from datetime import datetime, timedelta
 import pyotp
 
 from app.main import app
-from app.services.jwt_service import get_jwt_service
+from app.modules.auth.services.jwt_service import get_jwt_service
 
 
 # ==============================================================================
