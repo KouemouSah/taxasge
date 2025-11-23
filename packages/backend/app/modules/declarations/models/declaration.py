@@ -235,3 +235,114 @@ class DeclarationWorkflowStatus(BaseModel):
     submitted_at: Optional[datetime] = Field(None, description="Submission timestamp")
     processed_at: Optional[datetime] = Field(None, description="Processing timestamp")
     processed_by: Optional[str] = Field(None, description="Processor UUID")
+
+
+# ========== SEARCH AND FILTERING ==========
+
+class DeclarationSearchFilter(BaseModel):
+    """
+    Model for declaration search and filtering
+    Used for querying declarations with various filters
+    """
+    # User/Company filters
+    user_id: Optional[str] = Field(None, description="Filter by user ID")
+    company_id: Optional[str] = Field(None, description="Filter by company ID")
+
+    # Declaration filters
+    status: Optional[DeclarationStatus] = Field(None, description="Filter by status")
+    declaration_type: Optional[DeclarationType] = Field(None, description="Filter by type")
+    declaration_nature: Optional[str] = Field(None, description="Filter by nature (original, rectificative, etc.)")
+
+    # Fiscal period filters
+    fiscal_year: Optional[int] = Field(None, ge=2000, le=2100, description="Filter by fiscal year")
+    fiscal_period: Optional[str] = Field(None, description="Filter by fiscal period")
+
+    # Date filters
+    created_after: Optional[datetime] = Field(None, description="Created after date")
+    created_before: Optional[datetime] = Field(None, description="Created before date")
+    submitted_after: Optional[datetime] = Field(None, description="Submitted after date")
+    submitted_before: Optional[datetime] = Field(None, description="Submitted before date")
+    deadline_after: Optional[date] = Field(None, description="Deadline after date")
+    deadline_before: Optional[date] = Field(None, description="Deadline before date")
+
+    # Search
+    declaration_number: Optional[str] = Field(None, description="Search by declaration number")
+    search_query: Optional[str] = Field(None, description="Full-text search query")
+
+    # Administrative filters
+    processed_by: Optional[str] = Field(None, description="Filter by processor/agent UUID")
+
+
+# ========== STATISTICS ==========
+
+class DeclarationStats(BaseModel):
+    """
+    Model for declaration statistics
+    Used for dashboard and reporting
+    """
+    # Count metrics
+    total_declarations: int = Field(..., description="Total number of declarations")
+    by_status: Dict[str, int] = Field(..., description="Count by status")
+    by_type: Dict[str, int] = Field(..., description="Count by type")
+
+    # Performance metrics
+    average_processing_time_hours: float = Field(..., description="Average processing time in hours")
+    completion_rate: float = Field(..., ge=0, le=100, description="Completion rate percentage")
+
+    # Financial metrics
+    total_tax_collected: Decimal = Field(..., description="Total tax collected (net_tax_due sum)")
+    pending_tax: Decimal = Field(..., description="Pending tax amount (draft + submitted)")
+
+    # Time-based metrics
+    declarations_this_month: int = Field(..., description="Declarations this month")
+    declarations_this_week: int = Field(..., description="Declarations this week")
+
+    # Popular types (top 5)
+    popular_types: List[Dict[str, Any]] = Field(..., description="Most used declaration types")
+
+
+# ========== BULK OPERATIONS ==========
+
+class BulkDeclarationOperation(BaseModel):
+    """
+    Model for bulk declaration operations
+    Used for batch updates, approvals, etc.
+    """
+    declaration_ids: List[str] = Field(..., min_length=1, max_length=50, description="Declaration UUIDs (max 50)")
+    operation: str = Field(..., description="Operation to perform: approve, reject, assign, etc.")
+    parameters: Optional[Dict[str, Any]] = Field(None, description="Operation parameters")
+    notes: Optional[str] = Field(None, max_length=500, description="Operation notes")
+
+
+# ========== ACTIVITY TRACKING ==========
+
+class DeclarationActivity(BaseModel):
+    """
+    Model for declaration activity tracking
+    Used for audit trail and history
+    """
+    declaration_id: str = Field(..., description="Declaration UUID")
+    user_id: str = Field(..., description="User performing action UUID")
+    action: str = Field(..., description="Action performed: created, updated, submitted, approved, rejected, etc.")
+    details: Optional[Dict[str, Any]] = Field(None, description="Action details (before/after values)")
+    timestamp: datetime = Field(default_factory=datetime.utcnow, description="Activity timestamp")
+    ip_address: Optional[str] = Field(None, description="User IP address")
+    user_agent: Optional[str] = Field(None, description="User agent")
+
+
+# ========== NOTIFICATIONS ==========
+
+class DeclarationNotification(BaseModel):
+    """
+    Model for declaration notifications
+    Used for sending notifications to users
+    """
+    declaration_id: str = Field(..., description="Declaration UUID")
+    recipient_id: str = Field(..., description="Recipient user UUID")
+    notification_type: str = Field(..., description="Notification type: status_change, deadline_reminder, etc.")
+    title: str = Field(..., max_length=200, description="Notification title")
+    message: str = Field(..., max_length=1000, description="Notification message")
+    channels: List[str] = Field(..., description="Notification channels: email, sms, push")
+    sent_at: Optional[datetime] = Field(None, description="Send timestamp")
+    read_at: Optional[datetime] = Field(None, description="Read timestamp")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
