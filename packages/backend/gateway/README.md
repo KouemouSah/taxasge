@@ -2,7 +2,7 @@
 
 ## 🎯 **Vue d'Ensemble**
 
-Le **TaxasGE API Gateway** est le point d'entrée centralisé pour toutes les API de la plateforme fiscale de Guinée Équatoriale. Il gère **8507 services fiscaux**, les **endpoints admin complets**, l'**authentification**, le **rate limiting**, le **monitoring** et la **sécurité**.
+Le **TaxasGE API Gateway** est le point d'entrée centralisé pour toutes les API de la plateforme fiscale de Guinée Équatoriale. Il gère **850 services fiscaux**, les **endpoints admin complets**, l'**authentification**, le **rate limiting**, le **monitoring** et la **sécurité**.
 
 ### ✨ **Fonctionnalités Principales**
 
