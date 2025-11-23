@@ -20,7 +20,8 @@
       "Bash(cat:*)",
       "Bash(test:*)",
       "Bash(cmp:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(git revert:*)"
     ],
     "deny": [],
     "ask": []
