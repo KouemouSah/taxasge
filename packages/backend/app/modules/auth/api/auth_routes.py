@@ -14,7 +14,7 @@ from loguru import logger
 
 from app.modules.auth.services.auth_service import get_auth_service
 from app.modules.auth.services.session_service import get_session_service
-from app.models.user import (
+from app.modules.users.models.user import (
     UserCreate,
     UserResponse,
     UserProfile,

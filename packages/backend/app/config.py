@@ -180,9 +180,9 @@ class Settings(BaseSettings):
     # ========================================================================
 
     # TensorFlow Lite Model (Legacy - deprecated)
-    AI_MODEL_PATH: str = Field(default="assets/ml/taxasge_model.tflite", env="AI_MODEL_PATH")
-    AI_TOKENIZER_PATH: str = Field(default="assets/ml/tokenizer.json", env="AI_TOKENIZER_PATH")
-    AI_INTENTS_PATH: str = Field(default="assets/ml/intents.json", env="AI_INTENTS_PATH")
+    #AI_MODEL_PATH: str = Field(default="assets/ml/taxasge_model.tflite", env="AI_MODEL_PATH")
+    #AI_TOKENIZER_PATH: str = Field(default="assets/ml/tokenizer.json", env="AI_TOKENIZER_PATH")
+    #AI_INTENTS_PATH: str = Field(default="assets/ml/intents.json", env="AI_INTENTS_PATH")
 
     # AI Configuration
     AI_MAX_TOKENS: int = Field(default=512, env="AI_MAX_TOKENS")

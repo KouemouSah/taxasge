@@ -8,7 +8,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional
 from loguru import logger
 
-from app.models.user import UserResponse
+from app.modules.users.models.user import UserResponse
 from app.repositories.user_repository import UserRepository
 from app.modules.auth.services.auth_service import AuthService, get_auth_service
 

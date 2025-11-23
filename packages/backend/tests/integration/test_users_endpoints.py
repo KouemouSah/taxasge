@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 from datetime import datetime
 
-from app.models.user import UserResponse, UserRole, UserStatus
+from app.modules.users.models.user import UserResponse, UserRole, UserStatus
 from app.services.password_service import PasswordService
 
 

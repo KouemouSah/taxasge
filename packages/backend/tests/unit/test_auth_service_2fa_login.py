@@ -18,7 +18,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pyotp
 
 from app.services.auth_service import AuthService
-from app.models.user import UserRole, UserStatus
+from app.modules.users.models.user import UserRole, UserStatus
 
 
 @pytest.fixture

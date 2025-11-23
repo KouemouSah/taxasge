@@ -10,7 +10,7 @@ from datetime import datetime
 from loguru import logger
 
 security = HTTPBearer()
-from app.models.user import (
+from app.modules.users.models.user import (
     UserCreate, UserUpdate, UserResponse, UserListResponse,
     UserSearchFilter, UserStats, PasswordChange, UserActivity,
     UserRole, UserStatus

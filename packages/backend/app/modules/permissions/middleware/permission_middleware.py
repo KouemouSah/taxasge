@@ -6,7 +6,7 @@ from typing import Callable, Optional
 from fastapi import HTTPException, status, Depends
 
 from app.modules.auth.middleware.auth_middleware import get_current_user
-from app.models.user import UserResponse
+from app.modules.users.models.user import UserResponse
 from app.modules.permissions.services.permission_service import PermissionService, get_permission_service
 
 

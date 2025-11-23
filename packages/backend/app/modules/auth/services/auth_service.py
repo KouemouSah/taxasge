@@ -13,7 +13,7 @@ from app.repositories.refresh_token_repository import RefreshTokenRepository
 from app.modules.auth.services.password_service import get_password_service
 from app.modules.auth.services.jwt_service import get_jwt_service
 from app.modules.communications.services.email_service import EmailService
-from app.models.user import UserCreate, UserResponse, UserRole, UserStatus
+from app.modules.users.models.user import UserCreate, UserResponse, UserRole, UserStatus
 from app.modules.auth.models.auth_models import (
     SessionCreate,
     RefreshTokenCreate,

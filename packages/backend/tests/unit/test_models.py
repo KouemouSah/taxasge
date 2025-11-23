@@ -9,7 +9,7 @@ COVERAGE:
 
 import pytest
 from pydantic import ValidationError
-from app.models.user import PasswordChange, UserUpdate
+from app.modules.users.models.user import PasswordChange, UserUpdate
 
 
 class TestPasswordChangeModel:
