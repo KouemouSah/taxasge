@@ -129,9 +129,38 @@ export interface ServiceKeyword extends BaseEntity {
   relevance_score: number;
 }
 
+// === HOMEPAGE ===
+
+export interface HomepageStats {
+  total_services: number;
+  total_ministries: number;
+  total_categories: number;
+  total_sectors: number;
+  last_updated: string;
+}
+
+export interface CategoryWithServices {
+  id: number;
+  category_code: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+  service_count: number;
+  ministry_name?: string;
+  sector_name?: string;
+}
+
+export interface CategoryDirectory {
+  total_categories: number;
+  total_services: number;
+  categories: CategoryWithServices[];
+  last_updated: string;
+}
+
 // === UTILISATEURS ===
 
-export type UserRole = 'citizen' | 'business' | 'admin' | 'super_admin';
+export type UserRole = 'citizen' | 'business' | 'dgi_agent' | 'admin' | 'super_admin';
 export type UserStatus = 'active' | 'inactive' | 'suspended' | 'pending_verification';
 
 export interface User extends BaseEntity {
@@ -271,4 +300,303 @@ export interface ValidationError {
   message: string;
   code: string;
   value?: any;
+}
+
+// === DOCUMENTS ===
+
+export type DocumentProcessingMode = 'server_processing' | 'lite_mode' | 'cloud_vision';
+export type DocumentOCRStatus = 'pending' | 'processing' | 'completed' | 'failed';
+export type DocumentExtractionStatus = 'pending' | 'processing' | 'completed' | 'failed';
+export type DocumentValidationStatus = 'pending' | 'validated' | 'rejected';
+export type DocumentAccessLevel = 'private' | 'shared' | 'public';
+
+export type DocumentType =
+  | 'declaration_iva'
+  | 'declaration_retencion'
+  | 'declaration_cuota_minima'
+  | 'declaration_productos_petroleros'
+  | 'declaration_sueldos'
+  | 'declaration_otros'
+  | 'invoice'
+  | 'receipt'
+  | 'contract'
+  | 'legal_document'
+  | 'identity_document'
+  | 'tax_certificate'
+  | 'other';
+
+export interface Document extends BaseEntity {
+  user_id: string;
+  file_name: string;
+  file_url: string;
+  file_size: number;
+  mime_type: string;
+  document_type?: DocumentType;
+  document_subtype?: string;
+  processing_mode: DocumentProcessingMode;
+  ocr_status: DocumentOCRStatus;
+  extraction_status: DocumentExtractionStatus;
+  validation_status: DocumentValidationStatus;
+  access_level: DocumentAccessLevel;
+  ocr_text?: string;
+  extracted_data?: Record<string, any>;
+  validation_errors?: string[];
+  metadata?: Record<string, any>;
+}
+
+export interface OCRResult {
+  document_id: string;
+  text: string;
+  confidence: number;
+  language: string;
+  processing_time_ms: number;
+}
+
+export interface ExtractionResult {
+  document_id: string;
+  extracted_fields: Record<string, any>;
+  confidence_scores: Record<string, number>;
+  validation_status: DocumentValidationStatus;
+}
+
+// === DECLARATIONS ===
+
+export type DeclarationStatus =
+  | 'draft'
+  | 'submitted'
+  | 'under_review'
+  | 'approved'
+  | 'rejected'
+  | 'paid'
+  | 'completed';
+
+export type DeclarationType =
+  | 'iva_destajo'
+  | 'iva_real'
+  | 'retencion_3pct'
+  | 'retencion_5pct'
+  | 'retencion_10pct'
+  | 'cuota_minima'
+  | 'productos_petroleros'
+  | 'sueldos_salarios'
+  | 'otros';
+
+export interface Declaration extends BaseEntity {
+  user_id: string;
+  company_id?: string;
+  declaration_type: DeclarationType;
+  fiscal_period_start: string;
+  fiscal_period_end: string;
+  status: DeclarationStatus;
+  total_amount: number;
+  currency: string;
+  submitted_at?: string;
+  reviewed_at?: string;
+  reviewed_by?: string;
+  payment_id?: string;
+  documents: string[];
+  metadata?: Record<string, any>;
+}
+
+// === COMPANIES ===
+
+export type CompanyType = 'individual' | 'sme' | 'large_enterprise' | 'public_sector';
+export type CompanyStatus = 'active' | 'inactive' | 'suspended';
+
+export interface Company extends BaseEntity {
+  name: string;
+  tax_id: string;
+  company_type: CompanyType;
+  status: CompanyStatus;
+  registration_date: string;
+  address: string;
+  city: string;
+  country: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  owner_user_id: string;
+  employee_count?: number;
+  annual_revenue?: number;
+}
+
+// === AGENTS DGI ===
+
+export type AgentRole = 'agent' | 'supervisor' | 'manager' | 'director';
+export type AgentStatus = 'active' | 'inactive' | 'on_leave';
+
+export interface Agent extends BaseEntity {
+  user_id: string;
+  agent_code: string;
+  role: AgentRole;
+  status: AgentStatus;
+  department?: string;
+  hire_date: string;
+  supervisor_id?: string;
+  permissions: string[];
+}
+
+// === PAYMENTS ===
+
+export type PaymentStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled' | 'refunded';
+export type PaymentMethod = 'bange_mobile' | 'card' | 'bank_transfer' | 'cash';
+
+export interface Payment extends BaseEntity {
+  user_id: string;
+  declaration_id?: string;
+  service_id?: string;
+  amount: number;
+  currency: string;
+  status: PaymentStatus;
+  payment_method: PaymentMethod;
+  transaction_id?: string;
+  bange_reference?: string;
+  receipt_url?: string;
+  paid_at?: string;
+  metadata?: Record<string, any>;
+}
+
+// === PERMISSIONS (RBAC) ===
+
+export interface Permission extends BaseEntity {
+  name: string;
+  description: string;
+  module: string;
+  resource: string;
+  action: string;
+  is_system: boolean;
+}
+
+export interface Role extends BaseEntity {
+  name: string;
+  description: string;
+  is_system: boolean;
+  permissions: Permission[];
+}
+
+export interface UserPermission {
+  user_id: string;
+  role_id?: string;
+  permission_id?: string;
+  granted_at: string;
+  granted_by: string;
+}
+
+// === ASSIGNMENTS ===
+
+export type AssignmentStatus = 'active' | 'inactive' | 'pending';
+
+export interface Assignment extends BaseEntity {
+  user_id: string;
+  assignee_id: string;
+  assignment_type: string;
+  status: AssignmentStatus;
+  assigned_at: string;
+  assigned_by: string;
+  metadata?: Record<string, any>;
+}
+
+export interface Supervisor extends BaseEntity {
+  user_id: string;
+  supervisor_id: string;
+  department?: string;
+  level: number;
+}
+
+// === CHATBOT / AI ===
+
+export interface ChatMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: string;
+}
+
+export interface ChatHistory {
+  session_id: string;
+  user_id: string;
+  messages: ChatMessage[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AIResponse {
+  response: string;
+  confidence: number;
+  sources?: string[];
+  related_services?: FiscalService[];
+  suggestions?: string[];
+}
+
+// === COMMUNICATIONS ===
+
+export type CommunicationType = 'email' | 'sms' | 'push_notification';
+export type CommunicationStatus = 'pending' | 'sent' | 'delivered' | 'failed';
+
+export interface Communication extends BaseEntity {
+  user_id: string;
+  type: CommunicationType;
+  subject?: string;
+  content: string;
+  status: CommunicationStatus;
+  sent_at?: string;
+  delivered_at?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface EmailTemplate {
+  id: string;
+  name: string;
+  subject: string;
+  html_content: string;
+  text_content: string;
+  variables: string[];
+}
+
+// === TRANSLATIONS ===
+
+export type TranslationEntity =
+  | 'fiscal_service'
+  | 'ministry'
+  | 'sector'
+  | 'category'
+  | 'document_type'
+  | 'enum'
+  | 'ui'
+  | 'form'
+  | 'message'
+  | 'email_template';
+
+export interface Translation {
+  entity_type: TranslationEntity;
+  entity_id: string;
+  field_name: string;
+  language: 'es' | 'fr' | 'en';
+  translation: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// === WEBHOOKS ===
+
+export type WebhookEventType =
+  | 'payment.completed'
+  | 'payment.failed'
+  | 'payment.cancelled'
+  | 'declaration.submitted'
+  | 'document.processed';
+
+export interface WebhookPayload {
+  event_type: WebhookEventType;
+  timestamp: string;
+  data: Record<string, any>;
+  signature?: string;
+}
+
+export interface PaymentWebhook {
+  transaction_id: string;
+  status: PaymentStatus;
+  amount: number;
+  currency: string;
+  reference: string;
+  timestamp: string;
 }
