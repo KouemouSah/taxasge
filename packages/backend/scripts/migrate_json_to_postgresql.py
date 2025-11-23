@@ -19,10 +19,12 @@ sys.path.insert(0, str(backend_path))
 
 from app.core.database import database_manager
 from app.services.translation_service import translation_service
-from app.models.tax import (
-    ServiceTypeEnum, CalculationMethodEnum, Ministry, Sector, Category,
-    Subcategory, FiscalService, RequiredDocument, Procedure, Keyword
-)
+# FIXME: Legacy imports - models moved to modules architecture
+# from app.models.tax import (
+#     ServiceTypeEnum, CalculationMethodEnum, Ministry, Sector, Category,
+#     Subcategory, FiscalService, RequiredDocument, Procedure, Keyword
+# )
+# TODO: Update to use app.modules.fiscal_services.models.* if this script is still needed
 
 
 class TaxasGEMigrator:

@@ -9,7 +9,29 @@ from datetime import datetime
 from loguru import logger
 
 from app.core.database import database_manager
-from app.models.tax import Translation
+# FIXME: Legacy import - Translation model moved to app.modules.translations.models.translation
+# from app.models.tax import Translation
+from dataclasses import dataclass
+from datetime import datetime as dt
+
+
+@dataclass
+class Translation:
+    """Temporary dataclass for legacy translation_service.py compatibility"""
+    id: any
+    entity_type: str
+    entity_id: any
+    field_name: str
+    language_code: str
+    content: str
+    created_at: dt = None
+    updated_at: dt = None
+
+    def __post_init__(self):
+        if self.created_at is None:
+            self.created_at = dt.utcnow()
+        if self.updated_at is None:
+            self.updated_at = dt.utcnow()
 
 
 class TranslationService:

@@ -94,7 +94,7 @@ def mock_user_data():
     """
     from uuid import uuid4
     from datetime import datetime
-    from app.models.user import UserRole, UserStatus
+    from app.modules.users.models.user import UserRole, UserStatus
 
     return {
         "id": str(uuid4()),
