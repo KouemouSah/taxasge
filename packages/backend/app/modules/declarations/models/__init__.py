@@ -18,6 +18,16 @@ from app.modules.declarations.models.declaration import (
     DeclarationType,
     WorkflowStage,
     DeclarationWorkflowStatus,
+    # Search and filtering
+    DeclarationSearchFilter,
+    # Statistics
+    DeclarationStats,
+    # Bulk operations
+    BulkDeclarationOperation,
+    # Activity tracking
+    DeclarationActivity,
+    # Notifications
+    DeclarationNotification,
 )
 
 from app.modules.declarations.models.fiscal_service_declaration import (
@@ -51,6 +61,21 @@ __all__ = [
     "DeclarationType",
     "WorkflowStage",
     "DeclarationWorkflowStatus",
+
+    # Search and filtering
+    "DeclarationSearchFilter",
+
+    # Statistics and metrics
+    "DeclarationStats",
+
+    # Bulk operations
+    "BulkDeclarationOperation",
+
+    # Activity tracking and audit
+    "DeclarationActivity",
+
+    # Notifications
+    "DeclarationNotification",
 
     # Fiscal Service Declarations (Nota de Ingreso)
     "FiscalServiceDataBase",
