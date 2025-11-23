@@ -364,38 +364,69 @@ export interface ExtractionResult {
 export type DeclarationStatus =
   | 'draft'
   | 'submitted'
-  | 'under_review'
-  | 'approved'
+  | 'processing'
+  | 'accepted'
   | 'rejected'
-  | 'paid'
-  | 'completed';
+  | 'amended';
 
 export type DeclarationType =
+  // IVA (90% volume)
   | 'iva_destajo'
   | 'iva_real'
+  // IRPF (5% volume)
+  | 'income_tax'
+  | 'corporate_tax'
+  // Pétrolifères (4% volume, gros montants)
+  | 'retencion_3pct_petrolero'
+  | 'retencion_5pct_petrolero'
+  | 'retencion_10pct_petrolero'
+  | 'petroleo_gas'
+  | 'petroleo_diesel'
+  | 'petroleo_essence'
+  // Retenciones (1% volume)
   | 'retencion_3pct'
   | 'retencion_5pct'
   | 'retencion_10pct'
-  | 'cuota_minima'
-  | 'productos_petroleros'
-  | 'sueldos_salarios'
-  | 'otros';
+  // Autres types (<1% volume)
+  | 'vat_declaration'
+  | 'sales_tax'
+  | 'property_tax'
+  | 'payroll_tax'
+  | 'excise_tax'
+  | 'customs_declaration'
+  | 'special_tax'
+  | 'quarterly_return'
+  | 'annual_return'
+  | 'amended_return'
+  | 'estimated_tax'
+  | 'withholding_tax'
+  | 'capital_gains'
+  | 'inheritance_tax';
 
 export interface Declaration extends BaseEntity {
   user_id: string;
   company_id?: string;
   declaration_type: DeclarationType;
-  fiscal_period_start: string;
-  fiscal_period_end: string;
+  fiscal_year: number;
+  fiscal_period?: string;
+  declaration_deadline: string;
   status: DeclarationStatus;
-  total_amount: number;
-  currency: string;
+  taxable_base?: number;
+  calculated_tax?: number;
+  deductions?: number;
+  credits?: number;
+  net_tax_due?: number;
+  declared_data: Record<string, any>;
+  supporting_documents?: string[];
+  taxpayer_notes?: string;
+  processor_notes?: string;
+  rejection_reason?: string;
+  digital_signature?: string;
+  declaration_nature?: string; // 'original', 'rectificative', 'complementaire', 'annulation'
+  original_declaration_id?: string;
   submitted_at?: string;
-  reviewed_at?: string;
-  reviewed_by?: string;
-  payment_id?: string;
-  documents: string[];
-  metadata?: Record<string, any>;
+  processed_at?: string;
+  processed_by?: string;
 }
 
 // === COMPANIES ===
@@ -422,18 +453,30 @@ export interface Company extends BaseEntity {
 
 // === AGENTS DGI ===
 
-export type AgentRole = 'agent' | 'supervisor' | 'manager' | 'director';
-export type AgentStatus = 'active' | 'inactive' | 'on_leave';
+export type AgentAvailability =
+  | 'available'
+  | 'on_leave'
+  | 'sick_leave'
+  | 'training'
+  | 'mission'
+  | 'temporarily_unavailable';
 
 export interface Agent extends BaseEntity {
   user_id: string;
-  agent_code: string;
-  role: AgentRole;
-  status: AgentStatus;
-  department?: string;
-  hire_date: string;
-  supervisor_id?: string;
-  permissions: string[];
+  ministry_id: number;
+  agent_role: string; // Free text, not enum (e.g., "revisor", "analista", "supervisor")
+  can_approve_unlimited: boolean;
+  max_approval_amount?: number;
+  can_escalate: boolean;
+  can_assign_tasks: boolean;
+  is_active: boolean;
+  is_backup_agent: boolean;
+  backup_for_agent_id?: string;
+  working_hours_start?: string;
+  working_hours_end?: string;
+  working_days?: string[];
+  assigned_at: string;
+  assigned_by?: string;
 }
 
 // === PAYMENTS ===
@@ -484,23 +527,51 @@ export interface UserPermission {
 
 // === ASSIGNMENTS ===
 
-export type AssignmentStatus = 'active' | 'inactive' | 'pending';
+export type AssignmentStatus =
+  | 'assigned'
+  | 'in_progress'
+  | 'pending_review'
+  | 'completed'
+  | 'reassigned'
+  | 'cancelled'
+  | 'rejected';
+
+export type AssignmentMethod = 'auto' | 'manual' | 'self_assigned' | 'escalated';
+
+export type ReassignmentReason =
+  | 'workload_imbalance'
+  | 'agent_unavailable'
+  | 'specialization_mismatch'
+  | 'quality_issue'
+  | 'deadline_missed'
+  | 'agent_request'
+  | 'supervisor_decision'
+  | 'complexity_change';
 
 export interface Assignment extends BaseEntity {
-  user_id: string;
-  assignee_id: string;
-  assignment_type: string;
+  declaration_id: string;
+  declaration_type: string;
+  agent_id: string;
+  assigned_by?: string;
+  assignment_method: AssignmentMethod;
   status: AssignmentStatus;
+  notes?: string;
+  auto_assignment_score?: number;
+  score_breakdown?: Record<string, any>;
+  rule_applied_id?: string;
+  deadline?: string;
+  priority_level?: string;
   assigned_at: string;
-  assigned_by: string;
-  metadata?: Record<string, any>;
-}
-
-export interface Supervisor extends BaseEntity {
-  user_id: string;
-  supervisor_id: string;
-  department?: string;
-  level: number;
+  started_at?: string;
+  completed_at?: string;
+  processing_duration_hours?: number;
+  deadline_met?: boolean;
+  reassigned_to?: string;
+  reassigned_at?: string;
+  reassignment_reason?: ReassignmentReason;
+  reassignment_notes?: string;
+  validation_status?: string;
+  quality_score?: number;
 }
 
 // === CHATBOT / AI ===
