@@ -16,7 +16,7 @@ from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 import pyotp
 
-from app.services.two_factor_service import TwoFactorService
+from app.modules.auth.services.two_factor_service import TwoFactorService
 
 
 @pytest.fixture

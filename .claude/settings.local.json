@@ -19,7 +19,8 @@
       "Bash(python:*)",
       "Bash(cat:*)",
       "Bash(test:*)",
-      "Bash(cmp:*)"
+      "Bash(cmp:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []
