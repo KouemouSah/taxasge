@@ -21,7 +21,10 @@
       "Bash(test:*)",
       "Bash(cmp:*)",
       "Bash(find:*)",
-      "Bash(git revert:*)"
+      "Bash(git revert:*)",
+      "Bash(Get-FileHash \"C:\\taxasge\\packages\\backend\\app\\modules\\documents\\api\\document_routes.py\")",
+      "Bash(Select-Object Hash)",
+      "Bash(md5sum:*)"
     ],
     "deny": [],
     "ask": []

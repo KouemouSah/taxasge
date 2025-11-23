@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from loguru import logger
 
 from app.modules.documents.templates import DECLARATIONS_DIR, FISCAL_SERVICES_DIR
-from app.services.firebase_storage_service import firebase_storage_service
+from app.modules.documents.services.storage_service import firebase_storage_service
 
 
 @dataclass

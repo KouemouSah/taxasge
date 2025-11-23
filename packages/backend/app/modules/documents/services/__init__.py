@@ -22,8 +22,26 @@ Services:
 Project: taxasge-dev (dev), taxasge-pro (prod)
 """
 
-from app.modules.documents.services.ocr_service import OCRService
+from app.modules.documents.services.ocr_service import (
+    OCRService, OCRResult, OCRConfig, ocr_service
+)
 from app.modules.documents.services.document_service import DocumentService
-from app.modules.documents.services.storage_service import StorageService
+from app.modules.documents.services.storage_service import (
+    FirebaseStorageService, UploadResult, DownloadResult, StorageConfig,
+    firebase_storage_service, get_taxasge_folder_info
+)
+from app.modules.documents.services.extraction_service import (
+    ExtractionService, ExtractionResult, extraction_service
+)
 
-__all__ = ["OCRService", "DocumentService", "StorageService"]
+__all__ = [
+    # OCR Service (REAL implementation)
+    "OCRService", "OCRResult", "OCRConfig", "ocr_service",
+    # Document Service
+    "DocumentService",
+    # Storage Service (REAL implementation)
+    "FirebaseStorageService", "UploadResult", "DownloadResult", "StorageConfig",
+    "firebase_storage_service", "get_taxasge_folder_info",
+    # Extraction Service (REAL implementation)
+    "ExtractionService", "ExtractionResult", "extraction_service"
+]

@@ -22,8 +22,8 @@ from app.modules.documents.models.document import (
 )
 from app.modules.documents.extractors import TemplateBasedExtractor, DeclarationDatabaseMapper
 from app.modules.documents.extractors.template_loader import template_loader
-from app.services.ocr_service import ocr_service
-from app.services.firebase_storage_service import firebase_storage_service
+from app.modules.documents.services.ocr_service import ocr_service
+from app.modules.documents.services.storage_service import firebase_storage_service
 
 
 class DocumentRepository(BaseRepository[Document]):
