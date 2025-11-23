@@ -18,17 +18,10 @@ from app.modules.homepage.services import HomepageService
 # ============================================================================
 
 async def get_db(request: Request) -> asyncpg.Connection:
-    """Get database connection from global pool in main.py"""
-    from main import db_pool
-
-    if db_pool is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database connection not available"
-        )
-
-    async with db_pool.acquire() as connection:
-        yield connection
+    """Get database connection from centralized connection pool"""
+    from app.database.connection import get_database
+    async for conn in get_database():
+        yield conn
 
 
 async def get_redis_optional(request: Request) -> Optional[redis.Redis]:

@@ -40,23 +40,18 @@ settings = Settings()
 security = HTTPBearer()
 
 # Global connections
-db_pool = None
+from app.database.connection import db_manager  # Use centralized DB manager
 redis_client = None
 
 # Lifespan management for FastAPI
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    global db_pool, redis_client
+    global redis_client
 
     try:
-        # Initialize database connection pool
-        db_pool = await asyncpg.create_pool(
-            settings.database_url,
-            min_size=10,
-            max_size=50,
-            command_timeout=60
-        )
+        # Initialize database connection pool (using centralized db_manager)
+        await db_manager.connect()
         logger.info("✅ Database connection pool initialized")
 
         # Initialize permissions system (RBAC)
@@ -71,7 +66,7 @@ async def lifespan(app: FastAPI):
             register_declarations_permissions()
 
             # Sync to database
-            async with db_pool.acquire() as conn:
+            async with db_manager.get_connection() as conn:
                 sync_result = await initialize_permissions(conn)
                 logger.info(
                     f"✅ Permissions initialized: {sync_result['created_count']} new, "
@@ -106,9 +101,8 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     try:
-        if db_pool:
-            await db_pool.close()
-            logger.info("🔄 Database pool closed")
+        await db_manager.disconnect()
+        logger.info("🔄 Database pool closed")
         if redis_client:
             await redis_client.close()
             logger.info("🔄 Redis connection closed")
@@ -164,12 +158,12 @@ except ImportError as e:
 
 # Dependency to get database connection
 async def get_db():
-    if db_pool is None:
+    if db_manager.pool is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Database connection not available"
         )
-    async with db_pool.acquire() as connection:
+    async with db_manager.pool.acquire() as connection:
         yield connection
 
 # Dependency to get Redis connection

@@ -16,7 +16,9 @@
       "Bash(git stash:*)",
       "Bash(git rm:*)",
       "Bash(gcloud auth:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(cat:*)",
+      "Bash(test:*)"
     ],
     "deny": [],
     "ask": []

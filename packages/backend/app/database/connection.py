@@ -46,9 +46,9 @@ class DatabaseManager:
 
                 self.pool = await asyncpg.create_pool(
                     connection_string,
-                    min_size=settings.DATABASE_MIN_CONNECTIONS,
-                    max_size=settings.DATABASE_MAX_CONNECTIONS,
-                    command_timeout=30,  # Reduced from 60s for faster failure detection
+                    min_size=10,  # Aligned with main.py
+                    max_size=50,  # Aligned with main.py
+                    command_timeout=60,  # Aligned with main.py (was 30s)
                     max_queries=50000,  # Recycle connections after 50k queries
                     max_inactive_connection_lifetime=300,  # Close idle connections after 5min
                     server_settings={
