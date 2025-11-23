@@ -76,18 +76,22 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning(f"⚠️ Failed to initialize permissions (non-blocking): {e}")
 
-        # Initialize Redis connection (optional in staging)
-        if settings.environment != "staging":
-            redis_client = redis.from_url(
-                settings.redis_url,
-                decode_responses=True,
-                socket_connect_timeout=5,
-                socket_timeout=5
-            )
-            await redis_client.ping()
-            logger.info("✅ Redis connection initialized")
+        # Initialize Redis connection (optional - graceful fallback if unavailable)
+        if settings.redis_url and settings.redis_url != "redis://localhost:6379":
+            try:
+                redis_client = redis.from_url(
+                    settings.redis_url,
+                    decode_responses=True,
+                    socket_connect_timeout=5,
+                    socket_timeout=5
+                )
+                await redis_client.ping()
+                logger.info("✅ Redis connection initialized (caching enabled)")
+            except Exception as redis_error:
+                logger.warning(f"⚠️ Redis unavailable (continuing without cache): {redis_error}")
+                redis_client = None
         else:
-            logger.warning("⚠️ Redis disabled for staging environment")
+            logger.info("ℹ️ Redis not configured (caching disabled - direct DB queries)")
 
     except Exception as e:
         logger.error(f"❌ Failed to initialize connections: {e}")

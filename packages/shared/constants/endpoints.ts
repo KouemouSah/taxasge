@@ -6,7 +6,7 @@
 // === CONFIGURATION BASE ===
 
 export const API_CONFIG = {
-  BASE_URL: process.env.API_BASE_URL || 'https://taxasge-dev.firebase.com',
+  BASE_URL: process.env.API_BASE_URL || 'https://taxasge-dev.web.app',
   VERSION: 'v1',
   TIMEOUT: 30000, // 30 seconds
   RETRY_ATTEMPTS: 3,
@@ -83,6 +83,13 @@ export const PUBLIC_ENDPOINTS = {
     DETAIL: (id: string) => `/api/v1/public/categories/${id}`,
     BY_SECTOR: (sectorId: string) => `/api/v1/public/categories/sector/${sectorId}`,
     SERVICES: (id: string) => `/api/v1/public/categories/${id}/services`,
+  },
+
+  // Homepage (Module: app/modules/homepage)
+  HOMEPAGE: {
+    INFO: '/api/v1/homepage',
+    STATS: '/api/v1/homepage/stats',
+    CATEGORIES: '/api/v1/homepage/categories',
   },
 
   // Utilitaires
@@ -230,93 +237,84 @@ export const AUTHENTICATED_ENDPOINTS = {
     SEARCH: '/api/v1/documents/search',
     STATS: '/api/v1/documents/stats',
   },
+
+  // Declarations (Module: app/modules/declarations)
+  DECLARATIONS: {
+    LIST: '/api/v1/declarations',
+    CREATE: '/api/v1/declarations',
+    DETAIL: (id: string) => `/api/v1/declarations/${id}`,
+    UPDATE: (id: string) => `/api/v1/declarations/${id}`,
+    DELETE: (id: string) => `/api/v1/declarations/${id}`,
+    SUBMIT: (id: string) => `/api/v1/declarations/${id}/submit`,
+    VALIDATE: (id: string) => `/api/v1/declarations/${id}/validate`,
+    STATS: '/api/v1/declarations/stats',
+  },
+
+  // Companies (Module: app/modules/companies)
+  COMPANIES: {
+    LIST: '/api/v1/companies',
+    CREATE: '/api/v1/companies',
+    DETAIL: (id: string) => `/api/v1/companies/${id}`,
+    UPDATE: (id: string) => `/api/v1/companies/${id}`,
+    DELETE: (id: string) => `/api/v1/companies/${id}`,
+    SEARCH: '/api/v1/companies/search',
+    STATS: '/api/v1/companies/stats',
+  },
+
+  // Agents DGI (Module: app/modules/agents)
+  AGENTS: {
+    LIST: '/api/v1/agents',
+    CREATE: '/api/v1/agents',
+    DETAIL: (id: string) => `/api/v1/agents/${id}`,
+    UPDATE: (id: string) => `/api/v1/agents/${id}`,
+    DELETE: (id: string) => `/api/v1/agents/${id}`,
+    STATS: '/api/v1/agents/stats',
+  },
+
+  // AI Chatbot (Module: app/modules/chatbot)
+  CHATBOT: {
+    CHAT: '/api/v1/ai/chat',
+    HISTORY: '/api/v1/ai/history',
+    CLEAR_HISTORY: '/api/v1/ai/history/clear',
+  },
+
+  // Communications (Module: app/modules/communications)
+  COMMUNICATIONS: {
+    SEND_EMAIL: '/api/v1/communications/email',
+    SEND_SMS: '/api/v1/communications/sms',
+    SEND_PUSH: '/api/v1/communications/push',
+    TEMPLATES: '/api/v1/communications/templates',
+  },
+
+  // Translations (Module: app/modules/translations)
+  TRANSLATIONS: {
+    LIST: '/api/v1/translations',
+    BY_LANGUAGE: (language: string) => `/api/v1/translations/${language}`,
+    UPDATE: '/api/v1/translations',
+    SYNC: '/api/v1/translations/sync',
+  },
+
+  // Webhooks (Module: app/modules/webhooks)
+  WEBHOOKS: {
+    BANGE_PAYMENT: '/api/v1/webhooks/bange/payment',
+    BANGE_STATUS: '/api/v1/webhooks/bange/status',
+  },
 } as const;
 
-// === ENDPOINTS ADMIN ===
+// === ENDPOINTS ADMIN API (REST) ===
+// Note: Admin dashboard HTML (backend/admin/) was archived as incomplete POC
+// Only REST API endpoints from app/modules/admin/ are documented here
 
-export const ADMIN_ENDPOINTS = {
-  // Dashboard admin (intégré)
-  DASHBOARD: '/admin',
-  LOGIN: '/admin/login',
-  LOGOUT: '/admin/logout',
-
-  // Gestion services fiscaux
-  FISCAL_SERVICES: {
-    LIST: '/admin/fiscal-services',
-    CREATE: '/admin/fiscal-services/create',
-    DETAIL: (id: string) => `/admin/fiscal-services/${id}`,
-    EDIT: (id: string) => `/admin/fiscal-services/${id}/edit`,
-    DELETE: (id: string) => `/admin/fiscal-services/${id}/delete`,
-    BULK_UPDATE: '/admin/fiscal-services/bulk-update',
-    EXPORT: '/admin/fiscal-services/export',
-    IMPORT: '/admin/fiscal-services/import',
-  },
-
-  // Gestion utilisateurs
-  USERS: {
-    LIST: '/admin/users',
-    CREATE: '/admin/users/create',
-    DETAIL: (id: string) => `/admin/users/${id}`,
-    EDIT: (id: string) => `/admin/users/${id}/edit`,
-    SUSPEND: (id: string) => `/admin/users/${id}/suspend`,
-    ACTIVATE: (id: string) => `/admin/users/${id}/activate`,
-    DELETE: (id: string) => `/admin/users/${id}/delete`,
-    EXPORT: '/admin/users/export',
-  },
-
-  // Analytics et rapports
-  ANALYTICS: {
-    OVERVIEW: '/admin/analytics',
-    SERVICES: '/admin/analytics/services',
-    USERS: '/admin/analytics/users',
-    REVENUE: '/admin/analytics/revenue',
-    REPORTS: '/admin/analytics/reports',
-    EXPORT: '/admin/analytics/export',
-  },
-
-  // Configuration système
-  SETTINGS: {
-    GENERAL: '/admin/settings',
-    SECURITY: '/admin/settings/security',
-    EMAIL: '/admin/settings/email',
-    PAYMENTS: '/admin/settings/payments',
-    INTEGRATIONS: '/admin/settings/integrations',
-    BACKUP: '/admin/settings/backup',
-  },
-
-  // API pour AJAX
-  API: {
-    SECTORS_BY_MINISTRY: (ministryId: string) => `/admin/fiscal-services/api/sectors/${ministryId}`,
-    CATEGORIES_BY_SECTOR: (sectorId: string) => `/admin/fiscal-services/api/categories/${sectorId}`,
-    VALIDATE_SERVICE_CODE: '/admin/fiscal-services/api/validate-code',
-    SEARCH_USERS: '/admin/users/api/search',
-    USAGE_STATS: '/admin/analytics/api/usage-stats',
-  },
-
-  // Diagnostics et Migrations (Module: app/modules/admin/api/admin_routes.py)
+export const ADMIN_API_ENDPOINTS = {
+  // Admin Diagnostics (Module: app/modules/admin/api/admin_routes.py)
   DIAGNOSTICS: {
     SECRETS: '/api/v1/admin/diagnostic/secrets',
   },
 
+  // Admin Migrations (Module: app/modules/admin/api/admin_routes.py)
   MIGRATIONS: {
     GRANDFATHER_USERS: '/api/v1/admin/migrate/grandfather-users',
   },
-} as const;
-
-// === ENDPOINTS GATEWAY ===
-
-export const GATEWAY_ENDPOINTS = {
-  // Santé et monitoring
-  HEALTH: '/gateway/health',
-  METRICS: '/gateway/metrics',
-  ROUTES: '/gateway/routes',
-  STATS: '/gateway/stats',
-  CONFIG: '/gateway/config',
-
-  // Documentation
-  DOCS: '/gateway/docs',
-  REDOC: '/gateway/redoc',
-  OPENAPI: '/gateway/openapi.json',
 } as const;
 
 // === HELPERS ===
@@ -337,4 +335,4 @@ export const getApiUrl = (path: string): string => {
 
 export type PublicEndpointKey = keyof typeof PUBLIC_ENDPOINTS;
 export type AuthenticatedEndpointKey = keyof typeof AUTHENTICATED_ENDPOINTS;
-export type AdminEndpointKey = keyof typeof ADMIN_ENDPOINTS;
+export type AdminApiEndpointKey = keyof typeof ADMIN_API_ENDPOINTS;
