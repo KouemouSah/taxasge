@@ -33,15 +33,27 @@
 // });
 
 const nextConfig = {
-  output: 'export', // Enable static export for Firebase Hosting
-  trailingSlash: true,
+  // SSR/ISR for Cloud Run deployment (static export removed)
+  output: 'standalone', // Enable standalone output for Docker
   images: {
-    unoptimized: true,
-    domains: [
-      'taxasge-dev.firebase.com',
-      'taxasge-prod.firebase.com',
-      'storage.googleapis.com',
-      'firebasestorage.googleapis.com'
+    unoptimized: false, // Enable image optimization
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**.run.app', // Cloud Run domains
+      },
+      {
+        protocol: 'https',
+        hostname: 'storage.googleapis.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'firebasestorage.googleapis.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.supabase.co',
+      },
     ],
     formats: ['image/avif', 'image/webp'],
   },
@@ -145,10 +157,11 @@ const nextConfig = {
     return config;
   },
 
-  // Environment variables
+  // Environment variables (public, prefixed with NEXT_PUBLIC_)
   env: {
-    API_BASE_URL: process.env.API_BASE_URL || 'https://taxasge-dev.firebase.com',
-    SITE_URL: process.env.SITE_URL || 'https://taxasge-dev.web.app',
+    NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || 'https://taxasge-backend-dev.run.app',
+    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || 'https://taxasge-frontend-dev.run.app',
+    NEXT_PUBLIC_ENVIRONMENT: process.env.NEXT_PUBLIC_ENVIRONMENT || 'development',
   },
 
   // Experimental features
@@ -159,6 +172,9 @@ const nextConfig = {
       'date-fns',
       'lodash',
     ],
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
   },
 
   // TypeScript configuration
