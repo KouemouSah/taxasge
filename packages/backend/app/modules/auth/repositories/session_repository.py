@@ -1,14 +1,15 @@
 """
 Session Repository for TaxasGE Backend
-Handles session data access and management
+Handles session data access and management using PostgreSQL direct
 """
 
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from loguru import logger
 import uuid
+import asyncpg
 
-from app.database.supabase_client import supabase_client
+from app.database.connection import db_manager
 from app.modules.auth.models.auth_models import (
     Session,
     SessionCreate,
@@ -18,19 +19,24 @@ from app.modules.auth.models.auth_models import (
 
 
 class SessionRepository:
-    """Repository for session data access"""
+    """Repository for session data access using PostgreSQL"""
 
     def __init__(self):
-        """Initialize session repository with Supabase client"""
-        self.supabase = supabase_client
+        """Initialize session repository"""
+        self.db_manager = db_manager
         self.table = "sessions"
 
-    async def create_session(self, session_data: SessionCreate) -> Session:
+    async def create_session(
+        self,
+        session_data: SessionCreate,
+        conn: Optional[asyncpg.Connection] = None
+    ) -> Session:
         """
         Create a new session
 
         Args:
             session_data: Session creation data
+            conn: Optional database connection (if None, uses db_manager)
 
         Returns:
             Session: Created session
@@ -42,124 +48,168 @@ class SessionRepository:
             session_id = str(uuid.uuid4())
             now = datetime.utcnow()
 
-            # Prepare session record
-            session_record = {
-                "id": session_id,
-                "user_id": session_data.user_id,
-                "access_token": session_data.access_token,
-                "refresh_token": session_data.refresh_token,
-                "status": SessionStatus.active.value,
-                "ip_address": session_data.ip_address,
-                "user_agent": session_data.user_agent,
-                "device_info": session_data.device_info,
-                "expires_at": session_data.expires_at.isoformat(),
-                "created_at": now.isoformat(),
-                "last_activity": now.isoformat(),
-                "revoked_at": None,
-            }
+            query = """
+                INSERT INTO sessions (
+                    id, user_id, access_token, refresh_token, status,
+                    ip_address, user_agent, device_info, expires_at,
+                    created_at, last_activity, revoked_at
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                RETURNING *
+            """
 
-            # Insert into database
-            result = await self.supabase.insert(self.table, session_record)
+            if conn:
+                result = await conn.fetchrow(
+                    query,
+                    session_id,
+                    session_data.user_id,
+                    session_data.access_token,
+                    session_data.refresh_token,
+                    SessionStatus.active.value,
+                    session_data.ip_address,
+                    session_data.user_agent,
+                    session_data.device_info,
+                    session_data.expires_at,
+                    now,
+                    now,
+                    None
+                )
+            else:
+                result = await self.db_manager.execute_single(
+                    query,
+                    session_id,
+                    session_data.user_id,
+                    session_data.access_token,
+                    session_data.refresh_token,
+                    SessionStatus.active.value,
+                    session_data.ip_address,
+                    session_data.user_agent,
+                    session_data.device_info,
+                    session_data.expires_at,
+                    now,
+                    now,
+                    None
+                )
 
             if not result:
                 raise Exception("Failed to create session")
 
-            logger.info(f"Session created: {session_id} for user {session_data.user_id}")
-            return Session(**result)
+            logger.info(f"✅ Session created: {session_id} for user {session_data.user_id}")
+            return Session(**dict(result))
 
         except Exception as e:
-            logger.error(f"Error creating session: {str(e)}")
+            logger.error(f"❌ Error creating session: {str(e)}")
             raise Exception(f"Failed to create session: {str(e)}")
 
-    async def find_by_id(self, session_id: str) -> Optional[Session]:
+    async def find_by_id(
+        self,
+        session_id: str,
+        conn: Optional[asyncpg.Connection] = None
+    ) -> Optional[Session]:
         """
         Find session by ID
 
         Args:
             session_id: Session ID
+            conn: Optional database connection (if None, uses db_manager)
 
         Returns:
             Optional[Session]: Session if found, None otherwise
         """
         try:
-            results = await self.supabase.select(
-                self.table,
-                columns="*",
-                filters={"id": session_id},
-                limit=1
-            )
+            query = "SELECT * FROM sessions WHERE id = $1 LIMIT 1"
 
-            if results and len(results) > 0:
-                return Session(**results[0])
+            if conn:
+                result = await conn.fetchrow(query, session_id)
+            else:
+                result = await self.db_manager.execute_single(query, session_id)
+
+            if result:
+                return Session(**dict(result))
 
             return None
 
         except Exception as e:
-            logger.error(f"Error finding session by ID: {str(e)}")
+            logger.error(f"❌ Error finding session by ID: {str(e)}")
             return None
 
-    async def find_by_access_token(self, access_token: str) -> Optional[Session]:
+    async def find_by_access_token(
+        self,
+        access_token: str,
+        conn: Optional[asyncpg.Connection] = None
+    ) -> Optional[Session]:
         """
         Find session by access token
 
         Args:
             access_token: Access token
+            conn: Optional database connection (if None, uses db_manager)
 
         Returns:
             Optional[Session]: Session if found, None otherwise
         """
         try:
-            results = await self.supabase.select(
-                self.table,
-                columns="*",
-                filters={
-                    "access_token": access_token,
-                    "status": SessionStatus.active.value
-                },
-                limit=1
-            )
+            query = """
+                SELECT * FROM sessions
+                WHERE access_token = $1 AND status = $2
+                LIMIT 1
+            """
 
-            if results and len(results) > 0:
-                return Session(**results[0])
+            if conn:
+                result = await conn.fetchrow(query, access_token, SessionStatus.active.value)
+            else:
+                result = await self.db_manager.execute_single(query, access_token, SessionStatus.active.value)
+
+            if result:
+                return Session(**dict(result))
 
             return None
 
         except Exception as e:
-            logger.error(f"Error finding session by access token: {str(e)}")
+            logger.error(f"❌ Error finding session by access token: {str(e)}")
             return None
 
-    async def find_by_refresh_token(self, refresh_token: str) -> Optional[Session]:
+    async def find_by_refresh_token(
+        self,
+        refresh_token: str,
+        conn: Optional[asyncpg.Connection] = None
+    ) -> Optional[Session]:
         """
         Find session by refresh token
 
         Args:
             refresh_token: Refresh token
+            conn: Optional database connection (if None, uses db_manager)
 
         Returns:
             Optional[Session]: Session if found, None otherwise
         """
         try:
-            results = await self.supabase.select(
-                self.table,
-                columns="*",
-                filters={
-                    "refresh_token": refresh_token,
-                    "status": SessionStatus.active.value
-                },
-                limit=1
-            )
+            query = """
+                SELECT * FROM sessions
+                WHERE refresh_token = $1 AND status = $2
+                LIMIT 1
+            """
 
-            if results and len(results) > 0:
-                return Session(**results[0])
+            if conn:
+                result = await conn.fetchrow(query, refresh_token, SessionStatus.active.value)
+            else:
+                result = await self.db_manager.execute_single(query, refresh_token, SessionStatus.active.value)
+
+            if result:
+                return Session(**dict(result))
 
             return None
 
         except Exception as e:
-            logger.error(f"Error finding session by refresh token: {str(e)}")
+            logger.error(f"❌ Error finding session by refresh token: {str(e)}")
             return None
 
     async def find_user_sessions(
-        self, user_id: str, active_only: bool = True
+        self,
+        user_id: str,
+        active_only: bool = True,
+        conn: Optional[asyncpg.Connection] = None
     ) -> List[SessionResponse]:
         """
         Find all sessions for a user
@@ -167,91 +217,127 @@ class SessionRepository:
         Args:
             user_id: User ID
             active_only: Return only active sessions
+            conn: Optional database connection (if None, uses db_manager)
 
         Returns:
             List[SessionResponse]: List of user sessions
         """
         try:
-            filters = {"user_id": user_id}
             if active_only:
-                filters["status"] = SessionStatus.active.value
-
-            results = await self.supabase.select(
-                self.table,
-                columns="*",
-                filters=filters,
-                order="created_at.desc"
-            )
+                query = """
+                    SELECT * FROM sessions
+                    WHERE user_id = $1 AND status = $2
+                    ORDER BY created_at DESC
+                """
+                if conn:
+                    results = await conn.fetch(query, user_id, SessionStatus.active.value)
+                else:
+                    results = await self.db_manager.execute_query(query, user_id, SessionStatus.active.value)
+            else:
+                query = """
+                    SELECT * FROM sessions
+                    WHERE user_id = $1
+                    ORDER BY created_at DESC
+                """
+                if conn:
+                    results = await conn.fetch(query, user_id)
+                else:
+                    results = await self.db_manager.execute_query(query, user_id)
 
             if results:
-                return [SessionResponse(**session) for session in results]
+                return [SessionResponse(**dict(session)) for session in results]
 
             return []
 
         except Exception as e:
-            logger.error(f"Error finding user sessions: {str(e)}")
+            logger.error(f"❌ Error finding user sessions: {str(e)}")
             return []
 
-    async def update_last_activity(self, session_id: str) -> bool:
+    async def update_last_activity(
+        self,
+        session_id: str,
+        conn: Optional[asyncpg.Connection] = None
+    ) -> bool:
         """
         Update session last activity timestamp
 
         Args:
             session_id: Session ID
+            conn: Optional database connection (if None, uses db_manager)
 
         Returns:
             bool: True if updated successfully
         """
         try:
-            result = await self.supabase.update(
-                self.table,
-                filters={"id": session_id},
-                data={"last_activity": datetime.utcnow().isoformat()}
-            )
+            query = """
+                UPDATE sessions
+                SET last_activity = $1
+                WHERE id = $2
+            """
 
-            return result is not None
+            now = datetime.utcnow()
+
+            if conn:
+                await conn.execute(query, now, session_id)
+            else:
+                await self.db_manager.execute_command(query, now, session_id)
+
+            return True
 
         except Exception as e:
-            logger.error(f"Error updating session activity: {str(e)}")
+            logger.error(f"❌ Error updating session activity: {str(e)}")
             return False
 
-    async def revoke_session(self, session_id: str) -> bool:
+    async def revoke_session(
+        self,
+        session_id: str,
+        conn: Optional[asyncpg.Connection] = None
+    ) -> bool:
         """
         Revoke a session
 
         Args:
             session_id: Session ID
+            conn: Optional database connection (if None, uses db_manager)
 
         Returns:
             bool: True if revoked successfully
         """
         try:
             now = datetime.utcnow()
-            result = await self.supabase.update(
-                self.table,
-                filters={"id": session_id},
-                data={
-                    "status": SessionStatus.revoked.value,
-                    "revoked_at": now.isoformat(),
-                }
-            )
 
-            success = result is not None
+            query = """
+                UPDATE sessions
+                SET status = $1, revoked_at = $2
+                WHERE id = $3
+            """
+
+            if conn:
+                result = await conn.execute(query, SessionStatus.revoked.value, now, session_id)
+            else:
+                result = await self.db_manager.execute_command(query, SessionStatus.revoked.value, now, session_id)
+
+            success = "UPDATE" in result
             if success:
-                logger.info(f"Session revoked: {session_id}")
+                logger.info(f"✅ Session revoked: {session_id}")
 
             return success
 
         except Exception as e:
-            logger.error(f"Error revoking session: {str(e)}")
+            logger.error(f"❌ Error revoking session: {str(e)}")
             return False
 
-    async def revoke_all_user_sessions(self, user_id: str) -> int:
+    async def revoke_all_user_sessions(
+        self,
+        user_id: str,
+        conn: Optional[asyncpg.Connection] = None
+    ) -> int:
         """
         Revoke all active sessions for a user
 
         Args:
             user_id: User ID
+            conn: Optional database connection (if None, uses db_manager)
 
         Returns:
             int: Number of sessions revoked
@@ -259,41 +345,47 @@ class SessionRepository:
         try:
             now = datetime.utcnow()
 
-            # First get all active sessions for the user
-            sessions = await self.supabase.select(
-                self.table,
-                columns="id",
-                filters={
-                    "user_id": user_id,
-                    "status": SessionStatus.active.value
-                }
-            )
+            query = """
+                UPDATE sessions
+                SET status = $1, revoked_at = $2
+                WHERE user_id = $3 AND status = $4
+            """
 
-            count = 0
-            if sessions:
-                # Update each session individually
-                for session in sessions:
-                    result = await self.supabase.update(
-                        self.table,
-                        filters={"id": session["id"]},
-                        data={
-                            "status": SessionStatus.revoked.value,
-                            "revoked_at": now.isoformat(),
-                        }
-                    )
-                    if result:
-                        count += 1
+            if conn:
+                result = await conn.execute(
+                    query,
+                    SessionStatus.revoked.value,
+                    now,
+                    user_id,
+                    SessionStatus.active.value
+                )
+            else:
+                result = await self.db_manager.execute_command(
+                    query,
+                    SessionStatus.revoked.value,
+                    now,
+                    user_id,
+                    SessionStatus.active.value
+                )
 
-            logger.info(f"Revoked {count} sessions for user {user_id}")
+            count = int(result.split()[-1]) if result and result.startswith("UPDATE") else 0
+
+            logger.info(f"✅ Revoked {count} sessions for user {user_id}")
             return count
 
         except Exception as e:
-            logger.error(f"Error revoking user sessions: {str(e)}")
+            logger.error(f"❌ Error revoking user sessions: {str(e)}")
             return 0
 
-    async def cleanup_expired_sessions(self) -> int:
+    async def cleanup_expired_sessions(
+        self,
+        conn: Optional[asyncpg.Connection] = None
+    ) -> int:
         """
         Clean up expired sessions (mark as expired)
+
+        Args:
+            conn: Optional database connection (if None, uses db_manager)
 
         Returns:
             int: Number of sessions cleaned up
@@ -301,42 +393,49 @@ class SessionRepository:
         try:
             now = datetime.utcnow()
 
-            # Get expired sessions
-            sessions = await self.supabase.select(
-                self.table,
-                columns="id,expires_at",
-                filters={"status": SessionStatus.active.value}
-            )
+            query = """
+                UPDATE sessions
+                SET status = $1
+                WHERE expires_at < $2 AND status = $3
+            """
 
-            count = 0
-            if sessions:
-                for session in sessions:
-                    if session.get("expires_at"):
-                        expires_at = datetime.fromisoformat(session["expires_at"].replace("Z", "+00:00"))
-                        if expires_at < now:
-                            result = await self.supabase.update(
-                                self.table,
-                                filters={"id": session["id"]},
-                                data={"status": SessionStatus.expired.value}
-                            )
-                            if result:
-                                count += 1
+            if conn:
+                result = await conn.execute(
+                    query,
+                    SessionStatus.expired.value,
+                    now,
+                    SessionStatus.active.value
+                )
+            else:
+                result = await self.db_manager.execute_command(
+                    query,
+                    SessionStatus.expired.value,
+                    now,
+                    SessionStatus.active.value
+                )
+
+            count = int(result.split()[-1]) if result and result.startswith("UPDATE") else 0
 
             if count > 0:
-                logger.info(f"Cleaned up {count} expired sessions")
+                logger.info(f"✅ Cleaned up {count} expired sessions")
 
             return count
 
         except Exception as e:
-            logger.error(f"Error cleaning up expired sessions: {str(e)}")
+            logger.error(f"❌ Error cleaning up expired sessions: {str(e)}")
             return 0
 
-    async def delete_old_sessions(self, days: int = 30) -> int:
+    async def delete_old_sessions(
+        self,
+        days: int = 30,
+        conn: Optional[asyncpg.Connection] = None
+    ) -> int:
         """
         Delete old revoked/expired sessions
 
         Args:
             days: Delete sessions older than this many days
+            conn: Optional database connection (if None, uses db_manager)
 
         Returns:
             int: Number of sessions deleted
@@ -344,76 +443,120 @@ class SessionRepository:
         try:
             cutoff_date = datetime.utcnow() - timedelta(days=days)
 
-            # Get old sessions to delete
-            sessions = await self.supabase.select(
-                self.table,
-                columns="id,created_at,status",
-                filters={}
-            )
+            query = """
+                DELETE FROM sessions
+                WHERE status IN ($1, $2) AND created_at < $3
+            """
 
-            count = 0
-            if sessions:
-                for session in sessions:
-                    status = session.get("status")
-                    created_at = session.get("created_at")
+            if conn:
+                result = await conn.execute(
+                    query,
+                    SessionStatus.expired.value,
+                    SessionStatus.revoked.value,
+                    cutoff_date
+                )
+            else:
+                result = await self.db_manager.execute_command(
+                    query,
+                    SessionStatus.expired.value,
+                    SessionStatus.revoked.value,
+                    cutoff_date
+                )
 
-                    if status in [SessionStatus.expired.value, SessionStatus.revoked.value] and created_at:
-                        created_datetime = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-                        if created_datetime < cutoff_date:
-                            result = await self.supabase.delete(
-                                self.table,
-                                filters={"id": session["id"]}
-                            )
-                            if result:
-                                count += 1
+            count = int(result.split()[-1]) if result and result.startswith("DELETE") else 0
 
             if count > 0:
-                logger.info(f"Deleted {count} old sessions")
+                logger.info(f"✅ Deleted {count} old sessions")
 
             return count
 
         except Exception as e:
-            logger.error(f"Error deleting old sessions: {str(e)}")
+            logger.error(f"❌ Error deleting old sessions: {str(e)}")
             return 0
 
-    async def get_session_stats(self, user_id: Optional[str] = None) -> Dict[str, Any]:
+    async def get_session_stats(
+        self,
+        user_id: Optional[str] = None,
+        conn: Optional[asyncpg.Connection] = None
+    ) -> Dict[str, Any]:
         """
         Get session statistics
 
         Args:
             user_id: Optional user ID to filter stats
+            conn: Optional database connection (if None, uses db_manager)
 
         Returns:
             Dict: Session statistics
         """
         try:
-            filters = {}
             if user_id:
-                filters["user_id"] = user_id
+                query = """
+                    SELECT
+                        COUNT(*) as total_sessions,
+                        COUNT(*) FILTER (WHERE status = $1) as active_sessions,
+                        COUNT(*) FILTER (WHERE status = $2) as expired_sessions,
+                        COUNT(*) FILTER (WHERE status = $3) as revoked_sessions
+                    FROM sessions
+                    WHERE user_id = $4
+                """
+                if conn:
+                    result = await conn.fetchrow(
+                        query,
+                        SessionStatus.active.value,
+                        SessionStatus.expired.value,
+                        SessionStatus.revoked.value,
+                        user_id
+                    )
+                else:
+                    result = await self.db_manager.execute_single(
+                        query,
+                        SessionStatus.active.value,
+                        SessionStatus.expired.value,
+                        SessionStatus.revoked.value,
+                        user_id
+                    )
+            else:
+                query = """
+                    SELECT
+                        COUNT(*) as total_sessions,
+                        COUNT(*) FILTER (WHERE status = $1) as active_sessions,
+                        COUNT(*) FILTER (WHERE status = $2) as expired_sessions,
+                        COUNT(*) FILTER (WHERE status = $3) as revoked_sessions
+                    FROM sessions
+                """
+                if conn:
+                    result = await conn.fetchrow(
+                        query,
+                        SessionStatus.active.value,
+                        SessionStatus.expired.value,
+                        SessionStatus.revoked.value
+                    )
+                else:
+                    result = await self.db_manager.execute_single(
+                        query,
+                        SessionStatus.active.value,
+                        SessionStatus.expired.value,
+                        SessionStatus.revoked.value
+                    )
 
-            sessions = await self.supabase.select(
-                self.table,
-                columns="*",
-                filters=filters
-            )
-
-            if not sessions:
+            if result:
                 return {
-                    "total_sessions": 0,
-                    "active_sessions": 0,
-                    "expired_sessions": 0,
-                    "revoked_sessions": 0,
+                    "total_sessions": result["total_sessions"] or 0,
+                    "active_sessions": result["active_sessions"] or 0,
+                    "expired_sessions": result["expired_sessions"] or 0,
+                    "revoked_sessions": result["revoked_sessions"] or 0,
                 }
 
             return {
-                "total_sessions": len(sessions),
-                "active_sessions": len([s for s in sessions if s["status"] == SessionStatus.active.value]),
-                "expired_sessions": len([s for s in sessions if s["status"] == SessionStatus.expired.value]),
-                "revoked_sessions": len([s for s in sessions if s["status"] == SessionStatus.revoked.value]),
+                "total_sessions": 0,
+                "active_sessions": 0,
+                "expired_sessions": 0,
+                "revoked_sessions": 0,
             }
 
         except Exception as e:
-            logger.error(f"Error getting session stats: {str(e)}")
+            logger.error(f"❌ Error getting session stats: {str(e)}")
             return {
                 "total_sessions": 0,
                 "active_sessions": 0,
