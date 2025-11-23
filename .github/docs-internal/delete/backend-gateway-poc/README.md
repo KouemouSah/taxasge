@@ -123,6 +123,7 @@ curl http://localhost:8000/gateway/metrics
 - `GET /api/v1/public/services` - 846 services fiscaux
 - `GET /api/v1/public/services/search` - Recherche (19,388 procédures)
 - `GET /api/v1/public/hierarchy` - Hiérarchie (14→16→86→547)
+- `POST /api/v1/ai/chat` - Assistant IA
 - `POST /api/v1/public/auth/login` - Authentification
 
 ### **🔐 Routes Authentifiées**
@@ -131,7 +132,7 @@ curl http://localhost:8000/gateway/metrics
 - `GET /api/v1/users/favorites` - Services favoris
 - `POST /api/v1/declarations` - Déclarations fiscales
 - `POST /api/v1/payments/initiate` - Paiements BANGE
-- `POST /api/v1/ai/chat` - Assistant IA
+
 
 ### **🛡️ Routes Admin**
 - `GET /api/v1/admin/services` - CRUD 547 services
