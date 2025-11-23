@@ -15,7 +15,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 from app.services.session_service import SessionService
-from app.models.auth_models import SessionResponse, SessionStatus
+from app.modules.auth.models.auth_models import SessionResponse, SessionStatus
 
 
 @pytest.fixture

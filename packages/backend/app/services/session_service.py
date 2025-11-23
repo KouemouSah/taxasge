@@ -9,7 +9,7 @@ from typing import List, Dict, Any, Optional
 from loguru import logger
 
 from app.repositories.session_repository import get_session_repository, SessionRepository
-from app.models.auth_models import SessionResponse, SessionStatus
+from app.modules.auth.models.auth_models import SessionResponse, SessionStatus
 
 
 class SessionService:
