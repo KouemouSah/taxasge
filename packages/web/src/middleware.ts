@@ -50,6 +50,44 @@ function getUserRole(request: NextRequest): string | null {
 }
 
 /**
+ * Check if user has admin/supervisor permissions
+ * Includes all DGI supervisors, ministry agents, and admins
+ */
+function hasAdminPermissions(role: string | null): boolean {
+  if (!role) return false;
+
+  const adminRoles = [
+    'admin',
+    'dgi_agent',
+    'supervisor_junior_dgi',
+    'supervisor_dgi',
+    'supervisor_senior',
+    'supervisor_readonly',
+    'ministry_agent',
+  ];
+
+  return adminRoles.includes(role);
+}
+
+/**
+ * Check if user has write permissions (excludes readonly supervisors)
+ */
+function hasWritePermissions(role: string | null): boolean {
+  if (!role) return false;
+
+  const writeRoles = [
+    'admin',
+    'dgi_agent',
+    'supervisor_junior_dgi',
+    'supervisor_dgi',
+    'supervisor_senior',
+    'ministry_agent',
+  ];
+
+  return writeRoles.includes(role);
+}
+
+/**
  * Check if route requires authentication
  */
 function isProtectedRoute(pathname: string): boolean {
@@ -95,7 +133,7 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // 2. Protect admin routes
+  // 2. Protect admin routes (requires admin/supervisor/ministry permissions)
   if (isAdminRoute(pathname)) {
     if (!authenticated) {
       const loginUrl = new URL('/auth/login', request.url);
@@ -103,9 +141,19 @@ export function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    // Check admin role
-    if (userRole !== 'admin' && userRole !== 'dgi_agent') {
-      // Redirect non-admin users to dashboard
+    // Check if user has admin/supervisor/ministry permissions
+    if (!hasAdminPermissions(userRole)) {
+      // Redirect non-privileged users to dashboard
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+
+    // Additional check: some routes may require write permissions
+    // (supervisor_readonly would be blocked from certain actions)
+    const writeOnlyRoutes = ['/admin/users/create', '/agents/assign'];
+    const isWriteOnlyRoute = writeOnlyRoutes.some((route) => pathname.startsWith(route));
+
+    if (isWriteOnlyRoute && !hasWritePermissions(userRole)) {
+      // Redirect readonly supervisors to view-only page
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
   }
