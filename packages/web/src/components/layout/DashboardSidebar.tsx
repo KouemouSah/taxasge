@@ -26,41 +26,14 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { authApi } from '@/lib/api/auth'
 import { getAuthData, clearAuthData } from '@/lib/auth/storage'
+import { useLocale, useTranslations } from 'next-intl'
 
 interface NavItem {
-  title: string
+  titleKey: string
   href: string
   icon: React.ComponentType<{ className?: string }>
   badge?: string
 }
-
-const navItems: NavItem[] = [
-  {
-    title: 'Dashboard',
-    href: '/dashboard',
-    icon: LayoutDashboard,
-  },
-  {
-    title: 'Déclarations',
-    href: '/dashboard/declarations',
-    icon: FileText,
-  },
-  {
-    title: 'Support',
-    href: '/dashboard/support',
-    icon: HelpCircle,
-  },
-  {
-    title: 'Profil',
-    href: '/dashboard/profile',
-    icon: User,
-  },
-  {
-    title: 'Paramètres',
-    href: '/dashboard/settings',
-    icon: Settings,
-  },
-]
 
 interface DashboardSidebarProps {
   className?: string
@@ -70,12 +43,42 @@ export function DashboardSidebar({ className }: DashboardSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { toast } = useToast()
+  const locale = useLocale()
+  const t = useTranslations('dashboard')
+
+  const navItems: NavItem[] = [
+    {
+      titleKey: 'overview',
+      href: `/${locale}/dashboard`,
+      icon: LayoutDashboard,
+    },
+    {
+      titleKey: 'declarations',
+      href: `/${locale}/dashboard/declarations`,
+      icon: FileText,
+    },
+    {
+      titleKey: 'support',
+      href: `/${locale}/dashboard/support`,
+      icon: HelpCircle,
+    },
+    {
+      titleKey: 'profile',
+      href: `/${locale}/dashboard/profile`,
+      icon: User,
+    },
+    {
+      titleKey: 'settings',
+      href: `/${locale}/dashboard/settings`,
+      icon: Settings,
+    },
+  ]
 
   const handleLogout = async () => {
     const authData = getAuthData()
 
     if (!authData) {
-      router.push('/auth')
+      router.push(`/${locale}/auth`)
       return
     }
 
@@ -88,23 +91,20 @@ export function DashboardSidebar({ className }: DashboardSidebarProps) {
       clearAuthData()
 
       toast({
-        title: "Déconnexion réussie",
-        description: "À bientôt !",
+        title: t('logoutSuccess'),
+        description: t('logoutMessage'),
       })
 
-      router.push('/')
+      router.push(`/${locale}`)
     } catch (error: unknown) {
       // Even if logout fails on backend, clear local storage
       clearAuthData()
-      router.push('/')
+      router.push(`/${locale}`)
     }
   }
 
   const isActive = (href: string) => {
-    if (href === '/dashboard') {
-      return pathname === href
-    }
-    return pathname?.startsWith(href)
+    return pathname === href || pathname?.startsWith(href + '/')
   }
 
   return (
@@ -112,7 +112,7 @@ export function DashboardSidebar({ className }: DashboardSidebarProps) {
       <div className="flex h-full flex-col">
         {/* Logo */}
         <div className="flex h-16 items-center border-b px-6">
-          <Link href="/dashboard" className="flex items-center gap-2">
+          <Link href={`/${locale}/dashboard`} className="flex items-center gap-2">
             <Image src="/logo.png" alt="TaxasGE Logo" width={32} height={32} className="h-8 w-8" />
             <span className="text-xl font-semibold">TaxasGE</span>
           </Link>
@@ -137,7 +137,7 @@ export function DashboardSidebar({ className }: DashboardSidebarProps) {
                   )}
                 >
                   <Icon className="h-5 w-5" />
-                  <span>{item.title}</span>
+                  <span>{t(item.titleKey)}</span>
                   {item.badge && (
                     <span className="ml-auto flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
                       {item.badge}
@@ -158,7 +158,7 @@ export function DashboardSidebar({ className }: DashboardSidebarProps) {
             onClick={handleLogout}
           >
             <LogOut className="mr-3 h-5 w-5" />
-            Déconnexion
+            {t('logout')}
           </Button>
         </div>
       </div>

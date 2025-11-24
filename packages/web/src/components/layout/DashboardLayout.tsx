@@ -11,6 +11,7 @@ import Image from 'next/image'
 import { DashboardSidebar, MobileSidebar } from './DashboardSidebar'
 import { getAuthData } from '@/lib/auth/storage'
 import type { User } from '@/types/auth'
+import { useLocale, useTranslations } from 'next-intl'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -18,6 +19,9 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter()
+  const locale = useLocale()
+  const t = useTranslations('dashboard')
+  const tCommon = useTranslations('common')
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -25,7 +29,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     const authData = getAuthData()
 
     if (!authData) {
-      router.push('/auth')
+      router.push(`/${locale}/auth`)
       return
     }
 
@@ -38,14 +42,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
     setUser(userData as User)
     setIsLoading(false)
-  }, [router])
+  }, [router, locale])
 
   if (isLoading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
-          <p className="text-muted-foreground">Chargement...</p>
+          <p className="text-muted-foreground">{t('loading')}</p>
         </div>
       </div>
     )
@@ -75,7 +79,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Footer */}
         <footer className="border-t bg-card px-4 py-3 text-center">
           <p className="text-xs text-muted-foreground">
-            © 2025 TaxasGE - Ministère des Finance Guinée Équatoriale. Tous droits réservés.
+            {t('copyright')}
           </p>
         </footer>
       </div>
