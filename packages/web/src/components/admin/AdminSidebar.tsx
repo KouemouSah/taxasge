@@ -1,18 +1,21 @@
 /**
  * Admin Sidebar Navigation
- * Main navigation for admin dashboard
+ * Main navigation for admin dashboard with i18n support
+ *
+ * MIGRATED: Phase 4 - Full i18n with locale-aware links
  *
  * @module components/admin
  * @author Claude Code
- * @date 2025-11-18
+ * @date 2025-11-24
  */
 
-'use client';
+'use client'
 
-import React from 'react';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { cn } from '@/lib/utils';
+import React from 'react'
+import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
+import { useLocale, useTranslations } from 'next-intl'
+import { cn } from '@/lib/utils'
 import {
   LayoutDashboard,
   Users,
@@ -24,74 +27,87 @@ import {
   ChevronRight,
   LogOut,
   ClipboardList,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { clearAuthData } from '@/lib/auth/storage';
-import { useToast } from '@/hooks/use-toast';
-
-// Navigation items
-const navigationItems = [
-  {
-    title: 'Dashboard',
-    href: '/dashboard/admin',
-    icon: LayoutDashboard,
-  },
-  {
-    title: 'Gestion',
-    items: [
-      {
-        title: 'Utilisateurs',
-        href: '/dashboard/admin/users',
-        icon: Users,
-      },
-      {
-        title: 'Rôles',
-        href: '/dashboard/admin/roles',
-        icon: Shield,
-      },
-      {
-        title: 'Permissions',
-        href: '/dashboard/admin/permissions',
-        icon: Key,
-      },
-      {
-        title: 'Assignments',
-        href: '/dashboard/admin/assignments',
-        icon: ClipboardList,
-      },
-    ],
-  },
-  {
-    title: 'Système',
-    items: [
-      {
-        title: 'Logs d\'Audit',
-        href: '/dashboard/admin/audit-logs',
-        icon: FileText,
-      },
-      {
-        title: 'Paramètres',
-        href: '/dashboard/admin/settings',
-        icon: Settings,
-      },
-    ],
-  },
-];
+  Building2,
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { clearAuthData } from '@/lib/auth/storage'
+import { useToast } from '@/hooks/use-toast'
 
 export default function AdminSidebar() {
-  const pathname = usePathname();
-  const router = useRouter();
-  const { toast } = useToast();
-  const [collapsed, setCollapsed] = React.useState(false);
+  const pathname = usePathname()
+  const router = useRouter()
+  const locale = useLocale()
+  const t = useTranslations('admin')
+  const { toast } = useToast()
+  const [collapsed, setCollapsed] = React.useState(false)
+
+  // Navigation items with i18n
+  const navigationItems = [
+    {
+      title: t('nav.dashboard'),
+      href: `/${locale}/dashboard/admin`,
+      icon: LayoutDashboard,
+    },
+    {
+      title: t('nav.management'),
+      items: [
+        {
+          title: t('nav.users'),
+          href: `/${locale}/dashboard/admin/users`,
+          icon: Users,
+        },
+        {
+          title: t('nav.roles'),
+          href: `/${locale}/dashboard/admin/roles`,
+          icon: Shield,
+        },
+        {
+          title: t('nav.permissions'),
+          href: `/${locale}/dashboard/admin/permissions`,
+          icon: Key,
+        },
+        {
+          title: t('nav.assignments'),
+          href: `/${locale}/dashboard/admin/assignments`,
+          icon: ClipboardList,
+        },
+      ],
+    },
+    {
+      title: t('nav.fiscalServices'),
+      items: [
+        {
+          title: t('nav.services'),
+          href: `/${locale}/dashboard/admin/fiscal-services`,
+          icon: Building2,
+        },
+      ],
+    },
+    {
+      title: t('nav.system'),
+      items: [
+        {
+          title: t('nav.auditLogs'),
+          href: `/${locale}/dashboard/admin/audit-logs`,
+          icon: FileText,
+        },
+        {
+          title: t('nav.settings'),
+          href: `/${locale}/dashboard/admin/settings`,
+          icon: Settings,
+        },
+      ],
+    },
+  ]
 
   const handleLogout = () => {
-    clearAuthData();
+    clearAuthData()
     toast({
-      title: 'Déconnexion réussie',
-      description: 'À bientôt !',
-    });
-    router.push('/auth');
-  };
+      title: t('nav.logoutSuccess'),
+      description: t('nav.logoutMessage'),
+    })
+    router.push(`/${locale}/auth`)
+  }
 
   return (
     <aside
@@ -105,7 +121,7 @@ export default function AdminSidebar() {
         {!collapsed && (
           <div className="flex items-center space-x-2">
             <Shield className="h-6 w-6 text-primary" />
-            <span className="font-bold text-lg">Admin</span>
+            <span className="font-bold text-lg">{t('pageTitle')}</span>
           </div>
         )}
         <Button
@@ -137,8 +153,8 @@ export default function AdminSidebar() {
                   )}
                   <div className="space-y-1">
                     {item.items.map((subItem) => {
-                      const Icon = subItem.icon;
-                      const isActive = pathname === subItem.href;
+                      const Icon = subItem.icon
+                      const isActive = pathname === subItem.href
 
                       return (
                         <Link
@@ -155,16 +171,16 @@ export default function AdminSidebar() {
                           <Icon className="h-5 w-5 flex-shrink-0" />
                           {!collapsed && <span>{subItem.title}</span>}
                         </Link>
-                      );
+                      )
                     })}
                   </div>
                 </div>
-              );
+              )
             }
 
             // Single item
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
+            const Icon = item.icon
+            const isActive = pathname === item.href
 
             return (
               <Link
@@ -181,7 +197,7 @@ export default function AdminSidebar() {
                 <Icon className="h-5 w-5 flex-shrink-0" />
                 {!collapsed && <span>{item.title}</span>}
               </Link>
-            );
+            )
           })}
         </div>
       </nav>
@@ -196,10 +212,10 @@ export default function AdminSidebar() {
             collapsed && 'justify-center px-2'
           )}
           onClick={handleLogout}
-          title={collapsed ? 'Déconnexion' : undefined}
+          title={collapsed ? t('nav.logout') : undefined}
         >
           <LogOut className="h-4 w-4 flex-shrink-0" />
-          {!collapsed && <span className="ml-2">Déconnexion</span>}
+          {!collapsed && <span className="ml-2">{t('nav.logout')}</span>}
         </Button>
 
         {/* Version */}
@@ -210,5 +226,5 @@ export default function AdminSidebar() {
         )}
       </div>
     </aside>
-  );
+  )
 }

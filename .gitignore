@@ -130,3 +130,9 @@ config/*.json
 
 # SQL Migrations Archives
 **/.github-docs-migrations-archive/
+
+# Docs-internal
+.github/docs-internal/
+packages/mobile/scripts/
+Documentations/
+scripts/

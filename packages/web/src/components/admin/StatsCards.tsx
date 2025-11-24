@@ -1,58 +1,63 @@
 /**
  * Stats Cards Component
- * Display key metrics for admin dashboard
+ * Display key metrics for admin dashboard with i18n support
+ *
+ * MIGRATED: Phase 4 - Full i18n
  *
  * @module components/admin
  * @author Claude Code
- * @date 2025-11-18
+ * @date 2025-11-24
  */
 
-'use client';
+'use client'
 
-import React from 'react';
-import { Users, Shield, Key, Activity } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-
-const stats = [
-  {
-    name: 'Utilisateurs Totaux',
-    value: '1,234',
-    change: '+12%',
-    changeType: 'positive' as const,
-    icon: Users,
-    description: 'vs. mois dernier',
-  },
-  {
-    name: 'Rôles Actifs',
-    value: '8',
-    change: '+2',
-    changeType: 'positive' as const,
-    icon: Shield,
-    description: '3 système, 5 custom',
-  },
-  {
-    name: 'Permissions',
-    value: '52',
-    change: '0',
-    changeType: 'neutral' as const,
-    icon: Key,
-    description: 'Catalogue complet',
-  },
-  {
-    name: 'Activité (24h)',
-    value: '342',
-    change: '-8%',
-    changeType: 'negative' as const,
-    icon: Activity,
-    description: 'Actions enregistrées',
-  },
-];
+import React from 'react'
+import { useTranslations } from 'next-intl'
+import { Users, Shield, Key, Activity } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
 
 export default function StatsCards() {
+  const t = useTranslations('admin.dashboard')
+
+  const stats = [
+    {
+      name: t('totalUsersLabel'),
+      value: '1,234',
+      change: '+12%',
+      changeType: 'positive' as const,
+      icon: Users,
+      description: t('vsLastMonth'),
+    },
+    {
+      name: t('activeRolesLabel'),
+      value: '8',
+      change: '+2',
+      changeType: 'positive' as const,
+      icon: Shield,
+      description: t('rolesDescription'),
+    },
+    {
+      name: t('permissionsLabel'),
+      value: '52',
+      change: '0',
+      changeType: 'neutral' as const,
+      icon: Key,
+      description: t('completeCatalog'),
+    },
+    {
+      name: t('activity24hLabel'),
+      value: '342',
+      change: '-8%',
+      changeType: 'negative' as const,
+      icon: Activity,
+      description: t('actionsRecorded'),
+    },
+  ]
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       {stats.map((stat) => {
-        const Icon = stat.icon;
+        const Icon = stat.icon
         return (
           <Card key={stat.name}>
             <CardContent className="p-6">
@@ -83,8 +88,8 @@ export default function StatsCards() {
               </div>
             </CardContent>
           </Card>
-        );
+        )
       })}
     </div>
-  );
+  )
 }

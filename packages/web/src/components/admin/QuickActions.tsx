@@ -1,64 +1,70 @@
 /**
  * Quick Actions Component
- * Quick access buttons for common admin tasks
+ * Quick access buttons for common admin tasks with i18n support
+ *
+ * MIGRATED: Phase 4 - Full i18n + locale-aware links
  *
  * @module components/admin
  * @author Claude Code
- * @date 2025-11-18
+ * @date 2025-11-24
  */
 
-'use client';
+'use client'
 
-import React from 'react';
-import Link from 'next/link';
-import { UserPlus, ShieldPlus, KeyRound, FileText } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-
-const quickActions = [
-  {
-    title: 'Nouvel Utilisateur',
-    description: 'Créer un compte utilisateur',
-    icon: UserPlus,
-    href: '/dashboard/admin/users/new',
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-50',
-  },
-  {
-    title: 'Nouveau Rôle',
-    description: 'Créer un rôle personnalisé',
-    icon: ShieldPlus,
-    href: '/dashboard/admin/roles',
-    color: 'text-green-600',
-    bgColor: 'bg-green-50',
-  },
-  {
-    title: 'Gérer Permissions',
-    description: 'Voir toutes les permissions',
-    icon: KeyRound,
-    href: '/dashboard/admin/permissions',
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-50',
-  },
-  {
-    title: 'Logs d\'Audit',
-    description: 'Consulter l\'historique',
-    icon: FileText,
-    href: '/dashboard/admin/audit-logs',
-    color: 'text-orange-600',
-    bgColor: 'bg-orange-50',
-  },
-];
+import React from 'react'
+import Link from 'next/link'
+import { useLocale, useTranslations } from 'next-intl'
+import { UserPlus, ShieldPlus, KeyRound, FileText } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export default function QuickActions() {
+  const locale = useLocale()
+  const t = useTranslations('admin.dashboard')
+
+  const quickActions = [
+    {
+      title: t('newUser'),
+      description: t('newUserDesc'),
+      icon: UserPlus,
+      href: `/${locale}/dashboard/admin/users/new`,
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50',
+    },
+    {
+      title: t('newRole'),
+      description: t('newRoleDesc'),
+      icon: ShieldPlus,
+      href: `/${locale}/dashboard/admin/roles`,
+      color: 'text-green-600',
+      bgColor: 'bg-green-50',
+    },
+    {
+      title: t('managePermissions'),
+      description: t('managePermissionsDesc'),
+      icon: KeyRound,
+      href: `/${locale}/dashboard/admin/permissions`,
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50',
+    },
+    {
+      title: t('auditLogs'),
+      description: t('auditLogsDesc'),
+      icon: FileText,
+      href: `/${locale}/dashboard/admin/audit-logs`,
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-50',
+    },
+  ]
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Actions Rapides</CardTitle>
+        <CardTitle>{t('quickActions')}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {quickActions.map((action) => {
-            const Icon = action.icon;
+            const Icon = action.icon
             return (
               <Link key={action.title} href={action.href}>
                 <div className="group cursor-pointer p-4 rounded-lg border-2 border-gray-200 hover:border-primary hover:shadow-md transition-all">
@@ -69,10 +75,10 @@ export default function QuickActions() {
                   <p className="text-xs text-gray-600">{action.description}</p>
                 </div>
               </Link>
-            );
+            )
           })}
         </div>
       </CardContent>
     </Card>
-  );
+  )
 }

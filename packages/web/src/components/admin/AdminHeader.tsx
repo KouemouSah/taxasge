@@ -1,17 +1,20 @@
 /**
  * Admin Header
- * Top navigation bar for admin dashboard
+ * Top navigation bar for admin dashboard with i18n support
+ *
+ * MIGRATED: Phase 4 - Full i18n
  *
  * @module components/admin
  * @author Claude Code
- * @date 2025-11-18
+ * @date 2025-11-24
  */
 
-'use client';
+'use client'
 
-import React from 'react';
-import { Bell, Search, LogOut, User } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import React from 'react'
+import { useTranslations } from 'next-intl'
+import { Bell, Search, LogOut, User } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,21 +22,23 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+} from '@/components/ui/dropdown-menu'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 
 export default function AdminHeader() {
+  const t = useTranslations('admin')
+
   // TODO: Get user from session/context
   const user = {
     name: 'Admin System',
     email: 'sah@emacsah.com',
-    role: 'Administrateur',
-  };
+    role: t('userRoles.admin'),
+  }
 
   const handleLogout = () => {
     // TODO: Implement logout logic
-    console.log('Logout');
-  };
+    console.log('Logout')
+  }
 
   return (
     <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
@@ -43,7 +48,7 @@ export default function AdminHeader() {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
             type="text"
-            placeholder="Rechercher..."
+            placeholder={t('dashboard.search')}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
           />
         </div>
@@ -85,16 +90,16 @@ export default function AdminHeader() {
             <DropdownMenuSeparator />
             <DropdownMenuItem>
               <User className="mr-2 h-4 w-4" />
-              <span>Profil</span>
+              <span>{t('settings.profile')}</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="text-red-600">
               <LogOut className="mr-2 h-4 w-4" />
-              <span>Déconnexion</span>
+              <span>{t('nav.logout')}</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
     </header>
-  );
+  )
 }

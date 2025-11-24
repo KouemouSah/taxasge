@@ -25,7 +25,8 @@
       "Bash(Get-FileHash \"C:\\taxasge\\packages\\backend\\app\\modules\\documents\\api\\document_routes.py\")",
       "Bash(Select-Object Hash)",
       "Bash(md5sum:*)",
-      "Bash(git mv:*)"
+      "Bash(git mv:*)",
+      "Bash(tail:*)"
     ],
     "deny": [],
     "ask": []
