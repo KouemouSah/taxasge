@@ -1,12 +1,14 @@
 /**
  * Next.js Middleware for TaxasGE Cloud Run Deployment
- * Handles authentication, authorization, i18n, and security headers
+ * Handles i18n, authentication, authorization, and security headers
  *
  * @module middleware
  */
 
+import createIntlMiddleware from 'next-intl/middleware';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { locales, defaultLocale } from './i18n/config';
 
 /**
  * Protected routes that require authentication
@@ -28,7 +30,7 @@ const ADMIN_ROUTES = ['/admin', '/agents', '/assignment', '/permissions'];
 /**
  * Public routes (accessible without auth)
  */
-const PUBLIC_ROUTES = ['/', '/search', '/categories', '/guide', '/calculator', '/auth'];
+const PUBLIC_ROUTES = ['/', '/search', '/categories', '/guide', '/calculator', '/auth', '/services', '/ministries'];
 
 /**
  * Check if user is authenticated by verifying JWT token in cookies
@@ -43,15 +45,12 @@ function isAuthenticated(request: NextRequest): boolean {
  * In production, decode and verify JWT properly
  */
 function getUserRole(request: NextRequest): string | null {
-  // TODO: Implement proper JWT decoding
-  // For now, check if admin cookie exists (set by client after login)
   const userRole = request.cookies.get('taxasge_user_role');
   return userRole?.value || null;
 }
 
 /**
  * Check if user has admin/supervisor permissions
- * Includes all DGI supervisors, ministry agents, and admins
  */
 function hasAdminPermissions(role: string | null): boolean {
   if (!role) return false;
@@ -88,24 +87,47 @@ function hasWritePermissions(role: string | null): boolean {
 }
 
 /**
+ * Extract locale from pathname (e.g., /es/services -> es)
+ */
+function getLocaleFromPathname(pathname: string): string | null {
+  const segments = pathname.split('/');
+  const potentialLocale = segments[1];
+  return locales.includes(potentialLocale as any) ? potentialLocale : null;
+}
+
+/**
+ * Remove locale prefix from pathname
+ */
+function removeLocalePrefix(pathname: string): string {
+  const locale = getLocaleFromPathname(pathname);
+  if (!locale) return pathname;
+  return pathname.replace(`/${locale}`, '') || '/';
+}
+
+/**
  * Check if route requires authentication
  */
 function isProtectedRoute(pathname: string): boolean {
-  return PROTECTED_ROUTES.some((route) => pathname.startsWith(route));
+  const pathnameWithoutLocale = removeLocalePrefix(pathname);
+  return PROTECTED_ROUTES.some((route) => pathnameWithoutLocale.startsWith(route));
 }
 
 /**
  * Check if route requires admin access
  */
 function isAdminRoute(pathname: string): boolean {
-  return ADMIN_ROUTES.some((route) => pathname.startsWith(route));
+  const pathnameWithoutLocale = removeLocalePrefix(pathname);
+  return ADMIN_ROUTES.some((route) => pathnameWithoutLocale.startsWith(route));
 }
 
 /**
  * Check if route is public
  */
 function isPublicRoute(pathname: string): boolean {
-  return PUBLIC_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+  const pathnameWithoutLocale = removeLocalePrefix(pathname);
+  return PUBLIC_ROUTES.some((route) =>
+    pathnameWithoutLocale === route || pathnameWithoutLocale.startsWith(`${route}/`)
+  );
 }
 
 export function middleware(request: NextRequest) {
@@ -120,53 +142,69 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // 1. Handle i18n (locale detection and routing)
+  const intlMiddleware = createIntlMiddleware({
+    locales,
+    defaultLocale,
+    localeDetection: true,
+    localePrefix: 'always',
+  });
+
+  // Apply i18n middleware first
+  const intlResponse = intlMiddleware(request);
+
+  // Get the response URL after i18n processing
+  const responsePathname = intlResponse.headers.get('x-middleware-request-x-matched-path') || pathname;
+
   const authenticated = isAuthenticated(request);
   const userRole = getUserRole(request);
 
-  // 1. Protect authenticated routes
-  if (isProtectedRoute(pathname)) {
+  // 2. Protect authenticated routes
+  if (isProtectedRoute(responsePathname)) {
     if (!authenticated) {
       // Redirect to login with return URL
-      const loginUrl = new URL('/auth/login', request.url);
-      loginUrl.searchParams.set('redirect', pathname);
+      const locale = getLocaleFromPathname(responsePathname) || defaultLocale;
+      const loginUrl = new URL(`/${locale}/auth`, request.url);
+      loginUrl.searchParams.set('redirect', responsePathname);
       return NextResponse.redirect(loginUrl);
     }
   }
 
-  // 2. Protect admin routes (requires admin/supervisor/ministry permissions)
-  if (isAdminRoute(pathname)) {
+  // 3. Protect admin routes
+  if (isAdminRoute(responsePathname)) {
     if (!authenticated) {
-      const loginUrl = new URL('/auth/login', request.url);
-      loginUrl.searchParams.set('redirect', pathname);
+      const locale = getLocaleFromPathname(responsePathname) || defaultLocale;
+      const loginUrl = new URL(`/${locale}/auth`, request.url);
+      loginUrl.searchParams.set('redirect', responsePathname);
       return NextResponse.redirect(loginUrl);
     }
 
-    // Check if user has admin/supervisor/ministry permissions
     if (!hasAdminPermissions(userRole)) {
-      // Redirect non-privileged users to dashboard
-      return NextResponse.redirect(new URL('/dashboard', request.url));
+      const locale = getLocaleFromPathname(responsePathname) || defaultLocale;
+      return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
     }
 
-    // Additional check: some routes may require write permissions
-    // (supervisor_readonly would be blocked from certain actions)
+    // Check write permissions for specific routes
     const writeOnlyRoutes = ['/admin/users/create', '/agents/assign'];
-    const isWriteOnlyRoute = writeOnlyRoutes.some((route) => pathname.startsWith(route));
+    const pathnameWithoutLocale = removeLocalePrefix(responsePathname);
+    const isWriteOnlyRoute = writeOnlyRoutes.some((route) => pathnameWithoutLocale.startsWith(route));
 
     if (isWriteOnlyRoute && !hasWritePermissions(userRole)) {
-      // Redirect readonly supervisors to view-only page
-      return NextResponse.redirect(new URL('/dashboard', request.url));
+      const locale = getLocaleFromPathname(responsePathname) || defaultLocale;
+      return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
     }
   }
 
-  // 3. Redirect authenticated users away from auth pages
-  if (pathname.startsWith('/auth') && authenticated) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+  // 4. Redirect authenticated users away from auth pages
+  const pathnameWithoutLocale = removeLocalePrefix(responsePathname);
+  if (pathnameWithoutLocale.startsWith('/auth') && authenticated) {
+    const locale = getLocaleFromPathname(responsePathname) || defaultLocale;
+    return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
   }
 
-  // 4. Add security headers
-  const response = NextResponse.next();
+  // 5. Add security headers
+  const response = intlResponse || NextResponse.next();
 
-  // Security headers for all responses
   response.headers.set('X-DNS-Prefetch-Control', 'on');
   response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
   response.headers.set('X-XSS-Protection', '1; mode=block');
@@ -174,12 +212,11 @@ export function middleware(request: NextRequest) {
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
-  // Content Security Policy (adjust based on your needs)
   response.headers.set(
     'Content-Security-Policy',
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline'", // Next.js requires unsafe-inline
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https:",
       "font-src 'self' data:",
@@ -188,27 +225,14 @@ export function middleware(request: NextRequest) {
     ].join('; ')
   );
 
-  // 5. Language detection and redirection (optional)
-  // const locale = request.cookies.get('NEXT_LOCALE')?.value || 'es';
-  // response.headers.set('X-User-Locale', locale);
-
   return response;
 }
 
 /**
  * Middleware configuration
- * Runs on all routes except static files and API routes
  */
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization)
-     * - favicon.ico (favicon file)
-     * - public files (images, etc.)
-     * - API routes
-     */
     '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 };

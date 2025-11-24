@@ -1,37 +1,8 @@
+import createNextIntlPlugin from 'next-intl/plugin';
+
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
+
 /** @type {import('next').NextConfig} */
-
-// Temporarily disable PWA to fix Webpack issues in development
-// const withPWA = require('next-pwa')({
-//   dest: 'public',
-//   register: true,
-//   skipWaiting: true,
-//   disable: process.env.NODE_ENV === 'development',
-//   runtimeCaching: [
-//     {
-//       urlPattern: /^https:\/\/taxasge-dev\.firebase\.com\/.*/i,
-//       handler: 'NetworkFirst',
-//       options: {
-//         cacheName: 'api-cache',
-//         expiration: {
-//           maxEntries: 50,
-//           maxAgeSeconds: 5 * 60, // 5 minutes
-//         },
-//       },
-//     },
-//     {
-//       urlPattern: /^https:\/\/.*\.(?:png|jpg|jpeg|svg|gif|webp)$/i,
-//       handler: 'CacheFirst',
-//       options: {
-//         cacheName: 'image-cache',
-//         expiration: {
-//           maxEntries: 100,
-//           maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
-//         },
-//       },
-//     },
-//   ],
-// });
-
 const nextConfig = {
   // SSR/ISR for Cloud Run deployment (static export removed)
   output: 'standalone', // Enable standalone output for Docker
@@ -116,11 +87,6 @@ const nextConfig = {
         destination: '/',
         permanent: true,
       },
-      {
-        source: '/services',
-        destination: '/search',
-        permanent: true,
-      },
     ];
   },
 
@@ -158,19 +124,16 @@ const nextConfig = {
 
   // Environment variables (public, prefixed with NEXT_PUBLIC_)
   env: {
-    NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || 'https://taxasge-backend-dev.run.app',
-    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || 'https://taxasge-frontend-dev.run.app',
+    NEXT_PUBLIC_API_BASE_URL:
+      process.env.NEXT_PUBLIC_API_BASE_URL || 'https://taxasge-backend-dev.run.app',
+    NEXT_PUBLIC_SITE_URL:
+      process.env.NEXT_PUBLIC_SITE_URL || 'https://taxasge-frontend-dev.run.app',
     NEXT_PUBLIC_ENVIRONMENT: process.env.NEXT_PUBLIC_ENVIRONMENT || 'development',
   },
 
   // Experimental features
   experimental: {
-    optimizePackageImports: [
-      '@radix-ui/react-icons',
-      'lucide-react',
-      'date-fns',
-      'lodash',
-    ],
+    optimizePackageImports: ['@radix-ui/react-icons', 'lucide-react', 'date-fns', 'lodash'],
     serverActions: {
       bodySizeLimit: '2mb',
     },
@@ -187,5 +150,4 @@ const nextConfig = {
   },
 };
 
-// module.exports = withPWA(nextConfig); // Temporarily disabled
-module.exports = nextConfig;
+export default withNextIntl(nextConfig);

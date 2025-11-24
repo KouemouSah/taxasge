@@ -1,0 +1,66 @@
+{
+  "common": {
+    "appName": "TaxasGE",
+    "appDescription": "Plateforme numérique de gestion fiscale de Guinée Équatoriale",
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès",
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "close": "Fermer"
+  },
+  "nav": {
+    "home": "Accueil",
+    "services": "Services",
+    "ministries": "Ministères",
+    "calculator": "Calculateur",
+    "guide": "Guide",
+    "login": "Connexion",
+    "register": "S'inscrire",
+    "dashboard": "Tableau de bord",
+    "logout": "Déconnexion"
+  },
+  "footer": {
+    "description": "Plateforme numérique de gestion fiscale de Guinée Équatoriale",
+    "quickLinks": "Liens Rapides",
+    "legal": "Légal",
+    "contact": "Contact",
+    "privacyPolicy": "Politique de Confidentialité",
+    "termsOfService": "Conditions d'Utilisation",
+    "allRightsReserved": "Tous droits réservés"
+  },
+  "hero": {
+    "title": "Gestion Fiscale Simplifiée pour la Guinée Équatoriale",
+    "subtitle": "Accédez aux services fiscaux, calculez les impôts et gérez vos déclarations numériquement",
+    "ctaPrimary": "Commencer Maintenant",
+    "ctaSecondary": "Explorer les Services"
+  },
+  "auth": {
+    "loginTitle": "Connexion",
+    "registerTitle": "Créer un Compte",
+    "email": "Adresse Email",
+    "password": "Mot de Passe",
+    "confirmPassword": "Confirmer le Mot de Passe",
+    "forgotPassword": "Mot de passe oublié ?",
+    "noAccount": "Pas de compte ?",
+    "hasAccount": "Déjà un compte ?",
+    "loginButton": "Se Connecter",
+    "registerButton": "S'inscrire"
+  },
+  "dashboard": {
+    "welcome": "Bienvenue",
+    "overview": "Aperçu",
+    "declarations": "Déclarations",
+    "payments": "Paiements",
+    "documents": "Documents",
+    "companies": "Entreprises",
+    "profile": "Profil",
+    "settings": "Paramètres",
+    "support": "Support"
+  }
+}

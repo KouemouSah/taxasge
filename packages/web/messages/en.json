@@ -1,0 +1,66 @@
+{
+  "common": {
+    "appName": "TaxasGE",
+    "appDescription": "Digital tax management platform for Equatorial Guinea",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "search": "Search",
+    "filter": "Filter",
+    "close": "Close"
+  },
+  "nav": {
+    "home": "Home",
+    "services": "Services",
+    "ministries": "Ministries",
+    "calculator": "Calculator",
+    "guide": "Guide",
+    "login": "Login",
+    "register": "Register",
+    "dashboard": "Dashboard",
+    "logout": "Logout"
+  },
+  "footer": {
+    "description": "Digital tax management platform for Equatorial Guinea",
+    "quickLinks": "Quick Links",
+    "legal": "Legal",
+    "contact": "Contact",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service",
+    "allRightsReserved": "All rights reserved"
+  },
+  "hero": {
+    "title": "Simplified Tax Management for Equatorial Guinea",
+    "subtitle": "Access tax services, calculate taxes and manage your declarations digitally",
+    "ctaPrimary": "Get Started",
+    "ctaSecondary": "Explore Services"
+  },
+  "auth": {
+    "loginTitle": "Login",
+    "registerTitle": "Create Account",
+    "email": "Email Address",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "forgotPassword": "Forgot password?",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "loginButton": "Login",
+    "registerButton": "Register"
+  },
+  "dashboard": {
+    "welcome": "Welcome",
+    "overview": "Overview",
+    "declarations": "Declarations",
+    "payments": "Payments",
+    "documents": "Documents",
+    "companies": "Companies",
+    "profile": "Profile",
+    "settings": "Settings",
+    "support": "Support"
+  }
+}

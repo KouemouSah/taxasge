@@ -1,0 +1,66 @@
+{
+  "common": {
+    "appName": "TaxasGE",
+    "appDescription": "Plataforma digital de gestión fiscal de Guinea Ecuatorial",
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "close": "Cerrar"
+  },
+  "nav": {
+    "home": "Inicio",
+    "services": "Servicios",
+    "ministries": "Ministerios",
+    "calculator": "Calculadora",
+    "guide": "Guía",
+    "login": "Iniciar sesión",
+    "register": "Registrarse",
+    "dashboard": "Panel",
+    "logout": "Cerrar sesión"
+  },
+  "footer": {
+    "description": "Plataforma digital de gestión fiscal de Guinea Ecuatorial",
+    "quickLinks": "Enlaces Rápidos",
+    "legal": "Legal",
+    "contact": "Contacto",
+    "privacyPolicy": "Política de Privacidad",
+    "termsOfService": "Términos de Servicio",
+    "allRightsReserved": "Todos los derechos reservados"
+  },
+  "hero": {
+    "title": "Gestión Fiscal Simplificada para Guinea Ecuatorial",
+    "subtitle": "Accede a servicios fiscales, calcula impuestos y gestiona tus declaraciones de forma digital",
+    "ctaPrimary": "Empezar Ahora",
+    "ctaSecondary": "Explorar Servicios"
+  },
+  "auth": {
+    "loginTitle": "Iniciar Sesión",
+    "registerTitle": "Crear Cuenta",
+    "email": "Correo Electrónico",
+    "password": "Contraseña",
+    "confirmPassword": "Confirmar Contraseña",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "noAccount": "¿No tienes cuenta?",
+    "hasAccount": "¿Ya tienes cuenta?",
+    "loginButton": "Iniciar Sesión",
+    "registerButton": "Registrarse"
+  },
+  "dashboard": {
+    "welcome": "Bienvenido",
+    "overview": "Resumen",
+    "declarations": "Declaraciones",
+    "payments": "Pagos",
+    "documents": "Documentos",
+    "companies": "Empresas",
+    "profile": "Perfil",
+    "settings": "Configuración",
+    "support": "Soporte"
+  }
+}
