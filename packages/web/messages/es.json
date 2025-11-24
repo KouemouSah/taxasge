@@ -12,7 +12,9 @@
     "edit": "Editar",
     "search": "Buscar",
     "filter": "Filtrar",
-    "close": "Cerrar"
+    "close": "Cerrar",
+    "seeAll": "Ver todo",
+    "learnMore": "Saber más"
   },
   "nav": {
     "home": "Inicio",
@@ -26,19 +28,67 @@
     "logout": "Cerrar sesión"
   },
   "footer": {
-    "description": "Plataforma digital de gestión fiscal de Guinea Ecuatorial",
-    "quickLinks": "Enlaces Rápidos",
+    "description": "Plataforma oficial de servicios fiscales de Guinea Ecuatorial",
+    "services": "Servicios",
+    "allServices": "Todos los servicios",
+    "practicalGuide": "Guía práctica",
     "legal": "Legal",
-    "contact": "Contacto",
-    "privacyPolicy": "Política de Privacidad",
-    "termsOfService": "Términos de Servicio",
-    "allRightsReserved": "Todos los derechos reservados"
+    "privacy": "Privacidad",
+    "terms": "Términos de uso",
+    "cookies": "Política de cookies",
+    "contactTitle": "Contacto",
+    "address": "Ministerio de Finanzas, Malabo, Guinea Ecuatorial",
+    "phone": "+240 XXX XXX XXX",
+    "email": "contact@taxasge.gq",
+    "copyright": "© 2025 TaxasGE - Ministerio de Finanzas Guinea Ecuatorial. Todos los derechos reservados."
   },
   "hero": {
-    "title": "Gestión Fiscal Simplificada para Guinea Ecuatorial",
-    "subtitle": "Accede a servicios fiscales, calcula impuestos y gestiona tus declaraciones de forma digital",
-    "ctaPrimary": "Empezar Ahora",
-    "ctaSecondary": "Explorar Servicios"
+    "badge": "Servicios Fiscales de Guinea Ecuatorial",
+    "title": "Simplifica tus trámites fiscales",
+    "subtitle": "Accede a todos los servicios fiscales guineanos en un solo lugar. Calcula tus impuestos, consulta los procedimientos y descarga tus documentos.",
+    "searchPlaceholder": "Buscar un servicio fiscal, un ministerio, una categoría...",
+    "searchButton": "Buscar",
+    "calculator": "Calculadora",
+    "calculatorDesc": "Calcula tus impuestos",
+    "servicesDesc": "Servicios fiscales",
+    "completeGuide": "Guía Completa",
+    "completeGuideDesc": "Procedimientos detallados"
+  },
+  "stats": {
+    "title": "Una plataforma completa",
+    "description": "Accede a todos los servicios fiscales de Guinea Ecuatorial, organizados de forma clara y accesible",
+    "fiscalServices": "Servicios Fiscales",
+    "fiscalServicesDesc": "Servicios disponibles",
+    "ministries": "Ministerios",
+    "ministriesDesc": "Ministerios cubiertos",
+    "categories": "Categorías",
+    "categoriesDesc": "Categorías de servicios",
+    "sectors": "Sectores",
+    "sectorsDesc": "Sectores de actividad",
+    "errorLoading": "No se pudieron cargar las estadísticas"
+  },
+  "features": {
+    "title": "Funcionalidades principales",
+    "description": "Herramientas potentes para simplificar todos tus trámites administrativos y fiscales",
+    "intelligentSearch": "Búsqueda Inteligente",
+    "intelligentSearchDesc": "Encuentra rápidamente el servicio fiscal que necesitas gracias a nuestro motor de búsqueda avanzado con filtros por ministerio, sector y categoría.",
+    "taxCalculator": "Calculadora de Impuestos",
+    "taxCalculatorDesc": "Calcula automáticamente el monto de tus impuestos y tarifas administrativas para cada servicio. Compatible con fórmulas complejas de expedición y renovación.",
+    "documents": "Documentos y Procedimientos",
+    "documentsDesc": "Consulta la lista completa de documentos requeridos y descarga los formularios necesarios. Sigue los procedimientos paso a paso.",
+    "upToDate": "Información Actualizada",
+    "upToDateDesc": "Base de datos actualizada regularmente con las últimas tarifas y procedimientos. Más de 19,000 registros validados y verificados."
+  },
+  "directory": {
+    "title": "Directorio de Servicios Fiscales",
+    "loadingDescription": "Cargando el directorio...",
+    "description": "Explora nuestro catálogo de {services} servicios fiscales distribuidos en {categories} categorías para simplificar tus trámites administrativos.",
+    "loading": "Cargando el directorio...",
+    "errorLoading": "No se pudo cargar el directorio",
+    "empty": "Ninguna categoría disponible",
+    "emptyDescription": "El directorio de servicios aún no está disponible.",
+    "seeAllCategories": "Ver todas las categorías",
+    "servicesCount": "{count} servicios"
   },
   "auth": {
     "loginTitle": "Iniciar Sesión",

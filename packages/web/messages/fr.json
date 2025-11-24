@@ -12,7 +12,9 @@
     "edit": "Modifier",
     "search": "Rechercher",
     "filter": "Filtrer",
-    "close": "Fermer"
+    "close": "Fermer",
+    "seeAll": "Voir tout",
+    "learnMore": "En savoir plus"
   },
   "nav": {
     "home": "Accueil",
@@ -26,19 +28,67 @@
     "logout": "Déconnexion"
   },
   "footer": {
-    "description": "Plateforme numérique de gestion fiscale de Guinée Équatoriale",
-    "quickLinks": "Liens Rapides",
+    "description": "Plateforme officielle des services fiscaux de Guinée Équatoriale",
+    "services": "Services",
+    "allServices": "Tous les services",
+    "practicalGuide": "Guide pratique",
     "legal": "Légal",
-    "contact": "Contact",
-    "privacyPolicy": "Politique de Confidentialité",
-    "termsOfService": "Conditions d'Utilisation",
-    "allRightsReserved": "Tous droits réservés"
+    "privacy": "Confidentialité",
+    "terms": "Conditions d'utilisation",
+    "cookies": "Politique de cookies",
+    "contactTitle": "Contact",
+    "address": "Ministère des Finances, Malabo, Guinée Équatoriale",
+    "phone": "+240 XXX XXX XXX",
+    "email": "contact@taxasge.gq",
+    "copyright": "© 2025 TaxasGE - Ministère des Finances Guinée Équatoriale. Tous droits réservés."
   },
   "hero": {
-    "title": "Gestion Fiscale Simplifiée pour la Guinée Équatoriale",
-    "subtitle": "Accédez aux services fiscaux, calculez les impôts et gérez vos déclarations numériquement",
-    "ctaPrimary": "Commencer Maintenant",
-    "ctaSecondary": "Explorer les Services"
+    "badge": "Services Fiscaux de Guinée Équatoriale",
+    "title": "Simplifiez vos démarches fiscales",
+    "subtitle": "Accédez à tous les services fiscaux guinéens en un seul endroit. Calculez vos impôts, consultez les procédures et téléchargez vos documents.",
+    "searchPlaceholder": "Rechercher un service fiscal, un ministère, une catégorie...",
+    "searchButton": "Rechercher",
+    "calculator": "Calculateur",
+    "calculatorDesc": "Calculez vos impôts",
+    "servicesDesc": "Services fiscaux",
+    "completeGuide": "Guide Complet",
+    "completeGuideDesc": "Procédures détaillées"
+  },
+  "stats": {
+    "title": "Une plateforme complète",
+    "description": "Accédez à l'ensemble des services fiscaux de Guinée Équatoriale, organisés de manière claire et accessible",
+    "fiscalServices": "Services Fiscaux",
+    "fiscalServicesDesc": "Services disponibles",
+    "ministries": "Ministères",
+    "ministriesDesc": "Ministères couverts",
+    "categories": "Catégories",
+    "categoriesDesc": "Catégories de services",
+    "sectors": "Secteurs",
+    "sectorsDesc": "Secteurs d'activité",
+    "errorLoading": "Impossible de charger les statistiques"
+  },
+  "features": {
+    "title": "Fonctionnalités principales",
+    "description": "Des outils puissants pour simplifier toutes vos démarches administratives et fiscales",
+    "intelligentSearch": "Recherche Intelligente",
+    "intelligentSearchDesc": "Trouvez rapidement le service fiscal dont vous avez besoin grâce à notre moteur de recherche avancé avec filtres par ministère, secteur et catégorie.",
+    "taxCalculator": "Calculateur de Taxes",
+    "taxCalculatorDesc": "Calculez automatiquement le montant de vos taxes et frais administratifs pour chaque service. Support des formules complexes d'expédition et de renouvellement.",
+    "documents": "Documents et Procédures",
+    "documentsDesc": "Consultez la liste complète des documents requis et téléchargez les formulaires nécessaires. Suivez les procédures étape par étape.",
+    "upToDate": "Informations à Jour",
+    "upToDateDesc": "Base de données mise à jour régulièrement avec les derniers tarifs et procédures. Plus de 19 000 enregistrements validés et vérifiés."
+  },
+  "directory": {
+    "title": "Annuaire des Services Fiscaux",
+    "loadingDescription": "Chargement de l'annuaire...",
+    "description": "Explorez notre catalogue de {services} services fiscaux répartis dans {categories} catégories pour simplifier vos démarches administratives.",
+    "loading": "Chargement de l'annuaire...",
+    "errorLoading": "Impossible de charger l'annuaire",
+    "empty": "Aucune catégorie disponible",
+    "emptyDescription": "L'annuaire des services n'est pas encore disponible.",
+    "seeAllCategories": "Voir toutes les catégories",
+    "servicesCount": "{count} services"
   },
   "auth": {
     "loginTitle": "Connexion",

@@ -1,64 +1,62 @@
-import { Calculator, FileSearch, Download, Clock } from "lucide-react"
-import { Card } from "@/components/ui/card"
+'use client';
+
+import { Calculator, FileSearch, Download, Clock } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { useTranslations } from 'next-intl';
 
 export const FeaturesSection = () => {
+  const t = useTranslations('features');
+
   const features = [
     {
       icon: FileSearch,
-      title: "Recherche Intelligente",
-      description: "Trouvez rapidement le service fiscal dont vous avez besoin grâce à notre moteur de recherche avancé avec filtres par ministère, secteur et catégorie.",
+      title: t('intelligentSearch'),
+      description: t('intelligentSearchDesc'),
     },
     {
       icon: Calculator,
-      title: "Calculateur de Taxes",
-      description: "Calculez automatiquement le montant de vos taxes et frais administratifs pour chaque service. Support des formules complexes d'expedition et de renewal.",
+      title: t('taxCalculator'),
+      description: t('taxCalculatorDesc'),
     },
     {
       icon: Download,
-      title: "Documents & Procédures",
-      description: "Consultez la liste complète des documents requis et téléchargez les formulaires nécessaires. Suivez les procédures étape par étape.",
+      title: t('documents'),
+      description: t('documentsDesc'),
     },
     {
       icon: Clock,
-      title: "Informations à Jour",
-      description: "Base de données mise à jour régulièrement avec les derniers tarifs et procédures. Plus de 19,000 enregistrements validés et vérifiés.",
+      title: t('upToDate'),
+      description: t('upToDateDesc'),
     },
-  ]
+  ];
 
   return (
     <section className="py-16">
       <div className="container mx-auto px-4">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-4">Fonctionnalités principales</h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Des outils puissants pour simplifier toutes vos démarches administratives et fiscales
-          </p>
+          <h2 className="text-3xl font-bold mb-4">{t('title')}</h2>
+          <p className="text-muted-foreground max-w-2xl mx-auto">{t('description')}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {features.map((feature) => {
-            const Icon = feature.icon
+            const Icon = feature.icon;
             return (
-              <Card
-                key={feature.title}
-                className="group hover:shadow-lg transition-all duration-300"
-              >
+              <Card key={feature.title} className="group hover:shadow-lg transition-all duration-300">
                 <div className="p-6 space-y-4">
                   <div className="h-12 w-12 rounded-lg bg-primary flex items-center justify-center group-hover:scale-110 transition-transform">
                     <Icon className="h-6 w-6 text-white" />
                   </div>
                   <h3 className="font-semibold text-lg">{feature.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {feature.description}
-                  </p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
                 </div>
               </Card>
-            )
+            );
           })}
         </div>
       </div>
     </section>
-  )
-}
+  );
+};
 
-export default FeaturesSection
+export default FeaturesSection;

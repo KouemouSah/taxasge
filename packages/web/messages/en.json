@@ -12,7 +12,9 @@
     "edit": "Edit",
     "search": "Search",
     "filter": "Filter",
-    "close": "Close"
+    "close": "Close",
+    "seeAll": "See all",
+    "learnMore": "Learn more"
   },
   "nav": {
     "home": "Home",
@@ -26,19 +28,67 @@
     "logout": "Logout"
   },
   "footer": {
-    "description": "Digital tax management platform for Equatorial Guinea",
-    "quickLinks": "Quick Links",
+    "description": "Official tax services platform for Equatorial Guinea",
+    "services": "Services",
+    "allServices": "All services",
+    "practicalGuide": "Practical guide",
     "legal": "Legal",
-    "contact": "Contact",
-    "privacyPolicy": "Privacy Policy",
-    "termsOfService": "Terms of Service",
-    "allRightsReserved": "All rights reserved"
+    "privacy": "Privacy",
+    "terms": "Terms of use",
+    "cookies": "Cookie policy",
+    "contactTitle": "Contact",
+    "address": "Ministry of Finance, Malabo, Equatorial Guinea",
+    "phone": "+240 XXX XXX XXX",
+    "email": "contact@taxasge.gq",
+    "copyright": "© 2025 TaxasGE - Ministry of Finance Equatorial Guinea. All rights reserved."
   },
   "hero": {
-    "title": "Simplified Tax Management for Equatorial Guinea",
-    "subtitle": "Access tax services, calculate taxes and manage your declarations digitally",
-    "ctaPrimary": "Get Started",
-    "ctaSecondary": "Explore Services"
+    "badge": "Tax Services of Equatorial Guinea",
+    "title": "Simplify your tax procedures",
+    "subtitle": "Access all Guinean tax services in one place. Calculate your taxes, consult procedures and download your documents.",
+    "searchPlaceholder": "Search for a tax service, a ministry, a category...",
+    "searchButton": "Search",
+    "calculator": "Calculator",
+    "calculatorDesc": "Calculate your taxes",
+    "servicesDesc": "Tax services",
+    "completeGuide": "Complete Guide",
+    "completeGuideDesc": "Detailed procedures"
+  },
+  "stats": {
+    "title": "A complete platform",
+    "description": "Access all tax services of Equatorial Guinea, organized clearly and accessibly",
+    "fiscalServices": "Tax Services",
+    "fiscalServicesDesc": "Available services",
+    "ministries": "Ministries",
+    "ministriesDesc": "Ministries covered",
+    "categories": "Categories",
+    "categoriesDesc": "Service categories",
+    "sectors": "Sectors",
+    "sectorsDesc": "Activity sectors",
+    "errorLoading": "Unable to load statistics"
+  },
+  "features": {
+    "title": "Main features",
+    "description": "Powerful tools to simplify all your administrative and tax procedures",
+    "intelligentSearch": "Intelligent Search",
+    "intelligentSearchDesc": "Quickly find the tax service you need thanks to our advanced search engine with filters by ministry, sector and category.",
+    "taxCalculator": "Tax Calculator",
+    "taxCalculatorDesc": "Automatically calculate the amount of your taxes and administrative fees for each service. Support for complex expedition and renewal formulas.",
+    "documents": "Documents and Procedures",
+    "documentsDesc": "View the complete list of required documents and download the necessary forms. Follow the procedures step by step.",
+    "upToDate": "Up-to-date Information",
+    "upToDateDesc": "Database regularly updated with the latest rates and procedures. More than 19,000 validated and verified records."
+  },
+  "directory": {
+    "title": "Tax Services Directory",
+    "loadingDescription": "Loading directory...",
+    "description": "Explore our catalog of {services} tax services distributed across {categories} categories to simplify your administrative procedures.",
+    "loading": "Loading directory...",
+    "errorLoading": "Unable to load directory",
+    "empty": "No categories available",
+    "emptyDescription": "The services directory is not yet available.",
+    "seeAllCategories": "See all categories",
+    "servicesCount": "{count} services"
   },
   "auth": {
     "loginTitle": "Login",
