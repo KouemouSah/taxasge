@@ -123,31 +123,29 @@ const nextConfig = {
     ];
   },
 
-  // Webpack configuration
-  webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
-    // Fix 'self is not defined' error for server-side bundles (static export)
-    if (isServer) {
-      // Use 'global' instead of 'self' for server-side webpack chunks
-      config.output.globalObject = 'global';
-
-      // Disable splitChunks for server-side to avoid chunk loading issues
-      config.optimization.splitChunks = false;
-    } else {
-      // Keep splitChunks for client-side
+  // Webpack configuration (optional optimizations for Cloud Run)
+  webpack: (config, { isServer }) => {
+    // Optimize bundle splitting for better performance
+    if (!isServer) {
       config.optimization.splitChunks = {
         chunks: 'all',
         cacheGroups: {
           default: false,
           vendors: false,
+          // Separate vendor bundle for better caching
           vendor: {
             name: 'vendor',
             chunks: 'all',
             test: /node_modules/,
+            priority: 20,
           },
+          // Common code shared between pages
           common: {
             name: 'common',
             minChunks: 2,
             chunks: 'all',
+            priority: 10,
+            reuseExistingChunk: true,
             enforce: true,
           },
         },
