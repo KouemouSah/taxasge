@@ -4,10 +4,18 @@
  *
  * @module users-admin/services
  * @author Claude Code
- * @date 2025-11-19
+ * @date 2025-11-25
  *
- * IMPORTANT: Uses /api/v1/admin/users endpoints (admin-only operations)
- * Backend: app/modules/admin/api/user_management_routes.py
+ * BACKEND ALIGNMENT: Phase 6
+ * Routes: /api/v1/admin/users (from app/modules/admin/api/user_management_routes.py)
+ * - GET    /api/v1/admin/users              → list_users (paginated)
+ * - POST   /api/v1/admin/users              → create_user
+ * - GET    /api/v1/admin/users/{user_id}    → get_user
+ * - PUT    /api/v1/admin/users/{user_id}    → update_user (partial updates supported)
+ * - DELETE /api/v1/admin/users/{user_id}    → delete_user
+ * - GET    /api/v1/admin/users/search       → search_users
+ * - GET    /api/v1/admin/users/stats        → get_user_stats
+ * - GET    /api/v1/admin/users/{user_id}/activities → get_user_activities
  */
 
 import type {
@@ -52,6 +60,11 @@ class ApiClient {
       "Content-Type": "application/json",
     };
 
+    // Add Authorization header if token exists
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
     // Merge with provided headers
     if (options.headers) {
       const headersToMerge = options.headers instanceof Headers
@@ -60,10 +73,6 @@ class ApiClient {
         ? Object.fromEntries(options.headers)
         : options.headers;
       Object.assign(headers, headersToMerge);
-    }
-
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
     }
 
     const response = await fetch(url, {
@@ -104,13 +113,6 @@ class ApiClient {
     });
   }
 
-  async patch<T>(endpoint: string, data: unknown): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    });
-  }
-
   async delete<T>(endpoint: string): Promise<T> {
     return this.request<T>(endpoint, { method: "DELETE" });
   }
@@ -124,36 +126,42 @@ const client = new ApiClient(API_BASE_URL + API_VERSION);
 
 export const usersApi = {
   /**
-   * Get all users with optional filters
-   * ENDPOINT: GET /api/v1/admin/users
+   * Get all users with optional filters and pagination
+   * BACKEND: GET /api/v1/admin/users
+   * ROUTE: list_users() in user_management_routes.py:62
+   * RESPONSE: UserListResponse with pagination metadata
    */
   getAll: async (params?: {
     role?: UserRole;
-    is_active?: boolean;
+    status?: string;
     search?: string;
     page?: number;
-    page_size?: number;
+    size?: number;
   }): Promise<User[]> => {
     const queryParams = new URLSearchParams();
-    if (params?.role) queryParams.append("role", params.role);
-    if (params?.is_active !== undefined)
-      queryParams.append("is_active", String(params.is_active));
-    if (params?.search) queryParams.append("search", params.search);
+
+    // Backend uses "page" and "size" for pagination
     if (params?.page) queryParams.append("page", String(params.page));
-    if (params?.page_size) queryParams.append("page_size", String(params.page_size));
+    if (params?.size) queryParams.append("size", String(params.size));
+
+    // Filters
+    if (params?.role) queryParams.append("role", params.role);
+    if (params?.status) queryParams.append("status", params.status);
+    if (params?.search) queryParams.append("search", params.search);
 
     const query = queryParams.toString();
     const response = await client.get<PaginatedUsersResponse>(
       `${ADMIN_USERS_BASE}${query ? `?${query}` : ""}`
     );
 
-    // Extract users array from paginated response
+    // Backend returns: { items: User[], total: number, page: number, page_size: number, pages: number }
     return response.items || [];
   },
 
   /**
    * Get user by ID
-   * ENDPOINT: GET /api/v1/admin/users/{id}
+   * BACKEND: GET /api/v1/admin/users/{user_id}
+   * ROUTE: get_user() in user_management_routes.py:177
    */
   getById: async (id: string): Promise<User> => {
     return client.get<User>(`${ADMIN_USERS_BASE}/${id}`);
@@ -161,34 +169,108 @@ export const usersApi = {
 
   /**
    * Create new user
-   * ENDPOINT: POST /api/v1/admin/users
+   * BACKEND: POST /api/v1/admin/users
+   * ROUTE: create_user() in user_management_routes.py:125
+   *
+   * CRITICAL: Backend hashes password automatically using PasswordService
+   * Frontend sends plain password, backend handles bcrypt hashing
    */
   create: async (data: CreateUserRequest): Promise<User> => {
     return client.post<User>(ADMIN_USERS_BASE, data);
   },
 
   /**
-   * Update user
-   * ENDPOINT: PUT /api/v1/admin/users/{id}
+   * Update user (supports partial updates)
+   * BACKEND: PUT /api/v1/admin/users/{user_id}
+   * ROUTE: update_user() in user_management_routes.py:230
+   *
+   * CRITICAL:
+   * - Backend supports partial updates (exclude_unset=True)
+   * - Only sends non-null fields
+   * - Email uniqueness check done backend-side
+   * - Password hashing done backend-side if password provided
    */
   update: async (id: string, data: UpdateUserRequest): Promise<User> => {
     return client.put<User>(`${ADMIN_USERS_BASE}/${id}`, data);
   },
 
   /**
-   * Delete user
-   * ENDPOINT: DELETE /api/v1/admin/users/{id}
+   * Delete user (hard delete for professionals, soft delete for citizen/business handled by UI)
+   * BACKEND: DELETE /api/v1/admin/users/{user_id}
+   * ROUTE: delete_user() in user_management_routes.py:323
+   *
+   * CRITICAL:
+   * - Backend prevents deletion of admin users (400 error)
+   * - Returns: { message: "User deleted successfully" }
    */
   delete: async (id: string): Promise<void> => {
-    return client.delete<void>(`${ADMIN_USERS_BASE}/${id}`);
+    await client.delete<{ message: string }>(`${ADMIN_USERS_BASE}/${id}`);
   },
 
   /**
-   * Activate/Deactivate user
-   * ENDPOINT: PATCH /api/v1/admin/users/{id}
+   * Activate/Deactivate user (soft delete for citizen/business)
+   * Uses the same PUT endpoint for partial update
+   * BACKEND: PUT /api/v1/admin/users/{user_id}
+   *
+   * NOTE: This is a convenience method that uses update() internally
+   * Backend doesn't have a separate setActive endpoint
    */
   setActive: async (id: string, is_active: boolean): Promise<User> => {
-    return client.patch<User>(`${ADMIN_USERS_BASE}/${id}`, { is_active });
+    return usersApi.update(id, { is_active });
+  },
+
+  /**
+   * Search users
+   * BACKEND: GET /api/v1/admin/users/search
+   * ROUTE: search_users() in user_management_routes.py:375
+   */
+  search: async (params?: {
+    q?: string;
+    role?: UserRole;
+    status?: string;
+    country?: string;
+    limit?: number;
+  }): Promise<User[]> => {
+    const queryParams = new URLSearchParams();
+    if (params?.q) queryParams.append("q", params.q);
+    if (params?.role) queryParams.append("role", params.role);
+    if (params?.status) queryParams.append("status", params.status);
+    if (params?.country) queryParams.append("country", params.country);
+    if (params?.limit) queryParams.append("limit", String(params.limit));
+
+    const query = queryParams.toString();
+    return client.get<User[]>(
+      `${ADMIN_USERS_BASE}/search${query ? `?${query}` : ""}`
+    );
+  },
+
+  /**
+   * Get user statistics
+   * BACKEND: GET /api/v1/admin/users/stats
+   * ROUTE: get_user_stats() in user_management_routes.py:423
+   */
+  getStats: async (): Promise<{
+    total: number;
+    by_role: Record<string, number>;
+    by_status: Record<string, number>;
+  }> => {
+    return client.get(`${ADMIN_USERS_BASE}/stats`);
+  },
+
+  /**
+   * Get user activity history
+   * BACKEND: GET /api/v1/admin/users/{user_id}/activities
+   * ROUTE: get_user_activities() in user_management_routes.py:451
+   */
+  getActivities: async (userId: string, limit: number = 50): Promise<Array<{
+    id: string;
+    user_id: string;
+    action: string;
+    resource: string;
+    metadata?: Record<string, unknown>;
+    timestamp: string;
+  }>> => {
+    return client.get(`${ADMIN_USERS_BASE}/${userId}/activities?limit=${limit}`);
   },
 };
 
