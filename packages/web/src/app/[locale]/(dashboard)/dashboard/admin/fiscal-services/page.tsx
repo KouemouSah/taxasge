@@ -315,7 +315,7 @@ export default function FiscalServicesPage() {
                   <Upload className="h-4 w-4 mr-2" />
                   {t('importServices')}
                 </Button>
-                <Button size="sm">
+                <Button size="sm" onClick={() => router.push(`/${locale}/dashboard/admin/fiscal-services/new`)}>
                   <Plus className="h-4 w-4 mr-2" />
                   {t('createService')}
                 </Button>
