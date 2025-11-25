@@ -77,9 +77,9 @@ export default function AdminSidebar() {
       title: t('nav.fiscalServices'),
       items: [
         {
-          title: t('nav.services'),
+          title: t('nav.fiscalServices'),
           href: `/${locale}/dashboard/admin/fiscal-services`,
-          icon: Building2,
+          icon: FileText,
         },
       ],
     },
