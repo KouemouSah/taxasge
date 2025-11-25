@@ -40,6 +40,7 @@ import type { User, UserRole } from '@/modules/users-admin/types'
 import { UserRole as UserRoleEnum, UserStatus, isCitizenOrBusiness, canPhysicallyDelete } from '@/types/user'
 import { useUserLabels } from '@/hooks/use-user-labels'
 import { CreateUserDialog } from '@/modules/users-admin/components/CreateUserDialog'
+import { EditUserDialog } from '@/modules/users-admin/components/EditUserDialog'
 import { BackendUnavailableAlert } from '@/components/admin/BackendUnavailableAlert'
 
 export default function UsersPage() {
@@ -55,6 +56,8 @@ export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState<'all' | UserRole>('all')
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [isBackendUnavailable, setIsBackendUnavailable] = useState(false)
 
   // Fetch users
@@ -131,6 +134,11 @@ export default function UsersPage() {
   const getDeleteButtonVariant = (role: UserRole) => {
     if (role === 'admin') return 'ghost' as const
     return 'destructive' as const
+  }
+
+  const handleEdit = (user: User) => {
+    setSelectedUser(user)
+    setEditDialogOpen(true)
   }
 
   const handleDelete = async (user: User) => {
@@ -368,7 +376,7 @@ export default function UsersPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(user)}>
                           <Edit className="h-4 w-4 mr-1" />
                           {t('edit')}
                         </Button>
@@ -396,6 +404,14 @@ export default function UsersPage() {
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         onSuccess={fetchUsers}
+      />
+
+      {/* Edit User Dialog */}
+      <EditUserDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onSuccess={fetchUsers}
+        user={selectedUser}
       />
     </div>
   )

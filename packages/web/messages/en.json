@@ -664,7 +664,16 @@
       "userCreatedSuccess": "User {name} has been successfully created",
       "errorCreatingUser": "Unable to create user",
       "cancel": "Cancel",
-      "createUserButton": "Create user"
+      "createUserButton": "Create user",
+      "editDialogTitle": "Edit user",
+      "editDialogDescription": "Modify user information",
+      "changePassword": "Change password",
+      "changePasswordOptional": "Change password (optional)",
+      "leaveEmptyToKeep": "Leave empty to keep current password",
+      "userUpdated": "User updated",
+      "userUpdatedSuccess": "User {name} has been successfully updated",
+      "errorUpdatingUser": "Unable to update user",
+      "updateUserButton": "Update user"
     },
 
     "roles": {

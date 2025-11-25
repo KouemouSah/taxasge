@@ -664,7 +664,16 @@
       "userCreatedSuccess": "L'utilisateur {name} a été créé avec succès",
       "errorCreatingUser": "Impossible de créer l'utilisateur",
       "cancel": "Annuler",
-      "createUserButton": "Créer l'utilisateur"
+      "createUserButton": "Créer l'utilisateur",
+      "editDialogTitle": "Modifier l'utilisateur",
+      "editDialogDescription": "Modifier les informations de l'utilisateur",
+      "changePassword": "Changer le mot de passe",
+      "changePasswordOptional": "Changer le mot de passe (optionnel)",
+      "leaveEmptyToKeep": "Laisser vide pour conserver le mot de passe actuel",
+      "userUpdated": "Utilisateur mis à jour",
+      "userUpdatedSuccess": "L'utilisateur {name} a été mis à jour avec succès",
+      "errorUpdatingUser": "Impossible de mettre à jour l'utilisateur",
+      "updateUserButton": "Mettre à jour l'utilisateur"
     },
 
     "roles": {
