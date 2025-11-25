@@ -431,11 +431,11 @@ export default function FiscalServicesPage() {
                     <TableCell>{formatCurrency(service.tasaRenovacion)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" onClick={() => router.push(`/${locale}/dashboard/admin/fiscal-services/${service.id}`)}>
                           <Eye className="h-4 w-4 mr-1" />
                           {t('view')}
                         </Button>
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" onClick={() => router.push(`/${locale}/dashboard/admin/fiscal-services/${service.id}/edit`)}>
                           <Edit className="h-4 w-4 mr-1" />
                           {t('edit')}
                         </Button>
