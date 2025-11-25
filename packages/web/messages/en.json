@@ -647,7 +647,24 @@
       "selectRole": "Select role",
       "passwordMinLength": "Minimum 8 characters",
       "creating": "Creating...",
-      "updating": "Updating..."
+      "updating": "Updating...",
+      "createDialogTitle": "Create a new user",
+      "createDialogDescription": "Create an administrative user account (DGI Agent, Accountant, or Administrator)",
+      "emailRequired": "Email *",
+      "emailPlaceholder": "user@example.com",
+      "firstNameRequired": "First name *",
+      "firstNamePlaceholder": "John",
+      "lastNameRequired": "Last name *",
+      "lastNamePlaceholder": "Doe",
+      "roleRequired": "Role *",
+      "passwordRequired": "Password *",
+      "passwordPlaceholder": "••••••••",
+      "onlyAdminRoles": "Only administrative roles can be created here",
+      "userCreated": "User created",
+      "userCreatedSuccess": "User {name} has been successfully created",
+      "errorCreatingUser": "Unable to create user",
+      "cancel": "Cancel",
+      "createUserButton": "Create user"
     },
 
     "roles": {

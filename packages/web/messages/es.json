@@ -647,7 +647,24 @@
       "selectRole": "Seleccionar rol",
       "passwordMinLength": "Mínimo 8 caracteres",
       "creating": "Creando...",
-      "updating": "Actualizando..."
+      "updating": "Actualizando...",
+      "createDialogTitle": "Crear un nuevo usuario",
+      "createDialogDescription": "Crear una cuenta de usuario administrativo (Agent DGI, Contador, o Administrador)",
+      "emailRequired": "Email *",
+      "emailPlaceholder": "usuario@example.com",
+      "firstNameRequired": "Nombre *",
+      "firstNamePlaceholder": "Juan",
+      "lastNameRequired": "Apellido *",
+      "lastNamePlaceholder": "Pérez",
+      "roleRequired": "Rol *",
+      "passwordRequired": "Contraseña *",
+      "passwordPlaceholder": "••••••••",
+      "onlyAdminRoles": "Sólo los roles administrativos pueden ser creados aquí",
+      "userCreated": "Usuario creado",
+      "userCreatedSuccess": "El usuario {name} ha sido creado exitosamente",
+      "errorCreatingUser": "Imposible crear el usuario",
+      "cancel": "Cancelar",
+      "createUserButton": "Crear el usuario"
     },
 
     "roles": {

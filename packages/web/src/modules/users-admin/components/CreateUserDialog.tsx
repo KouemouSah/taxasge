@@ -2,14 +2,21 @@
 
 /**
  * Create User Dialog Component
- * Dialog for creating new administrative users
+ * Dialog for creating new administrative users with full i18n
+ *
+ * MIGRATED: Phase 5.3 - Full i18n + new type system
+ * - Uses useTranslations() for all labels
+ * - Uses UserRole enum from src/types/user.ts
+ * - Uses useUserLabels hook for role translation
+ * - Aligned with Pydantic UserCreate model
  *
  * @module users-admin/components
  * @author Claude Code
- * @date 2025-11-19
+ * @date 2025-11-25
  */
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import {
   Dialog,
   DialogContent,
@@ -29,8 +36,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
+import { useUserLabels } from '@/hooks/use-user-labels'
 import usersApi from '../services/api'
-import type { UserRole, CreateUserRequest } from '../types'
+import { UserRole } from '@/types/user'
 
 interface CreateUserDialogProps {
   open: boolean
@@ -38,14 +46,33 @@ interface CreateUserDialogProps {
   onSuccess: () => void
 }
 
+/**
+ * Administrative roles that can be created via this dialog
+ * Excludes citizen and business (those register via public form)
+ */
+const CREATABLE_ROLES: UserRole[] = [
+  UserRole.ADMIN,
+  UserRole.DGI_AGENT,
+  UserRole.ACCOUNTANT,
+  UserRole.SUPERVISOR_DGI,
+  UserRole.SUPERVISOR_SENIOR,
+  UserRole.SUPERVISOR_JUNIOR_DGI,
+  UserRole.SUPERVISOR_READONLY,
+  UserRole.MINISTRY_AGENT,
+]
+
 export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDialogProps) {
+  const t = useTranslations('admin.users')
+  const tCommon = useTranslations('admin')
   const { toast } = useToast()
+  const { getRoleLabel } = useUserLabels()
+
   const [isLoading, setIsLoading] = useState(false)
-  const [formData, setFormData] = useState<CreateUserRequest>({
+  const [formData, setFormData] = useState({
     email: '',
     first_name: '',
     last_name: '',
-    role: 'dgi_agent',
+    role: UserRole.DGI_AGENT as UserRole,
     password: '',
     is_active: true,
   })
@@ -58,8 +85,10 @@ export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDi
       await usersApi.create(formData)
 
       toast({
-        title: 'Utilisateur créé',
-        description: `L'utilisateur ${formData.first_name} ${formData.last_name} a été créé avec succès.`,
+        title: t('userCreated'),
+        description: t('userCreatedSuccess', {
+          name: `${formData.first_name} ${formData.last_name}`,
+        }),
       })
 
       // Reset form
@@ -67,7 +96,7 @@ export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDi
         email: '',
         first_name: '',
         last_name: '',
-        role: 'dgi_agent',
+        role: UserRole.DGI_AGENT,
         password: '',
         is_active: true,
       })
@@ -77,8 +106,8 @@ export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDi
     } catch (error) {
       toast({
         variant: 'destructive',
-        title: 'Erreur',
-        description: error instanceof Error ? error.message : 'Impossible de créer l\'utilisateur',
+        title: t('errorTitle'),
+        description: error instanceof Error ? error.message : t('errorCreatingUser'),
       })
     } finally {
       setIsLoading(false)
@@ -89,21 +118,19 @@ export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDi
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Créer un nouvel utilisateur</DialogTitle>
-          <DialogDescription>
-            Créer un compte utilisateur administratif (Agent DGI, Comptable, ou Administrateur)
-          </DialogDescription>
+          <DialogTitle>{t('createDialogTitle')}</DialogTitle>
+          <DialogDescription>{t('createDialogDescription')}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             {/* Email */}
             <div className="grid gap-2">
-              <Label htmlFor="email">Email *</Label>
+              <Label htmlFor="email">{t('emailRequired')}</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="utilisateur@example.com"
+                placeholder={t('emailPlaceholder')}
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
@@ -112,71 +139,69 @@ export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDi
 
             {/* First Name */}
             <div className="grid gap-2">
-              <Label htmlFor="first_name">Prénom *</Label>
+              <Label htmlFor="first_name">{t('firstNameRequired')}</Label>
               <Input
                 id="first_name"
                 type="text"
-                placeholder="Jean"
+                placeholder={t('firstNamePlaceholder')}
                 value={formData.first_name}
                 onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
                 required
+                minLength={2}
+                maxLength={50}
               />
             </div>
 
             {/* Last Name */}
             <div className="grid gap-2">
-              <Label htmlFor="last_name">Nom *</Label>
+              <Label htmlFor="last_name">{t('lastNameRequired')}</Label>
               <Input
                 id="last_name"
                 type="text"
-                placeholder="Dupont"
+                placeholder={t('lastNamePlaceholder')}
                 value={formData.last_name}
                 onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
                 required
+                minLength={2}
+                maxLength={50}
               />
             </div>
 
             {/* Role */}
             <div className="grid gap-2">
-              <Label htmlFor="role">Rôle *</Label>
+              <Label htmlFor="role">{t('roleRequired')}</Label>
               <Select
                 value={formData.role}
                 onValueChange={(value) => setFormData({ ...formData, role: value as UserRole })}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un rôle" />
+                  <SelectValue placeholder={t('selectRole')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="admin">Administrateur</SelectItem>
-                  <SelectItem value="dgi_agent">Agent DGI</SelectItem>
-                  <SelectItem value="accountant">Comptable</SelectItem>
-                  <SelectItem value="supervisor_dgi">Superviseur DGI</SelectItem>
-                  <SelectItem value="supervisor_senior">Superviseur Senior</SelectItem>
-                  <SelectItem value="supervisor_junior_dgi">Superviseur Junior DGI</SelectItem>
-                  <SelectItem value="supervisor_readonly">Superviseur Lecture Seule</SelectItem>
-                  <SelectItem value="ministry_agent">Agent Ministère</SelectItem>
+                  {CREATABLE_ROLES.map((role) => (
+                    <SelectItem key={role} value={role}>
+                      {getRoleLabel(role)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-              <p className="text-sm text-muted-foreground">
-                Seuls les rôles administratifs peuvent être créés ici
-              </p>
+              <p className="text-sm text-muted-foreground">{t('onlyAdminRoles')}</p>
             </div>
 
             {/* Password */}
             <div className="grid gap-2">
-              <Label htmlFor="password">Mot de passe *</Label>
+              <Label htmlFor="password">{t('passwordRequired')}</Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="••••••••"
+                placeholder={t('passwordPlaceholder')}
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 required
                 minLength={8}
+                maxLength={100}
               />
-              <p className="text-sm text-muted-foreground">
-                Minimum 8 caractères
-              </p>
+              <p className="text-sm text-muted-foreground">{t('passwordMinLength')}</p>
             </div>
           </div>
 
@@ -187,10 +212,10 @@ export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDi
               onClick={() => onOpenChange(false)}
               disabled={isLoading}
             >
-              Annuler
+              {t('cancel')}
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Création...' : 'Créer l\'utilisateur'}
+              {isLoading ? t('creating') : t('createUserButton')}
             </Button>
           </DialogFooter>
         </form>
