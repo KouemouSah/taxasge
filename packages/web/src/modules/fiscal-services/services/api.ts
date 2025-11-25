@@ -1,0 +1,345 @@
+/**
+ * Fiscal Services API Service
+ * Handles all API calls to fiscal services backend endpoints
+ *
+ * @module fiscal-services/services
+ * @author Claude Code
+ * @date 2025-11-25
+ *
+ * BACKEND ALIGNMENT: Phase 7
+ * Base URL: /api/v1/fiscal-services
+ * Routes: From app/modules/fiscal_services/api/fiscal_service_routes.py
+ *
+ * PUBLIC ENDPOINTS (12):
+ * - GET    /ministries
+ * - GET    /sectors?ministry_id={id}
+ * - GET    /categories?sector_id={id}
+ * - GET    /?page={n}&page_size={n}&category_id={id}&is_active={bool}
+ * - GET    /{service_id}
+ * - POST   /search
+ * - GET    /popular/list?limit={n}
+ * - GET    /recent/list?limit={n}
+ * - POST   /calculate
+ *
+ * ADMIN ENDPOINTS (5):
+ * - POST   /admin/services
+ * - PUT    /admin/services/{service_id}
+ * - DELETE /admin/services/{service_id}
+ * - GET    /admin/stats
+ * - POST   /admin/bulk/import
+ * - POST   /admin/bulk/update-status
+ */
+
+import type {
+  Ministry,
+  Sector,
+  Category,
+  FiscalServiceResponse,
+  FiscalServiceCreate,
+  FiscalServiceUpdate,
+  FiscalServiceListResponse,
+  FiscalServiceFilter,
+  FiscalServiceStats,
+  CalculationInput,
+  CalculationResult,
+  ServiceStatusEnum,
+} from '@/types/fiscal-service'
+
+// =============================================================================
+// CONFIGURATION
+// =============================================================================
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_VERSION = '/api/v1'
+const FISCAL_SERVICES_BASE = '/fiscal-services'
+
+// =============================================================================
+// HTTP CLIENT
+// =============================================================================
+
+class ApiClient {
+  private baseUrl: string
+
+  constructor(baseUrl: string) {
+    this.baseUrl = baseUrl
+  }
+
+  private async request<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const url = `${this.baseUrl}${endpoint}`
+
+    const token = typeof window !== 'undefined'
+      ? localStorage.getItem('auth_token')
+      : null
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    }
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
+    if (options.headers) {
+      const headersToMerge = options.headers instanceof Headers
+        ? Object.fromEntries(options.headers.entries())
+        : Array.isArray(options.headers)
+        ? Object.fromEntries(options.headers)
+        : options.headers
+      Object.assign(headers, headersToMerge)
+    }
+
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({
+        detail: `HTTP ${response.status}: ${response.statusText}`,
+      }))
+      throw new Error(error.detail || 'API request failed')
+    }
+
+    if (response.status === 204) {
+      return {} as T
+    }
+
+    return response.json()
+  }
+
+  async get<T>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, { method: 'GET' })
+  }
+
+  async post<T>(endpoint: string, data: unknown): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async put<T>(endpoint: string, data: unknown): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async delete<T>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, { method: 'DELETE' })
+  }
+}
+
+const client = new ApiClient(API_BASE_URL + API_VERSION)
+
+// =============================================================================
+// HIERARCHY API
+// =============================================================================
+
+export const hierarchyApi = {
+  /**
+   * GET /api/v1/fiscal-services/ministries
+   * List all ministries
+   */
+  ministries: {
+    list: async (): Promise<Ministry[]> => {
+      return client.get<Ministry[]>(`${FISCAL_SERVICES_BASE}/ministries`)
+    },
+  },
+
+  /**
+   * GET /api/v1/fiscal-services/sectors?ministry_id={id}
+   * List sectors, optionally filtered by ministry
+   */
+  sectors: {
+    list: async (ministryId?: number): Promise<Sector[]> => {
+      const query = ministryId ? `?ministry_id=${ministryId}` : ''
+      return client.get<Sector[]>(`${FISCAL_SERVICES_BASE}/sectors${query}`)
+    },
+  },
+
+  /**
+   * GET /api/v1/fiscal-services/categories?sector_id={id}
+   * List categories, optionally filtered by sector
+   */
+  categories: {
+    list: async (sectorId?: number): Promise<Category[]> => {
+      const query = sectorId ? `?sector_id=${sectorId}` : ''
+      return client.get<Category[]>(`${FISCAL_SERVICES_BASE}/categories${query}`)
+    },
+  },
+}
+
+// =============================================================================
+// FISCAL SERVICES API (PUBLIC)
+// =============================================================================
+
+export const fiscalServicesApi = {
+  /**
+   * GET /api/v1/fiscal-services
+   * List fiscal services with pagination
+   */
+  list: async (params?: {
+    page?: number
+    pageSize?: number
+    categoryId?: number
+    isActive?: boolean
+  }): Promise<FiscalServiceListResponse> => {
+    const queryParams = new URLSearchParams()
+    if (params?.page) queryParams.append('page', String(params.page))
+    if (params?.pageSize) queryParams.append('page_size', String(params.pageSize))
+    if (params?.categoryId) queryParams.append('category_id', String(params.categoryId))
+    if (params?.isActive !== undefined) queryParams.append('is_active', String(params.isActive))
+
+    const query = queryParams.toString()
+    return client.get<FiscalServiceListResponse>(
+      `${FISCAL_SERVICES_BASE}${query ? `?${query}` : ''}`
+    )
+  },
+
+  /**
+   * GET /api/v1/fiscal-services/{service_id}
+   * Get single fiscal service by ID
+   */
+  get: async (serviceId: number | string): Promise<FiscalServiceResponse> => {
+    return client.get<FiscalServiceResponse>(`${FISCAL_SERVICES_BASE}/${serviceId}`)
+  },
+
+  /**
+   * POST /api/v1/fiscal-services/search
+   * Advanced search for fiscal services
+   */
+  search: async (
+    filters: FiscalServiceFilter,
+    page: number = 1,
+    pageSize: number = 50
+  ): Promise<FiscalServiceListResponse> => {
+    const query = `?page=${page}&page_size=${pageSize}`
+    return client.post<FiscalServiceListResponse>(
+      `${FISCAL_SERVICES_BASE}/search${query}`,
+      filters
+    )
+  },
+
+  /**
+   * GET /api/v1/fiscal-services/popular/list?limit={n}
+   * Get most used fiscal services
+   */
+  popular: async (limit: number = 10): Promise<FiscalServiceResponse[]> => {
+    return client.get<FiscalServiceResponse[]>(
+      `${FISCAL_SERVICES_BASE}/popular/list?limit=${limit}`
+    )
+  },
+
+  /**
+   * GET /api/v1/fiscal-services/recent/list?limit={n}
+   * Get recently used fiscal services
+   */
+  recent: async (limit: number = 10): Promise<FiscalServiceResponse[]> => {
+    return client.get<FiscalServiceResponse[]>(
+      `${FISCAL_SERVICES_BASE}/recent/list?limit=${limit}`
+    )
+  },
+
+  /**
+   * POST /api/v1/fiscal-services/calculate
+   * Calculate amount for a fiscal service
+   * Auth: Required (JWT Bearer token)
+   */
+  calculate: async (input: CalculationInput): Promise<CalculationResult> => {
+    return client.post<CalculationResult>(`${FISCAL_SERVICES_BASE}/calculate`, input)
+  },
+}
+
+// =============================================================================
+// FISCAL SERVICES ADMIN API
+// =============================================================================
+
+export const fiscalServicesAdminApi = {
+  /**
+   * POST /api/v1/fiscal-services/admin/services
+   * Create new fiscal service
+   * Auth: Required + Permission "fiscal_services.create"
+   */
+  create: async (data: FiscalServiceCreate): Promise<FiscalServiceResponse> => {
+    return client.post<FiscalServiceResponse>(`${FISCAL_SERVICES_BASE}/admin/services`, data)
+  },
+
+  /**
+   * PUT /api/v1/fiscal-services/admin/services/{service_id}
+   * Update fiscal service
+   * Auth: Required + Permission "fiscal_services.update"
+   */
+  update: async (serviceId: number | string, data: FiscalServiceUpdate): Promise<FiscalServiceResponse> => {
+    return client.put<FiscalServiceResponse>(
+      `${FISCAL_SERVICES_BASE}/admin/services/${serviceId}`,
+      data
+    )
+  },
+
+  /**
+   * DELETE /api/v1/fiscal-services/admin/services/{service_id}
+   * Delete fiscal service
+   * Auth: Required + Permission "fiscal_services.delete"
+   */
+  delete: async (serviceId: number | string): Promise<{ message: string }> => {
+    return client.delete<{ message: string }>(
+      `${FISCAL_SERVICES_BASE}/admin/services/${serviceId}`
+    )
+  },
+
+  /**
+   * GET /api/v1/fiscal-services/admin/stats
+   * Get comprehensive statistics
+   * Auth: Required + Permission "fiscal_services.view_stats"
+   */
+  stats: async (): Promise<FiscalServiceStats> => {
+    return client.get<FiscalServiceStats>(`${FISCAL_SERVICES_BASE}/admin/stats`)
+  },
+
+  /**
+   * POST /api/v1/fiscal-services/admin/bulk/import
+   * Bulk import fiscal services (max 100 per request)
+   * Auth: Required + Permission "fiscal_services.bulk_import"
+   */
+  bulkImport: async (services: FiscalServiceCreate[]): Promise<{
+    success: boolean
+    totalProcessed: number
+    successfulImports: number
+    failedImports: number
+    failedServices: Array<{ code: string; error: string }>
+  }> => {
+    return client.post(`${FISCAL_SERVICES_BASE}/admin/bulk/import`, services)
+  },
+
+  /**
+   * POST /api/v1/fiscal-services/admin/bulk/update-status
+   * Bulk update service status (max 50 per request)
+   * Auth: Required + Permission "fiscal_services.bulk_update"
+   */
+  bulkUpdateStatus: async (serviceIds: string[], newStatus: ServiceStatusEnum): Promise<{
+    success: boolean
+    totalRequested: number
+    updatedCount: number
+    failedUpdates: number
+    newStatus: string
+  }> => {
+    return client.post(`${FISCAL_SERVICES_BASE}/admin/bulk/update-status`, {
+      service_ids: serviceIds,
+      new_status: newStatus,
+    })
+  },
+}
+
+// =============================================================================
+// EXPORTS
+// =============================================================================
+
+export default {
+  hierarchy: hierarchyApi,
+  services: fiscalServicesApi,
+  admin: fiscalServicesAdminApi,
+}
