@@ -43,6 +43,13 @@ import type {
   CalculationInput,
   CalculationResult,
   ServiceStatusEnum,
+  DocumentTemplate,
+  ServiceDocumentAssignment,
+  ProcedureTemplate,
+  ProcedureStep,
+  ServiceProcedureAssignment,
+  ServiceKeyword,
+  EntityTranslation,
 } from '@/types/fiscal-service'
 
 // =============================================================================
@@ -335,6 +342,226 @@ export const fiscalServicesAdminApi = {
 }
 
 // =============================================================================
+// DOCUMENTS API
+// =============================================================================
+
+export const documentsApi = {
+  /**
+   * GET /api/v1/fiscal-services/{service_id}/documents
+   * Get all document assignments for a service
+   */
+  list: async (serviceId: number | string): Promise<ServiceDocumentAssignment[]> => {
+    return client.get<ServiceDocumentAssignment[]>(
+      `${FISCAL_SERVICES_BASE}/${serviceId}/documents`
+    )
+  },
+
+  /**
+   * POST /api/v1/fiscal-services/{service_id}/documents
+   * Assign a document to a service
+   */
+  assign: async (
+    serviceId: number | string,
+    data: {
+      documentTemplateId: number
+      isRequiredExpedition: boolean
+      isRequiredRenewal: boolean
+      displayOrder?: number
+      customNotes?: string
+    }
+  ): Promise<ServiceDocumentAssignment> => {
+    return client.post<ServiceDocumentAssignment>(
+      `${FISCAL_SERVICES_BASE}/${serviceId}/documents`,
+      data
+    )
+  },
+
+  /**
+   * DELETE /api/v1/fiscal-services/{service_id}/documents/{assignment_id}
+   * Remove a document assignment
+   */
+  unassign: async (
+    serviceId: number | string,
+    assignmentId: number
+  ): Promise<{ message: string }> => {
+    return client.delete<{ message: string }>(
+      `${FISCAL_SERVICES_BASE}/${serviceId}/documents/${assignmentId}`
+    )
+  },
+
+  /**
+   * GET /api/v1/document-templates
+   * Get all available document templates
+   */
+  templates: {
+    list: async (): Promise<DocumentTemplate[]> => {
+      return client.get<DocumentTemplate[]>('/document-templates')
+    },
+  },
+}
+
+// =============================================================================
+// PROCEDURES API
+// =============================================================================
+
+export const proceduresApi = {
+  /**
+   * GET /api/v1/fiscal-services/{service_id}/procedures
+   * Get all procedure assignments for a service
+   */
+  list: async (serviceId: number | string): Promise<ServiceProcedureAssignment[]> => {
+    return client.get<ServiceProcedureAssignment[]>(
+      `${FISCAL_SERVICES_BASE}/${serviceId}/procedures`
+    )
+  },
+
+  /**
+   * POST /api/v1/fiscal-services/{service_id}/procedures
+   * Assign a procedure to a service
+   */
+  assign: async (
+    serviceId: number | string,
+    data: {
+      templateId: number
+      appliesTo?: string
+      displayOrder?: number
+      customNotes?: string
+      overrideSteps?: Record<string, any>
+    }
+  ): Promise<ServiceProcedureAssignment> => {
+    return client.post<ServiceProcedureAssignment>(
+      `${FISCAL_SERVICES_BASE}/${serviceId}/procedures`,
+      data
+    )
+  },
+
+  /**
+   * DELETE /api/v1/fiscal-services/{service_id}/procedures/{assignment_id}
+   * Remove a procedure assignment
+   */
+  unassign: async (
+    serviceId: number | string,
+    assignmentId: number
+  ): Promise<{ message: string }> => {
+    return client.delete<{ message: string }>(
+      `${FISCAL_SERVICES_BASE}/${serviceId}/procedures/${assignmentId}`
+    )
+  },
+
+  /**
+   * GET /api/v1/procedure-templates
+   * Get all available procedure templates
+   */
+  templates: {
+    list: async (): Promise<ProcedureTemplate[]> => {
+      return client.get<ProcedureTemplate[]>('/procedure-templates')
+    },
+
+    /**
+     * GET /api/v1/procedure-templates/{template_id}/steps
+     * Get steps for a procedure template
+     */
+    steps: async (templateId: number): Promise<ProcedureStep[]> => {
+      return client.get<ProcedureStep[]>(`/procedure-templates/${templateId}/steps`)
+    },
+  },
+}
+
+// =============================================================================
+// KEYWORDS API
+// =============================================================================
+
+export const keywordsApi = {
+  /**
+   * GET /api/v1/fiscal-services/{service_id}/keywords
+   * Get all keywords for a service
+   */
+  list: async (serviceId: number | string): Promise<ServiceKeyword[]> => {
+    return client.get<ServiceKeyword[]>(`${FISCAL_SERVICES_BASE}/${serviceId}/keywords`)
+  },
+
+  /**
+   * POST /api/v1/fiscal-services/{service_id}/keywords
+   * Add a keyword to a service
+   */
+  create: async (
+    serviceId: number | string,
+    data: {
+      keyword: string
+      languageCode: string
+      weight: number
+    }
+  ): Promise<ServiceKeyword> => {
+    return client.post<ServiceKeyword>(
+      `${FISCAL_SERVICES_BASE}/${serviceId}/keywords`,
+      data
+    )
+  },
+
+  /**
+   * DELETE /api/v1/fiscal-services/{service_id}/keywords/{keyword_id}
+   * Remove a keyword
+   */
+  delete: async (
+    serviceId: number | string,
+    keywordId: number
+  ): Promise<{ message: string }> => {
+    return client.delete<{ message: string }>(
+      `${FISCAL_SERVICES_BASE}/${serviceId}/keywords/${keywordId}`
+    )
+  },
+}
+
+// =============================================================================
+// TRANSLATIONS API
+// =============================================================================
+
+export const translationsApi = {
+  /**
+   * GET /api/v1/fiscal-services/{service_id}/translations
+   * Get all translations for a service
+   */
+  list: async (serviceId: number | string): Promise<EntityTranslation[]> => {
+    return client.get<EntityTranslation[]>(
+      `${FISCAL_SERVICES_BASE}/${serviceId}/translations`
+    )
+  },
+
+  /**
+   * POST /api/v1/fiscal-services/{service_id}/translations
+   * Add or update a translation
+   */
+  upsert: async (
+    serviceId: number | string,
+    data: {
+      languageCode: string
+      fieldName: string
+      translationText: string
+      translationSource?: string
+    }
+  ): Promise<EntityTranslation> => {
+    return client.post<EntityTranslation>(
+      `${FISCAL_SERVICES_BASE}/${serviceId}/translations`,
+      data
+    )
+  },
+
+  /**
+   * DELETE /api/v1/fiscal-services/{service_id}/translations/{language_code}/{field_name}
+   * Remove a translation
+   */
+  delete: async (
+    serviceId: number | string,
+    languageCode: string,
+    fieldName: string
+  ): Promise<{ message: string }> => {
+    return client.delete<{ message: string }>(
+      `${FISCAL_SERVICES_BASE}/${serviceId}/translations/${languageCode}/${fieldName}`
+    )
+  },
+}
+
+// =============================================================================
 // EXPORTS
 // =============================================================================
 
@@ -342,4 +569,8 @@ export default {
   hierarchy: hierarchyApi,
   services: fiscalServicesApi,
   admin: fiscalServicesAdminApi,
+  documents: documentsApi,
+  procedures: proceduresApi,
+  keywords: keywordsApi,
+  translations: translationsApi,
 }
