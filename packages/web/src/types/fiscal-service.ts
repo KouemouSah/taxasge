@@ -243,6 +243,25 @@ export interface DocumentTemplate {
   createdBy?: number
 }
 
+export interface DocumentTemplateCreate {
+  templateCode: string
+  documentNameEs: string
+  descriptionEs?: string
+  category?: string
+  validityDurationMonths?: number
+  validityNotes?: string
+  isActive?: boolean
+}
+
+export interface DocumentTemplateUpdate {
+  documentNameEs?: string
+  descriptionEs?: string
+  category?: string
+  validityDurationMonths?: number
+  validityNotes?: string
+  isActive?: boolean
+}
+
 export interface ServiceDocumentAssignment {
   id: number
   fiscalServiceId: number
@@ -272,6 +291,21 @@ export interface ProcedureTemplate {
   createdBy?: number
 }
 
+export interface ProcedureTemplateCreate {
+  templateCode: string
+  nameEs: string
+  descriptionEs?: string
+  category?: string
+  isActive?: boolean
+}
+
+export interface ProcedureTemplateUpdate {
+  nameEs?: string
+  descriptionEs?: string
+  category?: string
+  isActive?: boolean
+}
+
 export interface ProcedureStep {
   id: number
   templateId: number
@@ -285,6 +319,29 @@ export interface ProcedureStep {
   isOptional: boolean
   createdAt: string
   updatedAt?: string
+}
+
+export interface ProcedureStepCreate {
+  templateId: number
+  stepNumber: number
+  descriptionEs: string
+  instructionsEs?: string
+  estimatedDurationMinutes?: number
+  locationAddress?: string
+  officeHours?: string
+  requiresAppointment?: boolean
+  isOptional?: boolean
+}
+
+export interface ProcedureStepUpdate {
+  stepNumber?: number
+  descriptionEs?: string
+  instructionsEs?: string
+  estimatedDurationMinutes?: number
+  locationAddress?: string
+  officeHours?: string
+  requiresAppointment?: boolean
+  isOptional?: boolean
 }
 
 export interface ServiceProcedureAssignment {
