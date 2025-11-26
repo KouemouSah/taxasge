@@ -20,9 +20,9 @@ import { useToast } from "@/hooks/use-toast"
 import { User, Building2, Shield } from "lucide-react"
 import Header from "@/components/layout/Header"
 import Footer from "@/components/layout/Footer"
-import { authApi } from "@/lib/api/authApi"
-import { setAuthData } from "@/lib/auth/storage"
-import { loginSchema } from "@/lib/validations/auth"
+import { authApi } from "@/core/api/auth"
+import { setAuthData } from "@/core/auth/storage"
+import { loginSchema } from "@/core/validations/auth"
 import { z } from "zod"
 import { useLocale, useTranslations } from 'next-intl'
 

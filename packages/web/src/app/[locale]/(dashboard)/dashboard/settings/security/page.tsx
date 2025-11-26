@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { Shield, Lock } from 'lucide-react'
-import { getAuthData } from '@/lib/auth/storage'
+import { getAuthData } from '@/core/auth/storage'
 import TwoFactorToggle from '@/components/security/TwoFactorToggle'
 import type { User as UserType } from '@/types/auth'
 import { useLocale, useTranslations } from 'next-intl'
@@ -107,7 +107,7 @@ export default function SecuritySettingsPage() {
 
     try {
       // Step 1: Request password change (sends verification code)
-      const { authApi } = await import('@/lib/api/auth')
+      const { authApi } = await import('@/core/api/auth')
       const response = await authApi.requestPasswordChange({
         current_password: currentPassword,
       })

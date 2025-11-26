@@ -24,7 +24,7 @@ import {
   type SearchResponse,
   type ServiceResult,
   type FacetItem
-} from "@/lib/api/servicesApi"
+} from "@/core/api/services"
 
 type ViewMode = 'kanban' | 'list'
 

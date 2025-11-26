@@ -18,6 +18,7 @@
  * - GET    /api/v1/admin/users/{user_id}/activities → get_user_activities
  */
 
+import { fetchClient } from '@/core/api'
 import type {
   User,
   CreateUserRequest,
@@ -30,95 +31,7 @@ import type {
 // CONFIGURATION
 // =============================================================================
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-const API_VERSION = "/api/v1";
 const ADMIN_USERS_BASE = "/admin/users"; // Admin-only users endpoints
-
-// =============================================================================
-// HTTP CLIENT
-// =============================================================================
-
-class ApiClient {
-  private baseUrl: string;
-
-  constructor(baseUrl: string) {
-    this.baseUrl = baseUrl;
-  }
-
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
-
-    // Get auth token
-    const token = typeof window !== "undefined"
-      ? localStorage.getItem("auth_token")
-      : null;
-
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    // Add Authorization header if token exists
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-
-    // Merge with provided headers
-    if (options.headers) {
-      const headersToMerge = options.headers instanceof Headers
-        ? Object.fromEntries(options.headers.entries())
-        : Array.isArray(options.headers)
-        ? Object.fromEntries(options.headers)
-        : options.headers;
-      Object.assign(headers, headersToMerge);
-    }
-
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({
-        detail: `HTTP ${response.status}: ${response.statusText}`,
-      }));
-      throw new Error(error.detail || "API request failed");
-    }
-
-    // Handle 204 No Content
-    if (response.status === 204) {
-      return {} as T;
-    }
-
-    return response.json();
-  }
-
-  async get<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: "GET" });
-  }
-
-  async post<T>(endpoint: string, data: unknown): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
-
-  async put<T>(endpoint: string, data: unknown): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    });
-  }
-
-  async delete<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: "DELETE" });
-  }
-}
-
-const client = new ApiClient(API_BASE_URL + API_VERSION);
 
 // =============================================================================
 // USERS API
@@ -138,21 +51,13 @@ export const usersApi = {
     page?: number;
     size?: number;
   }): Promise<User[]> => {
-    const queryParams = new URLSearchParams();
-
-    // Backend uses "page" and "size" for pagination
-    if (params?.page) queryParams.append("page", String(params.page));
-    if (params?.size) queryParams.append("size", String(params.size));
-
-    // Filters
-    if (params?.role) queryParams.append("role", params.role);
-    if (params?.status) queryParams.append("status", params.status);
-    if (params?.search) queryParams.append("search", params.search);
-
-    const query = queryParams.toString();
-    const response = await client.get<PaginatedUsersResponse>(
-      `${ADMIN_USERS_BASE}${query ? `?${query}` : ""}`
-    );
+    const response = await fetchClient.get<PaginatedUsersResponse>(ADMIN_USERS_BASE, {
+      page: params?.page,
+      size: params?.size,
+      role: params?.role,
+      status: params?.status,
+      search: params?.search,
+    });
 
     // Backend returns: { items: User[], total: number, page: number, page_size: number, pages: number }
     return response.items || [];
@@ -164,7 +69,7 @@ export const usersApi = {
    * ROUTE: get_user() in user_management_routes.py:177
    */
   getById: async (id: string): Promise<User> => {
-    return client.get<User>(`${ADMIN_USERS_BASE}/${id}`);
+    return fetchClient.get<User>(`${ADMIN_USERS_BASE}/${id}`);
   },
 
   /**
@@ -176,7 +81,7 @@ export const usersApi = {
    * Frontend sends plain password, backend handles bcrypt hashing
    */
   create: async (data: CreateUserRequest): Promise<User> => {
-    return client.post<User>(ADMIN_USERS_BASE, data);
+    return fetchClient.post<User>(ADMIN_USERS_BASE, data);
   },
 
   /**
@@ -191,7 +96,7 @@ export const usersApi = {
    * - Password hashing done backend-side if password provided
    */
   update: async (id: string, data: UpdateUserRequest): Promise<User> => {
-    return client.put<User>(`${ADMIN_USERS_BASE}/${id}`, data);
+    return fetchClient.put<User>(`${ADMIN_USERS_BASE}/${id}`, data);
   },
 
   /**
@@ -204,7 +109,7 @@ export const usersApi = {
    * - Returns: { message: "User deleted successfully" }
    */
   delete: async (id: string): Promise<void> => {
-    await client.delete<{ message: string }>(`${ADMIN_USERS_BASE}/${id}`);
+    await fetchClient.delete<{ message: string }>(`${ADMIN_USERS_BASE}/${id}`);
   },
 
   /**
@@ -231,17 +136,13 @@ export const usersApi = {
     country?: string;
     limit?: number;
   }): Promise<User[]> => {
-    const queryParams = new URLSearchParams();
-    if (params?.q) queryParams.append("q", params.q);
-    if (params?.role) queryParams.append("role", params.role);
-    if (params?.status) queryParams.append("status", params.status);
-    if (params?.country) queryParams.append("country", params.country);
-    if (params?.limit) queryParams.append("limit", String(params.limit));
-
-    const query = queryParams.toString();
-    return client.get<User[]>(
-      `${ADMIN_USERS_BASE}/search${query ? `?${query}` : ""}`
-    );
+    return fetchClient.get<User[]>(`${ADMIN_USERS_BASE}/search`, {
+      q: params?.q,
+      role: params?.role,
+      status: params?.status,
+      country: params?.country,
+      limit: params?.limit,
+    });
   },
 
   /**
@@ -254,7 +155,7 @@ export const usersApi = {
     by_role: Record<string, number>;
     by_status: Record<string, number>;
   }> => {
-    return client.get(`${ADMIN_USERS_BASE}/stats`);
+    return fetchClient.get(`${ADMIN_USERS_BASE}/stats`);
   },
 
   /**
@@ -270,7 +171,7 @@ export const usersApi = {
     metadata?: Record<string, unknown>;
     timestamp: string;
   }>> => {
-    return client.get(`${ADMIN_USERS_BASE}/${userId}/activities?limit=${limit}`);
+    return fetchClient.get(`${ADMIN_USERS_BASE}/${userId}/activities`, { limit });
   },
 };
 

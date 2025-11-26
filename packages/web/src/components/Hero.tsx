@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import { getHomepageStats, type HomepageStats } from '@/lib/api/homepageApi';
+import { getHomepageStats, type HomepageStats } from '@/core/api/homepage';
 
 export const Hero = () => {
   const [searchQuery, setSearchQuery] = useState('');

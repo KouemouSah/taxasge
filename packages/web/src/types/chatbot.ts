@@ -230,22 +230,28 @@ export interface TranslationResponse {
 export interface GuidanceRequest {
   serviceId?: string
   processType: string
-  userContext?: Record<string, any>
   language: LanguageCode
+  currentStep?: number
 }
 
 export interface GuidanceResponse {
   steps: Array<{
-    stepNumber: number
-    title: string
-    description: string
+    stepNumber?: number
+    title?: string
+    description?: string
     estimatedTime?: string
     requiredDocuments?: string[]
     tips?: string[]
+    [key: string]: any
   }>
-  totalEstimatedTime: string
-  importantNotes: string[]
-  commonMistakes: string[]
+  currentStep: number
+  totalSteps: number
+  estimatedTime?: Record<string, any>
+  requiredDocuments: string[]
+  tips: string[]
+  commonIssues: string[]
+  nextActions: string[]
+  helpResources: Array<Record<string, any>>
   language: LanguageCode
 }
 
@@ -329,13 +335,19 @@ export interface ChatState {
 }
 
 export interface ChatSettings {
-  language: LanguageCode
+  language: SupportedLanguage
   enableSuggestions: boolean
   enableRelatedServices: boolean
   enableSources: boolean
   theme: 'light' | 'dark'
-  soundEnabled: boolean
+  enableSound: boolean
+  enableNotifications: boolean
 }
+
+/**
+ * Supported language codes
+ */
+export type SupportedLanguage = 'es' | 'fr' | 'en'
 
 export interface ChatWidgetProps {
   initialLanguage?: LanguageCode

@@ -28,3 +28,8 @@ export * as Webhooks from './webhooks';
 export * as Admin from './admin';
 export * as Assignment from './assignment';
 export * as Permissions from './permissions';
+export * as PermissionsAdmin from './permissions-admin';
+export * as UsersAdmin from './users-admin';
+export * as AssignmentsAdmin from './assignments-admin';
+export * as AuditLogsAdmin from './audit-logs-admin';
+export * as Templates from './templates';

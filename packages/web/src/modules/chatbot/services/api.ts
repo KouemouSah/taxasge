@@ -32,9 +32,8 @@ import type {
   ChatbotStats,
   StreamChunk,
   LanguageCode,
-  toCamelCase,
-  toSnakeCase,
 } from '@/types/chatbot'
+import { getAuthData } from '@/core/auth/storage'
 
 // =============================================================================
 // CONFIGURATION
@@ -55,15 +54,21 @@ class ChatbotApiClient {
     this.baseUrl = baseUrl
   }
 
+  /**
+   * Get auth token from storage
+   */
+  private getToken(): string | null {
+    if (typeof window === 'undefined') return null
+    const authData = getAuthData()
+    return authData?.access_token || null
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`
-
-    const token = typeof window !== 'undefined'
-      ? localStorage.getItem('auth_token')
-      : null
+    const token = this.getToken()
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -170,13 +175,13 @@ export const chatbotApi = {
     conversationId?: string,
     language: LanguageCode = 'es'
   ): AsyncGenerator<StreamChunk, void, unknown> {
-    const token = typeof window !== 'undefined'
-      ? localStorage.getItem('auth_token')
-      : null
+    // Get token from auth storage
+    const authData = typeof window !== 'undefined' ? getAuthData() : null
+    const token = authData?.access_token || null
 
     const params = new URLSearchParams({
       message,
-      language,
+      language: language.toString(),
       ...(conversationId && { conversation_id: conversationId }),
     })
 
@@ -192,7 +197,8 @@ export const chatbotApi = {
     )
 
     if (!response.ok) {
-      throw new Error(`Stream error: ${response.statusText}`)
+      const errorText = await response.text().catch(() => response.statusText)
+      throw new Error(`Stream error: ${errorText || response.statusText}`)
     }
 
     const reader = response.body?.getReader()
@@ -300,8 +306,8 @@ export const chatbotApi = {
     const backendRequest = {
       service_id: request.serviceId,
       process_type: request.processType,
-      user_context: request.userContext,
       language: request.language,
+      current_step: request.currentStep,
     }
 
     const response = await client.post<any>('/guide', backendRequest)
@@ -315,9 +321,14 @@ export const chatbotApi = {
         requiredDocuments: step.required_documents,
         tips: step.tips,
       })),
-      totalEstimatedTime: response.total_estimated_time,
-      importantNotes: response.important_notes || [],
-      commonMistakes: response.common_mistakes || [],
+      currentStep: response.current_step || 1,
+      totalSteps: response.total_steps || 0,
+      estimatedTime: response.estimated_time,
+      requiredDocuments: response.required_documents || [],
+      tips: response.tips || [],
+      commonIssues: response.common_issues || [],
+      nextActions: response.next_actions || [],
+      helpResources: response.help_resources || [],
       language: response.language,
     }
   },
@@ -325,18 +336,34 @@ export const chatbotApi = {
   /**
    * POST /api/v1/chatbot/feedback
    * Submit user feedback
+   * NOTE: Backend expects Query Parameters, not JSON body
    */
   submitFeedback: async (
     feedback: FeedbackSubmission
   ): Promise<FeedbackResponse> => {
-    const backendRequest = {
+    const params = new URLSearchParams({
       conversation_id: feedback.conversationId,
-      rating: feedback.rating,
-      feedback: feedback.feedback,
-      timestamp: feedback.timestamp || new Date().toISOString(),
+      rating: feedback.rating.toString(),
+      ...(feedback.feedback && { feedback: feedback.feedback }),
+    })
+
+    const token = typeof window !== 'undefined' ? getAuthData()?.access_token : null
+
+    const response = await fetch(
+      `${API_BASE_URL}${API_VERSION}${CHATBOT_BASE}/feedback?${params}`,
+      {
+        method: 'POST',
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+      }
+    )
+
+    if (!response.ok) {
+      throw new Error(`Feedback error: ${response.statusText}`)
     }
 
-    return client.post<FeedbackResponse>('/feedback', backendRequest)
+    return response.json()
   },
 
   /**
@@ -369,6 +396,114 @@ export const chatbotApi = {
    */
   getInfo: async (): Promise<any> => {
     return client.get('/')
+  },
+
+  /**
+   * POST /api/v1/chatbot/analyze-document
+   * Analyze uploaded document using AI
+   */
+  analyzeDocument: async (
+    file: File,
+    analysisType: 'general' | 'fiscal' | 'legal' | 'identity' = 'general',
+    language: LanguageCode = 'es'
+  ): Promise<any> => {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const params = new URLSearchParams({
+      analysis_type: analysisType,
+      language: language.toString(),
+    })
+
+    const token = typeof window !== 'undefined' ? getAuthData()?.access_token : null
+
+    const response = await fetch(
+      `${API_BASE_URL}${API_VERSION}${CHATBOT_BASE}/analyze-document?${params}`,
+      {
+        method: 'POST',
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: formData,
+      }
+    )
+
+    if (!response.ok) {
+      throw new Error(`Document analysis error: ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    return {
+      analysis: data.analysis,
+      extractedData: data.extracted_data,
+      documentType: data.document_type,
+      confidence: data.confidence,
+      suggestions: data.suggestions || [],
+      requiredActions: data.required_actions || [],
+      validationStatus: data.validation_status || {},
+      language: data.language,
+      fileInfo: data.file_info,
+    }
+  },
+
+  /**
+   * POST /api/v1/chatbot/translate
+   * Translate text using AI
+   */
+  translate: async (
+    text: string,
+    sourceLanguage: LanguageCode,
+    targetLanguage: LanguageCode,
+    context?: string
+  ): Promise<any> => {
+    const backendRequest = {
+      text,
+      source_language: sourceLanguage,
+      target_language: targetLanguage,
+      context,
+    }
+
+    const response = await client.post<any>('/translate', backendRequest)
+
+    return {
+      translatedText: response.translated_text,
+      sourceLanguage: response.source_language,
+      targetLanguage: response.target_language,
+      confidence: response.confidence,
+      alternatives: response.alternatives || [],
+      detectedLanguage: response.detected_language,
+      translationTime: response.translation_time,
+    }
+  },
+
+  /**
+   * POST /api/v1/chatbot/validate
+   * AI-powered form validation
+   */
+  validateForm: async (
+    formData: Record<string, any>,
+    formType: string,
+    language: LanguageCode = 'es'
+  ): Promise<any> => {
+    const backendRequest = {
+      form_data: formData,
+      form_type: formType,
+      language,
+    }
+
+    const response = await client.post<any>('/validate', backendRequest)
+
+    return {
+      isValid: response.is_valid,
+      errors: response.errors || [],
+      warnings: response.warnings || [],
+      suggestions: response.suggestions || [],
+      correctedData: response.corrected_data,
+      completenessScore: response.completeness_score,
+      requiredFields: response.required_fields || [],
+      optionalImprovements: response.optional_improvements || [],
+      language: response.language,
+    }
   },
 }
 

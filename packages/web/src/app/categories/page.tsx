@@ -9,7 +9,7 @@ import {
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { getCategoryDirectory, getDefaultCategoryDirectory, type CategoryDirectory, type CategoryWithServices } from "@/lib/api/homepageApi"
+import { getCategoryDirectory, getDefaultCategoryDirectory, type CategoryDirectory, type CategoryWithServices } from "@/core/api/homepage"
 import Header from "@/components/layout/Header"
 import Footer from "@/components/layout/Footer"
 import Breadcrumb from "@/components/ui/breadcrumb"

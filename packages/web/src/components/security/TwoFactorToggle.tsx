@@ -32,8 +32,8 @@ import {
 } from '@/components/ui/alert'
 import { useToast } from '@/hooks/use-toast'
 import { Shield, AlertTriangle, CheckCircle2, Copy } from 'lucide-react'
-import { authApi2FA } from '@/lib/api/authApi'
-import { getAuthData, update2FAStatus } from '@/lib/auth/storage'
+import { authApi2FA } from '@/core/api/auth'
+import { getAuthData, update2FAStatus } from '@/core/auth/storage'
 
 interface TwoFactorToggleProps {
   initialEnabled: boolean

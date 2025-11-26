@@ -17,7 +17,7 @@
 
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { chatbotApi } from '../services/api'
 import type {
   ChatMessage,
@@ -37,8 +37,10 @@ export interface UseChatOptions {
   language?: LanguageCode
   persistToStorage?: boolean
   autoLoadHistory?: boolean
+  enableStreaming?: boolean
   onError?: (error: Error) => void
   onSuccess?: (response: ChatResponse) => void
+  onStreamChunk?: (chunk: string) => void
 }
 
 export interface UseChatReturn {
@@ -46,6 +48,8 @@ export interface UseChatReturn {
   messages: ChatMessage[]
   conversationId: string | null
   isLoading: boolean
+  isStreaming: boolean
+  streamedText: string
   error: string | null
   suggestions: string[]
   relatedServices: ServiceReference[]
@@ -57,6 +61,7 @@ export interface UseChatReturn {
   retry: () => Promise<void>
   loadHistory: (conversationId: string) => void
   setLanguage: (language: LanguageCode) => void
+  stopStreaming: () => void
 }
 
 // =============================================================================
@@ -79,8 +84,10 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     language: initialLanguage = 'es',
     persistToStorage = true,
     autoLoadHistory = true,
+    enableStreaming = false,
     onError,
     onSuccess,
+    onStreamChunk,
   } = options
 
   // State
@@ -90,11 +97,16 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   )
   const [language, setLanguage] = useState<LanguageCode>(initialLanguage)
   const [isLoading, setIsLoading] = useState(false)
+  const [isStreaming, setIsStreaming] = useState(false)
+  const [streamedText, setStreamedText] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [relatedServices, setRelatedServices] = useState<ServiceReference[]>([])
   const [confidence, setConfidence] = useState<number | null>(null)
   const [lastRequest, setLastRequest] = useState<ChatRequest | null>(null)
+
+  // Refs for streaming control
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   // =============================================================================
   // STORAGE HELPERS
@@ -170,11 +182,92 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   // =============================================================================
 
   /**
-   * Send a message to the chatbot
+   * Stop streaming
+   */
+  const stopStreaming = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+      abortControllerRef.current = null
+    }
+    setIsStreaming(false)
+  }, [])
+
+  /**
+   * Send a message using streaming API
+   */
+  const sendMessageStreaming = useCallback(
+    async (message: string) => {
+      setIsStreaming(true)
+      setStreamedText('')
+
+      // Add user message
+      const userMessage: ChatMessage = {
+        role: 'user' as MessageRole,
+        content: message,
+        timestamp: new Date().toISOString(),
+      }
+      setMessages((prev) => [...prev, userMessage])
+
+      abortControllerRef.current = new AbortController()
+
+      try {
+        let fullText = ''
+
+        for await (const chunk of chatbotApi.chatStream(
+          message,
+          conversationId || undefined,
+          language
+        )) {
+          if (chunk.type === 'chunk' && chunk.text) {
+            fullText += chunk.text
+            setStreamedText(fullText)
+            if (onStreamChunk) {
+              onStreamChunk(chunk.text)
+            }
+          }
+
+          if (chunk.type === 'done') {
+            // Add final assistant message
+            const assistantMessage: ChatMessage = {
+              role: 'assistant' as MessageRole,
+              content: fullText,
+              timestamp: new Date().toISOString(),
+            }
+            setMessages((prev) => [...prev, assistantMessage])
+            break
+          }
+
+          if (chunk.type === 'error') {
+            throw new Error(chunk.message || 'Stream error')
+          }
+        }
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Stream error'
+        setError(errorMessage)
+        if (onError) {
+          onError(err instanceof Error ? err : new Error(errorMessage))
+        }
+      } finally {
+        setIsStreaming(false)
+        setStreamedText('')
+        abortControllerRef.current = null
+      }
+    },
+    [conversationId, language, onError, onStreamChunk]
+  )
+
+  /**
+   * Send a message to the chatbot (standard API or streaming)
    */
   const sendMessage = useCallback(
     async (message: string, context?: Record<string, any>) => {
       if (!message.trim()) return
+
+      // Use streaming if enabled
+      if (enableStreaming) {
+        await sendMessageStreaming(message)
+        return
+      }
 
       setIsLoading(true)
       setError(null)
@@ -205,7 +298,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
         const assistantMessage: ChatMessage = {
           role: 'assistant' as MessageRole,
           content: response.response,
-          timestamp: response.timestamp,
+          timestamp: response.timestamp || new Date().toISOString(),
         }
 
         setMessages((prev) => [...prev, assistantMessage])
@@ -237,13 +330,14 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
         setIsLoading(false)
       }
     },
-    [conversationId, language, onError, onSuccess]
+    [conversationId, language, onError, onSuccess, enableStreaming, sendMessageStreaming]
   )
 
   /**
    * Clear the entire chat
    */
   const clearChat = useCallback(() => {
+    stopStreaming()
     setMessages([])
     setConversationId(null)
     setSuggestions([])
@@ -251,8 +345,9 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     setConfidence(null)
     setError(null)
     setLastRequest(null)
+    setStreamedText('')
     clearStorage()
-  }, [clearStorage])
+  }, [clearStorage, stopStreaming])
 
   /**
    * Retry the last failed request
@@ -291,11 +386,20 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   // RETURN
   // =============================================================================
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopStreaming()
+    }
+  }, [stopStreaming])
+
   return {
     // State
     messages,
     conversationId,
     isLoading,
+    isStreaming,
+    streamedText,
     error,
     suggestions,
     relatedServices,
@@ -307,6 +411,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     retry,
     loadHistory,
     setLanguage: changeLanguage,
+    stopStreaming,
   }
 }
 

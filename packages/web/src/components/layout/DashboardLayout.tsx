@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { DashboardSidebar, MobileSidebar } from './DashboardSidebar'
-import { getAuthData } from '@/lib/auth/storage'
+import { getAuthData } from '@/core/auth/storage'
 import type { User } from '@/types/auth'
 import { useLocale, useTranslations } from 'next-intl'
 

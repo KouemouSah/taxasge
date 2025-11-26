@@ -16,8 +16,8 @@ import { useToast } from "@/hooks/use-toast"
 import { Loader2, CheckCircle, Mail } from "lucide-react"
 import Header from "@/components/layout/Header"
 import Footer from "@/components/layout/Footer"
-import { authApi } from "@/lib/api/authApi"
-import { getAuthData } from "@/lib/auth/storage"
+import { authApi } from "@/core/api/auth"
+import { getAuthData } from "@/core/auth/storage"
 import { useLocale, useTranslations } from 'next-intl'
 
 function VerifyEmailContent() {
@@ -109,7 +109,7 @@ function VerifyEmailContent() {
         }
 
         // Verify password change
-        const { authApi: passwordApi } = await import('@/lib/api/auth')
+        const { authApi: passwordApi } = await import('@/core/api/auth')
         await passwordApi.verifyPasswordChange({
           email,
           verification_code: verificationCode,
@@ -149,7 +149,7 @@ function VerifyEmailContent() {
         })
 
         // Store auth tokens
-        const { setAuthData } = await import("@/lib/auth/storage")
+        const { setAuthData } = await import("@/core/auth/storage")
         setAuthData(response)
 
         // Clear pending registration data

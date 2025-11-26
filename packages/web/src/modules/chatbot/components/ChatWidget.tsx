@@ -14,11 +14,16 @@
  * - i18n support
  * - Persistent settings
  * - Floating widget pattern
+ * - WCAG 2.1 AA Accessibility
+ *   - ARIA labels and live regions
+ *   - Keyboard navigation (Escape to close)
+ *   - Focus management
+ *   - Screen reader announcements
  */
 
 'use client'
 
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -41,6 +46,14 @@ import {
 import { useChat, useChatSettings } from '../hooks'
 import { formatTimestamp } from '@/types/chatbot'
 import type { ChatWidgetProps, ServiceReference } from '@/types/chatbot'
+import {
+  announceToScreenReader,
+  announceNewMessage,
+  announceError,
+  storeFocus,
+  restoreFocus,
+  KEYS,
+} from '../utils/accessibility'
 
 // =============================================================================
 // MAIN COMPONENT
@@ -63,6 +76,8 @@ export const ChatWidget = ({
   const [message, setMessage] = useState('')
   const [showSettings, setShowSettings] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const widgetRef = useRef<HTMLDivElement>(null)
 
   // Hooks
   const { settings, setLanguage } = useChatSettings({
@@ -72,6 +87,8 @@ export const ChatWidget = ({
   const {
     messages,
     isLoading,
+    isStreaming,
+    streamedText,
     error,
     suggestions,
     relatedServices,
@@ -79,15 +96,17 @@ export const ChatWidget = ({
     sendMessage: sendChatMessage,
     clearChat,
     retry,
+    stopStreaming,
   } = useChat({
     language: (initialLanguage || settings.language) as any,
     persistToStorage: enableHistory,
+    enableStreaming: enableStreaming,
   })
 
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  }, [messages, streamedText])
 
   // Sync language with locale
   useEffect(() => {
@@ -95,6 +114,47 @@ export const ChatWidget = ({
       setLanguage(locale as any)
     }
   }, [locale, settings.language, setLanguage])
+
+  // Focus management - focus input when widget opens
+  useEffect(() => {
+    if (isOpen) {
+      storeFocus()
+      // Delay to allow animation
+      setTimeout(() => {
+        inputRef.current?.focus()
+      }, 100)
+      announceToScreenReader(t('welcomeMessage') || 'Chat assistant opened')
+    } else {
+      restoreFocus()
+    }
+  }, [isOpen, t])
+
+  // Announce new messages to screen readers
+  useEffect(() => {
+    if (messages.length > 0) {
+      const lastMessage = messages[messages.length - 1]
+      announceNewMessage(lastMessage.role as 'user' | 'assistant', lastMessage.content)
+    }
+  }, [messages.length])
+
+  // Announce errors
+  useEffect(() => {
+    if (error) {
+      announceError(error)
+    }
+  }, [error])
+
+  // Keyboard navigation - Escape to close
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === KEYS.ESCAPE && isOpen) {
+      handleClose()
+    }
+  }, [isOpen])
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [handleKeyDown])
 
   // =============================================================================
   // HANDLERS
@@ -158,15 +218,25 @@ export const ChatWidget = ({
 
   return (
     <Card
+      ref={widgetRef}
       className={`fixed ${positionClasses[position]} w-96 shadow-2xl flex flex-col z-50 animate-in slide-in-from-bottom-4`}
       style={{ maxHeight, height: maxHeight }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="chat-widget-title"
+      aria-describedby="chat-widget-description"
     >
+      {/* Hidden description for screen readers */}
+      <span id="chat-widget-description" className="sr-only">
+        AI assistant for TaxasGE tax services. Use arrow keys to navigate messages, Enter to send.
+      </span>
+
       {/* Header */}
       <div className="p-4 border-b flex items-center justify-between bg-primary text-white rounded-t-lg">
         <div className="flex items-center gap-2">
-          <Bot className="h-5 w-5" />
+          <Bot className="h-5 w-5" aria-hidden="true" />
           <div>
-            <h3 className="font-semibold text-sm">{t('title') || 'Assistant TaxasGE'}</h3>
+            <h3 id="chat-widget-title" className="font-semibold text-sm">{t('title') || 'Assistant TaxasGE'}</h3>
             {confidence && (
               <p className="text-xs opacity-80">
                 {t('confidence') || 'Confidence'}: {Math.round(confidence * 100)}%
@@ -180,25 +250,29 @@ export const ChatWidget = ({
             size="icon"
             onClick={() => setShowSettings(!showSettings)}
             className="text-white hover:bg-white/20 h-8 w-8"
+            aria-label={t('settings') || 'Settings'}
+            aria-expanded={showSettings}
+            aria-controls="chat-settings-panel"
           >
-            <Settings className="h-4 w-4" />
+            <Settings className="h-4 w-4" aria-hidden="true" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
             onClick={clearChat}
             className="text-white hover:bg-white/20 h-8 w-8"
-            title={t('clearChat') || 'Clear chat'}
+            aria-label={t('clearChat') || 'Clear chat'}
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
             onClick={handleClose}
             className="text-white hover:bg-white/20 h-8 w-8"
+            aria-label={t('closeChat') || 'Close chat'}
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
       </div>
@@ -225,7 +299,13 @@ export const ChatWidget = ({
 
       {/* Messages Area */}
       <ScrollArea className="flex-1 p-4">
-        <div className="space-y-4">
+        <div
+          className="space-y-4"
+          role="log"
+          aria-label="Chat messages"
+          aria-live="polite"
+          aria-relevant="additions"
+        >
           {messages.length === 0 && (
             <div className="text-center text-muted-foreground text-sm py-8">
               <Bot className="h-12 w-12 mx-auto mb-2 opacity-50" />
@@ -263,14 +343,41 @@ export const ChatWidget = ({
             </div>
           ))}
 
-          {/* Loading Indicator */}
-          {isLoading && (
+          {/* Streaming Text Display */}
+          {isStreaming && streamedText && (
+            <div className="flex gap-2 justify-start">
+              <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                <Bot className="h-4 w-4 text-primary" />
+              </div>
+              <div className="max-w-[75%] rounded-lg p-3 bg-muted text-foreground">
+                <p className="text-sm whitespace-pre-wrap">{streamedText}</p>
+                <span className="inline-block w-2 h-4 bg-primary/60 animate-pulse ml-1" />
+              </div>
+            </div>
+          )}
+
+          {/* Loading Indicator (non-streaming) */}
+          {isLoading && !isStreaming && (
             <div className="flex gap-2 justify-start">
               <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
                 <Bot className="h-4 w-4 text-primary" />
               </div>
               <div className="bg-muted rounded-lg p-3">
                 <Loader2 className="h-4 w-4 animate-spin" />
+              </div>
+            </div>
+          )}
+
+          {/* Streaming Indicator (before text arrives) */}
+          {isStreaming && !streamedText && (
+            <div className="flex gap-2 justify-start">
+              <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                <Bot className="h-4 w-4 text-primary" />
+              </div>
+              <div className="bg-muted rounded-lg p-3 flex items-center gap-1">
+                <span className="h-2 w-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="h-2 w-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="h-2 w-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
               </div>
             </div>
           )}
@@ -347,20 +454,42 @@ export const ChatWidget = ({
       {/* Input Area */}
       <div className="p-4 border-t flex gap-2 bg-background">
         <Input
+          ref={inputRef}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyPress={handleKeyPress}
           placeholder={t('inputPlaceholder') || 'Posez votre question...'}
-          disabled={isLoading}
+          disabled={isLoading || isStreaming}
           className="flex-1"
+          aria-label={t('inputPlaceholder') || 'Type your message'}
+          aria-describedby="chat-input-hint"
+          aria-busy={isLoading || isStreaming}
         />
-        <Button onClick={handleSend} disabled={isLoading || !message.trim()}>
-          {isLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Send className="h-4 w-4" />
-          )}
-        </Button>
+        <span id="chat-input-hint" className="sr-only">
+          Press Enter to send, Escape to close chat
+        </span>
+        {isStreaming ? (
+          <Button
+            onClick={stopStreaming}
+            variant="destructive"
+            aria-label="Stop streaming"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        ) : (
+          <Button
+            onClick={handleSend}
+            disabled={isLoading || !message.trim()}
+            aria-label={isLoading ? t('sending') : 'Send message'}
+            aria-busy={isLoading}
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Send className="h-4 w-4" aria-hidden="true" />
+            )}
+          </Button>
+        )}
       </div>
     </Card>
   )

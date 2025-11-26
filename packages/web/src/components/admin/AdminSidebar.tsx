@@ -15,7 +15,7 @@ import React from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
-import { cn } from '@/lib/utils'
+import { cn } from '@/core/utils'
 import {
   LayoutDashboard,
   Users,
@@ -31,7 +31,7 @@ import {
   ListOrdered,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { clearAuthData } from '@/lib/auth/storage'
+import { clearAuthData } from '@/core/auth/storage'
 import { useToast } from '@/hooks/use-toast'
 
 export default function AdminSidebar() {

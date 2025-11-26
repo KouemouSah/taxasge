@@ -23,7 +23,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Shield, Building2, Globe } from "lucide-react";
 import type { Role } from "../types";
-import { cn } from "@/lib/utils";
+import { cn } from "@/core/utils";
 
 // =============================================================================
 // TYPES

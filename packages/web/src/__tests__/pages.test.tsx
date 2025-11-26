@@ -10,7 +10,7 @@ describe('TaxasGE Frontend', () => {
   })
 
   it('should export authApi module', async () => {
-    const { authApi } = await import('@/lib/api/authApi')
+    const { authApi } = await import('@/core/api/auth')
     expect(authApi).toBeDefined()
     expect(authApi.login).toBeDefined()
     expect(authApi.register).toBeDefined()

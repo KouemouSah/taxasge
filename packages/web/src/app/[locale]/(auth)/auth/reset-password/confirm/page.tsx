@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Loader2, CheckCircle, Lock } from "lucide-react"
 import Header from "@/components/layout/Header"
 import Footer from "@/components/layout/Footer"
-import { authApi } from "@/lib/api/auth"
+import { authApi } from "@/core/api/auth"
 import { useLocale, useTranslations } from 'next-intl'
 
 function ResetPasswordConfirmContent() {

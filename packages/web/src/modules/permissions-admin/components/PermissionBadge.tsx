@@ -13,7 +13,7 @@ import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, Shield } from "lucide-react";
 import type { Permission } from "../types";
-import { cn } from "@/lib/utils";
+import { cn } from "@/core/utils";
 
 // =============================================================================
 // TYPES

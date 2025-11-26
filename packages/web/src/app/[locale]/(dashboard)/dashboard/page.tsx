@@ -30,7 +30,7 @@ import {
   FileCheck,
   FilePlus
 } from 'lucide-react'
-import { getAuthData } from '@/lib/auth/storage'
+import { getAuthData } from '@/core/auth/storage'
 import type { User } from '@/types/auth'
 import { useLocale, useTranslations } from 'next-intl'
 
@@ -307,10 +307,11 @@ export default function DashboardPage() {
                 </p>
               </CardContent>
             </Card>
-          </div>
         </div>
+      </div>
 
-        {/* Tabs: Déclarations / Paiements / Notifications */}
+      {/* Tabs: Déclarations / Paiements / Notifications */}
+      <div>
         <Tabs defaultValue="declarations" className="space-y-4">
           <TabsList>
             <TabsTrigger value="declarations">

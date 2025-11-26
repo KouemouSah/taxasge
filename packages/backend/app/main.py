@@ -350,7 +350,7 @@ except ImportError as e:
 # Try to load assignment router (Module - Assignment System)
 try:
     from app.modules.assignment.api.assignment_routes import router as assignment_router
-    app.include_router(assignment_router, tags=["assignments"])
+    app.include_router(assignment_router, prefix="/api/v1/assignments", tags=["assignments"])
     routers_loaded.append("assignments")
     logger.info("✅ Assignment router loaded")
 except ImportError as e:

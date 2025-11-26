@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { getHomepageStats, getDefaultStats, type HomepageStats } from '@/lib/api/homepageApi';
+import { getHomepageStats, getDefaultStats, type HomepageStats } from '@/core/api/homepage';
 
 export const StatsSection = () => {
   const [stats, setStats] = useState<HomepageStats | null>(null);

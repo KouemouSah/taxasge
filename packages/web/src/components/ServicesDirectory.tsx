@@ -7,7 +7,7 @@ import { ArrowRight, Building, AlertCircle, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { getCategoryDirectory, getDefaultCategoryDirectory, type CategoryDirectory } from '@/lib/api/homepageApi';
+import { getCategoryDirectory, getDefaultCategoryDirectory, type CategoryDirectory } from '@/core/api/homepage';
 
 export const ServicesDirectory = () => {
   const router = useRouter();

@@ -11,6 +11,7 @@
  * Routes: /document-templates, /procedure-templates
  */
 
+import { fetchClient } from '@/core/api'
 import type {
   DocumentTemplate,
   DocumentTemplateCreate,
@@ -27,88 +28,8 @@ import type {
 // CONFIGURATION
 // =============================================================================
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-const API_VERSION = '/api/v1'
 const DOCUMENTS_BASE = '/document-templates'
 const PROCEDURES_BASE = '/procedure-templates'
-
-// =============================================================================
-// HTTP CLIENT
-// =============================================================================
-
-class ApiClient {
-  private baseUrl: string
-
-  constructor(baseUrl: string) {
-    this.baseUrl = baseUrl
-  }
-
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`
-
-    const token = typeof window !== 'undefined'
-      ? localStorage.getItem('auth_token')
-      : null
-
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    }
-
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`
-    }
-
-    if (options.headers) {
-      const headersToMerge = options.headers instanceof Headers
-        ? Object.fromEntries(options.headers.entries())
-        : Array.isArray(options.headers)
-        ? Object.fromEntries(options.headers)
-        : options.headers
-      Object.assign(headers, headersToMerge)
-    }
-
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    })
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({
-        message: `HTTP error! status: ${response.status}`,
-      }))
-      throw new Error(error.message || `HTTP error! status: ${response.status}`)
-    }
-
-    return response.json()
-  }
-
-  async get<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: 'GET' })
-  }
-
-  async post<T>(endpoint: string, data?: any): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
-    })
-  }
-
-  async put<T>(endpoint: string, data: any): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    })
-  }
-
-  async delete<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: 'DELETE' })
-  }
-}
-
-const client = new ApiClient(`${API_BASE_URL}${API_VERSION}`)
 
 // =============================================================================
 // DOCUMENT TEMPLATES API
@@ -125,16 +46,12 @@ export const documentTemplatesApi = {
     page?: number
     pageSize?: number
   }): Promise<DocumentTemplate[]> => {
-    const query = new URLSearchParams()
-    if (params?.category) query.append('category', params.category)
-    if (params?.isActive !== undefined) query.append('is_active', String(params.isActive))
-    if (params?.page) query.append('page', String(params.page))
-    if (params?.pageSize) query.append('page_size', String(params.pageSize))
-
-    const queryString = query.toString()
-    return client.get<DocumentTemplate[]>(
-      `${DOCUMENTS_BASE}${queryString ? `?${queryString}` : ''}`
-    )
+    return fetchClient.get<DocumentTemplate[]>(DOCUMENTS_BASE, {
+      category: params?.category,
+      is_active: params?.isActive,
+      page: params?.page,
+      page_size: params?.pageSize,
+    })
   },
 
   /**
@@ -142,7 +59,7 @@ export const documentTemplatesApi = {
    * Get single document template
    */
   get: async (templateId: number | string): Promise<DocumentTemplate> => {
-    return client.get<DocumentTemplate>(`${DOCUMENTS_BASE}/${templateId}`)
+    return fetchClient.get<DocumentTemplate>(`${DOCUMENTS_BASE}/${templateId}`)
   },
 
   /**
@@ -151,7 +68,7 @@ export const documentTemplatesApi = {
    * Auth: Required + Permission "templates.create"
    */
   create: async (data: DocumentTemplateCreate): Promise<DocumentTemplate> => {
-    return client.post<DocumentTemplate>(DOCUMENTS_BASE, data)
+    return fetchClient.post<DocumentTemplate>(DOCUMENTS_BASE, data)
   },
 
   /**
@@ -163,7 +80,7 @@ export const documentTemplatesApi = {
     templateId: number | string,
     data: DocumentTemplateUpdate
   ): Promise<DocumentTemplate> => {
-    return client.put<DocumentTemplate>(`${DOCUMENTS_BASE}/${templateId}`, data)
+    return fetchClient.put<DocumentTemplate>(`${DOCUMENTS_BASE}/${templateId}`, data)
   },
 
   /**
@@ -172,7 +89,7 @@ export const documentTemplatesApi = {
    * Auth: Required + Permission "templates.delete"
    */
   delete: async (templateId: number | string): Promise<{ message: string }> => {
-    return client.delete<{ message: string }>(`${DOCUMENTS_BASE}/${templateId}`)
+    return fetchClient.delete<{ message: string }>(`${DOCUMENTS_BASE}/${templateId}`)
   },
 }
 
@@ -191,16 +108,12 @@ export const procedureTemplatesApi = {
     page?: number
     pageSize?: number
   }): Promise<ProcedureTemplate[]> => {
-    const query = new URLSearchParams()
-    if (params?.category) query.append('category', params.category)
-    if (params?.isActive !== undefined) query.append('is_active', String(params.isActive))
-    if (params?.page) query.append('page', String(params.page))
-    if (params?.pageSize) query.append('page_size', String(params.pageSize))
-
-    const queryString = query.toString()
-    return client.get<ProcedureTemplate[]>(
-      `${PROCEDURES_BASE}${queryString ? `?${queryString}` : ''}`
-    )
+    return fetchClient.get<ProcedureTemplate[]>(PROCEDURES_BASE, {
+      category: params?.category,
+      is_active: params?.isActive,
+      page: params?.page,
+      page_size: params?.pageSize,
+    })
   },
 
   /**
@@ -208,7 +121,7 @@ export const procedureTemplatesApi = {
    * Get single procedure template
    */
   get: async (templateId: number | string): Promise<ProcedureTemplate> => {
-    return client.get<ProcedureTemplate>(`${PROCEDURES_BASE}/${templateId}`)
+    return fetchClient.get<ProcedureTemplate>(`${PROCEDURES_BASE}/${templateId}`)
   },
 
   /**
@@ -217,7 +130,7 @@ export const procedureTemplatesApi = {
    * Auth: Required + Permission "templates.create"
    */
   create: async (data: ProcedureTemplateCreate): Promise<ProcedureTemplate> => {
-    return client.post<ProcedureTemplate>(PROCEDURES_BASE, data)
+    return fetchClient.post<ProcedureTemplate>(PROCEDURES_BASE, data)
   },
 
   /**
@@ -229,7 +142,7 @@ export const procedureTemplatesApi = {
     templateId: number | string,
     data: ProcedureTemplateUpdate
   ): Promise<ProcedureTemplate> => {
-    return client.put<ProcedureTemplate>(`${PROCEDURES_BASE}/${templateId}`, data)
+    return fetchClient.put<ProcedureTemplate>(`${PROCEDURES_BASE}/${templateId}`, data)
   },
 
   /**
@@ -238,7 +151,7 @@ export const procedureTemplatesApi = {
    * Auth: Required + Permission "templates.delete"
    */
   delete: async (templateId: number | string): Promise<{ message: string }> => {
-    return client.delete<{ message: string }>(`${PROCEDURES_BASE}/${templateId}`)
+    return fetchClient.delete<{ message: string }>(`${PROCEDURES_BASE}/${templateId}`)
   },
 }
 
@@ -252,7 +165,7 @@ export const procedureStepsApi = {
    * Get all steps for a procedure template
    */
   list: async (templateId: number | string): Promise<ProcedureStep[]> => {
-    return client.get<ProcedureStep[]>(`${PROCEDURES_BASE}/${templateId}/steps`)
+    return fetchClient.get<ProcedureStep[]>(`${PROCEDURES_BASE}/${templateId}/steps`)
   },
 
   /**
@@ -260,7 +173,7 @@ export const procedureStepsApi = {
    * Get single procedure step
    */
   get: async (templateId: number | string, stepId: number): Promise<ProcedureStep> => {
-    return client.get<ProcedureStep>(`${PROCEDURES_BASE}/${templateId}/steps/${stepId}`)
+    return fetchClient.get<ProcedureStep>(`${PROCEDURES_BASE}/${templateId}/steps/${stepId}`)
   },
 
   /**
@@ -272,7 +185,7 @@ export const procedureStepsApi = {
     templateId: number | string,
     data: ProcedureStepCreate
   ): Promise<ProcedureStep> => {
-    return client.post<ProcedureStep>(`${PROCEDURES_BASE}/${templateId}/steps`, data)
+    return fetchClient.post<ProcedureStep>(`${PROCEDURES_BASE}/${templateId}/steps`, data)
   },
 
   /**
@@ -285,7 +198,7 @@ export const procedureStepsApi = {
     stepId: number,
     data: ProcedureStepUpdate
   ): Promise<ProcedureStep> => {
-    return client.put<ProcedureStep>(
+    return fetchClient.put<ProcedureStep>(
       `${PROCEDURES_BASE}/${templateId}/steps/${stepId}`,
       data
     )
@@ -300,7 +213,7 @@ export const procedureStepsApi = {
     templateId: number | string,
     stepId: number
   ): Promise<{ message: string }> => {
-    return client.delete<{ message: string }>(
+    return fetchClient.delete<{ message: string }>(
       `${PROCEDURES_BASE}/${templateId}/steps/${stepId}`
     )
   },
@@ -314,7 +227,7 @@ export const procedureStepsApi = {
     templateId: number | string,
     stepIds: number[]
   ): Promise<{ message: string }> => {
-    return client.post<{ message: string }>(
+    return fetchClient.post<{ message: string }>(
       `${PROCEDURES_BASE}/${templateId}/steps/reorder`,
       { step_ids: stepIds }
     )

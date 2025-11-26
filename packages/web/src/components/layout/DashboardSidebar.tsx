@@ -9,7 +9,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
-import { cn } from '@/lib/utils'
+import { cn } from '@/core/utils'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
@@ -21,11 +21,12 @@ import {
   Settings,
   LogOut,
   Menu,
-  ChevronRight
+  ChevronRight,
+  MessageCircle
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import { authApi } from '@/lib/api/auth'
-import { getAuthData, clearAuthData } from '@/lib/auth/storage'
+import { authApi } from '@/core/api/auth'
+import { getAuthData, clearAuthData } from '@/core/auth/storage'
 import { useLocale, useTranslations } from 'next-intl'
 
 interface NavItem {
@@ -56,6 +57,11 @@ export function DashboardSidebar({ className }: DashboardSidebarProps) {
       titleKey: 'declarations',
       href: `/${locale}/dashboard/declarations`,
       icon: FileText,
+    },
+    {
+      titleKey: 'chatAssistant',
+      href: `/${locale}/dashboard/chat`,
+      icon: MessageCircle,
     },
     {
       titleKey: 'support',
