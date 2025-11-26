@@ -582,7 +582,6 @@
     "all": "Todos",
     "today": "Hoy",
     "resetFilters": "Restablecer filtros",
-
     "nav": {
       "dashboard": "Panel",
       "management": "Gestión",
@@ -602,7 +601,6 @@
       "logoutSuccess": "Sesión cerrada exitosamente",
       "logoutMessage": "¡Hasta pronto!"
     },
-
     "dashboard": {
       "title": "Panel de Administración",
       "subtitle": "Vista general del sistema y actividades",
@@ -615,7 +613,6 @@
       "degraded": "Degradado",
       "down": "Caído"
     },
-
     "users": {
       "title": "Usuarios",
       "subtitle": "Gestionar usuarios del sistema",
@@ -678,7 +675,6 @@
       "errorUpdatingUser": "Imposible actualizar el usuario",
       "updateUserButton": "Actualizar el usuario"
     },
-
     "roles": {
       "title": "Roles",
       "subtitle": "Gestionar roles personalizados del sistema",
@@ -727,7 +723,6 @@
       "grant": "Conceder",
       "deny": "Denegar"
     },
-
     "permissions": {
       "title": "Permisos",
       "subtitle": "Listar y filtrar permisos del sistema",
@@ -753,7 +748,6 @@
       "high": "Alta",
       "critical": "Crítica"
     },
-
     "auditLogs": {
       "title": "Logs de Auditoría",
       "subtitle": "Consultar el historial de acciones del sistema",
@@ -787,7 +781,6 @@
       "declarationApprove": "Aprobar Declaración",
       "declarationReject": "Rechazar Declaración"
     },
-
     "assignments": {
       "title": "Asignaciones",
       "subtitle": "Gestionar asignaciones de declaraciones a agentes",
@@ -810,7 +803,6 @@
       "urgent": "URGENTE",
       "errorLoading": "Error al cargar asignaciones"
     },
-
     "settings": {
       "title": "Configuración de Seguridad",
       "subtitle": "Gestione su contraseña y opciones de seguridad admin",
@@ -839,7 +831,6 @@
       "passwordNeedSpecial": "La contraseña debe contener al menos un carácter especial",
       "errorChangingPassword": "Error al cambiar la contraseña"
     },
-
     "fiscalServices": {
       "title": "Servicios Fiscales",
       "subtitle": "Gestionar servicios fiscales del sistema",
@@ -956,7 +947,6 @@
       "fieldNameName": "Nombre",
       "fieldNameDescription": "Descripción"
     },
-
     "userRoles": {
       "admin": "Administrador",
       "dgiAgent": "Agente DGI",
@@ -969,7 +959,6 @@
       "supervisorReadonly": "Supervisor Solo Lectura",
       "ministryAgent": "Agente Ministerio"
     },
-
     "templates": {
       "documentsTitle": "Plantillas de Documentos",
       "documentsSubtitle": "Gestionar plantillas de documentos reutilizables",
@@ -1031,5 +1020,20 @@
       "loading": "Cargando...",
       "refresh": "Actualizar"
     }
+  },
+  "chatbot": {
+    "title": "Asistente TaxasGE",
+    "openChat": "Abrir chat",
+    "welcomeMessage": "¡Hola! ¿En qué puedo ayudarte hoy?",
+    "inputPlaceholder": "Escribe tu pregunta...",
+    "confidence": "Confianza",
+    "suggestions": "Sugerencias",
+    "relatedServices": "Servicios relacionados",
+    "match": "coincidencia",
+    "settings": "Configuración",
+    "clearChat": "Limpiar chat",
+    "retry": "Reintentar",
+    "sending": "Enviando...",
+    "error": "Error"
   }
 }

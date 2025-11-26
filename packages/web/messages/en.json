@@ -582,7 +582,6 @@
     "all": "All",
     "today": "Today",
     "resetFilters": "Reset filters",
-
     "nav": {
       "dashboard": "Dashboard",
       "management": "Management",
@@ -602,7 +601,6 @@
       "logoutSuccess": "Logged out successfully",
       "logoutMessage": "See you soon!"
     },
-
     "dashboard": {
       "title": "Administrator Dashboard",
       "subtitle": "System overview and activities",
@@ -615,7 +613,6 @@
       "degraded": "Degraded",
       "down": "Down"
     },
-
     "users": {
       "title": "Users",
       "subtitle": "Manage system users",
@@ -678,7 +675,6 @@
       "errorUpdatingUser": "Unable to update user",
       "updateUserButton": "Update user"
     },
-
     "roles": {
       "title": "Roles",
       "subtitle": "Manage custom system roles",
@@ -727,7 +723,6 @@
       "grant": "Grant",
       "deny": "Deny"
     },
-
     "permissions": {
       "title": "Permissions",
       "subtitle": "List and filter system permissions",
@@ -753,7 +748,6 @@
       "high": "High",
       "critical": "Critical"
     },
-
     "auditLogs": {
       "title": "Audit Logs",
       "subtitle": "View system action history",
@@ -787,7 +781,6 @@
       "declarationApprove": "Approve Declaration",
       "declarationReject": "Reject Declaration"
     },
-
     "assignments": {
       "title": "Assignments",
       "subtitle": "Manage declaration assignments to agents",
@@ -810,7 +803,6 @@
       "urgent": "URGENT",
       "errorLoading": "Error loading assignments"
     },
-
     "settings": {
       "title": "Security Settings",
       "subtitle": "Manage your password and admin security options",
@@ -839,7 +831,6 @@
       "passwordNeedSpecial": "Password must contain at least one special character",
       "errorChangingPassword": "Failed to change password"
     },
-
     "fiscalServices": {
       "title": "Fiscal Services",
       "subtitle": "Manage system fiscal services",
@@ -956,7 +947,6 @@
       "fieldNameName": "Name",
       "fieldNameDescription": "Description"
     },
-
     "templates": {
       "documentsTitle": "Document Templates",
       "documentsSubtitle": "Manage reusable document templates",
@@ -1018,7 +1008,6 @@
       "loading": "Loading...",
       "refresh": "Refresh"
     },
-
     "userRoles": {
       "admin": "Administrator",
       "dgiAgent": "DGI Agent",
@@ -1031,5 +1020,20 @@
       "supervisorReadonly": "Read-only Supervisor",
       "ministryAgent": "Ministry Agent"
     }
+  },
+  "chatbot": {
+    "title": "TaxasGE Assistant",
+    "openChat": "Open chat",
+    "welcomeMessage": "Hello! How can I help you today?",
+    "inputPlaceholder": "Type your question...",
+    "confidence": "Confidence",
+    "suggestions": "Suggestions",
+    "relatedServices": "Related Services",
+    "match": "match",
+    "settings": "Settings",
+    "clearChat": "Clear chat",
+    "retry": "Retry",
+    "sending": "Sending...",
+    "error": "Error"
   }
 }

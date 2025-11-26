@@ -582,7 +582,6 @@
     "all": "Tous",
     "today": "Aujourd'hui",
     "resetFilters": "Réinitialiser filtres",
-
     "nav": {
       "dashboard": "Tableau de bord",
       "management": "Gestion",
@@ -602,7 +601,6 @@
       "logoutSuccess": "Déconnexion réussie",
       "logoutMessage": "À bientôt !"
     },
-
     "dashboard": {
       "title": "Tableau de bord Administrateur",
       "subtitle": "Vue d'ensemble du système et des activités",
@@ -615,7 +613,6 @@
       "degraded": "Dégradé",
       "down": "Hors service"
     },
-
     "users": {
       "title": "Utilisateurs",
       "subtitle": "Gérer les utilisateurs du système",
@@ -678,7 +675,6 @@
       "errorUpdatingUser": "Impossible de mettre à jour l'utilisateur",
       "updateUserButton": "Mettre à jour l'utilisateur"
     },
-
     "roles": {
       "title": "Rôles",
       "subtitle": "Gérer les rôles personnalisés du système",
@@ -727,7 +723,6 @@
       "grant": "Accorder",
       "deny": "Refuser"
     },
-
     "permissions": {
       "title": "Permissions",
       "subtitle": "Lister et filtrer les permissions du système",
@@ -753,7 +748,6 @@
       "high": "Élevée",
       "critical": "Critique"
     },
-
     "auditLogs": {
       "title": "Logs d'Audit",
       "subtitle": "Consulter l'historique des actions système",
@@ -787,7 +781,6 @@
       "declarationApprove": "Approuver Déclaration",
       "declarationReject": "Rejeter Déclaration"
     },
-
     "assignments": {
       "title": "Assignations",
       "subtitle": "Gérer les assignations de déclarations aux agents",
@@ -810,7 +803,6 @@
       "urgent": "URGENTE",
       "errorLoading": "Erreur lors du chargement des assignations"
     },
-
     "settings": {
       "title": "Paramètres de Sécurité",
       "subtitle": "Gérez votre mot de passe et vos options de sécurité admin",
@@ -839,7 +831,6 @@
       "passwordNeedSpecial": "Le mot de passe doit contenir au moins un caractère spécial",
       "errorChangingPassword": "Échec du changement de mot de passe"
     },
-
     "fiscalServices": {
       "title": "Services Fiscaux",
       "subtitle": "Gérer les services fiscaux du système",
@@ -956,7 +947,6 @@
       "fieldNameName": "Nom",
       "fieldNameDescription": "Description"
     },
-
     "templates": {
       "documentsTitle": "Modèles de Documents",
       "documentsSubtitle": "Gérer les modèles de documents réutilisables",
@@ -1018,7 +1008,6 @@
       "loading": "Chargement...",
       "refresh": "Actualiser"
     },
-
     "userRoles": {
       "admin": "Administrateur",
       "dgiAgent": "Agent DGI",
@@ -1031,5 +1020,20 @@
       "supervisorReadonly": "Superviseur Lecture Seule",
       "ministryAgent": "Agent Ministère"
     }
+  },
+  "chatbot": {
+    "title": "Assistant TaxasGE",
+    "openChat": "Ouvrir le chat",
+    "welcomeMessage": "Bonjour! Comment puis-je vous aider aujourd'hui?",
+    "inputPlaceholder": "Tapez votre question...",
+    "confidence": "Confiance",
+    "suggestions": "Suggestions",
+    "relatedServices": "Services connexes",
+    "match": "correspondance",
+    "settings": "Paramètres",
+    "clearChat": "Effacer le chat",
+    "retry": "Réessayer",
+    "sending": "Envoi en cours...",
+    "error": "Erreur"
   }
 }
