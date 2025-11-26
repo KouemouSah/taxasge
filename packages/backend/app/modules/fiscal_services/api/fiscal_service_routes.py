@@ -26,8 +26,21 @@ from app.modules.fiscal_services.models.search import (
     SearchFacets,
     FacetItem,
 )
+from app.modules.fiscal_services.models.service_details import (
+    ServiceDetailsResponse,
+    DocumentDetailItem,
+    ProcedureDetailItem,
+    ProcedureStepDetailItem,
+    CategoryDetailItem,
+    SectorDetailItem,
+    MinistryDetailItem,
+    PricingInfo,
+    RelatedServiceItem,
+    KeywordItem,
+)
 from app.modules.fiscal_services.repositories import FiscalServiceRepository
 from app.modules.fiscal_services.repositories.search_repository import SearchRepository
+from app.modules.fiscal_services.repositories.service_details_repository import ServiceDetailsRepository
 from app.modules.fiscal_services.services import CalculationService
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.permissions.middleware.permission_middleware import require_permission
@@ -37,6 +50,7 @@ router = APIRouter(tags=["Fiscal Services"])
 security = HTTPBearer()
 repository = FiscalServiceRepository()
 search_repository = SearchRepository()
+details_repository = ServiceDetailsRepository()
 calculation_service = CalculationService()
 
 
@@ -97,6 +111,174 @@ async def get_fiscal_service(service_id: str, db=Depends(get_database)):
     if not service:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
     return FiscalServiceResponse(**service)
+
+
+@router.get("/{service_id}/details", response_model=ServiceDetailsResponse)
+async def get_service_details(
+    service_id: int,
+    language: str = Query("es", pattern="^(es|fr|en)$", description="Language for translations"),
+    include_related: bool = Query(True, description="Include related services"),
+    include_keywords: bool = Query(False, description="Include search keywords"),
+    db=Depends(get_database),
+):
+    """
+    Get complete service details with documents, procedures, and related info
+
+    This endpoint provides:
+    - Full service information with translations
+    - Required documents list with details
+    - Procedures with all steps
+    - Pricing information (expedition/renewal)
+    - Category, sector, ministry hierarchy
+    - Related services in same category
+    - Parent and child services (if any)
+    - Keywords (optional, for SEO)
+
+    **Used by:** Frontend /services/[id] page
+    """
+    try:
+        # Get main service details
+        service = await details_repository.get_service_details(db, service_id, language)
+        if not service:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Service with ID {service_id} not found"
+            )
+
+        # Get documents
+        documents = await details_repository.get_service_documents(db, service_id, language)
+
+        # Get procedures
+        procedures = await details_repository.get_service_procedures(db, service_id, language)
+
+        # Calculate total procedure steps
+        total_steps = sum(len(p.get("steps", [])) for p in procedures)
+
+        # Get related services
+        related_services = []
+        parent_service = None
+        child_services = []
+
+        if include_related and service.get("category_id"):
+            related_services = await details_repository.get_related_services(
+                db, service_id, service["category_id"], language
+            )
+
+        # Get parent service if exists
+        if service.get("parent_service_id"):
+            parent_service = await details_repository.get_parent_service(
+                db, service["parent_service_id"], language
+            )
+
+        # Get child services
+        child_services = await details_repository.get_child_services(db, service_id, language)
+
+        # Get keywords if requested
+        keywords = []
+        if include_keywords:
+            keywords = await details_repository.get_service_keywords(db, service_id)
+
+        # Build pricing info
+        expedition_price = service.get("expedition_price", 0) or 0
+        renewal_price = service.get("renewal_price", 0) or 0
+        pricing = PricingInfo(
+            expedition_price=expedition_price,
+            renewal_price=renewal_price,
+            calculation_method=service.get("calculation_method", "fixed_both"),
+            percentage_rate=service.get("percentage_rate"),
+            unit_price=service.get("unit_price"),
+            validity_period_months=service.get("validity_period_months"),
+            renewal_frequency_months=service.get("renewal_frequency_months"),
+            currency="XAF",
+        )
+
+        # Build category
+        category = None
+        if service.get("category_id"):
+            category = CategoryDetailItem(
+                id=service["category_id"],
+                category_code=service.get("category_code", ""),
+                name=service.get("category_name", ""),
+                description=service.get("category_description"),
+                icon=service.get("category_icon"),
+                color=service.get("category_color"),
+            )
+
+        # Build sector
+        sector = None
+        if service.get("sector_id"):
+            sector = SectorDetailItem(
+                id=service["sector_id"],
+                code=service.get("sector_code", ""),
+                name=service.get("sector_name", ""),
+                description=service.get("sector_description"),
+            )
+
+        # Build ministry
+        ministry = None
+        if service.get("ministry_id"):
+            ministry = MinistryDetailItem(
+                id=service["ministry_id"],
+                code=service.get("ministry_code", ""),
+                name=service.get("ministry_name", ""),
+                description=service.get("ministry_description"),
+            )
+
+        # Build response
+        return ServiceDetailsResponse(
+            id=service["id"],
+            service_code=service.get("service_code", ""),
+            name=service.get("name", ""),
+            description=service.get("description"),
+            service_type=service.get("service_type", ""),
+            status=service.get("status", "active"),
+            pricing=pricing,
+            processing_time_days=service.get("processing_time_days"),
+            legal_reference=service.get("legal_reference"),
+            notes=service.get("notes"),
+            category=category,
+            sector=sector,
+            ministry=ministry,
+            documents=[DocumentDetailItem(**d) for d in documents],
+            documents_count=len(documents),
+            procedures=[
+                ProcedureDetailItem(
+                    id=p["id"],
+                    template_code=p.get("template_code", ""),
+                    name=p.get("name", ""),
+                    description=p.get("description"),
+                    category=p.get("category"),
+                    applies_to=p.get("applies_to"),
+                    display_order=p.get("display_order", 1),
+                    custom_notes=p.get("custom_notes"),
+                    steps=[ProcedureStepDetailItem(**s) for s in p.get("steps", [])],
+                    total_estimated_minutes=p.get("total_estimated_minutes", 0),
+                )
+                for p in procedures
+            ],
+            procedures_count=len(procedures),
+            total_procedure_steps=total_steps,
+            related_services=[RelatedServiceItem(**r) for r in related_services],
+            parent_service=RelatedServiceItem(**parent_service) if parent_service else None,
+            child_services=[RelatedServiceItem(**c) for c in child_services],
+            keywords=[KeywordItem(**k) for k in keywords],
+            view_count=service.get("view_count", 0) or 0,
+            calculation_count=service.get("calculation_count", 0) or 0,
+            last_updated=service.get("last_updated"),
+            has_documents=len(documents) > 0,
+            has_procedures=len(procedures) > 0,
+            is_free=expedition_price == 0 and renewal_price == 0,
+            requires_renewal=service.get("renewal_frequency_months") is not None,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching service details for {service_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching service details: {str(e)}"
+        )
 
 
 @router.post("/search", response_model=FiscalServiceListResponse)

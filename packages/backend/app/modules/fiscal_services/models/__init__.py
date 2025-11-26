@@ -10,6 +10,20 @@ from app.modules.fiscal_services.models.search import (
     SearchFacets,
 )
 
+from app.modules.fiscal_services.models.service_details import (
+    ServiceDetailsResponse,
+    ServiceDetailsRequest,
+    DocumentDetailItem,
+    ProcedureDetailItem,
+    ProcedureStepDetailItem,
+    CategoryDetailItem,
+    SectorDetailItem,
+    MinistryDetailItem,
+    PricingInfo,
+    RelatedServiceItem,
+    KeywordItem,
+)
+
 from app.modules.fiscal_services.models.fiscal_service import (
     # ENUMs
     ServiceTypeEnum,
@@ -116,6 +130,19 @@ __all__ = [
     "ServiceResultItem",
     "FacetItem",
     "SearchFacets",
+
+    # Service Details Models
+    "ServiceDetailsResponse",
+    "ServiceDetailsRequest",
+    "DocumentDetailItem",
+    "ProcedureDetailItem",
+    "ProcedureStepDetailItem",
+    "CategoryDetailItem",
+    "SectorDetailItem",
+    "MinistryDetailItem",
+    "PricingInfo",
+    "RelatedServiceItem",
+    "KeywordItem",
 
     # ENUMs
     "ServiceTypeEnum",

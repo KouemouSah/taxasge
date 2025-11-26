@@ -1,0 +1,384 @@
+"""
+Service Details Repository - Complete service information with documents and procedures
+Optimized SQL queries with i18n support
+"""
+
+from typing import Dict, Any, List, Optional
+import asyncpg
+from loguru import logger
+
+
+class ServiceDetailsRepository:
+    """Repository for fetching complete service details with translations"""
+
+    async def get_service_details(
+        self,
+        conn: asyncpg.Connection,
+        service_id: int,
+        language: str = "es",
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get complete service details with all related information
+
+        Args:
+            conn: Database connection
+            service_id: Service ID
+            language: Language code for translations (es, fr, en)
+
+        Returns:
+            Complete service details dict or None if not found
+        """
+        # Main service query with translations
+        service_query = """
+            SELECT
+                fs.id,
+                fs.service_code,
+                COALESCE(et_name.translation_value, fs.name_es) as name,
+                COALESCE(et_desc.translation_value, fs.description_es) as description,
+                fs.service_type,
+                fs.status,
+                fs.calculation_method,
+                COALESCE(fs.expedition_amount, fs.tasa_expedicion, 0) as expedition_price,
+                COALESCE(fs.renewal_amount, fs.tasa_renovacion, 0) as renewal_price,
+                fs.percentage_rate,
+                fs.unit_price,
+                fs.validity_period_months,
+                fs.renewal_frequency_months,
+                fs.processing_time_days,
+                fs.legal_reference,
+                fs.notes,
+                fs.parent_service_id,
+                fs.view_count,
+                fs.calculation_count,
+                fs.updated_at as last_updated,
+                -- Category
+                c.id as category_id,
+                c.category_code,
+                COALESCE(et_cat.translation_value, c.name_es) as category_name,
+                COALESCE(et_cat_desc.translation_value, c.description_es) as category_description,
+                c.icon as category_icon,
+                c.color as category_color,
+                -- Sector
+                s.id as sector_id,
+                s.code as sector_code,
+                COALESCE(et_sec.translation_value, s.name_es) as sector_name,
+                COALESCE(et_sec_desc.translation_value, s.description_es) as sector_description,
+                -- Ministry
+                m.id as ministry_id,
+                m.code as ministry_code,
+                COALESCE(et_min.translation_value, m.name_es) as ministry_name,
+                COALESCE(et_min_desc.translation_value, m.description_es) as ministry_description
+            FROM fiscal_services fs
+            LEFT JOIN categories c ON fs.category_id = c.id
+            LEFT JOIN sectors s ON c.sector_id = s.id
+            LEFT JOIN ministries m ON s.ministry_id = m.id
+            -- Service translations
+            LEFT JOIN entity_translations et_name ON
+                et_name.entity_type = 'fiscal_service'
+                AND et_name.entity_id = fs.id
+                AND et_name.field_name = 'name'
+                AND et_name.language_code = $2
+            LEFT JOIN entity_translations et_desc ON
+                et_desc.entity_type = 'fiscal_service'
+                AND et_desc.entity_id = fs.id
+                AND et_desc.field_name = 'description'
+                AND et_desc.language_code = $2
+            -- Category translations
+            LEFT JOIN entity_translations et_cat ON
+                et_cat.entity_type = 'category'
+                AND et_cat.entity_id = c.id
+                AND et_cat.field_name = 'name'
+                AND et_cat.language_code = $2
+            LEFT JOIN entity_translations et_cat_desc ON
+                et_cat_desc.entity_type = 'category'
+                AND et_cat_desc.entity_id = c.id
+                AND et_cat_desc.field_name = 'description'
+                AND et_cat_desc.language_code = $2
+            -- Sector translations
+            LEFT JOIN entity_translations et_sec ON
+                et_sec.entity_type = 'sector'
+                AND et_sec.entity_id = s.id
+                AND et_sec.field_name = 'name'
+                AND et_sec.language_code = $2
+            LEFT JOIN entity_translations et_sec_desc ON
+                et_sec_desc.entity_type = 'sector'
+                AND et_sec_desc.entity_id = s.id
+                AND et_sec_desc.field_name = 'description'
+                AND et_sec_desc.language_code = $2
+            -- Ministry translations
+            LEFT JOIN entity_translations et_min ON
+                et_min.entity_type = 'ministry'
+                AND et_min.entity_id = m.id
+                AND et_min.field_name = 'name'
+                AND et_min.language_code = $2
+            LEFT JOIN entity_translations et_min_desc ON
+                et_min_desc.entity_type = 'ministry'
+                AND et_min_desc.entity_id = m.id
+                AND et_min_desc.field_name = 'description'
+                AND et_min_desc.language_code = $2
+            WHERE fs.id = $1
+        """
+
+        try:
+            row = await conn.fetchrow(service_query, service_id, language)
+            if not row:
+                return None
+
+            service = dict(row)
+
+            # Increment view count
+            await conn.execute(
+                "UPDATE fiscal_services SET view_count = COALESCE(view_count, 0) + 1 WHERE id = $1",
+                service_id
+            )
+
+            return service
+
+        except asyncpg.PostgresError as e:
+            logger.error(f"Error fetching service details: {e}")
+            raise
+
+    async def get_service_documents(
+        self,
+        conn: asyncpg.Connection,
+        service_id: int,
+        language: str = "es",
+    ) -> List[Dict[str, Any]]:
+        """Get all documents required for a service"""
+        query = """
+            SELECT
+                dt.id,
+                dt.template_code,
+                COALESCE(et_name.translation_value, dt.document_name_es) as name,
+                COALESCE(et_desc.translation_value, dt.description_es) as description,
+                dt.category,
+                dt.validity_duration_months,
+                dt.validity_notes,
+                sda.is_required_expedition,
+                sda.is_required_renewal,
+                sda.display_order,
+                sda.custom_notes
+            FROM service_document_assignments sda
+            JOIN document_templates dt ON sda.document_template_id = dt.id
+            LEFT JOIN entity_translations et_name ON
+                et_name.entity_type = 'document_template'
+                AND et_name.entity_id = dt.id
+                AND et_name.field_name = 'name'
+                AND et_name.language_code = $2
+            LEFT JOIN entity_translations et_desc ON
+                et_desc.entity_type = 'document_template'
+                AND et_desc.entity_id = dt.id
+                AND et_desc.field_name = 'description'
+                AND et_desc.language_code = $2
+            WHERE sda.fiscal_service_id = $1 AND dt.is_active = true
+            ORDER BY sda.display_order, dt.document_name_es
+        """
+
+        try:
+            rows = await conn.fetch(query, service_id, language)
+            return [dict(row) for row in rows]
+        except asyncpg.PostgresError as e:
+            logger.error(f"Error fetching service documents: {e}")
+            return []
+
+    async def get_service_procedures(
+        self,
+        conn: asyncpg.Connection,
+        service_id: int,
+        language: str = "es",
+    ) -> List[Dict[str, Any]]:
+        """Get all procedures for a service with their steps"""
+        # Get procedures
+        procedures_query = """
+            SELECT
+                pt.id,
+                pt.template_code,
+                COALESCE(et_name.translation_value, pt.name_es) as name,
+                COALESCE(et_desc.translation_value, pt.description_es) as description,
+                pt.category,
+                spa.applies_to,
+                spa.display_order,
+                spa.custom_notes
+            FROM service_procedure_assignments spa
+            JOIN procedure_templates pt ON spa.template_id = pt.id
+            LEFT JOIN entity_translations et_name ON
+                et_name.entity_type = 'procedure_template'
+                AND et_name.entity_id = pt.id
+                AND et_name.field_name = 'name'
+                AND et_name.language_code = $2
+            LEFT JOIN entity_translations et_desc ON
+                et_desc.entity_type = 'procedure_template'
+                AND et_desc.entity_id = pt.id
+                AND et_desc.field_name = 'description'
+                AND et_desc.language_code = $2
+            WHERE spa.fiscal_service_id = $1 AND pt.is_active = true
+            ORDER BY spa.display_order, pt.name_es
+        """
+
+        try:
+            procedure_rows = await conn.fetch(procedures_query, service_id, language)
+            procedures = []
+
+            for proc_row in procedure_rows:
+                procedure = dict(proc_row)
+
+                # Get steps for this procedure
+                steps_query = """
+                    SELECT
+                        pts.id,
+                        pts.step_number,
+                        COALESCE(et_desc.translation_value, pts.description_es) as description,
+                        COALESCE(et_inst.translation_value, pts.instructions_es) as instructions,
+                        pts.estimated_duration_minutes,
+                        pts.location_address,
+                        pts.office_hours,
+                        pts.requires_appointment,
+                        pts.is_optional
+                    FROM procedure_template_steps pts
+                    LEFT JOIN entity_translations et_desc ON
+                        et_desc.entity_type = 'procedure_step'
+                        AND et_desc.entity_id = pts.id
+                        AND et_desc.field_name = 'description'
+                        AND et_desc.language_code = $2
+                    LEFT JOIN entity_translations et_inst ON
+                        et_inst.entity_type = 'procedure_step'
+                        AND et_inst.entity_id = pts.id
+                        AND et_inst.field_name = 'instructions'
+                        AND et_inst.language_code = $2
+                    WHERE pts.template_id = $1
+                    ORDER BY pts.step_number
+                """
+                step_rows = await conn.fetch(steps_query, procedure["id"], language)
+                procedure["steps"] = [dict(step) for step in step_rows]
+
+                # Calculate total estimated time
+                total_minutes = sum(
+                    step.get("estimated_duration_minutes") or 0
+                    for step in procedure["steps"]
+                )
+                procedure["total_estimated_minutes"] = total_minutes
+
+                procedures.append(procedure)
+
+            return procedures
+
+        except asyncpg.PostgresError as e:
+            logger.error(f"Error fetching service procedures: {e}")
+            return []
+
+    async def get_related_services(
+        self,
+        conn: asyncpg.Connection,
+        service_id: int,
+        category_id: int,
+        language: str = "es",
+        limit: int = 5,
+    ) -> List[Dict[str, Any]]:
+        """Get related services in the same category"""
+        query = """
+            SELECT
+                fs.id,
+                fs.service_code,
+                COALESCE(et_name.translation_value, fs.name_es) as name,
+                COALESCE(fs.expedition_amount, fs.tasa_expedicion, 0) as expedition_price,
+                fs.processing_time_days
+            FROM fiscal_services fs
+            LEFT JOIN entity_translations et_name ON
+                et_name.entity_type = 'fiscal_service'
+                AND et_name.entity_id = fs.id
+                AND et_name.field_name = 'name'
+                AND et_name.language_code = $3
+            WHERE fs.category_id = $2
+              AND fs.id != $1
+              AND fs.status = 'active'
+            ORDER BY fs.view_count DESC, fs.calculation_count DESC
+            LIMIT $4
+        """
+
+        try:
+            rows = await conn.fetch(query, service_id, category_id, language, limit)
+            return [dict(row) for row in rows]
+        except asyncpg.PostgresError as e:
+            logger.error(f"Error fetching related services: {e}")
+            return []
+
+    async def get_parent_service(
+        self,
+        conn: asyncpg.Connection,
+        parent_id: int,
+        language: str = "es",
+    ) -> Optional[Dict[str, Any]]:
+        """Get parent service info"""
+        query = """
+            SELECT
+                fs.id,
+                fs.service_code,
+                COALESCE(et_name.translation_value, fs.name_es) as name,
+                COALESCE(fs.expedition_amount, fs.tasa_expedicion, 0) as expedition_price,
+                fs.processing_time_days
+            FROM fiscal_services fs
+            LEFT JOIN entity_translations et_name ON
+                et_name.entity_type = 'fiscal_service'
+                AND et_name.entity_id = fs.id
+                AND et_name.field_name = 'name'
+                AND et_name.language_code = $2
+            WHERE fs.id = $1
+        """
+
+        try:
+            row = await conn.fetchrow(query, parent_id, language)
+            return dict(row) if row else None
+        except asyncpg.PostgresError as e:
+            logger.error(f"Error fetching parent service: {e}")
+            return None
+
+    async def get_child_services(
+        self,
+        conn: asyncpg.Connection,
+        service_id: int,
+        language: str = "es",
+    ) -> List[Dict[str, Any]]:
+        """Get child/sub-services"""
+        query = """
+            SELECT
+                fs.id,
+                fs.service_code,
+                COALESCE(et_name.translation_value, fs.name_es) as name,
+                COALESCE(fs.expedition_amount, fs.tasa_expedicion, 0) as expedition_price,
+                fs.processing_time_days
+            FROM fiscal_services fs
+            LEFT JOIN entity_translations et_name ON
+                et_name.entity_type = 'fiscal_service'
+                AND et_name.entity_id = fs.id
+                AND et_name.field_name = 'name'
+                AND et_name.language_code = $2
+            WHERE fs.parent_service_id = $1 AND fs.status = 'active'
+            ORDER BY fs.name_es
+        """
+
+        try:
+            rows = await conn.fetch(query, service_id, language)
+            return [dict(row) for row in rows]
+        except asyncpg.PostgresError as e:
+            logger.error(f"Error fetching child services: {e}")
+            return []
+
+    async def get_service_keywords(
+        self,
+        conn: asyncpg.Connection,
+        service_id: int,
+    ) -> List[Dict[str, Any]]:
+        """Get service keywords for SEO"""
+        query = """
+            SELECT keyword, language_code, weight
+            FROM service_keywords
+            WHERE fiscal_service_id = $1
+            ORDER BY weight DESC, keyword
+        """
+
+        try:
+            rows = await conn.fetch(query, service_id)
+            return [dict(row) for row in rows]
+        except asyncpg.PostgresError as e:
+            logger.error(f"Error fetching service keywords: {e}")
+            return []
