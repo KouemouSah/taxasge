@@ -34,7 +34,16 @@
       "Bash(\"/c/Users/User/AppData/Local/Programs/Python/Python312/python.exe\" /tmp/add_chatbot_translations.py)",
       "Bash(npm run build:*)",
       "Bash(npm install)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(done)",
+      "Bash(for dir in */)",
+      "Bash(do module=$dir%/)",
+      "Bash(echo:*)",
+      "Bash([ -f \"$module/index.ts\" ])",
+      "Bash([ -d \"$module/components\" ])",
+      "Bash([ -d \"$module/hooks\" ])",
+      "Bash([ -d \"$module/services\" ])",
+      "Bash([ -d \"$module/types\" ])"
     ],
     "deny": [],
     "ask": []

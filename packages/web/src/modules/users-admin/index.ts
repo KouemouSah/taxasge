@@ -5,8 +5,16 @@
  * @module users-admin
  */
 
-export { usersApi } from './services/api'
-export { default as usersAdminApi } from './services/api'
+// Hooks
+export * from './hooks'
+
+// Types
 export * from './types'
+
+// Components
 export * from './components/CreateUserDialog'
 export * from './components/EditUserDialog'
+
+// Services
+export { usersApi } from './services/api'
+export { default as usersAdminApi } from './services/api'
