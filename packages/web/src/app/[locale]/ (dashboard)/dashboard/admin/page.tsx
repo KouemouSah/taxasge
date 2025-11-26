@@ -13,9 +13,7 @@
 
 import React from 'react'
 import { useTranslations } from 'next-intl'
-import StatsCards from '@/components/admin/StatsCards'
-import RecentActivity from '@/components/admin/RecentActivity'
-import QuickActions from '@/components/admin/QuickActions'
+import { StatsCards, RecentActivity, QuickActions } from '@/modules/admin/components'
 
 export default function AdminDashboard() {
   const t = useTranslations('admin')

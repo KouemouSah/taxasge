@@ -40,7 +40,7 @@ import type {
   ServiceTypeEnum,
   CalculationMethodEnum,
 } from '@/types/fiscal-service'
-import { BackendUnavailableAlert } from '@/components/admin/BackendUnavailableAlert'
+import { BackendUnavailableAlert } from '@/modules/admin/components'
 
 export default function FiscalServiceDetailPage() {
   const params = useParams()

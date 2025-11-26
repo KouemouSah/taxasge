@@ -38,7 +38,7 @@ import { ListOrdered, RefreshCw, AlertTriangle, Search, Plus, Eye, Edit, Trash2,
 import { useToast } from '@/hooks/use-toast'
 import templatesAPI from '@/modules/templates/services/api'
 import type { ProcedureTemplate } from '@/types/fiscal-service'
-import { BackendUnavailableAlert } from '@/components/admin/BackendUnavailableAlert'
+import { BackendUnavailableAlert } from '@/modules/admin/components'
 
 export default function ProcedureTemplatesPage() {
   const locale = useLocale()

@@ -2,9 +2,7 @@
  * Admin Sidebar Navigation
  * Main navigation for admin dashboard with i18n support
  *
- * MIGRATED: Phase 4 - Full i18n with locale-aware links
- *
- * @module components/admin
+ * @module modules/admin/components
  * @author Claude Code
  * @date 2025-11-24
  */
@@ -27,7 +25,6 @@ import {
   ChevronRight,
   LogOut,
   ClipboardList,
-  Building2,
   ListOrdered,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'

@@ -2,9 +2,7 @@
  * Backend Unavailable Alert Component
  * Displays a warning when backend API is not available with i18n support
  *
- * MIGRATED: Phase 4 - Full i18n
- *
- * @module components/admin
+ * @module modules/admin/components
  * @author Claude Code
  * @date 2025-11-24
  */

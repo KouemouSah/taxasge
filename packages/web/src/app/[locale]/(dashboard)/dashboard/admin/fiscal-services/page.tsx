@@ -45,7 +45,7 @@ import type {
   ServiceTypeEnum,
   ServiceStatusEnum,
 } from '@/types/fiscal-service'
-import { BackendUnavailableAlert } from '@/components/admin/BackendUnavailableAlert'
+import { BackendUnavailableAlert } from '@/modules/admin/components'
 
 export default function FiscalServicesPage() {
   const locale = useLocale()

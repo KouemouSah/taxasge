@@ -43,7 +43,8 @@
       "Bash([ -d \"$module/components\" ])",
       "Bash([ -d \"$module/hooks\" ])",
       "Bash([ -d \"$module/services\" ])",
-      "Bash([ -d \"$module/types\" ])"
+      "Bash([ -d \"$module/types\" ])",
+      "Bash(npm cache clean:*)"
     ],
     "deny": [],
     "ask": []

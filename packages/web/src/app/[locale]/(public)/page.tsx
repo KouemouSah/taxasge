@@ -1,9 +1,10 @@
-import { useTranslations } from 'next-intl';
 import { getTranslations } from 'next-intl/server';
-import Hero from '@/components/Hero';
-import StatsSection from '@/components/StatsSection';
-import FeaturesSection from '@/components/FeaturesSection';
-import ServicesDirectory from '@/components/ServicesDirectory';
+import {
+  HeroSection,
+  StatsSection,
+  FeaturesSection,
+  ServicesDirectory,
+} from '@/modules/homepage/components';
 
 /**
  * Homepage - Localized
@@ -26,7 +27,7 @@ export async function generateMetadata({ params: { locale } }: { params: { local
 export default function HomePage() {
   return (
     <>
-      <Hero />
+      <HeroSection />
       <StatsSection />
       <FeaturesSection />
       <ServicesDirectory />

@@ -2,9 +2,7 @@
  * Recent Activity Component
  * Display recent audit log entries with i18n support
  *
- * MIGRATED: Phase 4 - Full i18n
- *
- * @module components/admin
+ * @module modules/admin/components
  * @author Claude Code
  * @date 2025-11-24
  */

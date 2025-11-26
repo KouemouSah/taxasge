@@ -41,7 +41,7 @@ import { UserRole as UserRoleEnum, UserStatus, isCitizenOrBusiness, canPhysicall
 import { useUserLabels } from '@/hooks/use-user-labels'
 import { CreateUserDialog } from '@/modules/users-admin/components/CreateUserDialog'
 import { EditUserDialog } from '@/modules/users-admin/components/EditUserDialog'
-import { BackendUnavailableAlert } from '@/components/admin/BackendUnavailableAlert'
+import { BackendUnavailableAlert } from '@/modules/admin/components'
 
 export default function UsersPage() {
   const locale = useLocale()

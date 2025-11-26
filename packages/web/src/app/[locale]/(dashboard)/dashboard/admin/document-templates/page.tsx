@@ -38,7 +38,7 @@ import { FileText, RefreshCw, AlertTriangle, Search, Plus, Eye, Edit, Trash2, Ch
 import { useToast } from '@/hooks/use-toast'
 import templatesAPI from '@/modules/templates/services/api'
 import type { DocumentTemplate } from '@/types/fiscal-service'
-import { BackendUnavailableAlert } from '@/components/admin/BackendUnavailableAlert'
+import { BackendUnavailableAlert } from '@/modules/admin/components'
 
 export default function DocumentTemplatesPage() {
   const locale = useLocale()

@@ -3,38 +3,63 @@
 import { Users, FileCheck, Building2, TrendingUp, AlertCircle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useHomepageStats } from '../hooks/useHomepageStats';
+import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { getHomepageStats, getDefaultStats, type HomepageStats } from '@/core/api/homepage';
 
 export const StatsSection = () => {
-  const { stats, loading, error } = useHomepageStats();
+  const [stats, setStats] = useState<HomepageStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const t = useTranslations('stats');
+
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await getHomepageStats();
+        setStats(data);
+      } catch (err) {
+        console.error('Failed to fetch homepage stats:', err);
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load statistics';
+        setError(errorMessage);
+        setStats(getDefaultStats());
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchStats();
+  }, []);
 
   const displayStats = [
     {
       icon: FileCheck,
       value: loading ? '...' : stats?.total_services.toString() || '0',
-      label: 'Services Fiscaux',
-      description: 'Services disponibles',
+      label: t('fiscalServices'),
+      description: t('fiscalServicesDesc'),
       color: 'text-primary',
     },
     {
       icon: Building2,
       value: loading ? '...' : stats?.total_ministries.toString() || '0',
-      label: 'Ministères',
-      description: 'Ministères couverts',
+      label: t('ministries'),
+      description: t('ministriesDesc'),
       color: 'text-red-600',
     },
     {
       icon: Users,
       value: loading ? '...' : stats?.total_categories.toString() || '0',
-      label: 'Catégories',
-      description: 'Catégories de services',
+      label: t('categories'),
+      description: t('categoriesDesc'),
       color: 'text-yellow-600',
     },
     {
       icon: TrendingUp,
       value: loading ? '...' : stats?.total_sectors.toString() || '0',
-      label: 'Secteurs',
-      description: "Secteurs d'activité",
+      label: t('sectors'),
+      description: t('sectorsDesc'),
       color: 'text-green-600',
     },
   ];
@@ -43,20 +68,14 @@ export const StatsSection = () => {
     <section className="py-16 bg-muted/30">
       <div className="container mx-auto px-4">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-4">Une plateforme complète</h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Accédez à l&apos;ensemble des services fiscaux de la Guinée Équatoriale, organisés de
-            manière claire et accessible
-          </p>
+          <h2 className="text-3xl font-bold mb-4">{t('title')}</h2>
+          <p className="text-muted-foreground max-w-2xl mx-auto">{t('description')}</p>
         </div>
 
-        {/* Error Alert */}
         {error && !loading && (
           <Alert variant="destructive" className="mb-6 max-w-2xl mx-auto">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Impossible de charger les statistiques: {error}. Affichage des valeurs par défaut.
-            </AlertDescription>
+            <AlertDescription>{t('errorLoading')}: {error}.</AlertDescription>
           </Alert>
         )}
 

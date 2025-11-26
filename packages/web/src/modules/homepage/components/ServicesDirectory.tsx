@@ -16,7 +16,6 @@ export const ServicesDirectory = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const t = useTranslations('directory');
-  const tCommon = useTranslations('common');
 
   useEffect(() => {
     async function fetchDirectory() {
@@ -29,7 +28,6 @@ export const ServicesDirectory = () => {
         console.error('Failed to fetch category directory:', err);
         const errorMessage = err instanceof Error ? err.message : 'Failed to load category directory';
         setError(errorMessage);
-        // Use default/fallback directory on error
         setDirectory(getDefaultCategoryDirectory());
       } finally {
         setLoading(false);
@@ -39,10 +37,8 @@ export const ServicesDirectory = () => {
     fetchDirectory();
   }, [locale]);
 
-  // Display only top 8 categories
   const topCategories = directory?.categories.slice(0, 8) || [];
 
-  // Get localized category name and description
   const getCategoryName = (category: any) => {
     if (locale === 'es') return category.name_es;
     if (locale === 'fr') return category.name_fr || category.name_es;
@@ -58,7 +54,6 @@ export const ServicesDirectory = () => {
   return (
     <section className="py-16 bg-background">
       <div className="container mx-auto px-4">
-        {/* Header */}
         <div className="mb-12 text-center">
           <h2 className="text-3xl font-bold mb-3">{t('title')}</h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
@@ -71,7 +66,6 @@ export const ServicesDirectory = () => {
           </p>
         </div>
 
-        {/* Error Alert */}
         {error && !loading && (
           <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" />
@@ -81,7 +75,6 @@ export const ServicesDirectory = () => {
           </Alert>
         )}
 
-        {/* Loading State */}
         {loading && (
           <div className="flex justify-center items-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -89,7 +82,6 @@ export const ServicesDirectory = () => {
           </div>
         )}
 
-        {/* Empty State */}
         {!loading && topCategories.length === 0 && (
           <Card className="p-12 text-center">
             <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -98,7 +90,6 @@ export const ServicesDirectory = () => {
           </Card>
         )}
 
-        {/* Category Grid */}
         {!loading && topCategories.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {topCategories.map((category) => (
@@ -108,7 +99,6 @@ export const ServicesDirectory = () => {
                 onClick={() => router.push(`/${locale}/services?category=${category.category_code}`)}
               >
                 <div className="p-6 space-y-4">
-                  {/* Category Header */}
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
@@ -120,16 +110,13 @@ export const ServicesDirectory = () => {
                     </div>
                   </div>
 
-                  {/* Description */}
                   {getCategoryDescription(category) && (
                     <p className="text-sm text-muted-foreground line-clamp-2">
                       {getCategoryDescription(category)}
                     </p>
                   )}
 
-                  {/* Footer */}
                   <div className="pt-4 border-t space-y-2">
-                    {/* Service Count */}
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-semibold text-primary">
                         {t('servicesCount', { count: category.service_count })}
@@ -137,7 +124,6 @@ export const ServicesDirectory = () => {
                       <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
                     </div>
 
-                    {/* Ministry/Sector Info */}
                     {(category.ministry_name || category.sector_name) && (
                       <div className="flex items-center text-xs text-muted-foreground">
                         <Building className="mr-1 h-3 w-3 flex-shrink-0" />
@@ -151,7 +137,6 @@ export const ServicesDirectory = () => {
           </div>
         )}
 
-        {/* View All Button (bottom) */}
         {!loading && topCategories.length > 0 && directory && directory.total_categories > 8 && (
           <div className="mt-8 text-center">
             <Button

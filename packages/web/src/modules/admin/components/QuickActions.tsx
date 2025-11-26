@@ -2,9 +2,7 @@
  * Quick Actions Component
  * Quick access buttons for common admin tasks with i18n support
  *
- * MIGRATED: Phase 4 - Full i18n + locale-aware links
- *
- * @module components/admin
+ * @module modules/admin/components
  * @author Claude Code
  * @date 2025-11-24
  */

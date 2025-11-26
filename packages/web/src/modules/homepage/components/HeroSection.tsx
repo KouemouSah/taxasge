@@ -4,42 +4,67 @@ import { Search, Calculator, BookOpen, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useHomepageStats } from '../hooks/useHomepageStats';
+import { useLocale, useTranslations } from 'next-intl';
+import { getHomepageStats, type HomepageStats } from '@/core/api/homepage';
 
 export const HeroSection = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [stats, setStats] = useState<HomepageStats | null>(null);
   const router = useRouter();
-  const { stats } = useHomepageStats();
+  const locale = useLocale();
+  const t = useTranslations('hero');
+  const tNav = useTranslations('nav');
+
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        const data = await getHomepageStats();
+        setStats(data);
+      } catch (err) {
+        console.error('Failed to fetch stats for Hero:', err);
+        // Fallback to default value if API fails
+        setStats({
+          total_services: 0,
+          total_ministries: 0,
+          total_categories: 0,
+          total_sectors: 0,
+          last_updated: new Date().toISOString(),
+        });
+      }
+    }
+
+    fetchStats();
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
+      router.push(`/${locale}/services?q=${encodeURIComponent(searchQuery)}`);
     }
   };
 
   const quickLinks = [
     {
       icon: Calculator,
-      title: 'Calculateur',
-      description: 'Calculez vos taxes',
-      href: '/calculator',
+      title: t('calculator'),
+      description: t('calculatorDesc'),
+      href: `/${locale}/calculateur`,
       color: 'text-white',
     },
     {
       icon: FileText,
-      title: stats ? `${stats.total_services} Services` : 'Services',
-      description: 'Services fiscaux',
-      href: '/search',
+      title: stats ? `${stats.total_services} ${tNav('services')}` : tNav('services'),
+      description: t('servicesDesc'),
+      href: `/${locale}/services`,
       color: 'text-white',
     },
     {
       icon: BookOpen,
-      title: 'Guide Complet',
-      description: 'Procédures détaillées',
-      href: '/guide',
+      title: t('completeGuide'),
+      description: t('completeGuideDesc'),
+      href: `/${locale}/guide`,
       color: 'text-white',
     },
   ];
@@ -54,19 +79,16 @@ export const HeroSection = () => {
           {/* Badge */}
           <div className="mb-6 inline-flex items-center rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-sm text-white backdrop-blur-sm">
             <span className="mr-2">🇬🇶</span>
-            <span>Services Fiscaux de la Guinée Équatoriale</span>
+            <span>{t('badge')}</span>
           </div>
 
           {/* Main Title */}
           <h1 className="mb-6 text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
-            Simplifiez vos démarches fiscales
+            {t('title')}
           </h1>
 
           {/* Subtitle */}
-          <p className="mb-10 text-lg text-white/90 sm:text-xl">
-            Accédez à tous les services fiscaux guinéens en un seul endroit. Calculez vos taxes,
-            consultez les procédures et téléchargez vos documents.
-          </p>
+          <p className="mb-10 text-lg text-white/90 sm:text-xl">{t('subtitle')}</p>
 
           {/* Search Bar */}
           <form onSubmit={handleSearch} className="mb-12">
@@ -76,18 +98,14 @@ export const HeroSection = () => {
                   <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     type="text"
-                    placeholder="Rechercher un service fiscal, un ministère, une catégorie..."
+                    placeholder={t('searchPlaceholder')}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="h-12 pl-10 bg-white border-white/20 text-foreground placeholder:text-muted-foreground"
                   />
                 </div>
-                <Button
-                  type="submit"
-                  size="lg"
-                  className="h-12 bg-white text-primary hover:bg-white/90"
-                >
-                  Rechercher
+                <Button type="submit" size="lg" className="h-12 bg-white text-primary hover:bg-white/90">
+                  {t('searchButton')}
                 </Button>
               </div>
             </div>

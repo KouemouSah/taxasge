@@ -1,1 +1,13 @@
-// admin Module
+/**
+ * Admin Module Components
+ * Central export for all admin-related components
+ *
+ * @module modules/admin/components
+ */
+
+export { default as AdminHeader } from "./AdminHeader"
+export { default as AdminSidebar } from "./AdminSidebar"
+export { default as StatsCards } from "./StatsCards"
+export { default as RecentActivity } from "./RecentActivity"
+export { default as QuickActions } from "./QuickActions"
+export { BackendUnavailableAlert } from "./BackendUnavailableAlert"

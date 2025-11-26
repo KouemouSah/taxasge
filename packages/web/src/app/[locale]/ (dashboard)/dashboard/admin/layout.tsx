@@ -11,8 +11,7 @@
 
 'use client'
 
-import AdminSidebar from '@/components/admin/AdminSidebar'
-import AdminHeader from '@/components/admin/AdminHeader'
+import { AdminSidebar, AdminHeader } from '@/modules/admin/components'
 
 export default function AdminLayout({
   children,
