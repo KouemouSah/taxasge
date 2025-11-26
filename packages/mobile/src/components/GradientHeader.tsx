@@ -12,6 +12,7 @@ interface GradientHeaderProps {
   title: string;
   onBack?: () => void;
   rightComponent?: React.ReactNode;
+  leftComponent?: React.ReactNode;
   showBackButton?: boolean;
 }
 
@@ -19,6 +20,7 @@ export const GradientHeader: React.FC<GradientHeaderProps> = ({
   title,
   onBack,
   rightComponent,
+  leftComponent,
   showBackButton = true,
 }) => {
   return (
@@ -30,7 +32,9 @@ export const GradientHeader: React.FC<GradientHeaderProps> = ({
         end={{ x: 1, y: 0 }}
         style={styles.container}>
         <View style={styles.content}>
-          {showBackButton && onBack ? (
+          {leftComponent ? (
+            <View style={styles.backButton}>{leftComponent}</View>
+          ) : showBackButton && onBack ? (
             <TouchableOpacity style={styles.backButton} onPress={onBack} activeOpacity={0.7}>
               <Text style={styles.backButtonText}>←</Text>
             </TouchableOpacity>

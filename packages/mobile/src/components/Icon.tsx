@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { Text, TextStyle, StyleProp } from 'react-native';
+import { Text, TextStyle, StyleProp, StyleSheet } from 'react-native';
 
 export type IconName =
   | 'home'
@@ -17,6 +17,7 @@ export type IconName =
   | 'document'
   | 'calculator'
   | 'robot'
+  | 'chat'
   | 'chart'
   | 'edit'
   | 'star'
@@ -45,6 +46,7 @@ const ICONS: Record<IconName, string> = {
   document: '☰',    // Document/list symbol
   calculator: '⊞',  // Calculator grid
   robot: '⚙',       // Bot/settings gear
+  chat: '💬',       // Chat bubble for TaxaBot
   chart: '▤',       // Chart/graph symbol
   edit: '✎',        // Edit pencil
   star: '☆',        // Empty star
@@ -82,11 +84,10 @@ export const Icon: React.FC<IconProps> = ({
   return (
     <Text
       style={[
+        styles.icon,
         {
           fontSize: size,
           color: color,
-          fontWeight: '400',
-          textAlign: 'center',
           lineHeight: size,
         },
         style,
@@ -96,5 +97,12 @@ export const Icon: React.FC<IconProps> = ({
     </Text>
   );
 };
+
+const styles = StyleSheet.create({
+  icon: {
+    fontWeight: '400',
+    textAlign: 'center',
+  },
+});
 
 export default Icon;

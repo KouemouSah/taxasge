@@ -66,6 +66,7 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({
     });
 
     return () => unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queuePending, userId]);
 
   /**
@@ -95,6 +96,7 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({
     }, autoSyncInterval * 60 * 1000); // Convert minutes to ms
 
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [online, syncing, autoSyncInterval, userId]);
 
   /**

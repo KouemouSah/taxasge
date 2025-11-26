@@ -8,7 +8,6 @@ import {
   calculationsService,
   Calculation,
   CalculationParams,
-  CalculationBreakdown,
 } from '../database/services/CalculationsService';
 import { FiscalService } from '../database/services/FiscalServicesService';
 
@@ -86,8 +85,18 @@ export function useCalculations(userId?: string) {
           false
         );
 
-        // Reload history
-        await loadHistory(targetUserId);
+        // Reload history after save
+        const results = await calculationsService.getUserHistory(targetUserId);
+        const total = await calculationsService.getTotalCalculated(targetUserId);
+        const totalCount = await calculationsService.getCount(targetUserId);
+
+        setState(prev => ({
+          ...prev,
+          history: results,
+          totalCalculated: total,
+          count: totalCount,
+          loading: false,
+        }));
 
         console.log('[useCalculations] Calculation saved:', insertId);
 

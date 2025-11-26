@@ -17,6 +17,7 @@ import {
   Linking,
 } from 'react-native';
 import { GradientHeader } from '../components/GradientHeader';
+import { Icon } from '../components/Icon';
 import { getSection } from '../i18n';
 import { Colors, Spacing, Shadows } from '../theme';
 import DatabaseService from '../database/DatabaseService';
@@ -53,7 +54,7 @@ export const MinisterioDetailScreen: React.FC<MinisterioDetailScreenProps> = ({
   const loadMinistryDetails = async () => {
     try {
       setIsLoading(true);
-      const db = DatabaseService.getInstance();
+      const db = DatabaseService;
 
       // Load stats in parallel
       const [sectorsResult, categoriesResult, servicesResult, servicesList] = await Promise.all([
@@ -126,7 +127,7 @@ export const MinisterioDetailScreen: React.FC<MinisterioDetailScreenProps> = ({
         {/* Hero Section */}
         <View style={styles.heroSection}>
           <View style={styles.iconCircle}>
-            <Text style={styles.icon}>🏛️</Text>
+            <Icon name="building" size={40} color={Colors.primary} />
           </View>
           <Text style={styles.ministryName}>{getMinistryName()}</Text>
           {getMinistryDescription() && (
@@ -140,7 +141,9 @@ export const MinisterioDetailScreen: React.FC<MinisterioDetailScreenProps> = ({
         {/* Contact Information */}
         <View style={styles.contactSection}>
           <View style={styles.contactRow}>
-            <Text style={styles.contactIcon}>📍</Text>
+            <View style={styles.contactIconContainer}>
+              <Icon name="globe" size={20} color="#666666" />
+            </View>
             <View style={styles.contactContent}>
               <Text style={styles.contactLabel}>{t.location}</Text>
               <Text style={styles.contactValue}>{getMinistryAddress()}</Text>
@@ -149,7 +152,9 @@ export const MinisterioDetailScreen: React.FC<MinisterioDetailScreenProps> = ({
 
           {ministry.contact_email && (
             <TouchableOpacity style={styles.contactRow} onPress={handleEmailPress} activeOpacity={0.7}>
-              <Text style={styles.contactIcon}>📧</Text>
+              <View style={styles.contactIconContainer}>
+                <Icon name="info" size={20} color="#666666" />
+              </View>
               <View style={styles.contactContent}>
                 <Text style={styles.contactLabel}>{t.email}</Text>
                 <Text style={[styles.contactValue, styles.contactLink]}>{ministry.contact_email}</Text>
@@ -159,7 +164,9 @@ export const MinisterioDetailScreen: React.FC<MinisterioDetailScreenProps> = ({
 
           {ministry.website_url && (
             <TouchableOpacity style={styles.contactRow} onPress={handleWebsitePress} activeOpacity={0.7}>
-              <Text style={styles.contactIcon}>🌐</Text>
+              <View style={styles.contactIconContainer}>
+                <Icon name="globe" size={20} color="#666666" />
+              </View>
               <View style={styles.contactContent}>
                 <Text style={styles.contactLabel}>{t.website}</Text>
                 <Text style={[styles.contactValue, styles.contactLink]}>{ministry.website_url}</Text>
@@ -287,10 +294,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  contactIcon: {
-    fontSize: 20,
+  contactIconContainer: {
+    width: 24,
+    height: 24,
     marginRight: Spacing.md,
     marginTop: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   contactContent: {
     flex: 1,

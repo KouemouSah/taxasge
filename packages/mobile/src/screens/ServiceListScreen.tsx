@@ -31,6 +31,7 @@ import { GradientHeader } from '../components/GradientHeader';
 export interface ServicesListScreenProps {
   language: 'es' | 'fr' | 'en';
   initialPage?: number;
+  initialSearchQuery?: string;
   onPageChange?: (page: number) => void;
   onBack?: () => void;
   onServicePress?: (service: FiscalService) => void;
@@ -192,6 +193,7 @@ const TEXTS = {
 export const ServicesListScreen: React.FC<ServicesListScreenProps> = ({
   language,
   initialPage = 1,
+  initialSearchQuery = '',
   onPageChange,
   onBack,
   onServicePress,
@@ -202,7 +204,7 @@ export const ServicesListScreen: React.FC<ServicesListScreenProps> = ({
   const [currentPage, setCurrentPage] = useState(initialPage);
 
   // Filter state
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [selectedMinistryId, setSelectedMinistryId] = useState<string | undefined>(undefined);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | undefined>(undefined);
   const [selectedServiceType, setSelectedServiceType] = useState<string | undefined>(undefined);
@@ -693,7 +695,6 @@ Via TaxasGE Mobile`;
       <GradientHeader
         title={TEXTS[language].title}
         onBack={onBack}
-        subtitle={`${filteredServices.length} / ${allServices.length} ${TEXTS[language].subtitle}`}
       />
 
       {/* Search and Filters */}
@@ -771,8 +772,6 @@ Via TaxasGE Mobile`;
         maxToRenderPerBatch={10}
         initialNumToRender={10}
         windowSize={5}
-        onEndReached={goToNextPage}
-        onEndReachedThreshold={0.5}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>{TEXTS[language].empty}</Text>

@@ -424,16 +424,6 @@ class CalculationHistoryService {
       const toDelete = count - this.MAX_HISTORY_RECORDS;
 
       // Delete oldest records
-      const deleteQuery = `
-        DELETE FROM ${TABLE_NAMES.CALCULATION_HISTORY}
-        WHERE id IN (
-          SELECT id FROM ${TABLE_NAMES.CALCULATION_HISTORY}
-          WHERE user_id = ?
-          ORDER BY created_at ASC
-          LIMIT ?
-        )
-      `;
-
       const deleted = await db.delete(
         TABLE_NAMES.CALCULATION_HISTORY,
         `id IN (

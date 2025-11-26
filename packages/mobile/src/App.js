@@ -15,11 +15,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
-  StatusBar,
   StyleSheet,
-  SafeAreaView,
-  TouchableOpacity,
-  ScrollView,
   Platform,
   NativeModules,
   ActivityIndicator,
@@ -31,9 +27,7 @@ import { DatabaseProvider } from './providers/DatabaseProvider';
 import { ServicesProvider } from './providers/ServicesProvider';
 import { ChatbotScreen } from './screens/ChatbotScreen';
 import HomeScreen from './screens/HomeScreen';
-import { OnboardingScreen } from './screens/OnboardingScreen';
 import NewOnboardingScreen from './screens/NewOnboardingScreen';
-import { PlaceholderScreen } from './screens/PlaceholderScreen';
 import ServiceListScreen from './screens/ServiceListScreen';
 import ServiceDetailScreen from './screens/ServiceDetailScreen';
 import FavoritesScreen from './screens/FavoritesScreen';
@@ -43,6 +37,7 @@ import ProfileScreen from './screens/ProfileScreen';
 import MinisteriosScreen from './screens/MinisteriosScreen';
 import MinisterioDetailScreen from './screens/MinisterioDetailScreen';
 import { APP_CONFIG } from './config/AppConfig';
+import { dataCacheService } from './services/DataCacheService';
 
 /**
  * Détecte la langue du système Android/iOS
@@ -80,66 +75,6 @@ const getSystemLanguage = () => {
 };
 
 /**
- * Textes multilingues pour toute l'application
- */
-const TEXTS = {
-  es: {
-    title: 'TaxasGE Mobile',
-    subtitle: 'Gestión Fiscal - Guinea Ecuatorial',
-    menuTitle: 'Menú Principal',
-    chatbotButton: 'Asistente Chatbot',
-    chatbotSubtitle: 'Haz tus preguntas sobre servicios fiscales',
-    searchButton: 'Buscar Servicios',
-    searchSubtitle: 'Explora y filtra todos los servicios fiscales',
-    calculatorButton: 'Calculadora',
-    calculatorSubtitle: 'Selecciona un servicio primero',
-    favoritesButton: 'Favoritos',
-    favoritesSubtitle: 'Accede a tus servicios guardados',
-    historyButton: 'Historial',
-    historySubtitle: 'Revisa tus cálculos anteriores',
-    comingSoon: 'Próximamente',
-    footer1: 'Versión MVP1 - Chatbot FAQ',
-    footer2: 'Base de datos: SQLite v3',
-  },
-  fr: {
-    title: 'TaxasGE Mobile',
-    subtitle: 'Gestion Fiscale - Guinée Équatoriale',
-    menuTitle: 'Menu Principal',
-    chatbotButton: 'Assistant Chatbot',
-    chatbotSubtitle: 'Posez vos questions sur les services fiscaux',
-    searchButton: 'Rechercher Services',
-    searchSubtitle: 'Explorez et filtrez tous les services fiscaux',
-    calculatorButton: 'Calculatrice',
-    calculatorSubtitle: 'Sélectionnez un service d\'abord',
-    favoritesButton: 'Favoris',
-    favoritesSubtitle: 'Accédez à vos services enregistrés',
-    historyButton: 'Historique',
-    historySubtitle: 'Consultez vos calculs précédents',
-    comingSoon: 'Bientôt disponible',
-    footer1: 'Version MVP1 - Chatbot FAQ',
-    footer2: 'Base de données : SQLite v3',
-  },
-  en: {
-    title: 'TaxasGE Mobile',
-    subtitle: 'Tax Management - Equatorial Guinea',
-    menuTitle: 'Main Menu',
-    chatbotButton: 'Chatbot Assistant',
-    chatbotSubtitle: 'Ask your questions about tax services',
-    searchButton: 'Search Services',
-    searchSubtitle: 'Browse and filter all tax services',
-    calculatorButton: 'Calculator',
-    calculatorSubtitle: 'Select a service first',
-    favoritesButton: 'Favorites',
-    favoritesSubtitle: 'Access your saved services',
-    historyButton: 'History',
-    historySubtitle: 'Review your previous calculations',
-    comingSoon: 'Coming soon',
-    footer1: 'Version MVP1 - Chatbot FAQ',
-    footer2: 'Database: SQLite v3',
-  },
-};
-
-/**
  * Storage keys for app state
  */
 const STORAGE_KEYS = {
@@ -157,9 +92,11 @@ const App = () => {
   const [currentLanguage, setCurrentLanguage] = useState('es');
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
   const [syncPhase, setSyncPhase] = useState(0);
   const [selectedService, setSelectedService] = useState(null);
   const [selectedMinistry, setSelectedMinistry] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [navigationHistory, setNavigationHistory] = useState(['home']);
 
   /**
@@ -275,6 +212,10 @@ const App = () => {
 
       if (onboardingCompleted === 'true') {
         setShowOnboarding(false);
+        // Preload essential data in background for faster UX
+        dataCacheService.preloadEssentialData().catch(err =>
+          console.warn('[App] Background preload failed:', err)
+        );
       }
     } catch (error) {
       console.error('[App] Error checking onboarding status:', error);
@@ -293,6 +234,11 @@ const App = () => {
       console.log('[App] Onboarding completed by user');
       await AsyncStorage.setItem(STORAGE_KEYS.ONBOARDING_COMPLETED, 'true');
       setShowOnboarding(false);
+
+      // Preload essential data immediately after onboarding for faster first use
+      dataCacheService.preloadEssentialData().catch(err =>
+        console.warn('[App] Background preload failed:', err)
+      );
     } catch (error) {
       console.error('[App] Error saving onboarding status:', error);
       // Still proceed even if save fails
@@ -336,9 +282,11 @@ const App = () => {
             // data is the ministry object
             navigateTo(screen, data);
           } else if (screen === 'search') {
-            // data contains filter parameters
+            // data contains search query {query: string}
+            if (data && data.query) {
+              setSearchQuery(data.query);
+            }
             navigateTo(screen);
-            // TODO: Pass filter parameters to ServiceListScreen when implemented
           } else {
             navigateTo(screen);
           }
@@ -383,7 +331,11 @@ const App = () => {
     return (
       <ServiceListScreen
         language={currentLanguage}
-        onBack={navigateBack}
+        initialSearchQuery={searchQuery}
+        onBack={() => {
+          setSearchQuery(''); // Clear search query on back
+          navigateBack();
+        }}
         onServicePress={(service) => {
           console.log('[App] Service selected:', service.name_es);
           navigateTo('serviceDetail', service);

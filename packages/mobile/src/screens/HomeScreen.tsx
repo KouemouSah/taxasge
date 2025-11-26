@@ -21,9 +21,10 @@ import LinearGradient from 'react-native-linear-gradient';
 import { BottomTabBar, TabName } from '../components/BottomTabBar';
 import { Icon } from '../components/Icon';
 import { getSection } from '../i18n';
-import { HEADER_GRADIENT, GRADIENTS, Colors, Spacing, Shadows } from '../theme';
+import { HEADER_GRADIENT, GRADIENTS, Colors, Spacing, Shadows, BorderRadius } from '../theme';
 import DatabaseService from '../database/DatabaseService';
 import { Ministry, FiscalService, getServiceName } from '../database/services/FiscalServicesService';
+import { dataCacheService } from '../services/DataCacheService';
 
 interface HomeScreenProps {
   language: 'es' | 'fr' | 'en';
@@ -33,7 +34,7 @@ interface HomeScreenProps {
 const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
   const t = getSection(language, 'homeScreen');
   const [searchQuery, setSearchQuery] = useState('');
-  const [randomMinistries, setRandomMinistries] = useState<Ministry[]>([]);
+  const [randomMinistries, setRandomMinistries] = useState<Array<Ministry & { service_count: number }>>([]);
   const [recentServices, setRecentServices] = useState<FiscalService[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -42,39 +43,25 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
   }, []);
 
   const loadData = async () => {
+    const startTime = Date.now();
     try {
       setIsLoading(true);
-      const db = DatabaseService.getInstance();
 
-      // Load 4 RANDOM ministries with service count AND 3 most recent services in parallel
-      const [ministries, recent] = await Promise.all([
-        db.query<Ministry>(
-          `SELECT
-            m.id,
-            m.name_es,
-            m.name_fr,
-            m.name_en,
-            COUNT(DISTINCT fs.id) as service_count
-          FROM ministries m
-          LEFT JOIN fiscal_services fs ON fs.ministry_id = m.id AND fs.status = 'active'
-          WHERE m.status = 'active'
-          GROUP BY m.id
-          HAVING service_count > 0
-          ORDER BY RANDOM()
-          LIMIT 4`,
-          []
-        ),
-        db.query<FiscalService>(
-          `SELECT * FROM v_fiscal_services_complete
-           WHERE status = 'active'
-           ORDER BY view_count DESC, updated_at DESC
-           LIMIT 3`,
-          []
-        ),
+      // Use cache service for faster loading, with DB fallback for random ministries
+      const [allMinistries, recentServicesData] = await Promise.all([
+        dataCacheService.getMinistries(),
+        dataCacheService.getPopularServices(3),
       ]);
 
-      setRandomMinistries(ministries);
-      setRecentServices(recent);
+      // Get 4 random ministries from the cached list with service count > 0
+      const ministriesWithServices = allMinistries.filter(m => (m.service_count || 0) > 0) as Array<Ministry & { service_count: number }>;
+      const shuffled = [...ministriesWithServices].sort(() => Math.random() - 0.5);
+      const randomMinistries = shuffled.slice(0, 4);
+
+      setRandomMinistries(randomMinistries);
+      setRecentServices(recentServicesData);
+
+      console.log(`[HomeScreen] ⚡ Data loaded in ${Date.now() - startTime}ms (using cache)`);
     } catch (error) {
       console.error('[HomeScreen] Error loading data:', error);
     } finally {
@@ -164,7 +151,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
                 colors={['#4A90E2', '#357ABD']}
                 style={styles.actionCardGradient}>
                 <View style={styles.actionIconContainer}>
-                  <Icon name="search" size={42} color="#FFFFFF" />
+                  <Icon name="search" size={54} color="#FFFFFF" />
                 </View>
                 <Text style={styles.actionLabel}>{t.quickActions.searchServices}</Text>
               </LinearGradient>
@@ -178,7 +165,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
                 colors={['#50C878', '#3EAE63']}
                 style={styles.actionCardGradient}>
                 <View style={styles.actionIconContainer}>
-                  <Icon name="robot" size={42} color="#FFFFFF" />
+                  <Icon name="chat" size={54} color="#FFFFFF" />
                 </View>
                 <Text style={styles.actionLabel}>{t.quickActions.contactAssistant}</Text>
               </LinearGradient>
@@ -192,7 +179,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
                 colors={['#E91E63', '#C2185B']}
                 style={styles.actionCardGradient}>
                 <View style={styles.actionIconContainer}>
-                  <Icon name="heart-filled" size={42} color="#FFFFFF" />
+                  <Icon name="heart-filled" size={54} color="#FFFFFF" />
                 </View>
                 <Text style={styles.actionLabel}>{t.quickActions.myFavorites}</Text>
               </LinearGradient>
@@ -206,7 +193,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
                 colors={['#9C27B0', '#7B1FA2']}
                 style={styles.actionCardGradient}>
                 <View style={styles.actionIconContainer}>
-                  <Icon name="calculator" size={42} color="#FFFFFF" />
+                  <Icon name="calculator" size={54} color="#FFFFFF" />
                 </View>
                 <Text style={styles.actionLabel}>{t.quickActions.calculator}</Text>
               </LinearGradient>
@@ -298,7 +285,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ language, onNavigate }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: Colors.background.secondary,
   },
   header: {
     paddingTop: 50,
@@ -340,9 +327,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
+    borderRadius: BorderRadius.xl,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
+    ...Shadows.sm,
   },
   searchIcon: {
     fontSize: 18,
@@ -368,11 +356,11 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#1A1A1A',
+    fontSize: 22,
+    fontWeight: '700',
+    color: Colors.text.primary,
     marginBottom: Spacing.md,
-    letterSpacing: -0.5,
+    letterSpacing: -0.3,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -392,8 +380,8 @@ const styles = StyleSheet.create({
   },
   actionCard: {
     width: '47%',
-    height: 110, // Reduced height (was aspectRatio: 1)
-    borderRadius: 16,
+    height: 120,
+    borderRadius: BorderRadius.xl,
     overflow: 'hidden',
     ...Shadows.md,
   },
@@ -428,18 +416,18 @@ const styles = StyleSheet.create({
   ministryCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: Spacing.md,
-    ...Shadows.sm,
+    backgroundColor: Colors.background.card,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    ...Shadows.md,
   },
   ministryIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 56,
+    height: 56,
+    borderRadius: BorderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: Spacing.md,
+    marginRight: Spacing.lg,
   },
   ministryIcon: {
     fontSize: 24,
@@ -448,14 +436,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   ministryName: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#1A1A1A',
+    color: Colors.text.primary,
     marginBottom: 4,
+    lineHeight: 22,
   },
   ministryServices: {
-    fontSize: 13,
-    color: '#666666',
+    fontSize: 14,
+    color: Colors.text.secondary,
   },
   ministryArrow: {
     fontSize: 18,
@@ -470,19 +459,19 @@ const styles = StyleSheet.create({
   recentServiceItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: Spacing.md,
-    ...Shadows.sm,
+    backgroundColor: Colors.background.card,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    ...Shadows.md,
   },
   recentServiceIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#F0F0F0',
+    width: 56,
+    height: 56,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.iconBackground.blue,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: Spacing.md,
+    marginRight: Spacing.lg,
   },
   recentServiceIconText: {
     fontSize: 24,
@@ -491,14 +480,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   recentServiceName: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#1A1A1A',
+    color: Colors.text.primary,
     marginBottom: 4,
+    lineHeight: 21,
   },
   recentServicePrice: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
     color: Colors.primary,
   },
   recentServiceArrow: {

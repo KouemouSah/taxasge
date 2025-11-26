@@ -25,7 +25,6 @@ import { Icon } from '../components/Icon';
 import {
   FiscalService,
   getServiceName,
-  getServiceDescription,
 } from '../database/services/FiscalServicesService';
 import {
   calculatorEngine,
@@ -143,7 +142,7 @@ export const CalculatorScreen: React.FC<CalculatorScreenProps> = ({
     });
 
     return fields;
-  }, [service, language, calculationType]);
+  }, [service, language]);
 
   // Get formula description if available - MEMOIZED to prevent re-renders
   const formulaDescription = useMemo(() => {
@@ -172,7 +171,7 @@ export const CalculatorScreen: React.FC<CalculatorScreenProps> = ({
   }, []);
 
   // Validate inputs with enhanced validation
-  const validateInputs = (): boolean => {
+  const validateInputs = useCallback((): boolean => {
     for (const field of requiredFields) {
       const value = inputs[field.field];
 
@@ -200,7 +199,7 @@ export const CalculatorScreen: React.FC<CalculatorScreenProps> = ({
       }
     }
     return true;
-  };
+  }, [requiredFields, inputs]);
 
   // Handle calculate
   const handleCalculate = useCallback(() => {

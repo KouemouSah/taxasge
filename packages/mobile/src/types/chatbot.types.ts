@@ -129,6 +129,9 @@ export interface ChatMessageMetadata {
   processingTime?: number; // Temps de traitement en ms
   fallback?: boolean; // True si réponse par défaut
   entities?: Record<string, any>; // Entités extraites
+  spellingCorrected?: boolean; // True si l'orthographe a été corrigée
+  synonymsExpanded?: boolean; // True si des synonymes ont été utilisés
+  contextUsed?: any; // Contexte utilisé pour la réponse
 }
 
 // ============================================

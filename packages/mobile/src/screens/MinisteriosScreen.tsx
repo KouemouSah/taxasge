@@ -17,10 +17,10 @@ import {
 import { GradientHeader } from '../components/GradientHeader';
 import { BottomTabBar, TabName } from '../components/BottomTabBar';
 import { Icon } from '../components/Icon';
-import { Ministry } from '../database/services/FiscalServicesService';
-import DatabaseService from '../database/DatabaseService';
+import { Ministry, fiscalServicesService } from '../database/services/FiscalServicesService';
 import { Colors, Spacing, Shadows } from '../theme';
 import { getSection } from '../i18n';
+import { dataCacheService } from '../services/DataCacheService';
 
 type ViewMode = 'grid' | 'list';
 
@@ -51,7 +51,7 @@ export const MinisteriosScreen: React.FC<MinisteriosScreenProps> = ({
 }) => {
   const t = getSection(language, 'ministeriosScreen');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const [ministries, setMinistries] = useState<Ministry[]>([]);
+  const [ministries, setMinistries] = useState<Array<Ministry & { service_count: number }>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,22 +60,33 @@ export const MinisteriosScreen: React.FC<MinisteriosScreenProps> = ({
   }, []);
 
   const loadMinistries = async () => {
+    const startTime = Date.now();
     try {
       setIsLoading(true);
-      const db = DatabaseService.getInstance();
 
-      // Load ministries with service count
-      const results = await db.query<Ministry & { service_count: number }>(
-        `SELECT
-          m.*,
-          COUNT(DISTINCT fs.id) as service_count
-        FROM ministries m
-        LEFT JOIN fiscal_services fs ON fs.ministry_id = m.id AND fs.status = 'active'
-        WHERE m.status = 'active'
-        GROUP BY m.id
-        ORDER BY service_count DESC, m.name_es ASC`,
-        []
-      );
+      let results: Array<Ministry & { service_count: number }> = [];
+
+      try {
+        // Try cache service first for instant loading
+        results = await dataCacheService.getMinistries() as Array<Ministry & { service_count: number }>;
+        console.log(`[MinisteriosScreen] ⚡ Loaded ${results.length} ministries in ${Date.now() - startTime}ms (using cache)`);
+      } catch (cacheErr) {
+        console.warn('[MinisteriosScreen] Cache failed, falling back to database:', cacheErr);
+
+        // Fallback to direct database query using fiscalServicesService
+        const ministriesData = await fiscalServicesService.getMinistries();
+
+        results = ministriesData.map(ministry => ({
+          id: ministry.id,
+          code: ministry.code,
+          name_es: ministry.name,
+          name_fr: ministry.name_fr,
+          name_en: ministry.name_en,
+          service_count: ministry.count,
+        })) as Array<Ministry & { service_count: number }>;
+
+        console.log(`[MinisteriosScreen] ⚡ Loaded ${results.length} ministries in ${Date.now() - startTime}ms (using database)`);
+      }
 
       setMinistries(results);
       setError(null);
