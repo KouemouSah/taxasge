@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Depends, status, Query
 from fastapi.security import HTTPBearer
 from typing import Dict, Any, List
 from loguru import logger
+import time
 
 from app.modules.fiscal_services.models import (
     MinistryResponse,
@@ -18,7 +19,15 @@ from app.modules.fiscal_services.models import (
     CalculateServiceResponse,
     FiscalServiceStats,
 )
+from app.modules.fiscal_services.models.search import (
+    SearchDBRequest,
+    SearchDBResponse,
+    ServiceResultItem,
+    SearchFacets,
+    FacetItem,
+)
 from app.modules.fiscal_services.repositories import FiscalServiceRepository
+from app.modules.fiscal_services.repositories.search_repository import SearchRepository
 from app.modules.fiscal_services.services import CalculationService
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.permissions.middleware.permission_middleware import require_permission
@@ -27,6 +36,7 @@ from app.database.connection import get_database
 router = APIRouter(tags=["Fiscal Services"])
 security = HTTPBearer()
 repository = FiscalServiceRepository()
+search_repository = SearchRepository()
 calculation_service = CalculationService()
 
 
@@ -105,6 +115,89 @@ async def search_fiscal_services(
         page=page,
         page_size=page_size,
     )
+
+
+@router.post("/search-db", response_model=SearchDBResponse)
+async def search_services_db(
+    request: SearchDBRequest,
+    db=Depends(get_database),
+):
+    """
+    Advanced search for fiscal services with facets (Public endpoint for Services page)
+
+    This endpoint provides:
+    - Full-text search across service names, descriptions, and keywords
+    - Filtering by category, ministry, service type, and price ranges
+    - Faceted search results for dynamic filtering UI
+    - Multilingual support (es, fr, en)
+    - Pagination and sorting
+
+    **Used by:** Frontend /services page
+    """
+    start_time = time.time()
+
+    try:
+        # Search services
+        results, total = await search_repository.search_services(
+            conn=db,
+            q=request.q,
+            category_id=request.category_id,
+            category_code=request.category_code,
+            ministry_id=request.ministry_id,
+            service_type=request.service_type,
+            min_price=request.min_price,
+            max_price=request.max_price,
+            min_expedition_price=request.min_expedition_price,
+            max_expedition_price=request.max_expedition_price,
+            min_renewal_price=request.min_renewal_price,
+            max_renewal_price=request.max_renewal_price,
+            sort_by=request.sort_by.value,
+            sort_order=request.sort_order.value,
+            page=request.page,
+            limit=request.limit,
+            language=request.language,
+        )
+
+        # Get facets if requested
+        facets = None
+        if request.include_facets:
+            facets_data = await search_repository.get_facets(db, request.language)
+            facets = SearchFacets(
+                categories=[FacetItem(**f) for f in facets_data["categories"]],
+                ministries=[FacetItem(**f) for f in facets_data["ministries"]],
+                service_types=[FacetItem(**f) for f in facets_data["service_types"]],
+                price_ranges=[FacetItem(**f) for f in facets_data["price_ranges"]],
+            )
+
+        # Get suggestions
+        suggestions = await search_repository.get_suggestions(db, request.q, request.language)
+
+        # Calculate execution time
+        execution_time_ms = (time.time() - start_time) * 1000
+
+        # Calculate total pages
+        total_pages = (total + request.limit - 1) // request.limit if total > 0 else 0
+
+        return SearchDBResponse(
+            success=True,
+            query=request.q or "",
+            total_results=total,
+            page=request.page,
+            limit=request.limit,
+            total_pages=total_pages,
+            results=[ServiceResultItem(**r) for r in results],
+            facets=facets,
+            suggestions=suggestions,
+            execution_time_ms=round(execution_time_ms, 2),
+            cached=False,
+        )
+
+    except Exception as e:
+        logger.error(f"Search-db error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Search failed: {str(e)}"
+        )
 
 
 @router.get("/popular/list", response_model=List[FiscalServiceResponse])

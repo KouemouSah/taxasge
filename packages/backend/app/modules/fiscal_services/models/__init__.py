@@ -1,5 +1,15 @@
 """Fiscal Services Models"""
 
+from app.modules.fiscal_services.models.search import (
+    SortByEnum,
+    SortOrderEnum,
+    SearchDBRequest,
+    SearchDBResponse,
+    ServiceResultItem,
+    FacetItem,
+    SearchFacets,
+)
+
 from app.modules.fiscal_services.models.fiscal_service import (
     # ENUMs
     ServiceTypeEnum,
@@ -98,6 +108,15 @@ from app.modules.fiscal_services.models.templates import (
 )
 
 __all__ = [
+    # Search Models
+    "SortByEnum",
+    "SortOrderEnum",
+    "SearchDBRequest",
+    "SearchDBResponse",
+    "ServiceResultItem",
+    "FacetItem",
+    "SearchFacets",
+
     # ENUMs
     "ServiceTypeEnum",
     "CalculationMethodEnum",
