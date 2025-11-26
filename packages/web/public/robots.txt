@@ -1,14 +1,17 @@
-# *
+# TaxasGE - Cloud Run Deployment
+# Production domain: taxasge.emacsah.com
+
 User-agent: *
 Allow: /
 Disallow: /api/
 Disallow: /admin/
 Disallow: /dashboard/
-Disallow: /auth/
 Disallow: /_next/
+Disallow: /auth/login
+Disallow: /auth/register
 
 # Host
-Host: https://taxasge-dev.web.app
+Host: https://taxasge.emacsah.com
 
 # Sitemaps
-Sitemap: https://taxasge-dev.web.app/sitemap.xml
+Sitemap: https://taxasge.emacsah.com/sitemap.xml
