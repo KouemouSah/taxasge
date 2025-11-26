@@ -26,7 +26,11 @@
       "Bash(Select-Object Hash)",
       "Bash(md5sum:*)",
       "Bash(git mv:*)",
-      "Bash(tail:*)"
+      "Bash(tail:*)",
+      "Bash(yarn cache clean:*)",
+      "Bash(git gc:*)",
+      "Bash(ls:*)",
+      "Bash(cd:*)"
     ],
     "deny": [],
     "ask": []
