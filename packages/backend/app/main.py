@@ -428,6 +428,29 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ Chatbot router not available: {e}")
 
+# Try to load template routers (Document and Procedure Templates)
+try:
+    from app.modules.fiscal_services.api.template_routes import (
+        document_template_router,
+        procedure_template_router,
+    )
+    app.include_router(document_template_router, prefix="/api/v1/document-templates", tags=["document-templates"])
+    app.include_router(procedure_template_router, prefix="/api/v1/procedure-templates", tags=["procedure-templates"])
+    routers_loaded.extend(["document_templates", "procedure_templates"])
+    logger.info("✅ Template routers loaded (document + procedure templates)")
+except ImportError as e:
+    logger.warning(f"⚠️ Template routers not available: {e}")
+
+# Try to load audit logs router (Admin - Audit Trail)
+try:
+    from app.modules.admin.api.audit_routes import router as audit_router, user_audit_router
+    app.include_router(audit_router, prefix="/api/v1/audit-logs", tags=["audit-logs"])
+    app.include_router(user_audit_router, prefix="/api/v1/users", tags=["user-audit-logs"])
+    routers_loaded.append("audit_logs")
+    logger.info("✅ Audit logs router loaded (audit trail)")
+except ImportError as e:
+    logger.warning(f"⚠️ Audit logs router not available: {e}")
+
 if routers_loaded:
     logger.info(f"✅ {len(routers_loaded)} API routers loaded: {', '.join(routers_loaded)}")
 else:
