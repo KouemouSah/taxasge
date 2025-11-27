@@ -18,7 +18,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import type { ChatSettings, LanguageCode } from '@/types/chatbot'
+import type { ChatSettings, SupportedLanguage } from '../types'
 
 // =============================================================================
 // TYPES
@@ -35,7 +35,7 @@ export interface UseChatSettingsReturn {
 
   // Actions
   updateSettings: (updates: Partial<ChatSettings>) => void
-  setLanguage: (language: LanguageCode) => void
+  setLanguage: (language: SupportedLanguage) => void
   setTheme: (theme: 'light' | 'dark') => void
   toggleSuggestions: () => void
   toggleRelatedServices: () => void
@@ -54,7 +54,8 @@ const DEFAULT_SETTINGS: ChatSettings = {
   enableRelatedServices: true,
   enableSources: true,
   theme: 'light',
-  soundEnabled: false,
+  enableSound: false,
+  enableNotifications: false,
 }
 
 // =============================================================================
@@ -161,7 +162,7 @@ export function useChatSettings(
    * Set language
    */
   const setLanguage = useCallback(
-    (language: LanguageCode) => {
+    (language: SupportedLanguage) => {
       updateSettings({ language })
     },
     [updateSettings]
@@ -202,7 +203,7 @@ export function useChatSettings(
    * Toggle sound
    */
   const toggleSound = useCallback(() => {
-    updateSettings({ soundEnabled: !settings.soundEnabled })
+    updateSettings({ enableSound: !settings.enableSound })
   }, [settings.soundEnabled, updateSettings])
 
   /**

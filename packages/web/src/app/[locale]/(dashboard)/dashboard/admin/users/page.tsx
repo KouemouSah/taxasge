@@ -48,7 +48,7 @@ export default function UsersPage() {
   const t = useTranslations('admin.users')
   const _tCommon = useTranslations('admin')
   const { toast } = useToast()
-  const { getRoleLabel, getStatusLabel, getRoleOptions } = useUserLabels()
+  const { getRoleLabel, getRoleOptions } = useUserLabels()
 
   const [users, setUsers] = useState<User[]>([])
   const [isLoading, setIsLoading] = useState(true)

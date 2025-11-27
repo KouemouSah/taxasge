@@ -8,8 +8,8 @@
 'use client'
 
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { User, Clock, Globe, Monitor, CheckCircle, XCircle } from 'lucide-react'
+import { Badge as _Badge } from '@/components/ui/badge'
+import { User, Clock as _Clock, Globe, Monitor, CheckCircle, XCircle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { AuditActionBadge } from './AuditActionBadge'
 import type { AuditLog } from '../types'

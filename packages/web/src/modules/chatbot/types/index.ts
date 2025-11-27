@@ -18,10 +18,13 @@
 // ENUMS - Aligned with Backend Exact Values
 // =============================================================================
 
-export enum LanguageCode {
-  SPANISH = 'es',
-  FRENCH = 'fr',
-  ENGLISH = 'en',
+export type LanguageCode = 'es' | 'fr' | 'en'
+
+// Legacy enum values for backward compatibility
+export const LanguageCodeValues = {
+  SPANISH: 'es' as const,
+  FRENCH: 'fr' as const,
+  ENGLISH: 'en' as const,
 }
 
 export enum MessageRole {

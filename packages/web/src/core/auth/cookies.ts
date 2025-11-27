@@ -4,7 +4,7 @@
  */
 
 import Cookies from 'js-cookie';
-import { APP_CONSTANTS } from '@/core/config/constants';
+import { APP_CONSTANTS as _APP_CONSTANTS } from '@/core/config/constants';
 
 /**
  * Set authentication cookies after successful login

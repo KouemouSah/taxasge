@@ -10,7 +10,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { documentTemplatesApi } from '../services/api'
 import type {
-  DocumentTemplate,
+
   DocumentTemplateCreate,
   DocumentTemplateUpdate,
 } from '../types'

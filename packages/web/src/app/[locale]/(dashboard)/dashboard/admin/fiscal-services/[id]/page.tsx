@@ -37,8 +37,6 @@ import fiscalServicesAPI from '@/modules/fiscal-services/services/api'
 import type {
   FiscalServiceResponse,
   ServiceStatusEnum,
-  
-  
 } from '@/types/fiscal-service'
 import { BackendUnavailableAlert } from '@/modules/admin/components'
 
@@ -108,7 +106,7 @@ export default function FiscalServiceDetailPage() {
   }
 
   const getStatusBadge = (status: ServiceStatusEnum) => {
-    const statusConfig: Record<ServiceStatusEnum, { className: string; icon: any }> = {
+    const statusConfig: Record<ServiceStatusEnum, { className: string; icon: typeof CheckCircle2 }> = {
       active: { className: 'bg-green-100 text-green-700', icon: CheckCircle2 },
       inactive: { className: 'bg-gray-100 text-gray-700', icon: AlertTriangle },
       draft: { className: 'bg-blue-100 text-blue-700', icon: FileText },

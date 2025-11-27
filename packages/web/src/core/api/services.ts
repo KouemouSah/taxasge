@@ -171,16 +171,16 @@ export function getDefaultSearchResponse(): SearchResponse {
 }
 
 /**
- * Format price for display (GNF currency)
+ * Format price for display (XAF currency)
  */
-export function formatPrice(price: number): string {
+export function formatPrice(price: number, freeLabel: string = 'Gratuito', locale: string = 'es'): string {
   if (price === 0) {
-    return 'Gratuit';
+    return freeLabel;
   }
 
-  return new Intl.NumberFormat('es-ES', {
+  return new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'es-ES', {
     style: 'currency',
-    currency: 'GNF',
+    currency: 'XAF',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(price);
@@ -189,13 +189,17 @@ export function formatPrice(price: number): string {
 /**
  * Get price range label
  */
-export function getPriceRangeLabel(range: string): string {
+export function getPriceRangeLabel(range: string, translations?: Record<string, string>): string {
+  if (translations && translations[range]) {
+    return translations[range];
+  }
+
   const labels: Record<string, string> = {
-    free: 'Gratuit',
-    low: '< 50.000 GNF',
-    medium: '50.000 - 200.000 GNF',
-    high: '200.000 - 500.000 GNF',
-    very_high: '> 500.000 GNF',
+    free: 'Gratuito',
+    low: '< 50.000 XAF',
+    medium: '50.000 - 200.000 XAF',
+    high: '200.000 - 500.000 XAF',
+    very_high: '> 500.000 XAF',
   };
 
   return labels[range] || range;
@@ -204,7 +208,11 @@ export function getPriceRangeLabel(range: string): string {
 /**
  * Get service type label (Spanish)
  */
-export function getServiceTypeLabel(type: string): string {
+export function getServiceTypeLabel(type: string, translations?: Record<string, string>): string {
+  if (translations && translations[type]) {
+    return translations[type];
+  }
+
   const labels: Record<string, string> = {
     administrative: 'Administrativo',
     fiscal: 'Fiscal',

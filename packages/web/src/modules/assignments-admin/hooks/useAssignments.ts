@@ -15,7 +15,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { assignmentsApi } from '../services/api'
 import type {
-  Assignment,
+
   ManualAssignmentRequest,
   AutoAssignmentRequest,
   CompleteAssignmentRequest,
@@ -229,7 +229,7 @@ export function useCreateAssignment() {
 }
 
 /**
- * @deprecated Use specific hooks: useStartAssignment, useCompleteAssignment, etc.
+ * @deprecated Use specific hooks: useStartuseCompleteAssignment, etc.
  */
 export function useUpdateAssignment() {
   const queryClient = useQueryClient()

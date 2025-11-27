@@ -8,7 +8,7 @@
 import React from 'react'
 import { useTranslations } from 'next-intl'
 import { FileText } from 'lucide-react'
-import type { ServiceReference } from '@/types/chatbot'
+import type { ServiceReference } from '../types'
 
 export interface RelatedServicesProps {
   services: ServiceReference[]

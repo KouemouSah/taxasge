@@ -40,7 +40,7 @@ import {
   FileText,
   X,
 } from 'lucide-react'
-import type { ChatSettings, SupportedLanguage } from '@/types/chatbot'
+import type { ChatSettings, SupportedLanguage } from '../types'
 
 // =============================================================================
 // TYPES

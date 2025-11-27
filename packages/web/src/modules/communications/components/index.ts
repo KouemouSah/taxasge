@@ -1,1 +1,2 @@
-// communications Module
+// Placeholder for module components
+export {}

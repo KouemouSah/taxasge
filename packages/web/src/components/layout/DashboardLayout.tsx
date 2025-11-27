@@ -21,7 +21,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter()
   const locale = useLocale()
   const t = useTranslations('dashboard')
-  const tCommon = useTranslations('common')
+  const _tCommon = useTranslations('common')
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 

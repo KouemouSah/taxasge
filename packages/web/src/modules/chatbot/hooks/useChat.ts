@@ -26,7 +26,7 @@ import type {
   ServiceReference,
   LanguageCode,
   MessageRole,
-} from '@/types/chatbot'
+} from '../types'
 
 // =============================================================================
 // TYPES
@@ -34,7 +34,7 @@ import type {
 
 export interface UseChatOptions {
   conversationId?: string
-  language?: LanguageCode
+  language?: LanguageCode | 'es' | 'fr' | 'en'
   persistToStorage?: boolean
   autoLoadHistory?: boolean
   enableStreaming?: boolean

@@ -46,7 +46,7 @@ export const ServiceCard = ({ service, onClick }: ServiceCardProps) => {
         {/* Pricing */}
         <div className="flex items-center justify-between pt-4 border-t">
           <div className="space-y-1">
-            <div className="text-sm text-muted-foreground">Prix d'expédition</div>
+            <div className="text-sm text-muted-foreground">Prix d&apos;expédition</div>
             <div className="text-lg font-bold text-primary">
               {formatCurrency(service.expedition_price)}
             </div>

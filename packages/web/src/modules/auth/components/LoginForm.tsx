@@ -121,7 +121,7 @@ export const LoginForm = () => {
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Pas encore de compte?{' '}
         <a href="/auth/register" className="text-primary hover:underline">
-          S'inscrire
+          S&apos;inscrire
         </a>
       </p>
     </Card>

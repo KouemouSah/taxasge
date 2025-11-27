@@ -9,7 +9,7 @@
 
 // Main Chat Widget
 export { ChatWidget } from './ChatWidget'
-export type { ChatWidgetProps } from '@/types/chatbot'
+export type { ChatWidgetProps } from '../types'
 
 // Message Components
 export { MessageList } from './MessageList'

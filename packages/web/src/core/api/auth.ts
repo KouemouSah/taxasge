@@ -425,10 +425,10 @@ async function requestPasswordChange(data: {
     throw new Error('Not authenticated');
   }
 
-  const response = await fetch(, {
+  const response = await fetch(`${AUTH_API_URL}/password/change`, {
     method: 'POST',
     headers: {
-      Authorization: ,
+      Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(data),
@@ -451,7 +451,7 @@ async function verifyPasswordChange(data: {
   verification_code: string;
   new_password: string;
 }): Promise<{ message: string }> {
-  const response = await fetch(, {
+  const response = await fetch(`${AUTH_API_URL}/password/change/verify`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

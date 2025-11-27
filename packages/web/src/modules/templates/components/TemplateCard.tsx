@@ -15,7 +15,7 @@ import { useTranslations } from 'next-intl'
 import type { TemplateCardProps } from '../types'
 
 export function TemplateCard({
-  id,
+  id: _id,
   name,
   description,
   category,

@@ -92,7 +92,7 @@ function hasWritePermissions(role: string | null): boolean {
 function getLocaleFromPathname(pathname: string): string | null {
   const segments = pathname.split('/');
   const potentialLocale = segments[1];
-  return locales.includes(potentialLocale as any) ? potentialLocale : null;
+  return locales.includes(potentialLocale as (typeof locales)[number]) ? potentialLocale : null;
 }
 
 /**
@@ -123,7 +123,7 @@ function isAdminRoute(pathname: string): boolean {
 /**
  * Check if route is public
  */
-function isPublicRoute(pathname: string): boolean {
+function _isPublicRoute(pathname: string): boolean {
   const pathnameWithoutLocale = removeLocalePrefix(pathname);
   return PUBLIC_ROUTES.some((route) =>
     pathnameWithoutLocale === route || pathnameWithoutLocale.startsWith(`${route}/`)

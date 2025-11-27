@@ -32,7 +32,7 @@ import type {
   ChatbotStats,
   StreamChunk,
   LanguageCode,
-} from '@/types/chatbot'
+} from '../types'
 import { getAuthData } from '@/core/auth/storage'
 
 // =============================================================================

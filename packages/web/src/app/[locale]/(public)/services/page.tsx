@@ -40,6 +40,32 @@ function ServicesContent() {
   const t = useTranslations('services')
   const tCommon = useTranslations('common')
 
+  // Translation objects for helper functions
+  const serviceTypeTranslations: Record<string, string> = {
+    administrative: t('serviceTypes.administrative'),
+    fiscal: t('serviceTypes.fiscal'),
+    legal: t('serviceTypes.legal'),
+    customs: t('serviceTypes.customs'),
+    mining: t('serviceTypes.mining'),
+    commercial: t('serviceTypes.commercial'),
+    social: t('serviceTypes.social'),
+    transport: t('serviceTypes.transport'),
+    agriculture: t('serviceTypes.agriculture'),
+    health: t('serviceTypes.health'),
+    education: t('serviceTypes.education'),
+    other: t('serviceTypes.other'),
+  }
+
+  const priceRangeTranslations: Record<string, string> = {
+    free: t('priceRanges.free'),
+    low: t('priceRanges.low'),
+    medium: t('priceRanges.medium'),
+    high: t('priceRanges.high'),
+    very_high: t('priceRanges.very_high'),
+  }
+
+  const freeLabel = t('free')
+
   // State
   const [searchResults, setSearchResults] = useState<SearchResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -383,7 +409,7 @@ function ServicesContent() {
                             onClick={() => handleServiceTypeFilter(type.type!)}
                             className="w-full justify-between text-left"
                           >
-                            <span className="truncate text-xs">{getServiceTypeLabel(type.type!)}</span>
+                            <span className="truncate text-xs">{getServiceTypeLabel(type.type!, serviceTypeTranslations)}</span>
                             <Badge variant="secondary" className="ml-2 text-xs">{type.count}</Badge>
                           </Button>
                         ))}
@@ -403,7 +429,7 @@ function ServicesContent() {
                             onClick={() => handlePriceRangeFilter(range.range!)}
                             className="w-full justify-between text-left"
                           >
-                            <span className="truncate text-xs">{getPriceRangeLabel(range.range!)}</span>
+                            <span className="truncate text-xs">{getPriceRangeLabel(range.range!, priceRangeTranslations)}</span>
                             <Badge variant="secondary" className="ml-2 text-xs">{range.count}</Badge>
                           </Button>
                         ))}
@@ -547,12 +573,12 @@ function ServicesContent() {
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-xs text-muted-foreground">{t('expedition')}</p>
-                              <p className="font-semibold text-primary">{formatPrice(service.expedition_price)}</p>
+                              <p className="font-semibold text-primary">{formatPrice(service.expedition_price, freeLabel, locale)}</p>
                             </div>
                             {service.renewal_price > 0 && (
                               <div className="text-right">
                                 <p className="text-xs text-muted-foreground">{t('renewal')}</p>
-                                <p className="font-semibold text-sm">{formatPrice(service.renewal_price)}</p>
+                                <p className="font-semibold text-sm">{formatPrice(service.renewal_price, freeLabel, locale)}</p>
                               </div>
                             )}
                           </div>
@@ -597,12 +623,12 @@ function ServicesContent() {
                           <div className="flex flex-row md:flex-col items-center md:items-end gap-4 md:gap-2 pt-4 md:pt-0 border-t md:border-t-0 md:border-l md:pl-6">
                             <div className="text-center md:text-right">
                               <p className="text-xs text-muted-foreground mb-1">{t('expedition')}</p>
-                              <p className="font-bold text-xl text-primary">{formatPrice(service.expedition_price)}</p>
+                              <p className="font-bold text-xl text-primary">{formatPrice(service.expedition_price, freeLabel, locale)}</p>
                             </div>
                             {service.renewal_price > 0 && (
                               <div className="text-center md:text-right">
                                 <p className="text-xs text-muted-foreground mb-1">{t('renewal')}</p>
-                                <p className="font-semibold text-base">{formatPrice(service.renewal_price)}</p>
+                                <p className="font-semibold text-base">{formatPrice(service.renewal_price, freeLabel, locale)}</p>
                               </div>
                             )}
                           </div>

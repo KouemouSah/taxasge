@@ -44,8 +44,8 @@ import {
   FileText,
 } from 'lucide-react'
 import { useChat, useChatSettings } from '../hooks'
-import { formatTimestamp } from '@/types/chatbot'
-import type { ChatWidgetProps, ServiceReference } from '@/types/chatbot'
+import { formatTimestamp } from '../types'
+import type { ChatWidgetProps, ServiceReference } from '../types'
 import {
   announceToScreenReader,
   announceNewMessage,
@@ -62,7 +62,7 @@ import {
 export const ChatWidget = ({
   initialLanguage,
   position = 'bottom-right',
-  theme = 'light',
+  theme: _theme = 'light',
   enableHistory = true,
   enableStreaming = false,
   maxHeight = '600px',

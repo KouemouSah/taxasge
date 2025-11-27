@@ -20,7 +20,7 @@ import { useTranslations } from 'next-intl'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { ArrowDown, Bot } from 'lucide-react'
-import type { ChatMessage } from '@/types/chatbot'
+import type { ChatMessage } from '../types'
 import { MessageItem } from './MessageItem'
 
 // =============================================================================

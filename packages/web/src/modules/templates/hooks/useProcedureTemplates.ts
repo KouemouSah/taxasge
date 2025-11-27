@@ -10,11 +10,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { procedureTemplatesApi, procedureStepsApi } from '../services/api'
 import type {
-  ProcedureTemplate,
+
   ProcedureTemplateCreate,
   ProcedureTemplateUpdate,
-  ProcedureStepCreate,
-  ProcedureStepUpdate,
+
+
 } from '../types'
 
 // Query keys

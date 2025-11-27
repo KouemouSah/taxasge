@@ -21,10 +21,10 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { chatbotApi } from '../services/api'
 import type {
   ChatMessage,
-  StreamChunk,
+
   LanguageCode,
   MessageRole,
-} from '@/types/chatbot'
+} from '../types'
 
 // =============================================================================
 // TYPES

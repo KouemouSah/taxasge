@@ -10,7 +10,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { User, FileText, Calendar, Edit, Trash2 } from 'lucide-react'
+import { User, Calendar, Edit, Trash2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { AssignmentStatusBadge } from './AssignmentStatusBadge'
 import type { Assignment, AssignmentPriority } from '../types'

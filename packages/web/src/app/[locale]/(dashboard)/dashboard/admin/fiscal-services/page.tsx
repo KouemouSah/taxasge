@@ -76,7 +76,7 @@ export default function FiscalServicesPage() {
   const [statusFilter, setStatusFilter] = useState<ServiceStatusEnum | 'all'>('all')
 
   // Pagination states
-  const [_currentPage, _setCurrentPage] = useState(1)
+  const [currentPage, _setCurrentPage] = useState(1)
   const [pageSize] = useState(20)
   const [_totalServices, setTotalServices] = useState(0)
 

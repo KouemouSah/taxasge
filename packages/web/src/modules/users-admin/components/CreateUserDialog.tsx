@@ -63,7 +63,7 @@ const CREATABLE_ROLES: UserRole[] = [
 
 export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDialogProps) {
   const t = useTranslations('admin.users')
-  const tCommon = useTranslations('admin')
+  const _tCommon = useTranslations('admin')
   const { toast } = useToast()
   const { getRoleLabel } = useUserLabels()
 

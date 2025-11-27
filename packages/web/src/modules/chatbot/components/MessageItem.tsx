@@ -20,8 +20,8 @@ import React, { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Bot, User, Copy, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { formatTimestamp } from '@/types/chatbot'
-import type { ChatMessage } from '@/types/chatbot'
+import { formatTimestamp } from '../types'
+import type { ChatMessage } from '../types'
 
 // =============================================================================
 // TYPES

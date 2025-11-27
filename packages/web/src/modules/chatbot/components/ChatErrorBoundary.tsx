@@ -314,7 +314,7 @@ export const RateLimitError: React.FC<RateLimitErrorProps> = ({
       </div>
       <h3 className="font-semibold text-lg mb-2">Too Many Requests</h3>
       <p className="text-sm text-muted-foreground mb-4">
-        You've sent too many messages. Please wait before trying again.
+        You&apos;ve sent too many messages. Please wait before trying again.
       </p>
       {countdown > 0 ? (
         <p className="text-2xl font-mono font-bold text-primary">

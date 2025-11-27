@@ -1,4 +1,5 @@
 'use client'
+import React from 'react'
 
 /**
  * Chat Assistant Page
@@ -12,7 +13,8 @@
 import { useLocale, useTranslations } from 'next-intl'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { MessageCircle, Bot, Lightbulb, FileText, Calculator, HelpCircle } from 'lucide-react'
-import { ChatWidget } from '@/modules/chatbot/components'
+import { useChat, useChatSettings } from '@/modules/chatbot/hooks'
+import type { ChatMessage } from '@/modules/chatbot/types'
 
 export default function ChatPage() {
   const locale = useLocale()
@@ -142,17 +144,17 @@ function ChatWidgetEmbedded({ locale }: { locale: string }) {
   const t = useTranslations('chatbot')
 
   // Import and use hooks from chatbot module
-  const { useChat, useChatSettings } = require('@/modules/chatbot/hooks')
+  // Hooks already imported at top
 
-  const { settings } = useChatSettings({ persistToStorage: true })
+  useChatSettings({ persistToStorage: true })
   const {
     messages,
     isLoading,
     error,
     suggestions,
-    relatedServices,
+    
     sendMessage,
-    clearChat,
+    
     retry,
   } = useChat({
     language: locale as 'es' | 'fr' | 'en',
@@ -191,7 +193,7 @@ function ChatWidgetEmbedded({ locale }: { locale: string }) {
           </div>
         )}
 
-        {messages.map((msg: any, i: number) => (
+        {messages.map((msg: ChatMessage, i: number) => (
           <div
             key={i}
             className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -277,5 +279,3 @@ function ChatWidgetEmbedded({ locale }: { locale: string }) {
   )
 }
 
-// Required import for React
-import React from 'react'

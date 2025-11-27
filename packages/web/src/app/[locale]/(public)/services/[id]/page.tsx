@@ -11,8 +11,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   AlertCircle, Loader2, ArrowLeft, Clock, FileText, ListChecks,
-  Building2, MapPin, Calendar, DollarSign, ExternalLink,
-  ChevronRight, CheckCircle2, Info, Scale
+  Building2, MapPin, Calendar, DollarSign,
+  ChevronRight, Info, Scale
 } from "lucide-react"
 import Header from "@/components/layout/Header"
 import Footer from "@/components/layout/Footer"
@@ -40,7 +40,7 @@ export default function ServiceDetailsPage() {
   const locale = (params?.locale as string) || 'es'
 
   const t = useTranslations('serviceDetails')
-  const tCommon = useTranslations('common')
+  const _tCommon = useTranslations('common')
 
   // State
   const [service, setService] = useState<ServiceDetailsResponse | null>(null)
