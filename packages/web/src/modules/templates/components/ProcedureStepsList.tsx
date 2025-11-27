@@ -82,15 +82,15 @@ export function ProcedureStepsList({
                     {index + 1}
                   </Badge>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium">{step.title || step.name}</p>
-                    {step.description && (
+                    <p className="font-medium">{step.descriptionEs}</p>
+                    {step.instructionsEs && (
                       <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                        {step.description}
+                        {step.instructionsEs}
                       </p>
                     )}
-                    {step.estimated_time && (
+                    {step.estimatedDurationMinutes && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        {t('steps.estimatedTime')}: {step.estimated_time}
+                        {t('steps.estimatedTime')}: {step.estimatedDurationMinutes} min
                       </p>
                     )}
                   </div>

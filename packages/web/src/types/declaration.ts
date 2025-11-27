@@ -120,7 +120,7 @@ export interface DeclarationBase {
  * Declaration Create Input
  * Aligned with DeclarationCreate Pydantic model
  */
-export interface DeclarationCreate extends Omit<DeclarationBase, 'userId' | 'status' | 'declaredData'> {
+export interface DeclarationCreate extends Omit<DeclarationBase, 'userId' | 'status' | 'declaredData' | 'declarationDeadline'> {
   // userId is set from auth token, not input
   // status defaults to DRAFT
   // declaredData defaults to empty object

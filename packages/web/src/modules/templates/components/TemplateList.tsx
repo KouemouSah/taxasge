@@ -72,11 +72,12 @@ export function TemplateList({
   }
 
   // Filter by search if provided
-  let filteredData = data
+  // Cast to any[] to handle union type filtering
+  let filteredData: any[] = data as any[]
   if (filters?.search) {
     const searchLower = filters.search.toLowerCase()
-    filteredData = data.filter(
-      (template: any) =>
+    filteredData = filteredData.filter(
+      (template) =>
         template.name?.toLowerCase().includes(searchLower) ||
         template.description?.toLowerCase().includes(searchLower)
     )

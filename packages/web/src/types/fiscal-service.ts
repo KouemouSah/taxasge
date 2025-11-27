@@ -505,12 +505,12 @@ export function toSnakeCase(obj: any): any {
  * Type guard: Check if service is active
  */
 export function isActiveService(service: FiscalServiceResponse): boolean {
-  return service.status === ServiceStatusEnum.ACTIVE && service.isActive !== false
+  return service.status === ServiceStatusEnum.ACTIVE
 }
 
 /**
  * Type guard: Check if service requires documents
  */
-export function requiresDocuments(service: FiscalServiceResponse): boolean {
-  return !!service.requiredDocuments && service.requiredDocuments.length > 0
+export function requiresDocuments(service: FiscalServiceResponse & { requiredDocuments?: unknown[] }): boolean {
+  return Array.isArray(service.requiredDocuments) && service.requiredDocuments.length > 0
 }
