@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Loader2, LayoutGrid, List, ArrowRight } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Building2, Loader2, LayoutGrid, List, ArrowRight, Search } from 'lucide-react';
 import Breadcrumb from '@/components/ui/breadcrumb';
 import { searchServices, type SearchResponse, type FacetItem } from '@/core/api/services';
 
@@ -23,6 +24,7 @@ export default function MinisterePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     async function fetchMinistries() {
@@ -50,6 +52,15 @@ export default function MinisterePage() {
 
     fetchMinistries();
   }, [locale, t]);
+
+  // Filter ministries based on search query
+  const filteredMinistries = useMemo(() => {
+    if (!searchQuery.trim()) return ministries;
+    const query = searchQuery.toLowerCase();
+    return ministries.filter(ministry =>
+      ministry.name?.toLowerCase().includes(query)
+    );
+  }, [ministries, searchQuery]);
 
   const handleMinistryClick = (ministry: FacetItem) => {
     if (ministry.id) {
@@ -96,6 +107,22 @@ export default function MinisterePage() {
         )}
       </div>
 
+      {/* Search bar */}
+      {!loading && ministries.length > 0 && (
+        <div className="mb-8">
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
+            <Input
+              type="text"
+              placeholder={t('searchPlaceholder')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-4 py-5"
+            />
+          </div>
+        </div>
+      )}
+
       {loading && (
         <div className="flex justify-center items-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -116,10 +143,17 @@ export default function MinisterePage() {
         </div>
       )}
 
+      {!loading && !error && ministries.length > 0 && filteredMinistries.length === 0 && (
+        <div className="text-center py-12">
+          <Building2 className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+          <p className="text-muted-foreground">{t('noResults')}</p>
+        </div>
+      )}
+
       {/* Kanban View */}
-      {!loading && !error && ministries.length > 0 && viewMode === 'kanban' && (
+      {!loading && !error && filteredMinistries.length > 0 && viewMode === 'kanban' && (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {ministries.map((ministry) => (
+          {filteredMinistries.map((ministry) => (
             <Card
               key={ministry.id ?? ministry.name}
               className="group cursor-pointer hover:shadow-lg transition-all duration-300"
@@ -152,9 +186,9 @@ export default function MinisterePage() {
       )}
 
       {/* List View */}
-      {!loading && !error && ministries.length > 0 && viewMode === 'list' && (
+      {!loading && !error && filteredMinistries.length > 0 && viewMode === 'list' && (
         <div className="space-y-4">
-          {ministries.map((ministry) => (
+          {filteredMinistries.map((ministry) => (
             <Card
               key={ministry.id ?? ministry.name}
               className="group cursor-pointer hover:shadow-md transition-all duration-300"

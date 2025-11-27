@@ -9,15 +9,13 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import {
   Search, X, AlertCircle, Loader2, ChevronLeft, ChevronRight,
-  Building2, Clock, LayoutGrid, List
+  Building2, Clock, LayoutGrid, List, SlidersHorizontal, ChevronDown
 } from "lucide-react"
 import Breadcrumb from "@/components/ui/breadcrumb"
 import {
@@ -28,6 +26,7 @@ import {
   type SearchFilters,
   type SearchResponse,
   type ServiceResult,
+  type FacetItem
 } from "@/core/api/services"
 
 type ViewMode = 'kanban' | 'list'
@@ -66,10 +65,12 @@ function ServicesContent() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('kanban')
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
   // Search filters state
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedMinistry, setSelectedMinistry] = useState<number | null>(null)
   const [selectedServiceType, setSelectedServiceType] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
 
@@ -82,6 +83,7 @@ function ServicesContent() {
   useEffect(() => {
     const categoryParam = searchParams.get('category')
     const queryParam = searchParams.get('q')
+    const ministryParam = searchParams.get('ministry')
 
     if (categoryParam) {
       setSelectedCategory(categoryParam)
@@ -89,6 +91,10 @@ function ServicesContent() {
 
     if (queryParam) {
       setSearchQuery(queryParam)
+    }
+
+    if (ministryParam) {
+      setSelectedMinistry(parseInt(ministryParam, 10))
     }
   }, [searchParams])
 
@@ -103,6 +109,7 @@ function ServicesContent() {
       const filters: SearchFilters = {
         q: searchQuery || undefined,
         category_code: selectedCategory || undefined,
+        ministry_id: selectedMinistry || undefined,
         service_type: selectedServiceType || undefined,
         sort_by: 'relevance',
         page: currentPage,
@@ -122,7 +129,7 @@ function ServicesContent() {
     } finally {
       setLoading(false)
     }
-  }, [searchQuery, selectedCategory, selectedServiceType, currentPage, locale])
+  }, [searchQuery, selectedCategory, selectedMinistry, selectedServiceType, currentPage, locale])
 
   /**
    * Trigger search when filters change
@@ -149,19 +156,10 @@ function ServicesContent() {
     setSearchDebounceTimer(timer)
   }
 
-  const handleCategoryChange = (value: string) => {
-    setSelectedCategory(value === 'all' ? null : value)
-    setCurrentPage(1)
-  }
-
-  const handleServiceTypeChange = (value: string) => {
-    setSelectedServiceType(value === 'all' ? null : value)
-    setCurrentPage(1)
-  }
-
   const clearAllFilters = () => {
     setSearchQuery('')
     setSelectedCategory(null)
+    setSelectedMinistry(null)
     setSelectedServiceType(null)
     setCurrentPage(1)
   }
@@ -182,7 +180,29 @@ function ServicesContent() {
     }
   }
 
-  const hasActiveFilters = selectedCategory || selectedServiceType || searchQuery
+  const activeFiltersCount = [
+    selectedCategory,
+    selectedMinistry,
+    selectedServiceType
+  ].filter(Boolean).length
+
+  // Get selected names for display
+  const getSelectedCategoryName = () => {
+    if (!selectedCategory || !searchResults?.facets?.categories) return null
+    const cat = searchResults.facets.categories.find(c => c.code === selectedCategory)
+    return cat?.name
+  }
+
+  const getSelectedMinistryName = () => {
+    if (!selectedMinistry || !searchResults?.facets?.ministries) return null
+    const ministry = searchResults.facets.ministries.find(m => m.id === selectedMinistry)
+    return ministry?.name
+  }
+
+  const getSelectedServiceTypeName = () => {
+    if (!selectedServiceType) return null
+    return getServiceTypeLabel(selectedServiceType, serviceTypeTranslations)
+  }
 
   return (
     <div className="bg-background">
@@ -227,65 +247,167 @@ function ServicesContent() {
           )}
         </div>
 
-        {/* Search bar and inline filters */}
-        <div className="mb-8 space-y-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
-            <Input
-              type="text"
-              placeholder={t('searchPlaceholder')}
-              value={searchQuery}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="pl-10 pr-4 py-6 text-base"
-            />
+        {/* Advanced Search Bar with Integrated Filters */}
+        <div className="mb-8">
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
+              <Input
+                type="text"
+                placeholder={t('searchPlaceholder')}
+                value={searchQuery}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="pl-10 pr-4 py-6 text-base"
+              />
+            </div>
+
+            {/* Filters Popover */}
+            <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="h-[52px] px-4 gap-2">
+                  <SlidersHorizontal className="h-4 w-4" />
+                  <span className="hidden sm:inline">{t('filters')}</span>
+                  {activeFiltersCount > 0 && (
+                    <Badge variant="secondary" className="ml-1">{activeFiltersCount}</Badge>
+                  )}
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-4" align="end">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium">{t('advancedFilters')}</h4>
+                    {activeFiltersCount > 0 && (
+                      <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+                        <X className="h-4 w-4 mr-1" />
+                        {tCommon('clear')}
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Category filter */}
+                  {searchResults?.facets?.categories && searchResults.facets.categories.length > 0 && (
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">{t('category')}</label>
+                      <div className="space-y-1 max-h-40 overflow-y-auto">
+                        <Button
+                          variant={!selectedCategory ? "secondary" : "ghost"}
+                          size="sm"
+                          className="w-full justify-start text-sm"
+                          onClick={() => { setSelectedCategory(null); setCurrentPage(1) }}
+                        >
+                          {t('allCategories')}
+                        </Button>
+                        {searchResults.facets.categories.map((category) => (
+                          <Button
+                            key={category.code}
+                            variant={selectedCategory === category.code ? "secondary" : "ghost"}
+                            size="sm"
+                            className="w-full justify-between text-sm"
+                            onClick={() => { setSelectedCategory(category.code!); setCurrentPage(1) }}
+                          >
+                            <span className="truncate">{category.name}</span>
+                            <Badge variant="outline" className="ml-2 text-xs">{category.count}</Badge>
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Ministry filter */}
+                  {searchResults?.facets?.ministries && searchResults.facets.ministries.length > 0 && (
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">{t('ministry')}</label>
+                      <div className="space-y-1 max-h-40 overflow-y-auto">
+                        <Button
+                          variant={!selectedMinistry ? "secondary" : "ghost"}
+                          size="sm"
+                          className="w-full justify-start text-sm"
+                          onClick={() => { setSelectedMinistry(null); setCurrentPage(1) }}
+                        >
+                          {t('allMinistries')}
+                        </Button>
+                        {searchResults.facets.ministries.map((ministry: FacetItem) => (
+                          <Button
+                            key={ministry.id ?? ministry.name}
+                            variant={selectedMinistry === ministry.id ? "secondary" : "ghost"}
+                            size="sm"
+                            className="w-full justify-between text-sm"
+                            onClick={() => { setSelectedMinistry(ministry.id!); setCurrentPage(1) }}
+                          >
+                            <span className="truncate">{ministry.name}</span>
+                            <Badge variant="outline" className="ml-2 text-xs">{ministry.count}</Badge>
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Service type filter */}
+                  {searchResults?.facets?.service_types && searchResults.facets.service_types.length > 0 && (
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">{t('serviceType')}</label>
+                      <div className="space-y-1 max-h-40 overflow-y-auto">
+                        <Button
+                          variant={!selectedServiceType ? "secondary" : "ghost"}
+                          size="sm"
+                          className="w-full justify-start text-sm"
+                          onClick={() => { setSelectedServiceType(null); setCurrentPage(1) }}
+                        >
+                          {t('allServiceTypes')}
+                        </Button>
+                        {searchResults.facets.service_types.map((type) => (
+                          <Button
+                            key={type.type}
+                            variant={selectedServiceType === type.type ? "secondary" : "ghost"}
+                            size="sm"
+                            className="w-full justify-between text-sm"
+                            onClick={() => { setSelectedServiceType(type.type!); setCurrentPage(1) }}
+                          >
+                            <span className="truncate">{getServiceTypeLabel(type.type!, serviceTypeTranslations)}</span>
+                            <Badge variant="outline" className="ml-2 text-xs">{type.count}</Badge>
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
 
-          {/* Inline filters */}
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Category filter */}
-            <Select
-              value={selectedCategory || 'all'}
-              onValueChange={handleCategoryChange}
-            >
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder={t('allCategories')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('allCategories')}</SelectItem>
-                {searchResults?.facets?.categories?.map((category) => (
-                  <SelectItem key={category.code} value={category.code!}>
-                    {category.name} ({category.count})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Service type filter */}
-            <Select
-              value={selectedServiceType || 'all'}
-              onValueChange={handleServiceTypeChange}
-            >
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder={t('serviceType')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('serviceType')}</SelectItem>
-                {searchResults?.facets?.service_types?.map((type) => (
-                  <SelectItem key={type.type} value={type.type!}>
-                    {getServiceTypeLabel(type.type!, serviceTypeTranslations)} ({type.count})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Clear filters button */}
-            {hasActiveFilters && (
-              <Button variant="ghost" size="sm" onClick={clearAllFilters} className="gap-2">
-                <X className="h-4 w-4" />
-                {tCommon('clear')}
+          {/* Active filters display */}
+          {activeFiltersCount > 0 && (
+            <div className="flex flex-wrap items-center gap-2 mt-3">
+              {getSelectedCategoryName() && (
+                <Badge variant="secondary" className="gap-1">
+                  {t('category')}: {getSelectedCategoryName()}
+                  <button onClick={() => { setSelectedCategory(null); setCurrentPage(1) }} className="ml-1 hover:text-destructive">
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              {getSelectedMinistryName() && (
+                <Badge variant="secondary" className="gap-1">
+                  {t('ministry')}: {getSelectedMinistryName()}
+                  <button onClick={() => { setSelectedMinistry(null); setCurrentPage(1) }} className="ml-1 hover:text-destructive">
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              {getSelectedServiceTypeName() && (
+                <Badge variant="secondary" className="gap-1">
+                  {t('serviceType')}: {getSelectedServiceTypeName()}
+                  <button onClick={() => { setSelectedServiceType(null); setCurrentPage(1) }} className="ml-1 hover:text-destructive">
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              <Button variant="ghost" size="sm" onClick={clearAllFilters} className="h-6 px-2 text-xs">
+                {t('clearFilters')}
               </Button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Results area */}
