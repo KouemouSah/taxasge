@@ -12,8 +12,10 @@ FROM base AS deps
 WORKDIR /app
 
 # Install dependencies based on package manager
-COPY package.json package-lock.json* ./
-RUN npm ci --legacy-peer-deps
+# Note: Using npm install instead of npm ci because this package is part of a
+# monorepo with npm workspaces, which keeps package-lock.json at the root level
+COPY package.json ./
+RUN npm install --legacy-peer-deps
 
 # =============================================================================
 # Build stage

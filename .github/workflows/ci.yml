@@ -71,7 +71,7 @@ jobs:
           node-version: '18'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --legacy-peer-deps
 
       - name: Run ESLint
         run: npx eslint src --ext .ts,.tsx --max-warnings=100
