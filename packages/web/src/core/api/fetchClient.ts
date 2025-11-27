@@ -56,6 +56,20 @@ export class FetchClient {
   }
 
   /**
+   * Public getter for baseUrl (for multipart uploads)
+   */
+  public getBaseUrl(): string {
+    return this.baseUrl
+  }
+
+  /**
+   * Public getter for auth token (for multipart uploads)
+   */
+  public getAuthToken(): string | null {
+    return this.getToken()
+  }
+
+  /**
    * Build URL with query parameters
    */
   private buildUrl(endpoint: string, params?: Record<string, string | number | boolean | undefined>): string {
@@ -161,8 +175,8 @@ export class FetchClient {
   /**
    * DELETE request
    */
-  async delete<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: 'DELETE' })
+  async delete<T>(endpoint: string, params?: Record<string, string | number | boolean | undefined>): Promise<T> {
+    return this.request<T>(endpoint, { method: 'DELETE', params })
   }
 }
 

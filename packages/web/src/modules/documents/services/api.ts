@@ -99,10 +99,10 @@ export const documentsApi = {
       formData.append('declaration_id', options.declaration_id);
     }
 
-    const response = await fetch(`${fetchClient.baseUrl}${DOCUMENTS_BASE}/upload`, {
+    const response = await fetch(`${fetchClient.getBaseUrl()}${DOCUMENTS_BASE}/upload`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${fetchClient.getToken()}`,
+        'Authorization': `Bearer ${fetchClient.getAuthToken()}`,
       },
       body: formData,
     });
@@ -136,10 +136,10 @@ export const documentsApi = {
       formData.append('auto_process', String(options.auto_process));
     }
 
-    const response = await fetch(`${fetchClient.baseUrl}${DOCUMENTS_BASE}/bulk-upload`, {
+    const response = await fetch(`${fetchClient.getBaseUrl()}${DOCUMENTS_BASE}/bulk-upload`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${fetchClient.getToken()}`,
+        'Authorization': `Bearer ${fetchClient.getAuthToken()}`,
       },
       body: formData,
     });

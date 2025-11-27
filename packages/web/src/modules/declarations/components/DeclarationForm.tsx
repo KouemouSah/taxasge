@@ -5,7 +5,13 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { APP_CONSTANTS } from '@/core/config/constants';
 
@@ -47,18 +53,26 @@ export const DeclarationForm = ({ onSubmit, initialData }: DeclarationFormProps)
         <div className="space-y-2">
           <Label htmlFor="type">Type de déclaration</Label>
           <Select
-            id="type"
             value={formData.type}
-            onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-            required
+            onValueChange={(value) => setFormData({ ...formData, type: value })}
           >
-            <option value="">Sélectionner un type</option>
-            <option value={APP_CONSTANTS.DECLARATION_TYPES.IVA_DESTAJO}>IVA Destajo</option>
-            <option value={APP_CONSTANTS.DECLARATION_TYPES.IVA_REAL}>IVA Real</option>
-            <option value={APP_CONSTANTS.DECLARATION_TYPES.INCOME_TAX}>Impôt sur le revenu</option>
-            <option value={APP_CONSTANTS.DECLARATION_TYPES.CORPORATE_TAX}>
-              Impôt sur les sociétés
-            </option>
+            <SelectTrigger id="type">
+              <SelectValue placeholder="Sélectionner un type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={APP_CONSTANTS.DECLARATION_TYPES.IVA_DESTAJO}>
+                IVA Destajo
+              </SelectItem>
+              <SelectItem value={APP_CONSTANTS.DECLARATION_TYPES.IVA_REAL}>
+                IVA Real
+              </SelectItem>
+              <SelectItem value={APP_CONSTANTS.DECLARATION_TYPES.INCOME_TAX}>
+                Impôt sur le revenu
+              </SelectItem>
+              <SelectItem value={APP_CONSTANTS.DECLARATION_TYPES.CORPORATE_TAX}>
+                Impôt sur les sociétés
+              </SelectItem>
+            </SelectContent>
           </Select>
         </div>
 
@@ -69,7 +83,7 @@ export const DeclarationForm = ({ onSubmit, initialData }: DeclarationFormProps)
             id="period"
             type="month"
             value={formData.period}
-            onChange={(e) => setFormData({ ...formData, period: e.target.value })}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, period: e.target.value })}
             required
           />
         </div>
@@ -83,7 +97,7 @@ export const DeclarationForm = ({ onSubmit, initialData }: DeclarationFormProps)
             min="0"
             step="0.01"
             value={formData.amount}
-            onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) })}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, amount: parseFloat(e.target.value) })}
             required
           />
         </div>
@@ -95,7 +109,7 @@ export const DeclarationForm = ({ onSubmit, initialData }: DeclarationFormProps)
             id="description"
             rows={4}
             value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({ ...formData, description: e.target.value })}
             placeholder="Informations complémentaires..."
           />
         </div>

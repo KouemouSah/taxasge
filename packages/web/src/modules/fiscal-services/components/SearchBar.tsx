@@ -1,7 +1,7 @@
 'use client';
 
 import { Search } from 'lucide-react';
-import { Input } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
 interface SearchBarProps {
@@ -31,7 +31,7 @@ export const SearchBar = ({
             type="text"
             placeholder={placeholder}
             value={query}
-            onChange={(e) => onQueryChange(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => onQueryChange(e.target.value)}
             className="h-12 pl-10"
           />
         </div>

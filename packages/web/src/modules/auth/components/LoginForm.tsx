@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { loginSchema, type LoginInput } from '@/core/validations/auth';
-import { authApi } from '@/core/api/auth';
+import { authApi, type TokenResponse } from '@/core/api/auth';
 import { setAuthData } from '@/core/auth/storage';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
@@ -42,7 +42,7 @@ export const LoginForm = () => {
       }
 
       // Store auth data
-      setAuthData(response);
+      setAuthData(response as TokenResponse);
 
       // Redirect to dashboard
       router.push('/dashboard');

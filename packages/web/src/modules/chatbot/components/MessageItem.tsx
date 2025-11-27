@@ -68,7 +68,8 @@ const renderMarkdown = (text: string): string => {
 
   // Bullet lists - item
   html = html.replace(/^- (.+)$/gm, '<li class="ml-4">$1</li>')
-  html = html.replace(/(<li.*<\/li>)/s, '<ul class="list-disc my-2">$1</ul>')
+  // Use [\s\S] instead of /s flag for ES2017 compatibility
+  html = html.replace(/(<li[\s\S]*<\/li>)/, '<ul class="list-disc my-2">$1</ul>')
 
   // Numbered lists 1. item
   html = html.replace(/^\d+\. (.+)$/gm, '<li class="ml-4">$1</li>')

@@ -33,7 +33,7 @@ import type {
 export const assignmentsKeys = {
   all: ['assignments'] as const,
   lists: () => [...assignmentsKeys.all, 'list'] as const,
-  list: (filters: Record<string, unknown>) =>
+  list: (filters: AssignmentFilters | Record<string, unknown>) =>
     [...assignmentsKeys.lists(), filters] as const,
   details: () => [...assignmentsKeys.all, 'detail'] as const,
   detail: (id: string) => [...assignmentsKeys.details(), id] as const,

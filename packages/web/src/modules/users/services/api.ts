@@ -87,10 +87,10 @@ export const profileApi = {
     formData.append('file', file);
 
     // Use fetch directly for multipart/form-data
-    const response = await fetch(`${fetchClient.baseUrl}${USERS_BASE}/profile/avatar`, {
+    const response = await fetch(`${fetchClient.getBaseUrl()}${USERS_BASE}/profile/avatar`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${fetchClient.getToken()}`,
+        'Authorization': `Bearer ${fetchClient.getAuthToken()}`,
       },
       body: formData,
     });
