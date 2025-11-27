@@ -412,6 +412,61 @@ async function requestVerificationCode(
   return response.json();
 }
 
+/**
+ * Request password change - POST /auth/password/change
+ * For authenticated users who want to change their password
+ * Sends verification code to user's email
+ */
+async function requestPasswordChange(data: {
+  current_password: string;
+}): Promise<{ message: string; email: string }> {
+  const accessToken = localStorage.getItem('access_token');
+  if (!accessToken) {
+    throw new Error('Not authenticated');
+  }
+
+  const response = await fetch(, {
+    method: 'POST',
+    headers: {
+      Authorization: ,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(extractErrorMessage(error, 'Échec de la demande de changement de mot de passe'));
+  }
+
+  return response.json();
+}
+
+/**
+ * Verify password change - POST /auth/password/change/verify
+ * Complete password change with verification code
+ */
+async function verifyPasswordChange(data: {
+  email: string;
+  verification_code: string;
+  new_password: string;
+}): Promise<{ message: string }> {
+  const response = await fetch(, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(extractErrorMessage(error, 'Échec de la vérification du changement de mot de passe'));
+  }
+
+  return response.json();
+}
+
 export const authApi = {
   login,
   verify2FA,
@@ -422,6 +477,8 @@ export const authApi = {
   getProfile,
   requestPasswordReset,
   confirmPasswordReset,
+  requestPasswordChange,
+  verifyPasswordChange,
   verifyEmail,
   resendEmailVerification,
   getSessions,

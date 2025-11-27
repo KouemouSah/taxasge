@@ -17,7 +17,7 @@ export default async function LocaleLayout({
   params: { locale: string };
 }) {
   // Validate locale
-  if (!locales.includes(locale as any)) {
+  if (!locales.includes(locale as typeof locales[number])) {
     notFound();
   }
 

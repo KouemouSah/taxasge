@@ -13,6 +13,7 @@
  */
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -50,7 +51,8 @@ import { BackendUnavailableAlert } from '@/modules/admin/components'
 export default function FiscalServicesPage() {
   const locale = useLocale()
   const t = useTranslations('admin.fiscalServices')
-  const tCommon = useTranslations('admin')
+  const _tCommon = useTranslations('admin')
+  const router = useRouter()
   const { toast } = useToast()
 
   // Data states
@@ -70,13 +72,13 @@ export default function FiscalServicesPage() {
   const [ministryFilter, setMinistryFilter] = useState<number | 'all'>('all')
   const [sectorFilter, setSectorFilter] = useState<number | 'all'>('all')
   const [categoryFilter, setCategoryFilter] = useState<number | 'all'>('all')
-  const [typeFilter, setTypeFilter] = useState<ServiceTypeEnum | 'all'>('all')
+  const [typeFilter, _setTypeFilter] = useState<ServiceTypeEnum | 'all'>('all')
   const [statusFilter, setStatusFilter] = useState<ServiceStatusEnum | 'all'>('all')
 
   // Pagination states
-  const [currentPage, setCurrentPage] = useState(1)
+  const [_currentPage, _setCurrentPage] = useState(1)
   const [pageSize] = useState(20)
-  const [totalServices, setTotalServices] = useState(0)
+  const [_totalServices, setTotalServices] = useState(0)
 
   // Fetch hierarchy data (ministries, sectors, categories)
   const fetchHierarchyData = async () => {

@@ -37,8 +37,8 @@ import fiscalServicesAPI from '@/modules/fiscal-services/services/api'
 import type {
   FiscalServiceResponse,
   ServiceStatusEnum,
-  ServiceTypeEnum,
-  CalculationMethodEnum,
+  
+  
 } from '@/types/fiscal-service'
 import { BackendUnavailableAlert } from '@/modules/admin/components'
 

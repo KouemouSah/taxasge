@@ -37,7 +37,7 @@ import { Users, RefreshCw, AlertTriangle, Search, Shield, Ban, UserPlus, Edit, T
 import { useToast } from '@/hooks/use-toast'
 import usersApi from '@/modules/users-admin/services/api'
 import type { User, UserRole } from '@/modules/users-admin/types'
-import { UserRole as UserRoleEnum, UserStatus, isCitizenOrBusiness, canPhysicallyDelete } from '@/types/user'
+import { isCitizenOrBusiness } from '@/types/user'
 import { useUserLabels } from '@/hooks/use-user-labels'
 import { CreateUserDialog } from '@/modules/users-admin/components/CreateUserDialog'
 import { EditUserDialog } from '@/modules/users-admin/components/EditUserDialog'
@@ -46,7 +46,7 @@ import { BackendUnavailableAlert } from '@/modules/admin/components'
 export default function UsersPage() {
   const locale = useLocale()
   const t = useTranslations('admin.users')
-  const tCommon = useTranslations('admin')
+  const _tCommon = useTranslations('admin')
   const { toast } = useToast()
   const { getRoleLabel, getStatusLabel, getRoleOptions } = useUserLabels()
 
