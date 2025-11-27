@@ -1,4 +1,10 @@
 {
+  "metadata": {
+    "siteName": "TaxasGE",
+    "defaultTitle": "TaxasGE - Tax Platform of Equatorial Guinea",
+    "description": "Digital tax management platform for Equatorial Guinea",
+    "keywords": "tax,taxes,Equatorial Guinea,DGI,declarations,fiscal services"
+  },
   "common": {
     "appName": "TaxasGE",
     "appDescription": "Digital tax management platform for Equatorial Guinea",
@@ -45,7 +51,7 @@
     "cookies": "Cookie policy",
     "contactTitle": "Contact",
     "address": "Ministry of Finance, Malabo, Equatorial Guinea",
-    "phone": "+240 XXX XXX XXX",
+    "phone": "+240 333 09 26 17",
     "email": "contact@taxasge.gq",
     "copyright": "© 2025 TaxasGE - Ministry of Finance Equatorial Guinea. All rights reserved."
   },
@@ -96,6 +102,21 @@
     "emptyDescription": "The services directory is not yet available.",
     "seeAllCategories": "See all categories",
     "servicesCount": "{count} services"
+  },
+  "calculatorPage": {
+    "title": "Tax Calculator",
+    "description": "Calculate your taxes quickly and accurately",
+    "incomeTax": "Income Tax",
+    "incomeTaxDesc": "Calculate your personal income tax",
+    "incomeTaxInfo": "For individuals with employment income",
+    "vat": "VAT",
+    "vatDesc": "Calculate value added tax",
+    "vatInfo": "For businesses and traders",
+    "corporateTax": "Corporate Tax",
+    "corporateTaxDesc": "Calculate tax for companies",
+    "corporateTaxInfo": "For corporations and businesses",
+    "comingSoon": "Coming Soon",
+    "comingSoonDesc": "This calculator will be available soon"
   },
   "auth": {
     "welcome": "Welcome",

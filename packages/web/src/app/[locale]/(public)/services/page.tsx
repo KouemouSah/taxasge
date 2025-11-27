@@ -12,8 +12,6 @@ import {
   Search, Filter, X, AlertCircle, Loader2, ChevronLeft, ChevronRight,
   Building2, Clock, SlidersHorizontal, LayoutGrid, List
 } from "lucide-react"
-import Header from "@/components/layout/Header"
-import Footer from "@/components/layout/Footer"
 import Breadcrumb from "@/components/ui/breadcrumb"
 import {
   searchServices,
@@ -259,10 +257,7 @@ function ServicesContent() {
   ].filter(Boolean).length
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <Header />
-
-      <main className="flex-1 bg-background">
+    <div className="bg-background">
         <div className="container mx-auto px-4 py-8">
           <Breadcrumb
             items={[{ label: t('title') }]}
@@ -664,30 +659,23 @@ function ServicesContent() {
             </div>
           </div>
         </div>
-      </main>
-
-      <Footer />
     </div>
   )
 }
 
 /**
  * Services Page - Wrapper with Suspense boundary
+ * Note: Header and Footer are provided by the (public) layout
  */
 export default function ServicesPage() {
   return (
     <Suspense fallback={
-      <div className="flex min-h-screen flex-col">
-        <Header />
-        <main className="flex-1 bg-background">
-          <div className="container mx-auto px-4 py-8">
-            <div className="flex justify-center items-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <span className="ml-3 text-muted-foreground">Cargando...</span>
-            </div>
+      <div className="bg-background">
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex justify-center items-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-        </main>
-        <Footer />
+        </div>
       </div>
     }>
       <ServicesContent />

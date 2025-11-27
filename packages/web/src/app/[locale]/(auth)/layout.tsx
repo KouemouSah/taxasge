@@ -1,7 +1,7 @@
 /**
  * Auth Layout
  * Used for authentication pages (login, register, forgot password)
- * Minimal layout with centered content
+ * Each auth page manages its own Header/Footer and layout structure
  */
 
 import { setRequestLocale } from 'next-intl/server';
@@ -16,9 +16,5 @@ export default async function AuthLayout({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/50 px-4 py-12">
-      <div className="w-full max-w-md">{children}</div>
-    </div>
-  );
+  return <>{children}</>;
 }

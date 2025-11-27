@@ -1,4 +1,10 @@
 {
+  "metadata": {
+    "siteName": "TaxasGE",
+    "defaultTitle": "TaxasGE - Plateforme Fiscale de Guinée Équatoriale",
+    "description": "Plateforme numérique de gestion fiscale de Guinée Équatoriale",
+    "keywords": "fiscal,impôts,Guinée Équatoriale,DGI,déclarations,services fiscaux"
+  },
   "common": {
     "appName": "TaxasGE",
     "appDescription": "Plateforme numérique de gestion fiscale de Guinée Équatoriale",
@@ -45,7 +51,7 @@
     "cookies": "Politique de cookies",
     "contactTitle": "Contact",
     "address": "Ministère des Finances, Malabo, Guinée Équatoriale",
-    "phone": "+240 XXX XXX XXX",
+    "phone": "+240 333 09 26 17",
     "email": "contact@taxasge.gq",
     "copyright": "© 2025 TaxasGE - Ministère des Finances Guinée Équatoriale. Tous droits réservés."
   },
@@ -96,6 +102,21 @@
     "emptyDescription": "L'annuaire des services n'est pas encore disponible.",
     "seeAllCategories": "Voir toutes les catégories",
     "servicesCount": "{count} services"
+  },
+  "calculatorPage": {
+    "title": "Calculateur d'Impôts",
+    "description": "Calculez vos impôts rapidement et avec précision",
+    "incomeTax": "Impôt sur le Revenu",
+    "incomeTaxDesc": "Calculez votre impôt sur les revenus personnels",
+    "incomeTaxInfo": "Pour les personnes physiques avec revenus salariaux",
+    "vat": "TVA",
+    "vatDesc": "Calculez la taxe sur la valeur ajoutée",
+    "vatInfo": "Pour les entreprises et commerçants",
+    "corporateTax": "Impôt sur les Sociétés",
+    "corporateTaxDesc": "Calculez l'impôt pour les entreprises",
+    "corporateTaxInfo": "Pour les sociétés et corporations",
+    "comingSoon": "Bientôt disponible",
+    "comingSoonDesc": "Ce calculateur sera bientôt disponible"
   },
   "auth": {
     "welcome": "Bienvenue",
