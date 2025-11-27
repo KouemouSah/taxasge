@@ -577,7 +577,8 @@ function RelatedServiceCard({
 }: {
   service: RelatedServiceItem;
   locale: string;
-  t: (key: string, params?: Record<string, unknown>) => string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  t: any;
 }) {
   return (
     <Link href={`/${locale}/services/${service.id}`}>
