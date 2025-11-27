@@ -117,7 +117,7 @@ class SearchRepository:
         # Build ORDER BY
         order_map = {
             "relevance": "fs.view_count DESC, fs.calculation_count DESC",
-            "name": f"COALESCE(et_name.translation_value, fs.name_es)",
+            "name": f"COALESCE(et_name.translation_text, fs.name_es)",
             "price": "COALESCE(fs.expedition_amount, 0)",
             "popular": "fs.calculation_count DESC, fs.view_count DESC",
         }
@@ -143,11 +143,11 @@ class SearchRepository:
         data_query = f"""
             SELECT DISTINCT
                 fs.id,
-                COALESCE(et_name.translation_value, fs.name_es) as name,
-                COALESCE(et_desc.translation_value, fs.description_es) as description,
-                COALESCE(et_cat.translation_value, c.name_es) as category_name,
-                COALESCE(et_min.translation_value, m.name_es) as ministry_name,
-                COALESCE(et_sec.translation_value, s.name_es) as sector_name,
+                COALESCE(et_name.translation_text, fs.name_es) as name,
+                COALESCE(et_desc.translation_text, fs.description_es) as description,
+                COALESCE(et_cat.translation_text, c.name_es) as category_name,
+                COALESCE(et_min.translation_text, m.name_es) as ministry_name,
+                COALESCE(et_sec.translation_text, s.name_es) as sector_name,
                 fs.service_type,
                 COALESCE(fs.expedition_amount, 0) as expedition_price,
                 COALESCE(fs.renewal_amount, 0) as renewal_price,
@@ -159,32 +159,32 @@ class SearchRepository:
             LEFT JOIN ministries m ON s.ministry_id = m.id
             -- Service name translation
             LEFT JOIN entity_translations et_name ON
-                et_name.entity_type = 'fiscal_service'
-                AND et_name.entity_id = fs.id
+                et_name.entity_type = 'service'
+                AND et_name.entity_code = fs.service_code
                 AND et_name.field_name = 'name'
                 AND et_name.language_code = ${param_idx}
             -- Service description translation
             LEFT JOIN entity_translations et_desc ON
-                et_desc.entity_type = 'fiscal_service'
-                AND et_desc.entity_id = fs.id
+                et_desc.entity_type = 'service'
+                AND et_desc.entity_code = fs.service_code
                 AND et_desc.field_name = 'description'
                 AND et_desc.language_code = ${param_idx}
             -- Category name translation
             LEFT JOIN entity_translations et_cat ON
                 et_cat.entity_type = 'category'
-                AND et_cat.entity_id = c.id
+                AND et_cat.entity_code = c.category_code
                 AND et_cat.field_name = 'name'
                 AND et_cat.language_code = ${param_idx}
             -- Ministry name translation
             LEFT JOIN entity_translations et_min ON
                 et_min.entity_type = 'ministry'
-                AND et_min.entity_id = m.id
+                AND et_min.entity_code = m.ministry_code
                 AND et_min.field_name = 'name'
                 AND et_min.language_code = ${param_idx}
             -- Sector name translation
             LEFT JOIN entity_translations et_sec ON
                 et_sec.entity_type = 'sector'
-                AND et_sec.entity_id = s.id
+                AND et_sec.entity_code = s.sector_code
                 AND et_sec.field_name = 'name'
                 AND et_sec.language_code = ${param_idx}
             WHERE {where_clause}
@@ -222,17 +222,17 @@ class SearchRepository:
                 SELECT
                     c.id,
                     c.category_code as code,
-                    COALESCE(et.translation_value, c.name_es) as name,
+                    COALESCE(et.translation_text, c.name_es) as name,
                     COUNT(fs.id) FILTER (WHERE fs.status = 'active') as count
                 FROM categories c
                 LEFT JOIN fiscal_services fs ON fs.category_id = c.id
                 LEFT JOIN entity_translations et ON
                     et.entity_type = 'category'
-                    AND et.entity_id = c.id
+                    AND et.entity_code = c.category_code
                     AND et.field_name = 'name'
                     AND et.language_code = $1
                 WHERE c.is_active = true
-                GROUP BY c.id, c.category_code, c.name_es, et.translation_value
+                GROUP BY c.id, c.category_code, c.name_es, et.translation_text
                 HAVING COUNT(fs.id) FILTER (WHERE fs.status = 'active') > 0
                 ORDER BY count DESC
                 LIMIT 20
@@ -244,7 +244,7 @@ class SearchRepository:
             min_query = """
                 SELECT
                     m.id,
-                    COALESCE(et.translation_value, m.name_es) as name,
+                    COALESCE(et.translation_text, m.name_es) as name,
                     COUNT(DISTINCT fs.id) FILTER (WHERE fs.status = 'active') as count
                 FROM ministries m
                 JOIN sectors s ON s.ministry_id = m.id
@@ -252,11 +252,11 @@ class SearchRepository:
                 LEFT JOIN fiscal_services fs ON fs.category_id = c.id
                 LEFT JOIN entity_translations et ON
                     et.entity_type = 'ministry'
-                    AND et.entity_id = m.id
+                    AND et.entity_code = m.ministry_code
                     AND et.field_name = 'name'
                     AND et.language_code = $1
                 WHERE m.is_active = true
-                GROUP BY m.id, m.name_es, et.translation_value
+                GROUP BY m.id, m.name_es, et.translation_text
                 HAVING COUNT(DISTINCT fs.id) FILTER (WHERE fs.status = 'active') > 0
                 ORDER BY count DESC
             """
@@ -331,11 +331,11 @@ class SearchRepository:
             else:
                 # Get popular service names
                 pop_query = """
-                    SELECT DISTINCT COALESCE(et.translation_value, fs.name_es) as name
+                    SELECT DISTINCT COALESCE(et.translation_text, fs.name_es) as name
                     FROM fiscal_services fs
                     LEFT JOIN entity_translations et ON
-                        et.entity_type = 'fiscal_service'
-                        AND et.entity_id = fs.id
+                        et.entity_type = 'service'
+                        AND et.entity_code = fs.service_code
                         AND et.field_name = 'name'
                         AND et.language_code = $1
                     WHERE fs.status = 'active'

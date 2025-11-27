@@ -101,14 +101,14 @@ class HomepageRepository:
 
                 -- Name with translation fallback (translation -> es -> code)
                 COALESCE(
-                    et_name.translation_value,
+                    et_name.translation_text,
                     c.name_es,
                     c.category_code
                 ) as name,
 
                 -- Description with translation fallback
                 COALESCE(
-                    et_desc.translation_value,
+                    et_desc.translation_text,
                     c.description_es
                 ) as description,
 
@@ -119,13 +119,13 @@ class HomepageRepository:
 
                 -- Ministry name with translation
                 COALESCE(
-                    et_ministry.translation_value,
+                    et_ministry.translation_text,
                     m.name_es
                 ) as ministry_name,
 
                 -- Sector name with translation
                 COALESCE(
-                    et_sector.translation_value,
+                    et_sector.translation_text,
                     s.name_es
                 ) as sector_name,
 
@@ -144,28 +144,28 @@ class HomepageRepository:
             -- Join entity_translations for category name
             LEFT JOIN entity_translations et_name ON
                 et_name.entity_type = 'category'
-                AND et_name.entity_id = c.id
+                AND et_name.entity_code = c.category_code
                 AND et_name.field_name = 'name'
                 AND et_name.language_code = $1
 
             -- Join entity_translations for category description
             LEFT JOIN entity_translations et_desc ON
                 et_desc.entity_type = 'category'
-                AND et_desc.entity_id = c.id
+                AND et_desc.entity_code = c.category_code
                 AND et_desc.field_name = 'description'
                 AND et_desc.language_code = $1
 
             -- Join entity_translations for ministry name
             LEFT JOIN entity_translations et_ministry ON
                 et_ministry.entity_type = 'ministry'
-                AND et_ministry.entity_id = c.ministry_id
+                AND et_ministry.entity_code = m.ministry_code
                 AND et_ministry.field_name = 'name'
                 AND et_ministry.language_code = $1
 
             -- Join entity_translations for sector name
             LEFT JOIN entity_translations et_sector ON
                 et_sector.entity_type = 'sector'
-                AND et_sector.entity_id = c.sector_id
+                AND et_sector.entity_code = s.sector_code
                 AND et_sector.field_name = 'name'
                 AND et_sector.language_code = $1
 
@@ -175,8 +175,8 @@ class HomepageRepository:
                 c.id, c.category_code, c.name_es, c.description_es,
                 c.icon, c.color, c.ministry_id, c.sector_id,
                 m.name_es, s.name_es,
-                et_name.translation_value, et_desc.translation_value,
-                et_ministry.translation_value, et_sector.translation_value
+                et_name.translation_text, et_desc.translation_text,
+                et_ministry.translation_text, et_sector.translation_text
 
             -- Order by service count DESC, then alphabetically
             ORDER BY service_count DESC, name ASC;
