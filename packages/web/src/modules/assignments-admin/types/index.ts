@@ -9,7 +9,7 @@
  * BACKEND ALIGNMENT:
  * Routes: /api/v1/assignments (from app/modules/assignment/api/assignment_routes.py)
  *
- * Assignment states: assigned → in_progress → completed/cancelled/reassigned
+ * Assignment states: pending → assigned → in_progress → completed/cancelled/reassigned
  */
 
 // =============================================================================
@@ -17,6 +17,7 @@
 // =============================================================================
 
 export type AssignmentStatus =
+  | 'pending'
   | 'assigned'
   | 'in_progress'
   | 'completed'
@@ -46,6 +47,9 @@ export interface Assignment {
   declaration_id: string
   declaration_type: DeclarationType
   agent_id: string
+  assignee_id?: string
+  assignee_name?: string
+  priority: AssignmentPriority
   supervisor_id?: string
   status: AssignmentStatus
   priority_level: AssignmentPriority
@@ -72,6 +76,9 @@ export interface ManualAssignmentRequest {
   declaration_id: string
   declaration_type: DeclarationType
   agent_id: string
+  assignee_id?: string
+  assignee_name?: string
+  priority?: AssignmentPriority
   notes?: string
   priority_level?: AssignmentPriority
   deadline_days?: number
@@ -100,6 +107,9 @@ export interface CompleteAssignmentRequest {
 
 export interface ReassignmentRequest {
   new_agent_id: string
+  assignee_id?: string
+  assignee_name?: string
+  priority?: AssignmentPriority
   reason: ReassignmentReason
   notes?: string
 }
@@ -129,7 +139,9 @@ export interface PaginatedAssignmentsResponse {
 
 export interface AssignmentFilters {
   agent_id?: string
+  assignee_id?: string
   status?: AssignmentStatus
+  priority?: AssignmentPriority
   declaration_id?: string
   priority_level?: AssignmentPriority
   limit?: number
@@ -146,6 +158,8 @@ export type CreateAssignmentRequest = ManualAssignmentRequest
 /** @deprecated Use specific operation requests instead */
 export interface UpdateAssignmentRequest {
   status?: AssignmentStatus
+  assignee_id?: string
+  priority?: AssignmentPriority
   priority_level?: AssignmentPriority
   notes?: string
 }

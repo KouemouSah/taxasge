@@ -73,7 +73,7 @@ export function AssignmentList({
     filteredData = data.filter(
       (assignment) =>
         assignment.declaration_id.toLowerCase().includes(searchLower) ||
-        assignment.assignee_name.toLowerCase().includes(searchLower) ||
+        assignment.assignee_name?.toLowerCase().includes(searchLower) ||
         assignment.notes?.toLowerCase().includes(searchLower)
     )
   }

@@ -204,7 +204,7 @@ export function useChatSettings(
    */
   const toggleSound = useCallback(() => {
     updateSettings({ enableSound: !settings.enableSound })
-  }, [settings.soundEnabled, updateSettings])
+  }, [settings.enableSound, updateSettings])
 
   /**
    * Reset to default settings

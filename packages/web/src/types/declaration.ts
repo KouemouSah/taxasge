@@ -300,10 +300,10 @@ export const isDeclarationType = (value: string): value is DeclarationType => {
  * Type mapping helpers for API conversion
  * Backend uses snake_case, Frontend uses camelCase
  */
-export const toSnakeCase = (str: string): string => {
+export const toSnakeCaseStr = (str: string): string => {
   return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)
 }
 
-export const toCamelCase = (str: string): string => {
+export const toCamelCaseStr = (str: string): string => {
   return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
 }

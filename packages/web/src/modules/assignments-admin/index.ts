@@ -6,13 +6,35 @@
  */
 
 // Components
-export * from './components'
+export {
+  AssignmentCard,
+  AssignmentList,
+  AssignmentForm,
+  AssignmentFilters as AssignmentFiltersComponent,
+  AssignmentStatusBadge,
+} from './components'
 
 // Hooks
 export * from './hooks'
 
-// Types
-export * from './types'
+// Types - Re-export with explicit names to avoid conflicts
+export type {
+  AssignmentStatus,
+  AssignmentPriority,
+  DeclarationType,
+  ReassignmentReason,
+  Assignment,
+  ManualAssignmentRequest,
+  AutoAssignmentRequest,
+  CompleteAssignmentRequest,
+  ReassignmentRequest,
+  UpdatePriorityRequest,
+  ExtendDeadlineRequest,
+  PaginatedAssignmentsResponse,
+  AssignmentFilters,
+  CreateAssignmentRequest,
+  UpdateAssignmentRequest,
+} from './types'
 
 // Services
 export { assignmentsApi } from './services/api'

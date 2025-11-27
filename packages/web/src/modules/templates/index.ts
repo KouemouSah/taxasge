@@ -5,14 +5,35 @@
  * @module templates
  */
 
-// Components
-export * from './components'
+// Components - Rename TemplateFilters to avoid conflict with type
+export {
+  TemplateCard,
+  TemplateList,
+  TemplateForm,
+  TemplateFilters as TemplateFiltersComponent,
+  ProcedureStepsList,
+} from './components'
 
 // Hooks
 export * from './hooks'
 
 // Types
-export * from './types'
+export type {
+  TemplateType,
+  TemplateFilters,
+  TemplateListProps,
+  TemplateCardProps,
+  TemplateFormProps,
+  DocumentTemplate,
+  DocumentTemplateCreate,
+  DocumentTemplateUpdate,
+  ProcedureTemplate,
+  ProcedureTemplateCreate,
+  ProcedureTemplateUpdate,
+  ProcedureStep,
+  ProcedureStepCreate,
+  ProcedureStepUpdate,
+} from './types'
 
 // Services
 export {
