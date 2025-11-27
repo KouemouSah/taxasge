@@ -619,7 +619,56 @@
       "emailService": "Service Email",
       "operational": "Opérationnel",
       "degraded": "Dégradé",
-      "down": "Hors service"
+      "down": "Hors service",
+      "search": "Rechercher dans le tableau de bord...",
+      "storage": "Stockage",
+      "email": "Email",
+      "totalUsersLabel": "Total des Utilisateurs",
+      "vsLastMonth": "vs. mois précédent",
+      "activeRolesLabel": "Rôles Actifs",
+      "rolesDescription": "rôles configurés",
+      "permissionsLabel": "Permissions",
+      "completeCatalog": "catalogue complet",
+      "activity24hLabel": "Activité 24h",
+      "actionsRecorded": "actions enregistrées",
+      "newUser": "Nouvel Utilisateur",
+      "newUserDesc": "Créer un nouveau compte utilisateur",
+      "newRole": "Nouveau Rôle",
+      "newRoleDesc": "Définir un nouveau rôle système",
+      "managePermissions": "Gérer les Permissions",
+      "managePermissionsDesc": "Configurer les permissions du système",
+      "viewAudit": "Voir l'Audit",
+      "viewAuditDesc": "Consulter les logs d'activité",
+      "recentActivityTitle": "Activité Récente",
+      "recentActivityDesc": "Dernières actions dans le système",
+      "noRecentActivity": "Aucune activité récente",
+      "viewAll": "Voir tout",
+      "quickActions": "Actions Rapides",
+      "auditLogs": "Journaux d'Audit",
+      "auditLogsDesc": "Consulter tous les journaux d'activité",
+      "activityType": {
+        "user_created": "Utilisateur créé",
+        "user_updated": "Utilisateur mis à jour",
+        "user_deleted": "Utilisateur supprimé",
+        "role_created": "Rôle créé",
+        "role_updated": "Rôle mis à jour",
+        "permission_granted": "Permission accordée",
+        "permission_revoked": "Permission révoquée",
+        "login_success": "Connexion réussie",
+        "login_failed": "Échec de connexion"
+      }
+    },
+    "settings": {
+      "title": "Configuration",
+      "profile": "Profil",
+      "security": "Sécurité",
+      "notifications": "Notifications"
+    },
+    "userRoles": {
+      "admin": "Administrateur",
+      "supervisor": "Superviseur",
+      "agent": "Agent",
+      "user": "Utilisateur"
     },
     "users": {
       "title": "Utilisateurs",
@@ -1070,7 +1119,29 @@
     "filterByMinistry": "Filtrer par ministère",
     "filterBySector": "Filtrer par secteur",
     "resultsFor": "Résultats pour",
-    "backToAll": "Retour à tous les services"
+    "backToAll": "Retour à tous les services",
+    "free": "Gratuit",
+    "serviceTypes": {
+      "administrative": "Administratif",
+      "fiscal": "Fiscal",
+      "legal": "Juridique",
+      "customs": "Douanes",
+      "mining": "Mines",
+      "commercial": "Commercial",
+      "social": "Social",
+      "transport": "Transport",
+      "agriculture": "Agriculture",
+      "health": "Santé",
+      "education": "Éducation",
+      "other": "Autre"
+    },
+    "priceRanges": {
+      "free": "Gratuit",
+      "low": "< 50.000 XAF",
+      "medium": "50.000 - 200.000 XAF",
+      "high": "200.000 - 500.000 XAF",
+      "very_high": "> 500.000 XAF"
+    }
   },
   "serviceDetails": {
     "loading": "Chargement des détails du service...",

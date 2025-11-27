@@ -619,7 +619,56 @@
       "emailService": "Email Service",
       "operational": "Operational",
       "degraded": "Degraded",
-      "down": "Down"
+      "down": "Down",
+      "search": "Search in dashboard...",
+      "storage": "Storage",
+      "email": "Email",
+      "totalUsersLabel": "Total Users",
+      "vsLastMonth": "vs. last month",
+      "activeRolesLabel": "Active Roles",
+      "rolesDescription": "configured roles",
+      "permissionsLabel": "Permissions",
+      "completeCatalog": "complete catalog",
+      "activity24hLabel": "24h Activity",
+      "actionsRecorded": "actions recorded",
+      "newUser": "New User",
+      "newUserDesc": "Create a new user account",
+      "newRole": "New Role",
+      "newRoleDesc": "Define a new system role",
+      "managePermissions": "Manage Permissions",
+      "managePermissionsDesc": "Configure system permissions",
+      "viewAudit": "View Audit",
+      "viewAuditDesc": "Review activity logs",
+      "recentActivityTitle": "Recent Activity",
+      "recentActivityDesc": "Latest actions in the system",
+      "noRecentActivity": "No recent activity",
+      "viewAll": "View all",
+      "quickActions": "Quick Actions",
+      "auditLogs": "Audit Logs",
+      "auditLogsDesc": "Review all activity logs",
+      "activityType": {
+        "user_created": "User created",
+        "user_updated": "User updated",
+        "user_deleted": "User deleted",
+        "role_created": "Role created",
+        "role_updated": "Role updated",
+        "permission_granted": "Permission granted",
+        "permission_revoked": "Permission revoked",
+        "login_success": "Login successful",
+        "login_failed": "Login failed"
+      }
+    },
+    "settings": {
+      "title": "Settings",
+      "profile": "Profile",
+      "security": "Security",
+      "notifications": "Notifications"
+    },
+    "userRoles": {
+      "admin": "Administrator",
+      "supervisor": "Supervisor",
+      "agent": "Agent",
+      "user": "User"
     },
     "users": {
       "title": "Users",
@@ -1070,7 +1119,29 @@
     "filterByMinistry": "Filter by ministry",
     "filterBySector": "Filter by sector",
     "resultsFor": "Results for",
-    "backToAll": "Back to all services"
+    "backToAll": "Back to all services",
+    "free": "Free",
+    "serviceTypes": {
+      "administrative": "Administrative",
+      "fiscal": "Fiscal",
+      "legal": "Legal",
+      "customs": "Customs",
+      "mining": "Mining",
+      "commercial": "Commercial",
+      "social": "Social",
+      "transport": "Transport",
+      "agriculture": "Agriculture",
+      "health": "Health",
+      "education": "Education",
+      "other": "Other"
+    },
+    "priceRanges": {
+      "free": "Free",
+      "low": "< 50,000 XAF",
+      "medium": "50,000 - 200,000 XAF",
+      "high": "200,000 - 500,000 XAF",
+      "very_high": "> 500,000 XAF"
+    }
   },
   "serviceDetails": {
     "loading": "Loading service details...",

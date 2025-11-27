@@ -1,9 +1,15 @@
-import { DashboardLayout } from '@/components/layout/DashboardLayout'
+import { setRequestLocale } from 'next-intl/server';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
 
-export default function DashboardRouteLayout({
+export default async function DashboardRouteLayout({
   children,
+  params,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
+  params: Promise<{ locale: string }>;
 }) {
-  return <DashboardLayout>{children}</DashboardLayout>
+  const { locale } = await params;
+  setRequestLocale(locale);
+
+  return <DashboardLayout>{children}</DashboardLayout>;
 }

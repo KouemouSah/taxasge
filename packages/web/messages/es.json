@@ -619,7 +619,56 @@
       "emailService": "Servicio de Email",
       "operational": "Operacional",
       "degraded": "Degradado",
-      "down": "Caído"
+      "down": "Caído",
+      "search": "Buscar en el panel...",
+      "storage": "Almacenamiento",
+      "email": "Email",
+      "totalUsersLabel": "Total de Usuarios",
+      "vsLastMonth": "vs. mes anterior",
+      "activeRolesLabel": "Roles Activos",
+      "rolesDescription": "roles configurados",
+      "permissionsLabel": "Permisos",
+      "completeCatalog": "catálogo completo",
+      "activity24hLabel": "Actividad 24h",
+      "actionsRecorded": "acciones registradas",
+      "newUser": "Nuevo Usuario",
+      "newUserDesc": "Crear una nueva cuenta de usuario",
+      "newRole": "Nuevo Rol",
+      "newRoleDesc": "Definir un nuevo rol del sistema",
+      "managePermissions": "Gestionar Permisos",
+      "managePermissionsDesc": "Configurar permisos del sistema",
+      "viewAudit": "Ver Auditoría",
+      "viewAuditDesc": "Revisar registros de actividad",
+      "recentActivityTitle": "Actividad Reciente",
+      "recentActivityDesc": "Últimas acciones en el sistema",
+      "noRecentActivity": "No hay actividad reciente",
+      "viewAll": "Ver todo",
+      "quickActions": "Acciones Rápidas",
+      "auditLogs": "Registros de Auditoría",
+      "auditLogsDesc": "Revisar todos los registros de actividad",
+      "activityType": {
+        "user_created": "Usuario creado",
+        "user_updated": "Usuario actualizado",
+        "user_deleted": "Usuario eliminado",
+        "role_created": "Rol creado",
+        "role_updated": "Rol actualizado",
+        "permission_granted": "Permiso otorgado",
+        "permission_revoked": "Permiso revocado",
+        "login_success": "Inicio de sesión exitoso",
+        "login_failed": "Intento de inicio de sesión fallido"
+      }
+    },
+    "settings": {
+      "title": "Configuración",
+      "profile": "Perfil",
+      "security": "Seguridad",
+      "notifications": "Notificaciones"
+    },
+    "userRoles": {
+      "admin": "Administrador",
+      "supervisor": "Supervisor",
+      "agent": "Agente",
+      "user": "Usuario"
     },
     "users": {
       "title": "Usuarios",
@@ -1069,7 +1118,29 @@
     "expedition": "Expedición",
     "renewal": "Renovación",
     "searchCompleted": "Búsqueda completada en {time}ms",
-    "cached": "en caché"
+    "cached": "en caché",
+    "free": "Gratuito",
+    "serviceTypes": {
+      "administrative": "Administrativo",
+      "fiscal": "Fiscal",
+      "legal": "Legal",
+      "customs": "Aduanas",
+      "mining": "Minería",
+      "commercial": "Comercial",
+      "social": "Social",
+      "transport": "Transporte",
+      "agriculture": "Agricultura",
+      "health": "Salud",
+      "education": "Educación",
+      "other": "Otro"
+    },
+    "priceRanges": {
+      "free": "Gratuito",
+      "low": "< 50.000 XAF",
+      "medium": "50.000 - 200.000 XAF",
+      "high": "200.000 - 500.000 XAF",
+      "very_high": "> 500.000 XAF"
+    }
   },
   "serviceDetails": {
     "loading": "Cargando detalles del servicio...",
