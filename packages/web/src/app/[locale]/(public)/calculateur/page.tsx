@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Calculator, Building2, Receipt } from 'lucide-react';
+import Breadcrumb from '@/components/ui/breadcrumb';
 
 /**
  * Calculateur Page - Localized
@@ -59,6 +60,11 @@ export default async function CalculateurPage({
 
   return (
     <div className="container mx-auto px-4 py-12">
+      <Breadcrumb
+        items={[{ label: t('title') }]}
+        className="mb-6"
+      />
+
       <div className="mb-8">
         <h1 className="text-4xl font-bold mb-4">{t('title')}</h1>
         <p className="text-lg text-muted-foreground">{t('description')}</p>

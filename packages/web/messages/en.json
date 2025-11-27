@@ -118,6 +118,31 @@
     "comingSoon": "Coming Soon",
     "comingSoonDesc": "This calculator will be available soon"
   },
+  "guidePage": {
+    "title": "Tax Guide",
+    "description": "Guides and resources for managing your tax obligations",
+    "howToDeclaration": "How to Make a Declaration",
+    "howToDeclarationDesc": "Step-by-step guide to complete your tax declaration",
+    "declarationsCategory": "Declarations",
+    "faq": "Frequently Asked Questions",
+    "faqDesc": "Answers to the most common questions about taxes",
+    "faqCategory": "FAQ",
+    "legislation": "Tax Legislation",
+    "legislationDesc": "Legal framework and tax regulations of Equatorial Guinea",
+    "legalCategory": "Legal",
+    "forBusinesses": "For Businesses",
+    "forBusinessesDesc": "Special guide for businesses and self-employed",
+    "businessCategory": "Businesses"
+  },
+  "ministriesPage": {
+    "title": "Ministries",
+    "description": "Explore the ministries of Equatorial Guinea and their tax services",
+    "loading": "Loading ministries...",
+    "errorLoading": "Unable to load ministries",
+    "noMinistries": "No ministries available",
+    "servicesCount": "{count} services",
+    "viewServices": "View services"
+  },
   "auth": {
     "welcome": "Welcome",
     "welcomeSubtitle": "Sign in to access your tax services",

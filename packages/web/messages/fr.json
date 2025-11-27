@@ -118,6 +118,31 @@
     "comingSoon": "Bientôt disponible",
     "comingSoonDesc": "Ce calculateur sera bientôt disponible"
   },
+  "guidePage": {
+    "title": "Guide Fiscal",
+    "description": "Guides et ressources pour gérer vos obligations fiscales",
+    "howToDeclaration": "Comment Faire une Déclaration",
+    "howToDeclarationDesc": "Guide étape par étape pour compléter votre déclaration fiscale",
+    "declarationsCategory": "Déclarations",
+    "faq": "Questions Fréquentes",
+    "faqDesc": "Réponses aux questions les plus courantes sur les impôts",
+    "faqCategory": "FAQ",
+    "legislation": "Législation Fiscale",
+    "legislationDesc": "Cadre juridique et réglementations fiscales de Guinée Équatoriale",
+    "legalCategory": "Légal",
+    "forBusinesses": "Pour les Entreprises",
+    "forBusinessesDesc": "Guide spécial pour les entreprises et les indépendants",
+    "businessCategory": "Entreprises"
+  },
+  "ministriesPage": {
+    "title": "Ministères",
+    "description": "Explorez les ministères de Guinée Équatoriale et leurs services fiscaux",
+    "loading": "Chargement des ministères...",
+    "errorLoading": "Impossible de charger les ministères",
+    "noMinistries": "Aucun ministère disponible",
+    "servicesCount": "{count} services",
+    "viewServices": "Voir les services"
+  },
   "auth": {
     "welcome": "Bienvenue",
     "welcomeSubtitle": "Connectez-vous pour accéder à vos services fiscaux",

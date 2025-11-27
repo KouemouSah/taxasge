@@ -118,6 +118,31 @@
     "comingSoon": "Próximamente",
     "comingSoonDesc": "Esta calculadora estará disponible pronto"
   },
+  "guidePage": {
+    "title": "Guía Fiscal",
+    "description": "Guías y recursos para gestionar tus obligaciones fiscales",
+    "howToDeclaration": "Cómo Hacer una Declaración",
+    "howToDeclarationDesc": "Guía paso a paso para completar tu declaración fiscal",
+    "declarationsCategory": "Declaraciones",
+    "faq": "Preguntas Frecuentes",
+    "faqDesc": "Respuestas a las preguntas más comunes sobre impuestos",
+    "faqCategory": "FAQ",
+    "legislation": "Legislación Fiscal",
+    "legislationDesc": "Marco legal y normativas fiscales de Guinea Ecuatorial",
+    "legalCategory": "Legal",
+    "forBusinesses": "Para Empresas",
+    "forBusinessesDesc": "Guía especial para empresas y autónomos",
+    "businessCategory": "Empresas"
+  },
+  "ministriesPage": {
+    "title": "Ministerios",
+    "description": "Explora los ministerios de Guinea Ecuatorial y sus servicios fiscales",
+    "loading": "Cargando ministerios...",
+    "errorLoading": "No se pudieron cargar los ministerios",
+    "noMinistries": "No hay ministerios disponibles",
+    "servicesCount": "{count} servicios",
+    "viewServices": "Ver servicios"
+  },
   "auth": {
     "welcome": "Bienvenido",
     "welcomeSubtitle": "Inicie sesión para acceder a sus servicios fiscales",

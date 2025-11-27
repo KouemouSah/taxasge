@@ -1,6 +1,7 @@
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, HelpCircle, BookOpen, Users } from 'lucide-react';
+import Breadcrumb from '@/components/ui/breadcrumb';
 
 /**
  * Guide Page - Localized
@@ -12,51 +13,67 @@ import { FileText, HelpCircle, BookOpen, Users } from 'lucide-react';
  * - /en/guide
  */
 
-export async function generateMetadata({ params: { locale } }: { params: { locale: string } }) {
-  const t = await getTranslations({ locale, namespace: 'nav' });
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'guidePage' });
 
   return {
-    title: `${t('guide')} - TaxasGE`,
-    description: 'Guías y documentación para servicios fiscales',
+    title: t('title'),
+    description: t('description'),
   };
 }
 
-export default async function GuidePage({ params: { locale } }: { params: { locale: string } }) {
-  const t = await getTranslations({ locale, namespace: 'nav' });
+export default async function GuidePage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+  const t = await getTranslations({ locale, namespace: 'guidePage' });
 
   const guides = [
     {
       icon: FileText,
-      title: 'Cómo Hacer una Declaración',
-      description: 'Guía paso a paso para completar tu declaración fiscal',
-      category: 'Declaraciones',
+      title: t('howToDeclaration'),
+      description: t('howToDeclarationDesc'),
+      category: t('declarationsCategory'),
     },
     {
       icon: HelpCircle,
-      title: 'Preguntas Frecuentes',
-      description: 'Respuestas a las preguntas más comunes sobre impuestos',
-      category: 'FAQ',
+      title: t('faq'),
+      description: t('faqDesc'),
+      category: t('faqCategory'),
     },
     {
       icon: BookOpen,
-      title: 'Legislación Fiscal',
-      description: 'Marco legal y normativas fiscales de Guinea Ecuatorial',
-      category: 'Legal',
+      title: t('legislation'),
+      description: t('legislationDesc'),
+      category: t('legalCategory'),
     },
     {
       icon: Users,
-      title: 'Para Empresas',
-      description: 'Guía especial para empresas y autónomos',
-      category: 'Empresas',
+      title: t('forBusinesses'),
+      description: t('forBusinessesDesc'),
+      category: t('businessCategory'),
     },
   ];
 
   return (
     <div className="container mx-auto px-4 py-12">
+      <Breadcrumb
+        items={[{ label: t('title') }]}
+        className="mb-6"
+      />
+
       <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-4">{t('guide')}</h1>
+        <h1 className="text-4xl font-bold mb-4">{t('title')}</h1>
         <p className="text-lg text-muted-foreground">
-          Guías y recursos para gestionar tus obligaciones fiscales
+          {t('description')}
         </p>
       </div>
 
