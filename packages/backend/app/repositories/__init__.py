@@ -1,18 +1,12 @@
 """
-Repository exports for backwards compatibility
+Repository exports
 
-The actual implementations are in their respective modules:
-- UserRepository: app.modules.users.repositories.user_repository
-- BaseRepository: app.repositories.base
+BaseRepository is the only export from this package.
+UserRepository should be imported from:
+  - app.repositories.user_repository (backwards compat module)
+  - app.modules.users.repositories.user_repository (actual location)
 """
 
 from app.repositories.base import BaseRepository
 
-# Re-export UserRepository for backwards compatibility
-# Many modules import from app.repositories.user_repository
-try:
-    from app.modules.users.repositories.user_repository import UserRepository
-except ImportError:
-    UserRepository = None  # Will fail at runtime if used
-
-__all__ = ["BaseRepository", "UserRepository"]
+__all__ = ["BaseRepository"]
