@@ -1,7 +1,7 @@
 import createNextIntlPlugin from 'next-intl/plugin';
 
-// Use default path: src/i18n/request.ts (auto-detected by next-intl)
-const withNextIntl = createNextIntlPlugin();
+// Use i18n.ts at project root for Docker build compatibility
+const withNextIntl = createNextIntlPlugin('./i18n.ts');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
