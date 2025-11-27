@@ -58,6 +58,10 @@ RUN chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Copy next-intl configuration and messages (required at runtime)
+COPY --from=builder --chown=nextjs:nodejs /app/src/i18n ./src/i18n
+COPY --from=builder --chown=nextjs:nodejs /app/messages ./messages
+
 # Switch to non-root user
 USER nextjs
 

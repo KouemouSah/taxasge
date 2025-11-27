@@ -75,6 +75,26 @@ export const auditLogsApi = {
 
     return response.items || [];
   },
+
+  /**
+   * Get audit log statistics
+   * BACKEND: GET /api/v1/audit-logs/stats
+   * ROUTE: get_audit_stats() in audit_routes.py:119
+   * PERMISSION: audit.view_stats
+   */
+  getStats: async (params?: {
+    start_date?: string;
+    end_date?: string;
+  }): Promise<{
+    total_logs: number;
+    by_action: Record<string, number>;
+    by_entity_type: Record<string, number>;
+  }> => {
+    return fetchClient.get('/audit-logs/stats', {
+      start_date: params?.start_date,
+      end_date: params?.end_date,
+    });
+  },
 };
 
 // =============================================================================

@@ -5,9 +5,10 @@
  * @module middleware
  */
 
-import createIntlMiddleware from 'next-intl/middleware';
+import createMiddleware from 'next-intl/middleware';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { routing } from './i18n/routing';
 import { locales, defaultLocale } from './i18n/config';
 
 /**
@@ -25,7 +26,7 @@ const PROTECTED_ROUTES = [
 /**
  * Admin-only routes
  */
-const ADMIN_ROUTES = ['/admin', '/agents', '/assignment', '/permissions'];
+const ADMIN_ROUTES = ['/admin', '/dashboard/admin', '/agents', '/assignment', '/permissions'];
 
 /**
  * Public routes (accessible without auth)
@@ -143,12 +144,7 @@ export function middleware(request: NextRequest) {
   }
 
   // 1. Handle i18n (locale detection and routing)
-  const intlMiddleware = createIntlMiddleware({
-    locales,
-    defaultLocale,
-    localeDetection: true,
-    localePrefix: 'always',
-  });
+  const intlMiddleware = createMiddleware(routing);
 
   // Apply i18n middleware first
   const intlResponse = intlMiddleware(request);
