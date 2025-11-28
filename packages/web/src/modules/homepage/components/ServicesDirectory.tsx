@@ -60,10 +60,10 @@ export const ServicesDirectory = () => {
       try {
         setLoading(true);
         setError(null);
-        // Load 100 services to display grouped by letter
+        // Load 300 services (optimized: covers most letters without overload)
         const data = await getServicesByType(selectedType, {
           language: locale,
-          limit: 1000,
+          limit: 300,
         });
         setServicesData(data);
       } catch (err) {
@@ -93,25 +93,39 @@ export const ServicesDirectory = () => {
     router.push(`/${locale}/services?service_type=${selectedType}`);
   };
 
-  // Group services by first letter for display
+  // Group services by first character: A-Z, 0-9 (grouped as "#"), others (grouped as "*")
   const groupServicesByLetter = (services: ServiceByType[]): Record<string, ServiceByType[]> => {
     const grouped: Record<string, ServiceByType[]> = {};
     services.forEach((service) => {
       const name = getServiceName(service);
-      const firstLetter = name.charAt(0).toUpperCase();
-      // Only include valid letters A-Z
-      if (/^[A-Z]$/.test(firstLetter)) {
-        if (!grouped[firstLetter]) {
-          grouped[firstLetter] = [];
-        }
-        grouped[firstLetter].push(service);
+      const firstChar = name.charAt(0).toUpperCase();
+
+      let groupKey: string;
+      if (/^[A-Z]$/.test(firstChar)) {
+        groupKey = firstChar; // Letters A-Z
+      } else if (/^[0-9]$/.test(firstChar)) {
+        groupKey = '#'; // Numbers grouped under "#"
+      } else {
+        groupKey = '*'; // Special characters grouped under "*"
       }
+
+      if (!grouped[groupKey]) {
+        grouped[groupKey] = [];
+      }
+      grouped[groupKey].push(service);
     });
     return grouped;
   };
 
   const groupedServices = servicesData ? groupServicesByLetter(servicesData.services) : {};
-  const availableLetters = Object.keys(groupedServices).sort();
+  // Sort: # (numbers) first, then A-Z, then * (special) at end
+  const availableLetters = Object.keys(groupedServices).sort((a, b) => {
+    if (a === '#') return -1;
+    if (b === '#') return 1;
+    if (a === '*') return 1;
+    if (b === '*') return -1;
+    return a.localeCompare(b);
+  });
 
   // Group letters in chunks of 3 for 3-column layout (A/B/C, D/E/F, etc.)
   const groupLettersInChunks = (letters: string[]): string[][] => {

@@ -195,7 +195,7 @@ class HomepageRepository:
         service_type: str,
         language: str = "es",
         letter: Optional[str] = None,
-        limit: int = 1000
+        limit: int = 300
     ) -> Dict[str, Any]:
         """
         Get services filtered by type and optionally by first letter
