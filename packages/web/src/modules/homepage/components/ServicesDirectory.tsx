@@ -43,9 +43,6 @@ const SERVICE_TYPES: Array<{
   { type: 'declaration_tax', icon: Receipt, colorClass: 'text-pink-600' },
 ];
 
-// Alphabet for grouping
-const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-
 export const ServicesDirectory = () => {
   const router = useRouter();
   const locale = useLocale();
@@ -66,7 +63,7 @@ export const ServicesDirectory = () => {
         // Load 100 services to display grouped by letter
         const data = await getServicesByType(selectedType, {
           language: locale,
-          limit: 100,
+          limit: 1000,
         });
         setServicesData(data);
       } catch (err) {
@@ -103,7 +100,7 @@ export const ServicesDirectory = () => {
       const name = getServiceName(service);
       const firstLetter = name.charAt(0).toUpperCase();
       // Only include valid letters A-Z
-      if (ALPHABET.includes(firstLetter)) {
+      if (/^[A-Z]$/.test(firstLetter)) {
         if (!grouped[firstLetter]) {
           grouped[firstLetter] = [];
         }
@@ -181,26 +178,6 @@ export const ServicesDirectory = () => {
         {/* Services Display - 3 Column Layout by Letter */}
         {!loading && servicesData && servicesData.services.length > 0 && (
           <>
-            {/* Alphabetical anchor navigation */}
-            <div className="mb-6 flex flex-wrap gap-1 justify-center bg-muted/50 p-3 rounded-lg">
-              {ALPHABET.map((letter) => {
-                const hasServices = availableLetters.includes(letter);
-                return (
-                  <a
-                    key={letter}
-                    href={hasServices ? `#letter-${letter}` : undefined}
-                    className={`w-8 h-8 flex items-center justify-center rounded text-sm font-medium transition-colors ${
-                      hasServices
-                        ? 'bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer'
-                        : 'bg-muted text-muted-foreground cursor-not-allowed opacity-50'
-                    }`}
-                  >
-                    {letter}
-                  </a>
-                );
-              })}
-            </div>
-
             {/* Services grouped by letter in 3-column layout */}
             <div className="space-y-8">
               {letterChunks.map((chunk, chunkIndex) => (
@@ -217,24 +194,19 @@ export const ServicesDirectory = () => {
                         </span>
                       </div>
 
-                      {/* Services List - Vertical */}
-                      <div className="space-y-1">
-                        {groupedServices[letter].slice(0, 8).map((service) => (
+                      {/* Services List - Vertical with alternating colors */}
+                      <div className="space-y-0">
+                        {groupedServices[letter].slice(0, 8).map((service, index) => (
                           <div
                             key={service.id}
-                            className="group cursor-pointer p-2 rounded hover:bg-muted/50 transition-colors"
+                            className={`group cursor-pointer p-2 rounded transition-colors ${
+                              index % 2 === 0 ? 'bg-muted/30' : 'bg-background'
+                            } hover:bg-primary/10`}
                             onClick={() => router.push(`/${locale}/services/${service.id}`)}
                           >
                             <p className="text-sm group-hover:text-primary transition-colors line-clamp-1">
                               {getServiceName(service)}
                             </p>
-                            {service.tasa_expedicion !== null && service.tasa_expedicion !== undefined && (
-                              <p className="text-xs text-muted-foreground">
-                                {service.tasa_expedicion === 0
-                                  ? 'Gratis'
-                                  : `${service.tasa_expedicion.toLocaleString()} FCFA`}
-                              </p>
-                            )}
                           </div>
                         ))}
                       </div>
