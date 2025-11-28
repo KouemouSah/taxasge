@@ -116,6 +116,17 @@ export const ServicesDirectory = () => {
   const groupedServices = servicesData ? groupServicesByLetter(servicesData.services) : {};
   const availableLetters = Object.keys(groupedServices).sort();
 
+  // Group letters in chunks of 3 for 3-column layout (A/B/C, D/E/F, etc.)
+  const groupLettersInChunks = (letters: string[]): string[][] => {
+    const chunks: string[][] = [];
+    for (let i = 0; i < letters.length; i += 3) {
+      chunks.push(letters.slice(i, i + 3));
+    }
+    return chunks;
+  };
+
+  const letterChunks = groupLettersInChunks(availableLetters);
+
   return (
     <section className="py-16 bg-background">
       <div className="container mx-auto px-4">
@@ -167,7 +178,7 @@ export const ServicesDirectory = () => {
           </div>
         )}
 
-        {/* Services Display - Grouped by Letter */}
+        {/* Services Display - 3 Column Layout by Letter */}
         {!loading && servicesData && servicesData.services.length > 0 && (
           <>
             {/* Alphabetical anchor navigation */}
@@ -190,51 +201,56 @@ export const ServicesDirectory = () => {
               })}
             </div>
 
-            {/* Services grouped by letter */}
+            {/* Services grouped by letter in 3-column layout */}
             <div className="space-y-8">
-              {availableLetters.map((letter) => (
-                <div key={letter} id={`letter-${letter}`} className="scroll-mt-20">
-                  {/* Letter Header */}
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="h-12 w-12 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-xl">
-                      {letter}
-                    </div>
-                    <div className="h-px flex-1 bg-border" />
-                    <span className="text-sm text-muted-foreground">
-                      {groupedServices[letter].length} services
-                    </span>
-                  </div>
-
-                  {/* Services Grid - 3 columns */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {groupedServices[letter].slice(0, 10).map((service) => (
-                      <Card
-                        key={service.id}
-                        className="group cursor-pointer hover:shadow-md transition-all duration-200 hover:border-primary/50"
-                        onClick={() => router.push(`/${locale}/services/${service.id}`)}
-                      >
-                        <div className="p-4">
-                          <h3 className="font-medium text-sm group-hover:text-primary transition-colors line-clamp-2">
-                            {getServiceName(service)}
-                          </h3>
-                          {service.tasa_expedicion !== null && service.tasa_expedicion !== undefined && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {service.tasa_expedicion === 0
-                                ? 'Gratis'
-                                : `${service.tasa_expedicion.toLocaleString()} GNF`}
-                            </p>
-                          )}
+              {letterChunks.map((chunk, chunkIndex) => (
+                <div key={chunkIndex} className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {chunk.map((letter) => (
+                    <div key={letter} id={`letter-${letter}`} className="scroll-mt-20">
+                      {/* Letter Header */}
+                      <div className="flex items-center gap-2 mb-3 pb-2 border-b border-border">
+                        <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
+                          {letter}
                         </div>
-                      </Card>
-                    ))}
-                  </div>
+                        <span className="text-xs text-muted-foreground">
+                          {groupedServices[letter].length} services
+                        </span>
+                      </div>
 
-                  {/* Show "more" indicator if there are more than 10 services for this letter */}
-                  {groupedServices[letter].length > 10 && (
-                    <p className="text-sm text-muted-foreground mt-2 text-center">
-                      +{groupedServices[letter].length - 10} más...
-                    </p>
-                  )}
+                      {/* Services List - Vertical */}
+                      <div className="space-y-1">
+                        {groupedServices[letter].slice(0, 8).map((service) => (
+                          <div
+                            key={service.id}
+                            className="group cursor-pointer p-2 rounded hover:bg-muted/50 transition-colors"
+                            onClick={() => router.push(`/${locale}/services/${service.id}`)}
+                          >
+                            <p className="text-sm group-hover:text-primary transition-colors line-clamp-1">
+                              {getServiceName(service)}
+                            </p>
+                            {service.tasa_expedicion !== null && service.tasa_expedicion !== undefined && (
+                              <p className="text-xs text-muted-foreground">
+                                {service.tasa_expedicion === 0
+                                  ? 'Gratis'
+                                  : `${service.tasa_expedicion.toLocaleString()} FCFA`}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Show "more" indicator if there are more than 8 services for this letter */}
+                      {groupedServices[letter].length > 8 && (
+                        <p className="text-xs text-muted-foreground mt-1 pl-2">
+                          +{groupedServices[letter].length - 8} más...
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                  {/* Fill empty columns if chunk has less than 3 letters */}
+                  {chunk.length < 3 && Array.from({ length: 3 - chunk.length }).map((_, i) => (
+                    <div key={`empty-${i}`} />
+                  ))}
                 </div>
               ))}
             </div>

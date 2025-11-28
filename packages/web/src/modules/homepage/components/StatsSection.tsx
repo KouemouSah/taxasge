@@ -78,22 +78,22 @@ export const StatsSection = () => {
             return (
               <Card
                 key={stat.label}
-                className="relative overflow-hidden group hover:shadow-lg transition-all duration-300"
+                className="relative overflow-hidden group hover:shadow-md transition-all duration-300"
               >
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <Icon className={`h-8 w-8 ${stat.color}`} />
-                    <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center opacity-50 group-hover:opacity-100 transition-opacity">
-                      <Icon className={`h-6 w-6 ${stat.color}`} />
+                <div className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <Icon className={`h-6 w-6 ${stat.color}`} />
+                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center opacity-50 group-hover:opacity-100 transition-opacity">
+                      <Icon className={`h-5 w-5 ${stat.color}`} />
                     </div>
                   </div>
-                  <div className="space-y-1">
-                    <div className="text-3xl font-bold">{stat.value}</div>
-                    <div className="font-semibold text-foreground">{stat.label}</div>
-                    <div className="text-sm text-muted-foreground">{stat.description}</div>
+                  <div className="space-y-0.5">
+                    <div className="text-2xl font-bold">{stat.value}</div>
+                    <div className="font-medium text-sm text-foreground">{stat.label}</div>
+                    <div className="text-xs text-muted-foreground">{stat.description}</div>
                   </div>
                 </div>
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-primary to-primary/50 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary to-primary/50 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
               </Card>
             );
           })}
