@@ -124,9 +124,10 @@ const nextConfig = {
   },
 
   // Environment variables (public, prefixed with NEXT_PUBLIC_)
+  // Note: NEXT_PUBLIC_API_URL is the canonical var set by GitHub Actions
   env: {
-    NEXT_PUBLIC_API_BASE_URL:
-      process.env.NEXT_PUBLIC_API_BASE_URL || 'https://taxasge-backend-dev.run.app',
+    NEXT_PUBLIC_API_URL:
+      process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'https://taxasge-backend-dev.run.app',
     NEXT_PUBLIC_SITE_URL:
       process.env.NEXT_PUBLIC_SITE_URL || 'https://taxasge-frontend-dev.run.app',
     NEXT_PUBLIC_ENVIRONMENT: process.env.NEXT_PUBLIC_ENVIRONMENT || 'development',

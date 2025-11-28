@@ -12,8 +12,9 @@ export const appConfig = {
   },
 
   // API Configuration
+  // Note: NEXT_PUBLIC_API_URL is set by GitHub Actions deployment workflow
   api: {
-    baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || 'https://taxasge-backend-dev.run.app',
+    baseUrl: process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'https://taxasge-backend-dev.run.app',
     version: process.env.NEXT_PUBLIC_API_VERSION || 'v1',
     timeout: parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT || '30000', 10),
   },
