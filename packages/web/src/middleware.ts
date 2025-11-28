@@ -208,6 +208,14 @@ export function middleware(request: NextRequest) {
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
+  // CSP: Allow API calls to Cloud Run backend services
+  const apiOrigins = [
+    'https://taxasge-backend-staging-xrlbgdr5eq-uc.a.run.app',  // Cloud Run staging
+    'https://taxasge-backend-staging-392159428433.us-central1.run.app',  // Cloud Run staging alt
+    'https://taxasge-backend-dev.run.app',  // Legacy dev
+    'https://taxasge-backend-prod.run.app',  // Legacy prod
+  ].join(' ');
+
   response.headers.set(
     'Content-Security-Policy',
     [
@@ -216,7 +224,7 @@ export function middleware(request: NextRequest) {
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https:",
       "font-src 'self' data:",
-      "connect-src 'self' https://taxasge-backend-dev.run.app https://taxasge-backend-prod.run.app",
+      `connect-src 'self' ${apiOrigins}`,
       "frame-ancestors 'none'",
     ].join('; ')
   );
