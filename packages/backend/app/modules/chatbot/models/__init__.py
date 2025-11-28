@@ -1,7 +1,6 @@
 """Chatbot Models"""
 
 from app.modules.chatbot.models.chatbot import (
-    LanguageCode,
     ChatMessage,
     ChatRequest,
     ChatResponse,
@@ -21,7 +20,6 @@ from app.modules.chatbot.models.chatbot import (
 )
 
 __all__ = [
-    "LanguageCode",
     "ChatMessage",
     "ChatRequest",
     "ChatResponse",
