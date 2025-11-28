@@ -9,7 +9,7 @@ import asyncpg
 import redis.asyncio as redis
 from loguru import logger
 
-from app.modules.homepage.models import HomepageStats, CategoryDirectory
+from app.modules.homepage.models import HomepageStats, CategoryDirectory, ServicesByTypeResponse
 from app.modules.homepage.services import HomepageService
 
 
@@ -178,6 +178,109 @@ async def get_category_directory(
         )
     except Exception as e:
         logger.error(f"Unexpected error in get_category_directory: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/services-by-type", response_model=ServicesByTypeResponse, summary="Get Services by Type")
+async def get_services_by_type(
+    type: str = Query(
+        ...,
+        description="Service type (document_processing, license_permit, residence_permit, registration_fee, inspection_fee, administrative_tax, customs_duty, declaration_tax)"
+    ),
+    letter: Optional[str] = Query(
+        None,
+        pattern="^[A-Z]$",
+        description="Filter by first letter (A-Z)"
+    ),
+    language: str = Query(
+        "es",
+        pattern="^(es|fr|en)$",
+        description="Language code for translations"
+    ),
+    limit: int = Query(
+        10,
+        ge=1,
+        le=100,
+        description="Maximum number of services to return (1-100)"
+    ),
+    service: HomepageService = Depends(get_homepage_service)
+):
+    """
+    Get services filtered by service type and optionally by first letter
+
+    **Service Types:**
+    - `document_processing`: Document processing services
+    - `license_permit`: License and permit services
+    - `residence_permit`: Residence permit services
+    - `registration_fee`: Registration fees
+    - `inspection_fee`: Inspection fees
+    - `administrative_tax`: Administrative taxes
+    - `customs_duty`: Customs duties
+    - `declaration_tax`: Declaration taxes
+
+    **Query Parameters:**
+    - `type` (required): Service type filter
+    - `letter` (optional): Filter by first letter A-Z
+    - `language` (optional): Language for translations (es/fr/en), default: es
+    - `limit` (optional): Max results (1-100), default: 10
+
+    **Returns:**
+    - List of services matching the filters
+    - Total count of services for this type/letter
+    - Flag indicating if there are more results beyond the limit
+
+    **Examples:**
+    ```
+    GET /homepage/services-by-type?type=document_processing
+    GET /homepage/services-by-type?type=license_permit&letter=A
+    GET /homepage/services-by-type?type=customs_duty&letter=C&limit=20&language=fr
+    ```
+
+    **Performance:**
+    - Optimized query with translations
+    - Typically returns in ~15-30ms
+    """
+    try:
+        # Validate service type enum value
+        valid_types = [
+            "document_processing",
+            "license_permit",
+            "residence_permit",
+            "registration_fee",
+            "inspection_fee",
+            "administrative_tax",
+            "customs_duty",
+            "declaration_tax"
+        ]
+
+        if type not in valid_types:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid service type. Must be one of: {', '.join(valid_types)}"
+            )
+
+        result = await service.get_services_by_type(
+            service_type=type,
+            language=language,
+            letter=letter,
+            limit=limit
+        )
+
+        return ServicesByTypeResponse(**result)
+
+    except HTTPException:
+        raise
+    except asyncpg.PostgresError as e:
+        logger.error(f"Database error in get_services_by_type: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error in get_services_by_type: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Internal server error: {str(e)}"

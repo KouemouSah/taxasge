@@ -14,8 +14,6 @@ import {
   Building2, MapPin, Calendar, DollarSign,
   ChevronRight, Info, Scale
 } from "lucide-react"
-import Header from "@/components/layout/Header"
-import Footer from "@/components/layout/Footer"
 import Breadcrumb from "@/components/ui/breadcrumb"
 import {
   getServiceDetails,
@@ -75,17 +73,11 @@ export default function ServiceDetailsPage() {
   // Loading state
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-col">
-        <Header />
-        <main className="flex-1 bg-background">
-          <div className="container mx-auto px-4 py-8">
-            <div className="flex justify-center items-center py-20">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <span className="ml-3 text-muted-foreground">{t('loading')}</span>
-            </div>
-          </div>
-        </main>
-        <Footer />
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-center items-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-3 text-muted-foreground">{t('loading')}</span>
+        </div>
       </div>
     )
   }
@@ -93,35 +85,25 @@ export default function ServiceDetailsPage() {
   // Error state
   if (error || !service) {
     return (
-      <div className="flex min-h-screen flex-col">
-        <Header />
-        <main className="flex-1 bg-background">
-          <div className="container mx-auto px-4 py-8">
-            <Alert variant="destructive" className="max-w-2xl mx-auto">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                {error || t('errorLoading')}
-              </AlertDescription>
-            </Alert>
-            <div className="text-center mt-6">
-              <Button onClick={() => router.back()} variant="outline">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                {t('backToServices')}
-              </Button>
-            </div>
-          </div>
-        </main>
-        <Footer />
+      <div className="container mx-auto px-4 py-8">
+        <Alert variant="destructive" className="max-w-2xl mx-auto">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            {error || t('errorLoading')}
+          </AlertDescription>
+        </Alert>
+        <div className="text-center mt-6">
+          <Button onClick={() => router.back()} variant="outline">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            {t('backToServices')}
+          </Button>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <Header />
-
-      <main className="flex-1 bg-background">
-        <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8">
           {/* Breadcrumbs */}
           <Breadcrumb
             items={[
@@ -159,9 +141,9 @@ export default function ServiceDetailsPage() {
                     </Badge>
                   )}
                 </div>
-                <h1 className="text-3xl font-bold mb-2">{service.name}</h1>
+                <h1 className="text-3xl font-bold">{service.name}</h1>
                 {service.description && (
-                  <p className="text-lg text-muted-foreground">{service.description}</p>
+                  <p className="text-lg text-muted-foreground mt-2">{service.description}</p>
                 )}
               </div>
 
@@ -169,22 +151,85 @@ export default function ServiceDetailsPage() {
               <Card className="lg:w-80">
                 <CardContent className="p-6">
                   <div className="space-y-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-1">{t('expeditionPrice')}</p>
-                      <p className="text-2xl font-bold text-primary">
-                        {formatPrice(service.pricing.expedition_price, service.pricing.currency)}
-                      </p>
-                    </div>
-                    {service.requires_renewal && (
-                      <div>
-                        <p className="text-sm text-muted-foreground mb-1">{t('renewalPrice')}</p>
-                        <p className="text-xl font-semibold">
-                          {formatPrice(service.pricing.renewal_price, service.pricing.currency)}
-                        </p>
-                      </div>
-                    )}
+                    {/* Pricing Display Logic */}
+                    {(() => {
+                      const expeditionPrice = service.pricing.expedition_price;
+                      const renewalPrice = service.pricing.renewal_price;
+                      const calculationMethod = service.pricing.calculation_method;
+                      const isFormulaBased = calculationMethod === 'formula_based' ||
+                                             calculationMethod === 'percentage_based' ||
+                                             calculationMethod === 'unit_based' ||
+                                             calculationMethod === 'tiered_rates' ||
+                                             calculationMethod === 'fixed_plus_unit';
+
+                      // Case 3: Free service (price == 0)
+                      if (expeditionPrice === 0 && renewalPrice === 0) {
+                        return (
+                          <div className="text-center">
+                            <Badge variant="secondary" className="bg-green-100 text-green-800 text-lg px-4 py-2">
+                              {t('free')}
+                            </Badge>
+                          </div>
+                        );
+                      }
+
+                      // Case 4: Formula-based pricing - show calculate button
+                      if (isFormulaBased) {
+                        return (
+                          <div className="space-y-3">
+                            <div className="text-center">
+                              <p className="text-sm text-muted-foreground mb-2">{t('calculationMethod')}</p>
+                              <p className="font-medium mb-4">
+                                {getCalculationMethodLabel(calculationMethod, locale)}
+                              </p>
+                              <Button
+                                onClick={() => router.push(`/${locale}/calculateur?service_id=${service.id}`)}
+                                className="w-full"
+                              >
+                                <DollarSign className="h-4 w-4 mr-2" />
+                                Calculer
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // Case 2: Same price for expedition and renewal
+                      if (expeditionPrice === renewalPrice && expeditionPrice > 0) {
+                        return (
+                          <div>
+                            <p className="text-sm text-muted-foreground mb-1">{t('expeditionPrice')}</p>
+                            <p className="text-2xl font-bold text-primary">
+                              {formatPrice(expeditionPrice, service.pricing.currency)}
+                            </p>
+                          </div>
+                        );
+                      }
+
+                      // Case 1: Different prices for expedition and renewal
+                      return (
+                        <>
+                          <div>
+                            <p className="text-sm text-muted-foreground mb-1">{t('expeditionPrice')}</p>
+                            <p className="text-2xl font-bold text-primary">
+                              {formatPrice(expeditionPrice, service.pricing.currency)}
+                            </p>
+                          </div>
+                          {service.requires_renewal && renewalPrice > 0 && (
+                            <div>
+                              <p className="text-sm text-muted-foreground mb-1">{t('renewalPrice')}</p>
+                              <p className="text-xl font-semibold">
+                                {formatPrice(renewalPrice, service.pricing.currency)}
+                              </p>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+
+                    {/* Additional Info */}
                     {service.processing_time_days && (
-                      <div className="flex items-center text-muted-foreground">
+                      <div className="flex items-center text-muted-foreground pt-3 border-t">
                         <Clock className="h-4 w-4 mr-2" />
                         <span>{t('processingTime', { days: service.processing_time_days })}</span>
                       </div>
@@ -560,10 +605,6 @@ export default function ServiceDetailsPage() {
             </TabsContent>
           </Tabs>
         </div>
-      </main>
-
-      <Footer />
-    </div>
   )
 }
 

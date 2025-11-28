@@ -27,7 +27,9 @@
     "next": "Next",
     "pageOf": "Page {current} of {total}",
     "of": "of",
-    "clear": "Clear"
+    "clear": "Clear",
+    "active": "Active",
+    "free": "Free"
   },
   "nav": {
     "home": "Home",
@@ -93,15 +95,50 @@
     "upToDateDesc": "Database regularly updated with the latest rates and procedures. More than 19,000 validated and verified records."
   },
   "directory": {
-    "title": "Tax Services Directory",
-    "loadingDescription": "Loading directory...",
-    "description": "Explore our catalog of {services} tax services distributed across {categories} categories to simplify your administrative procedures.",
-    "loading": "Loading directory...",
-    "errorLoading": "Unable to load directory",
-    "empty": "No categories available",
-    "emptyDescription": "The services directory is not yet available.",
-    "seeAllCategories": "See all categories",
-    "servicesCount": "{count} services"
+    "title": "Services Directory by Type",
+    "description": "Select a service type to explore available fiscal services.",
+    "loading": "Loading services...",
+    "errorLoading": "Failed to load services",
+    "empty": "No services found",
+    "emptyDescription": "No services available for this type and letter.",
+    "selectType": "Select a service type",
+    "selectTypeDescription": "Click on one of the service types above to see available services.",
+    "showing": "Showing {count} of {total} services",
+    "seeMore": "See more services"
+  },
+  "serviceTypes": {
+    "document_processing": {
+      "name": "Document Processing",
+      "description": "Official document processing services"
+    },
+    "license_permit": {
+      "name": "Licenses and Permits",
+      "description": "Obtaining licenses and administrative permits"
+    },
+    "residence_permit": {
+      "name": "Residence Permits",
+      "description": "Services related to residence permits"
+    },
+    "registration_fee": {
+      "name": "Registration Fees",
+      "description": "Registration and enrollment fees"
+    },
+    "inspection_fee": {
+      "name": "Inspection Fees",
+      "description": "Fees related to official inspections"
+    },
+    "administrative_tax": {
+      "name": "Administrative Taxes",
+      "description": "Administrative taxes and fees"
+    },
+    "customs_duty": {
+      "name": "Customs Duties",
+      "description": "Customs duties and taxes"
+    },
+    "declaration_tax": {
+      "name": "Declaration Taxes",
+      "description": "Taxes related to fiscal declarations"
+    }
   },
   "calculatorPage": {
     "title": "Tax Calculator",
@@ -143,7 +180,27 @@
     "noMinistries": "No ministries available",
     "noResults": "No ministries found",
     "servicesCount": "{count} services",
-    "viewServices": "View services"
+    "viewServices": "View services",
+    "sortNameAsc": "Alphabetical A-Z",
+    "sortNameDesc": "Alphabetical Z-A",
+    "sortCountDesc": "Most services first"
+  },
+  "ministryDetail": {
+    "title": "Ministry Details",
+    "ministries": "Ministries",
+    "code": "Code",
+    "back": "Back",
+    "backToMinistries": "Back to Ministries",
+    "notFound": "Ministry not found",
+    "errorLoading": "Error loading ministry details",
+    "totalSectors": "Total Sectors",
+    "totalCategories": "Total Categories",
+    "totalServices": "Total Services",
+    "information": "Information",
+    "services": "Services",
+    "noServices": "No services available for this ministry",
+    "expeditionPrice": "Expedition price",
+    "page": "Page"
   },
   "auth": {
     "welcome": "Welcome",
@@ -1146,8 +1203,15 @@
     "sortBy": "Sort by",
     "sortRelevance": "Relevance",
     "sortName": "Name",
+    "sortNameAsc": "Name (A-Z)",
+    "sortNameDesc": "Name (Z-A)",
+    "sortPriceAsc": "Price (Low to High)",
+    "sortPriceDesc": "Price (High to Low)",
     "sortPopularity": "Popularity",
     "sortRecent": "Recent",
+    "viewGrid": "Grid",
+    "viewList": "List",
+    "calculate": "Calculate",
     "loading": "Loading services...",
     "searching": "Searching...",
     "resultsFound": "{count} services found",

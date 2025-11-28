@@ -30,6 +30,8 @@ from app.modules.chatbot.models import (
 from app.modules.chatbot.services import chatbot_service
 from app.modules.auth.middleware.auth_middleware import get_current_user, get_current_user_optional
 from app.modules.users.models import UserResponse
+from app.database.connection import get_database as get_db
+import asyncpg
 
 router = APIRouter(tags=["Chatbot"])
 
@@ -86,7 +88,8 @@ async def get_chatbot_info():
 @router.post("/chat", response_model=ChatResponse)
 async def chat(
     request: ChatRequest,
-    current_user: Optional[UserResponse] = Depends(get_current_user_optional)
+    current_user: Optional[UserResponse] = Depends(get_current_user_optional),
+    db: asyncpg.Connection = Depends(get_db)
 ):
     """
     Interactive AI chat assistance for fiscal services
@@ -107,7 +110,8 @@ async def chat(
         ai_response = await chatbot_service.chat(
             message=request.message,
             context=context,
-            language=request.language.value
+            language=request.language.value,
+            db=db  # CRITICAL: Pass db connection for RAG to work
         )
 
         logger.info(f"Chat processed - User: {current_user.id if current_user else 'anonymous'}")
@@ -136,7 +140,8 @@ async def chat_stream(
     message: str = Query(..., min_length=1, max_length=2000),
     conversation_id: Optional[str] = Query(None),
     language: LanguageCode = Query(LanguageCode.SPANISH),
-    current_user: Optional[UserResponse] = Depends(get_current_user_optional)
+    current_user: Optional[UserResponse] = Depends(get_current_user_optional),
+    db: asyncpg.Connection = Depends(get_db)
 ):
     """
     Streaming AI chat for real-time responses
@@ -156,7 +161,7 @@ async def chat_stream(
         # Create streaming response
         async def generate_stream() -> AsyncGenerator[str, None]:
             try:
-                async for chunk in chatbot_service.chat_stream(message, context, language.value):
+                async for chunk in chatbot_service.chat_stream(message, context, language.value, db=db):
                     yield f"data: {json.dumps(chunk)}\n\n"
 
                 # Send completion signal
@@ -190,7 +195,8 @@ async def chat_stream(
 @router.post("/search", response_model=AISearchResponse)
 async def ai_search(
     request: AISearchRequest,
-    current_user: Optional[UserResponse] = Depends(get_current_user_optional)
+    current_user: Optional[UserResponse] = Depends(get_current_user_optional),
+    db: asyncpg.Connection = Depends(get_db)
 ):
     """
     AI-powered intelligent search for fiscal services
@@ -206,7 +212,8 @@ async def ai_search(
             user_context={
                 "user_id": str(current_user.id) if current_user else None,
                 "user_role": current_user.role.value if current_user else "guest"
-            }
+            },
+            db=db  # Pass db connection for RAG semantic search
         )
 
         return AISearchResponse(
@@ -232,7 +239,8 @@ async def ai_search(
 @router.post("/recommend", response_model=RecommendationResponse)
 async def get_recommendations(
     request: RecommendationRequest,
-    current_user: Optional[UserResponse] = Depends(get_current_user_optional)
+    current_user: Optional[UserResponse] = Depends(get_current_user_optional),
+    db: asyncpg.Connection = Depends(get_db)
 ):
     """
     Get AI-powered service recommendations
@@ -247,7 +255,8 @@ async def get_recommendations(
             user_profile={
                 "user_id": str(current_user.id) if current_user else None,
                 "user_role": current_user.role.value if current_user else "guest"
-            }
+            },
+            db=db  # Pass db connection for RAG recommendations
         )
 
         return RecommendationResponse(

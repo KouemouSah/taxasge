@@ -7,11 +7,13 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Building2, Loader2, LayoutGrid, List, ArrowRight, Search } from 'lucide-react';
 import Breadcrumb from '@/components/ui/breadcrumb';
 import { searchServices, type SearchResponse, type FacetItem } from '@/core/api/services';
 
 type ViewMode = 'kanban' | 'list';
+type SortOption = 'name-asc' | 'name-desc' | 'count-desc';
 
 export default function MinisterePage() {
   const params = useParams();
@@ -25,6 +27,7 @@ export default function MinisterePage() {
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortOption, setSortOption] = useState<SortOption>('name-asc');
 
   useEffect(() => {
     async function fetchMinistries() {
@@ -53,18 +56,38 @@ export default function MinisterePage() {
     fetchMinistries();
   }, [locale, t]);
 
-  // Filter ministries based on search query
+  // Filter and sort ministries based on search query and sort option
   const filteredMinistries = useMemo(() => {
-    if (!searchQuery.trim()) return ministries;
-    const query = searchQuery.toLowerCase();
-    return ministries.filter(ministry =>
-      ministry.name?.toLowerCase().includes(query)
-    );
-  }, [ministries, searchQuery]);
+    let result = ministries;
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(ministry =>
+        ministry.name?.toLowerCase().includes(query)
+      );
+    }
+
+    // Sort
+    const sorted = [...result];
+    switch (sortOption) {
+      case 'name-asc':
+        sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        break;
+      case 'name-desc':
+        sorted.sort((a, b) => (b.name || '').localeCompare(a.name || ''));
+        break;
+      case 'count-desc':
+        sorted.sort((a, b) => (b.count || 0) - (a.count || 0));
+        break;
+    }
+
+    return sorted;
+  }, [ministries, searchQuery, sortOption]);
 
   const handleMinistryClick = (ministry: FacetItem) => {
     if (ministry.id) {
-      router.push(`/${locale}/services?ministry=${ministry.id}`);
+      router.push(`/${locale}/ministere/${ministry.id}`);
     }
   };
 
@@ -107,10 +130,10 @@ export default function MinisterePage() {
         )}
       </div>
 
-      {/* Search bar */}
+      {/* Search and Sort */}
       {!loading && ministries.length > 0 && (
-        <div className="mb-8">
-          <div className="relative max-w-md">
+        <div className="mb-8 flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
             <Input
               type="text"
@@ -120,6 +143,16 @@ export default function MinisterePage() {
               className="pl-10 pr-4 py-5"
             />
           </div>
+          <Select value={sortOption} onValueChange={(value) => setSortOption(value as SortOption)}>
+            <SelectTrigger className="w-full sm:w-[240px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name-asc">{t('sortNameAsc')}</SelectItem>
+              <SelectItem value="name-desc">{t('sortNameDesc')}</SelectItem>
+              <SelectItem value="count-desc">{t('sortCountDesc')}</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       )}
 

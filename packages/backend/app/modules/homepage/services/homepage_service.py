@@ -170,3 +170,49 @@ class HomepageService:
         results["timestamp"] = datetime.utcnow().isoformat()
 
         return results
+
+    # ========================================================================
+    # SERVICES BY TYPE
+    # ========================================================================
+
+    async def get_services_by_type(
+        self,
+        service_type: str,
+        language: str = "es",
+        letter: Optional[str] = None,
+        limit: int = 10
+    ) -> Dict[str, Any]:
+        """
+        Get services filtered by service type and optionally by first letter
+
+        Args:
+            service_type: Service type (e.g., 'document_processing')
+            language: Language code (es, fr, en)
+            letter: Optional first letter filter (A-Z)
+            limit: Maximum number of services to return
+
+        Returns:
+            Dict with services, total count, and has_more flag
+        """
+        start_time = datetime.now()
+
+        # Query repository (no caching for now, can be added later)
+        result = await self.repository.get_services_by_type(
+            service_type=service_type,
+            language=language,
+            letter=letter,
+            limit=limit
+        )
+
+        # Add metadata
+        result["type"] = service_type
+        result["letter"] = letter
+
+        execution_time = (datetime.now() - start_time).total_seconds() * 1000
+        logger.info(
+            f"Services by type query: type={service_type}, letter={letter}, "
+            f"count={len(result['services'])}, total={result['total']}, "
+            f"time={execution_time:.2f}ms"
+        )
+
+        return result

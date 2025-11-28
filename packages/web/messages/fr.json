@@ -27,7 +27,9 @@
     "next": "Suivant",
     "pageOf": "Page {current} sur {total}",
     "of": "sur",
-    "clear": "Effacer"
+    "clear": "Effacer",
+    "active": "Actif",
+    "free": "Gratuit"
   },
   "nav": {
     "home": "Accueil",
@@ -93,15 +95,50 @@
     "upToDateDesc": "Base de données mise à jour régulièrement avec les derniers tarifs et procédures. Plus de 19 000 enregistrements validés et vérifiés."
   },
   "directory": {
-    "title": "Annuaire des Services Fiscaux",
-    "loadingDescription": "Chargement de l'annuaire...",
-    "description": "Explorez notre catalogue de {services} services fiscaux répartis dans {categories} catégories pour simplifier vos démarches administratives.",
-    "loading": "Chargement de l'annuaire...",
-    "errorLoading": "Impossible de charger l'annuaire",
-    "empty": "Aucune catégorie disponible",
-    "emptyDescription": "L'annuaire des services n'est pas encore disponible.",
-    "seeAllCategories": "Voir toutes les catégories",
-    "servicesCount": "{count} services"
+    "title": "Répertoire des Services par Type",
+    "description": "Sélectionnez un type de service pour explorer les services fiscaux disponibles.",
+    "loading": "Chargement des services...",
+    "errorLoading": "Impossible de charger les services",
+    "empty": "Aucun service trouvé",
+    "emptyDescription": "Aucun service disponible pour ce type et cette lettre.",
+    "selectType": "Sélectionnez un type de service",
+    "selectTypeDescription": "Cliquez sur l'un des types de service ci-dessus pour voir les services disponibles.",
+    "showing": "Affichage de {count} sur {total} services",
+    "seeMore": "Voir plus de services"
+  },
+  "serviceTypes": {
+    "document_processing": {
+      "name": "Traitement de Documents",
+      "description": "Services de traitement de documents officiels"
+    },
+    "license_permit": {
+      "name": "Licences et Permis",
+      "description": "Obtention de licences et permis administratifs"
+    },
+    "residence_permit": {
+      "name": "Permis de Résidence",
+      "description": "Services liés aux permis de résidence"
+    },
+    "registration_fee": {
+      "name": "Frais d'Enregistrement",
+      "description": "Frais d'enregistrement et d'immatriculation"
+    },
+    "inspection_fee": {
+      "name": "Frais d'Inspection",
+      "description": "Frais liés aux inspections officielles"
+    },
+    "administrative_tax": {
+      "name": "Taxes Administratives",
+      "description": "Taxes et frais administratifs"
+    },
+    "customs_duty": {
+      "name": "Droits de Douane",
+      "description": "Droits et taxes douanières"
+    },
+    "declaration_tax": {
+      "name": "Taxes de Déclaration",
+      "description": "Taxes liées aux déclarations fiscales"
+    }
   },
   "calculatorPage": {
     "title": "Calculateur d'Impôts",
@@ -143,7 +180,27 @@
     "noMinistries": "Aucun ministère disponible",
     "noResults": "Aucun ministère trouvé",
     "servicesCount": "{count} services",
-    "viewServices": "Voir les services"
+    "viewServices": "Voir les services",
+    "sortNameAsc": "Alphabétique A-Z",
+    "sortNameDesc": "Alphabétique Z-A",
+    "sortCountDesc": "Plus de services en premier"
+  },
+  "ministryDetail": {
+    "title": "Détails du Ministère",
+    "ministries": "Ministères",
+    "code": "Code",
+    "back": "Retour",
+    "backToMinistries": "Retour aux Ministères",
+    "notFound": "Ministère non trouvé",
+    "errorLoading": "Erreur lors du chargement des détails du ministère",
+    "totalSectors": "Total des Secteurs",
+    "totalCategories": "Total des Catégories",
+    "totalServices": "Total des Services",
+    "information": "Information",
+    "services": "Services",
+    "noServices": "Aucun service disponible pour ce ministère",
+    "expeditionPrice": "Prix d'expédition",
+    "page": "Page"
   },
   "auth": {
     "welcome": "Bienvenue",
@@ -1146,8 +1203,15 @@
     "sortBy": "Trier par",
     "sortRelevance": "Pertinence",
     "sortName": "Nom",
+    "sortNameAsc": "Nom (A-Z)",
+    "sortNameDesc": "Nom (Z-A)",
+    "sortPriceAsc": "Prix (Croissant)",
+    "sortPriceDesc": "Prix (Décroissant)",
     "sortPopularity": "Popularité",
     "sortRecent": "Récent",
+    "viewGrid": "Grille",
+    "viewList": "Liste",
+    "calculate": "Calculer",
     "loading": "Chargement des services...",
     "searching": "Recherche en cours...",
     "resultsFound": "{count} services trouvés",

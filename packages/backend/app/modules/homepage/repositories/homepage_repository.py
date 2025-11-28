@@ -189,3 +189,101 @@ class HomepageRepository:
         except asyncpg.PostgresError as e:
             logger.error(f"Database error in get_category_directory: {e}")
             raise
+
+    async def get_services_by_type(
+        self,
+        service_type: str,
+        language: str = "es",
+        letter: Optional[str] = None,
+        limit: int = 10
+    ) -> Dict[str, Any]:
+        """
+        Get services filtered by type and optionally by first letter
+
+        Args:
+            service_type: Service type enum value (e.g., 'document_processing')
+            language: Language code (es, fr, en)
+            letter: Optional first letter filter (A-Z)
+            limit: Maximum number of services to return
+
+        Returns:
+            Dict with services list, total count, and has_more flag
+        """
+        # Build the query dynamically based on letter filter
+        letter_condition = ""
+        params = [service_type, language]
+
+        if letter:
+            letter_condition = "AND UPPER(SUBSTRING(COALESCE(et_name.translation_text, fs.name_es), 1, 1)) = $3"
+            params.append(letter.upper())
+            limit_param = "$4"
+        else:
+            limit_param = "$3"
+
+        params.append(limit + 1)  # Get one extra to check if there are more
+
+        query = f"""
+            SELECT
+                fs.id,
+                fs.service_code,
+                fs.name_es,
+                fs.tasa_expedicion,
+
+                -- Translated name
+                COALESCE(
+                    et_name.translation_text,
+                    fs.name_es
+                ) as name,
+
+                -- Count total for this type/letter combination
+                COUNT(*) OVER() as total_count
+
+            FROM fiscal_services fs
+
+            -- Join entity_translations for service name
+            LEFT JOIN entity_translations et_name ON
+                et_name.entity_type = 'fiscal_service'
+                AND et_name.entity_code = fs.service_code
+                AND et_name.field_name = 'name'
+                AND et_name.language_code = $2
+
+            WHERE fs.service_type = $1::service_type_enum
+                AND fs.status = 'active'::service_status_enum
+                {letter_condition}
+
+            ORDER BY name ASC
+            LIMIT {limit_param};
+        """
+
+        try:
+            rows = await self.db.fetch(query, *params)
+
+            # Determine if there are more results
+            has_more = len(rows) > limit
+            services = rows[:limit]  # Take only the requested limit
+
+            # Get total count (same for all rows due to window function)
+            total = rows[0]['total_count'] if rows else 0
+
+            # Build result
+            result = {
+                "services": [
+                    {
+                        "id": row['id'],
+                        "service_code": row['service_code'],
+                        "name_es": row['name_es'],
+                        "name_fr": row['name'] if language == 'fr' else None,
+                        "name_en": row['name'] if language == 'en' else None,
+                        "tasa_expedicion": row['tasa_expedicion']
+                    }
+                    for row in services
+                ],
+                "total": total if not has_more else total - 1,  # Subtract the extra one we fetched
+                "has_more": has_more
+            }
+
+            return result
+
+        except asyncpg.PostgresError as e:
+            logger.error(f"Database error in get_services_by_type: {e}")
+            raise

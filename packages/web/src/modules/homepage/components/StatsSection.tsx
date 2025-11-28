@@ -55,13 +55,6 @@ export const StatsSection = () => {
       description: t('categoriesDesc'),
       color: 'text-yellow-600',
     },
-    {
-      icon: TrendingUp,
-      value: loading ? '...' : stats?.total_sectors.toString() || '0',
-      label: t('sectors'),
-      description: t('sectorsDesc'),
-      color: 'text-green-600',
-    },
   ];
 
   return (
@@ -79,7 +72,7 @@ export const StatsSection = () => {
           </Alert>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {displayStats.map((stat) => {
             const Icon = stat.icon;
             return (

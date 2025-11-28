@@ -3,11 +3,15 @@
 from app.modules.homepage.models.homepage import (
     HomepageStats,
     CategoryWithServices,
-    CategoryDirectory
+    CategoryDirectory,
+    ServiceByType,
+    ServicesByTypeResponse
 )
 
 __all__ = [
     "HomepageStats",
     "CategoryWithServices",
-    "CategoryDirectory"
+    "CategoryDirectory",
+    "ServiceByType",
+    "ServicesByTypeResponse"
 ]

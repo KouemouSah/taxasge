@@ -11,13 +11,11 @@ import { useRouter, useParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { useTranslations } from 'next-intl'
 import { getCategoryDirectory, getDefaultCategoryDirectory, type CategoryDirectory, type CategoryWithServices } from "@/core/api/homepage"
-import Header from "@/components/layout/Header"
-import Footer from "@/components/layout/Footer"
 import Breadcrumb from "@/components/ui/breadcrumb"
 
 type ViewMode = 'kanban' | 'list'
 
-const ITEMS_PER_PAGE = 14
+const ITEMS_PER_PAGE = 12
 
 /**
  * Page des catégories - Affiche toutes les catégories avec vues multiples
@@ -108,11 +106,7 @@ export default function CategoriesPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <Header />
-
-      <main className="flex-1 bg-background">
-        <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 bg-background">
           {/* Breadcrumbs */}
           <Breadcrumb
             items={[
@@ -336,9 +330,5 @@ export default function CategoriesPage() {
             </div>
           )}
         </div>
-      </main>
-
-      <Footer />
-    </div>
   )
 }

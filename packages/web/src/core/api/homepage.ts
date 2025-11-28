@@ -132,3 +132,93 @@ export function getDefaultCategoryDirectory(): CategoryDirectory {
     last_updated: new Date().toISOString(),
   };
 }
+
+/**
+ * Service type enum values
+ */
+export type ServiceType =
+  | 'document_processing'
+  | 'license_permit'
+  | 'residence_permit'
+  | 'registration_fee'
+  | 'inspection_fee'
+  | 'administrative_tax'
+  | 'customs_duty'
+  | 'declaration_tax';
+
+/**
+ * Service details for services-by-type endpoint
+ */
+export interface ServiceByType {
+  id: number;
+  service_code: string;
+  name_es: string;
+  name_fr?: string | null;
+  name_en?: string | null;
+  tasa_expedicion?: number | null;
+}
+
+/**
+ * Response for services grouped by type and letter
+ */
+export interface ServicesByTypeResponse {
+  type: string;
+  letter?: string | null;
+  services: ServiceByType[];
+  total: number;
+  has_more: boolean;
+}
+
+/**
+ * Fetch services filtered by service type and optionally by first letter
+ *
+ * @param type - Service type filter
+ * @param options - Optional query parameters
+ * @throws {Error} If the API request fails
+ */
+export async function getServicesByType(
+  type: ServiceType,
+  options?: {
+    letter?: string;
+    language?: string;
+    limit?: number;
+  }
+): Promise<ServicesByTypeResponse> {
+  try {
+    const response = await apiClient.get<ServicesByTypeResponse>('/homepage/services-by-type', {
+      params: {
+        type,
+        letter: options?.letter,
+        language: options?.language || 'es',
+        limit: options?.limit || 10,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching services by type:', error);
+
+    // Type-safe error handling
+    let errorMessage = 'Failed to fetch services by type';
+    if (error && typeof error === 'object' && 'response' in error) {
+      const axiosError = error as { response?: { data?: { detail?: string } }; message?: string };
+      errorMessage = axiosError.response?.data?.detail || axiosError.message || errorMessage;
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
+    throw new Error(errorMessage);
+  }
+}
+
+/**
+ * Get default/fallback services by type response (used when API fails)
+ */
+export function getDefaultServicesByType(type: ServiceType): ServicesByTypeResponse {
+  return {
+    type,
+    letter: null,
+    services: [],
+    total: 0,
+    has_more: false,
+  };
+}
