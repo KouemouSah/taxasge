@@ -123,10 +123,13 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Security middleware - Based on Firebase Hosting configuration
+# Security middleware - Based on Cloud Run + Firebase Hosting configuration
 app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=["*"] if settings.debug else [
+        "taxasge-backend-staging-xrlbgdr5eq-uc.a.run.app",  # Cloud Run backend staging
+        "taxasge-backend-staging-392159428433.us-central1.run.app",  # Cloud Run backend alt
+        "taxasge.emacsah.com",          # Custom domain frontend
         "taxasge-dev.web.app",          # Firebase Hosting dev
         "taxasge-pro.web.app",          # Firebase Hosting prod
         "taxasge-dev.firebaseapp.com",  # Firebase domain dev
@@ -136,17 +139,19 @@ app.add_middleware(
     ]
 )
 
-# CORS middleware - Aligned with firebase.json configuration
+# CORS middleware - Aligned with Cloud Run deployments
 # Note: Firebase Hosting staging channels use pattern: https://PROJECT--CHANNEL-ID.web.app
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"] if settings.debug else [
+        "https://taxasge.emacsah.com",           # Custom domain (Cloud Run frontend)
+        "https://taxasge-frontend-staging-xrlbgdr5eq-uc.a.run.app",  # Cloud Run direct URL
         "https://taxasge-dev.web.app",
         "https://taxasge-pro.web.app",
         "https://taxasge-dev.firebaseapp.com",
         "https://taxasge-pro.firebaseapp.com"
     ],
-    allow_origin_regex=r"https://taxasge-dev--[\w-]+\.web\.app",  # Allow staging channels
+    allow_origin_regex=r"https://taxasge-(dev|frontend-staging)--[\w-]+\.(web\.app|run\.app)",  # Allow staging channels
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"]
