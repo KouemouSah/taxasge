@@ -79,21 +79,13 @@ class UserRepository(BaseRepository[UserResponse]):
             "business_profile": model.business_profile.dict() if model.business_profile else None
         }
 
-    async def find_by_email(self, email: str, use_supabase: bool = True) -> Optional[UserResponse]:
+    async def find_by_email(self, email: str) -> Optional[UserResponse]:
         """Find user by email address"""
         try:
-            if use_supabase and self.supabase.enabled:
-                results = await self.supabase.select(
-                    self.table_name,
-                    filters={"email": email}
-                )
-                if results:
-                    return self._map_to_model(results[0])
-            else:
-                query = f"SELECT * FROM {self.table_name} WHERE email = $1"
-                result = await self.db_manager.execute_single(query, email)
-                if result:
-                    return self._map_to_model(dict(result))
+            query = f"SELECT * FROM {self.table_name} WHERE email = $1"
+            result = await self.db_manager.execute_single(query, email)
+            if result:
+                return self._map_to_model(dict(result))
 
         except Exception as e:
             logger.error(f"❌ Error finding user by email {email}: {e}")
@@ -308,30 +300,22 @@ class UserRepository(BaseRepository[UserResponse]):
 
             # Email filter (partial match)
             if search_filter.email:
-                if self.supabase.enabled:
-                    # Use Supabase ILIKE operator
-                    results = await self.supabase.select(
-                        self.table_name,
-                        filters={**filters, "email": {"operator": "ilike", "value": f"%{search_filter.email}%"}}
-                    )
-                    return [self._map_to_model(row) for row in results]
-                else:
-                    # Use PostgreSQL ILIKE
-                    query_parts = [f"SELECT * FROM {self.table_name}"]
-                    conditions = ["email ILIKE $1"]
-                    params = [f"%{search_filter.email}%"]
-                    param_count = 1
+                # Use PostgreSQL ILIKE
+                query_parts = [f"SELECT * FROM {self.table_name}"]
+                conditions = ["email ILIKE $1"]
+                params = [f"%{search_filter.email}%"]
+                param_count = 1
 
-                    for key, value in filters.items():
-                        param_count += 1
-                        conditions.append(f"{key} = ${param_count}")
-                        params.append(value)
+                for key, value in filters.items():
+                    param_count += 1
+                    conditions.append(f"{key} = ${param_count}")
+                    params.append(value)
 
-                    query_parts.append(f"WHERE {' AND '.join(conditions)}")
-                    query = " ".join(query_parts)
+                query_parts.append(f"WHERE {' AND '.join(conditions)}")
+                query = " ".join(query_parts)
 
-                    results = await self.db_manager.execute_query(query, *params)
-                    return [self._map_to_model(dict(row)) for row in results]
+                results = await self.db_manager.execute_query(query, *params)
+                return [self._map_to_model(dict(row)) for row in results]
 
             # Standard filtering
             return await self.find_all(filters=filters)
@@ -408,35 +392,22 @@ class UserRepository(BaseRepository[UserResponse]):
     async def log_user_activity(self, activity: UserActivity) -> bool:
         """Log user activity"""
         try:
-            if self.supabase.enabled:
-                data = {
-                    "user_id": activity.user_id,
-                    "action": activity.action,
-                    "resource": activity.resource,
-                    "ip_address": activity.ip_address,
-                    "user_agent": activity.user_agent,
-                    "metadata": activity.metadata,
-                    "timestamp": activity.timestamp
-                }
-                result = await self.supabase.insert("user_activities", data)
-                return result is not None
-            else:
-                query = """
-                    INSERT INTO user_activities
-                    (user_id, action, resource, ip_address, user_agent, metadata, timestamp)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7)
-                """
-                result = await self.db_manager.execute_command(
-                    query,
-                    activity.user_id,
-                    activity.action,
-                    activity.resource,
-                    activity.ip_address,
-                    activity.user_agent,
-                    activity.metadata,
-                    activity.timestamp
-                )
-                return "INSERT" in result
+            query = """
+                INSERT INTO user_activities
+                (user_id, action, resource, ip_address, user_agent, metadata, timestamp)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+            """
+            result = await self.db_manager.execute_command(
+                query,
+                activity.user_id,
+                activity.action,
+                activity.resource,
+                activity.ip_address,
+                activity.user_agent,
+                activity.metadata,
+                activity.timestamp
+            )
+            return "INSERT" in result
 
         except Exception as e:
             logger.error(f"❌ Error logging user activity: {e}")
@@ -449,45 +420,25 @@ class UserRepository(BaseRepository[UserResponse]):
     ) -> List[UserActivity]:
         """Get user activity history"""
         try:
-            if self.supabase.enabled:
-                results = await self.supabase.select(
-                    "user_activities",
-                    filters={"user_id": user_id},
-                    order="timestamp.desc",
-                    limit=limit
+            query = """
+                SELECT * FROM user_activities
+                WHERE user_id = $1
+                ORDER BY timestamp DESC
+                LIMIT $2
+            """
+            results = await self.db_manager.execute_query(query, user_id, limit)
+            return [
+                UserActivity(
+                    user_id=row["user_id"],
+                    action=row["action"],
+                    resource=row.get("resource"),
+                    ip_address=row.get("ip_address"),
+                    user_agent=row.get("user_agent"),
+                    metadata=row.get("metadata"),
+                    timestamp=row["timestamp"]
                 )
-                return [
-                    UserActivity(
-                        user_id=row["user_id"],
-                        action=row["action"],
-                        resource=row.get("resource"),
-                        ip_address=row.get("ip_address"),
-                        user_agent=row.get("user_agent"),
-                        metadata=row.get("metadata"),
-                        timestamp=row["timestamp"]
-                    )
-                    for row in results
-                ]
-            else:
-                query = """
-                    SELECT * FROM user_activities
-                    WHERE user_id = $1
-                    ORDER BY timestamp DESC
-                    LIMIT $2
-                """
-                results = await self.db_manager.execute_query(query, user_id, limit)
-                return [
-                    UserActivity(
-                        user_id=row["user_id"],
-                        action=row["action"],
-                        resource=row.get("resource"),
-                        ip_address=row.get("ip_address"),
-                        user_agent=row.get("user_agent"),
-                        metadata=row.get("metadata"),
-                        timestamp=row["timestamp"]
-                    )
-                    for row in results
-                ]
+                for row in results
+            ]
 
         except Exception as e:
             logger.error(f"❌ Error getting user activities for {user_id}: {e}")

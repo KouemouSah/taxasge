@@ -157,15 +157,13 @@ class DocumentRepository(BaseRepository[Document]):
 
     async def create_document(
         self,
-        document_data: DocumentCreate,
-        use_supabase: bool = True
+        document_data: DocumentCreate
     ) -> Optional[Document]:
         """
         Create new document record
 
         Args:
             document_data: Document creation data
-            use_supabase: Use Supabase client (default: True)
 
         Returns:
             Created Document or None
@@ -214,25 +212,20 @@ class DocumentRepository(BaseRepository[Document]):
                 "updated_at": now
             }
 
-            if use_supabase and self.supabase.enabled:
-                result = await self.supabase.insert(self.table_name, data)
-                if result:
-                    return self._map_to_model(result)
-            else:
-                # Build INSERT query
-                columns = list(data.keys())
-                placeholders = [f"${i+1}" for i in range(len(columns))]
-                values = list(data.values())
+            # Build INSERT query
+            columns = list(data.keys())
+            placeholders = [f"${i+1}" for i in range(len(columns))]
+            values = list(data.values())
 
-                query = f"""
-                    INSERT INTO {self.table_name} ({', '.join(columns)})
-                    VALUES ({', '.join(placeholders)})
-                    RETURNING *
-                """
+            query = f"""
+                INSERT INTO {self.table_name} ({', '.join(columns)})
+                VALUES ({', '.join(placeholders)})
+                RETURNING *
+            """
 
-                result = await self.db_manager.execute_single(query, *values)
-                if result:
-                    return self._map_to_model(dict(result))
+            result = await self.db_manager.execute_single(query, *values)
+            if result:
+                return self._map_to_model(dict(result))
 
             return None
 
