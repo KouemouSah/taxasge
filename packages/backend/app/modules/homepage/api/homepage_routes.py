@@ -11,6 +11,8 @@ from loguru import logger
 
 from app.modules.homepage.models import HomepageStats, CategoryDirectory, ServicesByTypeResponse
 from app.modules.homepage.services import HomepageService
+from app.modules.fiscal_services.models.service_details import ServiceDetailsResponse
+from app.modules.fiscal_services.repositories.service_details_repository import ServiceDetailsRepository
 
 
 # ============================================================================
@@ -281,6 +283,143 @@ async def get_services_by_type(
         )
     except Exception as e:
         logger.error(f"Unexpected error in get_services_by_type: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/service/{service_id}", response_model=ServiceDetailsResponse, summary="Get Service Details")
+async def get_service_details(
+    service_id: int,
+    language: str = Query(
+        "es",
+        pattern="^(es|fr|en)$",
+        description="Language code for translations (es=Spanish, fr=French, en=English)"
+    ),
+    db: asyncpg.Connection = Depends(get_db)
+):
+    """
+    Get complete details for a specific service (workaround endpoint via homepage)
+
+    **Returns complete service information including:**
+    - Basic info (name, description, service_type, status)
+    - Pricing (expedition/renewal prices, calculation method)
+    - Hierarchy (ministry → sector → category)
+    - Required documents with descriptions
+    - Procedures with steps
+    - Related services
+
+    **Example:**
+    ```
+    GET /homepage/service/123?language=fr
+    ```
+
+    **Note:** This endpoint is a workaround via the homepage module while
+    the fiscal-services router is being fixed.
+    """
+    try:
+        details_repo = ServiceDetailsRepository()
+
+        # Get main service details
+        service = await details_repo.get_service_details(db, service_id, language)
+        if not service:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Service with ID {service_id} not found"
+            )
+
+        # Get documents
+        documents = await details_repo.get_service_documents(db, service_id, language)
+
+        # Get procedures with steps
+        procedures = await details_repo.get_service_procedures(db, service_id, language)
+
+        # Get related services
+        related = await details_repo.get_related_services(db, service_id, language)
+
+        # Get child services if this is a parent
+        children = await details_repo.get_child_services(db, service_id, language)
+
+        # Get parent service if this is a child
+        parent = None
+        if service.get('parent_service_id'):
+            parent = await details_repo.get_parent_service(db, service['parent_service_id'], language)
+
+        # Build response
+        expedition_price = service.get('expedition_price', 0) or 0
+        renewal_price = service.get('renewal_price', 0) or 0
+
+        response = ServiceDetailsResponse(
+            id=service['id'],
+            service_code=service['service_code'],
+            name=service['name'],
+            description=service.get('description'),
+            service_type=service['service_type'],
+            status=service['status'],
+            pricing={
+                'expedition_price': expedition_price,
+                'renewal_price': renewal_price,
+                'calculation_method': service.get('calculation_method', 'fixed_amount'),
+                'percentage_rate': service.get('percentage_rate'),
+                'unit_price': service.get('unit_price'),
+                'validity_period_months': service.get('validity_period_months'),
+                'renewal_frequency_months': service.get('renewal_frequency_months'),
+                'currency': 'XAF'
+            },
+            processing_time_days=service.get('processing_time_days'),
+            legal_reference=service.get('legal_reference'),
+            notes=service.get('notes'),
+            category={
+                'id': service['category_id'],
+                'category_code': service['category_code'],
+                'name': service['category_name'],
+                'description': service.get('category_description'),
+                'icon': service.get('category_icon'),
+                'color': service.get('category_color')
+            } if service.get('category_id') else None,
+            sector={
+                'id': service['sector_id'],
+                'code': service['sector_code'],
+                'name': service['sector_name'],
+                'description': service.get('sector_description')
+            } if service.get('sector_id') else None,
+            ministry={
+                'id': service['ministry_id'],
+                'code': service['ministry_code'],
+                'name': service['ministry_name'],
+                'description': service.get('ministry_description')
+            } if service.get('ministry_id') else None,
+            documents=documents,
+            documents_count=len(documents),
+            procedures=procedures,
+            procedures_count=len(procedures),
+            total_procedure_steps=sum(len(p.get('steps', [])) for p in procedures),
+            related_services=related,
+            parent_service=parent,
+            child_services=children,
+            keywords=[],  # Optional
+            view_count=service.get('view_count', 0),
+            calculation_count=service.get('calculation_count', 0),
+            last_updated=service.get('last_updated'),
+            has_documents=len(documents) > 0,
+            has_procedures=len(procedures) > 0,
+            is_free=expedition_price == 0 and renewal_price == 0,
+            requires_renewal=renewal_price > 0
+        )
+
+        return response
+
+    except HTTPException:
+        raise
+    except asyncpg.PostgresError as e:
+        logger.error(f"Database error in get_service_details: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error in get_service_details: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Internal server error: {str(e)}"

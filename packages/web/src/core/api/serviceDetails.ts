@@ -5,7 +5,8 @@
 
 import { appConfig } from '@/core/config/app';
 
-const API_URL = `${appConfig.api.baseUrl}/api/${appConfig.api.version}/fiscal-services`;
+// Use homepage endpoint as workaround while fiscal-services router is being fixed
+const API_URL = `${appConfig.api.baseUrl}/api/${appConfig.api.version}/homepage`;
 
 // ===================================================================================================
 // TYPES
@@ -169,11 +170,10 @@ export async function getServiceDetails(
   try {
     const params = new URLSearchParams({
       language,
-      include_related: String(includeRelated),
-      include_keywords: String(includeKeywords),
     });
 
-    const response = await fetch(`${API_URL}/${serviceId}/details?${params}`, {
+    // Using homepage/service/{id} endpoint as workaround
+    const response = await fetch(`${API_URL}/service/${serviceId}?${params}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
