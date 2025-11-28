@@ -123,7 +123,7 @@ export const ServicesDirectory = () => {
     return grouped;
   };
 
-  const groupedServices = servicesData ? groupServicesByLetter(servicesData.services) : {};
+  const _groupedServices = servicesData ? groupServicesByLetter(servicesData.services) : {};
 
   return (
     <section className="py-16 bg-background">

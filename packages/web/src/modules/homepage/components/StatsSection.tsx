@@ -1,6 +1,6 @@
 'use client';
 
-import { Users, FileCheck, Building2, TrendingUp, AlertCircle } from 'lucide-react';
+import { Users, FileCheck, Building2, AlertCircle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useEffect, useState } from 'react';
