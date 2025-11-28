@@ -210,15 +210,17 @@ class HomepageRepository:
             Dict with services list, total count, and has_more flag
         """
         # Build the query dynamically based on letter filter
+        # Note: language param kept for API compatibility but not used in query
+        # (fiscal_services has no translations in entity_translations table)
         letter_condition = ""
-        params = [service_type, language]
+        params = [service_type]  # $1 = service_type
 
         if letter:
-            letter_condition = "AND UPPER(SUBSTRING(fs.name_es, 1, 1)) = $3"
-            params.append(letter.upper())
-            limit_param = "$4"
-        else:
+            letter_condition = "AND UPPER(SUBSTRING(fs.name_es, 1, 1)) = $2"
+            params.append(letter.upper())  # $2 = letter
             limit_param = "$3"
+        else:
+            limit_param = "$2"
 
         params.append(limit + 1)  # Get one extra to check if there are more
 
