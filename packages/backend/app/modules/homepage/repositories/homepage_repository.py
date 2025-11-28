@@ -214,7 +214,7 @@ class HomepageRepository:
         params = [service_type, language]
 
         if letter:
-            letter_condition = "AND UPPER(SUBSTRING(COALESCE(et_name.translation_text, fs.name_es), 1, 1)) = $3"
+            letter_condition = "AND UPPER(SUBSTRING(fs.name_es, 1, 1)) = $3"
             params.append(letter.upper())
             limit_param = "$4"
         else:
@@ -222,6 +222,9 @@ class HomepageRepository:
 
         params.append(limit + 1)  # Get one extra to check if there are more
 
+        # Note: fiscal_services doesn't have translations in entity_translations
+        # (translatable_entity_type enum only has: ministry, sector, category)
+        # So we use name_es directly as the primary name
         query = f"""
             SELECT
                 fs.id,
@@ -229,29 +232,19 @@ class HomepageRepository:
                 fs.name_es,
                 fs.tasa_expedicion,
 
-                -- Translated name
-                COALESCE(
-                    et_name.translation_text,
-                    fs.name_es
-                ) as name,
+                -- Use name_es as the display name (no translations available for fiscal_services)
+                fs.name_es as name,
 
                 -- Count total for this type/letter combination
                 COUNT(*) OVER() as total_count
 
             FROM fiscal_services fs
 
-            -- Join entity_translations for service name
-            LEFT JOIN entity_translations et_name ON
-                et_name.entity_type = 'fiscal_service'
-                AND et_name.entity_code = fs.service_code
-                AND et_name.field_name = 'name'
-                AND et_name.language_code = $2
-
             WHERE fs.service_type = $1::service_type_enum
                 AND fs.status = 'active'::service_status_enum
                 {letter_condition}
 
-            ORDER BY name ASC
+            ORDER BY fs.name_es ASC
             LIMIT {limit_param};
         """
 

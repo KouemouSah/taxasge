@@ -43,36 +43,30 @@ const SERVICE_TYPES: Array<{
   { type: 'declaration_tax', icon: Receipt, colorClass: 'text-pink-600' },
 ];
 
-// Alphabet for anchor navigation
+// Alphabet for grouping
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
 export const ServicesDirectory = () => {
   const router = useRouter();
   const locale = useLocale();
-  const [selectedType, setSelectedType] = useState<ServiceType | null>(null);
-  const [selectedLetter, setSelectedLetter] = useState<string | null>(null);
+  // Default to first service type (document_processing)
+  const [selectedType, setSelectedType] = useState<ServiceType>('document_processing');
   const [servicesData, setServicesData] = useState<ServicesByTypeResponse | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const t = useTranslations('directory');
   const tServiceTypes = useTranslations('serviceTypes');
 
+  // Fetch services when type changes - load more services (100) to show grouped by letter
   useEffect(() => {
-    if (!selectedType) {
-      setServicesData(null);
-      return;
-    }
-
     async function fetchServices() {
-      if (!selectedType) return;
-
       try {
         setLoading(true);
         setError(null);
+        // Load 100 services to display grouped by letter
         const data = await getServicesByType(selectedType, {
-          letter: selectedLetter || undefined,
           language: locale,
-          limit: 10,
+          limit: 100,
         });
         setServicesData(data);
       } catch (err) {
@@ -86,7 +80,7 @@ export const ServicesDirectory = () => {
     }
 
     fetchServices();
-  }, [selectedType, selectedLetter, locale]);
+  }, [selectedType, locale]);
 
   const getServiceName = (service: ServiceByType) => {
     if (locale === 'es') return service.name_es;
@@ -96,34 +90,31 @@ export const ServicesDirectory = () => {
 
   const handleTypeClick = (type: ServiceType) => {
     setSelectedType(type);
-    setSelectedLetter(null); // Reset letter when changing type
-  };
-
-  const handleLetterClick = (letter: string) => {
-    setSelectedLetter(letter === selectedLetter ? null : letter);
   };
 
   const handleViewMore = () => {
-    if (selectedType) {
-      router.push(`/${locale}/services?service_type=${selectedType}`);
-    }
+    router.push(`/${locale}/services?service_type=${selectedType}`);
   };
 
   // Group services by first letter for display
-  const groupServicesByLetter = (services: ServiceByType[]) => {
+  const groupServicesByLetter = (services: ServiceByType[]): Record<string, ServiceByType[]> => {
     const grouped: Record<string, ServiceByType[]> = {};
     services.forEach((service) => {
       const name = getServiceName(service);
       const firstLetter = name.charAt(0).toUpperCase();
-      if (!grouped[firstLetter]) {
-        grouped[firstLetter] = [];
+      // Only include valid letters A-Z
+      if (ALPHABET.includes(firstLetter)) {
+        if (!grouped[firstLetter]) {
+          grouped[firstLetter] = [];
+        }
+        grouped[firstLetter].push(service);
       }
-      grouped[firstLetter].push(service);
     });
     return grouped;
   };
 
-  const _groupedServices = servicesData ? groupServicesByLetter(servicesData.services) : {};
+  const groupedServices = servicesData ? groupServicesByLetter(servicesData.services) : {};
+  const availableLetters = Object.keys(groupedServices).sort();
 
   return (
     <section className="py-16 bg-background">
@@ -168,91 +159,110 @@ export const ServicesDirectory = () => {
           ))}
         </div>
 
-        {/* Services Display */}
-        {selectedType && (
+        {/* Loading State */}
+        {loading && (
+          <div className="flex justify-center items-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <span className="ml-3 text-muted-foreground">{t('loading')}</span>
+          </div>
+        )}
+
+        {/* Services Display - Grouped by Letter */}
+        {!loading && servicesData && servicesData.services.length > 0 && (
           <>
-            {/* Alphabetical Navigation */}
-            <div className="mb-6 flex flex-wrap gap-2 justify-center">
-              {ALPHABET.map((letter) => (
-                <Button
-                  key={letter}
-                  variant={selectedLetter === letter ? 'default' : 'outline'}
-                  size="sm"
-                  className="w-10 h-10 p-0"
-                  onClick={() => handleLetterClick(letter)}
-                >
-                  {letter}
-                </Button>
+            {/* Alphabetical anchor navigation */}
+            <div className="mb-6 flex flex-wrap gap-1 justify-center bg-muted/50 p-3 rounded-lg">
+              {ALPHABET.map((letter) => {
+                const hasServices = availableLetters.includes(letter);
+                return (
+                  <a
+                    key={letter}
+                    href={hasServices ? `#letter-${letter}` : undefined}
+                    className={`w-8 h-8 flex items-center justify-center rounded text-sm font-medium transition-colors ${
+                      hasServices
+                        ? 'bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer'
+                        : 'bg-muted text-muted-foreground cursor-not-allowed opacity-50'
+                    }`}
+                  >
+                    {letter}
+                  </a>
+                );
+              })}
+            </div>
+
+            {/* Services grouped by letter */}
+            <div className="space-y-8">
+              {availableLetters.map((letter) => (
+                <div key={letter} id={`letter-${letter}`} className="scroll-mt-20">
+                  {/* Letter Header */}
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="h-12 w-12 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-xl">
+                      {letter}
+                    </div>
+                    <div className="h-px flex-1 bg-border" />
+                    <span className="text-sm text-muted-foreground">
+                      {groupedServices[letter].length} services
+                    </span>
+                  </div>
+
+                  {/* Services Grid - 3 columns */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {groupedServices[letter].slice(0, 10).map((service) => (
+                      <Card
+                        key={service.id}
+                        className="group cursor-pointer hover:shadow-md transition-all duration-200 hover:border-primary/50"
+                        onClick={() => router.push(`/${locale}/services/${service.id}`)}
+                      >
+                        <div className="p-4">
+                          <h3 className="font-medium text-sm group-hover:text-primary transition-colors line-clamp-2">
+                            {getServiceName(service)}
+                          </h3>
+                          {service.tasa_expedicion !== null && service.tasa_expedicion !== undefined && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {service.tasa_expedicion === 0
+                                ? 'Gratis'
+                                : `${service.tasa_expedicion.toLocaleString()} GNF`}
+                            </p>
+                          )}
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+
+                  {/* Show "more" indicator if there are more than 10 services for this letter */}
+                  {groupedServices[letter].length > 10 && (
+                    <p className="text-sm text-muted-foreground mt-2 text-center">
+                      +{groupedServices[letter].length - 10} más...
+                    </p>
+                  )}
+                </div>
               ))}
             </div>
 
-            {/* Loading State */}
-            {loading && (
-              <div className="flex justify-center items-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <span className="ml-3 text-muted-foreground">{t('loading')}</span>
-              </div>
-            )}
-
-            {/* Services Grid */}
-            {!loading && servicesData && servicesData.services.length > 0 && (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {servicesData.services.map((service) => (
-                    <Card
-                      key={service.id}
-                      className="group cursor-pointer hover:shadow-md transition-all duration-200"
-                      onClick={() => router.push(`/${locale}/services/${service.service_code}`)}
-                    >
-                      <div className="p-4">
-                        <h3 className="font-semibold text-sm mb-2 group-hover:text-primary transition-colors line-clamp-2">
-                          {getServiceName(service)}
-                        </h3>
-                        {service.tasa_expedicion && (
-                          <p className="text-xs text-muted-foreground">
-                            {service.tasa_expedicion.toLocaleString()} GNF
-                          </p>
-                        )}
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-
-                {/* View More / Pagination Info */}
-                <div className="mt-8 text-center space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    {t('showing', {
-                      count: servicesData.services.length,
-                      total: servicesData.total,
-                    })}
-                  </p>
-                  {servicesData.has_more && (
-                    <Button onClick={handleViewMore} size="lg" className="min-w-[200px]">
-                      {t('seeMore')}
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </>
-            )}
-
-            {/* Empty State */}
-            {!loading && servicesData && servicesData.services.length === 0 && (
-              <Card className="p-12 text-center">
-                <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">{t('empty')}</h3>
-                <p className="text-muted-foreground">{t('emptyDescription')}</p>
-              </Card>
-            )}
+            {/* View More Button */}
+            <div className="mt-12 text-center space-y-4">
+              <p className="text-sm text-muted-foreground">
+                {t('showing', {
+                  count: servicesData.services.length,
+                  total: servicesData.total,
+                })}
+              </p>
+              {servicesData.has_more && (
+                <Button onClick={handleViewMore} size="lg" className="min-w-[200px]">
+                  {t('seeMore')}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </>
         )}
 
-        {/* Initial State - No Type Selected */}
-        {!selectedType && (
+        {/* Empty State */}
+        {!loading && servicesData && servicesData.services.length === 0 && (
           <Card className="p-12 text-center">
-            <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">{t('selectType')}</h3>
-            <p className="text-muted-foreground">{t('selectTypeDescription')}</p>
+            <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">{t('empty')}</h3>
+            <p className="text-muted-foreground">{t('emptyDescription')}</p>
           </Card>
         )}
       </div>
