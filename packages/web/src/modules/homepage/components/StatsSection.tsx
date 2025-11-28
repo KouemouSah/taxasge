@@ -58,39 +58,38 @@ export const StatsSection = () => {
   ];
 
   return (
-    <section className="py-16 bg-muted/30">
+    <section className="py-8 bg-muted/30">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-4">{t('title')}</h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">{t('description')}</p>
+        <div className="text-center mb-6">
+          <h2 className="text-2xl font-bold mb-2">{t('title')}</h2>
+          <p className="text-sm text-muted-foreground max-w-xl mx-auto">{t('description')}</p>
         </div>
 
         {error && !loading && (
-          <Alert variant="destructive" className="mb-6 max-w-2xl mx-auto">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{t('errorLoading')}: {error}.</AlertDescription>
+          <Alert variant="destructive" className="mb-4 max-w-xl mx-auto">
+            <AlertCircle className="h-3 w-3" />
+            <AlertDescription className="text-xs">{t('errorLoading')}: {error}.</AlertDescription>
           </Alert>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-3 gap-3 max-w-2xl mx-auto">
           {displayStats.map((stat) => {
             const Icon = stat.icon;
             return (
               <Card
                 key={stat.label}
-                className="relative overflow-hidden group hover:shadow-md transition-all duration-300"
+                className="relative overflow-hidden group hover:shadow-sm transition-all duration-300"
               >
-                <div className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <Icon className={`h-6 w-6 ${stat.color}`} />
-                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center opacity-50 group-hover:opacity-100 transition-opacity">
-                      <Icon className={`h-5 w-5 ${stat.color}`} />
+                <div className="p-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <Icon className={`h-4 w-4 ${stat.color}`} />
+                    <div className="h-6 w-6 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center opacity-50 group-hover:opacity-100 transition-opacity">
+                      <Icon className={`h-3 w-3 ${stat.color}`} />
                     </div>
                   </div>
-                  <div className="space-y-0.5">
-                    <div className="text-2xl font-bold">{stat.value}</div>
-                    <div className="font-medium text-sm text-foreground">{stat.label}</div>
-                    <div className="text-xs text-muted-foreground">{stat.description}</div>
+                  <div className="space-y-0">
+                    <div className="text-lg font-bold">{stat.value}</div>
+                    <div className="font-medium text-xs text-foreground truncate">{stat.label}</div>
                   </div>
                 </div>
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary to-primary/50 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>

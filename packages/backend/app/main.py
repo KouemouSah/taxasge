@@ -285,6 +285,7 @@ async def api_v1_info():
 
 # Include API routers - Import individually to handle partial failures
 routers_loaded = []
+import traceback
 
 # Try to load auth router (Module 1 - Critical)
 try:
@@ -292,8 +293,9 @@ try:
     app.include_router(auth_router, prefix="/api/v1/auth", tags=["authentication"])
     routers_loaded.append("auth")
     logger.info("✅ Auth router loaded")
-except ImportError as e:
+except Exception as e:
     logger.error(f"❌ Failed to load auth router: {e}")
+    logger.error(traceback.format_exc())
 
 # Try to load fiscal_services router (Module - Fiscal Services - Phase 3)
 try:
@@ -301,8 +303,9 @@ try:
     app.include_router(fiscal_service_router, prefix="/api/v1/fiscal-services", tags=["fiscal-services"])
     routers_loaded.append("fiscal_services")
     logger.info("✅ Fiscal services router loaded (850 services catalog)")
-except ImportError as e:
-    logger.warning(f"⚠️ Fiscal services router not available: {e}")
+except Exception as e:
+    logger.error(f"❌ Fiscal services router failed: {e}")
+    logger.error(traceback.format_exc())
 
 # Try to load users router (Module - Users System)
 try:
@@ -310,8 +313,9 @@ try:
     app.include_router(user_routes, prefix="/api/v1/users", tags=["users"])
     routers_loaded.append("users")
     logger.info("✅ Users router loaded (profile management)")
-except ImportError as e:
-    logger.warning(f"⚠️ Users router not available: {e}")
+except Exception as e:
+    logger.error(f"❌ Users router failed: {e}")
+    logger.error(traceback.format_exc())
 
 # Try to load admin routers (Module - Admin System)
 try:
@@ -320,8 +324,9 @@ try:
     app.include_router(user_management_router, prefix="/api/v1/admin/users", tags=["admin-user-management"])
     routers_loaded.extend(["admin", "admin_users"])
     logger.info("✅ Admin routers loaded (diagnostics + user management)")
-except ImportError as e:
-    logger.warning(f"⚠️ Admin routers not available: {e}")
+except Exception as e:
+    logger.error(f"❌ Admin routers failed: {e}")
+    logger.error(traceback.format_exc())
 
 # Try to load two_factor router (TASK-M01-011)
 try:
@@ -329,8 +334,9 @@ try:
     app.include_router(two_factor_router, prefix="/api/v1/auth", tags=["two-factor-authentication"])
     routers_loaded.append("two_factor")
     logger.info("✅ Two-Factor Authentication router loaded")
-except ImportError as e:
-    logger.warning(f"⚠️ Two-Factor Authentication router not available: {e}")
+except Exception as e:
+    logger.error(f"❌ Two-Factor router failed: {e}")
+    logger.error(traceback.format_exc())
 
 # Try to load homepage router (Module - Homepage Statistics & Category Directory)
 try:
@@ -338,8 +344,9 @@ try:
     app.include_router(homepage_router, prefix="/api/v1/homepage", tags=["homepage"])
     routers_loaded.append("homepage")
     logger.info("✅ Homepage router loaded (v2.0 - optimized 3-tier architecture)")
-except ImportError as e:
-    logger.warning(f"⚠️ Homepage router not available: {e}")
+except Exception as e:
+    logger.error(f"❌ Homepage router failed: {e}")
+    logger.error(traceback.format_exc())
 
 # Try to load permissions routers (Module 04 - RBAC Permissions System)
 try:
@@ -349,8 +356,9 @@ try:
     app.include_router(user_permission_router, prefix="/api/v1", tags=["user-permissions"])
     routers_loaded.extend(["permissions", "roles", "user_permissions"])
     logger.info("✅ Permissions routers loaded (RBAC system)")
-except ImportError as e:
-    logger.warning(f"⚠️ Permissions routers not available: {e}")
+except Exception as e:
+    logger.error(f"❌ Permissions routers failed: {e}")
+    logger.error(traceback.format_exc())
 
 # Try to load assignment router (Module - Assignment System)
 try:
@@ -358,8 +366,9 @@ try:
     app.include_router(assignment_router, prefix="/api/v1/assignments", tags=["assignments"])
     routers_loaded.append("assignments")
     logger.info("✅ Assignment router loaded")
-except ImportError as e:
-    logger.warning(f"⚠️ Assignment router not available: {e}")
+except Exception as e:
+    logger.error(f"❌ Assignment router failed: {e}")
+    logger.error(traceback.format_exc())
 
 # Try to load documents router (Module - Documents System)
 try:
@@ -367,8 +376,9 @@ try:
     app.include_router(document_routes, prefix="/api/v1/documents", tags=["documents"])
     routers_loaded.append("documents")
     logger.info("✅ Documents router loaded (OCR, extraction, validation)")
-except ImportError as e:
-    logger.warning(f"⚠️ Documents router not available: {e}")
+except Exception as e:
+    logger.error(f"❌ Documents router failed: {e}")
+    logger.error(traceback.format_exc())
 
 # Try to load declarations router (Module - Declarations System - Phase 3)
 try:
@@ -376,8 +386,9 @@ try:
     app.include_router(declaration_router, prefix="/api/v1/declarations", tags=["declarations"])
     routers_loaded.append("declarations")
     logger.info("✅ Declarations router loaded (28 types, MVP Phase 3.1)")
-except ImportError as e:
-    logger.warning(f"⚠️ Declarations router not available: {e}")
+except Exception as e:
+    logger.error(f"❌ Declarations router failed: {e}")
+    logger.error(traceback.format_exc())
 
 # Try to load companies router (Module - Companies System - Phase 3)
 try:
@@ -385,8 +396,9 @@ try:
     app.include_router(company_router, prefix="/api/v1/companies", tags=["companies"])
     routers_loaded.append("companies")
     logger.info("✅ Companies router loaded (business management)")
-except ImportError as e:
-    logger.warning(f"⚠️ Companies router not available: {e}")
+except Exception as e:
+    logger.error(f"❌ Companies router failed: {e}")
+    logger.error(traceback.format_exc())
 
 # Try to load payments router (Module - Payments System - Phase 3 - BANGE Integration)
 try:
@@ -394,8 +406,9 @@ try:
     app.include_router(payment_router, prefix="/api/v1/payments", tags=["payments"])
     routers_loaded.append("payments")
     logger.info("✅ Payments router loaded (BANGE mobile payments)")
-except ImportError as e:
-    logger.warning(f"⚠️ Payments router not available: {e}")
+except Exception as e:
+    logger.error(f"❌ Payments router failed: {e}")
+    logger.error(traceback.format_exc())
 
 # Try to load webhooks router (Module - Webhooks System - Phase 3 - BANGE Callbacks)
 try:
@@ -403,8 +416,9 @@ try:
     app.include_router(webhook_router, prefix="/api/v1/webhooks", tags=["webhooks"])
     routers_loaded.append("webhooks")
     logger.info("✅ Webhooks router loaded (BANGE callbacks + reconciliation)")
-except ImportError as e:
-    logger.warning(f"⚠️ Webhooks router not available: {e}")
+except Exception as e:
+    logger.error(f"❌ Webhooks router failed: {e}")
+    logger.error(traceback.format_exc())
 
 # Try to load translations router (Module - Translations System - System translations)
 try:
@@ -412,8 +426,9 @@ try:
     app.include_router(translation_router, prefix="/api/v1", tags=["translations"])
     routers_loaded.append("translations")
     logger.info("✅ Translations router loaded (ENUMs, UI, Forms, Messages)")
-except ImportError as e:
-    logger.warning(f"⚠️ Translations router not available: {e}")
+except Exception as e:
+    logger.error(f"❌ Translations router failed: {e}")
+    logger.error(traceback.format_exc())
 
 # Try to load communications router (Module - Communications System - Email/SMS/Push)
 try:
@@ -421,8 +436,9 @@ try:
     app.include_router(communication_router, prefix="/api/v1", tags=["communications"])
     routers_loaded.append("communications")
     logger.info("✅ Communications router loaded (Email, SMS, Push notifications)")
-except ImportError as e:
-    logger.warning(f"⚠️ Communications router not available: {e}")
+except Exception as e:
+    logger.error(f"❌ Communications router failed: {e}")
+    logger.error(traceback.format_exc())
 
 # Try to load chatbot router (Module - AI-powered assistance)
 try:
@@ -430,8 +446,9 @@ try:
     app.include_router(chatbot_router, prefix="/api/v1/chatbot", tags=["chatbot"])
     routers_loaded.append("chatbot")
     logger.info("✅ Chatbot router loaded (AI assistance, search, recommendations)")
-except ImportError as e:
-    logger.warning(f"⚠️ Chatbot router not available: {e}")
+except Exception as e:
+    logger.error(f"❌ Chatbot router failed: {e}")
+    logger.error(traceback.format_exc())
 
 # Try to load template routers (Document and Procedure Templates)
 try:
@@ -443,8 +460,9 @@ try:
     app.include_router(procedure_template_router, prefix="/api/v1/procedure-templates", tags=["procedure-templates"])
     routers_loaded.extend(["document_templates", "procedure_templates"])
     logger.info("✅ Template routers loaded (document + procedure templates)")
-except ImportError as e:
-    logger.warning(f"⚠️ Template routers not available: {e}")
+except Exception as e:
+    logger.error(f"❌ Template routers failed: {e}")
+    logger.error(traceback.format_exc())
 
 # Try to load audit logs router (Admin - Audit Trail)
 try:
@@ -453,8 +471,9 @@ try:
     app.include_router(user_audit_router, prefix="/api/v1/users", tags=["user-audit-logs"])
     routers_loaded.append("audit_logs")
     logger.info("✅ Audit logs router loaded (audit trail)")
-except ImportError as e:
-    logger.warning(f"⚠️ Audit logs router not available: {e}")
+except Exception as e:
+    logger.error(f"❌ Audit logs router failed: {e}")
+    logger.error(traceback.format_exc())
 
 if routers_loaded:
     logger.info(f"✅ {len(routers_loaded)} API routers loaded: {', '.join(routers_loaded)}")
