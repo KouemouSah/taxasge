@@ -21,7 +21,7 @@ env:
   SERVICE_NAME: taxasge-frontend-staging
   REGION: us-central1
   DOMAIN: taxasge.emacsah.com
-  BACKEND_URL: https://taxasge-backend-staging-392159428433.us-central1.run.app
+  BACKEND_URL: https://taxasge-backend-staging-xrlbgdr5eq-uc.a.run.app
 
 jobs:
   # Job 1: Pre-deployment checks
@@ -78,9 +78,26 @@ jobs:
 
       - name: Build Docker image
         run: |
-          echo "🐳 Building Docker image..."
+          echo "🐳 Building Docker image with NEXT_PUBLIC_API_URL=${{ env.BACKEND_URL }}..."
+
+          # Create cloudbuild.yaml for build-args support
+          cat > /tmp/cloudbuild.yaml << 'CLOUDBUILD'
+          steps:
+            - name: 'gcr.io/cloud-builders/docker'
+              args:
+                - 'build'
+                - '--build-arg'
+                - 'NEXT_PUBLIC_API_URL=$_NEXT_PUBLIC_API_URL'
+                - '-t'
+                - '$_IMAGE_TAG'
+                - '.'
+          images:
+            - '$_IMAGE_TAG'
+          CLOUDBUILD
+
           BUILD_ID=$(gcloud builds submit \
-            --tag gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+            --config=/tmp/cloudbuild.yaml \
+            --substitutions="_IMAGE_TAG=gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }},_NEXT_PUBLIC_API_URL=${{ env.BACKEND_URL }}" \
             --async \
             --format="value(id)")
 

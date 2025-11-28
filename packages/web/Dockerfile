@@ -23,6 +23,11 @@ RUN npm install --legacy-peer-deps
 FROM base AS builder
 WORKDIR /app
 
+# Accept build-time arguments for Next.js public env vars
+# These MUST be set at build time for client-side JavaScript
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+
 # Copy dependencies
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -31,7 +36,10 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-# Build Next.js application
+# Log the API URL being baked into the build
+RUN echo "Building with NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}"
+
+# Build Next.js application (NEXT_PUBLIC_API_URL is now available)
 RUN npm run build
 
 # =============================================================================

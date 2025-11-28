@@ -206,8 +206,8 @@ async def health_check():
 
     # Test database connection
     try:
-        if db_pool:
-            async with db_pool.acquire() as conn:
+        if db_manager.pool:
+            async with db_manager.pool.acquire() as conn:
                 await conn.fetchval("SELECT 1")
             health_status["checks"]["database"] = "ok"
     except Exception as e:
