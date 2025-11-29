@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useState, useEffect, useCallback, Suspense, useRef, useMemo } from 'react'
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Card } from "@/components/ui/card"
@@ -9,13 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import {
   Search, X, AlertCircle, Loader2, ChevronLeft, ChevronRight,
-  Building2, Clock, LayoutGrid, List, SlidersHorizontal, ChevronDown, Calculator
+  Building2, LayoutGrid, List, Calculator
 } from "lucide-react"
 import {
   Select,
@@ -38,6 +33,9 @@ import {
 
 type ViewMode = 'grid' | 'list'
 type SortOption = 'relevance' | 'name_asc' | 'name_desc' | 'price_asc' | 'price_desc'
+
+// Constants
+const ITEMS_PER_PAGE = 18
 
 /**
  * Services Content - Component that uses useSearchParams
@@ -72,7 +70,6 @@ function ServicesContent() {
   const [searchResults, setSearchResults] = useState<SearchResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [filtersOpen, setFiltersOpen] = useState(false)
 
   // View mode with localStorage persistence
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
@@ -83,16 +80,22 @@ function ServicesContent() {
     return 'grid'
   })
 
-  // Search filters state
+  // Search input state (local, for controlled input)
+  const [searchInputValue, setSearchInputValue] = useState('')
+
+  // Search filters state (used for API calls)
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [selectedMinistry, setSelectedMinistry] = useState<number | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [selectedServiceType, setSelectedServiceType] = useState<string | null>(null)
   const [sortOption, setSortOption] = useState<SortOption>('relevance')
   const [currentPage, setCurrentPage] = useState(1)
 
-  // Debounced search
-  const [searchDebounceTimer, setSearchDebounceTimer] = useState<NodeJS.Timeout | null>(null)
+  // Debounce timer ref (prevents re-renders)
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Track if initial load from URL params is done
+  const initialLoadDone = useRef(false)
 
   /**
    * Persist view mode to localStorage
@@ -104,9 +107,12 @@ function ServicesContent() {
   }, [viewMode])
 
   /**
-   * Initialize filters from URL query params
+   * Initialize filters from URL query params (once on mount)
    */
   useEffect(() => {
+    if (initialLoadDone.current) return
+    initialLoadDone.current = true
+
     const categoryParam = searchParams.get('category')
     const queryParam = searchParams.get('q')
     const ministryParam = searchParams.get('ministry')
@@ -114,16 +120,17 @@ function ServicesContent() {
     const sortParam = searchParams.get('sort')
     const pageParam = searchParams.get('page')
 
-    if (categoryParam) {
-      setSelectedCategory(categoryParam)
-    }
-
     if (queryParam) {
+      setSearchInputValue(queryParam)
       setSearchQuery(queryParam)
     }
 
     if (ministryParam) {
       setSelectedMinistry(parseInt(ministryParam, 10))
+    }
+
+    if (categoryParam) {
+      setSelectedCategory(categoryParam)
     }
 
     if (serviceTypeParam) {
@@ -187,7 +194,7 @@ function ServicesContent() {
         sort_by,
         sort_order,
         page: currentPage,
-        limit: 20,
+        limit: ITEMS_PER_PAGE,
         include_facets: true,
         language: locale
       }
@@ -217,26 +224,38 @@ function ServicesContent() {
 
   /**
    * Handle search input change with debounce
+   * Uses separate state for input value to prevent lag
    */
-  const handleSearchChange = (value: string) => {
-    setSearchQuery(value)
-    setCurrentPage(1)
+  const handleSearchInputChange = (value: string) => {
+    // Update input value immediately (no lag)
+    setSearchInputValue(value)
 
-    if (searchDebounceTimer) {
-      clearTimeout(searchDebounceTimer)
+    // Clear existing timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
     }
 
-    const timer = setTimeout(() => {
-      performSearch()
-    }, 300)
-
-    setSearchDebounceTimer(timer)
+    // Set new debounced search
+    debounceTimerRef.current = setTimeout(() => {
+      setSearchQuery(value)
+      setCurrentPage(1)
+    }, 400)
   }
 
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+      }
+    }
+  }, [])
+
   const clearAllFilters = () => {
+    setSearchInputValue('')
     setSearchQuery('')
-    setSelectedCategory(null)
     setSelectedMinistry(null)
+    setSelectedCategory(null)
     setSelectedServiceType(null)
     setSortOption('relevance')
     setCurrentPage(1)
@@ -308,23 +327,17 @@ function ServicesContent() {
     selectedServiceType
   ].filter(Boolean).length
 
-  // Get selected names for display
-  const getSelectedCategoryName = () => {
-    if (!selectedCategory || !searchResults?.facets?.categories) return null
-    const cat = searchResults.facets.categories.find(c => c.code === selectedCategory)
-    return cat?.name
-  }
+  // Filtered categories based on selected ministry (cascade filter)
+  // Note: The API returns facets based on current filters, so categories
+  // are already filtered by the backend when a ministry is selected
+  const filteredCategories = useMemo(() => {
+    return searchResults?.facets?.categories || []
+  }, [searchResults?.facets?.categories])
 
-  const getSelectedMinistryName = () => {
-    if (!selectedMinistry || !searchResults?.facets?.ministries) return null
-    const ministry = searchResults.facets.ministries.find(m => m.id === selectedMinistry)
-    return ministry?.name
-  }
-
-  const getSelectedServiceTypeName = () => {
-    if (!selectedServiceType) return null
-    return getServiceTypeLabel(selectedServiceType, serviceTypeTranslations)
-  }
+  // Filtered service types based on current selection
+  const filteredServiceTypes = useMemo(() => {
+    return searchResults?.facets?.service_types || []
+  }, [searchResults?.facets?.service_types])
 
   return (
     <div className="bg-background">
@@ -377,15 +390,15 @@ function ServicesContent() {
               <Input
                 type="text"
                 placeholder={t('searchPlaceholder')}
-                value={searchQuery}
-                onChange={(e) => handleSearchChange(e.target.value)}
+                value={searchInputValue}
+                onChange={(e) => handleSearchInputChange(e.target.value)}
                 className="pl-10 pr-4 py-6 text-base"
               />
             </div>
 
             {/* Sort Dropdown */}
             <Select value={sortOption} onValueChange={(value) => { setSortOption(value as SortOption); setCurrentPage(1) }}>
-              <SelectTrigger className="w-[200px] h-[52px]">
+              <SelectTrigger className="w-[180px] h-[52px]">
                 <SelectValue placeholder={t('sortBy')} />
               </SelectTrigger>
               <SelectContent>
@@ -396,154 +409,88 @@ function ServicesContent() {
                 <SelectItem value="price_desc">{t('sortPriceDesc')}</SelectItem>
               </SelectContent>
             </Select>
-
-            {/* Filters Popover */}
-            <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="h-[52px] px-4 gap-2">
-                  <SlidersHorizontal className="h-4 w-4" />
-                  <span className="hidden sm:inline">{t('filters')}</span>
-                  {activeFiltersCount > 0 && (
-                    <Badge variant="secondary" className="ml-1">{activeFiltersCount}</Badge>
-                  )}
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80 p-4" align="end">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium">{t('advancedFilters')}</h4>
-                    {activeFiltersCount > 0 && (
-                      <Button variant="ghost" size="sm" onClick={clearAllFilters}>
-                        <X className="h-4 w-4 mr-1" />
-                        {tCommon('clear')}
-                      </Button>
-                    )}
-                  </div>
-
-                  {/* Category filter */}
-                  {searchResults?.facets?.categories && searchResults.facets.categories.length > 0 && (
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">{t('category')}</label>
-                      <div className="space-y-1 max-h-40 overflow-y-auto">
-                        <Button
-                          variant={!selectedCategory ? "secondary" : "ghost"}
-                          size="sm"
-                          className="w-full justify-start text-sm"
-                          onClick={() => { setSelectedCategory(null); setCurrentPage(1) }}
-                        >
-                          {t('allCategories')}
-                        </Button>
-                        {searchResults.facets.categories.map((category) => (
-                          <Button
-                            key={category.code}
-                            variant={selectedCategory === category.code ? "secondary" : "ghost"}
-                            size="sm"
-                            className="w-full justify-between text-sm"
-                            onClick={() => { setSelectedCategory(category.code!); setCurrentPage(1) }}
-                          >
-                            <span className="truncate">{category.name}</span>
-                            <Badge variant="outline" className="ml-2 text-xs">{category.count}</Badge>
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Ministry filter */}
-                  {searchResults?.facets?.ministries && searchResults.facets.ministries.length > 0 && (
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">{t('ministry')}</label>
-                      <div className="space-y-1 max-h-40 overflow-y-auto">
-                        <Button
-                          variant={!selectedMinistry ? "secondary" : "ghost"}
-                          size="sm"
-                          className="w-full justify-start text-sm"
-                          onClick={() => { setSelectedMinistry(null); setCurrentPage(1) }}
-                        >
-                          {t('allMinistries')}
-                        </Button>
-                        {searchResults.facets.ministries.map((ministry: FacetItem) => (
-                          <Button
-                            key={ministry.id ?? ministry.name}
-                            variant={selectedMinistry === ministry.id ? "secondary" : "ghost"}
-                            size="sm"
-                            className="w-full justify-between text-sm"
-                            onClick={() => { setSelectedMinistry(ministry.id!); setCurrentPage(1) }}
-                          >
-                            <span className="truncate">{ministry.name}</span>
-                            <Badge variant="outline" className="ml-2 text-xs">{ministry.count}</Badge>
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Service type filter */}
-                  {searchResults?.facets?.service_types && searchResults.facets.service_types.length > 0 && (
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">{t('serviceType')}</label>
-                      <div className="space-y-1 max-h-40 overflow-y-auto">
-                        <Button
-                          variant={!selectedServiceType ? "secondary" : "ghost"}
-                          size="sm"
-                          className="w-full justify-start text-sm"
-                          onClick={() => { setSelectedServiceType(null); setCurrentPage(1) }}
-                        >
-                          {t('allServiceTypes')}
-                        </Button>
-                        {searchResults.facets.service_types.map((type) => (
-                          <Button
-                            key={type.type}
-                            variant={selectedServiceType === type.type ? "secondary" : "ghost"}
-                            size="sm"
-                            className="w-full justify-between text-sm"
-                            onClick={() => { setSelectedServiceType(type.type!); setCurrentPage(1) }}
-                          >
-                            <span className="truncate">{getServiceTypeLabel(type.type!, serviceTypeTranslations)}</span>
-                            <Badge variant="outline" className="ml-2 text-xs">{type.count}</Badge>
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </PopoverContent>
-            </Popover>
           </div>
 
-          {/* Active filters display */}
-          {activeFiltersCount > 0 && (
-            <div className="flex flex-wrap items-center gap-2 mt-3">
-              {getSelectedCategoryName() && (
-                <Badge variant="secondary" className="gap-1">
-                  {t('category')}: {getSelectedCategoryName()}
-                  <button onClick={() => { setSelectedCategory(null); setCurrentPage(1) }} className="ml-1 hover:text-destructive">
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              )}
-              {getSelectedMinistryName() && (
-                <Badge variant="secondary" className="gap-1">
-                  {t('ministry')}: {getSelectedMinistryName()}
-                  <button onClick={() => { setSelectedMinistry(null); setCurrentPage(1) }} className="ml-1 hover:text-destructive">
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              )}
-              {getSelectedServiceTypeName() && (
-                <Badge variant="secondary" className="gap-1">
-                  {t('serviceType')}: {getSelectedServiceTypeName()}
-                  <button onClick={() => { setSelectedServiceType(null); setCurrentPage(1) }} className="ml-1 hover:text-destructive">
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              )}
-              <Button variant="ghost" size="sm" onClick={clearAllFilters} className="h-6 px-2 text-xs">
+          {/* Cascade Filters Row */}
+          <div className="flex flex-wrap gap-2 mt-3">
+            {/* Ministry Filter (Primary) */}
+            <Select
+              value={selectedMinistry?.toString() || "all"}
+              onValueChange={(value) => {
+                const newMinistry = value === "all" ? null : parseInt(value, 10)
+                setSelectedMinistry(newMinistry)
+                // Reset dependent filters when ministry changes
+                setSelectedCategory(null)
+                setSelectedServiceType(null)
+                setCurrentPage(1)
+              }}
+            >
+              <SelectTrigger className="w-[220px]">
+                <SelectValue placeholder={t('ministry')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('allMinistries')}</SelectItem>
+                {searchResults?.facets?.ministries?.map((ministry: FacetItem) => (
+                  <SelectItem key={ministry.id ?? ministry.name} value={ministry.id?.toString() || ministry.name || ''}>
+                    {ministry.name} ({ministry.count})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Category Filter (Depends on Ministry) */}
+            <Select
+              value={selectedCategory || "all"}
+              onValueChange={(value) => {
+                const newCategory = value === "all" ? null : value
+                setSelectedCategory(newCategory)
+                // Reset service type when category changes
+                setSelectedServiceType(null)
+                setCurrentPage(1)
+              }}
+            >
+              <SelectTrigger className="w-[220px]">
+                <SelectValue placeholder={t('category')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('allCategories')}</SelectItem>
+                {filteredCategories.map((category) => (
+                  <SelectItem key={category.code} value={category.code || ''}>
+                    {category.name} ({category.count})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Service Type Filter (Depends on Category) */}
+            <Select
+              value={selectedServiceType || "all"}
+              onValueChange={(value) => {
+                setSelectedServiceType(value === "all" ? null : value)
+                setCurrentPage(1)
+              }}
+            >
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder={t('serviceType')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('allServiceTypes')}</SelectItem>
+                {filteredServiceTypes.map((type) => (
+                  <SelectItem key={type.type} value={type.type || ''}>
+                    {getServiceTypeLabel(type.type!, serviceTypeTranslations)} ({type.count})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Clear Filters Button */}
+            {activeFiltersCount > 0 && (
+              <Button variant="outline" size="default" onClick={clearAllFilters} className="gap-1">
+                <X className="h-4 w-4" />
                 {t('clearFilters')}
               </Button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Results area */}
@@ -572,7 +519,7 @@ function ServicesContent() {
                   <p className="text-sm text-muted-foreground mb-3">{t('suggestions')}:</p>
                   <div className="flex flex-wrap gap-2 justify-center">
                     {searchResults.suggestions.map((suggestion, idx) => (
-                      <Button key={idx} variant="outline" size="sm" onClick={() => handleSearchChange(suggestion)}>
+                      <Button key={idx} variant="outline" size="sm" onClick={() => { setSearchInputValue(suggestion); setSearchQuery(suggestion); setCurrentPage(1) }}>
                         {suggestion}
                       </Button>
                     ))}
@@ -610,10 +557,6 @@ function ServicesContent() {
                             <span className="truncate">{service.ministry_name}</span>
                           </div>
                         )}
-                        <div className="flex items-center text-muted-foreground">
-                          <Clock className="h-4 w-4 mr-2 flex-shrink-0" />
-                          <span>{t('processingDays', { days: service.processing_time_days })}</span>
-                        </div>
                       </div>
 
                       <div className="mt-auto pt-4 border-t space-y-3">
@@ -689,12 +632,8 @@ function ServicesContent() {
                             )}
                           </div>
                           {service.description && (
-                            <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{service.description}</p>
+                            <p className="text-sm text-muted-foreground line-clamp-2">{service.description}</p>
                           )}
-                          <div className="flex items-center text-sm text-muted-foreground">
-                            <Clock className="h-4 w-4 mr-2" />
-                            <span>{t('processingDays', { days: service.processing_time_days })}</span>
-                          </div>
                         </div>
 
                         <div className="flex flex-col justify-between gap-3 lg:min-w-[220px] pt-4 lg:pt-0 border-t lg:border-t-0 lg:border-l lg:pl-6">
