@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Building2, Loader2, ArrowLeft, FolderTree, Grid3x3, Briefcase, Info } from 'lucide-react';
+import { Building2, ArrowLeft, FolderTree, Grid3x3, Briefcase, Info } from 'lucide-react';
 import Breadcrumb from '@/components/ui/breadcrumb';
 import { getMinistryDetails, type MinistryDetails, type MinistryServiceItem } from '@/core/api/homepage';
 
