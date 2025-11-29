@@ -1,12 +1,12 @@
 /**
  * Services API Client - PostgreSQL-based search
- * Connects to /api/v1/homepage/search endpoint
+ * Connects to /api/v1/fiscal-services/search-db endpoint
  */
 
 import { appConfig } from '@/core/config/app';
 
-// Use homepage endpoint which is always available (fiscal-services router has issues)
-const SERVICES_API_URL = `${appConfig.api.baseUrl}/api/${appConfig.api.version}/homepage`;
+// Use fiscal-services endpoint (the canonical module for services)
+const SERVICES_API_URL = `${appConfig.api.baseUrl}/api/${appConfig.api.version}/fiscal-services`;
 
 // ===================================================================================================
 // TYPES
@@ -120,7 +120,7 @@ export async function searchServices(filters: SearchFilters = {}): Promise<Searc
       language: filters.language || 'es',
     };
 
-    const response = await fetch(`${SERVICES_API_URL}/search`, {
+    const response = await fetch(`${SERVICES_API_URL}/search-db`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
