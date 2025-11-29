@@ -1,6 +1,9 @@
+'use client'
+
 import { ChevronRight, Home } from "lucide-react"
 import Link from "next/link"
 import { Fragment } from "react"
+import { useLocale } from "next-intl"
 
 export interface BreadcrumbItem {
   label: string
@@ -13,11 +16,13 @@ export interface BreadcrumbProps {
 }
 
 export function Breadcrumb({ items, className = "" }: BreadcrumbProps) {
+  const locale = useLocale()
+
   return (
     <nav aria-label="Breadcrumb" className={`flex items-center space-x-2 text-sm ${className}`}>
-      {/* Home */}
+      {/* Home - use current locale */}
       <Link
-        href="/"
+        href={`/${locale}`}
         className="text-muted-foreground hover:text-foreground transition-colors flex items-center"
       >
         <Home className="h-4 w-4" />
