@@ -648,3 +648,46 @@ async def bulk_update_service_status(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error processing bulk update: {str(e)}"
         )
+
+
+# ========== DEBUG ENDPOINT - TO REMOVE AFTER TESTING ==========
+
+@router.get("/debug/translations/{template_code}")
+async def debug_translations(
+    template_code: str,
+    language: str = Query("fr", description="Language code"),
+    db=Depends(get_database),
+):
+    """
+    Debug endpoint to check translations for a procedure template.
+    Returns all entity_translations matching the template_code pattern.
+    """
+    query = """
+        SELECT entity_type, entity_code, language_code, field_name, translation_text
+        FROM entity_translations
+        WHERE (entity_code LIKE $1 OR entity_code = $2)
+        AND language_code = $3
+        ORDER BY entity_type, entity_code
+    """
+
+    async with db.acquire() as conn:
+        rows = await conn.fetch(query, f"{template_code}%", template_code, language)
+
+        # Also get the procedure template info
+        proc_query = """
+            SELECT pt.id, pt.template_code, pt.name_es, pts.step_number, pts.description_es
+            FROM procedure_templates pt
+            LEFT JOIN procedure_template_steps pts ON pts.template_id = pt.id
+            WHERE pt.template_code = $1
+            ORDER BY pts.step_number
+        """
+        proc_rows = await conn.fetch(proc_query, template_code)
+
+        return {
+            "translations_found": len(rows),
+            "translations": [dict(r) for r in rows],
+            "procedure_template": [dict(r) for r in proc_rows],
+            "expected_entity_codes": [
+                f"{template_code}_{r['step_number']}" for r in proc_rows if r['step_number']
+            ] if proc_rows else []
+        }
