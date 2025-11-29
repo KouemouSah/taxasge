@@ -382,23 +382,33 @@ function ServicesContent() {
           )}
         </div>
 
-        {/* Advanced Search Bar with Integrated Filters */}
-        <div className="mb-8">
-          <div className="flex gap-2 mb-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
+        {/* Compact Search Bar */}
+        <div className="mb-6">
+          <div className="flex gap-2">
+            <div className="relative flex-1 max-w-xl">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
                 type="text"
                 placeholder={t('searchPlaceholder')}
                 value={searchInputValue}
                 onChange={(e) => handleSearchInputChange(e.target.value)}
-                className="pl-10 pr-4 py-6 text-base"
+                className="pl-9 pr-4 h-10 text-sm"
               />
+              {searchInputValue && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
+                  onClick={() => { setSearchInputValue(''); setSearchQuery(''); setCurrentPage(1) }}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              )}
             </div>
 
             {/* Sort Dropdown */}
             <Select value={sortOption} onValueChange={(value) => { setSortOption(value as SortOption); setCurrentPage(1) }}>
-              <SelectTrigger className="w-[180px] h-[52px]">
+              <SelectTrigger className="w-[160px] h-10">
                 <SelectValue placeholder={t('sortBy')} />
               </SelectTrigger>
               <SelectContent>
@@ -410,22 +420,72 @@ function ServicesContent() {
               </SelectContent>
             </Select>
           </div>
+        </div>
 
-          {/* Cascade Filters Row */}
-          <div className="flex flex-wrap gap-2 mt-3">
-            {/* Ministry Filter (Primary) */}
+        {/* Active Filters as Badges + Filter Dropdowns */}
+        <div className="mb-6">
+          {/* Active Filters Badges Row */}
+          {activeFiltersCount > 0 && (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {selectedMinistry && (
+                <Badge variant="secondary" className="pl-3 pr-1 py-1.5 text-sm gap-1 flex items-center">
+                  {searchResults?.facets?.ministries?.find((m: FacetItem) => m.id === selectedMinistry)?.name || t('ministry')}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 w-5 p-0 ml-1 hover:bg-destructive/20 rounded-full"
+                    onClick={() => { setSelectedMinistry(null); setSelectedCategory(null); setSelectedServiceType(null); setCurrentPage(1) }}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </Badge>
+              )}
+              {selectedCategory && (
+                <Badge variant="secondary" className="pl-3 pr-1 py-1.5 text-sm gap-1 flex items-center">
+                  {filteredCategories.find((c) => c.code === selectedCategory)?.name || t('category')}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 w-5 p-0 ml-1 hover:bg-destructive/20 rounded-full"
+                    onClick={() => { setSelectedCategory(null); setSelectedServiceType(null); setCurrentPage(1) }}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </Badge>
+              )}
+              {selectedServiceType && (
+                <Badge variant="secondary" className="pl-3 pr-1 py-1.5 text-sm gap-1 flex items-center">
+                  {getServiceTypeLabel(selectedServiceType, serviceTypeTranslations)}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 w-5 p-0 ml-1 hover:bg-destructive/20 rounded-full"
+                    onClick={() => { setSelectedServiceType(null); setCurrentPage(1) }}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </Badge>
+              )}
+              <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-xs text-muted-foreground h-8">
+                {t('clearFilters')}
+              </Button>
+            </div>
+          )}
+
+          {/* Filter Dropdowns Row */}
+          <div className="flex flex-wrap gap-2">
+            {/* Ministry Filter */}
             <Select
               value={selectedMinistry?.toString() || "all"}
               onValueChange={(value) => {
                 const newMinistry = value === "all" ? null : parseInt(value, 10)
                 setSelectedMinistry(newMinistry)
-                // Reset dependent filters when ministry changes
                 setSelectedCategory(null)
                 setSelectedServiceType(null)
                 setCurrentPage(1)
               }}
             >
-              <SelectTrigger className="w-[220px]">
+              <SelectTrigger className="w-[180px] h-9 text-sm">
                 <SelectValue placeholder={t('ministry')} />
               </SelectTrigger>
               <SelectContent>
@@ -438,18 +498,17 @@ function ServicesContent() {
               </SelectContent>
             </Select>
 
-            {/* Category Filter (Depends on Ministry) */}
+            {/* Category Filter */}
             <Select
               value={selectedCategory || "all"}
               onValueChange={(value) => {
                 const newCategory = value === "all" ? null : value
                 setSelectedCategory(newCategory)
-                // Reset service type when category changes
                 setSelectedServiceType(null)
                 setCurrentPage(1)
               }}
             >
-              <SelectTrigger className="w-[220px]">
+              <SelectTrigger className="w-[180px] h-9 text-sm">
                 <SelectValue placeholder={t('category')} />
               </SelectTrigger>
               <SelectContent>
@@ -462,7 +521,7 @@ function ServicesContent() {
               </SelectContent>
             </Select>
 
-            {/* Service Type Filter (Depends on Category) */}
+            {/* Service Type Filter */}
             <Select
               value={selectedServiceType || "all"}
               onValueChange={(value) => {
@@ -470,7 +529,7 @@ function ServicesContent() {
                 setCurrentPage(1)
               }}
             >
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-[160px] h-9 text-sm">
                 <SelectValue placeholder={t('serviceType')} />
               </SelectTrigger>
               <SelectContent>
@@ -482,14 +541,6 @@ function ServicesContent() {
                 ))}
               </SelectContent>
             </Select>
-
-            {/* Clear Filters Button */}
-            {activeFiltersCount > 0 && (
-              <Button variant="outline" size="default" onClick={clearAllFilters} className="gap-1">
-                <X className="h-4 w-4" />
-                {t('clearFilters')}
-              </Button>
-            )}
           </div>
         </div>
 
