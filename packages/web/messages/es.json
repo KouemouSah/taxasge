@@ -1316,7 +1316,13 @@
     "parentService": "Servicio principal",
     "subServices": "Sub-servicios",
     "relatedServices": "Servicios relacionados",
-    "noRelatedServices": "No hay servicios relacionados disponibles"
+    "noRelatedServices": "No hay servicios relacionados disponibles",
+    "requiredDocuments": "Documentos requeridos",
+    "procedures": "Procedimientos",
+    "description": "Descripción",
+    "pricing": "Tarificación",
+    "ministry": "Ministerio",
+    "calculate": "Calcular"
   },
   "chatbot": {
     "title": "Asistente TaxasGE",

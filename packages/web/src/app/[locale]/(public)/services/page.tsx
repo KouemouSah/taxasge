@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   Search, X, AlertCircle, Loader2, ChevronLeft, ChevronRight,
-  Building2, LayoutGrid, List, Calculator
+  LayoutGrid, List, Calculator
 } from "lucide-react"
 import {
   Select,
@@ -546,18 +546,13 @@ function ServicesContent() {
                           {service.name}
                         </h3>
                         <Badge variant="secondary" className="text-xs">{service.category_name}</Badge>
+                        {service.ministry_name && (
+                          <p className="text-xs text-muted-foreground mt-1">{service.ministry_name}</p>
+                        )}
                       </div>
                       {service.description && (
                         <p className="text-sm text-muted-foreground line-clamp-3">{service.description}</p>
                       )}
-                      <div className="space-y-2 text-sm">
-                        {service.ministry_name && (
-                          <div className="flex items-center text-muted-foreground">
-                            <Building2 className="h-4 w-4 mr-2 flex-shrink-0" />
-                            <span className="truncate">{service.ministry_name}</span>
-                          </div>
-                        )}
-                      </div>
 
                       <div className="mt-auto pt-4 border-t space-y-3">
                         {!shouldShowCalculateButton ? (
@@ -622,13 +617,10 @@ function ServicesContent() {
                           <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors">
                             {service.name}
                           </h3>
-                          <div className="flex flex-wrap items-center gap-2 mb-3">
+                          <div className="mb-3">
                             <Badge variant="secondary" className="text-xs">{service.category_name}</Badge>
                             {service.ministry_name && (
-                              <div className="flex items-center text-xs text-muted-foreground">
-                                <Building2 className="h-3 w-3 mr-1" />
-                                <span>{service.ministry_name}</span>
-                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">{service.ministry_name}</p>
                             )}
                           </div>
                           {service.description && (
@@ -734,12 +726,6 @@ function ServicesContent() {
             </div>
           )}
 
-          {!loading && searchResults && searchResults.execution_time_ms > 0 && (
-            <p className="text-xs text-muted-foreground text-center mt-2">
-              {t('searchCompleted', { time: searchResults.execution_time_ms.toFixed(2) })}
-              {searchResults.cached && ` (${t('cached')})`}
-            </p>
-          )}
         </div>
       </div>
     </div>

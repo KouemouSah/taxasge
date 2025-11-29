@@ -1316,7 +1316,13 @@
     "parentService": "Parent service",
     "subServices": "Sub-services",
     "relatedServices": "Related services",
-    "noRelatedServices": "No related services available"
+    "noRelatedServices": "No related services available",
+    "requiredDocuments": "Required documents",
+    "procedures": "Procedures",
+    "description": "Description",
+    "pricing": "Pricing",
+    "ministry": "Ministry",
+    "calculate": "Calculate"
   },
   "chatbot": {
     "title": "TaxasGE Assistant",
