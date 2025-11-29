@@ -1323,7 +1323,11 @@
     "pricing": "Pricing",
     "ministry": "Ministry",
     "calculate": "Calculate",
-    "estimatedDuration": "Estimated duration"
+    "estimatedDuration": "Estimated duration",
+    "firstExpedition": "First Expedition",
+    "minutes": "minutes",
+    "notSpecified": "Not specified",
+    "comingSoon": "Coming soon"
   },
   "chatbot": {
     "title": "TaxasGE Assistant",

@@ -7,9 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Separator } from "@/components/ui/separator"
 import {
   AlertCircle, Loader2, ArrowLeft, Calculator,
-  FileText, ListChecks, Building2, Clock, DollarSign, Info
+  FileText, ListChecks, Building2, Clock, DollarSign, Info, MapPin
 } from "lucide-react"
 import Breadcrumb from "@/components/ui/breadcrumb"
 import {
@@ -23,8 +24,8 @@ import {
 /**
  * Service Details Page
  * Layout with 2 distinct blocks:
- * - Block 1 (Right): Description, Pricing, Duration, Ministry
- * - Block 2 (Left): Documents + Procedures (numbered lists with icons)
+ * - Block 1 (Left): Description, Pricing, Duration, Ministry
+ * - Block 2 (Right): Documents + Procedures (numbered lists with icons)
  */
 export default function ServiceDetailsPage() {
   const params = useParams()
@@ -96,6 +97,33 @@ export default function ServiceDetailsPage() {
     )
   }
 
+  // Calculate total estimated minutes from procedures
+  const getTotalEstimatedMinutes = () => {
+    if (!service.procedures || service.procedures.length === 0) return null
+    const total = service.procedures.reduce((sum, proc) => {
+      return sum + (proc.total_estimated_minutes || 0)
+    }, 0)
+    return total > 0 ? total : null
+  }
+
+  // Get location and office hours from first procedure step
+  const getLocationInfo = () => {
+    if (!service.procedures || service.procedures.length === 0) return null
+    for (const proc of service.procedures) {
+      if (proc.steps && proc.steps.length > 0) {
+        for (const step of proc.steps) {
+          if (step.location_address || step.office_hours) {
+            return {
+              location_address: step.location_address,
+              office_hours: step.office_hours
+            }
+          }
+        }
+      }
+    }
+    return null
+  }
+
   /**
    * Render pricing based on 4 cases
    */
@@ -147,26 +175,32 @@ export default function ServiceDetailsPage() {
       )
     }
 
-    // Case 4: Different prices - side by side with same size
+    // Case 4: Different prices - side by side with separator and distinct colors
     return (
-      <div className="flex flex-wrap gap-6">
+      <div className="flex flex-wrap items-center gap-4">
         <div>
-          <p className="text-sm text-muted-foreground">{t('expeditionPrice')}</p>
-          <p className="text-xl font-bold text-primary">
+          <p className="text-sm font-bold text-emerald-600">{t('firstExpedition')}</p>
+          <p className="text-xl font-bold text-emerald-600">
             {formatPrice(expeditionPrice, service.pricing.currency)}
           </p>
         </div>
         {renewalPrice > 0 && (
-          <div>
-            <p className="text-sm text-muted-foreground">{t('renewalPrice')}</p>
-            <p className="text-xl font-bold text-primary">
-              {formatPrice(renewalPrice, service.pricing.currency)}
-            </p>
-          </div>
+          <>
+            <span className="text-2xl text-muted-foreground font-light">|</span>
+            <div>
+              <p className="text-sm font-bold text-blue-600">{t('renewalPrice')}</p>
+              <p className="text-xl font-bold text-blue-600">
+                {formatPrice(renewalPrice, service.pricing.currency)}
+              </p>
+            </div>
+          </>
         )}
       </div>
     )
   }
+
+  const totalMinutes = getTotalEstimatedMinutes()
+  const locationInfo = getLocationInfo()
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -203,57 +237,76 @@ export default function ServiceDetailsPage() {
 
         {/* BLOCK 1 (LEFT): Description, Pricing, Duration, Ministry */}
         <Card>
-          <CardContent className="p-6 space-y-6">
+          <CardContent className="p-6 space-y-4">
             {/* Description */}
             {service.description && (
               <div className="flex gap-3">
                 <Info className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
                 <div>
-                  <h3 className="font-semibold mb-2">{t('description')}</h3>
+                  <h3 className="text-lg font-semibold flex items-center gap-2 mb-2">{t('description')}</h3>
                   <p className="text-muted-foreground">{service.description}</p>
                 </div>
               </div>
             )}
 
-            {/* Pricing */}
+            {/* Pricing Section */}
             <div className="flex gap-3">
               <DollarSign className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <h3 className="font-semibold mb-3">{t('pricing')}</h3>
+                <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">{t('pricing')}</h3>
                 {renderPricing()}
               </div>
             </div>
 
-            {/* Processing Time / Duration */}
-            {service.processing_time_days && (
-              <div className="flex gap-3">
-                <Clock className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                <div>
-                  <h3 className="font-semibold mb-1">{t('estimatedDuration')}</h3>
-                  <p className="text-muted-foreground">
-                    {service.processing_time_days} {t('days')}
-                  </p>
-                </div>
-              </div>
-            )}
+            <Separator />
 
-            {/* Ministry */}
-            {service.ministry && (
-              <div className="flex gap-3">
-                <Building2 className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                <div>
-                  <h3 className="font-semibold mb-1">{t('ministry')}</h3>
-                  <p className="text-muted-foreground">{service.ministry.name}</p>
+            {/* Processing Time / Duration - Always show */}
+            <div className="flex gap-3">
+              <Clock className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-lg font-semibold flex items-center gap-2 mb-1">{t('estimatedDuration')}</h3>
+                <p className="text-muted-foreground">
+                  {totalMinutes
+                    ? `${totalMinutes} ${t('minutes')}`
+                    : service.processing_time_days
+                      ? `${service.processing_time_days} ${t('days')}`
+                      : t('notSpecified')
+                  }
+                </p>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Ministry - Always show */}
+            <div className="flex gap-3">
+              <Building2 className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold flex items-center gap-2 mb-1">{t('ministry')}</h3>
+                <p className="text-muted-foreground">{service.ministry?.name || t('notSpecified')}</p>
+                {/* Location and Office Hours */}
+                <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
+                  <MapPin className="h-4 w-4" />
+                  <span>
+                    {locationInfo?.location_address || t('comingSoon')}
+                  </span>
+                  <span className="text-muted-foreground">|</span>
+                  <span>
+                    {locationInfo?.office_hours || t('comingSoon')}
+                  </span>
                 </div>
               </div>
-            )}
+            </div>
 
             {/* Legal Reference */}
             {service.legal_reference && (
-              <div className="pt-4 border-t">
-                <h3 className="font-semibold mb-2">{t('legalReference')}</h3>
-                <p className="text-sm text-muted-foreground">{service.legal_reference}</p>
-              </div>
+              <>
+                <Separator />
+                <div className="pt-2">
+                  <h3 className="text-lg font-semibold mb-2">{t('legalReference')}</h3>
+                  <p className="text-sm text-muted-foreground">{service.legal_reference}</p>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
@@ -263,7 +316,7 @@ export default function ServiceDetailsPage() {
           {/* Documents Section */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center gap-2">
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
                 <FileText className="h-5 w-5 text-primary" />
                 {t('requiredDocuments')}
               </CardTitle>
@@ -290,7 +343,7 @@ export default function ServiceDetailsPage() {
           {/* Procedures Section */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center gap-2">
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
                 <ListChecks className="h-5 w-5 text-primary" />
                 {t('procedures')}
               </CardTitle>

@@ -1323,7 +1323,11 @@
     "pricing": "Tarification",
     "ministry": "Ministère",
     "calculate": "Calculer",
-    "estimatedDuration": "Durée estimée"
+    "estimatedDuration": "Durée estimée",
+    "firstExpedition": "Première Expédition",
+    "minutes": "minutes",
+    "notSpecified": "Non renseigné",
+    "comingSoon": "À venir"
   },
   "chatbot": {
     "title": "Assistant TaxasGE",
