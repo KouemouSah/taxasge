@@ -147,9 +147,9 @@ export default function ServiceDetailsPage() {
       )
     }
 
-    // Case 4: Different prices
+    // Case 4: Different prices - side by side with same size
     return (
-      <div className="space-y-2">
+      <div className="flex flex-wrap gap-6">
         <div>
           <p className="text-sm text-muted-foreground">{t('expeditionPrice')}</p>
           <p className="text-xl font-bold text-primary">
@@ -159,7 +159,7 @@ export default function ServiceDetailsPage() {
         {renewalPrice > 0 && (
           <div>
             <p className="text-sm text-muted-foreground">{t('renewalPrice')}</p>
-            <p className="text-lg font-semibold">
+            <p className="text-xl font-bold text-primary">
               {formatPrice(renewalPrice, service.pricing.currency)}
             </p>
           </div>
