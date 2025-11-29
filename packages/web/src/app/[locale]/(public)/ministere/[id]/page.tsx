@@ -9,22 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Building2, Loader2, ArrowLeft, FolderTree, Grid3x3, Briefcase, Info } from 'lucide-react';
 import Breadcrumb from '@/components/ui/breadcrumb';
-import { searchServices, type SearchResponse, type ServiceResult } from '@/core/api/services';
-import { appConfig } from '@/core/config/app';
-
-interface MinistryDetails {
-  id: number;
-  code: string;
-  name_es: string;
-  description_es?: string;
-  is_active: boolean;
-}
-
-interface MinistryStats {
-  total_services: number;
-  total_categories: number;
-  total_sectors: number;
-}
+import { getMinistryDetails, type MinistryDetails, type MinistryServiceItem } from '@/core/api/homepage';
 
 export default function MinistryDetailPage() {
   const params = useParams();
@@ -35,39 +20,27 @@ export default function MinistryDetailPage() {
   const tCommon = useTranslations('common');
 
   const [ministry, setMinistry] = useState<MinistryDetails | null>(null);
-  const [stats, setStats] = useState<MinistryStats | null>(null);
-  const [services, setServices] = useState<ServiceResult[]>([]);
   const [loading, setLoading] = useState(true);
-  const [servicesLoading, setServicesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const servicesPerPage = 12;
 
   // Fetch ministry details
   useEffect(() => {
     async function fetchMinistryDetails() {
+      if (!ministryId) return;
+
       try {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(
-          `${appConfig.api.baseUrl}/api/${appConfig.api.version}/fiscal-services/ministries`
-        );
+        const result = await getMinistryDetails(parseInt(ministryId), {
+          language: locale,
+          page: currentPage,
+          limit: servicesPerPage,
+        });
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch ministries');
-        }
-
-        const ministries: MinistryDetails[] = await response.json();
-        const currentMinistry = ministries.find(m => m.id === parseInt(ministryId));
-
-        if (!currentMinistry) {
-          setError(t('notFound'));
-          return;
-        }
-
-        setMinistry(currentMinistry);
+        setMinistry(result);
       } catch (err) {
         console.error('Failed to fetch ministry details:', err);
         setError(t('errorLoading'));
@@ -76,50 +49,8 @@ export default function MinistryDetailPage() {
       }
     }
 
-    if (ministryId) {
-      fetchMinistryDetails();
-    }
-  }, [ministryId, t]);
-
-  // Fetch services and calculate stats
-  useEffect(() => {
-    async function fetchServices() {
-      if (!ministryId) return;
-
-      try {
-        setServicesLoading(true);
-
-        const results: SearchResponse = await searchServices({
-          ministry_id: parseInt(ministryId),
-          page: currentPage,
-          limit: servicesPerPage,
-          language: locale,
-          include_facets: true,
-        });
-
-        setServices(results.results);
-        setTotalPages(results.total_pages);
-
-        // Calculate stats from facets
-        if (results.facets) {
-          const uniqueCategories = new Set(results.results.map(s => s.category_name));
-          const uniqueSectors = new Set(results.results.map(s => s.sector_name).filter(Boolean));
-
-          setStats({
-            total_services: results.total_results,
-            total_categories: uniqueCategories.size,
-            total_sectors: uniqueSectors.size,
-          });
-        }
-      } catch (err) {
-        console.error('Failed to fetch services:', err);
-      } finally {
-        setServicesLoading(false);
-      }
-    }
-
-    fetchServices();
-  }, [ministryId, currentPage, locale]);
+    fetchMinistryDetails();
+  }, [ministryId, locale, currentPage, t]);
 
   const handleServiceClick = (serviceId: number) => {
     router.push(`/${locale}/services/${serviceId}`);
@@ -165,7 +96,7 @@ export default function MinistryDetailPage() {
       <Breadcrumb
         items={[
           { label: t('ministries'), href: `/${locale}/ministere` },
-          { label: ministry.name_es }
+          { label: ministry.name }
         ]}
         className="mb-6"
       />
@@ -178,13 +109,13 @@ export default function MinistryDetailPage() {
           </div>
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-4xl font-bold">{ministry.name_es}</h1>
+              <h1 className="text-4xl font-bold">{ministry.name}</h1>
               {ministry.is_active && (
                 <Badge variant="default">{tCommon('active')}</Badge>
               )}
             </div>
             <p className="text-muted-foreground text-sm">
-              {t('code')}: {ministry.code}
+              {t('code')}: {ministry.ministry_code}
             </p>
           </div>
         </div>
@@ -198,42 +129,40 @@ export default function MinistryDetailPage() {
       </div>
 
       {/* Stats Cards */}
-      {stats && (
-        <div className="grid gap-6 md:grid-cols-3 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{t('totalSectors')}</CardTitle>
-              <FolderTree className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.total_sectors}</div>
-            </CardContent>
-          </Card>
+      <div className="grid gap-6 md:grid-cols-3 mb-8">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t('totalSectors')}</CardTitle>
+            <FolderTree className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{ministry.sector_count}</div>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{t('totalCategories')}</CardTitle>
-              <Grid3x3 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.total_categories}</div>
-            </CardContent>
-          </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t('totalCategories')}</CardTitle>
+            <Grid3x3 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{ministry.category_count}</div>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{t('totalServices')}</CardTitle>
-              <Briefcase className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.total_services}</div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t('totalServices')}</CardTitle>
+            <Briefcase className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{ministry.service_count}</div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Ministry Information */}
-      {ministry.description_es && (
+      {ministry.description && (
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -242,7 +171,7 @@ export default function MinistryDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">{ministry.description_es}</p>
+            <p className="text-muted-foreground">{ministry.description}</p>
           </CardContent>
         </Card>
       )}
@@ -252,12 +181,7 @@ export default function MinistryDetailPage() {
         <h2 className="text-2xl font-bold mb-4">{t('services')}</h2>
       </div>
 
-      {servicesLoading ? (
-        <div className="flex justify-center items-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="ml-3 text-muted-foreground">{tCommon('loading')}</span>
-        </div>
-      ) : services.length === 0 ? (
+      {ministry.services.length === 0 ? (
         <div className="text-center py-12">
           <Briefcase className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
           <p className="text-muted-foreground">{t('noServices')}</p>
@@ -265,7 +189,7 @@ export default function MinistryDetailPage() {
       ) : (
         <>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {services.map((service) => (
+            {ministry.services.map((service: MinistryServiceItem) => (
               <Card
                 key={service.id}
                 className="cursor-pointer hover:shadow-lg transition-shadow"
@@ -286,7 +210,7 @@ export default function MinistryDetailPage() {
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">{t('expeditionPrice')}:</span>
                     <span className="font-semibold">
-                      {service.expedition_price === 0 ? tCommon('free') : `${service.expedition_price} FCFA`}
+                      {service.expedition_price === 0 ? tCommon('free') : `${service.expedition_price.toLocaleString()} FCFA`}
                     </span>
                   </div>
                 </CardContent>
@@ -295,7 +219,7 @@ export default function MinistryDetailPage() {
           </div>
 
           {/* Pagination */}
-          {totalPages > 1 && (
+          {ministry.total_pages > 1 && (
             <div className="flex justify-center items-center gap-2 mt-8">
               <Button
                 variant="outline"
@@ -306,13 +230,13 @@ export default function MinistryDetailPage() {
                 {tCommon('previous')}
               </Button>
               <span className="text-sm text-muted-foreground">
-                {t('page')} {currentPage} {tCommon('of')} {totalPages}
+                {t('page')} {ministry.current_page} {tCommon('of')} {ministry.total_pages}
               </span>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
+                disabled={currentPage === ministry.total_pages}
               >
                 {tCommon('next')}
               </Button>

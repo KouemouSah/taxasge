@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Building2, Loader2, LayoutGrid, List, ArrowRight, Search } from 'lucide-react';
 import Breadcrumb from '@/components/ui/breadcrumb';
-import { searchServices, type SearchResponse, type FacetItem } from '@/core/api/services';
+import { getMinistryDirectory, type MinistryItem } from '@/core/api/homepage';
 
 type ViewMode = 'kanban' | 'list';
 type SortOption = 'name-asc' | 'name-desc' | 'count-desc';
@@ -22,12 +22,12 @@ export default function MinisterePage() {
   const t = useTranslations('ministriesPage');
   const tCommon = useTranslations('common');
 
-  const [ministries, setMinistries] = useState<FacetItem[]>([]);
+  const [ministries, setMinistries] = useState<MinistryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortOption, setSortOption] = useState<SortOption>('name-asc');
+  const [sortOption, setSortOption] = useState<SortOption>('count-desc');
 
   useEffect(() => {
     async function fetchMinistries() {
@@ -35,16 +35,9 @@ export default function MinisterePage() {
         setLoading(true);
         setError(null);
 
-        // Fetch services with facets to get ministry list
-        const results: SearchResponse = await searchServices({
-          include_facets: true,
-          limit: 1,
-          language: locale,
-        });
-
-        if (results.facets?.ministries) {
-          setMinistries(results.facets.ministries);
-        }
+        // Fetch ministry directory from homepage API
+        const result = await getMinistryDirectory(locale);
+        setMinistries(result.ministries);
       } catch (err) {
         console.error('Failed to fetch ministries:', err);
         setError(t('errorLoading'));
@@ -78,17 +71,15 @@ export default function MinisterePage() {
         sorted.sort((a, b) => (b.name || '').localeCompare(a.name || ''));
         break;
       case 'count-desc':
-        sorted.sort((a, b) => (b.count || 0) - (a.count || 0));
+        sorted.sort((a, b) => (b.service_count || 0) - (a.service_count || 0));
         break;
     }
 
     return sorted;
   }, [ministries, searchQuery, sortOption]);
 
-  const handleMinistryClick = (ministry: FacetItem) => {
-    if (ministry.id) {
-      router.push(`/${locale}/ministere/${ministry.id}`);
-    }
+  const handleMinistryClick = (ministry: MinistryItem) => {
+    router.push(`/${locale}/ministere/${ministry.id}`);
   };
 
   return (
@@ -188,7 +179,7 @@ export default function MinisterePage() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredMinistries.map((ministry) => (
             <Card
-              key={ministry.id ?? ministry.name}
+              key={ministry.id}
               className="group cursor-pointer hover:shadow-lg transition-all duration-300"
               onClick={() => handleMinistryClick(ministry)}
             >
@@ -202,7 +193,7 @@ export default function MinisterePage() {
                       {ministry.name}
                     </h3>
                     <Badge variant="secondary">
-                      {t('servicesCount', { count: ministry.count })}
+                      {t('servicesCount', { count: ministry.service_count })}
                     </Badge>
                   </div>
                 </div>
@@ -223,7 +214,7 @@ export default function MinisterePage() {
         <div className="space-y-4">
           {filteredMinistries.map((ministry) => (
             <Card
-              key={ministry.id ?? ministry.name}
+              key={ministry.id}
               className="group cursor-pointer hover:shadow-md transition-all duration-300"
               onClick={() => handleMinistryClick(ministry)}
             >
@@ -237,7 +228,7 @@ export default function MinisterePage() {
                   </h3>
                 </div>
                 <Badge variant="secondary" className="text-sm">
-                  {t('servicesCount', { count: ministry.count })}
+                  {t('servicesCount', { count: ministry.service_count })}
                 </Badge>
                 <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
               </div>

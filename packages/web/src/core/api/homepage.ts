@@ -222,3 +222,143 @@ export function getDefaultServicesByType(type: ServiceType): ServicesByTypeRespo
     has_more: false,
   };
 }
+
+// ============================================================================
+// MINISTRY TYPES AND FUNCTIONS
+// ============================================================================
+
+/**
+ * Ministry item with service counts
+ */
+export interface MinistryItem {
+  id: number;
+  ministry_code: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  color: string | null;
+  is_active: boolean;
+  service_count: number;
+  sector_count: number;
+  category_count: number;
+}
+
+/**
+ * Ministry directory response
+ */
+export interface MinistryDirectory {
+  total_ministries: number;
+  total_services: number;
+  ministries: MinistryItem[];
+}
+
+/**
+ * Ministry service item
+ */
+export interface MinistryServiceItem {
+  id: number;
+  service_code: string;
+  name: string;
+  description: string | null;
+  expedition_price: number;
+  renewal_price: number;
+  category_name: string | null;
+  sector_name: string | null;
+  service_type: string;
+}
+
+/**
+ * Ministry details response with paginated services
+ */
+export interface MinistryDetails {
+  id: number;
+  ministry_code: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  color: string | null;
+  is_active: boolean;
+  service_count: number;
+  sector_count: number;
+  category_count: number;
+  services: MinistryServiceItem[];
+  total_pages: number;
+  current_page: number;
+}
+
+/**
+ * Fetch ministry directory with service counts
+ *
+ * @param language - Language code (es, fr, en). Default: 'es'
+ * @throws {Error} If the API request fails
+ */
+export async function getMinistryDirectory(language: string = 'es'): Promise<MinistryDirectory> {
+  try {
+    const response = await apiClient.get<MinistryDirectory>('/homepage/ministries', {
+      params: { language },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching ministry directory:', error);
+
+    let errorMessage = 'Failed to fetch ministry directory';
+    if (error && typeof error === 'object' && 'response' in error) {
+      const axiosError = error as { response?: { data?: { detail?: string } }; message?: string };
+      errorMessage = axiosError.response?.data?.detail || axiosError.message || errorMessage;
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
+    throw new Error(errorMessage);
+  }
+}
+
+/**
+ * Fetch ministry details with paginated services
+ *
+ * @param ministryId - Ministry ID
+ * @param options - Optional query parameters
+ * @throws {Error} If the API request fails
+ */
+export async function getMinistryDetails(
+  ministryId: number,
+  options?: {
+    language?: string;
+    page?: number;
+    limit?: number;
+  }
+): Promise<MinistryDetails> {
+  try {
+    const response = await apiClient.get<MinistryDetails>(`/homepage/ministry/${ministryId}`, {
+      params: {
+        language: options?.language || 'es',
+        page: options?.page || 1,
+        limit: options?.limit || 12,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching ministry details:', error);
+
+    let errorMessage = 'Failed to fetch ministry details';
+    if (error && typeof error === 'object' && 'response' in error) {
+      const axiosError = error as { response?: { data?: { detail?: string } }; message?: string };
+      errorMessage = axiosError.response?.data?.detail || axiosError.message || errorMessage;
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
+    throw new Error(errorMessage);
+  }
+}
+
+/**
+ * Get default/fallback ministry directory (used when API fails)
+ */
+export function getDefaultMinistryDirectory(): MinistryDirectory {
+  return {
+    total_ministries: 0,
+    total_services: 0,
+    ministries: [],
+  };
+}
