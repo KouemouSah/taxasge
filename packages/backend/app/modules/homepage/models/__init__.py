@@ -9,7 +9,12 @@ from app.modules.homepage.models.homepage import (
     MinistryItem,
     MinistryDirectory,
     MinistryServiceItem,
-    MinistryDetails
+    MinistryDetails,
+    SearchRequest,
+    SearchResultItem,
+    FacetItem,
+    SearchFacets,
+    SearchResponse
 )
 
 __all__ = [
@@ -21,5 +26,10 @@ __all__ = [
     "MinistryItem",
     "MinistryDirectory",
     "MinistryServiceItem",
-    "MinistryDetails"
+    "MinistryDetails",
+    "SearchRequest",
+    "SearchResultItem",
+    "FacetItem",
+    "SearchFacets",
+    "SearchResponse"
 ]

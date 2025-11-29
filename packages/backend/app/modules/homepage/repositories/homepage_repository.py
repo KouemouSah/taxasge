@@ -527,3 +527,262 @@ class HomepageRepository:
         except asyncpg.PostgresError as e:
             logger.error(f"Database error in get_ministry_details: {e}")
             raise
+
+    async def search_services(
+        self,
+        q: Optional[str] = None,
+        category_id: Optional[int] = None,
+        category_code: Optional[str] = None,
+        ministry_id: Optional[int] = None,
+        service_type: Optional[str] = None,
+        min_price: Optional[float] = None,
+        max_price: Optional[float] = None,
+        sort_by: str = "relevance",
+        sort_order: str = "asc",
+        page: int = 1,
+        limit: int = 20,
+        language: str = "es"
+    ) -> Dict[str, Any]:
+        """
+        Search fiscal services with filters and pagination
+
+        Args:
+            q: Search query (searches in name, description)
+            category_id: Filter by category ID
+            category_code: Filter by category code
+            ministry_id: Filter by ministry ID
+            service_type: Filter by service type
+            min_price: Minimum expedition price
+            max_price: Maximum expedition price
+            sort_by: Sort field (relevance, name, price)
+            sort_order: Sort order (asc, desc)
+            page: Page number (1-based)
+            limit: Results per page
+            language: Language code for translations
+
+        Returns:
+            Dict with results, total_results, total_pages, facets
+        """
+        # Build WHERE conditions
+        conditions = ["fs.status = 'active'::service_status_enum"]
+        params = []
+        param_idx = 1
+
+        # Search query
+        if q and q.strip():
+            conditions.append(f"(fs.name_es ILIKE ${param_idx} OR fs.description_es ILIKE ${param_idx})")
+            params.append(f"%{q.strip()}%")
+            param_idx += 1
+
+        # Category filter
+        if category_id:
+            conditions.append(f"fs.category_id = ${param_idx}")
+            params.append(category_id)
+            param_idx += 1
+        elif category_code:
+            conditions.append(f"c.category_code = ${param_idx}")
+            params.append(category_code)
+            param_idx += 1
+
+        # Ministry filter
+        if ministry_id:
+            conditions.append(f"s.ministry_id = ${param_idx}")
+            params.append(ministry_id)
+            param_idx += 1
+
+        # Service type filter
+        if service_type:
+            conditions.append(f"fs.service_type = ${param_idx}::service_type_enum")
+            params.append(service_type)
+            param_idx += 1
+
+        # Price filters
+        if min_price is not None:
+            conditions.append(f"COALESCE(fs.tasa_expedicion, 0) >= ${param_idx}")
+            params.append(min_price)
+            param_idx += 1
+
+        if max_price is not None:
+            conditions.append(f"COALESCE(fs.tasa_expedicion, 0) <= ${param_idx}")
+            params.append(max_price)
+            param_idx += 1
+
+        where_clause = " AND ".join(conditions)
+
+        # Build ORDER BY
+        order_mapping = {
+            "name": "name",
+            "price": "expedition_price",
+            "relevance": "fs.id"
+        }
+        order_field = order_mapping.get(sort_by, "fs.id")
+        order_dir = "DESC" if sort_order == "desc" else "ASC"
+
+        # Count total results
+        count_query = f"""
+            SELECT COUNT(*) as total
+            FROM fiscal_services fs
+            LEFT JOIN categories c ON fs.category_id = c.id
+            LEFT JOIN sectors s ON c.sector_id = s.id
+            WHERE {where_clause}
+        """
+
+        # Main search query
+        offset = (page - 1) * limit
+        search_query = f"""
+            SELECT
+                fs.id,
+                COALESCE(et_name.translation_text, fs.name_es) as name,
+                COALESCE(et_desc.translation_text, fs.description_es) as description,
+                COALESCE(et_cat.translation_text, c.name_es) as category_name,
+                COALESCE(et_min.translation_text, m.name_es) as ministry_name,
+                COALESCE(et_sec.translation_text, s.name_es) as sector_name,
+                fs.service_type::TEXT as service_type,
+                COALESCE(fs.tasa_expedicion, 0)::FLOAT as expedition_price,
+                COALESCE(fs.tasa_renovacion, 0)::FLOAT as renewal_price,
+                COALESCE(fs.processing_time_days, 30) as processing_time_days,
+                fs.status::TEXT as status
+            FROM fiscal_services fs
+            LEFT JOIN categories c ON fs.category_id = c.id
+            LEFT JOIN sectors s ON c.sector_id = s.id
+            LEFT JOIN ministries m ON s.ministry_id = m.id
+
+            -- Service translations
+            LEFT JOIN entity_translations et_name ON
+                et_name.entity_type = 'service'
+                AND et_name.entity_code = fs.service_code
+                AND et_name.field_name = 'name'
+                AND et_name.language_code = ${param_idx}
+
+            LEFT JOIN entity_translations et_desc ON
+                et_desc.entity_type = 'service'
+                AND et_desc.entity_code = fs.service_code
+                AND et_desc.field_name = 'description'
+                AND et_desc.language_code = ${param_idx}
+
+            -- Category translation
+            LEFT JOIN entity_translations et_cat ON
+                et_cat.entity_type = 'category'
+                AND et_cat.entity_code = c.category_code
+                AND et_cat.field_name = 'name'
+                AND et_cat.language_code = ${param_idx}
+
+            -- Ministry translation
+            LEFT JOIN entity_translations et_min ON
+                et_min.entity_type = 'ministry'
+                AND et_min.entity_code = m.ministry_code
+                AND et_min.field_name = 'name'
+                AND et_min.language_code = ${param_idx}
+
+            -- Sector translation
+            LEFT JOIN entity_translations et_sec ON
+                et_sec.entity_type = 'sector'
+                AND et_sec.entity_code = s.sector_code
+                AND et_sec.field_name = 'name'
+                AND et_sec.language_code = ${param_idx}
+
+            WHERE {where_clause}
+            ORDER BY {order_field} {order_dir}
+            LIMIT ${param_idx + 1} OFFSET ${param_idx + 2}
+        """
+
+        params.append(language)
+        params.append(limit)
+        params.append(offset)
+
+        try:
+            # Get total count
+            count_result = await self.db.fetchrow(count_query, *params[:-3])
+            total_results = count_result['total'] if count_result else 0
+            total_pages = max(1, (total_results + limit - 1) // limit)
+
+            # Get results
+            rows = await self.db.fetch(search_query, *params)
+            results = [dict(row) for row in rows]
+
+            return {
+                "results": results,
+                "total_results": total_results,
+                "total_pages": total_pages,
+                "page": page,
+                "limit": limit
+            }
+
+        except asyncpg.PostgresError as e:
+            logger.error(f"Database error in search_services: {e}")
+            raise
+
+    async def get_search_facets(self, language: str = "es") -> Dict[str, Any]:
+        """
+        Get facets for search filters (categories, ministries, service_types)
+
+        Returns aggregated counts for filtering options
+        """
+        # Categories facet
+        categories_query = """
+            SELECT
+                c.id,
+                c.category_code as code,
+                COALESCE(et.translation_text, c.name_es) as name,
+                COUNT(fs.id) FILTER (WHERE fs.status = 'active'::service_status_enum) as count
+            FROM categories c
+            LEFT JOIN fiscal_services fs ON fs.category_id = c.id
+            LEFT JOIN entity_translations et ON
+                et.entity_type = 'category'
+                AND et.entity_code = c.category_code
+                AND et.field_name = 'name'
+                AND et.language_code = $1
+            WHERE c.is_active = true
+            GROUP BY c.id, c.category_code, c.name_es, et.translation_text
+            HAVING COUNT(fs.id) FILTER (WHERE fs.status = 'active'::service_status_enum) > 0
+            ORDER BY count DESC
+            LIMIT 20
+        """
+
+        # Ministries facet
+        ministries_query = """
+            SELECT
+                m.id,
+                m.ministry_code as code,
+                COALESCE(et.translation_text, m.name_es) as name,
+                COUNT(fs.id) as count
+            FROM ministries m
+            JOIN sectors s ON s.ministry_id = m.id
+            JOIN categories c ON c.sector_id = s.id
+            JOIN fiscal_services fs ON fs.category_id = c.id AND fs.status = 'active'::service_status_enum
+            LEFT JOIN entity_translations et ON
+                et.entity_type = 'ministry'
+                AND et.entity_code = m.ministry_code
+                AND et.field_name = 'name'
+                AND et.language_code = $1
+            WHERE m.is_active = true
+            GROUP BY m.id, m.ministry_code, m.name_es, et.translation_text
+            ORDER BY count DESC
+        """
+
+        # Service types facet
+        service_types_query = """
+            SELECT
+                service_type::TEXT as type,
+                COUNT(*) as count
+            FROM fiscal_services
+            WHERE status = 'active'::service_status_enum
+            GROUP BY service_type
+            ORDER BY count DESC
+        """
+
+        try:
+            categories_rows = await self.db.fetch(categories_query, language)
+            ministries_rows = await self.db.fetch(ministries_query, language)
+            service_types_rows = await self.db.fetch(service_types_query)
+
+            return {
+                "categories": [dict(row) for row in categories_rows],
+                "ministries": [dict(row) for row in ministries_rows],
+                "service_types": [dict(row) for row in service_types_rows],
+                "price_ranges": []  # Can be added later if needed
+            }
+
+        except asyncpg.PostgresError as e:
+            logger.error(f"Database error in get_search_facets: {e}")
+            raise

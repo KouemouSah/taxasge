@@ -109,3 +109,71 @@ class MinistryDetails(BaseModel):
     services: List[MinistryServiceItem] = Field([], description="Services list (paginated)")
     total_pages: int = Field(1, description="Total pages")
     current_page: int = Field(1, description="Current page")
+
+
+# ============================================================================
+# SEARCH MODELS
+# ============================================================================
+
+class SearchRequest(BaseModel):
+    """Search request payload"""
+    q: Optional[str] = Field(None, description="Search query")
+    category_id: Optional[int] = Field(None, description="Filter by category ID")
+    category_code: Optional[str] = Field(None, description="Filter by category code")
+    ministry_id: Optional[int] = Field(None, description="Filter by ministry ID")
+    service_type: Optional[str] = Field(None, description="Filter by service type")
+    min_price: Optional[float] = Field(None, description="Minimum price filter")
+    max_price: Optional[float] = Field(None, description="Maximum price filter")
+    sort_by: str = Field("relevance", description="Sort by: relevance, name, price")
+    sort_order: str = Field("asc", description="Sort order: asc, desc")
+    page: int = Field(1, ge=1, description="Page number")
+    limit: int = Field(20, ge=1, le=100, description="Results per page")
+    include_facets: bool = Field(True, description="Include facets in response")
+    language: str = Field("es", description="Language code")
+
+
+class SearchResultItem(BaseModel):
+    """Single search result"""
+    id: int
+    name: str
+    description: Optional[str] = None
+    category_name: str
+    ministry_name: Optional[str] = None
+    sector_name: Optional[str] = None
+    service_type: str
+    expedition_price: float = 0
+    renewal_price: float = 0
+    processing_time_days: int = 30
+    status: str = "active"
+
+
+class FacetItem(BaseModel):
+    """Facet item for filtering"""
+    id: Optional[int] = None
+    code: Optional[str] = None
+    name: Optional[str] = None
+    type: Optional[str] = None
+    count: int = 0
+
+
+class SearchFacets(BaseModel):
+    """Search facets"""
+    categories: List[FacetItem] = []
+    ministries: List[FacetItem] = []
+    service_types: List[FacetItem] = []
+    price_ranges: List[FacetItem] = []
+
+
+class SearchResponse(BaseModel):
+    """Search response"""
+    success: bool = True
+    query: str = ""
+    total_results: int = 0
+    page: int = 1
+    limit: int = 20
+    total_pages: int = 0
+    results: List[SearchResultItem] = []
+    facets: Optional[SearchFacets] = None
+    suggestions: List[str] = []
+    execution_time_ms: float = 0
+    cached: bool = False

@@ -11,8 +11,10 @@ from loguru import logger
 
 from app.modules.homepage.models import (
     HomepageStats, CategoryDirectory, ServicesByTypeResponse,
-    MinistryDirectory, MinistryDetails, MinistryItem
+    MinistryDirectory, MinistryDetails, MinistryItem,
+    SearchRequest, SearchResponse, SearchResultItem, SearchFacets, FacetItem
 )
+import time
 from app.modules.homepage.services import HomepageService
 from app.modules.homepage.repositories import HomepageRepository
 from app.modules.fiscal_services.models.service_details import ServiceDetailsResponse
@@ -575,6 +577,131 @@ async def get_ministry_details(
         )
     except Exception as e:
         logger.error(f"Unexpected error in get_ministry_details: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+# ============================================================================
+# SEARCH ENDPOINT
+# ============================================================================
+
+@router.post("/search", response_model=SearchResponse, summary="Search Services")
+async def search_services(
+    request: SearchRequest,
+    db: asyncpg.Connection = Depends(get_db)
+):
+    """
+    Search fiscal services with filters, pagination, and facets
+
+    **Request Body:**
+    - `q`: Search query (optional)
+    - `category_id` or `category_code`: Filter by category
+    - `ministry_id`: Filter by ministry
+    - `service_type`: Filter by service type
+    - `min_price` / `max_price`: Price range filter
+    - `sort_by`: relevance, name, price
+    - `sort_order`: asc, desc
+    - `page`: Page number (1-based)
+    - `limit`: Results per page (1-100)
+    - `include_facets`: Include facets for filtering
+    - `language`: Language code (es, fr, en)
+
+    **Example:**
+    ```json
+    {
+      "q": "permiso",
+      "ministry_id": 86,
+      "sort_by": "name",
+      "sort_order": "asc",
+      "page": 1,
+      "limit": 20,
+      "include_facets": true,
+      "language": "es"
+    }
+    ```
+    """
+    start_time = time.time()
+
+    try:
+        repo = HomepageRepository(db)
+
+        # Perform search
+        search_result = await repo.search_services(
+            q=request.q,
+            category_id=request.category_id,
+            category_code=request.category_code,
+            ministry_id=request.ministry_id,
+            service_type=request.service_type,
+            min_price=request.min_price,
+            max_price=request.max_price,
+            sort_by=request.sort_by,
+            sort_order=request.sort_order,
+            page=request.page,
+            limit=request.limit,
+            language=request.language
+        )
+
+        # Get facets if requested
+        facets = None
+        if request.include_facets:
+            facets_data = await repo.get_search_facets(request.language)
+            facets = SearchFacets(
+                categories=[
+                    FacetItem(id=f.get('id'), code=f.get('code'), name=f.get('name'), count=f.get('count', 0))
+                    for f in facets_data.get('categories', [])
+                ],
+                ministries=[
+                    FacetItem(id=f.get('id'), code=f.get('code'), name=f.get('name'), count=f.get('count', 0))
+                    for f in facets_data.get('ministries', [])
+                ],
+                service_types=[
+                    FacetItem(type=f.get('type'), count=f.get('count', 0))
+                    for f in facets_data.get('service_types', [])
+                ],
+                price_ranges=[]
+            )
+
+        execution_time = (time.time() - start_time) * 1000  # Convert to ms
+
+        return SearchResponse(
+            success=True,
+            query=request.q or "",
+            total_results=search_result['total_results'],
+            page=search_result['page'],
+            limit=search_result['limit'],
+            total_pages=search_result['total_pages'],
+            results=[
+                SearchResultItem(
+                    id=r['id'],
+                    name=r['name'],
+                    description=r.get('description'),
+                    category_name=r.get('category_name', 'Sin categoría'),
+                    ministry_name=r.get('ministry_name'),
+                    sector_name=r.get('sector_name'),
+                    service_type=r['service_type'],
+                    expedition_price=r.get('expedition_price', 0),
+                    renewal_price=r.get('renewal_price', 0),
+                    processing_time_days=r.get('processing_time_days', 30),
+                    status=r.get('status', 'active')
+                )
+                for r in search_result['results']
+            ],
+            facets=facets,
+            suggestions=[],
+            execution_time_ms=execution_time,
+            cached=False
+        )
+
+    except asyncpg.PostgresError as e:
+        logger.error(f"Database error in search_services: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error in search_services: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Internal server error: {str(e)}"
