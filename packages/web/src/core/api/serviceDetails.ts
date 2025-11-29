@@ -164,8 +164,8 @@ export interface ServiceDetailsResponse {
 export async function getServiceDetails(
   serviceId: number,
   language: string = 'es',
-  includeRelated: boolean = true,
-  includeKeywords: boolean = false
+  _includeRelated: boolean = true,
+  _includeKeywords: boolean = false
 ): Promise<ServiceDetailsResponse> {
   try {
     const params = new URLSearchParams({
