@@ -9,8 +9,12 @@ import asyncpg
 import redis.asyncio as redis
 from loguru import logger
 
-from app.modules.homepage.models import HomepageStats, CategoryDirectory, ServicesByTypeResponse
+from app.modules.homepage.models import (
+    HomepageStats, CategoryDirectory, ServicesByTypeResponse,
+    MinistryDirectory, MinistryDetails, MinistryItem
+)
 from app.modules.homepage.services import HomepageService
+from app.modules.homepage.repositories import HomepageRepository
 from app.modules.fiscal_services.models.service_details import ServiceDetailsResponse
 from app.modules.fiscal_services.repositories.service_details_repository import ServiceDetailsRepository
 
@@ -420,6 +424,157 @@ async def get_service_details(
         )
     except Exception as e:
         logger.error(f"Unexpected error in get_service_details: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+# ============================================================================
+# MINISTRY ENDPOINTS
+# ============================================================================
+
+@router.get("/ministries", response_model=MinistryDirectory, summary="Get Ministry Directory")
+async def get_ministry_directory(
+    language: str = Query(
+        "es",
+        pattern="^(es|fr|en)$",
+        description="Language code for translations (es=Spanish, fr=French, en=English)"
+    ),
+    db: asyncpg.Connection = Depends(get_db)
+):
+    """
+    Get ministry directory with service, sector, and category counts
+
+    **Returns ministries sorted by service count (descending) with:**
+    - Ministry information (name, description, icon, color) - **translated**
+    - Number of active services under this ministry
+    - Number of sectors and categories
+
+    **Multilingual Support:**
+    - Uses `entity_translations` table for proper i18n
+    - Falls back to Spanish (name_es, description_es) if translation not available
+    - Supports: `es` (Spanish), `fr` (French), `en` (English)
+
+    **Example:**
+    ```
+    GET /homepage/ministries?language=fr
+    ```
+    """
+    try:
+        repo = HomepageRepository(db)
+        ministries_data = await repo.get_ministry_directory(language)
+
+        total_services = sum(m.get('service_count', 0) for m in ministries_data)
+
+        return MinistryDirectory(
+            total_ministries=len(ministries_data),
+            total_services=total_services,
+            ministries=[
+                MinistryItem(
+                    id=m['id'],
+                    ministry_code=m['ministry_code'],
+                    name=m['name'],
+                    description=m.get('description'),
+                    icon=m.get('icon'),
+                    color=m.get('color'),
+                    is_active=m.get('is_active', True),
+                    service_count=m.get('service_count', 0),
+                    sector_count=m.get('sector_count', 0),
+                    category_count=m.get('category_count', 0)
+                )
+                for m in ministries_data
+            ]
+        )
+
+    except asyncpg.PostgresError as e:
+        logger.error(f"Database error in get_ministry_directory: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error in get_ministry_directory: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/ministry/{ministry_id}", response_model=MinistryDetails, summary="Get Ministry Details")
+async def get_ministry_details(
+    ministry_id: int,
+    language: str = Query(
+        "es",
+        pattern="^(es|fr|en)$",
+        description="Language code for translations (es=Spanish, fr=French, en=English)"
+    ),
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(12, ge=1, le=50, description="Services per page"),
+    db: asyncpg.Connection = Depends(get_db)
+):
+    """
+    Get complete ministry details with paginated services
+
+    **Returns:**
+    - Ministry information (name, description, icon, color) - **translated**
+    - Service, sector, and category counts
+    - Paginated list of services under this ministry
+
+    **Example:**
+    ```
+    GET /homepage/ministry/86?language=fr&page=1&limit=12
+    ```
+    """
+    try:
+        repo = HomepageRepository(db)
+        ministry_data = await repo.get_ministry_details(ministry_id, language, page, limit)
+
+        if not ministry_data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Ministry with ID {ministry_id} not found"
+            )
+
+        return MinistryDetails(
+            id=ministry_data['id'],
+            ministry_code=ministry_data['ministry_code'],
+            name=ministry_data['name'],
+            description=ministry_data.get('description'),
+            icon=ministry_data.get('icon'),
+            color=ministry_data.get('color'),
+            is_active=ministry_data.get('is_active', True),
+            service_count=ministry_data.get('service_count', 0),
+            sector_count=ministry_data.get('sector_count', 0),
+            category_count=ministry_data.get('category_count', 0),
+            services=[
+                {
+                    'id': s['id'],
+                    'service_code': s['service_code'],
+                    'name': s['name'],
+                    'description': s.get('description'),
+                    'expedition_price': float(s.get('expedition_price', 0) or 0),
+                    'renewal_price': float(s.get('renewal_price', 0) or 0),
+                    'category_name': s.get('category_name'),
+                    'sector_name': s.get('sector_name'),
+                    'service_type': s['service_type']
+                }
+                for s in ministry_data.get('services', [])
+            ],
+            total_pages=ministry_data.get('total_pages', 1),
+            current_page=ministry_data.get('current_page', 1)
+        )
+
+    except HTTPException:
+        raise
+    except asyncpg.PostgresError as e:
+        logger.error(f"Database error in get_ministry_details: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error in get_ministry_details: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Internal server error: {str(e)}"

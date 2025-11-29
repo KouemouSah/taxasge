@@ -282,3 +282,248 @@ class HomepageRepository:
         except asyncpg.PostgresError as e:
             logger.error(f"Database error in get_services_by_type: {e}")
             raise
+
+    async def get_ministry_directory(self, language: str = "es") -> List[Dict[str, Any]]:
+        """
+        Get ministry directory with service, sector, and category counts
+
+        Args:
+            language: Language code (es, fr, en)
+
+        Returns:
+            List of ministries with counts, sorted by service_count DESC
+        """
+        query = """
+            SELECT
+                m.id,
+                m.ministry_code,
+
+                -- Name with translation fallback
+                COALESCE(
+                    et_name.translation_text,
+                    m.name_es
+                ) as name,
+
+                -- Description with translation fallback
+                COALESCE(
+                    et_desc.translation_text,
+                    m.description_es
+                ) as description,
+
+                m.icon,
+                m.color,
+                m.is_active,
+
+                -- Count sectors under this ministry
+                (SELECT COUNT(*) FROM sectors s WHERE s.ministry_id = m.id AND s.is_active = true)::INTEGER as sector_count,
+
+                -- Count categories under this ministry (via sectors)
+                (SELECT COUNT(*) FROM categories c
+                 JOIN sectors s ON c.sector_id = s.id
+                 WHERE s.ministry_id = m.id AND c.is_active = true)::INTEGER as category_count,
+
+                -- Count active services under this ministry (via category -> sector)
+                (SELECT COUNT(*) FROM fiscal_services fs
+                 JOIN categories c ON fs.category_id = c.id
+                 JOIN sectors s ON c.sector_id = s.id
+                 WHERE s.ministry_id = m.id AND fs.status = 'active'::service_status_enum)::INTEGER as service_count
+
+            FROM ministries m
+
+            -- Join entity_translations for ministry name
+            LEFT JOIN entity_translations et_name ON
+                et_name.entity_type = 'ministry'
+                AND et_name.entity_code = m.ministry_code
+                AND et_name.field_name = 'name'
+                AND et_name.language_code = $1
+
+            -- Join entity_translations for ministry description
+            LEFT JOIN entity_translations et_desc ON
+                et_desc.entity_type = 'ministry'
+                AND et_desc.entity_code = m.ministry_code
+                AND et_desc.field_name = 'description'
+                AND et_desc.language_code = $1
+
+            WHERE m.is_active = true
+
+            ORDER BY service_count DESC, name ASC;
+        """
+
+        try:
+            rows = await self.db.fetch(query, language)
+            return [dict(row) for row in rows]
+
+        except asyncpg.PostgresError as e:
+            logger.error(f"Database error in get_ministry_directory: {e}")
+            raise
+
+    async def get_ministry_details(
+        self,
+        ministry_id: int,
+        language: str = "es",
+        page: int = 1,
+        limit: int = 12
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get complete ministry details with paginated services
+
+        Args:
+            ministry_id: Ministry ID
+            language: Language code (es, fr, en)
+            page: Page number (1-based)
+            limit: Services per page
+
+        Returns:
+            Ministry details with services or None if not found
+        """
+        # First get ministry info
+        ministry_query = """
+            SELECT
+                m.id,
+                m.ministry_code,
+
+                -- Name with translation fallback
+                COALESCE(
+                    et_name.translation_text,
+                    m.name_es
+                ) as name,
+
+                -- Description with translation fallback
+                COALESCE(
+                    et_desc.translation_text,
+                    m.description_es
+                ) as description,
+
+                m.icon,
+                m.color,
+                m.is_active,
+
+                -- Count sectors
+                (SELECT COUNT(*) FROM sectors s WHERE s.ministry_id = m.id AND s.is_active = true)::INTEGER as sector_count,
+
+                -- Count categories (via sectors)
+                (SELECT COUNT(*) FROM categories c
+                 JOIN sectors s ON c.sector_id = s.id
+                 WHERE s.ministry_id = m.id AND c.is_active = true)::INTEGER as category_count,
+
+                -- Count services (via category -> sector)
+                (SELECT COUNT(*) FROM fiscal_services fs
+                 JOIN categories c ON fs.category_id = c.id
+                 JOIN sectors s ON c.sector_id = s.id
+                 WHERE s.ministry_id = m.id AND fs.status = 'active'::service_status_enum)::INTEGER as service_count
+
+            FROM ministries m
+
+            LEFT JOIN entity_translations et_name ON
+                et_name.entity_type = 'ministry'
+                AND et_name.entity_code = m.ministry_code
+                AND et_name.field_name = 'name'
+                AND et_name.language_code = $2
+
+            LEFT JOIN entity_translations et_desc ON
+                et_desc.entity_type = 'ministry'
+                AND et_desc.entity_code = m.ministry_code
+                AND et_desc.field_name = 'description'
+                AND et_desc.language_code = $2
+
+            WHERE m.id = $1;
+        """
+
+        try:
+            ministry_row = await self.db.fetchrow(ministry_query, ministry_id, language)
+
+            if not ministry_row:
+                return None
+
+            ministry = dict(ministry_row)
+
+            # Calculate pagination
+            offset = (page - 1) * limit
+            total_services = ministry['service_count']
+            total_pages = max(1, (total_services + limit - 1) // limit)
+
+            # Get services with pagination
+            services_query = """
+                SELECT
+                    fs.id,
+                    fs.service_code,
+
+                    -- Service name with translation fallback
+                    COALESCE(
+                        et_name.translation_text,
+                        fs.name_es
+                    ) as name,
+
+                    -- Service description with translation fallback
+                    COALESCE(
+                        et_desc.translation_text,
+                        fs.description_es
+                    ) as description,
+
+                    COALESCE(fs.tasa_expedicion, 0) as expedition_price,
+                    COALESCE(fs.tasa_renovacion, 0) as renewal_price,
+                    fs.service_type,
+
+                    -- Category name
+                    COALESCE(
+                        et_cat.translation_text,
+                        c.name_es
+                    ) as category_name,
+
+                    -- Sector name
+                    COALESCE(
+                        et_sec.translation_text,
+                        sec.name_es
+                    ) as sector_name
+
+                FROM fiscal_services fs
+                JOIN categories c ON fs.category_id = c.id
+                JOIN sectors sec ON c.sector_id = sec.id
+
+                -- Service translations
+                LEFT JOIN entity_translations et_name ON
+                    et_name.entity_type = 'service'
+                    AND et_name.entity_code = fs.service_code
+                    AND et_name.field_name = 'name'
+                    AND et_name.language_code = $2
+
+                LEFT JOIN entity_translations et_desc ON
+                    et_desc.entity_type = 'service'
+                    AND et_desc.entity_code = fs.service_code
+                    AND et_desc.field_name = 'description'
+                    AND et_desc.language_code = $2
+
+                -- Category translation
+                LEFT JOIN entity_translations et_cat ON
+                    et_cat.entity_type = 'category'
+                    AND et_cat.entity_code = c.category_code
+                    AND et_cat.field_name = 'name'
+                    AND et_cat.language_code = $2
+
+                -- Sector translation
+                LEFT JOIN entity_translations et_sec ON
+                    et_sec.entity_type = 'sector'
+                    AND et_sec.entity_code = sec.sector_code
+                    AND et_sec.field_name = 'name'
+                    AND et_sec.language_code = $2
+
+                WHERE sec.ministry_id = $1
+                    AND fs.status = 'active'::service_status_enum
+
+                ORDER BY fs.name_es ASC
+                LIMIT $3 OFFSET $4;
+            """
+
+            service_rows = await self.db.fetch(
+                services_query, ministry_id, language, limit, offset
+            )
+
+            ministry['services'] = [dict(row) for row in service_rows]
+            ministry['total_pages'] = total_pages
+            ministry['current_page'] = page
+
+            return ministry
+
+        except asyncpg.PostgresError as e:
+            logger.error(f"Database error in get_ministry_details: {e}")
+            raise

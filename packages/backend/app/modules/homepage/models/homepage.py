@@ -54,3 +54,58 @@ class ServicesByTypeResponse(BaseModel):
     services: List[ServiceByType] = Field(..., description="List of services")
     total: int = Field(..., description="Total services for this type/letter")
     has_more: bool = Field(..., description="Whether there are more services beyond limit")
+
+
+# ============================================================================
+# MINISTRY MODELS
+# ============================================================================
+
+class MinistryItem(BaseModel):
+    """Ministry item with service count"""
+    id: int = Field(..., description="Ministry ID")
+    ministry_code: str = Field(..., description="Ministry code")
+    name: str = Field(..., description="Ministry name (translated)")
+    description: Optional[str] = Field(None, description="Ministry description (translated)")
+    icon: Optional[str] = Field(None, description="Ministry icon")
+    color: Optional[str] = Field(None, description="Ministry color")
+    is_active: bool = Field(True, description="Whether ministry is active")
+    service_count: int = Field(0, description="Number of services under this ministry")
+    sector_count: int = Field(0, description="Number of sectors under this ministry")
+    category_count: int = Field(0, description="Number of categories under this ministry")
+
+
+class MinistryDirectory(BaseModel):
+    """Ministry directory response"""
+    total_ministries: int = Field(..., description="Total number of ministries")
+    total_services: int = Field(..., description="Total number of services across all ministries")
+    ministries: List[MinistryItem] = Field(..., description="List of ministries with service counts")
+
+
+class MinistryServiceItem(BaseModel):
+    """Service item for ministry details"""
+    id: int = Field(..., description="Service ID")
+    service_code: str = Field(..., description="Service code")
+    name: str = Field(..., description="Service name (translated)")
+    description: Optional[str] = Field(None, description="Service description (translated)")
+    expedition_price: float = Field(0, description="Expedition price")
+    renewal_price: float = Field(0, description="Renewal price")
+    category_name: Optional[str] = Field(None, description="Category name")
+    sector_name: Optional[str] = Field(None, description="Sector name")
+    service_type: str = Field(..., description="Service type")
+
+
+class MinistryDetails(BaseModel):
+    """Complete ministry details with services"""
+    id: int = Field(..., description="Ministry ID")
+    ministry_code: str = Field(..., description="Ministry code")
+    name: str = Field(..., description="Ministry name (translated)")
+    description: Optional[str] = Field(None, description="Ministry description (translated)")
+    icon: Optional[str] = Field(None, description="Ministry icon")
+    color: Optional[str] = Field(None, description="Ministry color")
+    is_active: bool = Field(True, description="Whether ministry is active")
+    service_count: int = Field(0, description="Total services")
+    sector_count: int = Field(0, description="Total sectors")
+    category_count: int = Field(0, description="Total categories")
+    services: List[MinistryServiceItem] = Field([], description="Services list (paginated)")
+    total_pages: int = Field(1, description="Total pages")
+    current_page: int = Field(1, description="Current page")

@@ -5,7 +5,11 @@ from app.modules.homepage.models.homepage import (
     CategoryWithServices,
     CategoryDirectory,
     ServiceByType,
-    ServicesByTypeResponse
+    ServicesByTypeResponse,
+    MinistryItem,
+    MinistryDirectory,
+    MinistryServiceItem,
+    MinistryDetails
 )
 
 __all__ = [
@@ -13,5 +17,9 @@ __all__ = [
     "CategoryWithServices",
     "CategoryDirectory",
     "ServiceByType",
-    "ServicesByTypeResponse"
+    "ServicesByTypeResponse",
+    "MinistryItem",
+    "MinistryDirectory",
+    "MinistryServiceItem",
+    "MinistryDetails"
 ]
