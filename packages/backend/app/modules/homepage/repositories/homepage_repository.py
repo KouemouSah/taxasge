@@ -568,10 +568,26 @@ class HomepageRepository:
         params = []
         param_idx = 1
 
-        # Search query
+        # Search query - search in multiple fields including translations and keywords
         if q and q.strip():
-            conditions.append(f"(fs.name_es ILIKE ${param_idx} OR fs.description_es ILIKE ${param_idx})")
-            params.append(f"%{q.strip()}%")
+            search_term = f"%{q.strip()}%"
+            conditions.append(f"""(
+                fs.name_es ILIKE ${param_idx}
+                OR fs.description_es ILIKE ${param_idx}
+                OR c.name_es ILIKE ${param_idx}
+                OR EXISTS (
+                    SELECT 1 FROM entity_translations et_search
+                    WHERE et_search.entity_type = 'service'
+                    AND et_search.entity_code = fs.service_code
+                    AND et_search.translation_text ILIKE ${param_idx}
+                )
+                OR EXISTS (
+                    SELECT 1 FROM service_keywords sk
+                    WHERE sk.fiscal_service_id = fs.id
+                    AND sk.keyword ILIKE ${param_idx}
+                )
+            )""")
+            params.append(search_term)
             param_idx += 1
 
         # Category filter
