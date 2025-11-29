@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
-  AlertCircle, Loader2, ArrowLeft, Calculator
+  AlertCircle, Loader2, ArrowLeft, Calculator,
+  FileText, ListChecks, Building2, Clock, DollarSign, Info
 } from "lucide-react"
 import Breadcrumb from "@/components/ui/breadcrumb"
 import {
@@ -21,9 +22,9 @@ import {
 
 /**
  * Service Details Page
- * Single page layout with 2 columns:
- * - Left: Documents + Procedures (numbered lists)
- * - Right: Description + Pricing
+ * Layout with 2 distinct blocks:
+ * - Block 1 (Right): Description, Pricing, Duration, Ministry
+ * - Block 2 (Left): Documents + Procedures (numbered lists with icons)
  */
 export default function ServiceDetailsPage() {
   const params = useParams()
@@ -96,11 +97,7 @@ export default function ServiceDetailsPage() {
   }
 
   /**
-   * Render pricing based on 4 cases:
-   * 1. Free (both prices = 0)
-   * 2. Formula-based calculation
-   * 3. Same price for expedition/renewal
-   * 4. Different prices for expedition/renewal
+   * Render pricing based on 4 cases
    */
   const renderPricing = () => {
     const expeditionPrice = service.pricing.expedition_price
@@ -135,7 +132,7 @@ export default function ServiceDetailsPage() {
             className="w-full"
           >
             <Calculator className="h-4 w-4 mr-2" />
-            {t('calculate') || 'Calculer'}
+            {t('calculate')}
           </Button>
         </div>
       )
@@ -152,7 +149,7 @@ export default function ServiceDetailsPage() {
 
     // Case 4: Different prices
     return (
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div>
           <p className="text-sm text-muted-foreground">{t('expeditionPrice')}</p>
           <p className="text-xl font-bold text-primary">
@@ -203,122 +200,123 @@ export default function ServiceDetailsPage() {
 
       {/* Main Content: 2 Columns */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* LEFT COLUMN: Documents + Procedures */}
+
+        {/* BLOCK 1 (LEFT): Description, Pricing, Duration, Ministry */}
+        <Card>
+          <CardContent className="p-6 space-y-6">
+            {/* Description */}
+            {service.description && (
+              <div className="flex gap-3">
+                <Info className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-semibold mb-2">{t('description')}</h3>
+                  <p className="text-muted-foreground">{service.description}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Pricing */}
+            <div className="flex gap-3">
+              <DollarSign className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-semibold mb-3">{t('pricing')}</h3>
+                {renderPricing()}
+              </div>
+            </div>
+
+            {/* Processing Time / Duration */}
+            {service.processing_time_days && (
+              <div className="flex gap-3">
+                <Clock className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-semibold mb-1">{t('estimatedDuration')}</h3>
+                  <p className="text-muted-foreground">
+                    {service.processing_time_days} {t('days')}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Ministry */}
+            {service.ministry && (
+              <div className="flex gap-3">
+                <Building2 className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-semibold mb-1">{t('ministry')}</h3>
+                  <p className="text-muted-foreground">{service.ministry.name}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Legal Reference */}
+            {service.legal_reference && (
+              <div className="pt-4 border-t">
+                <h3 className="font-semibold mb-2">{t('legalReference')}</h3>
+                <p className="text-sm text-muted-foreground">{service.legal_reference}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* BLOCK 2 (RIGHT): Documents + Procedures */}
         <div className="space-y-6">
           {/* Documents Section */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">{t('requiredDocuments')}</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <FileText className="h-5 w-5 text-primary" />
+                {t('requiredDocuments')}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {service.documents.length > 0 ? (
-                <ol className="list-decimal list-inside space-y-3">
-                  {service.documents.map((doc) => (
-                    <li key={doc.id} className="text-sm">
-                      <span className="font-medium">{doc.name}</span>
-                      {doc.description && (
-                        <p className="text-muted-foreground ml-5 mt-1">{doc.description}</p>
-                      )}
-                    </li>
+                <div className="space-y-2">
+                  {service.documents.map((doc, index) => (
+                    <div key={doc.id} className="flex gap-3 text-sm">
+                      <span className="font-semibold text-primary min-w-[24px]">{index + 1}.</span>
+                      <span>{doc.name}</span>
+                    </div>
                   ))}
-                </ol>
+                </div>
               ) : (
-                <p className="text-muted-foreground">{t('noDocuments')}</p>
+                <p className="text-muted-foreground text-sm">{t('noDocuments')}</p>
               )}
             </CardContent>
           </Card>
 
           {/* Procedures Section */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">{t('procedures')}</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <ListChecks className="h-5 w-5 text-primary" />
+                {t('procedures')}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {service.procedures.length > 0 ? (
-                <ol className="list-decimal list-inside space-y-4">
-                  {service.procedures.map((procedure) => (
-                    <li key={procedure.id} className="text-sm">
-                      <span className="font-medium">{procedure.name}</span>
-                      {procedure.description && (
-                        <p className="text-muted-foreground ml-5 mt-1">{procedure.description}</p>
-                      )}
-                      {/* Procedure steps */}
-                      {procedure.steps && procedure.steps.length > 0 && (
-                        <ol className="list-decimal list-inside ml-5 mt-2 space-y-1">
-                          {procedure.steps.map((step) => (
-                            <li key={step.id} className="text-xs text-muted-foreground">
-                              {step.description}
-                            </li>
-                          ))}
-                        </ol>
-                      )}
-                    </li>
-                  ))}
-                </ol>
+                <div className="space-y-2">
+                  {/* Display procedure steps directly (without procedure name wrapper) */}
+                  {service.procedures.flatMap((procedure) =>
+                    procedure.steps && procedure.steps.length > 0
+                      ? procedure.steps.map((step, stepIndex) => (
+                          <div key={step.id} className="flex gap-3 text-sm">
+                            <span className="font-semibold text-primary min-w-[24px]">{stepIndex + 1}.</span>
+                            <span>{step.description}</span>
+                          </div>
+                        ))
+                      : [
+                          <div key={procedure.id} className="flex gap-3 text-sm">
+                            <span className="font-semibold text-primary min-w-[24px]">1.</span>
+                            <span>{procedure.name}</span>
+                          </div>
+                        ]
+                  )}
+                </div>
               ) : (
-                <p className="text-muted-foreground">{t('noProcedures')}</p>
+                <p className="text-muted-foreground text-sm">{t('noProcedures')}</p>
               )}
             </CardContent>
           </Card>
-        </div>
-
-        {/* RIGHT COLUMN: Description + Pricing */}
-        <div className="space-y-6">
-          <Card>
-            <CardContent className="p-6 space-y-6">
-              {/* Description (only if exists) */}
-              {service.description && (
-                <div>
-                  <h3 className="font-semibold mb-2">{t('description')}</h3>
-                  <p className="text-muted-foreground">{service.description}</p>
-                </div>
-              )}
-
-              {/* Pricing */}
-              <div>
-                <h3 className="font-semibold mb-3">{t('pricing')}</h3>
-                {renderPricing()}
-              </div>
-
-              {/* Legal Reference (if exists) */}
-              {service.legal_reference && (
-                <div className="pt-4 border-t">
-                  <h3 className="font-semibold mb-2">{t('legalReference')}</h3>
-                  <p className="text-sm text-muted-foreground">{service.legal_reference}</p>
-                </div>
-              )}
-
-              {/* Notes (if exists) */}
-              {service.notes && (
-                <div className="pt-4 border-t">
-                  <h3 className="font-semibold mb-2">{t('additionalNotes')}</h3>
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{service.notes}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Ministry/Category Info */}
-          {(service.ministry || service.category) && (
-            <Card>
-              <CardContent className="p-4">
-                <div className="space-y-2 text-sm">
-                  {service.ministry && (
-                    <div>
-                      <span className="text-muted-foreground">{t('ministry') || 'Ministère'}:</span>
-                      <span className="ml-2 font-medium">{service.ministry.name}</span>
-                    </div>
-                  )}
-                  {service.category && (
-                    <div>
-                      <span className="text-muted-foreground">{t('category') || 'Catégorie'}:</span>
-                      <span className="ml-2 font-medium">{service.category.name}</span>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
       </div>
     </div>

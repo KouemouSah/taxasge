@@ -1322,7 +1322,8 @@
     "description": "Description",
     "pricing": "Tarification",
     "ministry": "Ministère",
-    "calculate": "Calculer"
+    "calculate": "Calculer",
+    "estimatedDuration": "Durée estimée"
   },
   "chatbot": {
     "title": "Assistant TaxasGE",

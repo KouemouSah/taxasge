@@ -1322,7 +1322,8 @@
     "description": "Description",
     "pricing": "Pricing",
     "ministry": "Ministry",
-    "calculate": "Calculate"
+    "calculate": "Calculate",
+    "estimatedDuration": "Estimated duration"
   },
   "chatbot": {
     "title": "TaxasGE Assistant",
