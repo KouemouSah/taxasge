@@ -44,7 +44,7 @@ class ServiceByType(BaseModel):
     name_es: str = Field(..., description="Service name (Spanish)")
     name_fr: Optional[str] = Field(None, description="Service name (French)")
     name_en: Optional[str] = Field(None, description="Service name (English)")
-    tasa_expedicion: Optional[float] = Field(None, description="Expedition fee in GNF")
+    tasa_expedicion: Optional[float] = Field(None, description="Expedition fee in XAF")
 
 
 class ServicesByTypeResponse(BaseModel):
