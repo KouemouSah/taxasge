@@ -38,8 +38,8 @@ class ServiceDetailsRepository:
                 fs.service_type,
                 fs.status,
                 fs.calculation_method,
-                COALESCE(fs.expedition_amount, fs.tasa_expedicion, 0) as expedition_price,
-                COALESCE(fs.renewal_amount, fs.tasa_renovacion, 0) as renewal_price,
+                COALESCE(fs.tasa_expedicion, 0) as expedition_price,
+                COALESCE(fs.tasa_renovacion, 0) as renewal_price,
                 fs.percentage_rate,
                 fs.unit_price,
                 fs.validity_period_months,
@@ -282,7 +282,7 @@ class ServiceDetailsRepository:
                 fs.id,
                 fs.service_code,
                 COALESCE(et_name.translation_text, fs.name_es) as name,
-                COALESCE(fs.expedition_amount, fs.tasa_expedicion, 0) as expedition_price,
+                COALESCE(fs.tasa_expedicion, 0) as expedition_price,
                 fs.processing_time_days
             FROM fiscal_services fs
             LEFT JOIN entity_translations et_name ON
@@ -316,7 +316,7 @@ class ServiceDetailsRepository:
                 fs.id,
                 fs.service_code,
                 COALESCE(et_name.translation_text, fs.name_es) as name,
-                COALESCE(fs.expedition_amount, fs.tasa_expedicion, 0) as expedition_price,
+                COALESCE(fs.tasa_expedicion, 0) as expedition_price,
                 fs.processing_time_days
             FROM fiscal_services fs
             LEFT JOIN entity_translations et_name ON
@@ -346,7 +346,7 @@ class ServiceDetailsRepository:
                 fs.id,
                 fs.service_code,
                 COALESCE(et_name.translation_text, fs.name_es) as name,
-                COALESCE(fs.expedition_amount, fs.tasa_expedicion, 0) as expedition_price,
+                COALESCE(fs.tasa_expedicion, 0) as expedition_price,
                 fs.processing_time_days
             FROM fiscal_services fs
             LEFT JOIN entity_translations et_name ON
