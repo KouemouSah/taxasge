@@ -271,10 +271,13 @@ export default function ServiceDetailsPage() {
             <CardContent>
               {service.documents.length > 0 ? (
                 <div className="space-y-2">
-                  {service.documents.map((doc, index) => (
-                    <div key={doc.id} className="flex gap-3 text-sm">
+                  {/* Split document names by comma and display as numbered list */}
+                  {service.documents.flatMap((doc) =>
+                    doc.name.split(',').map((item) => item.trim()).filter((item) => item.length > 0)
+                  ).map((docName, index) => (
+                    <div key={`doc-${index}`} className="flex gap-3 text-sm">
                       <span className="font-semibold text-primary min-w-[24px]">{index + 1}.</span>
-                      <span>{doc.name}</span>
+                      <span>{docName}</span>
                     </div>
                   ))}
                 </div>
@@ -295,22 +298,23 @@ export default function ServiceDetailsPage() {
             <CardContent>
               {service.procedures.length > 0 ? (
                 <div className="space-y-2">
-                  {/* Display procedure steps directly (without procedure name wrapper) */}
-                  {service.procedures.flatMap((procedure) =>
-                    procedure.steps && procedure.steps.length > 0
-                      ? procedure.steps.map((step, stepIndex) => (
-                          <div key={step.id} className="flex gap-3 text-sm">
-                            <span className="font-semibold text-primary min-w-[24px]">{stepIndex + 1}.</span>
-                            <span>{step.description}</span>
-                          </div>
-                        ))
-                      : [
-                          <div key={procedure.id} className="flex gap-3 text-sm">
-                            <span className="font-semibold text-primary min-w-[24px]">1.</span>
-                            <span>{procedure.name}</span>
-                          </div>
-                        ]
-                  )}
+                  {/* Split procedure step descriptions by comma and display as numbered list */}
+                  {(() => {
+                    // Collect all step descriptions, split by comma
+                    const allSteps = service.procedures.flatMap((procedure) =>
+                      procedure.steps && procedure.steps.length > 0
+                        ? procedure.steps.flatMap((step) =>
+                            step.description.split(',').map((item) => item.trim()).filter((item) => item.length > 0)
+                          )
+                        : procedure.name.split(',').map((item) => item.trim()).filter((item) => item.length > 0)
+                    )
+                    return allSteps.map((stepDesc, index) => (
+                      <div key={`step-${index}`} className="flex gap-3 text-sm">
+                        <span className="font-semibold text-primary min-w-[24px]">{index + 1}.</span>
+                        <span>{stepDesc}</span>
+                      </div>
+                    ))
+                  })()}
                 </div>
               ) : (
                 <p className="text-muted-foreground text-sm">{t('noProcedures')}</p>
