@@ -994,6 +994,24 @@ class UserRepository(BaseRepository[UserResponse]):
             return False
 
 
+# Lazy singleton pattern to avoid import-time instantiation
+_user_repository_instance = None
 
-# Global user repository instance
-user_repository = UserRepository()
+
+def get_user_repository() -> "UserRepository":
+    """Get or create the singleton UserRepository instance (lazy initialization)"""
+    global _user_repository_instance
+    if _user_repository_instance is None:
+        _user_repository_instance = UserRepository()
+    return _user_repository_instance
+
+
+# For backwards compatibility: lazy proxy
+class _LazyUserRepository:
+    """Proxy class that lazily initializes UserRepository on first access"""
+
+    def __getattr__(self, name):
+        return getattr(get_user_repository(), name)
+
+
+user_repository = _LazyUserRepository()

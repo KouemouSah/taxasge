@@ -9,11 +9,22 @@ from typing import Optional
 from loguru import logger
 
 from app.modules.users.models.user import UserResponse
-from app.repositories.user_repository import UserRepository
+# Import directly from module to avoid singleton instantiation issues
+from app.modules.users.repositories.user_repository import UserRepository
 from app.modules.auth.services.auth_service import AuthService, get_auth_service
 
 security = HTTPBearer()
-user_repository = UserRepository()
+
+# Lazy initialization to avoid import-time database access
+_user_repository = None
+
+
+def _get_user_repository() -> UserRepository:
+    """Get or create UserRepository instance (lazy initialization)"""
+    global _user_repository
+    if _user_repository is None:
+        _user_repository = UserRepository()
+    return _user_repository
 
 
 async def get_current_user(
@@ -56,7 +67,7 @@ async def get_current_user(
             )
 
         # Fetch full user from database
-        user = await user_repository.find_by_id(user_id)
+        user = await _get_user_repository().find_by_id(user_id)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

@@ -21,8 +21,16 @@ from app.database.connection import get_database
 router = APIRouter(tags=["Users - Profile"])
 security = HTTPBearer()
 
-# Initialize repository
-user_repository = UserRepository()
+# Lazy repository initialization to avoid import-time database access
+_user_repository = None
+
+
+def _get_user_repository() -> UserRepository:
+    """Get or create UserRepository instance (lazy initialization)"""
+    global _user_repository
+    if _user_repository is None:
+        _user_repository = UserRepository()
+    return _user_repository
 
 
 @router.get("/profile", response_model=UserResponse)
@@ -43,7 +51,7 @@ async def get_user_profile(
             resource="user_profile",
             timestamp=datetime.utcnow()
         )
-        await user_repository.log_user_activity(activity)
+        await _get_user_repository().log_user_activity(activity)
 
         return current_user
     except Exception as e:
@@ -78,7 +86,7 @@ async def update_user_profile(
 
         # Email uniqueness check
         if "email" in update_data and update_data["email"] != current_user.email:
-            existing_user = await user_repository.find_by_email(update_data["email"])
+            existing_user = await _get_user_repository().find_by_email(update_data["email"])
             if existing_user:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
@@ -92,7 +100,7 @@ async def update_user_profile(
         if not update_data:
             return current_user
 
-        updated_user = await user_repository.update(current_user.id, update_data)
+        updated_user = await _get_user_repository().update(current_user.id, update_data)
         if not updated_user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -107,7 +115,7 @@ async def update_user_profile(
             metadata={"updated_fields": list(update_data.keys())},
             timestamp=datetime.utcnow()
         )
-        await user_repository.log_user_activity(activity)
+        await _get_user_repository().log_user_activity(activity)
 
         return updated_user
 
@@ -137,7 +145,7 @@ async def change_password(
     """
     try:
         # Verify old password
-        user_data = await user_repository.find_by_id(current_user.id)
+        user_data = await _get_user_repository().find_by_id(current_user.id)
         if not user_data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -184,7 +192,7 @@ async def change_password(
             resource="user_password",
             timestamp=datetime.utcnow()
         )
-        await user_repository.log_user_activity(activity)
+        await _get_user_repository().log_user_activity(activity)
 
         return {
             "message": "Password changed successfully"
@@ -244,7 +252,7 @@ async def upload_avatar(
         avatar_url = f"https://storage.googleapis.com/taxasge-avatars/{current_user.id}/{file.filename}"
 
         # Update user avatar URL
-        updated_user = await user_repository.update(
+        updated_user = await _get_user_repository().update(
             current_user.id,
             {"avatar_url": avatar_url}
         )
@@ -263,7 +271,7 @@ async def upload_avatar(
             metadata={"filename": file.filename, "content_type": file.content_type},
             timestamp=datetime.utcnow()
         )
-        await user_repository.log_user_activity(activity)
+        await _get_user_repository().log_user_activity(activity)
 
         return updated_user
 
@@ -292,7 +300,7 @@ async def delete_avatar(
         # For now, we'll just remove the URL
 
         # Update user avatar URL to None
-        updated_user = await user_repository.update(
+        updated_user = await _get_user_repository().update(
             current_user.id,
             {"avatar_url": None}
         )
@@ -310,7 +318,7 @@ async def delete_avatar(
             resource="user_avatar",
             timestamp=datetime.utcnow()
         )
-        await user_repository.log_user_activity(activity)
+        await _get_user_repository().log_user_activity(activity)
 
         return updated_user
 
