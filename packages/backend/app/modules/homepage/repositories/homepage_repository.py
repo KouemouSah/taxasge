@@ -712,34 +712,29 @@ class HomepageRepository:
             logger.error(f"Database error in search_services: {e}")
             raise
 
-    async def get_search_facets(self, language: str = "es") -> Dict[str, Any]:
+    async def get_search_facets(
+        self,
+        language: str = "es",
+        ministry_id: Optional[int] = None,
+        category_code: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
-        Get facets for search filters (categories, ministries, service_types)
+        Get facets for search filters with CASCADE FILTERING
 
-        Returns aggregated counts for filtering options
-        """
-        # Categories facet
-        categories_query = """
-            SELECT
-                c.id,
-                c.category_code as code,
-                COALESCE(et.translation_text, c.name_es) as name,
-                COUNT(fs.id) FILTER (WHERE fs.status = 'active'::service_status_enum) as count
-            FROM categories c
-            LEFT JOIN fiscal_services fs ON fs.category_id = c.id
-            LEFT JOIN entity_translations et ON
-                et.entity_type = 'category'
-                AND et.entity_code = c.category_code
-                AND et.field_name = 'name'
-                AND et.language_code = $1
-            WHERE c.is_active = true
-            GROUP BY c.id, c.category_code, c.name_es, et.translation_text
-            HAVING COUNT(fs.id) FILTER (WHERE fs.status = 'active'::service_status_enum) > 0
-            ORDER BY count DESC
-            LIMIT 20
-        """
+        Cascade logic:
+        - Ministries: Always return ALL active ministries (root level)
+        - Categories: If ministry_id provided, filter to only that ministry's categories
+        - Service Types: If category_code provided, filter to only that category's service types
 
-        # Ministries facet
+        Args:
+            language: Language code for translations
+            ministry_id: Filter categories to this ministry only
+            category_code: Filter service_types to this category only
+
+        Returns:
+            Filtered facets for cascade dropdowns
+        """
+        # MINISTRIES: Always return ALL (root level, no filter)
         ministries_query = """
             SELECT
                 m.id,
@@ -760,21 +755,88 @@ class HomepageRepository:
             ORDER BY count DESC
         """
 
-        # Service types facet
-        service_types_query = """
-            SELECT
-                service_type::TEXT as type,
-                COUNT(*) as count
-            FROM fiscal_services
-            WHERE status = 'active'::service_status_enum
-            GROUP BY service_type
-            ORDER BY count DESC
-        """
+        # CATEGORIES: Filter by ministry_id if provided
+        if ministry_id:
+            categories_query = """
+                SELECT
+                    c.id,
+                    c.category_code as code,
+                    COALESCE(et.translation_text, c.name_es) as name,
+                    COUNT(fs.id) FILTER (WHERE fs.status = 'active'::service_status_enum) as count
+                FROM categories c
+                JOIN sectors s ON c.sector_id = s.id
+                LEFT JOIN fiscal_services fs ON fs.category_id = c.id
+                LEFT JOIN entity_translations et ON
+                    et.entity_type = 'category'
+                    AND et.entity_code = c.category_code
+                    AND et.field_name = 'name'
+                    AND et.language_code = $1
+                WHERE c.is_active = true
+                    AND s.ministry_id = $2
+                GROUP BY c.id, c.category_code, c.name_es, et.translation_text
+                HAVING COUNT(fs.id) FILTER (WHERE fs.status = 'active'::service_status_enum) > 0
+                ORDER BY count DESC
+            """
+        else:
+            categories_query = """
+                SELECT
+                    c.id,
+                    c.category_code as code,
+                    COALESCE(et.translation_text, c.name_es) as name,
+                    COUNT(fs.id) FILTER (WHERE fs.status = 'active'::service_status_enum) as count
+                FROM categories c
+                LEFT JOIN fiscal_services fs ON fs.category_id = c.id
+                LEFT JOIN entity_translations et ON
+                    et.entity_type = 'category'
+                    AND et.entity_code = c.category_code
+                    AND et.field_name = 'name'
+                    AND et.language_code = $1
+                WHERE c.is_active = true
+                GROUP BY c.id, c.category_code, c.name_es, et.translation_text
+                HAVING COUNT(fs.id) FILTER (WHERE fs.status = 'active'::service_status_enum) > 0
+                ORDER BY count DESC
+                LIMIT 20
+            """
+
+        # SERVICE TYPES: Filter by category_code if provided
+        if category_code:
+            service_types_query = """
+                SELECT
+                    fs.service_type::TEXT as type,
+                    COUNT(*) as count
+                FROM fiscal_services fs
+                JOIN categories c ON fs.category_id = c.id
+                WHERE fs.status = 'active'::service_status_enum
+                    AND c.category_code = $1
+                GROUP BY fs.service_type
+                ORDER BY count DESC
+            """
+        else:
+            service_types_query = """
+                SELECT
+                    service_type::TEXT as type,
+                    COUNT(*) as count
+                FROM fiscal_services
+                WHERE status = 'active'::service_status_enum
+                GROUP BY service_type
+                ORDER BY count DESC
+            """
 
         try:
-            categories_rows = await self.db.fetch(categories_query, language)
+            # Fetch ministries (always all)
             ministries_rows = await self.db.fetch(ministries_query, language)
-            service_types_rows = await self.db.fetch(service_types_query)
+
+            # Fetch categories (filtered by ministry if provided)
+            if ministry_id:
+                categories_rows = await self.db.fetch(categories_query, language, ministry_id)
+            else:
+                categories_rows = await self.db.fetch(categories_query, language)
+
+            # Fetch service types (filtered by category if provided)
+            if category_code:
+                service_types_rows = await self.db.fetch(service_types_query, category_code)
+            else:
+                service_types_rows = await self.db.fetch(service_types_query)
 
             return {
                 "categories": [dict(row) for row in categories_rows],

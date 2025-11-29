@@ -643,10 +643,14 @@ async def search_services(
             language=request.language
         )
 
-        # Get facets if requested
+        # Get facets if requested (with cascade filtering)
         facets = None
         if request.include_facets:
-            facets_data = await repo.get_search_facets(request.language)
+            facets_data = await repo.get_search_facets(
+                language=request.language,
+                ministry_id=request.ministry_id,
+                category_code=request.category_code
+            )
             facets = SearchFacets(
                 categories=[
                     FacetItem(id=f.get('id'), code=f.get('code'), name=f.get('name'), count=f.get('count', 0))
