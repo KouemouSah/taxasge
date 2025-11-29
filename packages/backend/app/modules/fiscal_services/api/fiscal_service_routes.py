@@ -43,7 +43,7 @@ from app.modules.fiscal_services.repositories.search_repository import SearchRep
 from app.modules.fiscal_services.repositories.service_details_repository import ServiceDetailsRepository
 from app.modules.fiscal_services.services import CalculationService
 from app.modules.auth.middleware.auth_middleware import get_current_user
-# NOTE: require_permission is imported lazily in admin endpoints to avoid import chain issues
+from app.modules.permissions.middleware.permission_middleware import require_permission
 from app.database.connection import get_database
 
 router = APIRouter(tags=["Fiscal Services"])
@@ -437,11 +437,9 @@ async def create_fiscal_service(
     service: FiscalServiceCreate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
+    _: None = Depends(require_permission("fiscal_services.create"))
 ):
     """Create new fiscal service - Requires fiscal_services.create permission"""
-    # Lazy import to avoid import chain issues
-    from app.modules.permissions.middleware.permission_middleware import require_permission
-    # Permission check would be done here if needed
     user_id = current_user["sub"]
 
     # Check if code already exists
@@ -460,6 +458,7 @@ async def update_fiscal_service(
     update_data: FiscalServiceUpdate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
+    _: None = Depends(require_permission("fiscal_services.update"))
 ):
     """Update fiscal service - Requires fiscal_services.update permission"""
     user_id = current_user["sub"]
@@ -477,6 +476,7 @@ async def delete_fiscal_service(
     service_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
+    _: None = Depends(require_permission("fiscal_services.delete"))
 ):
     """Delete fiscal service - Requires fiscal_services.delete permission"""
     user_id = current_user["sub"]
@@ -495,6 +495,7 @@ async def delete_fiscal_service(
 async def get_fiscal_services_statistics(
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
+    _: None = Depends(require_permission("fiscal_services.view_stats"))
 ):
     """
     Get comprehensive fiscal services statistics
@@ -532,6 +533,7 @@ async def bulk_import_fiscal_services(
     services: List[FiscalServiceCreate],
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
+    _: None = Depends(require_permission("fiscal_services.bulk_import"))
 ):
     """
     Bulk import fiscal services
@@ -586,6 +588,7 @@ async def bulk_update_service_status(
     new_status: str,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
+    _: None = Depends(require_permission("fiscal_services.bulk_update"))
 ):
     """
     Bulk update service status
