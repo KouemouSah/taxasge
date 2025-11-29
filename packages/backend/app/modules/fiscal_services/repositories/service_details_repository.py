@@ -188,6 +188,8 @@ class ServiceDetailsRepository:
         language: str = "es",
     ) -> List[Dict[str, Any]]:
         """Get all procedures for a service with their steps"""
+        logger.info(f"[PROCEDURES] Fetching procedures for service_id={service_id}, language={language}")
+
         # Get procedures
         procedures_query = """
             SELECT
@@ -224,6 +226,7 @@ class ServiceDetailsRepository:
 
                 # Get steps for this procedure
                 # Note: procedure_step uses composite code (template_code + step_number)
+                # Cast step_number to TEXT explicitly for proper concatenation
                 steps_query = """
                     SELECT
                         pts.id,
@@ -239,12 +242,12 @@ class ServiceDetailsRepository:
                     LEFT JOIN procedure_templates pt_ref ON pts.template_id = pt_ref.id
                     LEFT JOIN entity_translations et_desc ON
                         et_desc.entity_type = 'procedure_step'
-                        AND et_desc.entity_code = pt_ref.template_code || '_' || pts.step_number
+                        AND et_desc.entity_code = pt_ref.template_code || '_' || pts.step_number::TEXT
                         AND et_desc.field_name = 'description'
                         AND et_desc.language_code = $2
                     LEFT JOIN entity_translations et_inst ON
                         et_inst.entity_type = 'procedure_step'
-                        AND et_inst.entity_code = pt_ref.template_code || '_' || pts.step_number
+                        AND et_inst.entity_code = pt_ref.template_code || '_' || pts.step_number::TEXT
                         AND et_inst.field_name = 'instructions'
                         AND et_inst.language_code = $2
                     WHERE pts.template_id = $1
@@ -252,6 +255,23 @@ class ServiceDetailsRepository:
                 """
                 step_rows = await conn.fetch(steps_query, procedure["id"], language)
                 procedure["steps"] = [dict(step) for step in step_rows]
+
+                # Debug: Check if translations exist in entity_translations
+                if language != "es":
+                    debug_query = """
+                        SELECT entity_code, field_name, translation_text
+                        FROM entity_translations
+                        WHERE entity_type = 'procedure_step'
+                        AND language_code = $1
+                        AND entity_code LIKE $2
+                        LIMIT 5
+                    """
+                    debug_rows = await conn.fetch(debug_query, language, f"{procedure['template_code']}%")
+                    if debug_rows:
+                        for dr in debug_rows:
+                            logger.info(f"[DEBUG TRANSLATION] Found: {dr['entity_code']} -> {dr['translation_text'][:50]}...")
+                    else:
+                        logger.warning(f"[DEBUG TRANSLATION] No translations found for {procedure['template_code']}* in language={language}")
 
                 # Calculate total estimated time
                 total_minutes = sum(
