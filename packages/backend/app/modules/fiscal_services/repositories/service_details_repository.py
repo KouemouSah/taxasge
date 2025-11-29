@@ -242,12 +242,12 @@ class ServiceDetailsRepository:
                     LEFT JOIN procedure_templates pt_ref ON pts.template_id = pt_ref.id
                     LEFT JOIN entity_translations et_desc ON
                         et_desc.entity_type = 'procedure_step'
-                        AND et_desc.entity_code = pt_ref.template_code || '_' || pts.step_number::TEXT
+                        AND et_desc.entity_code = pt_ref.template_code || ':step_' || pts.step_number::TEXT
                         AND et_desc.field_name = 'description'
                         AND et_desc.language_code = $2
                     LEFT JOIN entity_translations et_inst ON
                         et_inst.entity_type = 'procedure_step'
-                        AND et_inst.entity_code = pt_ref.template_code || '_' || pts.step_number::TEXT
+                        AND et_inst.entity_code = pt_ref.template_code || ':step_' || pts.step_number::TEXT
                         AND et_inst.field_name = 'instructions'
                         AND et_inst.language_code = $2
                     WHERE pts.template_id = $1
