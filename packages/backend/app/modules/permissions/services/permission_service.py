@@ -13,8 +13,7 @@ from app.modules.permissions.models.permission import (
     PermissionUpdate,
     PermissionResponse,
 )
-# Import directly from module to avoid singleton instantiation in legacy file
-from app.modules.users.repositories.user_repository import UserRepository
+from app.repositories.user_repository import UserRepository
 
 
 class PermissionService:
