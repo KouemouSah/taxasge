@@ -194,16 +194,8 @@ function ServicesContent() {
         sort_order = sortOption.endsWith('_asc') ? 'asc' : 'desc'
       }
 
-      // Apply price filter
-      let maxPrice: number | undefined = undefined
-      const minPrice: number | undefined = undefined
-      if (priceFilter === 'free') {
-        // Don't set max_price for free filter - we'll filter client-side
-        // to exclude formula-based services (both prices = 0)
-      } else if (priceFilter === 'formula') {
-        // Formula-based services have both expedition and renewal prices at 0
-        // This is handled client-side after results come back
-      }
+      // Price filtering is done client-side after results come back
+      // to properly distinguish between free services and formula-based services
 
       const filters: SearchFilters = {
         q: searchQuery || undefined,

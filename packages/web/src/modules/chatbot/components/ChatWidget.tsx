@@ -40,7 +40,6 @@ import {
   RefreshCw,
   Trash2,
   Settings,
-  Bot,
   User,
   FileText,
 } from 'lucide-react'
@@ -93,7 +92,7 @@ export const ChatWidget = ({
     error,
     suggestions,
     relatedServices,
-    confidence,
+    confidence: _confidence,
     sendMessage: sendChatMessage,
     clearChat,
     retry,
