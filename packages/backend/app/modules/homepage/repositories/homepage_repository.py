@@ -657,7 +657,8 @@ class HomepageRepository:
                 COALESCE(fs.tasa_expedicion, 0)::FLOAT as expedition_price,
                 COALESCE(fs.tasa_renovacion, 0)::FLOAT as renewal_price,
                 COALESCE(fs.processing_time_days, 30) as processing_time_days,
-                fs.status::TEXT as status
+                fs.status::TEXT as status,
+                COALESCE(fs.calculation_method::TEXT, 'fixed_expedition') as calculation_method
             FROM fiscal_services fs
             LEFT JOIN categories c ON fs.category_id = c.id
             LEFT JOIN sectors s ON c.sector_id = s.id

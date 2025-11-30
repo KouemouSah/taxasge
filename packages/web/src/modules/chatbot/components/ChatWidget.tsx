@@ -435,7 +435,8 @@ export const ChatWidget = ({
             <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
               <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm text-destructive">{t('errorMessage') || error}</p>
+                <p className="text-sm text-destructive">{error}</p>
+                <p className="text-xs text-muted-foreground mt-1">{t('errorMessage')}</p>
                 <Button
                   size="sm"
                   variant="outline"

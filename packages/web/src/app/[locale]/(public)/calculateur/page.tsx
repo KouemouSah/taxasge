@@ -475,14 +475,14 @@ function CalculateurPageContent() {
                     <Info className="h-4 w-4 text-primary" />
                     {t('taxBrackets')}
                   </div>
-                  <div className="space-y-2 bg-gradient-to-br from-muted/30 to-muted/50 p-4 rounded-lg border border-border/50">
+                  <div className="space-y-1 bg-gradient-to-br from-muted/30 to-muted/50 p-4 rounded-lg border border-border/50">
                     {/* 0% Bracket */}
                     <div className="flex items-center gap-3 group hover:bg-background/50 p-2 rounded transition-colors">
                       <div className="flex-shrink-0">
                         <Circle className="h-3 w-3 fill-emerald-500 text-emerald-500" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs font-medium text-foreground/90">0 - 1,000,000 XAF</div>
+                        <div className="text-xs font-medium text-foreground/90">{formatCurrency(0)} - {formatCurrency(1000000)}</div>
                       </div>
                       <div className="flex-shrink-0">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
@@ -497,7 +497,7 @@ function CalculateurPageContent() {
                         <Circle className="h-3 w-3 fill-green-500 text-green-500" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs font-medium text-foreground/90">1M - 3M XAF</div>
+                        <div className="text-xs font-medium text-foreground/90">{formatCurrency(1000000)} - {formatCurrency(3000000)}</div>
                       </div>
                       <div className="flex-shrink-0">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
@@ -512,7 +512,7 @@ function CalculateurPageContent() {
                         <Circle className="h-3 w-3 fill-lime-500 text-lime-500" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs font-medium text-foreground/90">3M - 5M XAF</div>
+                        <div className="text-xs font-medium text-foreground/90">{formatCurrency(3000000)} - {formatCurrency(5000000)}</div>
                       </div>
                       <div className="flex-shrink-0">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-lime-100 text-lime-800 dark:bg-lime-900/30 dark:text-lime-400">
@@ -527,7 +527,7 @@ function CalculateurPageContent() {
                         <Circle className="h-3 w-3 fill-yellow-500 text-yellow-500" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs font-medium text-foreground/90">5M - 10M XAF</div>
+                        <div className="text-xs font-medium text-foreground/90">{formatCurrency(5000000)} - {formatCurrency(10000000)}</div>
                       </div>
                       <div className="flex-shrink-0">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
@@ -542,7 +542,7 @@ function CalculateurPageContent() {
                         <Circle className="h-3 w-3 fill-orange-500 text-orange-500" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs font-medium text-foreground/90">10M - 15M XAF</div>
+                        <div className="text-xs font-medium text-foreground/90">{formatCurrency(10000000)} - {formatCurrency(15000000)}</div>
                       </div>
                       <div className="flex-shrink-0">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400">
@@ -557,7 +557,7 @@ function CalculateurPageContent() {
                         <Circle className="h-3 w-3 fill-red-500 text-red-500" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs font-medium text-foreground/90">&gt; 15M XAF</div>
+                        <div className="text-xs font-medium text-foreground/90">&gt; {formatCurrency(15000000)}</div>
                       </div>
                       <div className="flex-shrink-0">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">

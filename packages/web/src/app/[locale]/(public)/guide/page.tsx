@@ -38,12 +38,40 @@ const WORKFLOW_STEPS = [
   { icon: FileCheck, key: 'step5' },
 ];
 
-// Legislation categories
+// Legislation categories with links
 const LEGISLATION_ITEMS = [
-  { icon: Scale, key: 'taxCode' },
-  { icon: Gavel, key: 'decrees' },
-  { icon: Building2, key: 'procedures' },
-  { icon: Users, key: 'obligations' },
+  {
+    icon: Scale,
+    key: 'taxCode',
+    links: [
+      { key: 'Link1', url: '/documents/legislacion/CODIGOS-DE-INGRESOS-2025.pdf' },
+      { key: 'Link2', url: '#' }, // Placeholder for General Tax Law
+    ]
+  },
+  {
+    icon: Gavel,
+    key: 'decrees',
+    links: [
+      { key: 'Link1', url: '#' },
+      { key: 'Link2', url: '#' },
+    ]
+  },
+  {
+    icon: Building2,
+    key: 'procedures',
+    links: [
+      { key: 'Link1', url: '#' },
+      { key: 'Link2', url: '#' },
+    ]
+  },
+  {
+    icon: Users,
+    key: 'obligations',
+    links: [
+      { key: 'Link1', url: '#' },
+      { key: 'Link2', url: '#' },
+    ]
+  },
 ];
 
 // Real Downloadable PDF forms
@@ -316,20 +344,41 @@ export default function GuidePage() {
                   <CardContent>
                     <div className="space-y-3">
                       {/* Legislation links */}
-                      <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
-                        <div className="flex items-center gap-2">
-                          <BookOpen className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{t(`${item.key}Link1`)}</span>
-                        </div>
-                        <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
-                        <div className="flex items-center gap-2">
-                          <BookOpen className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{t(`${item.key}Link2`)}</span>
-                        </div>
-                        <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                      </div>
+                      {item.links.map((link) => {
+                        const isAvailable = link.url !== '#';
+                        const LinkWrapper = isAvailable ? 'a' : 'div';
+                        const linkProps = isAvailable
+                          ? {
+                              href: link.url,
+                              target: '_blank',
+                              rel: 'noopener noreferrer',
+                              download: link.url.endsWith('.pdf') ? true : undefined,
+                            }
+                          : {};
+
+                        return (
+                          <LinkWrapper
+                            key={link.key}
+                            {...linkProps}
+                            className={`flex items-center justify-between p-3 bg-muted/50 rounded-lg transition-colors ${
+                              isAvailable
+                                ? 'hover:bg-muted cursor-pointer hover:border-primary/20 border border-transparent'
+                                : 'opacity-60 cursor-not-allowed'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <BookOpen className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm">{t(`${item.key}${link.key}`)}</span>
+                              {!isAvailable && (
+                                <Badge variant="outline" className="text-xs">
+                                  {t('comingSoon') || 'Coming soon'}
+                                </Badge>
+                              )}
+                            </div>
+                            {isAvailable && <ExternalLink className="h-4 w-4 text-muted-foreground" />}
+                          </LinkWrapper>
+                        );
+                      })}
                     </div>
                     <p className="text-xs text-muted-foreground mt-4 italic">
                       {t('legislationNote')}
@@ -443,11 +492,25 @@ export default function GuidePage() {
 
                   {/* PDF Preview */}
                   <div className="border rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-900">
-                    <iframe
-                      src={`/documents/formulaires/${selectedForm.filename}#view=FitH`}
+                    <object
+                      data={`/documents/formulaires/${selectedForm.filename}#view=FitH`}
+                      type="application/pdf"
                       className="w-full h-[520px]"
                       title={t(`${selectedForm.key}Name`)}
-                    />
+                    >
+                      <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+                        <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+                        <p className="text-sm text-muted-foreground mb-4">
+                          {t('pdfPreviewNotSupported') || 'PDF preview not available in your browser'}
+                        </p>
+                        <Button asChild>
+                          <a href={`/documents/formulaires/${selectedForm.filename}`} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            {t('openInNewTab') || 'Open in new tab'}
+                          </a>
+                        </Button>
+                      </div>
+                    </object>
                   </div>
 
                   {/* Help text */}

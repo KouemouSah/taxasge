@@ -355,25 +355,33 @@ function ServicesContent() {
   const displayResults = useMemo(() => {
     if (!searchResults?.results) return []
 
-    // Helper: A service is formula-based if BOTH prices are 0
-    // These services show the "Calculer" button instead of displaying prices
-    const isFormulaBased = (service: ServiceResult) =>
-      service.expedition_price === 0 && service.renewal_price === 0
+    // Methods that require formula calculation (display "Calcular" button)
+    const FORMULA_METHODS = [
+      'percentage_based',
+      'unit_based',
+      'tiered_rates',
+      'formula_based',
+      'fixed_plus_unit'
+    ]
 
-    // Helper: A service is truly free if at least one price is 0 but NOT formula-based
-    // This includes:
-    // - Free expedition with paid renewal (expedition_price = 0, renewal_price > 0)
-    // - Paid expedition with free renewal (expedition_price > 0, renewal_price = 0)
+    // Methods with fixed prices (display the price directly)
+    const FIXED_METHODS = ['fixed_expedition', 'fixed_renewal', 'fixed_both']
+
+    // Helper: A service is formula-based if it uses a calculation method
+    const isFormulaBased = (service: ServiceResult) =>
+      FORMULA_METHODS.includes(service.calculation_method)
+
+    // Helper: A service is truly free if it has a fixed method AND expedition price is 0
     const isTrulyFree = (service: ServiceResult) =>
-      !isFormulaBased(service) && (service.expedition_price === 0 || service.renewal_price === 0)
+      FIXED_METHODS.includes(service.calculation_method) && service.expedition_price === 0
 
     if (priceFilter === 'formula') {
-      // Show only formula-based services (both prices = 0, needs calculation)
+      // Show only formula-based services (needs calculation)
       return searchResults.results.filter(isFormulaBased)
     }
 
     if (priceFilter === 'free') {
-      // Show only truly free services (exclude formula-based)
+      // Show only truly free services (fixed method + price = 0)
       return searchResults.results.filter(isTrulyFree)
     }
 
@@ -664,7 +672,7 @@ function ServicesContent() {
                     className="group hover:shadow-lg transition-all duration-300 flex flex-col"
                   >
                     <div className="p-6 space-y-4 flex-1 flex flex-col">
-                      <div>
+                      <div className="flex-1">
                         <h3 className="font-semibold text-base mb-2 group-hover:text-primary transition-colors line-clamp-2">
                           {service.name}
                         </h3>

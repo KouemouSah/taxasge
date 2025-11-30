@@ -53,6 +53,7 @@ export interface ServiceResult {
   renewal_price: number;
   processing_time_days: number;
   status: string;
+  calculation_method: string;
   // Note: service_code is NOT included (as per requirements)
 }
 
