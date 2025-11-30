@@ -194,16 +194,13 @@ function ServicesContent() {
         sort_order = sortOption.endsWith('_asc') ? 'asc' : 'desc'
       }
 
-      // Price filtering is done client-side after results come back
-      // to properly distinguish between free services and formula-based services
-
       const filters: SearchFilters = {
         q: searchQuery || undefined,
         category_code: selectedCategory || undefined,
         ministry_id: selectedMinistry || undefined,
         service_type: selectedServiceType || undefined,
-        min_price: minPrice,
-        max_price: maxPrice,
+        // Note: min_price/max_price not sent to API - price filtering done client-side
+        // to properly distinguish between free services and formula-based services
         sort_by,
         sort_order,
         page: currentPage,
