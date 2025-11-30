@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Building2, Loader2, LayoutGrid, List, Search } from 'lucide-react';
@@ -198,18 +197,16 @@ export default function MinisterePage() {
                       <Building2 className="h-6 w-6" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-medium mb-2 line-clamp-2">
+                      <h3 className="text-sm font-medium line-clamp-2">
                         {ministry.name}
                       </h3>
-                      <Badge variant="secondary">
-                        {t('servicesCount', { count: ministry.service_count })}
-                      </Badge>
                     </div>
                   </div>
                   <div className="flex gap-2 mt-4 pt-4 border-t">
                     <Button
                       variant="outline"
                       size="sm"
+                      className="border-amber-500 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
                       onClick={(e) => {
                         e.stopPropagation();
                         router.push(`/${locale}/ministere/${ministry.id}`);
@@ -225,7 +222,7 @@ export default function MinisterePage() {
                         router.push(`/${locale}/services?ministry=${ministry.id}`);
                       }}
                     >
-                      {t('viewServices')}
+                      {ministry.service_count} {t('servicesConsult')}
                     </Button>
                   </div>
                 </div>
@@ -254,13 +251,11 @@ export default function MinisterePage() {
                       {ministry.name}
                     </h3>
                   </div>
-                  <Badge variant="secondary" className="text-sm">
-                    {t('servicesCount', { count: ministry.service_count })}
-                  </Badge>
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
                       size="sm"
+                      className="border-amber-500 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
                       onClick={(e) => {
                         e.stopPropagation();
                         router.push(`/${locale}/ministere/${ministry.id}`);
@@ -276,7 +271,7 @@ export default function MinisterePage() {
                         router.push(`/${locale}/services?ministry=${ministry.id}`);
                       }}
                     >
-                      {t('viewServices')}
+                      {ministry.service_count} {t('servicesConsult')}
                     </Button>
                   </div>
                 </div>

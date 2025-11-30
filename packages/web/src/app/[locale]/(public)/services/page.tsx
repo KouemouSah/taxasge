@@ -33,6 +33,7 @@ import {
 
 type ViewMode = 'grid' | 'list'
 type SortOption = 'relevance' | 'name_asc' | 'name_desc' | 'price_asc' | 'price_desc'
+type PriceFilter = 'all' | 'free' | 'formula'
 
 // Constants
 const ITEMS_PER_PAGE = 18
@@ -89,6 +90,7 @@ function ServicesContent() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [selectedServiceType, setSelectedServiceType] = useState<string | null>(null)
   const [sortOption, setSortOption] = useState<SortOption>('relevance')
+  const [priceFilter, setPriceFilter] = useState<PriceFilter>('all')
   const [currentPage, setCurrentPage] = useState(1)
 
   // Debounce timer ref (prevents re-renders)
@@ -141,6 +143,11 @@ function ServicesContent() {
       setSortOption(sortParam as SortOption)
     }
 
+    const priceParam = searchParams.get('price')
+    if (priceParam && ['all', 'free', 'formula'].includes(priceParam)) {
+      setPriceFilter(priceParam as PriceFilter)
+    }
+
     if (pageParam) {
       const page = parseInt(pageParam, 10)
       if (page > 0) {
@@ -160,11 +167,12 @@ function ServicesContent() {
     if (selectedMinistry) params.set('ministry', selectedMinistry.toString())
     if (selectedServiceType) params.set('service_type', selectedServiceType)
     if (sortOption !== 'relevance') params.set('sort', sortOption)
+    if (priceFilter !== 'all') params.set('price', priceFilter)
     if (currentPage > 1) params.set('page', currentPage.toString())
 
     const newUrl = params.toString() ? `/${locale}/services?${params.toString()}` : `/${locale}/services`
     router.replace(newUrl, { scroll: false })
-  }, [searchQuery, selectedCategory, selectedMinistry, selectedServiceType, sortOption, currentPage, locale, router])
+  }, [searchQuery, selectedCategory, selectedMinistry, selectedServiceType, sortOption, priceFilter, currentPage, locale, router])
 
   /**
    * Perform search
@@ -186,11 +194,24 @@ function ServicesContent() {
         sort_order = sortOption.endsWith('_asc') ? 'asc' : 'desc'
       }
 
+      // Apply price filter
+      let maxPrice: number | undefined = undefined
+      let minPrice: number | undefined = undefined
+      if (priceFilter === 'free') {
+        maxPrice = 0
+      } else if (priceFilter === 'formula') {
+        // Formula-based services have both expedition and renewal prices at 0
+        // but this is handled client-side after results come back
+        // For now, we don't filter on the API level for formula
+      }
+
       const filters: SearchFilters = {
         q: searchQuery || undefined,
         category_code: selectedCategory || undefined,
         ministry_id: selectedMinistry || undefined,
         service_type: selectedServiceType || undefined,
+        min_price: minPrice,
+        max_price: maxPrice,
         sort_by,
         sort_order,
         page: currentPage,
@@ -213,7 +234,7 @@ function ServicesContent() {
     } finally {
       setLoading(false)
     }
-  }, [searchQuery, selectedCategory, selectedMinistry, selectedServiceType, sortOption, currentPage, locale, updateURLParams])
+  }, [searchQuery, selectedCategory, selectedMinistry, selectedServiceType, sortOption, priceFilter, currentPage, locale, updateURLParams])
 
   /**
    * Trigger search when filters change
@@ -258,6 +279,7 @@ function ServicesContent() {
     setSelectedCategory(null)
     setSelectedServiceType(null)
     setSortOption('relevance')
+    setPriceFilter('all')
     setCurrentPage(1)
   }
 
@@ -324,7 +346,8 @@ function ServicesContent() {
   const activeFiltersCount = [
     selectedCategory,
     selectedMinistry,
-    selectedServiceType
+    selectedServiceType,
+    priceFilter !== 'all' ? priceFilter : null
   ].filter(Boolean).length
 
   // Filtered categories based on selected ministry (cascade filter)
@@ -338,6 +361,20 @@ function ServicesContent() {
   const filteredServiceTypes = useMemo(() => {
     return searchResults?.facets?.service_types || []
   }, [searchResults?.facets?.service_types])
+
+  // Apply client-side filtering for formula-based services
+  const displayResults = useMemo(() => {
+    if (!searchResults?.results) return []
+
+    if (priceFilter === 'formula') {
+      // Formula-based services have both prices at 0 (they use calculation formulas)
+      return searchResults.results.filter(
+        service => service.expedition_price === 0 && service.renewal_price === 0
+      )
+    }
+
+    return searchResults.results
+  }, [searchResults?.results, priceFilter])
 
   return (
     <div className="bg-background">
@@ -475,6 +512,24 @@ function ServicesContent() {
               </SelectContent>
             </Select>
 
+            {/* Price Type Filter */}
+            <Select
+              value={priceFilter}
+              onValueChange={(value) => {
+                setPriceFilter(value as PriceFilter)
+                setCurrentPage(1)
+              }}
+            >
+              <SelectTrigger className="w-[130px] h-9 text-sm">
+                <SelectValue placeholder={t('priceType')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('allPrices')}</SelectItem>
+                <SelectItem value="free">{t('freeServices')}</SelectItem>
+                <SelectItem value="formula">{t('formulaServices')}</SelectItem>
+              </SelectContent>
+            </Select>
+
             {/* Sort Dropdown */}
             <Select value={sortOption} onValueChange={(value) => { setSortOption(value as SortOption); setCurrentPage(1) }}>
               <SelectTrigger className="w-[140px] h-9 text-sm">
@@ -540,6 +595,19 @@ function ServicesContent() {
                   </Button>
                 </Badge>
               )}
+              {priceFilter !== 'all' && (
+                <Badge variant="secondary" className="pl-3 pr-1 py-1 text-xs gap-1 flex items-center">
+                  {priceFilter === 'free' ? t('freeServices') : t('formulaServices')}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-4 w-4 p-0 ml-1 hover:bg-destructive/20 rounded-full"
+                    onClick={() => { setPriceFilter('all'); setCurrentPage(1) }}
+                  >
+                    <X className="h-2.5 w-2.5" />
+                  </Button>
+                </Badge>
+              )}
             </div>
           )}
         </div>
@@ -581,9 +649,9 @@ function ServicesContent() {
           )}
 
           {/* Grid View */}
-          {!loading && searchResults && searchResults.results.length > 0 && viewMode === 'grid' && (
+          {!loading && searchResults && displayResults.length > 0 && viewMode === 'grid' && (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
-              {searchResults.results.map((service) => {
+              {displayResults.map((service) => {
                 const shouldShowCalculateButton = service.expedition_price === 0 && service.renewal_price === 0
 
                 return (
@@ -652,9 +720,9 @@ function ServicesContent() {
           )}
 
           {/* List View */}
-          {!loading && searchResults && searchResults.results.length > 0 && viewMode === 'list' && (
+          {!loading && searchResults && displayResults.length > 0 && viewMode === 'list' && (
             <div className="space-y-4 mb-8">
-              {searchResults.results.map((service) => {
+              {displayResults.map((service) => {
                 const shouldShowCalculateButton = service.expedition_price === 0 && service.renewal_price === 0
 
                 return (
@@ -727,7 +795,7 @@ function ServicesContent() {
           )}
 
           {/* Pagination */}
-          {!loading && searchResults && searchResults.results.length > 0 && searchResults.total_pages > 1 && (
+          {!loading && searchResults && displayResults.length > 0 && searchResults.total_pages > 1 && (
             <div className="flex flex-col items-center gap-4 mb-4">
               <div className="flex items-center gap-2">
                 <Button

@@ -4,14 +4,13 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-import { Building2, ArrowLeft, FileText, FolderOpen, Layers, Briefcase } from 'lucide-react';
+import { Building2, ArrowLeft, FileText, FolderOpen, Layers, MapPin, Clock } from 'lucide-react';
 import Breadcrumb from '@/components/ui/breadcrumb';
-import { getMinistryDetails, type MinistryDetails, type MinistryServiceItem } from '@/core/api/homepage';
+import { getMinistryDetails, type MinistryDetails } from '@/core/api/homepage';
 
 // Firebase Storage URL for ministry images
 const FIREBASE_STORAGE_URL = 'https://taxasge-dev.firebasestorage.app/application-attachments/ministerios';
@@ -22,14 +21,11 @@ export default function MinistryDetailPage() {
   const locale = (params?.locale as string) || 'es';
   const ministryId = params?.id as string;
   const t = useTranslations('ministryDetail');
-  const tCommon = useTranslations('common');
 
   const [ministry, setMinistry] = useState<MinistryDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const servicesPerPage = 12;
 
   // Fetch ministry details
   useEffect(() => {
@@ -43,8 +39,6 @@ export default function MinistryDetailPage() {
 
         const result = await getMinistryDetails(parseInt(ministryId), {
           language: locale,
-          page: currentPage,
-          limit: servicesPerPage,
         });
 
         setMinistry(result);
@@ -57,16 +51,7 @@ export default function MinistryDetailPage() {
     }
 
     fetchMinistryDetails();
-  }, [ministryId, locale, currentPage, t]);
-
-  const handleServiceClick = (serviceId: number) => {
-    router.push(`/${locale}/services/${serviceId}`);
-  };
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }, [ministryId, locale, t]);
 
   if (loading) {
     return (
@@ -118,17 +103,9 @@ export default function MinistryDetailPage() {
         {t('back')}
       </Button>
 
-      {/* Header with title and badge */}
+      {/* Header with title */}
       <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <h1 className="text-3xl font-bold">{ministry.name}</h1>
-          {ministry.is_active && (
-            <Badge variant="default">{tCommon('active')}</Badge>
-          )}
-        </div>
-        <p className="text-muted-foreground text-sm">
-          {t('code')}: {ministry.ministry_code}
-        </p>
+        <h1 className="text-3xl font-bold">{ministry.name}</h1>
       </div>
 
       {/* Main Content: 2 Columns */}
@@ -163,6 +140,24 @@ export default function MinistryDetailPage() {
               </p>
             </div>
 
+            {/* Location and Opening Hours */}
+            <div className="space-y-3 text-sm">
+              <div className="flex items-start gap-3">
+                <MapPin className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-medium">{t('location')}:</span>
+                  <span className="text-muted-foreground ml-2">{t('comingSoon')}</span>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <Clock className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-medium">{t('openingHours')}:</span>
+                  <span className="text-muted-foreground ml-2">{t('comingSoon')}</span>
+                </div>
+              </div>
+            </div>
+
             <Separator />
 
             {/* Stats with icons */}
@@ -186,70 +181,6 @@ export default function MinistryDetailPage() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Services List */}
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold mb-4">{t('services')}</h2>
-      </div>
-
-      {ministry.services.length === 0 ? (
-        <div className="text-center py-12">
-          <Briefcase className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground">{t('noServices')}</p>
-        </div>
-      ) : (
-        <>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {ministry.services.map((service: MinistryServiceItem) => (
-              <Card
-                key={service.id}
-                className="cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => handleServiceClick(service.id)}
-              >
-                <CardHeader>
-                  <CardTitle className="text-lg line-clamp-2">{service.name}</CardTitle>
-                  <Badge variant="secondary" className="w-fit">
-                    {service.category_name}
-                  </Badge>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">{t('expeditionPrice')}:</span>
-                    <span className="font-semibold">
-                      {service.expedition_price === 0 ? tCommon('free') : `${service.expedition_price.toLocaleString()} FCFA`}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Pagination */}
-          {ministry.total_pages > 1 && (
-            <div className="flex justify-center items-center gap-2 mt-8">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-              >
-                {tCommon('previous')}
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                {t('page')} {ministry.current_page} {tCommon('of')} {ministry.total_pages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === ministry.total_pages}
-              >
-                {tCommon('next')}
-              </Button>
-            </div>
-          )}
-        </>
-      )}
     </div>
   );
 }
