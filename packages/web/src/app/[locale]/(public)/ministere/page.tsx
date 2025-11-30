@@ -90,10 +90,6 @@ export default function MinisterePage() {
     return sorted;
   }, [ministries, searchQuery, sortOption]);
 
-  const handleMinistryClick = (ministry: MinistryItem) => {
-    router.push(`/${locale}/ministere/${ministry.id}`);
-  };
-
   return (
     <div className="container mx-auto px-4 py-12">
       <Breadcrumb
