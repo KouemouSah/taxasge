@@ -179,7 +179,7 @@ export default function ServiceDetailsPage() {
     return (
       <div className="flex flex-wrap items-center gap-4">
         <div>
-          <p className="text-sm font-bold text-emerald-600">{t('firstExpedition')}</p>
+          <p className="text-sm text-muted-foreground">{t('firstExpedition')}</p>
           <p className="text-xl font-bold text-emerald-600">
             {formatPrice(expeditionPrice, service.pricing.currency)}
           </p>
@@ -188,7 +188,7 @@ export default function ServiceDetailsPage() {
           <>
             <span className="text-2xl text-muted-foreground font-light">|</span>
             <div>
-              <p className="text-sm font-bold text-blue-600">{t('renewalPrice')}</p>
+              <p className="text-sm text-muted-foreground">{t('renewalPrice')}</p>
               <p className="text-xl font-bold text-blue-600">
                 {formatPrice(renewalPrice, service.pricing.currency)}
               </p>
@@ -282,18 +282,20 @@ export default function ServiceDetailsPage() {
             <div className="flex gap-3">
               <Building2 className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <h3 className="text-lg font-semibold flex items-center gap-2 mb-1">{t('ministry')}</h3>
-                <p className="text-muted-foreground">{service.ministry?.name || t('notSpecified')}</p>
-                {/* Location and Office Hours */}
-                <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
-                  <MapPin className="h-4 w-4" />
-                  <span>
-                    {locationInfo?.location_address || t('comingSoon')}
-                  </span>
-                  <span className="text-muted-foreground">|</span>
-                  <span>
-                    {locationInfo?.office_hours || t('comingSoon')}
-                  </span>
+                <h3 className="text-lg font-semibold mb-1">{t('ministry')}</h3>
+                <p className="text-sm text-muted-foreground">{service.ministry?.name || t('notSpecified')}</p>
+
+                <div className="mt-3 space-y-1 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    <span className="font-medium">{t('location')}:</span>
+                    <span>{locationInfo?.location_address || t('comingSoon')}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    <span className="font-medium">{t('openingHours')}:</span>
+                    <span>{locationInfo?.office_hours || t('comingSoon')}</span>
+                  </div>
                 </div>
               </div>
             </div>

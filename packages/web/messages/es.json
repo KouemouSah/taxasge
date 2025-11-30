@@ -70,17 +70,14 @@
     "completeGuideDesc": "Procedimientos detallados"
   },
   "stats": {
-    "title": "Una plataforma completa",
-    "description": "Accede a todos los servicios fiscales de Guinea Ecuatorial, organizados de forma clara y accesible",
-    "fiscalServices": "Servicios Fiscales",
-    "fiscalServicesDesc": "Servicios disponibles",
-    "ministries": "Ministerios",
-    "ministriesDesc": "Ministerios cubiertos",
-    "categories": "Categorías",
-    "categoriesDesc": "Categorías de servicios",
-    "sectors": "Sectores",
-    "sectorsDesc": "Sectores de actividad",
-    "errorLoading": "No se pudieron cargar las estadísticas"
+    "whyTaxasge": "¿Por qué TaxasGE?",
+    "whyTaxasgeDesc": "Simplifique sus trámites fiscales con nuestra plataforma moderna",
+    "onlineDeclaration": "Declaración en línea",
+    "onlineDeclarationDesc": "Envíe sus declaraciones fiscales desde cualquier lugar, en cualquier momento",
+    "trackDeclaration": "Seguimiento de declaración",
+    "trackDeclarationDesc": "Siga el estado de sus declaraciones en tiempo real",
+    "aiAssistant": "Asistente IA",
+    "aiAssistantDesc": "Obtenga respuestas instantáneas a sus preguntas fiscales"
   },
   "features": {
     "title": "Funcionalidades principales",
@@ -180,6 +177,7 @@
     "noMinistries": "No hay ministerios disponibles",
     "noResults": "No se encontraron ministerios",
     "servicesCount": "{count} servicios",
+    "viewMinistry": "Ver Ministerio",
     "viewServices": "Ver servicios",
     "sortNameAsc": "Alfabético A-Z",
     "sortNameDesc": "Alfabético Z-A",
@@ -197,7 +195,11 @@
     "totalCategories": "Total de Categorías",
     "totalServices": "Total de Servicios",
     "information": "Información",
+    "description": "Descripción",
+    "noDescription": "No hay descripción disponible",
     "services": "Servicios",
+    "categories": "Categorías",
+    "sectors": "Sectores",
     "noServices": "No hay servicios disponibles para este ministerio",
     "expeditionPrice": "Precio de expedición",
     "page": "Página"
@@ -1235,6 +1237,8 @@
     "estimatedTime": "Tiempo estimado",
     "days": "días",
     "processingDays": "{days} días",
+    "firstExpedition": "Primera Expedición",
+    "renewalPrice": "Precio de Renovación",
     "filterByCategory": "Filtrar por categoría",
     "filterByMinistry": "Filtrar por ministerio",
     "filterBySector": "Filtrar por sector",
@@ -1327,7 +1331,9 @@
     "firstExpedition": "Primera Expedición",
     "minutes": "minutos",
     "notSpecified": "No especificado",
-    "comingSoon": "Próximamente"
+    "comingSoon": "Próximamente",
+    "location": "Ubicación",
+    "openingHours": "Horario de atención"
   },
   "chatbot": {
     "title": "Asistente TaxasGE",

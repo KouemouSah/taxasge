@@ -25,6 +25,11 @@ const nextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'taxasge-dev.firebasestorage.app',
+        pathname: '/application-attachments/**',
+      },
+      {
+        protocol: 'https',
         hostname: '**.supabase.co',
       },
     ],

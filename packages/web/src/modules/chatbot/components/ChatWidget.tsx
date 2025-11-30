@@ -156,6 +156,15 @@ export const ChatWidget = ({
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyDown])
 
+  // Listen for external openChatbot event (e.g., from CTA buttons)
+  useEffect(() => {
+    const handleOpenChatbot = () => {
+      setIsOpen(true)
+    }
+    window.addEventListener('openChatbot', handleOpenChatbot)
+    return () => window.removeEventListener('openChatbot', handleOpenChatbot)
+  }, [])
+
   // =============================================================================
   // HANDLERS
   // =============================================================================

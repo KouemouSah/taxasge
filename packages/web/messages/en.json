@@ -70,17 +70,14 @@
     "completeGuideDesc": "Detailed procedures"
   },
   "stats": {
-    "title": "A complete platform",
-    "description": "Access all tax services of Equatorial Guinea, organized clearly and accessibly",
-    "fiscalServices": "Tax Services",
-    "fiscalServicesDesc": "Available services",
-    "ministries": "Ministries",
-    "ministriesDesc": "Ministries covered",
-    "categories": "Categories",
-    "categoriesDesc": "Service categories",
-    "sectors": "Sectors",
-    "sectorsDesc": "Activity sectors",
-    "errorLoading": "Unable to load statistics"
+    "whyTaxasge": "Why TaxasGE?",
+    "whyTaxasgeDesc": "Simplify your tax procedures with our modern platform",
+    "onlineDeclaration": "Online Declaration",
+    "onlineDeclarationDesc": "Submit your tax declarations from anywhere, anytime",
+    "trackDeclaration": "Track Your Declaration",
+    "trackDeclarationDesc": "Follow the status of your declarations in real-time",
+    "aiAssistant": "AI Assistant",
+    "aiAssistantDesc": "Get instant answers to your tax questions"
   },
   "features": {
     "title": "Main features",
@@ -180,6 +177,7 @@
     "noMinistries": "No ministries available",
     "noResults": "No ministries found",
     "servicesCount": "{count} services",
+    "viewMinistry": "View Ministry",
     "viewServices": "View services",
     "sortNameAsc": "Alphabetical A-Z",
     "sortNameDesc": "Alphabetical Z-A",
@@ -197,7 +195,11 @@
     "totalCategories": "Total Categories",
     "totalServices": "Total Services",
     "information": "Information",
+    "description": "Description",
+    "noDescription": "No description available",
     "services": "Services",
+    "categories": "Categories",
+    "sectors": "Sectors",
     "noServices": "No services available for this ministry",
     "expeditionPrice": "Expedition price",
     "page": "Page"
@@ -1235,6 +1237,8 @@
     "estimatedTime": "Estimated time",
     "days": "days",
     "processingDays": "{days} days",
+    "firstExpedition": "First Expedition",
+    "renewalPrice": "Renewal Price",
     "filterByCategory": "Filter by category",
     "filterByMinistry": "Filter by ministry",
     "filterBySector": "Filter by sector",
@@ -1327,7 +1331,9 @@
     "firstExpedition": "First Expedition",
     "minutes": "minutes",
     "notSpecified": "Not specified",
-    "comingSoon": "Coming soon"
+    "comingSoon": "Coming soon",
+    "location": "Location",
+    "openingHours": "Opening Hours"
   },
   "chatbot": {
     "title": "TaxasGE Assistant",

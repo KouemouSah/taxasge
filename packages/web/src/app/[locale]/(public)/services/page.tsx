@@ -385,8 +385,8 @@ function ServicesContent() {
         {/* Search Bar + Filters + Sort on same line */}
         <div className="mb-6">
           <div className="flex flex-wrap items-center gap-2">
-            {/* Compact Search Input */}
-            <div className="relative w-[280px]">
+            {/* Search Input - Full Width */}
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
                 type="text"
@@ -596,27 +596,27 @@ function ServicesContent() {
                         <h3 className="font-semibold text-base mb-2 group-hover:text-primary transition-colors line-clamp-2">
                           {service.name}
                         </h3>
-                        <Badge variant="secondary" className="text-xs">{service.category_name}</Badge>
+                        <Badge variant="secondary" className="text-[10px]">{service.category_name}</Badge>
                         {service.ministry_name && (
                           <p className="text-xs text-muted-foreground mt-1">{service.ministry_name}</p>
                         )}
                       </div>
-                      {service.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-3">{service.description}</p>
-                      )}
 
                       <div className="mt-auto pt-4 border-t space-y-3">
                         {!shouldShowCalculateButton ? (
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
                             <div>
-                              <p className="text-xs text-muted-foreground">{t('expedition')}</p>
-                              <p className="font-semibold text-primary">{formatPrice(service.expedition_price, freeLabel, locale)}</p>
+                              <p className="text-xs text-muted-foreground">{t('firstExpedition')}</p>
+                              <p className="font-semibold text-base text-primary">{formatPrice(service.expedition_price, freeLabel, locale)}</p>
                             </div>
                             {service.renewal_price > 0 && (
-                              <div className="text-right">
-                                <p className="text-xs text-muted-foreground">{t('renewal')}</p>
-                                <p className="font-semibold text-sm">{formatPrice(service.renewal_price, freeLabel, locale)}</p>
-                              </div>
+                              <>
+                                <span className="text-muted-foreground">|</span>
+                                <div>
+                                  <p className="text-xs text-muted-foreground">{t('renewalPrice')}</p>
+                                  <p className="font-semibold text-base text-primary">{formatPrice(service.renewal_price, freeLabel, locale)}</p>
+                                </div>
+                              </>
                             )}
                           </div>
                         ) : (
@@ -669,28 +669,28 @@ function ServicesContent() {
                             {service.name}
                           </h3>
                           <div className="mb-3">
-                            <Badge variant="secondary" className="text-xs">{service.category_name}</Badge>
+                            <Badge variant="secondary" className="text-[10px]">{service.category_name}</Badge>
                             {service.ministry_name && (
                               <p className="text-xs text-muted-foreground mt-1">{service.ministry_name}</p>
                             )}
                           </div>
-                          {service.description && (
-                            <p className="text-sm text-muted-foreground line-clamp-2">{service.description}</p>
-                          )}
                         </div>
 
                         <div className="flex flex-col justify-between gap-3 lg:min-w-[220px] pt-4 lg:pt-0 border-t lg:border-t-0 lg:border-l lg:pl-6">
                           {!shouldShowCalculateButton ? (
-                            <div className="flex lg:flex-col gap-4 lg:gap-2">
-                              <div className="flex-1 text-center lg:text-right">
-                                <p className="text-xs text-muted-foreground mb-1">{t('expedition')}</p>
-                                <p className="font-bold text-xl text-primary">{formatPrice(service.expedition_price, freeLabel, locale)}</p>
+                            <div className="flex items-center gap-4">
+                              <div>
+                                <p className="text-xs text-muted-foreground">{t('firstExpedition')}</p>
+                                <p className="font-semibold text-base text-primary">{formatPrice(service.expedition_price, freeLabel, locale)}</p>
                               </div>
                               {service.renewal_price > 0 && (
-                                <div className="flex-1 text-center lg:text-right">
-                                  <p className="text-xs text-muted-foreground mb-1">{t('renewal')}</p>
-                                  <p className="font-semibold text-base">{formatPrice(service.renewal_price, freeLabel, locale)}</p>
-                                </div>
+                                <>
+                                  <span className="text-muted-foreground">|</span>
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">{t('renewalPrice')}</p>
+                                    <p className="font-semibold text-base text-primary">{formatPrice(service.renewal_price, freeLabel, locale)}</p>
+                                  </div>
+                                </>
                               )}
                             </div>
                           ) : (

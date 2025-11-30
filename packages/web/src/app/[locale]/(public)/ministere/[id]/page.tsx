@@ -3,13 +3,18 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Building2, ArrowLeft, FolderTree, Grid3x3, Briefcase, Info } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { Building2, ArrowLeft, FileText, FolderOpen, Layers, Briefcase } from 'lucide-react';
 import Breadcrumb from '@/components/ui/breadcrumb';
 import { getMinistryDetails, type MinistryDetails, type MinistryServiceItem } from '@/core/api/homepage';
+
+// Firebase Storage URL for ministry images
+const FIREBASE_STORAGE_URL = 'https://taxasge-dev.firebasestorage.app/application-attachments/ministerios';
 
 export default function MinistryDetailPage() {
   const params = useParams();
@@ -22,6 +27,7 @@ export default function MinistryDetailPage() {
   const [ministry, setMinistry] = useState<MinistryDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [imageError, setImageError] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const servicesPerPage = 12;
 
@@ -33,6 +39,7 @@ export default function MinistryDetailPage() {
       try {
         setLoading(true);
         setError(null);
+        setImageError(false);
 
         const result = await getMinistryDetails(parseInt(ministryId), {
           language: locale,
@@ -66,10 +73,9 @@ export default function MinistryDetailPage() {
       <div className="container mx-auto px-4 py-12">
         <Skeleton className="h-8 w-64 mb-6" />
         <Skeleton className="h-12 w-96 mb-4" />
-        <div className="grid gap-6 md:grid-cols-3 mb-8">
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
+        <div className="grid gap-8 lg:grid-cols-2 mb-8">
+          <Skeleton className="h-72" />
+          <Skeleton className="h-72" />
         </div>
         <Skeleton className="h-96" />
       </div>
@@ -93,6 +99,7 @@ export default function MinistryDetailPage() {
 
   return (
     <div className="container mx-auto px-4 py-12">
+      {/* Breadcrumb */}
       <Breadcrumb
         items={[
           { label: t('ministries'), href: `/${locale}/ministere` },
@@ -101,80 +108,84 @@ export default function MinistryDetailPage() {
         className="mb-6"
       />
 
-      {/* Header */}
-      <div className="flex items-start justify-between mb-8">
-        <div className="flex items-start gap-4">
-          <div className="p-4 rounded-lg bg-primary/10">
-            <Building2 className="h-8 w-8 text-primary" />
-          </div>
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-4xl font-bold">{ministry.name}</h1>
-              {ministry.is_active && (
-                <Badge variant="default">{tCommon('active')}</Badge>
-              )}
-            </div>
-            <p className="text-muted-foreground text-sm">
-              {t('code')}: {ministry.ministry_code}
-            </p>
-          </div>
+      {/* Back Button */}
+      <Button
+        variant="ghost"
+        onClick={() => router.push(`/${locale}/ministere`)}
+        className="mb-6"
+      >
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        {t('back')}
+      </Button>
+
+      {/* Header with title and badge */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-2">
+          <h1 className="text-3xl font-bold">{ministry.name}</h1>
+          {ministry.is_active && (
+            <Badge variant="default">{tCommon('active')}</Badge>
+          )}
         </div>
-        <Button
-          variant="outline"
-          onClick={() => router.push(`/${locale}/ministere`)}
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          {t('back')}
-        </Button>
+        <p className="text-muted-foreground text-sm">
+          {t('code')}: {ministry.ministry_code}
+        </p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-6 md:grid-cols-3 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t('totalSectors')}</CardTitle>
-            <FolderTree className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{ministry.sector_count}</div>
-          </CardContent>
-        </Card>
+      {/* Main Content: 2 Columns */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t('totalCategories')}</CardTitle>
-            <Grid3x3 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{ministry.category_count}</div>
-          </CardContent>
-        </Card>
+        {/* BLOCK 1 (LEFT): Ministry Image */}
+        <div className="relative w-full aspect-[4/3] bg-muted rounded-lg overflow-hidden">
+          {!imageError ? (
+            <Image
+              src={`${FIREBASE_STORAGE_URL}/${ministry.ministry_code}.jpg`}
+              alt={ministry.name}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 50vw"
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/5 to-primary/10">
+              <Building2 className="h-24 w-24 text-muted-foreground/30" />
+            </div>
+          )}
+        </div>
 
+        {/* BLOCK 2 (RIGHT): Description + Stats */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t('totalServices')}</CardTitle>
-            <Briefcase className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{ministry.service_count}</div>
+          <CardContent className="p-6 space-y-6">
+            {/* Description */}
+            <div>
+              <h3 className="text-lg font-semibold mb-3">{t('description')}</h3>
+              <p className="text-muted-foreground text-justify whitespace-pre-line">
+                {ministry.description || t('noDescription')}
+              </p>
+            </div>
+
+            <Separator />
+
+            {/* Stats with icons */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center">
+                <FileText className="h-8 w-8 mx-auto text-primary mb-2" />
+                <p className="text-2xl font-bold">{ministry.service_count}</p>
+                <p className="text-xs text-muted-foreground">{t('services')}</p>
+              </div>
+              <div className="text-center">
+                <FolderOpen className="h-8 w-8 mx-auto text-primary mb-2" />
+                <p className="text-2xl font-bold">{ministry.category_count}</p>
+                <p className="text-xs text-muted-foreground">{t('categories')}</p>
+              </div>
+              <div className="text-center">
+                <Layers className="h-8 w-8 mx-auto text-primary mb-2" />
+                <p className="text-2xl font-bold">{ministry.sector_count}</p>
+                <p className="text-xs text-muted-foreground">{t('sectors')}</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
-
-      {/* Ministry Information */}
-      {ministry.description && (
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Info className="h-5 w-5" />
-              {t('information')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">{ministry.description}</p>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Services List */}
       <div className="mb-6">
@@ -202,11 +213,6 @@ export default function MinistryDetailPage() {
                   </Badge>
                 </CardHeader>
                 <CardContent>
-                  {service.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-3 mb-4">
-                      {service.description}
-                    </p>
-                  )}
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">{t('expeditionPrice')}:</span>
                     <span className="font-semibold">

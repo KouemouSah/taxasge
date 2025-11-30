@@ -8,9 +8,21 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Building2, Loader2, LayoutGrid, List, ArrowRight, Search } from 'lucide-react';
+import { Building2, Loader2, LayoutGrid, List, Search } from 'lucide-react';
 import Breadcrumb from '@/components/ui/breadcrumb';
 import { getMinistryDirectory, type MinistryItem } from '@/core/api/homepage';
+
+// Ministry icon color palette (cycles through 8 colors)
+const MINISTRY_COLORS = [
+  'bg-blue-100 text-blue-600',
+  'bg-emerald-100 text-emerald-600',
+  'bg-purple-100 text-purple-600',
+  'bg-orange-100 text-orange-600',
+  'bg-pink-100 text-pink-600',
+  'bg-cyan-100 text-cyan-600',
+  'bg-amber-100 text-amber-600',
+  'bg-rose-100 text-rose-600',
+];
 
 type ViewMode = 'kanban' | 'list';
 type SortOption = 'name-asc' | 'name-desc' | 'count-desc';
@@ -177,63 +189,104 @@ export default function MinisterePage() {
       {/* Kanban View */}
       {!loading && !error && filteredMinistries.length > 0 && viewMode === 'kanban' && (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredMinistries.map((ministry) => (
-            <Card
-              key={ministry.id}
-              className="group cursor-pointer hover:shadow-lg transition-all duration-300"
-              onClick={() => handleMinistryClick(ministry)}
-            >
-              <div className="p-6">
-                <div className="flex items-start gap-4">
-                  <div className="p-3 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                    <Building2 className="h-6 w-6 text-primary" />
+          {filteredMinistries.map((ministry, index) => {
+            const colorClass = MINISTRY_COLORS[index % MINISTRY_COLORS.length];
+            return (
+              <Card
+                key={ministry.id}
+                className="group hover:shadow-lg transition-all duration-300"
+              >
+                <div className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div className={`p-3 rounded-lg ${colorClass}`}>
+                      <Building2 className="h-6 w-6" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-medium mb-2 line-clamp-2">
+                        {ministry.name}
+                      </h3>
+                      <Badge variant="secondary">
+                        {t('servicesCount', { count: ministry.service_count })}
+                      </Badge>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-semibold mb-2 group-hover:text-primary transition-colors line-clamp-2">
-                      {ministry.name}
-                    </h3>
-                    <Badge variant="secondary">
-                      {t('servicesCount', { count: ministry.service_count })}
-                    </Badge>
+                  <div className="flex gap-2 mt-4 pt-4 border-t">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/${locale}/ministere/${ministry.id}`);
+                      }}
+                    >
+                      {t('viewMinistry')}
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/${locale}/services?ministry=${ministry.id}`);
+                      }}
+                    >
+                      {t('viewServices')}
+                    </Button>
                   </div>
                 </div>
-                <div className="mt-4 pt-4 border-t flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    {t('viewServices')}
-                  </span>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
       )}
 
       {/* List View */}
       {!loading && !error && filteredMinistries.length > 0 && viewMode === 'list' && (
         <div className="space-y-4">
-          {filteredMinistries.map((ministry) => (
-            <Card
-              key={ministry.id}
-              className="group cursor-pointer hover:shadow-md transition-all duration-300"
-              onClick={() => handleMinistryClick(ministry)}
-            >
-              <div className="p-6 flex items-center gap-6">
-                <div className="p-3 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                  <Building2 className="h-6 w-6 text-primary" />
+          {filteredMinistries.map((ministry, index) => {
+            const colorClass = MINISTRY_COLORS[index % MINISTRY_COLORS.length];
+            return (
+              <Card
+                key={ministry.id}
+                className="group hover:shadow-md transition-all duration-300"
+              >
+                <div className="p-6 flex items-center gap-6">
+                  <div className={`p-3 rounded-lg ${colorClass}`}>
+                    <Building2 className="h-6 w-6" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-medium">
+                      {ministry.name}
+                    </h3>
+                  </div>
+                  <Badge variant="secondary" className="text-sm">
+                    {t('servicesCount', { count: ministry.service_count })}
+                  </Badge>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/${locale}/ministere/${ministry.id}`);
+                      }}
+                    >
+                      {t('viewMinistry')}
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/${locale}/services?ministry=${ministry.id}`);
+                      }}
+                    >
+                      {t('viewServices')}
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-semibold group-hover:text-primary transition-colors">
-                    {ministry.name}
-                  </h3>
-                </div>
-                <Badge variant="secondary" className="text-sm">
-                  {t('servicesCount', { count: ministry.service_count })}
-                </Badge>
-                <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
