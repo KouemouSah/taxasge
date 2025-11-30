@@ -14,7 +14,7 @@ def test_environment_validation():
 
 def test_basic_structure():
     """Test que la structure de base fonctionne"""
-    import main  # Assurez-vous que le module peut être importé
+    from app import main  # Assurez-vous que le module peut être importé
     assert hasattr(main, 'app'), "Le module main n'a pas l'attribut 'app'"
 
     # Vérifiez que l'attribut app est une instance de FastAPI
