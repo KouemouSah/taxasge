@@ -57,29 +57,32 @@ jobs:
     name: Frontend Tests (Next.js)
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: packages/web
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Node.js 18
+      - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
 
-      - name: Install dependencies
+      - name: Install root dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Install frontend dependencies
+        working-directory: packages/web
         run: npm install --legacy-peer-deps
 
       - name: Run ESLint
+        working-directory: packages/web
         run: npx eslint src --ext .ts,.tsx --max-warnings=100
 
       - name: Run TypeScript check
+        working-directory: packages/web
         run: npm run type-check
 
       - name: Build production
+        working-directory: packages/web
         env:
           NEXT_PUBLIC_API_URL: https://taxasge-backend-staging.run.app
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
