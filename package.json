@@ -59,6 +59,10 @@
     "status": "echo '📊 TaxasGE Project Status:' && git status",
     "info": "echo '📋 TaxasGE Project Info:' && yarn workspaces info"
   },
+  "dependencies": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
   "devDependencies": {
     "lerna": "^7.4.2",
     "prettier": "^3.1.0",
