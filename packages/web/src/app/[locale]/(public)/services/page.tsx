@@ -352,37 +352,32 @@ function ServicesContent() {
   }, [searchResults?.facets?.service_types])
 
   // Apply client-side filtering for price-based filters
+  // IMPORTANT: This logic must match the display logic in the cards below
   const displayResults = useMemo(() => {
     if (!searchResults?.results) return []
 
-    // Methods that require formula calculation (display "Calcular" button)
-    const FORMULA_METHODS = [
-      'percentage_based',
-      'unit_based',
-      'tiered_rates',
-      'formula_based',
-      'fixed_plus_unit'
-    ]
+    // Display logic in cards:
+    // - "Calcular" button shown when: expedition_price === 0 AND renewal_price === 0
+    // - "Gratuito" shown when: expedition_price === 0 (via formatPrice) AND NOT showing Calcular button
+    //   This means: expedition_price === 0 AND renewal_price > 0
 
-    // Methods with fixed prices (display the price directly)
-    const FIXED_METHODS = ['fixed_expedition', 'fixed_renewal', 'fixed_both']
+    // Helper: Service shows "Calcular" button (both prices are 0)
+    const showsCalculateButton = (service: ServiceResult) =>
+      service.expedition_price === 0 && service.renewal_price === 0
 
-    // Helper: A service is formula-based if it uses a calculation method
-    const isFormulaBased = (service: ServiceResult) =>
-      FORMULA_METHODS.includes(service.calculation_method)
-
-    // Helper: A service is truly free if it has a fixed method AND expedition price is 0
-    const isTrulyFree = (service: ServiceResult) =>
-      FIXED_METHODS.includes(service.calculation_method) && service.expedition_price === 0
+    // Helper: Service shows "Gratuito" for expedition price
+    // This is when expedition is free BUT it's NOT a formula-based service
+    const showsFreeExpedition = (service: ServiceResult) =>
+      service.expedition_price === 0 && service.renewal_price > 0
 
     if (priceFilter === 'formula') {
-      // Show only formula-based services (needs calculation)
-      return searchResults.results.filter(isFormulaBased)
+      // Show only services that display the "Calcular" button
+      return searchResults.results.filter(showsCalculateButton)
     }
 
     if (priceFilter === 'free') {
-      // Show only truly free services (fixed method + price = 0)
-      return searchResults.results.filter(isTrulyFree)
+      // Show only services that display "Gratuito" for expedition price
+      return searchResults.results.filter(showsFreeExpedition)
     }
 
     return searchResults.results

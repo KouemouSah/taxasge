@@ -194,7 +194,7 @@ class Settings(BaseSettings):
 
     # Google Cloud Project (inherited from Cloud Run environment)
     GOOGLE_CLOUD_PROJECT: str = Field(
-        default="taxasge",
+        default="taxasge-dev",
         env="GOOGLE_CLOUD_PROJECT"
     )
     GOOGLE_CLOUD_LOCATION: str = Field(
