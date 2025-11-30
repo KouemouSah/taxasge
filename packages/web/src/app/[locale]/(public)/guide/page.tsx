@@ -15,7 +15,6 @@ import {
   BookOpen,
   Download,
   CheckCircle2,
-  ArrowRight,
   ExternalLink,
   ClipboardList,
   Calculator,
@@ -67,8 +66,7 @@ const FAQ_ITEMS = [
 ];
 
 export default function GuidePage() {
-  const params = useParams();
-  const locale = (params?.locale as string) || 'es';
+  useParams();
   const t = useTranslations('guidePage');
 
   const [activeTab, setActiveTab] = useState<TabType>('workflow');

@@ -196,7 +196,7 @@ function ServicesContent() {
 
       // Apply price filter
       let maxPrice: number | undefined = undefined
-      let minPrice: number | undefined = undefined
+      const minPrice: number | undefined = undefined
       if (priceFilter === 'free') {
         maxPrice = 0
       } else if (priceFilter === 'formula') {
