@@ -198,11 +198,11 @@ function ServicesContent() {
       let maxPrice: number | undefined = undefined
       const minPrice: number | undefined = undefined
       if (priceFilter === 'free') {
-        maxPrice = 0
+        // Don't set max_price for free filter - we'll filter client-side
+        // to exclude formula-based services (both prices = 0)
       } else if (priceFilter === 'formula') {
         // Formula-based services have both expedition and renewal prices at 0
-        // but this is handled client-side after results come back
-        // For now, we don't filter on the API level for formula
+        // This is handled client-side after results come back
       }
 
       const filters: SearchFilters = {
@@ -362,15 +362,30 @@ function ServicesContent() {
     return searchResults?.facets?.service_types || []
   }, [searchResults?.facets?.service_types])
 
-  // Apply client-side filtering for formula-based services
+  // Apply client-side filtering for price-based filters
   const displayResults = useMemo(() => {
     if (!searchResults?.results) return []
 
+    // Helper: A service is formula-based if BOTH prices are 0
+    // These services show the "Calculer" button instead of displaying prices
+    const isFormulaBased = (service: ServiceResult) =>
+      service.expedition_price === 0 && service.renewal_price === 0
+
+    // Helper: A service is truly free if at least one price is 0 but NOT formula-based
+    // This includes:
+    // - Free expedition with paid renewal (expedition_price = 0, renewal_price > 0)
+    // - Paid expedition with free renewal (expedition_price > 0, renewal_price = 0)
+    const isTrulyFree = (service: ServiceResult) =>
+      !isFormulaBased(service) && (service.expedition_price === 0 || service.renewal_price === 0)
+
     if (priceFilter === 'formula') {
-      // Formula-based services have both prices at 0 (they use calculation formulas)
-      return searchResults.results.filter(
-        service => service.expedition_price === 0 && service.renewal_price === 0
-      )
+      // Show only formula-based services (both prices = 0, needs calculation)
+      return searchResults.results.filter(isFormulaBased)
+    }
+
+    if (priceFilter === 'free') {
+      // Show only truly free services (exclude formula-based)
+      return searchResults.results.filter(isTrulyFree)
     }
 
     return searchResults.results
@@ -672,7 +687,7 @@ function ServicesContent() {
 
                       <div className="mt-auto pt-4 border-t space-y-3">
                         {!shouldShowCalculateButton ? (
-                          <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-4 min-h-[48px]">
                             <div>
                               <p className="text-xs text-muted-foreground">{t('firstExpedition')}</p>
                               <p className="font-semibold text-base text-primary">{formatPrice(service.expedition_price, freeLabel, locale)}</p>
@@ -688,17 +703,19 @@ function ServicesContent() {
                             )}
                           </div>
                         ) : (
-                          <Button
-                            variant="outline"
-                            className="w-full gap-2"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              router.push(`/${locale}/calculateur?service_id=${service.id}`)
-                            }}
-                          >
-                            <Calculator className="h-4 w-4" />
-                            {t('calculate')}
-                          </Button>
+                          <div className="min-h-[48px] flex items-center">
+                            <Button
+                              variant="outline"
+                              className="w-full gap-2"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                router.push(`/${locale}/calculateur?service_id=${service.id}`)
+                              }}
+                            >
+                              <Calculator className="h-4 w-4" />
+                              {t('calculate')}
+                            </Button>
+                          </div>
                         )}
 
                         <Button
@@ -746,7 +763,7 @@ function ServicesContent() {
 
                         <div className="flex flex-col justify-between gap-3 lg:min-w-[220px] pt-4 lg:pt-0 border-t lg:border-t-0 lg:border-l lg:pl-6">
                           {!shouldShowCalculateButton ? (
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-4 min-h-[48px]">
                               <div>
                                 <p className="text-xs text-muted-foreground">{t('firstExpedition')}</p>
                                 <p className="font-semibold text-base text-primary">{formatPrice(service.expedition_price, freeLabel, locale)}</p>
@@ -762,17 +779,19 @@ function ServicesContent() {
                               )}
                             </div>
                           ) : (
-                            <Button
-                              variant="outline"
-                              className="gap-2"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                router.push(`/${locale}/calculateur?service_id=${service.id}`)
-                              }}
-                            >
-                              <Calculator className="h-4 w-4" />
-                              {t('calculate')}
-                            </Button>
+                            <div className="min-h-[48px] flex items-center">
+                              <Button
+                                variant="outline"
+                                className="gap-2"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  router.push(`/${locale}/calculateur?service_id=${service.id}`)
+                                }}
+                              >
+                                <Calculator className="h-4 w-4" />
+                                {t('calculate')}
+                              </Button>
+                            </div>
                           )}
 
                           <Button

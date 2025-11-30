@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   FileText,
   HelpCircle,
@@ -46,13 +47,106 @@ const LEGISLATION_ITEMS = [
   { icon: Users, key: 'obligations' },
 ];
 
-// Downloadable forms
+// Real Downloadable PDF forms
 const DOWNLOAD_ITEMS = [
-  { key: 'form100', category: 'irpf', format: 'PDF' },
-  { key: 'form200', category: 'corporate', format: 'PDF' },
-  { key: 'form300', category: 'vat', format: 'PDF' },
-  { key: 'form400', category: 'withholding', format: 'PDF' },
-  { key: 'formGeneral', category: 'general', format: 'PDF' },
+  {
+    key: 'retenciones3pctResidentes',
+    filename: '3_RESIDENTES_PETROLERO.pdf',
+    category: 'withholding',
+    format: 'PDF',
+    size: '~250KB'
+  },
+  {
+    key: 'retenciones5pctResidentes',
+    filename: '5_RESIDENTES_PETROLERO.pdf',
+    category: 'withholding',
+    format: 'PDF',
+    size: '~240KB'
+  },
+  {
+    key: 'retenciones10pctNoResidentes',
+    filename: '10_NO-RESIDENTES_PETROLERO.pdf',
+    category: 'withholding',
+    format: 'PDF',
+    size: '~260KB'
+  },
+  {
+    key: 'retenciones10pctSectorComun',
+    filename: '10_NO-RESIDENTES_SEC.COMUN_.pdf',
+    category: 'withholding',
+    format: 'PDF',
+    size: '~250KB'
+  },
+  {
+    key: 'cuotaMinimaPetrolera',
+    filename: 'CUOTA-MIN.FISCAL_PETROLERA.pdf',
+    category: 'corporate',
+    format: 'PDF',
+    size: '~230KB'
+  },
+  {
+    key: 'cuotaMinimaComun',
+    filename: 'CUOTA-MIN.FISCAL_SEC.COMUN_.pdf',
+    category: 'corporate',
+    format: 'PDF',
+    size: '~230KB'
+  },
+  {
+    key: 'ivaDestajo',
+    filename: 'I.V.A.-DESTAJO.pdf',
+    category: 'vat',
+    format: 'PDF',
+    size: '~240KB'
+  },
+  {
+    key: 'ivaReal',
+    filename: 'I.V.A.-REAL.pdf',
+    category: 'vat',
+    format: 'PDF',
+    size: '~250KB'
+  },
+  {
+    key: 'impProdPetrolerosIVS',
+    filename: 'IMP.PROD_.PETROLEROS_IVS.pdf',
+    category: 'corporate',
+    format: 'PDF',
+    size: '~240KB'
+  },
+  {
+    key: 'impProdPetroliferosFMI',
+    filename: 'IMP.PROD_.PETROLIFEROS_FMI.pdf',
+    category: 'corporate',
+    format: 'PDF',
+    size: '~240KB'
+  },
+  {
+    key: 'impSueldosPetrolero',
+    filename: 'IMP.SUELDOS-Y-SALARIOS_PETROLERO.pdf',
+    category: 'irpf',
+    format: 'PDF',
+    size: '~260KB'
+  },
+  {
+    key: 'impSueldosComun',
+    filename: 'IMP.SUELDOS-Y-SALARIOS_SEC.COMUN_.pdf',
+    category: 'irpf',
+    format: 'PDF',
+    size: '~260KB'
+  },
+  {
+    key: 'impresoComun',
+    filename: 'IMPRESO-COMUN.pdf',
+    category: 'general',
+    format: 'PDF',
+    size: '~220KB'
+  },
+  {
+    key: 'impresoLiquidacion',
+    filename: 'IMPRESO-DE-LIQUIDACION.pdf',
+    category: 'general',
+    format: 'PDF',
+    size: '~230KB'
+  },
 ];
 
 // FAQ items
@@ -70,6 +164,7 @@ export default function GuidePage() {
   const t = useTranslations('guidePage');
 
   const [activeTab, setActiveTab] = useState<TabType>('workflow');
+  const [selectedForm, setSelectedForm] = useState(DOWNLOAD_ITEMS[0]);
 
   const getCategoryColor = (category: string) => {
     switch (category) {
@@ -158,18 +253,38 @@ export default function GuidePage() {
                             <h3 className="text-lg font-semibold">{t(`${step.key}Title`)}</h3>
                           </div>
                           <p className="text-muted-foreground mb-3">{t(`${step.key}Desc`)}</p>
-                          <div className="bg-muted/50 p-4 rounded-lg">
-                            <p className="text-sm font-medium mb-2">{t('tips')}:</p>
-                            <ul className="text-sm text-muted-foreground space-y-1">
-                              <li className="flex items-start gap-2">
-                                <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                                <span>{t(`${step.key}Tip1`)}</span>
-                              </li>
-                              <li className="flex items-start gap-2">
-                                <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                                <span>{t(`${step.key}Tip2`)}</span>
-                              </li>
-                            </ul>
+
+                          {/* Two-column layout: Tips + Platform Actions */}
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            {/* Tips Column */}
+                            <div className="bg-muted/50 p-4 rounded-lg">
+                              <p className="text-sm font-medium mb-2">{t('tips')}:</p>
+                              <ul className="text-sm text-muted-foreground space-y-1">
+                                <li className="flex items-start gap-2">
+                                  <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                                  <span>{t(`${step.key}Tip1`)}</span>
+                                </li>
+                                <li className="flex items-start gap-2">
+                                  <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                                  <span>{t(`${step.key}Tip2`)}</span>
+                                </li>
+                              </ul>
+                            </div>
+
+                            {/* Platform Actions Column */}
+                            <div className="bg-primary/5 p-4 rounded-lg border border-primary/10">
+                              <p className="text-sm font-medium mb-2">{t('platformActions')}:</p>
+                              <ul className="text-sm text-muted-foreground space-y-1">
+                                <li className="flex items-start gap-2">
+                                  <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                                  <span>{t(`${step.key}Action1`)}</span>
+                                </li>
+                                <li className="flex items-start gap-2">
+                                  <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                                  <span>{t(`${step.key}Action2`)}</span>
+                                </li>
+                              </ul>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -229,49 +344,121 @@ export default function GuidePage() {
 
         {/* DOWNLOADS TAB */}
         <TabsContent value="downloads">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Download className="h-5 w-5 text-primary" />
-                {t('downloadableFormsTitle')}
-              </CardTitle>
-              <CardDescription>{t('downloadableFormsDesc')}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {DOWNLOAD_ITEMS.map((item) => (
-                  <div
-                    key={item.key}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:border-primary/50 hover:bg-muted/30 transition-all"
-                  >
-                    <div className="flex items-center gap-3">
-                      <FileText className="h-8 w-8 text-red-500" />
-                      <div>
-                        <p className="font-medium">{t(`${item.key}Name`)}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="outline" className={getCategoryColor(item.category)}>
-                            {t(`category${item.category.charAt(0).toUpperCase() + item.category.slice(1)}`)}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">{item.format}</span>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left column - Form list */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-primary" />
+                  {t('downloadableFormsTitle')}
+                </CardTitle>
+                <CardDescription>{t('downloadableFormsDesc')}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[600px] pr-4">
+                  <div className="space-y-2">
+                    {DOWNLOAD_ITEMS.map((item) => (
+                      <div
+                        key={item.key}
+                        onClick={() => setSelectedForm(item)}
+                        className={`cursor-pointer p-4 border rounded-lg transition-all hover:border-primary/50 hover:bg-muted/30 ${
+                          selectedForm.key === item.key
+                            ? 'border-primary bg-primary/5'
+                            : ''
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 flex-1">
+                            <FileText className={`h-6 w-6 flex-shrink-0 ${
+                              selectedForm.key === item.key ? 'text-primary' : 'text-red-500'
+                            }`} />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm mb-1">{t(`${item.key}Name`)}</p>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <Badge variant="outline" className={getCategoryColor(item.category)}>
+                                  {t(`category${item.category.charAt(0).toUpperCase() + item.category.slice(1)}`)}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground">{item.size}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            asChild
+                            className="flex-shrink-0"
+                          >
+                            <a
+                              href={`/documents/formulaires/${item.filename}`}
+                              download
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Download className="h-4 w-4" />
+                            </a>
+                          </Button>
                         </div>
                       </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+
+            {/* Right column - PDF Preview */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-primary" />
+                  {t('pdfPreviewTitle')}
+                </CardTitle>
+                <CardDescription>
+                  {t(`${selectedForm.key}Name`)}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* PDF Info */}
+                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className={getCategoryColor(selectedForm.category)}>
+                        {t(`category${selectedForm.category.charAt(0).toUpperCase() + selectedForm.category.slice(1)}`)}
+                      </Badge>
+                      <span className="text-sm text-muted-foreground">{selectedForm.format}</span>
+                      <span className="text-sm text-muted-foreground">•</span>
+                      <span className="text-sm text-muted-foreground">{selectedForm.size}</span>
                     </div>
-                    <Button variant="ghost" size="icon" disabled>
-                      <Download className="h-4 w-4" />
+                    <Button
+                      variant="default"
+                      size="sm"
+                      asChild
+                    >
+                      <a
+                        href={`/documents/formulaires/${selectedForm.filename}`}
+                        download
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        {t('downloadButton')}
+                      </a>
                     </Button>
                   </div>
-                ))}
-              </div>
 
-              <Separator className="my-6" />
+                  {/* PDF Preview */}
+                  <div className="border rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-900">
+                    <iframe
+                      src={`/documents/formulaires/${selectedForm.filename}#view=FitH`}
+                      className="w-full h-[520px]"
+                      title={t(`${selectedForm.key}Name`)}
+                    />
+                  </div>
 
-              <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-lg">
-                <p className="text-sm text-amber-700 dark:text-amber-400 text-center">
-                  {t('downloadsComingSoon')}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+                  {/* Help text */}
+                  <p className="text-xs text-muted-foreground text-center italic">
+                    {t('pdfPreviewHelp')}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* FAQ TAB */}

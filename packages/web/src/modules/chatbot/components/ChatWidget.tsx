@@ -25,6 +25,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
+import Image from 'next/image'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -243,14 +244,21 @@ export const ChatWidget = ({
       {/* Header */}
       <div className="p-4 border-b flex items-center justify-between bg-primary text-white rounded-t-lg">
         <div className="flex items-center gap-2">
-          <Bot className="h-5 w-5" aria-hidden="true" />
+          <div className="flex-shrink-0 h-10 w-10 rounded-full bg-white flex items-center justify-center p-1">
+            <Image
+              src="/logo.png"
+              alt="TaxasGE Logo"
+              width={32}
+              height={32}
+              className="object-contain"
+            />
+          </div>
           <div>
             <h3 id="chat-widget-title" className="font-semibold text-sm">{t('title') || 'Assistant TaxasGE'}</h3>
-            {confidence && (
-              <p className="text-xs opacity-80">
-                {t('confidence') || 'Confidence'}: {Math.round(confidence * 100)}%
-              </p>
-            )}
+            <div className="flex items-center gap-1">
+              <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
+              <p className="text-xs opacity-80">{t('online') || 'Online'}</p>
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -317,7 +325,15 @@ export const ChatWidget = ({
         >
           {messages.length === 0 && (
             <div className="text-center text-muted-foreground text-sm py-8">
-              <Bot className="h-12 w-12 mx-auto mb-2 opacity-50" />
+              <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-2">
+                <Image
+                  src="/logo.png"
+                  alt="TaxasGE Logo"
+                  width={40}
+                  height={40}
+                  className="object-contain opacity-50"
+                />
+              </div>
               <p>{t('welcomeMessage') || '¡Hola! ¿En qué puedo ayudarte hoy?'}</p>
             </div>
           )}
@@ -328,8 +344,14 @@ export const ChatWidget = ({
               className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               {msg.role === 'assistant' && (
-                <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Bot className="h-4 w-4 text-primary" />
+                <div className="flex-shrink-0 h-8 w-8 rounded-full bg-white flex items-center justify-center border border-primary/20">
+                  <Image
+                    src="/logo.png"
+                    alt="TaxasGE"
+                    width={24}
+                    height={24}
+                    className="object-contain"
+                  />
                 </div>
               )}
               <div
@@ -355,8 +377,14 @@ export const ChatWidget = ({
           {/* Streaming Text Display */}
           {isStreaming && streamedText && (
             <div className="flex gap-2 justify-start">
-              <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <Bot className="h-4 w-4 text-primary" />
+              <div className="flex-shrink-0 h-8 w-8 rounded-full bg-white flex items-center justify-center border border-primary/20">
+                <Image
+                  src="/logo.png"
+                  alt="TaxasGE"
+                  width={24}
+                  height={24}
+                  className="object-contain"
+                />
               </div>
               <div className="max-w-[75%] rounded-lg p-3 bg-muted text-foreground">
                 <p className="text-sm whitespace-pre-wrap">{streamedText}</p>
@@ -368,8 +396,14 @@ export const ChatWidget = ({
           {/* Loading Indicator (non-streaming) */}
           {isLoading && !isStreaming && (
             <div className="flex gap-2 justify-start">
-              <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <Bot className="h-4 w-4 text-primary" />
+              <div className="flex-shrink-0 h-8 w-8 rounded-full bg-white flex items-center justify-center border border-primary/20">
+                <Image
+                  src="/logo.png"
+                  alt="TaxasGE"
+                  width={24}
+                  height={24}
+                  className="object-contain"
+                />
               </div>
               <div className="bg-muted rounded-lg p-3">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -380,8 +414,14 @@ export const ChatWidget = ({
           {/* Streaming Indicator (before text arrives) */}
           {isStreaming && !streamedText && (
             <div className="flex gap-2 justify-start">
-              <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <Bot className="h-4 w-4 text-primary" />
+              <div className="flex-shrink-0 h-8 w-8 rounded-full bg-white flex items-center justify-center border border-primary/20">
+                <Image
+                  src="/logo.png"
+                  alt="TaxasGE"
+                  width={24}
+                  height={24}
+                  className="object-contain"
+                />
               </div>
               <div className="bg-muted rounded-lg p-3 flex items-center gap-1">
                 <span className="h-2 w-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
@@ -396,7 +436,7 @@ export const ChatWidget = ({
             <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
               <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm text-destructive">{error}</p>
+                <p className="text-sm text-destructive">{t('errorMessage') || error}</p>
                 <Button
                   size="sm"
                   variant="outline"
