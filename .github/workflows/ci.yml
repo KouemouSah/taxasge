@@ -66,8 +66,7 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install frontend dependencies
-        working-directory: packages/web
+      - name: Install all dependencies
         run: npm install --legacy-peer-deps
 
       - name: Run ESLint
