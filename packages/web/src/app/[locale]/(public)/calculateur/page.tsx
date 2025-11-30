@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Suspense } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -142,7 +142,7 @@ interface CalculationResult {
   breakdown: { bracket: string; taxable: number; rate: number; tax: number }[];
 }
 
-export default function CalculateurPage() {
+function CalculateurPageContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const locale = (params?.locale as string) || 'es';
@@ -1029,5 +1029,30 @@ export default function CalculateurPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+// Loading skeleton for Suspense fallback
+function CalculateurLoading() {
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-6xl animate-pulse">
+      <div className="h-6 bg-muted rounded w-48 mb-4" />
+      <div className="h-10 bg-muted rounded w-64 mb-2" />
+      <div className="h-4 bg-muted rounded w-96 mb-8" />
+      <div className="h-12 bg-muted rounded mb-6" />
+      <div className="grid lg:grid-cols-2 gap-6">
+        <div className="h-96 bg-muted rounded" />
+        <div className="h-96 bg-muted rounded" />
+      </div>
+    </div>
+  );
+}
+
+// Main page component with Suspense boundary
+export default function CalculateurPage() {
+  return (
+    <Suspense fallback={<CalculateurLoading />}>
+      <CalculateurPageContent />
+    </Suspense>
   );
 }
