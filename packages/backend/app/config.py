@@ -381,11 +381,8 @@ class Settings(BaseSettings):
     
     @property
     def ai_config(self) -> Dict[str, Any]:
-        """Get AI/ML configuration (legacy)"""
+        """Get AI/ML configuration (legacy - deprecated, using Gemini now)"""
         return {
-            "model_path": self.AI_MODEL_PATH,
-            "tokenizer_path": self.AI_TOKENIZER_PATH,
-            "intents_path": self.AI_INTENTS_PATH,
             "max_tokens": self.AI_MAX_TOKENS,
             "confidence_threshold": self.AI_CONFIDENCE_THRESHOLD
         }
