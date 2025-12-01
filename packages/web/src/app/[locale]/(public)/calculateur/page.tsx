@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, Suspense, useEffect } from 'react';
+import { useState, useMemo, Suspense, useEffect, useCallback } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,6 +30,15 @@ const VAT_STANDARD_RATE = 15; // 15% standard VAT rate in EG
 
 // Corporate tax rate
 const CORPORATE_TAX_RATE = 35; // 35% corporate tax rate
+
+// Format currency helper (defined at module level to avoid hook dependency issues)
+function formatCurrencyValue(value: number, locale: string): string {
+  return new Intl.NumberFormat(locale, {
+    style: 'decimal',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value) + ' XAF';
+}
 
 // Variable configuration interface for calculation formulas
 interface VariableConfig {
@@ -238,8 +247,8 @@ function CalculateurPageContent() {
           totalTax += tax;
           breakdown.push({
             bracket: bracket.max === Infinity
-              ? `> ${formatCurrency(bracket.min)}`
-              : `${formatCurrency(bracket.min)} - ${formatCurrency(bracket.max)}`,
+              ? `> ${formatCurrencyValue(bracket.min, locale)}`
+              : `${formatCurrencyValue(bracket.min, locale)} - ${formatCurrencyValue(bracket.max, locale)}`,
             taxable: actualTaxable,
             rate: bracket.rate,
             tax,
@@ -269,8 +278,8 @@ function CalculateurPageContent() {
         totalTax += tax;
         breakdown.push({
           bracket: bracket.max === Infinity
-            ? `> ${formatCurrency(bracket.min)}`
-            : `${formatCurrency(bracket.min)} - ${formatCurrency(bracket.max)}`,
+            ? `> ${formatCurrencyValue(bracket.min, locale)}`
+            : `${formatCurrencyValue(bracket.min, locale)} - ${formatCurrencyValue(bracket.max, locale)}`,
           taxable: actualAmount,
           rate: bracket.rate,
           tax,
@@ -288,7 +297,7 @@ function CalculateurPageContent() {
       effectiveRate: (totalTax / amount) * 100,
       breakdown,
     };
-  }, [irpfAmount]);
+  }, [irpfAmount, locale]);
 
   // VAT Calculation
   const vatResult = useMemo((): { baseAmount: number; vatAmount: number; totalAmount: number } | null => {
@@ -338,7 +347,7 @@ function CalculateurPageContent() {
       const result = baseAmount * selectedService.base_percentage;
       return {
         result,
-        formula: `${selectedService.base_percentage * 100}% × ${formatCurrency(baseAmount)}`,
+        formula: `${selectedService.base_percentage * 100}% × ${formatCurrencyValue(baseAmount, locale)}`,
         breakdown: [{ variable: 'baseAmount', value: baseAmount }]
       };
     }
@@ -374,23 +383,23 @@ function CalculateurPageContent() {
     }
 
     return null;
-  }, [selectedService, serviceVariables]);
+  }, [selectedService, serviceVariables, locale]);
 
-  function formatCurrency(value: number): string {
+  const formatCurrency = useCallback((value: number): string => {
     return new Intl.NumberFormat(locale, {
       style: 'decimal',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(value) + ' XAF';
-  }
+  }, [locale]);
 
-  function formatPercent(value: number): string {
+  const formatPercent = useCallback((value: number): string => {
     return new Intl.NumberFormat(locale, {
       style: 'percent',
       minimumFractionDigits: 1,
       maximumFractionDigits: 2,
     }).format(value / 100);
-  }
+  }, [locale]);
 
   const handleReset = () => {
     setIrpfAmount('');

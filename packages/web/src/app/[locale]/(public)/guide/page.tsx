@@ -216,10 +216,6 @@ export default function GuidePage() {
     setPdfLoadError(false);
   }, [selectedForm]);
 
-  // Handle iframe load error
-  const handleIframeError = useCallback(() => {
-    setPdfLoadError(true);
-  }, []);
 
   // Get PDF URL
   const getPdfUrl = useCallback((filename: string) => {
@@ -568,35 +564,13 @@ export default function GuidePage() {
                         )}
                       </div>
                     ) : (
-                      /* Standard iframe for desktop browsers */
-                      <object
-                        data={`${getPdfUrl(selectedForm.filename)}#toolbar=1&navpanes=0&scrollbar=1&view=FitH`}
-                        type="application/pdf"
+                      /* Standard iframe for desktop browsers - using iframe which has better browser support */
+                      <iframe
+                        src={`${getPdfUrl(selectedForm.filename)}#toolbar=1&navpanes=0&scrollbar=1&view=FitH`}
                         className="w-full h-[520px]"
                         title={t(`${selectedForm.key}Name`)}
-                        onError={handleIframeError}
-                      >
-                        {/* Fallback content if object tag fails */}
-                        <iframe
-                          src={`${getPdfUrl(selectedForm.filename)}#toolbar=1&navpanes=0&scrollbar=1&view=FitH`}
-                          className="w-full h-[520px]"
-                          title={t(`${selectedForm.key}Name`)}
-                          style={{ border: 'none' }}
-                          onError={handleIframeError}
-                        >
-                          {/* Ultimate fallback - link to download */}
-                          <div className="p-8 text-center">
-                            <p className="mb-4">{t('pdfNotSupported') || 'Your browser does not support PDF viewing.'}</p>
-                            <a
-                              href={getPdfUrl(selectedForm.filename)}
-                              download
-                              className="text-primary hover:underline"
-                            >
-                              {t('downloadButton')}
-                            </a>
-                          </div>
-                        </iframe>
-                      </object>
+                        style={{ border: 'none' }}
+                      />
                     )}
                   </div>
 

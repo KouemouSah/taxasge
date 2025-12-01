@@ -37,6 +37,18 @@ type PriceFilter = 'all' | 'free' | 'formula'
 // Constants
 const ITEMS_PER_PAGE = 18
 
+// Hardcoded service types list with translation keys (defined outside component to avoid re-creation)
+const SERVICE_TYPES_LIST = [
+  { type: 'document_processing', key: 'document_processing' },
+  { type: 'license_permit', key: 'license_permit' },
+  { type: 'residence_permit', key: 'residence_permit' },
+  { type: 'registration_fee', key: 'registration_fee' },
+  { type: 'inspection_fee', key: 'inspection_fee' },
+  { type: 'administrative_tax', key: 'administrative_tax' },
+  { type: 'customs_duty', key: 'customs_duty' },
+  { type: 'declaration_tax', key: 'declaration_tax' },
+] as const
+
 /**
  * Services Content - Component that uses useSearchParams
  */
@@ -335,24 +347,12 @@ function ServicesContent() {
     return searchResults?.facets?.categories || []
   }, [searchResults?.facets?.categories])
 
-  // Hardcoded service types list with translation keys
-  const HARDCODED_SERVICE_TYPES = [
-    { type: 'document_processing', key: 'document_processing' },
-    { type: 'license_permit', key: 'license_permit' },
-    { type: 'residence_permit', key: 'residence_permit' },
-    { type: 'registration_fee', key: 'registration_fee' },
-    { type: 'inspection_fee', key: 'inspection_fee' },
-    { type: 'administrative_tax', key: 'administrative_tax' },
-    { type: 'customs_duty', key: 'customs_duty' },
-    { type: 'declaration_tax', key: 'declaration_tax' },
-  ]
-
   // Get translations for service types from serviceTypes namespace
   const tServiceTypes = useTranslations('serviceTypes')
 
   // Build service type options with translated labels
   const serviceTypeOptions = useMemo(() => {
-    return HARDCODED_SERVICE_TYPES.map(st => ({
+    return SERVICE_TYPES_LIST.map(st => ({
       type: st.type,
       label: tServiceTypes(`${st.key}.name`)
     }))
