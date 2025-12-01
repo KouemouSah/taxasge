@@ -17,8 +17,9 @@
 'use client'
 
 import React, { useState } from 'react'
+import Image from 'next/image'
 import { useTranslations } from 'next-intl'
-import { Bot, User, Copy, Check } from 'lucide-react'
+import { User, Copy, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatTimestamp } from '../types'
 import type { ChatMessage } from '../types'
@@ -120,10 +121,16 @@ export const MessageItem: React.FC<MessageItemProps> = ({
     <div
       className={`flex gap-2 ${isUser ? 'justify-end' : 'justify-start'} ${className}`}
     >
-      {/* Bot Avatar */}
+      {/* Bot Avatar - App Logo */}
       {isBot && (
-        <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-          <Bot className="h-4 w-4 text-primary" />
+        <div className="flex-shrink-0 h-8 w-8 rounded-full bg-white flex items-center justify-center overflow-hidden border border-border">
+          <Image
+            src="/logo.png"
+            alt="TaxasGE"
+            width={32}
+            height={32}
+            className="h-6 w-6 object-contain"
+          />
         </div>
       )}
 

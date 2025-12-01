@@ -688,7 +688,8 @@ async def search_services(
                     expedition_price=r.get('expedition_price', 0),
                     renewal_price=r.get('renewal_price', 0),
                     processing_time_days=r.get('processing_time_days', 30),
-                    status=r.get('status', 'active')
+                    status=r.get('status', 'active'),
+                    calculation_method=r.get('calculation_method', 'fixed_expedition')
                 )
                 for r in search_result['results']
             ],

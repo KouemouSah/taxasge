@@ -352,32 +352,28 @@ function ServicesContent() {
   }, [searchResults?.facets?.service_types])
 
   // Apply client-side filtering for price-based filters
-  // IMPORTANT: This logic must match the display logic in the cards below
+  // Uses calculation_method from database to identify formula-based services
   const displayResults = useMemo(() => {
     if (!searchResults?.results) return []
 
-    // Display logic in cards:
-    // - "Calcular" button shown when: expedition_price === 0 AND renewal_price === 0
-    // - "Gratuito" shown when: expedition_price === 0 (via formatPrice) AND NOT showing Calcular button
-    //   This means: expedition_price === 0 AND renewal_price > 0
-
-    // Helper: Service shows "Calcular" button (both prices are 0)
-    const showsCalculateButton = (service: ServiceResult) =>
-      service.expedition_price === 0 && service.renewal_price === 0
-
-    // Helper: Service shows "Gratuito" for expedition price
-    // This is when expedition is free BUT it's NOT a formula-based service
-    const showsFreeExpedition = (service: ServiceResult) =>
-      service.expedition_price === 0 && service.renewal_price > 0
+    // Formula-based calculation methods (services shown in calculator page "Servicios Fiscales" tab)
+    const FORMULA_METHODS = ['percentage_based', 'formula_based', 'unit_based', 'tiered_rates', 'fixed_plus_unit']
 
     if (priceFilter === 'formula') {
-      // Show only services that display the "Calcular" button
-      return searchResults.results.filter(showsCalculateButton)
+      // Show services with formula-based calculation methods
+      // These are the services that appear in the calculator's "Servicios Fiscales" tab
+      return searchResults.results.filter(service =>
+        FORMULA_METHODS.includes(service.calculation_method)
+      )
     }
 
     if (priceFilter === 'free') {
-      // Show only services that display "Gratuito" for expedition price
-      return searchResults.results.filter(showsFreeExpedition)
+      // Show services that are NOT formula-based and have expedition_price === 0
+      // This excludes formula-based services which show "Calcular" button instead of "Gratuito"
+      return searchResults.results.filter(service =>
+        !FORMULA_METHODS.includes(service.calculation_method) &&
+        service.expedition_price === 0
+      )
     }
 
     return searchResults.results

@@ -145,6 +145,7 @@ class SearchResultItem(BaseModel):
     renewal_price: float = 0
     processing_time_days: int = 30
     status: str = "active"
+    calculation_method: str = "fixed_expedition"
 
 
 class FacetItem(BaseModel):
