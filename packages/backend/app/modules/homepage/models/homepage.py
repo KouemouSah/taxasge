@@ -124,6 +124,7 @@ class SearchRequest(BaseModel):
     service_type: Optional[str] = Field(None, description="Filter by service type")
     min_price: Optional[float] = Field(None, description="Minimum price filter")
     max_price: Optional[float] = Field(None, description="Maximum price filter")
+    calculation_methods: Optional[List[str]] = Field(None, description="Filter by calculation methods (e.g., ['percentage_based', 'formula_based'])")
     sort_by: str = Field("relevance", description="Sort by: relevance, name, price")
     sort_order: str = Field("asc", description="Sort order: asc, desc")
     page: int = Field(1, ge=1, description="Page number")

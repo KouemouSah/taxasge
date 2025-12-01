@@ -184,7 +184,12 @@
     "serviceCalculationResult": "Résultat du calcul du service fiscal",
     "calculatedAmount": "Frais calculés",
     "enterVariables": "Entrez toutes les variables requises pour calculer",
-    "selectServiceFirst": "Sélectionnez d'abord un service fiscal"
+    "selectServiceFirst": "Sélectionnez d'abord un service fiscal",
+    "loadingServices": "Chargement des services fiscaux...",
+    "errorLoadingServices": "Erreur lors du chargement des services. Veuillez réessayer.",
+    "noServicesAvailable": "Aucun service disponible",
+    "servicesCount": "{count} services disponibles",
+    "retry": "Réessayer"
   },
   "guidePage": {
     "title": "Guide Fiscal",
@@ -262,6 +267,12 @@
     "pdfPreviewTitle": "Aperçu PDF",
     "downloadButton": "Télécharger",
     "pdfPreviewHelp": "Cliquez sur un formulaire dans la liste pour le prévisualiser. Utilisez le bouton de téléchargement pour sauvegarder le PDF sur votre appareil.",
+    "pdfPreviewHelpMobile": "Appuyez sur les boutons ci-dessus pour voir ou télécharger le formulaire.",
+    "pdfLoadError": "Impossible d'afficher l'aperçu PDF. Veuillez télécharger le fichier pour le consulter.",
+    "pdfMobileHint": "L'aperçu PDF est optimisé pour ordinateur. Téléchargez le fichier pour le voir sur votre appareil.",
+    "openInNewTab": "Ouvrir dans un nouvel onglet",
+    "browserPdfHint": "Votre navigateur peut ne pas prendre en charge l'affichage PDF intégré.",
+    "pdfNotSupported": "Votre navigateur ne supporte pas l'affichage des PDF.",
     "retenciones3pctResidentesName": "Retenue 3% - Résidents Secteur Pétrolier",
     "retenciones5pctResidentesName": "Retenue 5% - Résidents Secteur Pétrolier",
     "retenciones10pctNoResidentesName": "Retenue 10% - Non-Résidents Secteur Pétrolier",

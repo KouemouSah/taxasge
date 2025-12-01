@@ -177,13 +177,19 @@ function ServicesContent() {
         sort_order = sortOption.endsWith('_asc') ? 'asc' : 'desc'
       }
 
+      // Determine calculation_methods filter based on priceFilter
+      // 'formula' = percentage_based + formula_based (services with calculated prices)
+      // 'free' = still handled client-side as it checks expedition_price === 0
+      const calculationMethodsFilter = priceFilter === 'formula'
+        ? ['percentage_based', 'formula_based']
+        : undefined
+
       const filters: SearchFilters = {
         q: searchQuery || undefined,
         category_code: selectedCategory || undefined,
         ministry_id: selectedMinistry || undefined,
         service_type: selectedServiceType || undefined,
-        // Note: min_price/max_price not sent to API - price filtering done client-side
-        // to properly distinguish between free services and formula-based services
+        calculation_methods: calculationMethodsFilter,
         sort_by,
         sort_order,
         page: currentPage,
@@ -352,29 +358,20 @@ function ServicesContent() {
     }))
   }, [tServiceTypes])
 
-  // Apply client-side filtering for price-based filters
-  // Uses calculation_method from database to identify formula-based services
+  // Apply client-side filtering only for 'free' filter
+  // Note: 'formula' filter is now handled server-side via calculation_methods parameter
   const displayResults = useMemo(() => {
     if (!searchResults?.results) return []
 
-    // Formula-based calculation methods for "prix calculé" filter
-    // Only percentage_based and formula_based as per user request
-    const FORMULA_METHODS = ['percentage_based', 'formula_based']
-
-    if (priceFilter === 'formula') {
-      // Show services with formula-based calculation methods (percentage or formula only)
-      return searchResults.results.filter(service =>
-        FORMULA_METHODS.includes(service.calculation_method)
-      )
-    }
-
     if (priceFilter === 'free') {
       // Show services with expedition_price === 0 (truly free services)
+      // This is still client-side as free services can have any calculation_method
       return searchResults.results.filter(service =>
         service.expedition_price === 0
       )
     }
 
+    // For 'all' and 'formula' (already filtered server-side), return as-is
     return searchResults.results
   }, [searchResults?.results, priceFilter])
 

@@ -537,6 +537,7 @@ class HomepageRepository:
         service_type: Optional[str] = None,
         min_price: Optional[float] = None,
         max_price: Optional[float] = None,
+        calculation_methods: Optional[List[str]] = None,
         sort_by: str = "relevance",
         sort_order: str = "asc",
         page: int = 1,
@@ -554,6 +555,7 @@ class HomepageRepository:
             service_type: Filter by service type
             min_price: Minimum expedition price
             max_price: Maximum expedition price
+            calculation_methods: Filter by calculation methods (e.g., ['percentage_based', 'formula_based'])
             sort_by: Sort field (relevance, name, price)
             sort_order: Sort order (asc, desc)
             page: Page number (1-based)
@@ -622,6 +624,14 @@ class HomepageRepository:
             conditions.append(f"COALESCE(fs.tasa_expedicion, 0) <= ${param_idx}")
             params.append(max_price)
             param_idx += 1
+
+        # Calculation method filter (for formula-based/percentage-based services)
+        if calculation_methods and len(calculation_methods) > 0:
+            placeholders = ", ".join([f"${param_idx + i}::calculation_method_enum" for i in range(len(calculation_methods))])
+            conditions.append(f"fs.calculation_method IN ({placeholders})")
+            for method in calculation_methods:
+                params.append(method)
+                param_idx += 1
 
         where_clause = " AND ".join(conditions)
 

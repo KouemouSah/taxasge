@@ -27,6 +27,7 @@ export interface SearchFilters {
   max_expedition_price?: number;
   min_renewal_price?: number;
   max_renewal_price?: number;
+  calculation_methods?: string[];
 
   // Sorting
   sort_by?: 'relevance' | 'name' | 'price' | 'popular';
@@ -113,6 +114,7 @@ export async function searchServices(filters: SearchFilters = {}): Promise<Searc
         filters.max_expedition_price !== undefined ? filters.max_expedition_price : null,
       min_renewal_price: filters.min_renewal_price !== undefined ? filters.min_renewal_price : null,
       max_renewal_price: filters.max_renewal_price !== undefined ? filters.max_renewal_price : null,
+      calculation_methods: filters.calculation_methods || null,
       sort_by: filters.sort_by || 'relevance',
       sort_order: filters.sort_order || 'asc',
       page: filters.page || 1,

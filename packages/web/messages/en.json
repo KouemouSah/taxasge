@@ -184,7 +184,12 @@
     "serviceCalculationResult": "Fiscal service calculation result",
     "calculatedAmount": "Calculated fee",
     "enterVariables": "Enter all required variables to calculate",
-    "selectServiceFirst": "Select a fiscal service first"
+    "selectServiceFirst": "Select a fiscal service first",
+    "loadingServices": "Loading fiscal services...",
+    "errorLoadingServices": "Error loading services. Please try again.",
+    "noServicesAvailable": "No services available",
+    "servicesCount": "{count} services available",
+    "retry": "Retry"
   },
   "guidePage": {
     "title": "Tax Guide",
@@ -262,6 +267,12 @@
     "pdfPreviewTitle": "PDF Preview",
     "downloadButton": "Download",
     "pdfPreviewHelp": "Click on a form in the list to preview it. Use the download button to save the PDF to your device.",
+    "pdfPreviewHelpMobile": "Tap the buttons above to view or download the form.",
+    "pdfLoadError": "Unable to display PDF preview. Please download the file to view it.",
+    "pdfMobileHint": "PDF preview is optimized for desktop. Download the file to view on your device.",
+    "openInNewTab": "Open in new tab",
+    "browserPdfHint": "Your browser may not support inline PDF viewing.",
+    "pdfNotSupported": "Your browser does not support PDF viewing.",
     "retenciones3pctResidentesName": "3% Withholding - Oil Sector Residents",
     "retenciones5pctResidentesName": "5% Withholding - Oil Sector Residents",
     "retenciones10pctNoResidentesName": "10% Withholding - Oil Sector Non-Residents",

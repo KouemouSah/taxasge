@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, Suspense } from 'react';
+import { useState, useMemo, Suspense, useEffect } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,8 +10,10 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calculator, Receipt, Building2, Info, ArrowRight, RefreshCw, Circle, FileText, Variable } from 'lucide-react';
+import { Calculator, Receipt, Building2, Info, ArrowRight, RefreshCw, Circle, FileText, Variable, Loader2 } from 'lucide-react';
 import Breadcrumb from '@/components/ui/breadcrumb';
+import { fiscalServicesApi } from '@/modules/fiscal-services/services/api';
+import type { FiscalServiceResponse, CalculationMethodEnum } from '@/types/fiscal-service';
 
 // Tax brackets for Equatorial Guinea IRPF (Impuesto sobre la Renta de las Personas Físicas)
 const IRPF_BRACKETS = [
@@ -29,108 +31,38 @@ const VAT_STANDARD_RATE = 15; // 15% standard VAT rate in EG
 // Corporate tax rate
 const CORPORATE_TAX_RATE = 35; // 35% corporate tax rate
 
-// Service formulas from database (extracted via extract_formulas.py)
+// Variable configuration interface for calculation formulas
 interface VariableConfig {
   type: 'number' | 'currency';
-  label_es: string;
-  label_fr: string;
-  label_en: string;
-  description_es: string;
-  description_fr: string;
-  description_en: string;
+  label_es?: string;
+  label_fr?: string;
+  label_en?: string;
+  description_es?: string;
+  description_fr?: string;
+  description_en?: string;
 }
 
+// Calculation config interface matching backend structure
 interface CalculationConfig {
-  variables: Record<string, VariableConfig>;
+  variables?: Record<string, VariableConfig>;
+  formula?: string;
   formula_description_es?: string;
   formula_description_fr?: string;
   formula_description_en?: string;
 }
 
+// Unified service interface for calculator (supports both API and legacy data)
 interface ServiceFormula {
   id: number;
   service_code: string;
   name_es: string;
-  name_fr: string;
-  name_en: string;
+  name_fr?: string;
+  name_en?: string;
   calculation_method: 'percentage_based' | 'formula_based';
   base_percentage?: number;
   expedition_formula?: string;
   calculation_config?: CalculationConfig;
 }
-
-const SERVICE_FORMULAS: ServiceFormula[] = [
-  {
-    id: 871,
-    service_code: 'T-646',
-    name_es: 'Canon anual de concesiones',
-    name_fr: 'Redevance annuelle des concessions',
-    name_en: 'Annual concession fee',
-    calculation_method: 'formula_based',
-    expedition_formula: 'RF + (t * CA)',
-    calculation_config: {
-      variables: {
-        t: {
-          type: 'number',
-          label_es: 'Tasa de la cuota (%)',
-          label_fr: 'Taux de la redevance (%)',
-          label_en: 'Fee rate (%)',
-          description_es: 'Tasa fijada por el pliego de condiciones (ingresar en porcentaje, ej: 5 para 5%)',
-          description_fr: 'Taux fixé par le cahier des charges (entrer en pourcentage, ex: 5 pour 5%)',
-          description_en: 'Rate set by specifications (enter as percentage, e.g.: 5 for 5%)'
-        },
-        CA: {
-          type: 'currency',
-          label_es: 'Facturación anual (XAF)',
-          label_fr: "Chiffre d'affaires annuel (XAF)",
-          label_en: 'Annual turnover (XAF)',
-          description_es: 'Ingresos de la concesión durante el año',
-          description_fr: "Recettes de la concession sur l'année",
-          description_en: 'Concession revenues for the year'
-        },
-        RF: {
-          type: 'currency',
-          label_es: 'Cuota fija anual (XAF)',
-          label_fr: 'Redevance fixe annuelle (XAF)',
-          label_en: 'Annual fixed fee (XAF)',
-          description_es: 'Tarifa fija, determinada por contrato o revisada según un índice económico',
-          description_fr: 'Forfaitaire, déterminée au contrat ou révisée selon un indice économique',
-          description_en: 'Flat rate, determined by contract or revised according to an economic index'
-        }
-      },
-      formula_description_es: 'Según los términos del convenio',
-      formula_description_fr: 'Selon les termes de la convention',
-      formula_description_en: 'According to the terms of the agreement'
-    }
-  },
-  {
-    id: 876,
-    service_code: 'T-651',
-    name_es: 'Reconocimiento y comprobación de calidad, higiene del medio ambiente',
-    name_fr: 'Reconnaissance et vérification de la qualité, hygiène environnementale',
-    name_en: 'Quality recognition and environmental hygiene verification',
-    calculation_method: 'percentage_based',
-    base_percentage: 0.2
-  },
-  {
-    id: 877,
-    service_code: 'T-652',
-    name_es: 'Inspección técnica',
-    name_fr: 'Inspection technique',
-    name_en: 'Technical inspection',
-    calculation_method: 'percentage_based',
-    base_percentage: 0.2
-  },
-  {
-    id: 879,
-    service_code: 'T-654',
-    name_es: 'Buque de línea no regular',
-    name_fr: 'Navire de ligne non régulier',
-    name_en: 'Non-regular line vessel',
-    calculation_method: 'percentage_based',
-    base_percentage: 0.02
-  }
-];
 
 type CalculatorType = 'irpf' | 'vat' | 'corporate' | 'services';
 
@@ -150,7 +82,8 @@ function CalculateurPageContent() {
 
   // Check for pre-selected service from URL params
   const serviceCodeParam = searchParams.get('service');
-  const initialTab = serviceCodeParam ? 'services' : 'irpf';
+  const serviceIdParam = searchParams.get('service_id');
+  const initialTab = (serviceCodeParam || serviceIdParam) ? 'services' : 'irpf';
 
   const [activeTab, setActiveTab] = useState<CalculatorType>(initialTab);
   const [irpfAmount, setIrpfAmount] = useState<string>('');
@@ -158,14 +91,99 @@ function CalculateurPageContent() {
   const [vatType, setVatType] = useState<'add' | 'extract'>('add');
   const [corporateProfit, setCorporateProfit] = useState<string>('');
 
+  // Dynamic services loaded from API
+  const [serviceFormulas, setServiceFormulas] = useState<ServiceFormula[]>([]);
+  const [loadingServices, setLoadingServices] = useState<boolean>(true);
+  const [servicesError, setServicesError] = useState<string | null>(null);
+
   // Service formula states
   const [selectedServiceCode, setSelectedServiceCode] = useState<string>(serviceCodeParam || '');
+  const [selectedServiceId, setSelectedServiceId] = useState<number | null>(
+    serviceIdParam ? parseInt(serviceIdParam, 10) : null
+  );
   const [serviceVariables, setServiceVariables] = useState<Record<string, string>>({});
+
+  // Fetch fiscal services with formula-based or percentage-based calculation methods from API
+  useEffect(() => {
+    const fetchServices = async () => {
+      setLoadingServices(true);
+      setServicesError(null);
+
+      try {
+        // Search for services with calculation methods that require user input
+        const response = await fiscalServicesApi.search(
+          { calculationMethod: 'percentage_based' as CalculationMethodEnum },
+          1,
+          100
+        );
+
+        // Also fetch formula-based services
+        const formulaResponse = await fiscalServicesApi.search(
+          { calculationMethod: 'formula_based' as CalculationMethodEnum },
+          1,
+          100
+        );
+
+        // Convert API responses to ServiceFormula format
+        const percentageServices: ServiceFormula[] = response.services.map((s: FiscalServiceResponse) => ({
+          id: s.id,
+          service_code: s.serviceCode,
+          name_es: s.nameEs,
+          name_fr: undefined, // Will be fetched from translations if needed
+          name_en: undefined,
+          calculation_method: 'percentage_based' as const,
+          base_percentage: s.basePercentage,
+          expedition_formula: s.expeditionFormula,
+          calculation_config: s.calculationConfig as CalculationConfig | undefined,
+        }));
+
+        const formulaServices: ServiceFormula[] = formulaResponse.services.map((s: FiscalServiceResponse) => ({
+          id: s.id,
+          service_code: s.serviceCode,
+          name_es: s.nameEs,
+          name_fr: undefined,
+          name_en: undefined,
+          calculation_method: 'formula_based' as const,
+          base_percentage: s.basePercentage,
+          expedition_formula: s.expeditionFormula || (s.calculationConfig as CalculationConfig | undefined)?.formula,
+          calculation_config: s.calculationConfig as CalculationConfig | undefined,
+        }));
+
+        // Combine and deduplicate by id
+        const allServices = [...percentageServices, ...formulaServices];
+        const uniqueServices = allServices.filter(
+          (s, index, self) => index === self.findIndex(t => t.id === s.id)
+        );
+
+        setServiceFormulas(uniqueServices);
+
+        // If a service_id was provided in URL, select it
+        if (serviceIdParam) {
+          const serviceId = parseInt(serviceIdParam, 10);
+          const matchingService = uniqueServices.find(s => s.id === serviceId);
+          if (matchingService) {
+            setSelectedServiceCode(matchingService.service_code);
+            setSelectedServiceId(serviceId);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching fiscal services:', error);
+        setServicesError(t('errorLoadingServices') || 'Error loading services');
+      } finally {
+        setLoadingServices(false);
+      }
+    };
+
+    fetchServices();
+  }, [serviceIdParam, t]);
 
   // Get the selected service formula
   const selectedService = useMemo(() => {
-    return SERVICE_FORMULAS.find(s => s.service_code === selectedServiceCode);
-  }, [selectedServiceCode]);
+    if (selectedServiceId) {
+      return serviceFormulas.find(s => s.id === selectedServiceId);
+    }
+    return serviceFormulas.find(s => s.service_code === selectedServiceCode);
+  }, [selectedServiceCode, selectedServiceId, serviceFormulas]);
 
   // Get localized service name
   const getServiceName = (service: ServiceFormula) => {
@@ -325,13 +343,13 @@ function CalculateurPageContent() {
       };
     }
 
-    if (selectedService.calculation_method === 'formula_based' && selectedService.calculation_config) {
+    if (selectedService.calculation_method === 'formula_based' && selectedService.calculation_config?.variables) {
       const variables = selectedService.calculation_config.variables;
       const values: Record<string, number> = {};
       const breakdown: { variable: string; value: number }[] = [];
 
       // Parse all variable values
-      for (const [key, config] of Object.entries(variables)) {
+      for (const [key, config] of Object.entries(variables as Record<string, VariableConfig>)) {
         const rawValue = serviceVariables[key]?.replace(/[^\d.-]/g, '') || '';
         const value = parseFloat(rawValue);
         if (isNaN(value)) return null;
@@ -381,8 +399,19 @@ function CalculateurPageContent() {
     setServiceVariables({});
   };
 
-  const handleServiceChange = (serviceCode: string) => {
-    setSelectedServiceCode(serviceCode);
+  const handleServiceChange = (value: string) => {
+    // Value can be either service_code or id prefixed with 'id:'
+    if (value.startsWith('id:')) {
+      const id = parseInt(value.replace('id:', ''), 10);
+      setSelectedServiceId(id);
+      const service = serviceFormulas.find(s => s.id === id);
+      if (service) {
+        setSelectedServiceCode(service.service_code);
+      }
+    } else {
+      setSelectedServiceCode(value);
+      setSelectedServiceId(null);
+    }
     setServiceVariables({}); // Reset variables when changing service
   };
 
@@ -850,119 +879,162 @@ function CalculateurPageContent() {
                 <CardDescription>{t('fiscalServicesDesc')}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Service Selector */}
-                <div className="space-y-2">
-                  <Label>{t('selectService')}</Label>
-                  <Select value={selectedServiceCode} onValueChange={handleServiceChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={t('selectServicePlaceholder')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SERVICE_FORMULAS.map(service => (
-                        <SelectItem key={service.service_code} value={service.service_code}>
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs text-muted-foreground">{service.service_code}</span>
-                            <span>{getServiceName(service)}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Dynamic Variables Form */}
-                {selectedService && (
-                  <>
-                    <Separator />
-
-                    {selectedService.calculation_method === 'percentage_based' && (
-                      <div className="space-y-2">
-                        <Label htmlFor="baseAmount">{t('baseAmountForPercentage')}</Label>
-                        <div className="relative">
-                          <Input
-                            id="baseAmount"
-                            type="text"
-                            placeholder="1,000,000"
-                            value={serviceVariables['baseAmount'] || ''}
-                            onChange={(e) => handleVariableChange('baseAmount', e.target.value)}
-                            className="pr-16"
-                          />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                            XAF
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {t('percentageRate')}: {selectedService.base_percentage ? `${selectedService.base_percentage * 100}%` : 'N/A'}
-                        </p>
-                      </div>
-                    )}
-
-                    {selectedService.calculation_method === 'formula_based' && selectedService.calculation_config && (
-                      <div className="space-y-4">
-                        {Object.entries(selectedService.calculation_config.variables).map(([key, config]) => (
-                          <div key={key} className="space-y-2">
-                            <Label htmlFor={key} className="flex items-center gap-2">
-                              <Variable className="h-3 w-3" />
-                              {getVariableLabel(config)}
-                            </Label>
-                            <div className="relative">
-                              <Input
-                                id={key}
-                                type="text"
-                                placeholder={config.type === 'currency' ? '1,000,000' : '5'}
-                                value={serviceVariables[key] || ''}
-                                onChange={(e) => handleVariableChange(key, e.target.value)}
-                                className={config.type === 'currency' ? 'pr-16' : ''}
-                              />
-                              {config.type === 'currency' && (
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                                  XAF
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs text-muted-foreground">{getVariableDescription(config)}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={handleReset}
-                        variant="outline"
-                        size="sm"
-                        className="gap-2"
-                      >
-                        <RefreshCw className="h-4 w-4" />
-                        {t('reset')}
-                      </Button>
-                    </div>
-
-                    <Separator />
-
-                    {/* Formula Info */}
-                    <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
-                      <p className="font-medium mb-1">{t('formula')}:</p>
-                      {selectedService.calculation_method === 'formula_based' && selectedService.expedition_formula && (
-                        <div className="space-y-1">
-                          <p className="font-mono text-sm">{selectedService.expedition_formula}</p>
-                          {selectedService.calculation_config && (
-                            <p className="italic">{getFormulaDescription(selectedService.calculation_config)}</p>
-                          )}
-                        </div>
-                      )}
-                      {selectedService.calculation_method === 'percentage_based' && (
-                        <p>{t('result')} = {t('baseAmount')} × {selectedService.base_percentage ? `${selectedService.base_percentage * 100}%` : 'N/A'}</p>
-                      )}
-                    </div>
-                  </>
+                {/* Loading State */}
+                {loadingServices && (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <span className="ml-3 text-muted-foreground">{t('loadingServices') || 'Loading services...'}</span>
+                  </div>
                 )}
 
-                {!selectedService && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <FileText className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                    <p>{t('selectServicePrompt')}</p>
+                {/* Error State */}
+                {servicesError && !loadingServices && (
+                  <div className="text-center py-8 text-destructive">
+                    <Info className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p>{servicesError}</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-4"
+                      onClick={() => window.location.reload()}
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      {t('retry') || 'Retry'}
+                    </Button>
                   </div>
+                )}
+
+                {/* Service Selector - only show when loaded */}
+                {!loadingServices && !servicesError && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>{t('selectService')}</Label>
+                      <Select
+                        value={selectedServiceId ? `id:${selectedServiceId}` : selectedServiceCode}
+                        onValueChange={handleServiceChange}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={t('selectServicePlaceholder')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {serviceFormulas.length === 0 ? (
+                            <SelectItem value="none" disabled>
+                              {t('noServicesAvailable') || 'No services available'}
+                            </SelectItem>
+                          ) : (
+                            serviceFormulas.map(service => (
+                              <SelectItem key={service.id} value={`id:${service.id}`}>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono text-xs text-muted-foreground">{service.service_code}</span>
+                                  <span>{getServiceName(service) || service.name_es}</span>
+                                </div>
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                      {serviceFormulas.length > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          {t('servicesCount', { count: serviceFormulas.length }) || `${serviceFormulas.length} services available`}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Dynamic Variables Form */}
+                    {selectedService && (
+                      <>
+                        <Separator />
+
+                        {selectedService.calculation_method === 'percentage_based' && (
+                          <div className="space-y-2">
+                            <Label htmlFor="baseAmount">{t('baseAmountForPercentage')}</Label>
+                            <div className="relative">
+                              <Input
+                                id="baseAmount"
+                                type="text"
+                                placeholder="1,000,000"
+                                value={serviceVariables['baseAmount'] || ''}
+                                onChange={(e) => handleVariableChange('baseAmount', e.target.value)}
+                                className="pr-16"
+                              />
+                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                                XAF
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {t('percentageRate')}: {selectedService.base_percentage ? `${selectedService.base_percentage * 100}%` : 'N/A'}
+                            </p>
+                          </div>
+                        )}
+
+                        {selectedService.calculation_method === 'formula_based' && selectedService.calculation_config?.variables && (
+                          <div className="space-y-4">
+                            {Object.entries(selectedService.calculation_config.variables).map(([key, config]) => (
+                              <div key={key} className="space-y-2">
+                                <Label htmlFor={key} className="flex items-center gap-2">
+                                  <Variable className="h-3 w-3" />
+                                  {getVariableLabel(config) || key}
+                                </Label>
+                                <div className="relative">
+                                  <Input
+                                    id={key}
+                                    type="text"
+                                    placeholder={config.type === 'currency' ? '1,000,000' : '5'}
+                                    value={serviceVariables[key] || ''}
+                                    onChange={(e) => handleVariableChange(key, e.target.value)}
+                                    className={config.type === 'currency' ? 'pr-16' : ''}
+                                  />
+                                  {config.type === 'currency' && (
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                                      XAF
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground">{getVariableDescription(config)}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={handleReset}
+                            variant="outline"
+                            size="sm"
+                            className="gap-2"
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                            {t('reset')}
+                          </Button>
+                        </div>
+
+                        <Separator />
+
+                        {/* Formula Info */}
+                        <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
+                          <p className="font-medium mb-1">{t('formula')}:</p>
+                          {selectedService.calculation_method === 'formula_based' && selectedService.expedition_formula && (
+                            <div className="space-y-1">
+                              <p className="font-mono text-sm">{selectedService.expedition_formula}</p>
+                              {selectedService.calculation_config && (
+                                <p className="italic">{getFormulaDescription(selectedService.calculation_config)}</p>
+                              )}
+                            </div>
+                          )}
+                          {selectedService.calculation_method === 'percentage_based' && (
+                            <p>{t('result')} = {t('baseAmount')} × {selectedService.base_percentage ? `${selectedService.base_percentage * 100}%` : 'N/A'}</p>
+                          )}
+                        </div>
+                      </>
+                    )}
+
+                    {!selectedService && serviceFormulas.length > 0 && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <FileText className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                        <p>{t('selectServicePrompt')}</p>
+                      </div>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>

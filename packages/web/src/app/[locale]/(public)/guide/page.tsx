@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,6 +24,8 @@ import {
   Gavel,
   Building2,
   Users,
+  Eye,
+  AlertTriangle,
 } from 'lucide-react';
 import Breadcrumb from '@/components/ui/breadcrumb';
 
@@ -192,6 +194,37 @@ export default function GuidePage() {
 
   const [activeTab, setActiveTab] = useState<TabType>('workflow');
   const [selectedForm, setSelectedForm] = useState(DOWNLOAD_ITEMS[0]);
+  const [pdfLoadError, setPdfLoadError] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile/tablet devices that may not support inline PDF viewing
+  useEffect(() => {
+    const checkMobile = () => {
+      const userAgent = navigator.userAgent.toLowerCase();
+      const isMobileDevice = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+      const isSmallScreen = window.innerWidth < 768;
+      setIsMobile(isMobileDevice || isSmallScreen);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Reset error state when form changes
+  useEffect(() => {
+    setPdfLoadError(false);
+  }, [selectedForm]);
+
+  // Handle iframe load error
+  const handleIframeError = useCallback(() => {
+    setPdfLoadError(true);
+  }, []);
+
+  // Get PDF URL
+  const getPdfUrl = useCallback((filename: string) => {
+    return `/documents/formulaires/${filename}`;
+  }, []);
 
   const getCategoryColor = (category: string) => {
     switch (category) {
@@ -489,19 +522,90 @@ export default function GuidePage() {
                     </Button>
                   </div>
 
-                  {/* PDF Preview */}
+                  {/* PDF Preview with fallback for browser compatibility */}
                   <div className="border rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-900">
-                    <iframe
-                      src={`/documents/formulaires/${selectedForm.filename}#toolbar=1&navpanes=0&scrollbar=1&view=FitH`}
-                      className="w-full h-[520px]"
-                      title={t(`${selectedForm.key}Name`)}
-                      style={{ border: 'none' }}
-                    />
+                    {/* Show fallback UI for mobile devices or when PDF fails to load */}
+                    {(isMobile || pdfLoadError) ? (
+                      <div className="w-full h-[520px] flex flex-col items-center justify-center p-8 text-center">
+                        <div className="bg-primary/10 p-6 rounded-full mb-6">
+                          <FileText className="h-16 w-16 text-primary" />
+                        </div>
+                        <h3 className="text-lg font-semibold mb-2">
+                          {t(`${selectedForm.key}Name`)}
+                        </h3>
+                        <p className="text-sm text-muted-foreground mb-6 max-w-md">
+                          {pdfLoadError
+                            ? (t('pdfLoadError') || 'Unable to display PDF preview. Please download the file to view it.')
+                            : (t('pdfMobileHint') || 'PDF preview is optimized for desktop. Download the file to view on your device.')
+                          }
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <Button asChild>
+                            <a
+                              href={getPdfUrl(selectedForm.filename)}
+                              download
+                            >
+                              <Download className="h-4 w-4 mr-2" />
+                              {t('downloadButton')}
+                            </a>
+                          </Button>
+                          <Button variant="outline" asChild>
+                            <a
+                              href={getPdfUrl(selectedForm.filename)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              {t('openInNewTab') || 'Open in new tab'}
+                            </a>
+                          </Button>
+                        </div>
+                        {pdfLoadError && (
+                          <div className="mt-4 flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
+                            <AlertTriangle className="h-3 w-3" />
+                            <span>{t('browserPdfHint') || 'Your browser may not support inline PDF viewing'}</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      /* Standard iframe for desktop browsers */
+                      <object
+                        data={`${getPdfUrl(selectedForm.filename)}#toolbar=1&navpanes=0&scrollbar=1&view=FitH`}
+                        type="application/pdf"
+                        className="w-full h-[520px]"
+                        title={t(`${selectedForm.key}Name`)}
+                        onError={handleIframeError}
+                      >
+                        {/* Fallback content if object tag fails */}
+                        <iframe
+                          src={`${getPdfUrl(selectedForm.filename)}#toolbar=1&navpanes=0&scrollbar=1&view=FitH`}
+                          className="w-full h-[520px]"
+                          title={t(`${selectedForm.key}Name`)}
+                          style={{ border: 'none' }}
+                          onError={handleIframeError}
+                        >
+                          {/* Ultimate fallback - link to download */}
+                          <div className="p-8 text-center">
+                            <p className="mb-4">{t('pdfNotSupported') || 'Your browser does not support PDF viewing.'}</p>
+                            <a
+                              href={getPdfUrl(selectedForm.filename)}
+                              download
+                              className="text-primary hover:underline"
+                            >
+                              {t('downloadButton')}
+                            </a>
+                          </div>
+                        </iframe>
+                      </object>
+                    )}
                   </div>
 
                   {/* Help text */}
                   <p className="text-xs text-muted-foreground text-center italic">
-                    {t('pdfPreviewHelp')}
+                    {isMobile
+                      ? (t('pdfPreviewHelpMobile') || 'Tap the buttons above to view or download the form')
+                      : t('pdfPreviewHelp')
+                    }
                   </p>
                 </div>
               </CardContent>

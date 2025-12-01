@@ -184,7 +184,12 @@
     "serviceCalculationResult": "Resultado del cálculo del servicio fiscal",
     "calculatedAmount": "Tasa calculada",
     "enterVariables": "Ingrese todas las variables requeridas para calcular",
-    "selectServiceFirst": "Seleccione primero un servicio fiscal"
+    "selectServiceFirst": "Seleccione primero un servicio fiscal",
+    "loadingServices": "Cargando servicios fiscales...",
+    "errorLoadingServices": "Error al cargar los servicios. Por favor, inténtelo de nuevo.",
+    "noServicesAvailable": "No hay servicios disponibles",
+    "servicesCount": "{count} servicios disponibles",
+    "retry": "Reintentar"
   },
   "guidePage": {
     "title": "Guía Fiscal",
@@ -262,6 +267,12 @@
     "pdfPreviewTitle": "Vista Previa PDF",
     "downloadButton": "Descargar",
     "pdfPreviewHelp": "Haga clic en un formulario de la lista para previsualizarlo. Use el botón de descarga para guardar el PDF en su dispositivo.",
+    "pdfPreviewHelpMobile": "Toque los botones de arriba para ver o descargar el formulario.",
+    "pdfLoadError": "No se puede mostrar la vista previa del PDF. Por favor descargue el archivo para verlo.",
+    "pdfMobileHint": "La vista previa del PDF está optimizada para escritorio. Descargue el archivo para verlo en su dispositivo.",
+    "openInNewTab": "Abrir en nueva pestaña",
+    "browserPdfHint": "Su navegador puede no soportar la visualización de PDF integrada.",
+    "pdfNotSupported": "Su navegador no soporta la visualización de PDF.",
     "retenciones3pctResidentesName": "Retención 3% - Residentes Sector Petrolero",
     "retenciones5pctResidentesName": "Retención 5% - Residentes Sector Petrolero",
     "retenciones10pctNoResidentesName": "Retención 10% - No Residentes Sector Petrolero",

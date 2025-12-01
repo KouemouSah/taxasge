@@ -636,6 +636,7 @@ async def search_services(
             service_type=request.service_type,
             min_price=request.min_price,
             max_price=request.max_price,
+            calculation_methods=request.calculation_methods,
             sort_by=request.sort_by,
             sort_order=request.sort_order,
             page=request.page,
