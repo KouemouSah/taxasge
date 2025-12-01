@@ -10,10 +10,10 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calculator, Receipt, Building2, Info, ArrowRight, RefreshCw, Circle, FileText, Variable, Loader2 } from 'lucide-react';
+import { Calculator, Receipt, Building2, Info, ArrowRight, RefreshCw, Circle, FileText, Loader2 } from 'lucide-react';
 import Breadcrumb from '@/components/ui/breadcrumb';
 import { searchServices } from '@/core/api/services';
-import { getServiceDetails, type ServiceDetailsResponse } from '@/core/api/serviceDetails';
+import { getServiceDetails, type ServiceDetailsResponse, type VariableConfig, type CalculationConfig } from '@/core/api/serviceDetails';
 
 // Tax brackets for Equatorial Guinea IRPF (Impuesto sobre la Renta de las Personas Físicas)
 const IRPF_BRACKETS = [
@@ -40,37 +40,47 @@ function formatCurrencyValue(value: number, locale: string): string {
   }).format(value) + ' XAF';
 }
 
-// Variable configuration interface for calculation formulas
-interface VariableConfig {
-  type: 'number' | 'currency';
-  label_es?: string;
-  label_fr?: string;
-  label_en?: string;
-  description_es?: string;
-  description_fr?: string;
-  description_en?: string;
+// Safe formula evaluation function
+function evaluateFormula(formula: string, variables: Record<string, number>): number | null {
+  try {
+    // Create a safe evaluation context with only the variables
+    const safeVars = { ...variables };
+
+    // Replace variable names with their values in the formula
+    let evalFormula = formula;
+    for (const [key, value] of Object.entries(safeVars)) {
+      // Use word boundary to avoid partial replacements
+      const regex = new RegExp(`\\b${key}\\b`, 'g');
+      evalFormula = evalFormula.replace(regex, String(value));
+    }
+
+    // Only allow numbers, operators, and parentheses
+    const safePattern = /^[\d\s+\-*/().]+$/;
+    if (!safePattern.test(evalFormula)) {
+      console.error('Unsafe formula pattern detected:', evalFormula);
+      return null;
+    }
+
+    // Evaluate the formula
+    // eslint-disable-next-line no-eval
+    const result = eval(evalFormula);
+
+    if (typeof result !== 'number' || isNaN(result) || !isFinite(result)) {
+      return null;
+    }
+
+    return result;
+  } catch (error) {
+    console.error('Formula evaluation error:', error);
+    return null;
+  }
 }
 
-// Calculation config interface matching backend structure
-interface CalculationConfig {
-  variables?: Record<string, VariableConfig>;
-  formula?: string;
-  formula_description_es?: string;
-  formula_description_fr?: string;
-  formula_description_en?: string;
-}
-
-// Unified service interface for calculator (supports both API and legacy data)
-interface ServiceFormula {
+// Lightweight service interface for list (only what we need)
+interface ServiceListItem {
   id: number;
-  service_code: string;
-  name_es: string;
-  name_fr?: string;
-  name_en?: string;
+  name: string;
   calculation_method: 'percentage_based' | 'formula_based';
-  base_percentage?: number;
-  expedition_formula?: string;
-  calculation_config?: CalculationConfig;
 }
 
 type CalculatorType = 'irpf' | 'vat' | 'corporate' | 'services';
@@ -83,6 +93,12 @@ interface CalculationResult {
   breakdown: { bracket: string; taxable: number; rate: number; tax: number }[];
 }
 
+interface ServiceCalculationResult {
+  result: number;
+  formula: string;
+  breakdown: { variable: string; value: number; label: string }[];
+}
+
 function CalculateurPageContent() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -90,9 +106,8 @@ function CalculateurPageContent() {
   const t = useTranslations('calculatorPage');
 
   // Check for pre-selected service from URL params
-  const serviceCodeParam = searchParams.get('service');
   const serviceIdParam = searchParams.get('service_id');
-  const initialTab = (serviceCodeParam || serviceIdParam) ? 'services' : 'irpf';
+  const initialTab = serviceIdParam ? 'services' : 'irpf';
 
   const [activeTab, setActiveTab] = useState<CalculatorType>(initialTab);
   const [irpfAmount, setIrpfAmount] = useState<string>('');
@@ -101,7 +116,7 @@ function CalculateurPageContent() {
   const [corporateProfit, setCorporateProfit] = useState<string>('');
 
   // Dynamic services loaded from API (lightweight list)
-  const [serviceFormulas, setServiceFormulas] = useState<ServiceFormula[]>([]);
+  const [serviceList, setServiceList] = useState<ServiceListItem[]>([]);
   const [loadingServices, setLoadingServices] = useState<boolean>(true);
   const [servicesError, setServicesError] = useState<string | null>(null);
 
@@ -111,9 +126,12 @@ function CalculateurPageContent() {
   );
   const [serviceVariables, setServiceVariables] = useState<Record<string, string>>({});
 
-  // Selected service details (loaded on demand with percentage_rate)
+  // Selected service details (loaded on demand with calculation_config)
   const [selectedServiceDetails, setSelectedServiceDetails] = useState<ServiceDetailsResponse | null>(null);
   const [loadingDetails, setLoadingDetails] = useState<boolean>(false);
+
+  // Manual calculation trigger
+  const [calculationTriggered, setCalculationTriggered] = useState<boolean>(false);
 
   // Fetch lightweight list of fiscal services with calculated prices
   useEffect(() => {
@@ -134,15 +152,14 @@ function CalculateurPageContent() {
           throw new Error('Failed to fetch services');
         }
 
-        // Convert to lightweight ServiceFormula (details loaded on selection)
-        const services: ServiceFormula[] = response.results.map(s => ({
+        // Convert to lightweight list (only id, name, calculation_method)
+        const services: ServiceListItem[] = response.results.map(s => ({
           id: s.id,
-          service_code: `SVC-${s.id}`,
-          name_es: s.name,
+          name: s.name,
           calculation_method: s.calculation_method as 'percentage_based' | 'formula_based',
         }));
 
-        setServiceFormulas(services);
+        setServiceList(services);
 
         // Auto-select if service_id in URL
         if (serviceIdParam) {
@@ -162,7 +179,7 @@ function CalculateurPageContent() {
     fetchServices();
   }, [serviceIdParam, locale, t]);
 
-  // Fetch service details when selection changes (gets percentage_rate, etc.)
+  // Fetch service details when selection changes (gets calculation_config)
   useEffect(() => {
     if (!selectedServiceId) {
       setSelectedServiceDetails(null);
@@ -171,9 +188,22 @@ function CalculateurPageContent() {
 
     const fetchDetails = async () => {
       setLoadingDetails(true);
+      setCalculationTriggered(false);
       try {
         const details = await getServiceDetails(selectedServiceId, locale);
         setSelectedServiceDetails(details);
+
+        // Initialize variables with default values from calculation_config
+        const config = details.pricing.calculation_config;
+        if (config?.variables) {
+          const initialVars: Record<string, string> = {};
+          for (const [key, varConfig] of Object.entries(config.variables)) {
+            if (varConfig.default_value !== undefined) {
+              initialVars[key] = String(varConfig.default_value);
+            }
+          }
+          setServiceVariables(initialVars);
+        }
       } catch (error) {
         console.error('Error fetching service details:', error);
         setSelectedServiceDetails(null);
@@ -187,77 +217,39 @@ function CalculateurPageContent() {
 
   // Get the selected service from list (for display)
   const selectedService = useMemo(() => {
-    return serviceFormulas.find(s => s.id === selectedServiceId) || null;
-  }, [selectedServiceId, serviceFormulas]);
-
-  // Get localized service name
-  const getServiceName = (service: ServiceFormula) => {
-    if (locale === 'fr') return service.name_fr;
-    if (locale === 'en') return service.name_en;
-    return service.name_es;
-  };
+    return serviceList.find(s => s.id === selectedServiceId) || null;
+  }, [selectedServiceId, serviceList]);
 
   // Get localized variable label
-  const getVariableLabel = (variable: VariableConfig) => {
-    if (locale === 'fr') return variable.label_fr;
-    if (locale === 'en') return variable.label_en;
-    return variable.label_es;
-  };
+  const getVariableLabel = useCallback((key: string, variable: VariableConfig): string => {
+    if (locale === 'fr' && variable.label_fr) return variable.label_fr;
+    if (locale === 'en' && variable.label_en) return variable.label_en;
+    return variable.label_es || key;
+  }, [locale]);
 
   // Get localized variable description
-  const getVariableDescription = (variable: VariableConfig) => {
+  const getVariableDescription = useCallback((variable: VariableConfig): string | undefined => {
     if (locale === 'fr') return variable.description_fr;
     if (locale === 'en') return variable.description_en;
     return variable.description_es;
-  };
+  }, [locale]);
 
   // Get localized formula description
-  const getFormulaDescription = (config: CalculationConfig | undefined) => {
+  const getFormulaDescription = useCallback((config: CalculationConfig | null | undefined): string => {
     if (!config) return '';
     if (locale === 'fr') return config.formula_description_fr || '';
     if (locale === 'en') return config.formula_description_en || '';
     return config.formula_description_es || '';
-  };
+  }, [locale]);
 
   // IRPF Calculation
   const irpfResult = useMemo((): CalculationResult | null => {
     const amount = parseFloat(irpfAmount.replace(/[^\d.-]/g, ''));
     if (isNaN(amount) || amount <= 0) return null;
 
-    let remainingIncome = amount;
+    let taxableRemaining = amount;
     let totalTax = 0;
     const breakdown: CalculationResult['breakdown'] = [];
-
-    for (const bracket of IRPF_BRACKETS) {
-      if (remainingIncome <= 0) break;
-
-      const taxableInBracket = Math.min(
-        remainingIncome,
-        bracket.max === Infinity ? remainingIncome : bracket.max - bracket.min
-      );
-
-      if (taxableInBracket > 0 && amount > bracket.min) {
-        const actualTaxable = Math.min(taxableInBracket, amount - bracket.min);
-        if (actualTaxable > 0) {
-          const tax = (actualTaxable * bracket.rate) / 100;
-          totalTax += tax;
-          breakdown.push({
-            bracket: bracket.max === Infinity
-              ? `> ${formatCurrencyValue(bracket.min, locale)}`
-              : `${formatCurrencyValue(bracket.min, locale)} - ${formatCurrencyValue(bracket.max, locale)}`,
-            taxable: actualTaxable,
-            rate: bracket.rate,
-            tax,
-          });
-        }
-      }
-      remainingIncome -= taxableInBracket;
-    }
-
-    // Recalculate properly using progressive brackets
-    let taxableRemaining = amount;
-    totalTax = 0;
-    breakdown.length = 0;
 
     for (const bracket of IRPF_BRACKETS) {
       if (taxableRemaining <= 0) break;
@@ -331,11 +323,12 @@ function CalculateurPageContent() {
     };
   }, [corporateProfit]);
 
-  // Service Formula Calculation - uses percentage_rate from service details
-  const serviceResult = useMemo((): { result: number; formula: string; breakdown: { variable: string; value: number }[] } | null => {
-    if (!selectedService || !selectedServiceDetails) return null;
+  // Service Formula Calculation - triggered by button
+  const serviceResult = useMemo((): ServiceCalculationResult | null => {
+    if (!selectedService || !selectedServiceDetails || !calculationTriggered) return null;
 
     const pricing = selectedServiceDetails.pricing;
+    const config = pricing.calculation_config;
 
     if (selectedService.calculation_method === 'percentage_based') {
       // For percentage-based, use percentage_rate from service details
@@ -351,19 +344,50 @@ function CalculateurPageContent() {
       return {
         result,
         formula: `${percentageRate}% × ${formatCurrencyValue(baseAmount, locale)}`,
-        breakdown: [{ variable: 'baseAmount', value: baseAmount }]
+        breakdown: [{ variable: 'baseAmount', value: baseAmount, label: t('baseAmount') }]
       };
     }
 
-    // For formula_based - simplified since calculation_config is not available
-    // Users should use the service detail page for complex calculations
-    if (selectedService.calculation_method === 'formula_based') {
-      // Show message that formula-based calculation requires service detail page
-      return null;
+    // For formula_based - use calculation_config
+    if (selectedService.calculation_method === 'formula_based' && config?.formula) {
+      // Parse all variables from input
+      const variables: Record<string, number> = {};
+      const breakdownItems: ServiceCalculationResult['breakdown'] = [];
+
+      if (config.variables) {
+        for (const [key, varConfig] of Object.entries(config.variables)) {
+          const rawValue = serviceVariables[key];
+          const parsedValue = parseFloat(rawValue?.replace(/[^\d.-]/g, '') || '0');
+
+          if (isNaN(parsedValue)) {
+            return null; // Invalid input
+          }
+
+          variables[key] = parsedValue;
+          breakdownItems.push({
+            variable: key,
+            value: parsedValue,
+            label: getVariableLabel(key, varConfig),
+          });
+        }
+      }
+
+      // Evaluate the formula
+      const result = evaluateFormula(config.formula, variables);
+
+      if (result === null) {
+        return null;
+      }
+
+      return {
+        result,
+        formula: config.formula,
+        breakdown: breakdownItems,
+      };
     }
 
     return null;
-  }, [selectedService, selectedServiceDetails, serviceVariables, locale]);
+  }, [selectedService, selectedServiceDetails, serviceVariables, locale, calculationTriggered, t, getVariableLabel]);
 
   const formatCurrency = useCallback((value: number): string => {
     return new Intl.NumberFormat(locale, {
@@ -386,6 +410,7 @@ function CalculateurPageContent() {
     setVatAmount('');
     setCorporateProfit('');
     setServiceVariables({});
+    setCalculationTriggered(false);
   };
 
   const handleServiceChange = (value: string) => {
@@ -397,10 +422,107 @@ function CalculateurPageContent() {
       setSelectedServiceId(null);
     }
     setServiceVariables({}); // Reset variables when changing service
+    setCalculationTriggered(false);
   };
 
   const handleVariableChange = (key: string, value: string) => {
     setServiceVariables(prev => ({ ...prev, [key]: value }));
+    setCalculationTriggered(false); // Reset calculation on input change
+  };
+
+  const handleCalculate = () => {
+    setCalculationTriggered(true);
+  };
+
+  // Render dynamic form fields based on calculation_config
+  const renderDynamicFormFields = () => {
+    if (!selectedServiceDetails) return null;
+
+    const pricing = selectedServiceDetails.pricing;
+    const config = pricing.calculation_config;
+
+    // For percentage_based without calculation_config
+    if (selectedService?.calculation_method === 'percentage_based') {
+      return (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="baseAmount">{t('baseAmountForPercentage')}</Label>
+            <div className="relative">
+              <Input
+                id="baseAmount"
+                type="text"
+                placeholder="1,000,000"
+                value={serviceVariables['baseAmount'] || ''}
+                onChange={(e) => handleVariableChange('baseAmount', e.target.value)}
+                className="pr-16"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                XAF
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {t('percentageRate')}: {pricing.percentage_rate ? `${pricing.percentage_rate}%` : 'N/A'}
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // For formula_based with calculation_config
+    if (selectedService?.calculation_method === 'formula_based' && config?.variables) {
+      const variableEntries = Object.entries(config.variables);
+
+      if (variableEntries.length === 0) {
+        return (
+          <div className="text-center py-4 text-muted-foreground">
+            <Info className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">{t('noVariablesConfigured') || 'No variables configured for this formula.'}</p>
+          </div>
+        );
+      }
+
+      return (
+        <div className="space-y-4">
+          {variableEntries.map(([key, varConfig]) => {
+            const label = getVariableLabel(key, varConfig);
+            const description = getVariableDescription(varConfig);
+            const isCurrency = varConfig.type === 'currency';
+
+            return (
+              <div key={key} className="space-y-2">
+                <Label htmlFor={key}>{label}</Label>
+                <div className="relative">
+                  <Input
+                    id={key}
+                    type="text"
+                    placeholder={varConfig.default_value?.toString() || '0'}
+                    value={serviceVariables[key] || ''}
+                    onChange={(e) => handleVariableChange(key, e.target.value)}
+                    className={isCurrency ? 'pr-16' : ''}
+                  />
+                  {isCurrency && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                      XAF
+                    </span>
+                  )}
+                </div>
+                {description && (
+                  <p className="text-xs text-muted-foreground">{description}</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    // No formula configuration available
+    return (
+      <div className="text-center py-4 text-muted-foreground">
+        <Info className="h-8 w-8 mx-auto mb-2 opacity-50" />
+        <p className="text-sm">{t('formulaNotConfigured') || 'This service does not have a calculation formula configured.'}</p>
+      </div>
+    );
   };
 
   return (
@@ -901,22 +1023,22 @@ function CalculateurPageContent() {
                           <SelectValue placeholder={t('selectServicePlaceholder')} />
                         </SelectTrigger>
                         <SelectContent>
-                          {serviceFormulas.length === 0 ? (
+                          {serviceList.length === 0 ? (
                             <SelectItem value="none" disabled>
                               {t('noServicesAvailable') || 'No services available'}
                             </SelectItem>
                           ) : (
-                            serviceFormulas.map(service => (
+                            serviceList.map(service => (
                               <SelectItem key={service.id} value={`id:${service.id}`}>
-                                <span>{service.name_es}</span>
+                                <span>{service.name}</span>
                               </SelectItem>
                             ))
                           )}
                         </SelectContent>
                       </Select>
-                      {serviceFormulas.length > 0 && (
+                      {serviceList.length > 0 && (
                         <p className="text-xs text-muted-foreground">
-                          {t('servicesCount', { count: serviceFormulas.length }) || `${serviceFormulas.length} services available`}
+                          {t('servicesCount', { count: serviceList.length }) || `${serviceList.length} services available`}
                         </p>
                       )}
                     </div>
@@ -929,75 +1051,57 @@ function CalculateurPageContent() {
                       </div>
                     )}
 
-                    {/* Dynamic Variables Form - only for percentage_based services */}
+                    {/* Dynamic Form Fields */}
                     {selectedService && selectedServiceDetails && !loadingDetails && (
                       <>
                         <Separator />
 
-                        {selectedService.calculation_method === 'percentage_based' && (
-                          <div className="space-y-2">
-                            <Label htmlFor="baseAmount">{t('baseAmountForPercentage')}</Label>
-                            <div className="relative">
-                              <Input
-                                id="baseAmount"
-                                type="text"
-                                placeholder="1,000,000"
-                                value={serviceVariables['baseAmount'] || ''}
-                                onChange={(e) => handleVariableChange('baseAmount', e.target.value)}
-                                className="pr-16"
-                              />
-                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                                XAF
-                              </span>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              {t('percentageRate')}: {selectedServiceDetails.pricing.percentage_rate ? `${selectedServiceDetails.pricing.percentage_rate}%` : 'N/A'}
-                            </p>
+                        {renderDynamicFormFields()}
+
+                        {/* Calculate and Reset Buttons */}
+                        <div className="flex gap-2 pt-2">
+                          <Button
+                            onClick={handleCalculate}
+                            className="flex-1 gap-2"
+                            disabled={Object.keys(serviceVariables).length === 0}
+                          >
+                            <Calculator className="h-4 w-4" />
+                            {t('calculate') || 'Calculate'}
+                          </Button>
+                          <Button
+                            onClick={handleReset}
+                            variant="outline"
+                            size="icon"
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        <Separator />
+
+                        {/* Formula Info */}
+                        {selectedServiceDetails.pricing.calculation_config?.formula && (
+                          <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
+                            <p className="font-medium mb-1">{t('formula')}:</p>
+                            <p className="font-mono text-xs">{selectedServiceDetails.pricing.calculation_config.formula}</p>
+                            {getFormulaDescription(selectedServiceDetails.pricing.calculation_config) && (
+                              <p className="mt-2 text-muted-foreground">
+                                {getFormulaDescription(selectedServiceDetails.pricing.calculation_config)}
+                              </p>
+                            )}
                           </div>
                         )}
 
-                        {selectedService.calculation_method === 'formula_based' && (
-                          <div className="text-center py-4 text-muted-foreground">
-                            <Info className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                            <p className="text-sm">{t('formulaBasedNotice') || 'Formula-based calculations require visiting the service detail page.'}</p>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="mt-3"
-                              onClick={() => window.open(`/${locale}/services/${selectedServiceId}`, '_blank')}
-                            >
-                              {t('viewServiceDetails') || 'View service details'}
-                            </Button>
-                          </div>
-                        )}
-
                         {selectedService.calculation_method === 'percentage_based' && (
-                          <>
-                            <div className="flex gap-2">
-                              <Button
-                                onClick={handleReset}
-                                variant="outline"
-                                size="sm"
-                                className="gap-2"
-                              >
-                                <RefreshCw className="h-4 w-4" />
-                                {t('reset')}
-                              </Button>
-                            </div>
-
-                            <Separator />
-
-                            {/* Formula Info */}
-                            <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
-                              <p className="font-medium mb-1">{t('formula')}:</p>
-                              <p>{t('result')} = {t('baseAmount')} × {selectedServiceDetails.pricing.percentage_rate ? `${selectedServiceDetails.pricing.percentage_rate}%` : 'N/A'}</p>
-                            </div>
-                          </>
+                          <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
+                            <p className="font-medium mb-1">{t('formula')}:</p>
+                            <p>{t('result')} = {t('baseAmount')} × {selectedServiceDetails.pricing.percentage_rate ? `${selectedServiceDetails.pricing.percentage_rate}%` : 'N/A'}</p>
+                          </div>
                         )}
                       </>
                     )}
 
-                    {!selectedService && serviceFormulas.length > 0 && (
+                    {!selectedService && serviceList.length > 0 && (
                       <div className="text-center py-8 text-muted-foreground">
                         <FileText className="h-12 w-12 mx-auto mb-3 opacity-30" />
                         <p>{t('selectServicePrompt')}</p>
@@ -1016,7 +1120,7 @@ function CalculateurPageContent() {
                   {t('result')}
                 </CardTitle>
                 <CardDescription>
-                  {selectedService ? getServiceName(selectedService) : t('serviceCalculationResult')}
+                  {selectedService ? selectedService.name : t('serviceCalculationResult')}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -1037,13 +1141,13 @@ function CalculateurPageContent() {
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-sm bg-muted/30 p-2 rounded">
                           <span className="font-medium">{t('formula')}</span>
-                          <span className="font-mono">{serviceResult.formula}</span>
+                          <span className="font-mono text-xs">{serviceResult.formula}</span>
                         </div>
                         {serviceResult.breakdown.map((item, idx) => (
                           <div key={idx} className="flex items-center justify-between text-sm bg-muted/30 p-2 rounded">
-                            <span className="font-medium">{item.variable}</span>
+                            <span className="font-medium">{item.label}</span>
                             <span className="font-mono">
-                              {item.variable === 't' ? `${item.value}%` : formatCurrency(item.value)}
+                              {formatCurrency(item.value)}
                             </span>
                           </div>
                         ))}
@@ -1053,7 +1157,7 @@ function CalculateurPageContent() {
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     <Calculator className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                    <p>{selectedService ? t('enterVariables') : t('selectServiceFirst')}</p>
+                    <p>{selectedService ? (calculationTriggered ? t('calculationError') || 'Calculation error' : t('enterVariables')) : t('selectServiceFirst')}</p>
                   </div>
                 )}
               </CardContent>

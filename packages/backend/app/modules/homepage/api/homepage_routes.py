@@ -371,6 +371,7 @@ async def get_service_details(
                 'unit_price': service.get('unit_price'),
                 'validity_period_months': service.get('validity_period_months'),
                 'renewal_frequency_months': service.get('renewal_frequency_months'),
+                'calculation_config': service.get('calculation_config'),
                 'currency': 'XAF'
             },
             processing_time_days=service.get('processing_time_days'),

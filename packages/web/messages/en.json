@@ -192,7 +192,11 @@
     "servicesCount": "{count} services available",
     "formulaBasedNotice": "Formula-based calculations require visiting the service detail page.",
     "viewServiceDetails": "View service details",
-    "retry": "Retry"
+    "retry": "Retry",
+    "calculate": "Calculate",
+    "calculationError": "Calculation error. Please check the entered values.",
+    "noVariablesConfigured": "No variables configured for this formula.",
+    "formulaNotConfigured": "This service does not have a calculation formula configured."
   },
   "guidePage": {
     "title": "Tax Guide",

@@ -74,6 +74,29 @@ export interface MinistryDetailItem {
   description: string | null;
 }
 
+// Variable configuration for formula-based calculations
+export interface VariableConfig {
+  type: 'number' | 'currency';
+  label_es?: string;
+  label_fr?: string;
+  label_en?: string;
+  description_es?: string;
+  description_fr?: string;
+  description_en?: string;
+  default_value?: number;
+  min?: number;
+  max?: number;
+}
+
+// Calculation config for complex formulas
+export interface CalculationConfig {
+  variables?: Record<string, VariableConfig>;
+  formula?: string;
+  formula_description_es?: string;
+  formula_description_fr?: string;
+  formula_description_en?: string;
+}
+
 export interface PricingInfo {
   expedition_price: number;
   renewal_price: number;
@@ -82,6 +105,7 @@ export interface PricingInfo {
   unit_price: number | null;
   validity_period_months: number | null;
   renewal_frequency_months: number | null;
+  calculation_config?: CalculationConfig | null;
   currency: string;
 }
 

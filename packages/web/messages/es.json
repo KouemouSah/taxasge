@@ -192,7 +192,11 @@
     "servicesCount": "{count} servicios disponibles",
     "formulaBasedNotice": "Los cálculos basados en fórmulas requieren visitar la página de detalles del servicio.",
     "viewServiceDetails": "Ver detalles del servicio",
-    "retry": "Reintentar"
+    "retry": "Reintentar",
+    "calculate": "Calcular",
+    "calculationError": "Error en el cálculo. Verifique los valores ingresados.",
+    "noVariablesConfigured": "No hay variables configuradas para esta fórmula.",
+    "formulaNotConfigured": "Este servicio no tiene una fórmula de cálculo configurada."
   },
   "guidePage": {
     "title": "Guía Fiscal",
