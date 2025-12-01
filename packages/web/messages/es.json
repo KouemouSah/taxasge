@@ -186,9 +186,12 @@
     "enterVariables": "Ingrese todas las variables requeridas para calcular",
     "selectServiceFirst": "Seleccione primero un servicio fiscal",
     "loadingServices": "Cargando servicios fiscales...",
+    "loadingDetails": "Cargando detalles...",
     "errorLoadingServices": "Error al cargar los servicios. Por favor, inténtelo de nuevo.",
     "noServicesAvailable": "No hay servicios disponibles",
     "servicesCount": "{count} servicios disponibles",
+    "formulaBasedNotice": "Los cálculos basados en fórmulas requieren visitar la página de detalles del servicio.",
+    "viewServiceDetails": "Ver detalles del servicio",
     "retry": "Reintentar"
   },
   "guidePage": {
