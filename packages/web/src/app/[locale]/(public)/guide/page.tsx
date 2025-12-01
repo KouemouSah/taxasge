@@ -352,7 +352,6 @@ export default function GuidePage() {
                               href: link.url,
                               target: '_blank',
                               rel: 'noopener noreferrer',
-                              download: link.url.endsWith('.pdf') ? true : undefined,
                             }
                           : {};
 
@@ -492,25 +491,12 @@ export default function GuidePage() {
 
                   {/* PDF Preview */}
                   <div className="border rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-900">
-                    <object
-                      data={`/documents/formulaires/${selectedForm.filename}#view=FitH`}
-                      type="application/pdf"
+                    <iframe
+                      src={`/documents/formulaires/${selectedForm.filename}#toolbar=1&navpanes=0&scrollbar=1&view=FitH`}
                       className="w-full h-[520px]"
                       title={t(`${selectedForm.key}Name`)}
-                    >
-                      <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-                        <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-                        <p className="text-sm text-muted-foreground mb-4">
-                          {t('pdfPreviewNotSupported') || 'PDF preview not available in your browser'}
-                        </p>
-                        <Button asChild>
-                          <a href={`/documents/formulaires/${selectedForm.filename}`} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="h-4 w-4 mr-2" />
-                            {t('openInNewTab') || 'Open in new tab'}
-                          </a>
-                        </Button>
-                      </div>
-                    </object>
+                      style={{ border: 'none' }}
+                    />
                   </div>
 
                   {/* Help text */}

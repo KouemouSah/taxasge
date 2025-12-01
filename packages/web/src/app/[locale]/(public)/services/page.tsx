@@ -346,32 +346,48 @@ function ServicesContent() {
     return searchResults?.facets?.categories || []
   }, [searchResults?.facets?.categories])
 
-  // Filtered service types based on current selection
-  const filteredServiceTypes = useMemo(() => {
-    return searchResults?.facets?.service_types || []
-  }, [searchResults?.facets?.service_types])
+  // Hardcoded service types list with translation keys
+  const HARDCODED_SERVICE_TYPES = [
+    { type: 'document_processing', key: 'document_processing' },
+    { type: 'license_permit', key: 'license_permit' },
+    { type: 'residence_permit', key: 'residence_permit' },
+    { type: 'registration_fee', key: 'registration_fee' },
+    { type: 'inspection_fee', key: 'inspection_fee' },
+    { type: 'administrative_tax', key: 'administrative_tax' },
+    { type: 'customs_duty', key: 'customs_duty' },
+    { type: 'declaration_tax', key: 'declaration_tax' },
+  ]
+
+  // Get translations for service types from serviceTypes namespace
+  const tServiceTypes = useTranslations('serviceTypes')
+
+  // Build service type options with translated labels
+  const serviceTypeOptions = useMemo(() => {
+    return HARDCODED_SERVICE_TYPES.map(st => ({
+      type: st.type,
+      label: tServiceTypes(`${st.key}.name`)
+    }))
+  }, [tServiceTypes])
 
   // Apply client-side filtering for price-based filters
   // Uses calculation_method from database to identify formula-based services
   const displayResults = useMemo(() => {
     if (!searchResults?.results) return []
 
-    // Formula-based calculation methods (services shown in calculator page "Servicios Fiscales" tab)
-    const FORMULA_METHODS = ['percentage_based', 'formula_based', 'unit_based', 'tiered_rates', 'fixed_plus_unit']
+    // Formula-based calculation methods for "prix calculé" filter
+    // Only percentage_based and formula_based as per user request
+    const FORMULA_METHODS = ['percentage_based', 'formula_based']
 
     if (priceFilter === 'formula') {
-      // Show services with formula-based calculation methods
-      // These are the services that appear in the calculator's "Servicios Fiscales" tab
+      // Show services with formula-based calculation methods (percentage or formula only)
       return searchResults.results.filter(service =>
         FORMULA_METHODS.includes(service.calculation_method)
       )
     }
 
     if (priceFilter === 'free') {
-      // Show services that are NOT formula-based and have expedition_price === 0
-      // This excludes formula-based services which show "Calcular" button instead of "Gratuito"
+      // Show services with expedition_price === 0 (truly free services)
       return searchResults.results.filter(service =>
-        !FORMULA_METHODS.includes(service.calculation_method) &&
         service.expedition_price === 0
       )
     }
@@ -502,14 +518,14 @@ function ServicesContent() {
                 setCurrentPage(1)
               }}
             >
-              <SelectTrigger className="w-[140px] h-9 text-sm">
+              <SelectTrigger className="w-[180px] h-9 text-sm">
                 <SelectValue placeholder={t('serviceType')} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t('allServiceTypes')}</SelectItem>
-                {filteredServiceTypes.map((type) => (
-                  <SelectItem key={type.type} value={type.type || ''}>
-                    {getServiceTypeLabel(type.type!, serviceTypeTranslations)} ({type.count})
+                {serviceTypeOptions.map((option) => (
+                  <SelectItem key={option.type} value={option.type}>
+                    {option.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -587,7 +603,7 @@ function ServicesContent() {
               )}
               {selectedServiceType && (
                 <Badge variant="secondary" className="pl-3 pr-1 py-1 text-xs gap-1 flex items-center">
-                  {getServiceTypeLabel(selectedServiceType, serviceTypeTranslations)}
+                  {serviceTypeOptions.find(o => o.type === selectedServiceType)?.label || selectedServiceType}
                   <Button
                     variant="ghost"
                     size="sm"
