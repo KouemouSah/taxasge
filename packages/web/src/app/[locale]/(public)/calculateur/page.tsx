@@ -129,6 +129,7 @@ function CalculateurPageContent() {
   // Selected service details (loaded on demand with calculation_config)
   const [selectedServiceDetails, setSelectedServiceDetails] = useState<ServiceDetailsResponse | null>(null);
   const [loadingDetails, setLoadingDetails] = useState<boolean>(false);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
 
   // Manual calculation trigger
   const [calculationTriggered, setCalculationTriggered] = useState<boolean>(false);
@@ -183,18 +184,20 @@ function CalculateurPageContent() {
   useEffect(() => {
     if (!selectedServiceId) {
       setSelectedServiceDetails(null);
+      setDetailsError(null);
       return;
     }
 
     const fetchDetails = async () => {
       setLoadingDetails(true);
       setCalculationTriggered(false);
+      setDetailsError(null);
       try {
         const details = await getServiceDetails(selectedServiceId, locale);
         setSelectedServiceDetails(details);
 
         // Initialize variables with default values from calculation_config
-        const config = details.pricing.calculation_config;
+        const config = details.pricing?.calculation_config;
         if (config?.variables) {
           const initialVars: Record<string, string> = {};
           for (const [key, varConfig] of Object.entries(config.variables)) {
@@ -203,17 +206,21 @@ function CalculateurPageContent() {
             }
           }
           setServiceVariables(initialVars);
+        } else {
+          // No config, initialize with baseAmount for generic calculation
+          setServiceVariables({ baseAmount: '' });
         }
       } catch (error) {
         console.error('Error fetching service details:', error);
         setSelectedServiceDetails(null);
+        setDetailsError(t('errorLoadingDetails') || 'Error loading service details');
       } finally {
         setLoadingDetails(false);
       }
     };
 
     fetchDetails();
-  }, [selectedServiceId, locale]);
+  }, [selectedServiceId, locale, t]);
 
   // Get the selected service from list (for display)
   const selectedService = useMemo(() => {
@@ -441,7 +448,7 @@ function CalculateurPageContent() {
     const pricing = selectedServiceDetails.pricing;
     const config = pricing.calculation_config;
 
-    // For percentage_based without calculation_config
+    // For percentage_based - always show base amount field
     if (selectedService?.calculation_method === 'percentage_based') {
       return (
         <div className="space-y-4">
@@ -468,59 +475,94 @@ function CalculateurPageContent() {
       );
     }
 
-    // For formula_based with calculation_config
-    if (selectedService?.calculation_method === 'formula_based' && config?.variables) {
-      const variableEntries = Object.entries(config.variables);
+    // For formula_based with calculation_config containing variables
+    if (selectedService?.calculation_method === 'formula_based') {
+      // If config has variables, render dynamic fields
+      if (config?.variables && Object.keys(config.variables).length > 0) {
+        const variableEntries = Object.entries(config.variables);
 
-      if (variableEntries.length === 0) {
         return (
-          <div className="text-center py-4 text-muted-foreground">
-            <Info className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">{t('noVariablesConfigured') || 'No variables configured for this formula.'}</p>
+          <div className="space-y-4">
+            {variableEntries.map(([key, varConfig]) => {
+              const label = getVariableLabel(key, varConfig);
+              const description = getVariableDescription(varConfig);
+              const isCurrency = varConfig.type === 'currency';
+
+              return (
+                <div key={key} className="space-y-2">
+                  <Label htmlFor={key}>{label}</Label>
+                  <div className="relative">
+                    <Input
+                      id={key}
+                      type="text"
+                      placeholder={varConfig.default_value?.toString() || '0'}
+                      value={serviceVariables[key] || ''}
+                      onChange={(e) => handleVariableChange(key, e.target.value)}
+                      className={isCurrency ? 'pr-16' : ''}
+                    />
+                    {isCurrency && (
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                        XAF
+                      </span>
+                    )}
+                  </div>
+                  {description && (
+                    <p className="text-xs text-muted-foreground">{description}</p>
+                  )}
+                </div>
+              );
+            })}
           </div>
         );
       }
 
+      // Formula-based but no variables configured - show generic base amount field
       return (
         <div className="space-y-4">
-          {variableEntries.map(([key, varConfig]) => {
-            const label = getVariableLabel(key, varConfig);
-            const description = getVariableDescription(varConfig);
-            const isCurrency = varConfig.type === 'currency';
-
-            return (
-              <div key={key} className="space-y-2">
-                <Label htmlFor={key}>{label}</Label>
-                <div className="relative">
-                  <Input
-                    id={key}
-                    type="text"
-                    placeholder={varConfig.default_value?.toString() || '0'}
-                    value={serviceVariables[key] || ''}
-                    onChange={(e) => handleVariableChange(key, e.target.value)}
-                    className={isCurrency ? 'pr-16' : ''}
-                  />
-                  {isCurrency && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                      XAF
-                    </span>
-                  )}
-                </div>
-                {description && (
-                  <p className="text-xs text-muted-foreground">{description}</p>
-                )}
-              </div>
-            );
-          })}
+          <div className="space-y-2">
+            <Label htmlFor="baseAmount">{t('baseAmountForPercentage')}</Label>
+            <div className="relative">
+              <Input
+                id="baseAmount"
+                type="text"
+                placeholder="1,000,000"
+                value={serviceVariables['baseAmount'] || ''}
+                onChange={(e) => handleVariableChange('baseAmount', e.target.value)}
+                className="pr-16"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                XAF
+              </span>
+            </div>
+            {config?.formula && (
+              <p className="text-xs text-muted-foreground">
+                {t('formula')}: {config.formula}
+              </p>
+            )}
+          </div>
         </div>
       );
     }
 
-    // No formula configuration available
+    // Fallback - show generic base amount field
     return (
-      <div className="text-center py-4 text-muted-foreground">
-        <Info className="h-8 w-8 mx-auto mb-2 opacity-50" />
-        <p className="text-sm">{t('formulaNotConfigured') || 'This service does not have a calculation formula configured.'}</p>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="baseAmount">{t('baseAmountForPercentage')}</Label>
+          <div className="relative">
+            <Input
+              id="baseAmount"
+              type="text"
+              placeholder="1,000,000"
+              value={serviceVariables['baseAmount'] || ''}
+              onChange={(e) => handleVariableChange('baseAmount', e.target.value)}
+              className="pr-16"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+              XAF
+            </span>
+          </div>
+        </div>
       </div>
     );
   };
@@ -1051,8 +1093,29 @@ function CalculateurPageContent() {
                       </div>
                     )}
 
+                    {/* Error loading details */}
+                    {detailsError && !loadingDetails && selectedService && (
+                      <div className="text-center py-4 text-destructive">
+                        <Info className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">{detailsError}</p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-3"
+                          onClick={() => {
+                            const id = selectedServiceId;
+                            setSelectedServiceId(null);
+                            setTimeout(() => setSelectedServiceId(id), 100);
+                          }}
+                        >
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          {t('retry') || 'Retry'}
+                        </Button>
+                      </div>
+                    )}
+
                     {/* Dynamic Form Fields */}
-                    {selectedService && selectedServiceDetails && !loadingDetails && (
+                    {selectedService && selectedServiceDetails && !loadingDetails && !detailsError && (
                       <>
                         <Separator />
 

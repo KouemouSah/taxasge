@@ -187,6 +187,7 @@
     "selectServiceFirst": "Seleccione primero un servicio fiscal",
     "loadingServices": "Cargando servicios fiscales...",
     "loadingDetails": "Cargando detalles...",
+    "errorLoadingDetails": "Error al cargar los detalles del servicio. Por favor, inténtelo de nuevo.",
     "errorLoadingServices": "Error al cargar los servicios. Por favor, inténtelo de nuevo.",
     "noServicesAvailable": "No hay servicios disponibles",
     "servicesCount": "{count} servicios disponibles",

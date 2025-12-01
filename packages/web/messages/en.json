@@ -187,6 +187,7 @@
     "selectServiceFirst": "Select a fiscal service first",
     "loadingServices": "Loading fiscal services...",
     "loadingDetails": "Loading details...",
+    "errorLoadingDetails": "Error loading service details. Please try again.",
     "errorLoadingServices": "Error loading services. Please try again.",
     "noServicesAvailable": "No services available",
     "servicesCount": "{count} services available",
