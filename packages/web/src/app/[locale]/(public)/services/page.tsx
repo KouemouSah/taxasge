@@ -24,7 +24,6 @@ import {
   searchServices,
   getDefaultSearchResponse,
   formatPrice,
-  getServiceTypeLabel,
   type SearchFilters,
   type SearchResponse,
   type ServiceResult,
@@ -48,22 +47,6 @@ function ServicesContent() {
   const locale = (params?.locale as string) || 'es'
   const t = useTranslations('services')
   const tCommon = useTranslations('common')
-
-  // Translation objects for helper functions
-  const serviceTypeTranslations: Record<string, string> = {
-    administrative: t('serviceTypes.administrative'),
-    fiscal: t('serviceTypes.fiscal'),
-    legal: t('serviceTypes.legal'),
-    customs: t('serviceTypes.customs'),
-    mining: t('serviceTypes.mining'),
-    commercial: t('serviceTypes.commercial'),
-    social: t('serviceTypes.social'),
-    transport: t('serviceTypes.transport'),
-    agriculture: t('serviceTypes.agriculture'),
-    health: t('serviceTypes.health'),
-    education: t('serviceTypes.education'),
-    other: t('serviceTypes.other'),
-  }
 
   const freeLabel = t('free')
 
