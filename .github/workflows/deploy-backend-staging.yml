@@ -135,8 +135,10 @@ jobs:
             --set-env-vars="SMTP_USE_TLS=true" \
             --min-instances=0 \
             --max-instances=10 \
-            --memory=512Mi \
-            --cpu=1
+            --memory=1Gi \
+            --cpu=1 \
+            --timeout=300 \
+            --concurrency=80
 
           URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
             --region ${{ env.REGION }} \
