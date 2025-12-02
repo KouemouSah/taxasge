@@ -203,12 +203,14 @@ class Settings(BaseSettings):
     )
 
     # Gemini Models Configuration
+    # Note: Use explicit version suffixes (e.g., -001) for stable API access
+    # See: https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions
     GEMINI_CHAT_MODEL: str = Field(
-        default="gemini-1.5-flash",
+        default="gemini-1.5-flash-002",
         env="GEMINI_CHAT_MODEL"
     )
     GEMINI_PRO_MODEL: str = Field(
-        default="gemini-1.5-pro",
+        default="gemini-1.5-pro-002",
         env="GEMINI_PRO_MODEL"
     )
     GEMINI_EMBEDDING_MODEL: str = Field(

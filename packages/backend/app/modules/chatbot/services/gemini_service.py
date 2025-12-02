@@ -369,8 +369,14 @@ Be helpful, accurate, and professional."""
 
         except Exception as e:
             logger.error(f"Gemini chat error: {e}")
+            # Multilingual error messages
+            error_messages = {
+                "es": "Lo siento, ocurrió un error al procesar tu pregunta. Por favor, intenta de nuevo.",
+                "fr": "Désolé, une erreur s'est produite lors du traitement de votre question. Veuillez réessayer.",
+                "en": "Sorry, an error occurred while processing your question. Please try again."
+            }
             return {
-                "message": f"Lo siento, ocurrió un error al procesar tu pregunta. Por favor, intenta de nuevo.",
+                "message": error_messages.get(language, error_messages["es"]),
                 "sources": [],
                 "confidence": 0.0,
                 "error": str(e)

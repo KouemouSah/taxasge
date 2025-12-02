@@ -171,16 +171,16 @@ class SemanticSearchRepository:
                     '[]'::jsonb
                 ) as required_documents,
 
-                -- Procedures
+                -- Procedures (steps are in separate procedure_template_steps table)
                 COALESCE(
                     jsonb_agg(
                         DISTINCT jsonb_build_object(
                             'procedure_name', pt.name_es,
-                            'steps_count', jsonb_array_length(COALESCE(pt.steps, '[]'::jsonb)),
+                            'steps_count', COALESCE(pts_count.steps_count, 0),
                             'applies_to', spa.applies_to
                         ) ORDER BY jsonb_build_object(
                             'procedure_name', pt.name_es,
-                            'steps_count', jsonb_array_length(COALESCE(pt.steps, '[]'::jsonb)),
+                            'steps_count', COALESCE(pts_count.steps_count, 0),
                             'applies_to', spa.applies_to
                         )
                     ) FILTER (WHERE pt.id IS NOT NULL),
@@ -204,6 +204,12 @@ class SemanticSearchRepository:
             -- Join procedures
             LEFT JOIN service_procedure_assignments spa ON fs.id = spa.fiscal_service_id
             LEFT JOIN procedure_templates pt ON spa.template_id = pt.id
+            -- Count steps per procedure template
+            LEFT JOIN LATERAL (
+                SELECT COUNT(*)::int as steps_count
+                FROM procedure_template_steps
+                WHERE template_id = pt.id
+            ) pts_count ON true
 
             WHERE {where_clause}
                 AND (1 - (fs.embedding <-> $1::vector)) >= $2  -- similarity threshold
