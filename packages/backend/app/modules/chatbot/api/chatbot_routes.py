@@ -89,7 +89,7 @@ async def get_chatbot_info():
 
 
 @router.get("/status", response_model=Dict[str, Any])
-async def get_chatbot_status():
+async def get_chatbot_status(db: asyncpg.Connection = Depends(get_db)):
     """
     Get detailed chatbot service status for debugging
 
@@ -97,9 +97,28 @@ async def get_chatbot_status():
     - Embedding service (Vertex AI)
     - Gemini service (Vertex AI)
     - Overall RAG availability
+    - Database embedding coverage
     """
     from app.modules.chatbot.services import embedding_service, gemini_service, chatbot_service
     from app.config import settings
+
+    # Get embedding stats from database
+    embedding_db_stats = {}
+    try:
+        # Direct query to check embedding coverage
+        stats = await db.fetchrow("""
+            SELECT
+                COUNT(*) as total_services,
+                COUNT(embedding) as with_embeddings,
+                COUNT(*) - COUNT(embedding) as without_embeddings,
+                ROUND(COUNT(embedding)::numeric / NULLIF(COUNT(*), 0) * 100, 2) as coverage_percentage
+            FROM fiscal_services
+            WHERE status = 'active'
+        """)
+        if stats:
+            embedding_db_stats = dict(stats)
+    except Exception as e:
+        embedding_db_stats = {"error": str(e)}
 
     return {
         "overall_status": "active" if chatbot_service.enabled else "fallback_mode",
@@ -115,6 +134,10 @@ async def get_chatbot_status():
                 "pro_model": settings.GEMINI_PRO_MODEL
             }
         },
+        "database": {
+            "embedding_coverage": embedding_db_stats,
+            "note": "If with_embeddings is 0, run the populate_embeddings script"
+        },
         "config": {
             "project": settings.GOOGLE_CLOUD_PROJECT,
             "location": settings.GOOGLE_CLOUD_LOCATION,
@@ -128,6 +151,11 @@ async def get_chatbot_status():
                 "Check GOOGLE_CLOUD_LOCATION env var is set correctly",
                 "Verify Cloud Run service account has Vertex AI permissions",
                 "Check google-cloud-aiplatform is installed in requirements.txt"
+            ],
+            "if_no_results": [
+                "Check database.embedding_coverage.with_embeddings > 0",
+                "If 0, run: python scripts/populate_embeddings.py",
+                "Or trigger GitHub Actions workflow_dispatch for embeddings job"
             ]
         }
     }
