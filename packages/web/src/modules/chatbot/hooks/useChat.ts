@@ -281,12 +281,23 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
 
       setMessages((prev) => [...prev, userMessage])
 
-      // Prepare request
+      // Build history from current messages (excluding the just-added user message)
+      const currentMessages = [...messages, userMessage]
+      const history = currentMessages
+        .filter(msg => msg.role === 'user' || msg.role === 'assistant')
+        .slice(-10)  // Limit to last 10 messages for context
+        .map(msg => ({
+          role: msg.role as 'user' | 'assistant',
+          content: msg.content,
+        }))
+
+      // Prepare request with conversation history
       const request: ChatRequest = {
         message,
         conversationId: conversationId || undefined,
         language,
         context,
+        history: history.length > 1 ? history.slice(0, -1) : undefined,  // Exclude current message
       }
 
       setLastRequest(request)

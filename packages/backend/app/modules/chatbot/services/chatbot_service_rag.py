@@ -49,7 +49,8 @@ class ChatbotServiceRAG:
         message: str,
         context: Dict[str, Any],
         language: str = "es",
-        db: Optional[asyncpg.Connection] = None
+        db: Optional[asyncpg.Connection] = None,
+        conversation_history: Optional[List[Dict[str, str]]] = None
     ) -> Dict[str, Any]:
         """
         Process chat message using RAG
@@ -59,6 +60,8 @@ class ChatbotServiceRAG:
             context: Conversation context (user_id, role, conversation_id)
             language: Response language (es/fr/en)
             db: Database connection (required for RAG)
+            conversation_history: Previous messages for context continuity
+                Each message is {"role": "user"|"assistant", "content": "..."}
 
         Returns:
             Dict with:
@@ -101,7 +104,8 @@ class ChatbotServiceRAG:
             ai_response = await gemini_service.chat(
                 user_message=message,
                 context_services=relevant_services,
-                language=language
+                language=language,
+                conversation_history=conversation_history
             )
 
             # Step 4: Build structured response

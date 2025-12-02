@@ -407,15 +407,32 @@ IMPORTANT:
                 language
             )
 
-            # Combine prompts
-            full_prompt = f"{system_prompt}\n\n{context_prompt}"
+            # Build conversation contents for multi-turn chat
+            contents = []
+
+            # Add conversation history if provided
+            if conversation_history:
+                for msg in conversation_history[-10:]:  # Limit to last 10 messages
+                    role = "user" if msg.get("role") == "user" else "model"
+                    contents.append({
+                        "role": role,
+                        "parts": [{"text": msg.get("content", "")}]
+                    })
+                logger.info(f"Including {len(contents)} messages from conversation history")
+
+            # Add current user message with system context
+            full_user_prompt = f"{system_prompt}\n\n{context_prompt}"
+            contents.append({
+                "role": "user",
+                "parts": [{"text": full_user_prompt}]
+            })
 
             # Generate response
             loop = asyncio.get_event_loop()
             response = await loop.run_in_executor(
                 None,
                 lambda: self.chat_model.generate_content(
-                    full_prompt,
+                    contents,
                     generation_config=self.generation_config,
                     safety_settings=self.safety_settings
                 )

@@ -311,12 +311,21 @@ async def chat(
             "additional_context": request.context or {}
         }
 
+        # Convert history to list of dicts for service
+        conversation_history = None
+        if request.history:
+            conversation_history = [
+                {"role": msg.role, "content": msg.content}
+                for msg in request.history
+            ]
+
         # Get AI response
         ai_response = await chatbot_service.chat(
             message=request.message,
             context=context,
             language=request.language.value,
-            db=db  # CRITICAL: Pass db connection for RAG to work
+            db=db,  # CRITICAL: Pass db connection for RAG to work
+            conversation_history=conversation_history
         )
 
         logger.info(f"Chat processed - User: {current_user.id if current_user else 'anonymous'}")

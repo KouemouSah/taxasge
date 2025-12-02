@@ -64,11 +64,17 @@ export interface ConversationContext {
   additionalContext?: Record<string, any>
 }
 
+export interface ChatHistoryMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 export interface ChatRequest {
   message: string
   conversationId?: string
   language: LanguageCode
   context?: Record<string, any>
+  history?: ChatHistoryMessage[]
 }
 
 export interface ServiceReference {

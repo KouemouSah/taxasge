@@ -51,12 +51,22 @@ class ConversationContext(BaseModel):
     additional_context: Dict[str, Any] = Field(default_factory=dict)
 
 
+class ChatHistoryMessage(BaseModel):
+    """Message in conversation history"""
+    role: str = Field(..., description="Message role: 'user' or 'assistant'")
+    content: str = Field(..., description="Message content")
+
+
 class ChatRequest(BaseModel):
     """Chat request"""
     message: str = Field(..., min_length=1, max_length=2000)
     conversation_id: Optional[str] = None
     language: LanguageCode = LanguageCode.SPANISH
     context: Optional[Dict[str, Any]] = None
+    history: Optional[List[ChatHistoryMessage]] = Field(
+        default=None,
+        description="Previous messages in the conversation for context continuity"
+    )
 
 
 class ChatResponse(BaseModel):

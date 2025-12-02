@@ -139,6 +139,11 @@ export const chatbotApi = {
       conversation_id: request.conversationId,
       language: request.language,
       context: request.context,
+      // Include conversation history for context continuity
+      history: request.history?.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+      })),
     }
 
     const response = await client.post<any>('/chat', backendRequest)
