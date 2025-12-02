@@ -43,12 +43,17 @@ router = APIRouter(tags=["Chatbot"])
 @router.get("/", response_model=Dict[str, Any])
 async def get_chatbot_info():
     """Get Chatbot API information and capabilities"""
+    from app.modules.chatbot.services import embedding_service, gemini_service
+
+    # Check actual service status
+    ai_status = "active" if (embedding_service.enabled and gemini_service.enabled) else "fallback_mode"
+
     return {
         "message": "TaxasGE Chatbot & AI Services API",
         "version": "2.0.0",
         "description": "AI-powered assistance for fiscal services and document processing",
-        "status": "placeholder_mode",
-        "note": "AI provider integration pending - responses are placeholders",
+        "status": ai_status,
+        "note": "RAG-powered AI with Gemini" if ai_status == "active" else "AI services unavailable - using fallback responses",
         "endpoints": {
             "chat": "POST /chat - Interactive AI chat assistance",
             "stream": "POST /chat/stream - Streaming AI chat",
@@ -71,13 +76,60 @@ async def get_chatbot_info():
             "Contextual help and explanations"
         ],
         "supported_languages": ["es", "fr", "en"],
-        "todo": [
-            "Integrate AI provider (OpenAI, Claude, etc.)",
-            "Implement vector search for semantic search",
-            "Add document AI integration",
-            "Create conversation history DB table",
-            "Implement feedback tracking"
-        ]
+        "services": {
+            "embedding": {
+                "enabled": embedding_service.enabled,
+                "model": embedding_service.get_stats().get("model") if embedding_service.enabled else None
+            },
+            "gemini": {
+                "enabled": gemini_service.enabled
+            }
+        }
+    }
+
+
+@router.get("/status", response_model=Dict[str, Any])
+async def get_chatbot_status():
+    """
+    Get detailed chatbot service status for debugging
+
+    Returns status of:
+    - Embedding service (Vertex AI)
+    - Gemini service (Vertex AI)
+    - Overall RAG availability
+    """
+    from app.modules.chatbot.services import embedding_service, gemini_service, chatbot_service
+    from app.config import settings
+
+    return {
+        "overall_status": "active" if chatbot_service.enabled else "fallback_mode",
+        "provider": chatbot_service.provider,
+        "services": {
+            "embedding": {
+                "enabled": embedding_service.enabled,
+                "stats": embedding_service.get_stats() if embedding_service.enabled else {"error": "Service disabled"}
+            },
+            "gemini": {
+                "enabled": gemini_service.enabled,
+                "chat_model": settings.GEMINI_CHAT_MODEL,
+                "pro_model": settings.GEMINI_PRO_MODEL
+            }
+        },
+        "config": {
+            "project": settings.GOOGLE_CLOUD_PROJECT,
+            "location": settings.GOOGLE_CLOUD_LOCATION,
+            "embedding_model": settings.GEMINI_EMBEDDING_MODEL,
+            "max_context_services": settings.RAG_MAX_CONTEXT_SERVICES,
+            "similarity_threshold": settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD
+        },
+        "troubleshooting": {
+            "if_fallback": [
+                "Check GOOGLE_CLOUD_PROJECT env var is set correctly",
+                "Check GOOGLE_CLOUD_LOCATION env var is set correctly",
+                "Verify Cloud Run service account has Vertex AI permissions",
+                "Check google-cloud-aiplatform is installed in requirements.txt"
+            ]
+        }
     }
 
 

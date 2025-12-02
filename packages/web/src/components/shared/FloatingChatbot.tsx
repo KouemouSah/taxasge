@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from "react"
-import { MessageCircle, X, Send, Loader2, RefreshCw, Bot, User } from "lucide-react"
+import { MessageCircle, X, Send, Loader2, RefreshCw, User } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -151,8 +152,14 @@ export const FloatingChatbot = () => {
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-border bg-primary rounded-t-lg">
             <div className="flex items-center space-x-2">
-              <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center">
-                <Bot className="h-5 w-5 text-white" />
+              <div className="flex-shrink-0 h-10 w-10 rounded-full bg-white flex items-center justify-center p-1">
+                <Image
+                  src="/logo.png"
+                  alt="TaxasGE Logo"
+                  width={32}
+                  height={32}
+                  className="object-contain"
+                />
               </div>
               <div>
                 <h3 id="chatbot-title" className="font-semibold text-white text-sm">{t('title') || 'Assistant TaxasGE'}</h3>
@@ -187,7 +194,15 @@ export const FloatingChatbot = () => {
               {/* Welcome message if no messages */}
               {messages.length === 0 && (
                 <div className="text-center text-muted-foreground text-sm py-8">
-                  <Bot className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-2">
+                    <Image
+                      src="/logo.png"
+                      alt="TaxasGE Logo"
+                      width={40}
+                      height={40}
+                      className="object-contain opacity-50"
+                    />
+                  </div>
                   <p>{t('welcomeMessage') || '¡Hola! ¿En qué puedo ayudarte hoy?'}</p>
                 </div>
               )}
@@ -200,8 +215,14 @@ export const FloatingChatbot = () => {
                   }`}
                 >
                   {message.role === "assistant" && (
-                    <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Bot className="h-4 w-4 text-primary" />
+                    <div className="flex-shrink-0 h-8 w-8 rounded-full bg-white flex items-center justify-center border border-primary/20">
+                      <Image
+                        src="/logo.png"
+                        alt="TaxasGE"
+                        width={24}
+                        height={24}
+                        className="object-contain"
+                      />
                     </div>
                   )}
                   <div
@@ -224,8 +245,14 @@ export const FloatingChatbot = () => {
               {/* Loading indicator */}
               {isLoading && (
                 <div className="flex gap-2 justify-start">
-                  <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Bot className="h-4 w-4 text-primary" />
+                  <div className="flex-shrink-0 h-8 w-8 rounded-full bg-white flex items-center justify-center border border-primary/20">
+                    <Image
+                      src="/logo.png"
+                      alt="TaxasGE"
+                      width={24}
+                      height={24}
+                      className="object-contain"
+                    />
                   </div>
                   <div className="bg-muted rounded-lg p-3 flex items-center gap-1">
                     <span className="h-2 w-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
