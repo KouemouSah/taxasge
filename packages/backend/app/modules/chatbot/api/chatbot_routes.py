@@ -256,6 +256,29 @@ async def debug_semantic_search(
             "with_embedding": counts["with_embedding"]
         }
 
+        # Step 4: Check embedding dimensions in DB (sample first row)
+        try:
+            dimension_query = """
+                SELECT
+                    fs.service_code,
+                    array_length(fs.embedding::real[], 1) as embedding_dim,
+                    fs.embedding_model
+                FROM fiscal_services fs
+                WHERE fs.embedding IS NOT NULL
+                LIMIT 1
+            """
+            dim_result = await db.fetchrow(dimension_query)
+            if dim_result:
+                result["db_embedding_sample"] = {
+                    "service_code": dim_result["service_code"],
+                    "stored_dimensions": dim_result["embedding_dim"],
+                    "model": dim_result["embedding_model"],
+                    "query_dimensions": len(query_embedding),
+                    "dimensions_match": dim_result["embedding_dim"] == len(query_embedding)
+                }
+        except Exception as dim_err:
+            result["db_embedding_sample"] = {"error": str(dim_err)}
+
     except Exception as e:
         result["error"] = str(e)
         logger.error(f"Debug search error: {e}", exc_info=True)
