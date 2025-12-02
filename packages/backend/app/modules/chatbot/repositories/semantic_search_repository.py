@@ -86,7 +86,9 @@ class SemanticSearchRepository:
 
         # Build dynamic WHERE clause
         where_conditions = ["fs.status = 'active'", "fs.embedding IS NOT NULL"]
-        params = [query_embedding, similarity_threshold, limit]
+        # Convert embedding list to pgvector string format: '[x,y,z,...]'
+        embedding_str = '[' + ','.join(str(x) for x in query_embedding) + ']'
+        params = [embedding_str, similarity_threshold, limit]
         param_idx = 4
 
         # Add filters
@@ -291,7 +293,9 @@ class SemanticSearchRepository:
 
         # Build WHERE clause
         where_conditions = ["fs.status = 'active'", "fs.embedding IS NOT NULL"]
-        params = [query_embedding, query_text, semantic_weight, fulltext_weight, limit]
+        # Convert embedding list to pgvector string format: '[x,y,z,...]'
+        embedding_str = '[' + ','.join(str(x) for x in query_embedding) + ']'
+        params = [embedding_str, query_text, semantic_weight, fulltext_weight, limit]
         param_idx = 6
 
         if filters:
