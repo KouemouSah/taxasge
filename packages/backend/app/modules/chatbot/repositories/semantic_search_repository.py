@@ -88,8 +88,9 @@ class SemanticSearchRepository:
         where_conditions = ["fs.status = 'active'", "fs.embedding IS NOT NULL"]
         # Convert embedding list to pgvector string format: '[x,y,z,...]'
         embedding_str = '[' + ','.join(str(x) for x in query_embedding) + ']'
-        params = [embedding_str, similarity_threshold, limit]
-        param_idx = 4
+        # NOTE: Threshold removed from SQL query for debugging (applied in code)
+        params = [embedding_str, limit]
+        param_idx = 3
 
         # Add filters
         if filters:
@@ -214,7 +215,9 @@ class SemanticSearchRepository:
             ) pts_count ON true
 
             WHERE {where_clause}
-                AND (1 - (fs.embedding <-> $1::vector)) >= $2  -- similarity threshold
+                -- NOTE: Threshold filter removed to see all results and debug
+                -- Threshold will be applied in code if needed
+                -- AND (1 - (fs.embedding <-> $1::vector)) >= $2  -- similarity threshold
 
             GROUP BY
                 fs.id, fs.service_code, fs.name_es, fs.description_es,
@@ -225,27 +228,43 @@ class SemanticSearchRepository:
 
             -- Order by similarity (HNSW index accelerates this)
             ORDER BY fs.embedding <-> $1::vector
-            LIMIT $3
+            LIMIT $2
         """
 
         try:
             results = await self.db.fetch(query, *params)
 
-            services = []
+            # Log ALL results with similarities for debugging
+            all_services = []
             for row in results:
                 service = dict(row)
-
-                logger.debug(
-                    f"Found service {service['service_code']} "
-                    f"(similarity: {service['similarity']:.3f})"
+                similarity = service.get('similarity', 0)
+                all_services.append(service)
+                logger.info(
+                    f"RAW result: {service['service_code']} - "
+                    f"{service['name_es'][:40] if service['name_es'] else 'N/A'}... "
+                    f"(similarity: {similarity:.4f})"
                 )
 
-                services.append(service)
+            # Apply threshold filter in code (for debugging)
+            services = [
+                s for s in all_services
+                if s.get('similarity', 0) >= similarity_threshold
+            ]
 
             logger.info(
-                f"Semantic search returned {len(services)} results "
+                f"Semantic search: {len(all_services)} raw results, "
+                f"{len(services)} after threshold filter "
                 f"(threshold: {similarity_threshold}, limit: {limit})"
             )
+
+            if len(all_services) > 0 and len(services) == 0:
+                # Log warning if threshold filtering removes all results
+                max_sim = max(s.get('similarity', 0) for s in all_services)
+                logger.warning(
+                    f"⚠️ All results filtered by threshold! "
+                    f"Max similarity: {max_sim:.4f}, threshold: {similarity_threshold}"
+                )
 
             return services
 
