@@ -120,10 +120,10 @@ const DEFAULT_CALCULABLE_SERVICES: CalculableService[] = [
     name_fr: 'Redevance annuelle de concessions',
     name_en: 'Annual concession fee',
     type: 'formula',
-    formula: 'RF + (t * CA)', // t is already a decimal (e.g., 0.01 for 1%)
-    formula_description_es: 'Cuota fija + (Tasa × Facturación anual)',
-    formula_description_fr: 'Redevance fixe + (Taux × Chiffre d\'affaires annuel)',
-    formula_description_en: 'Fixed fee + (Rate × Annual turnover)',
+    formula: 'RF + (t * CA / 100)', // t is percentage, divide by 100
+    formula_description_es: 'Cuota fija + (Tasa % × Facturación anual / 100)',
+    formula_description_fr: 'Redevance fixe + (Taux % × Chiffre d\'affaires annuel / 100)',
+    formula_description_en: 'Fixed fee + (Rate % × Annual turnover / 100)',
     variables: [
       {
         key: 'RF',
@@ -139,13 +139,13 @@ const DEFAULT_CALCULABLE_SERVICES: CalculableService[] = [
       {
         key: 't',
         type: 'number',
-        label_es: 'Tasa de la cuota (decimal)',
-        label_fr: 'Taux de la redevance (décimal)',
-        label_en: 'Fee rate (decimal)',
-        description_es: 'Ej: 0.01 para 1%, 0.05 para 5%',
-        description_fr: 'Ex: 0.01 pour 1%, 0.05 pour 5%',
-        description_en: 'E.g., 0.01 for 1%, 0.05 for 5%',
-        defaultValue: 0.01,
+        label_es: 'Tasa de la cuota (%)',
+        label_fr: 'Taux de la redevance (%)',
+        label_en: 'Fee rate (%)',
+        description_es: 'Ej: 1 para 1%, 5 para 5%',
+        description_fr: 'Ex: 1 pour 1%, 5 pour 5%',
+        description_en: 'E.g., 1 for 1%, 5 for 5%',
+        defaultValue: 1,
       },
       {
         key: 'CA',
@@ -261,28 +261,27 @@ function mergeServiceConfig(
     };
   }
 
-  // For formula-based, update formula and variables from calculation_config
+  // For formula-based, update variables from calculation_config but keep default formula
+  // (default formula has /100 for percentage conversion which is more user-friendly)
   if (defaultService.type === 'formula') {
     const config = apiConfig.calculation_config;
 
-    if (config?.formula || config?.variables) {
-      const updatedVariables: FormulaVariable[] = config.variables
-        ? Object.entries(config.variables).map(([key, v]) => ({
-            key,
-            type: v.type,
-            label_es: v.label_es || key,
-            label_fr: v.label_fr || key,
-            label_en: v.label_en || key,
-            description_es: v.description_es,
-            description_fr: v.description_fr,
-            description_en: v.description_en,
-            defaultValue: v.default_value,
-          }))
-        : defaultService.variables;
+    if (config?.variables) {
+      const updatedVariables: FormulaVariable[] = Object.entries(config.variables).map(([key, v]) => ({
+        key,
+        type: v.type,
+        label_es: v.label_es || key,
+        label_fr: v.label_fr || key,
+        label_en: v.label_en || key,
+        description_es: v.description_es,
+        description_fr: v.description_fr,
+        description_en: v.description_en,
+        defaultValue: v.default_value,
+      }));
 
       return {
         ...defaultService,
-        formula: config.formula || defaultService.formula,
+        // Keep default formula with /100 for user-friendly percentage input
         variables: updatedVariables,
       };
     }
