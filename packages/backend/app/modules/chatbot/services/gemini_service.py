@@ -6,6 +6,7 @@ using Google's Gemini models via Vertex AI.
 
 Author: Claude Code
 Date: 2025-01-22
+Updated: 2025-12-02 - Improved response format with anti-hallucination rules
 """
 
 import asyncio
