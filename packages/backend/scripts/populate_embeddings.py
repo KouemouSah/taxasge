@@ -5,6 +5,8 @@ Populate Embeddings Script - Generate embeddings for fiscal services
 This script generates and stores embeddings for all fiscal services
 in the database using Gemini text-embedding-004 model.
 
+STANDALONE VERSION: Does not import app modules to avoid circular imports.
+
 Usage:
     python scripts/populate_embeddings.py [OPTIONS]
 
@@ -34,25 +36,190 @@ Date: 2025-01-22
 
 import asyncio
 import argparse
-from datetime import datetime
-from typing import List, Dict, Any
-import sys
 import os
-
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import sys
+from datetime import datetime
+from typing import List, Dict, Any, Optional
 
 import asyncpg
 from loguru import logger
 
-from app.config import settings
+# ============================================================================
+# STANDALONE EMBEDDING SERVICE (no app module imports)
+# ============================================================================
 
-# Import EmbeddingService class directly to avoid circular imports
-# Do NOT import from app.modules.chatbot (triggers circular import chain)
-from app.modules.chatbot.services.embedding_service import EmbeddingService
+# Try to import Vertex AI
+try:
+    from vertexai.language_models import TextEmbeddingModel, TextEmbeddingInput
+    import vertexai
+    VERTEX_AI_AVAILABLE = True
+except ImportError:
+    VERTEX_AI_AVAILABLE = False
+    logger.warning("⚠️ Vertex AI SDK not installed")
 
-# Create a local instance for this script
-embedding_service = EmbeddingService()
+
+class StandaloneEmbeddingService:
+    """
+    Standalone embedding service that doesn't depend on app modules.
+    Uses environment variables directly.
+    """
+
+    def __init__(self):
+        """Initialize embedding service with Vertex AI"""
+        # Get config from environment
+        self.project = os.getenv("GOOGLE_CLOUD_PROJECT", "taxasge-dev")
+        self.location = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
+        self.model_name = os.getenv("GEMINI_EMBEDDING_MODEL", "text-embedding-004")
+        self.batch_size = int(os.getenv("EMBEDDING_BATCH_SIZE", "250"))
+
+        if not VERTEX_AI_AVAILABLE:
+            logger.error("❌ Vertex AI SDK not available - embeddings disabled")
+            self.model = None
+            self.enabled = False
+            return
+
+        try:
+            # Initialize Vertex AI with project and location
+            vertexai.init(
+                project=self.project,
+                location=self.location
+            )
+
+            # Load embedding model
+            self.model = TextEmbeddingModel.from_pretrained(self.model_name)
+
+            self.enabled = True
+            logger.info(
+                f"✅ Embedding service initialized "
+                f"(model: {self.model_name}, project: {self.project})"
+            )
+
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize embedding service: {e}")
+            self.model = None
+            self.enabled = False
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Get service statistics"""
+        return {
+            "enabled": self.enabled,
+            "model": self.model_name,
+            "project": self.project,
+            "location": self.location,
+            "batch_size": self.batch_size,
+        }
+
+    def prepare_service_text(self, service: Dict[str, Any]) -> str:
+        """
+        Prepare rich text representation of a service for embedding
+
+        Combines service name, description, category, ministry, and keywords
+        into a single text optimized for semantic search.
+        """
+        parts = []
+
+        # Service name (weighted heavily)
+        if service.get('name_es'):
+            parts.append(f"Servicio: {service['name_es']}")
+
+        # Description
+        if service.get('description_es'):
+            parts.append(f"Descripción: {service['description_es']}")
+
+        # Category hierarchy
+        category_parts = []
+        if service.get('ministry_name'):
+            category_parts.append(f"Ministerio: {service['ministry_name']}")
+        if service.get('sector_name'):
+            category_parts.append(f"Sector: {service['sector_name']}")
+        if service.get('category_name'):
+            category_parts.append(f"Categoría: {service['category_name']}")
+        if category_parts:
+            parts.append(" | ".join(category_parts))
+
+        # Keywords (for better semantic matching)
+        if service.get('keywords'):
+            keywords = service['keywords']
+            if isinstance(keywords, list):
+                keyword_texts = []
+                for kw in keywords:
+                    if isinstance(kw, dict) and kw.get('keyword'):
+                        keyword_texts.append(kw['keyword'])
+                if keyword_texts:
+                    parts.append(f"Palabras clave: {', '.join(keyword_texts)}")
+
+        return " | ".join(parts)
+
+    async def batch_generate_embeddings(
+        self,
+        texts: List[str],
+        batch_size: int = None,
+        task_type: str = "RETRIEVAL_DOCUMENT",
+        show_progress: bool = True
+    ) -> List[Optional[List[float]]]:
+        """
+        Generate embeddings in batches for efficiency
+        """
+        if not self.enabled or not self.model:
+            logger.warning("Embedding service disabled - returning None list")
+            return [None] * len(texts)
+
+        if not texts:
+            return []
+
+        # Use configured batch size or default
+        if batch_size is None:
+            batch_size = self.batch_size
+
+        # Gemini has a limit of 250 texts per batch
+        batch_size = min(batch_size, 250)
+
+        all_embeddings = []
+        total_texts = len(texts)
+
+        try:
+            for i in range(0, total_texts, batch_size):
+                batch = texts[i:i + batch_size]
+                batch_num = (i // batch_size) + 1
+                total_batches = (total_texts + batch_size - 1) // batch_size
+
+                if show_progress:
+                    logger.info(
+                        f"Processing batch {batch_num}/{total_batches} "
+                        f"({len(batch)} texts)"
+                    )
+
+                # Prepare inputs
+                inputs = [
+                    TextEmbeddingInput(text=text, task_type=task_type)
+                    for text in batch
+                ]
+
+                # Generate embeddings (sync call, run in executor)
+                loop = asyncio.get_event_loop()
+                embeddings = await loop.run_in_executor(
+                    None,
+                    lambda: self.model.get_embeddings(inputs)
+                )
+
+                # Extract vectors
+                batch_embeddings = [emb.values for emb in embeddings]
+                all_embeddings.extend(batch_embeddings)
+
+                if show_progress:
+                    logger.info(
+                        f"  ✅ Batch {batch_num} complete "
+                        f"({len(batch_embeddings)} embeddings)"
+                    )
+
+            return all_embeddings
+
+        except Exception as e:
+            logger.error(f"Batch embedding generation failed: {e}")
+            # Return None for remaining texts
+            remaining = total_texts - len(all_embeddings)
+            all_embeddings.extend([None] * remaining)
+            return all_embeddings
 
 
 # ============================================================================
@@ -67,15 +234,6 @@ async def get_services_needing_embeddings(
 ) -> List[Dict[str, Any]]:
     """
     Get fiscal services that need embedding generation
-
-    Args:
-        conn: Database connection
-        force: Force regeneration even if embeddings exist
-        service_id: Only get specific service
-        limit: Limit number of services
-
-    Returns:
-        List of services with full context
     """
     # Build WHERE clause
     where_conditions = ["fs.status = 'active'"]
@@ -138,23 +296,18 @@ async def update_service_embedding(
     conn: asyncpg.Connection,
     service_id: int,
     embedding: List[float],
+    model_name: str,
     dry_run: bool = False
 ) -> bool:
     """
     Update service embedding in database
-
-    Args:
-        conn: Database connection
-        service_id: Service ID
-        embedding: Embedding vector (768 dimensions)
-        dry_run: If True, don't actually update
-
-    Returns:
-        True if successful
     """
     if dry_run:
         logger.info(f"[DRY RUN] Would update embedding for service_id={service_id}")
         return True
+
+    # Convert embedding list to pgvector string format
+    embedding_str = '[' + ','.join(str(x) for x in embedding) + ']'
 
     query = """
         UPDATE fiscal_services
@@ -171,8 +324,8 @@ async def update_service_embedding(
     try:
         result = await conn.fetchrow(
             query,
-            embedding,
-            settings.GEMINI_EMBEDDING_MODEL,
+            embedding_str,
+            model_name,
             service_id
         )
 
@@ -190,7 +343,16 @@ async def update_service_embedding(
 
 async def get_embedding_stats(conn: asyncpg.Connection) -> Dict[str, Any]:
     """Get current embedding coverage statistics"""
-    query = "SELECT * FROM v_embedding_status"
+    query = """
+        SELECT
+            COUNT(*) as total_services,
+            COUNT(embedding) as total_with_embeddings,
+            COUNT(*) - COUNT(embedding) as total_without_embeddings,
+            SUM(CASE WHEN needs_embedding_update = TRUE THEN 1 ELSE 0 END) as total_needs_update,
+            ROUND(COUNT(embedding)::numeric / NULLIF(COUNT(*), 0) * 100, 2) as coverage_percentage
+        FROM fiscal_services
+        WHERE status = 'active'
+    """
 
     try:
         result = await conn.fetchrow(query)
@@ -207,20 +369,12 @@ async def get_embedding_stats(conn: asyncpg.Connection) -> Dict[str, Any]:
 async def process_services(
     services: List[Dict[str, Any]],
     conn: asyncpg.Connection,
+    embedding_service: StandaloneEmbeddingService,
     batch_size: int = 250,
     dry_run: bool = False
 ) -> Dict[str, Any]:
     """
     Process services and generate embeddings
-
-    Args:
-        services: List of services to process
-        conn: Database connection
-        batch_size: Batch size for API calls
-        dry_run: Preview mode
-
-    Returns:
-        Processing statistics
     """
     if not services:
         logger.warning("No services to process")
@@ -266,7 +420,9 @@ async def process_services(
 
     for service_id, embedding in zip(service_ids, embeddings):
         if embedding:
-            success = await update_service_embedding(conn, service_id, embedding)
+            success = await update_service_embedding(
+                conn, service_id, embedding, embedding_service.model_name
+            )
             if success:
                 success_count += 1
             else:
@@ -286,10 +442,16 @@ async def main(args: argparse.Namespace):
     """Main execution function"""
 
     logger.info("=" * 70)
-    logger.info("EMBEDDING POPULATION SCRIPT")
+    logger.info("EMBEDDING POPULATION SCRIPT (Standalone)")
     logger.info("=" * 70)
-    logger.info(f"Database: {settings.DATABASE_URL[:50]}...")
-    logger.info(f"Model: {settings.GEMINI_EMBEDDING_MODEL}")
+
+    # Get database URL from environment
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        logger.error("❌ DATABASE_URL environment variable not set!")
+        return 1
+
+    logger.info(f"Database: {database_url[:50]}...")
     logger.info(f"Batch size: {args.batch_size}")
     logger.info(f"Force regeneration: {args.force}")
     logger.info(f"Dry run: {args.dry_run}")
@@ -299,7 +461,9 @@ async def main(args: argparse.Namespace):
         logger.info(f"Service ID: {args.service_id}")
     logger.info("=" * 70)
 
-    # Check embedding service
+    # Initialize embedding service
+    embedding_service = StandaloneEmbeddingService()
+
     if not embedding_service.enabled:
         logger.error("❌ Embedding service is not enabled!")
         logger.error("Please check:")
@@ -313,7 +477,7 @@ async def main(args: argparse.Namespace):
     # Connect to database
     logger.info("Connecting to database...")
     try:
-        conn = await asyncpg.connect(settings.DATABASE_URL)
+        conn = await asyncpg.connect(database_url)
         logger.info("✅ Database connected")
     except Exception as e:
         logger.error(f"❌ Database connection failed: {e}")
@@ -351,15 +515,6 @@ async def main(args: argparse.Namespace):
         if len(services) > 5:
             logger.info(f"  ... and {len(services) - 5} more")
 
-        # Confirm if not dry run and processing many
-        if not args.dry_run and len(services) > 50 and not args.force:
-            logger.warning(f"\n⚠️  About to process {len(services)} services")
-            logger.warning(f"   Estimated cost: ~${len(services) * 0.000025:.4f} USD")
-            response = input("Continue? (yes/no): ")
-            if response.lower() != "yes":
-                logger.info("Cancelled by user")
-                return 0
-
         # Process services
         logger.info("\n" + "=" * 70)
         logger.info("PROCESSING EMBEDDINGS")
@@ -370,6 +525,7 @@ async def main(args: argparse.Namespace):
         result = await process_services(
             services,
             conn,
+            embedding_service,
             batch_size=args.batch_size,
             dry_run=args.dry_run
         )
