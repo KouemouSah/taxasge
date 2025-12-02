@@ -46,7 +46,13 @@ import asyncpg
 from loguru import logger
 
 from app.config import settings
-from app.modules.chatbot.services.embedding_service import embedding_service
+
+# Import EmbeddingService class directly to avoid circular imports
+# Do NOT import from app.modules.chatbot (triggers circular import chain)
+from app.modules.chatbot.services.embedding_service import EmbeddingService
+
+# Create a local instance for this script
+embedding_service = EmbeddingService()
 
 
 # ============================================================================
