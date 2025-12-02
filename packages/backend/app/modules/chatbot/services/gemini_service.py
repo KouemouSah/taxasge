@@ -72,26 +72,27 @@ class GeminiService:
 
 **Formato de respuesta OBLIGATORIO:**
 
-■ **[Nombre del servicio más relevante]**
+### [Nombre del servicio más relevante]
 
-► **Costo:** [monto] XAF
+**Costo:** [monto] XAF
 
-► **Documentos requeridos:**
+**Documentos requeridos:**
 1. [Documento 1]
 2. [Documento 2]
 3. [Documento 3]
 
-► **Procedimiento:**
+**Procedimiento:**
 1. [Paso 1]
 2. [Paso 2]
 3. [Paso 3]
 
-→ [Ver detalles del servicio](/es/services/[CODIGO_SERVICIO])
+[Ver detalles del servicio →](/es/services/[CODIGO_SERVICIO])
 
 ---
-○ **Otras opciones disponibles:**
-• [Alternativa 1] - [costo] XAF → [Ver detalles](/es/services/[CODIGO])
-• [Alternativa 2] - [costo] XAF → [Ver detalles](/es/services/[CODIGO])
+
+**Otras opciones disponibles:**
+- [Alternativa 1] - [costo] XAF - [Ver →](/es/services/[CODIGO])
+- [Alternativa 2] - [costo] XAF - [Ver →](/es/services/[CODIGO])
 
 ¿Necesitas más detalles sobre alguna de estas opciones?
 
@@ -118,26 +119,27 @@ class GeminiService:
 
 **Format de réponse OBLIGATOIRE:**
 
-■ **[Nom du service le plus pertinent]**
+### [Nom du service le plus pertinent]
 
-► **Coût:** [montant] XAF
+**Coût:** [montant] XAF
 
-► **Documents requis:**
+**Documents requis:**
 1. [Document 1]
 2. [Document 2]
 3. [Document 3]
 
-► **Procédure:**
+**Procédure:**
 1. [Étape 1]
 2. [Étape 2]
 3. [Étape 3]
 
-→ [Voir les détails du service](/fr/services/[CODE_SERVICE])
+[Voir les détails du service →](/fr/services/[CODE_SERVICE])
 
 ---
-○ **Autres options disponibles:**
-• [Alternative 1] - [coût] XAF → [Voir les détails](/fr/services/[CODE])
-• [Alternative 2] - [coût] XAF → [Voir les détails](/fr/services/[CODE])
+
+**Autres options disponibles:**
+- [Alternative 1] - [coût] XAF - [Voir →](/fr/services/[CODE])
+- [Alternative 2] - [coût] XAF - [Voir →](/fr/services/[CODE])
 
 Souhaitez-vous plus de détails sur l'une de ces options ?
 
@@ -164,26 +166,27 @@ Souhaitez-vous plus de détails sur l'une de ces options ?
 
 **MANDATORY response format:**
 
-■ **[Most relevant service name]**
+### [Most relevant service name]
 
-► **Cost:** [amount] XAF
+**Cost:** [amount] XAF
 
-► **Required documents:**
+**Required documents:**
 1. [Document 1]
 2. [Document 2]
 3. [Document 3]
 
-► **Procedure:**
+**Procedure:**
 1. [Step 1]
 2. [Step 2]
 3. [Step 3]
 
-→ [View service details](/en/services/[SERVICE_CODE])
+[View service details →](/en/services/[SERVICE_CODE])
 
 ---
-○ **Other available options:**
-• [Alternative 1] - [cost] XAF → [View details](/en/services/[CODE])
-• [Alternative 2] - [cost] XAF → [View details](/en/services/[CODE])
+
+**Other available options:**
+- [Alternative 1] - [cost] XAF - [View →](/en/services/[CODE])
+- [Alternative 2] - [cost] XAF - [View →](/en/services/[CODE])
 
 Would you like more details on any of these options?
 
