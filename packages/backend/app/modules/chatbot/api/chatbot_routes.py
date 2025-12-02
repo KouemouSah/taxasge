@@ -162,6 +162,77 @@ async def get_chatbot_status(db: asyncpg.Connection = Depends(get_db)):
 
 
 # ============================================================================
+# DEBUG ENDPOINT - Semantic Search Test
+# ============================================================================
+
+@router.get("/debug/search", response_model=Dict[str, Any])
+async def debug_semantic_search(
+    query: str = Query(..., description="Search query to test"),
+    threshold: float = Query(0.3, description="Similarity threshold (0-1)"),
+    limit: int = Query(10, description="Max results"),
+    db: asyncpg.Connection = Depends(get_db)
+):
+    """
+    Debug endpoint to test semantic search directly
+
+    Returns raw search results to diagnose issues
+    """
+    from app.modules.chatbot.services import embedding_service
+    from app.modules.chatbot.repositories.semantic_search_repository import SemanticSearchRepository
+
+    result = {
+        "query": query,
+        "threshold": threshold,
+        "limit": limit,
+        "embedding_service_enabled": embedding_service.enabled,
+        "query_embedding": None,
+        "search_results": [],
+        "error": None
+    }
+
+    try:
+        # Step 1: Generate query embedding
+        query_embedding = await embedding_service.generate_query_embedding(query)
+
+        if not query_embedding:
+            result["error"] = "Failed to generate query embedding"
+            return result
+
+        result["query_embedding"] = {
+            "dimensions": len(query_embedding),
+            "first_5_values": query_embedding[:5],
+            "last_5_values": query_embedding[-5:]
+        }
+
+        # Step 2: Search with low threshold for debugging
+        search_repo = SemanticSearchRepository(db)
+        services = await search_repo.search_services(
+            query_embedding=query_embedding,
+            limit=limit,
+            similarity_threshold=threshold
+        )
+
+        # Step 3: Format results
+        result["search_results"] = [
+            {
+                "id": s.get("id"),
+                "service_code": s.get("service_code"),
+                "name_es": s.get("name_es"),
+                "similarity": s.get("similarity"),
+                "category_name": s.get("category_name")
+            }
+            for s in services
+        ]
+        result["result_count"] = len(services)
+
+    except Exception as e:
+        result["error"] = str(e)
+        logger.error(f"Debug search error: {e}", exc_info=True)
+
+    return result
+
+
+# ============================================================================
 # CHAT ENDPOINTS
 # ============================================================================
 
