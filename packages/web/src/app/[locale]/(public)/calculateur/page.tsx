@@ -59,7 +59,6 @@ type CalculableService = PercentageService | FormulaService;
 // API response interface for calculator config
 interface ApiCalculationConfig {
   formula?: string;
-  percentage_rate?: number;
   variables?: Record<string, {
     type: 'number' | 'currency';
     label_es?: string;
@@ -76,6 +75,8 @@ interface ApiServiceConfig {
   id: number;
   name: string;
   calculation_method: string;
+  base_percentage: number | null;
+  expedition_formula: string | null;
   calculation_config: ApiCalculationConfig | null;
 }
 
@@ -119,10 +120,10 @@ const DEFAULT_CALCULABLE_SERVICES: CalculableService[] = [
     name_fr: 'Redevance annuelle de concessions',
     name_en: 'Annual concession fee',
     type: 'formula',
-    formula: 'RF + (t * CA / 100)',
-    formula_description_es: 'Cuota fija + (Tasa % × Facturación anual)',
-    formula_description_fr: 'Redevance fixe + (Taux % × Chiffre d\'affaires annuel)',
-    formula_description_en: 'Fixed fee + (Rate % × Annual turnover)',
+    formula: 'RF + (t * CA)', // t is already a decimal (e.g., 0.01 for 1%)
+    formula_description_es: 'Cuota fija + (Tasa × Facturación anual)',
+    formula_description_fr: 'Redevance fixe + (Taux × Chiffre d\'affaires annuel)',
+    formula_description_en: 'Fixed fee + (Rate × Annual turnover)',
     variables: [
       {
         key: 'RF',
@@ -138,13 +139,13 @@ const DEFAULT_CALCULABLE_SERVICES: CalculableService[] = [
       {
         key: 't',
         type: 'number',
-        label_es: 'Tasa de la cuota (%)',
-        label_fr: 'Taux de la redevance (%)',
-        label_en: 'Fee rate (%)',
-        description_es: 'Porcentaje aplicado sobre la facturación',
-        description_fr: 'Pourcentage appliqué sur le chiffre d\'affaires',
-        description_en: 'Percentage applied on turnover',
-        defaultValue: 1,
+        label_es: 'Tasa de la cuota (decimal)',
+        label_fr: 'Taux de la redevance (décimal)',
+        label_en: 'Fee rate (decimal)',
+        description_es: 'Ej: 0.01 para 1%, 0.05 para 5%',
+        description_fr: 'Ex: 0.01 pour 1%, 0.05 pour 5%',
+        description_en: 'E.g., 0.01 for 1%, 0.05 for 5%',
+        defaultValue: 0.01,
       },
       {
         key: 'CA',
@@ -248,41 +249,43 @@ function mergeServiceConfig(
   defaultService: CalculableService,
   apiConfig: ApiServiceConfig | undefined
 ): CalculableService {
-  if (!apiConfig?.calculation_config) {
+  if (!apiConfig) {
     return defaultService;
   }
 
-  const config = apiConfig.calculation_config;
-
-  // For percentage-based, update percentage if available
-  if (defaultService.type === 'percentage' && config.percentage_rate !== undefined) {
+  // For percentage-based, update percentage from base_percentage
+  if (defaultService.type === 'percentage' && apiConfig.base_percentage !== null) {
     return {
       ...defaultService,
-      percentage: config.percentage_rate,
+      percentage: apiConfig.base_percentage,
     };
   }
 
-  // For formula-based, update formula and variables if available
-  if (defaultService.type === 'formula' && config.formula) {
-    const updatedVariables: FormulaVariable[] = config.variables
-      ? Object.entries(config.variables).map(([key, v]) => ({
-          key,
-          type: v.type,
-          label_es: v.label_es || key,
-          label_fr: v.label_fr || key,
-          label_en: v.label_en || key,
-          description_es: v.description_es,
-          description_fr: v.description_fr,
-          description_en: v.description_en,
-          defaultValue: v.default_value,
-        }))
-      : defaultService.variables;
+  // For formula-based, update formula and variables from calculation_config
+  if (defaultService.type === 'formula') {
+    const config = apiConfig.calculation_config;
 
-    return {
-      ...defaultService,
-      formula: config.formula,
-      variables: updatedVariables,
-    };
+    if (config?.formula || config?.variables) {
+      const updatedVariables: FormulaVariable[] = config.variables
+        ? Object.entries(config.variables).map(([key, v]) => ({
+            key,
+            type: v.type,
+            label_es: v.label_es || key,
+            label_fr: v.label_fr || key,
+            label_en: v.label_en || key,
+            description_es: v.description_es,
+            description_fr: v.description_fr,
+            description_en: v.description_en,
+            defaultValue: v.default_value,
+          }))
+        : defaultService.variables;
+
+      return {
+        ...defaultService,
+        formula: config.formula || defaultService.formula,
+        variables: updatedVariables,
+      };
+    }
   }
 
   return defaultService;

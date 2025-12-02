@@ -787,7 +787,7 @@ async def get_calculator_config(
     """
     Get calculation configurations for services with calculated prices.
 
-    Returns percentage_rate and calculation_config for services
+    Returns base_percentage and calculation_config for services
     that have calculation_method = 'percentage_based' or 'formula_based'.
 
     Used by the calculator frontend to override default values.
@@ -798,6 +798,8 @@ async def get_calculator_config(
                 fs.id,
                 COALESCE(et_name.translation_text, fs.name_es) as name,
                 fs.calculation_method,
+                fs.base_percentage,
+                fs.expedition_formula,
                 fs.calculation_config
             FROM fiscal_services fs
             LEFT JOIN entity_translations et_name
@@ -817,6 +819,8 @@ async def get_calculator_config(
                 "id": row["id"],
                 "name": row["name"],
                 "calculation_method": row["calculation_method"],
+                "base_percentage": float(row["base_percentage"]) if row.get("base_percentage") else None,
+                "expedition_formula": row.get("expedition_formula"),
             }
 
             # Add calculation_config if available
