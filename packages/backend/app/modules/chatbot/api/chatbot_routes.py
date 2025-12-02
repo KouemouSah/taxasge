@@ -168,7 +168,7 @@ async def get_chatbot_status(db: asyncpg.Connection = Depends(get_db)):
 @router.get("/debug/search", response_model=Dict[str, Any])
 async def debug_semantic_search(
     query: str = Query(..., description="Search query to test"),
-    threshold: float = Query(0.3, description="Similarity threshold (0-1)"),
+    threshold: float = Query(0.1, description="Similarity threshold (0-1)"),
     limit: int = Query(10, description="Max results"),
     db: asyncpg.Connection = Depends(get_db)
 ):
@@ -178,7 +178,6 @@ async def debug_semantic_search(
     Returns raw search results to diagnose issues
     """
     from app.modules.chatbot.services import embedding_service
-    from app.modules.chatbot.repositories.semantic_search_repository import SemanticSearchRepository
 
     result = {
         "query": query,
@@ -187,6 +186,7 @@ async def debug_semantic_search(
         "embedding_service_enabled": embedding_service.enabled,
         "query_embedding": None,
         "search_results": [],
+        "raw_sql_test": None,
         "error": None
     }
 
@@ -204,26 +204,57 @@ async def debug_semantic_search(
             "last_5_values": query_embedding[-5:]
         }
 
-        # Step 2: Search with low threshold for debugging
-        search_repo = SemanticSearchRepository(db)
-        services = await search_repo.search_services(
-            query_embedding=query_embedding,
-            limit=limit,
-            similarity_threshold=threshold
-        )
+        # Step 2: Test raw SQL query directly (simpler query for debugging)
+        embedding_str = '[' + ','.join(str(x) for x in query_embedding) + ']'
 
-        # Step 3: Format results
-        result["search_results"] = [
-            {
-                "id": s.get("id"),
-                "service_code": s.get("service_code"),
-                "name_es": s.get("name_es"),
-                "similarity": s.get("similarity"),
-                "category_name": s.get("category_name")
+        # Simple test query without all the joins
+        test_query = """
+            SELECT
+                fs.id,
+                fs.service_code,
+                fs.name_es,
+                (1 - (fs.embedding <-> $1::vector))::FLOAT as similarity
+            FROM fiscal_services fs
+            WHERE fs.status = 'active'
+              AND fs.embedding IS NOT NULL
+            ORDER BY fs.embedding <-> $1::vector
+            LIMIT $2
+        """
+
+        try:
+            raw_results = await db.fetch(test_query, embedding_str, limit)
+            result["raw_sql_test"] = {
+                "success": True,
+                "count": len(raw_results),
+                "results": [
+                    {
+                        "id": r["id"],
+                        "service_code": r["service_code"],
+                        "name_es": r["name_es"][:50] if r["name_es"] else None,
+                        "similarity": float(r["similarity"]) if r["similarity"] else 0
+                    }
+                    for r in raw_results[:5]
+                ]
             }
-            for s in services
-        ]
-        result["result_count"] = len(services)
+        except Exception as sql_err:
+            result["raw_sql_test"] = {
+                "success": False,
+                "error": str(sql_err)
+            }
+
+        # Step 3: Check if embeddings exist in DB
+        count_query = """
+            SELECT
+                COUNT(*) as total,
+                COUNT(embedding) as with_embedding
+            FROM fiscal_services
+            WHERE status = 'active'
+        """
+        counts = await db.fetchrow(count_query)
+        result["db_counts"] = {
+            "total_active": counts["total"],
+            "with_embedding": counts["with_embedding"]
+        }
 
     except Exception as e:
         result["error"] = str(e)
