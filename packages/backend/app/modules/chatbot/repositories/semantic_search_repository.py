@@ -174,17 +174,17 @@ class SemanticSearchRepository:
                     '[]'::jsonb
                 ) as required_documents,
 
-                -- Procedures (steps are in separate procedure_template_steps table)
+                -- Procedures with actual step descriptions
                 COALESCE(
                     jsonb_agg(
                         DISTINCT jsonb_build_object(
                             'procedure_name', pt.name_es,
-                            'steps_count', COALESCE(pts_count.steps_count, 0),
-                            'applies_to', spa.applies_to
+                            'applies_to', spa.applies_to,
+                            'steps', COALESCE(pts_data.steps, '[]'::jsonb)
                         ) ORDER BY jsonb_build_object(
                             'procedure_name', pt.name_es,
-                            'steps_count', COALESCE(pts_count.steps_count, 0),
-                            'applies_to', spa.applies_to
+                            'applies_to', spa.applies_to,
+                            'steps', COALESCE(pts_data.steps, '[]'::jsonb)
                         )
                     ) FILTER (WHERE pt.id IS NOT NULL),
                     '[]'::jsonb
@@ -207,12 +207,17 @@ class SemanticSearchRepository:
             -- Join procedures
             LEFT JOIN service_procedure_assignments spa ON fs.id = spa.fiscal_service_id
             LEFT JOIN procedure_templates pt ON spa.template_id = pt.id
-            -- Count steps per procedure template
+            -- Get procedure steps with descriptions
             LEFT JOIN LATERAL (
-                SELECT COUNT(*)::int as steps_count
-                FROM procedure_template_steps
-                WHERE template_id = pt.id
-            ) pts_count ON true
+                SELECT jsonb_agg(
+                    jsonb_build_object(
+                        'step_number', pts.step_number,
+                        'description', pts.description_es
+                    ) ORDER BY pts.step_number
+                ) as steps
+                FROM procedure_template_steps pts
+                WHERE pts.template_id = pt.id
+            ) pts_data ON true
 
             WHERE {where_clause}
                 -- NOTE: Threshold filter removed to see all results and debug
