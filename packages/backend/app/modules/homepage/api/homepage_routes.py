@@ -769,3 +769,82 @@ async def debug_translations(
         ] if proc_rows else [],
         "sample_procedure_step_translations": [dict(r) for r in all_proc_steps]
     }
+
+
+# ============================================================================
+# CALCULATOR CONFIGURATION ENDPOINT
+# ============================================================================
+
+@router.get("/calculator/config", summary="Get Calculator Service Configurations")
+async def get_calculator_config(
+    language: str = Query(
+        "es",
+        pattern="^(es|fr|en)$",
+        description="Language code for translations"
+    ),
+    db: asyncpg.Connection = Depends(get_db)
+):
+    """
+    Get calculation configurations for services with calculated prices.
+
+    Returns percentage_rate and calculation_config for services
+    that have calculation_method = 'percentage_based' or 'formula_based'.
+
+    Used by the calculator frontend to override default values.
+    """
+    try:
+        query = """
+            SELECT
+                fs.id,
+                COALESCE(et_name.translation_text, fs.name_es) as name,
+                fs.calculation_method,
+                fs.calculation_config
+            FROM fiscal_services fs
+            LEFT JOIN entity_translations et_name
+                ON et_name.entity_type = 'fiscal_service'
+                AND et_name.entity_code = fs.service_code
+                AND et_name.field_name = 'name'
+                AND et_name.language_code = $1
+            WHERE fs.calculation_method IN ('percentage_based', 'formula_based')
+            AND fs.status = 'active'
+            ORDER BY fs.id
+        """
+        rows = await db.fetch(query, language)
+
+        configs = []
+        for row in rows:
+            config = {
+                "id": row["id"],
+                "name": row["name"],
+                "calculation_method": row["calculation_method"],
+            }
+
+            # Add calculation_config if available
+            if row.get("calculation_config"):
+                import json
+                try:
+                    config["calculation_config"] = json.loads(row["calculation_config"]) if isinstance(row["calculation_config"], str) else row["calculation_config"]
+                except (json.JSONDecodeError, TypeError):
+                    config["calculation_config"] = None
+            else:
+                config["calculation_config"] = None
+
+            configs.append(config)
+
+        return {
+            "services": configs,
+            "count": len(configs)
+        }
+
+    except asyncpg.PostgresError as e:
+        logger.error(f"Database error in get_calculator_config: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error in get_calculator_config: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal server error: {str(e)}"
+        )

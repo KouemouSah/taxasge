@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useMemo, Suspense, useEffect, useCallback } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useState, useMemo, Suspense, useCallback, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { appConfig } from '@/core/config/app';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,28 +11,176 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calculator, Receipt, Building2, Info, ArrowRight, RefreshCw, Circle, FileText, Loader2 } from 'lucide-react';
+import { Calculator, Receipt, Building2, Info, ArrowRight, RefreshCw, Circle, FileText } from 'lucide-react';
 import Breadcrumb from '@/components/ui/breadcrumb';
-import { searchServices } from '@/core/api/services';
-import { getServiceDetails, type ServiceDetailsResponse, type VariableConfig, type CalculationConfig } from '@/core/api/serviceDetails';
 
-// Tax brackets for Equatorial Guinea IRPF (Impuesto sobre la Renta de las Personas Físicas)
-const IRPF_BRACKETS = [
-  { min: 0, max: 1000000, rate: 0 },           // 0% for 0 - 1,000,000 XAF
-  { min: 1000000, max: 3000000, rate: 10 },    // 10% for 1,000,000 - 3,000,000 XAF
-  { min: 3000000, max: 5000000, rate: 15 },    // 15% for 3,000,000 - 5,000,000 XAF
-  { min: 5000000, max: 10000000, rate: 20 },   // 20% for 5,000,000 - 10,000,000 XAF
-  { min: 10000000, max: 15000000, rate: 25 },  // 25% for 10,000,000 - 15,000,000 XAF
-  { min: 15000000, max: Infinity, rate: 35 },  // 35% for > 15,000,000 XAF
+// ============================================================================
+// CONFIGURATION - Services with calculated prices
+// These are predefined based on the fiscal services database
+// Values can be overridden from backend when columns are added
+// ============================================================================
+
+interface PercentageService {
+  id: number;
+  name_es: string;
+  name_fr: string;
+  name_en: string;
+  type: 'percentage';
+  percentage: number; // Percentage rate (e.g., 0.2 means 0.2%)
+}
+
+interface FormulaVariable {
+  key: string;
+  type: 'number' | 'currency';
+  label_es: string;
+  label_fr: string;
+  label_en: string;
+  description_es?: string;
+  description_fr?: string;
+  description_en?: string;
+  defaultValue?: number;
+}
+
+interface FormulaService {
+  id: number;
+  name_es: string;
+  name_fr: string;
+  name_en: string;
+  type: 'formula';
+  formula: string; // e.g., "RF + (t * CA / 100)"
+  formula_description_es: string;
+  formula_description_fr: string;
+  formula_description_en: string;
+  variables: FormulaVariable[];
+}
+
+type CalculableService = PercentageService | FormulaService;
+
+// API response interface for calculator config
+interface ApiCalculationConfig {
+  formula?: string;
+  percentage_rate?: number;
+  variables?: Record<string, {
+    type: 'number' | 'currency';
+    label_es?: string;
+    label_fr?: string;
+    label_en?: string;
+    description_es?: string;
+    description_fr?: string;
+    description_en?: string;
+    default_value?: number;
+  }>;
+}
+
+interface ApiServiceConfig {
+  id: number;
+  name: string;
+  calculation_method: string;
+  calculation_config: ApiCalculationConfig | null;
+}
+
+interface CalculatorConfigResponse {
+  services: ApiServiceConfig[];
+  count: number;
+}
+
+// Predefined services - based on fiscal_services table
+// These are default values that can be overridden by API
+const DEFAULT_CALCULABLE_SERVICES: CalculableService[] = [
+  // Percentage-based services
+  {
+    id: 876,
+    name_es: 'Reconocimiento y comprobación de calidad',
+    name_fr: 'Reconnaissance et vérification de la qualité',
+    name_en: 'Quality recognition and verification',
+    type: 'percentage',
+    percentage: 0.2, // 0.2% of declared value
+  },
+  {
+    id: 877,
+    name_es: 'Inspección técnica',
+    name_fr: 'Inspection technique',
+    name_en: 'Technical inspection',
+    type: 'percentage',
+    percentage: 0.2, // 0.2% of declared value
+  },
+  {
+    id: 879,
+    name_es: 'Buque de línea no regular',
+    name_fr: 'Navire de ligne non régulier',
+    name_en: 'Non-regular line vessel',
+    type: 'percentage',
+    percentage: 0.02, // 0.02% of declared value
+  },
+  // Formula-based services
+  {
+    id: 871,
+    name_es: 'Canon anual de concesiones',
+    name_fr: 'Redevance annuelle de concessions',
+    name_en: 'Annual concession fee',
+    type: 'formula',
+    formula: 'RF + (t * CA / 100)',
+    formula_description_es: 'Cuota fija + (Tasa % × Facturación anual)',
+    formula_description_fr: 'Redevance fixe + (Taux % × Chiffre d\'affaires annuel)',
+    formula_description_en: 'Fixed fee + (Rate % × Annual turnover)',
+    variables: [
+      {
+        key: 'RF',
+        type: 'currency',
+        label_es: 'Cuota fija anual',
+        label_fr: 'Redevance fixe annuelle',
+        label_en: 'Annual fixed fee',
+        description_es: 'Monto fijo anual en XAF',
+        description_fr: 'Montant fixe annuel en XAF',
+        description_en: 'Annual fixed amount in XAF',
+        defaultValue: 0,
+      },
+      {
+        key: 't',
+        type: 'number',
+        label_es: 'Tasa de la cuota (%)',
+        label_fr: 'Taux de la redevance (%)',
+        label_en: 'Fee rate (%)',
+        description_es: 'Porcentaje aplicado sobre la facturación',
+        description_fr: 'Pourcentage appliqué sur le chiffre d\'affaires',
+        description_en: 'Percentage applied on turnover',
+        defaultValue: 1,
+      },
+      {
+        key: 'CA',
+        type: 'currency',
+        label_es: 'Facturación anual',
+        label_fr: 'Chiffre d\'affaires annuel',
+        label_en: 'Annual turnover',
+        description_es: 'Facturación anual declarada en XAF',
+        description_fr: 'Chiffre d\'affaires annuel déclaré en XAF',
+        description_en: 'Declared annual turnover in XAF',
+        defaultValue: 0,
+      },
+    ],
+  },
 ];
 
-// VAT rates
-const VAT_STANDARD_RATE = 15; // 15% standard VAT rate in EG
+// ============================================================================
+// TAX BRACKETS AND RATES
+// ============================================================================
 
-// Corporate tax rate
-const CORPORATE_TAX_RATE = 35; // 35% corporate tax rate
+const IRPF_BRACKETS = [
+  { min: 0, max: 1000000, rate: 0 },
+  { min: 1000000, max: 3000000, rate: 10 },
+  { min: 3000000, max: 5000000, rate: 15 },
+  { min: 5000000, max: 10000000, rate: 20 },
+  { min: 10000000, max: 15000000, rate: 25 },
+  { min: 15000000, max: Infinity, rate: 35 },
+];
 
-// Format currency helper (defined at module level to avoid hook dependency issues)
+const VAT_STANDARD_RATE = 15;
+const CORPORATE_TAX_RATE = 35;
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
 function formatCurrencyValue(value: number, locale: string): string {
   return new Intl.NumberFormat(locale, {
     style: 'decimal',
@@ -40,48 +189,38 @@ function formatCurrencyValue(value: number, locale: string): string {
   }).format(value) + ' XAF';
 }
 
-// Safe formula evaluation function
+function parseNumberInput(value: string): number {
+  const cleaned = value.replace(/[^\d.-]/g, '');
+  const parsed = parseFloat(cleaned);
+  return isNaN(parsed) ? 0 : parsed;
+}
+
+// Safe formula evaluation
 function evaluateFormula(formula: string, variables: Record<string, number>): number | null {
   try {
-    // Create a safe evaluation context with only the variables
-    const safeVars = { ...variables };
-
-    // Replace variable names with their values in the formula
     let evalFormula = formula;
-    for (const [key, value] of Object.entries(safeVars)) {
-      // Use word boundary to avoid partial replacements
+    for (const [key, value] of Object.entries(variables)) {
       const regex = new RegExp(`\\b${key}\\b`, 'g');
       evalFormula = evalFormula.replace(regex, String(value));
     }
 
-    // Only allow numbers, operators, and parentheses
+    // Only allow safe characters
     const safePattern = /^[\d\s+\-*/().]+$/;
     if (!safePattern.test(evalFormula)) {
-      console.error('Unsafe formula pattern detected:', evalFormula);
       return null;
     }
 
-    // Evaluate the formula
     // eslint-disable-next-line no-eval
     const result = eval(evalFormula);
-
-    if (typeof result !== 'number' || isNaN(result) || !isFinite(result)) {
-      return null;
-    }
-
-    return result;
-  } catch (error) {
-    console.error('Formula evaluation error:', error);
+    return typeof result === 'number' && isFinite(result) ? result : null;
+  } catch {
     return null;
   }
 }
 
-// Lightweight service interface for list (only what we need)
-interface ServiceListItem {
-  id: number;
-  name: string;
-  calculation_method: 'percentage_based' | 'formula_based';
-}
+// ============================================================================
+// TYPES
+// ============================================================================
 
 type CalculatorType = 'irpf' | 'vat' | 'corporate' | 'services';
 
@@ -94,165 +233,158 @@ interface CalculationResult {
 }
 
 interface ServiceCalculationResult {
+  serviceName: string;
   result: number;
   formula: string;
-  breakdown: { variable: string; value: number; label: string }[];
+  breakdown: { label: string; value: string }[];
+}
+
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
+
+// Helper function to merge API config with defaults
+function mergeServiceConfig(
+  defaultService: CalculableService,
+  apiConfig: ApiServiceConfig | undefined
+): CalculableService {
+  if (!apiConfig?.calculation_config) {
+    return defaultService;
+  }
+
+  const config = apiConfig.calculation_config;
+
+  // For percentage-based, update percentage if available
+  if (defaultService.type === 'percentage' && config.percentage_rate !== undefined) {
+    return {
+      ...defaultService,
+      percentage: config.percentage_rate,
+    };
+  }
+
+  // For formula-based, update formula and variables if available
+  if (defaultService.type === 'formula' && config.formula) {
+    const updatedVariables: FormulaVariable[] = config.variables
+      ? Object.entries(config.variables).map(([key, v]) => ({
+          key,
+          type: v.type,
+          label_es: v.label_es || key,
+          label_fr: v.label_fr || key,
+          label_en: v.label_en || key,
+          description_es: v.description_es,
+          description_fr: v.description_fr,
+          description_en: v.description_en,
+          defaultValue: v.default_value,
+        }))
+      : defaultService.variables;
+
+    return {
+      ...defaultService,
+      formula: config.formula,
+      variables: updatedVariables,
+    };
+  }
+
+  return defaultService;
 }
 
 function CalculateurPageContent() {
   const params = useParams();
-  const searchParams = useSearchParams();
   const locale = (params?.locale as string) || 'es';
   const t = useTranslations('calculatorPage');
 
-  // Check for pre-selected service from URL params
-  const serviceIdParam = searchParams.get('service_id');
-  const initialTab = serviceIdParam ? 'services' : 'irpf';
-
-  const [activeTab, setActiveTab] = useState<CalculatorType>(initialTab);
+  const [activeTab, setActiveTab] = useState<CalculatorType>('irpf');
   const [irpfAmount, setIrpfAmount] = useState<string>('');
   const [vatAmount, setVatAmount] = useState<string>('');
   const [vatType, setVatType] = useState<'add' | 'extract'>('add');
   const [corporateProfit, setCorporateProfit] = useState<string>('');
 
-  // Dynamic services loaded from API (lightweight list)
-  const [serviceList, setServiceList] = useState<ServiceListItem[]>([]);
-  const [loadingServices, setLoadingServices] = useState<boolean>(true);
-  const [servicesError, setServicesError] = useState<string | null>(null);
+  // Fiscal services calculator state
+  const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
+  const [serviceInputs, setServiceInputs] = useState<Record<string, string>>({});
+  const [calculationTriggered, setCalculationTriggered] = useState(false);
 
-  // Service formula states
-  const [selectedServiceId, setSelectedServiceId] = useState<number | null>(
-    serviceIdParam ? parseInt(serviceIdParam, 10) : null
-  );
-  const [serviceVariables, setServiceVariables] = useState<Record<string, string>>({});
+  // Services with merged configs from API
+  const [calculableServices, setCalculableServices] = useState<CalculableService[]>(DEFAULT_CALCULABLE_SERVICES);
 
-  // Selected service details (loaded on demand with calculation_config)
-  const [selectedServiceDetails, setSelectedServiceDetails] = useState<ServiceDetailsResponse | null>(null);
-  const [loadingDetails, setLoadingDetails] = useState<boolean>(false);
-  const [detailsError, setDetailsError] = useState<string | null>(null);
-
-  // Manual calculation trigger
-  const [calculationTriggered, setCalculationTriggered] = useState<boolean>(false);
-
-  // Fetch lightweight list of fiscal services with calculated prices
+  // Load calculator config from API (runs once on mount)
   useEffect(() => {
-    const fetchServices = async () => {
-      setLoadingServices(true);
-      setServicesError(null);
-
+    const loadConfig = async () => {
       try {
-        // Single API call with calculation_methods filter - no facets for speed
-        const response = await searchServices({
-          calculation_methods: ['percentage_based', 'formula_based'],
-          limit: 100,
-          language: locale,
-          include_facets: false,
-        });
+        const response = await fetch(
+          `${appConfig.api.baseUrl}/api/${appConfig.api.version}/homepage/calculator/config?language=${locale}`
+        );
 
-        if (!response.success || !response.results) {
-          throw new Error('Failed to fetch services');
-        }
+        if (response.ok) {
+          const data: CalculatorConfigResponse = await response.json();
 
-        // Convert to lightweight list (only id, name, calculation_method)
-        const services: ServiceListItem[] = response.results.map(s => ({
-          id: s.id,
-          name: s.name,
-          calculation_method: s.calculation_method as 'percentage_based' | 'formula_based',
-        }));
+          // Merge API configs with defaults
+          const mergedServices = DEFAULT_CALCULABLE_SERVICES.map(defaultService => {
+            const apiConfig = data.services.find(s => s.id === defaultService.id);
+            return mergeServiceConfig(defaultService, apiConfig);
+          });
 
-        setServiceList(services);
-
-        // Auto-select if service_id in URL
-        if (serviceIdParam) {
-          const serviceId = parseInt(serviceIdParam, 10);
-          if (services.find(s => s.id === serviceId)) {
-            setSelectedServiceId(serviceId);
-          }
+          setCalculableServices(mergedServices);
         }
       } catch (error) {
-        console.error('Error fetching fiscal services:', error);
-        setServicesError(t('errorLoadingServices') || 'Error loading services');
-      } finally {
-        setLoadingServices(false);
+        console.error('Failed to load calculator config:', error);
+        // Keep using defaults on error
       }
     };
 
-    fetchServices();
-  }, [serviceIdParam, locale, t]);
+    loadConfig();
+  }, [locale]);
 
-  // Fetch service details when selection changes (gets calculation_config)
-  useEffect(() => {
-    if (!selectedServiceId) {
-      setSelectedServiceDetails(null);
-      setDetailsError(null);
-      return;
-    }
-
-    const fetchDetails = async () => {
-      setLoadingDetails(true);
-      setCalculationTriggered(false);
-      setDetailsError(null);
-      try {
-        const details = await getServiceDetails(selectedServiceId, locale);
-        setSelectedServiceDetails(details);
-
-        // Initialize variables with default values from calculation_config
-        const config = details.pricing?.calculation_config;
-        if (config?.variables) {
-          const initialVars: Record<string, string> = {};
-          for (const [key, varConfig] of Object.entries(config.variables)) {
-            if (varConfig.default_value !== undefined) {
-              initialVars[key] = String(varConfig.default_value);
-            }
-          }
-          setServiceVariables(initialVars);
-        } else {
-          // No config, initialize with baseAmount for generic calculation
-          setServiceVariables({ baseAmount: '' });
-        }
-      } catch (error) {
-        console.error('Error fetching service details:', error);
-        setSelectedServiceDetails(null);
-        setDetailsError(t('errorLoadingDetails') || 'Error loading service details');
-      } finally {
-        setLoadingDetails(false);
-      }
-    };
-
-    fetchDetails();
-  }, [selectedServiceId, locale, t]);
-
-  // Get the selected service from list (for display)
+  // Get selected service
   const selectedService = useMemo(() => {
-    return serviceList.find(s => s.id === selectedServiceId) || null;
-  }, [selectedServiceId, serviceList]);
+    return calculableServices.find(s => s.id === selectedServiceId) || null;
+  }, [selectedServiceId, calculableServices]);
+
+  // Get localized service name
+  const getServiceName = useCallback((service: CalculableService): string => {
+    if (locale === 'fr') return service.name_fr;
+    if (locale === 'en') return service.name_en;
+    return service.name_es;
+  }, [locale]);
 
   // Get localized variable label
-  const getVariableLabel = useCallback((key: string, variable: VariableConfig): string => {
-    if (locale === 'fr' && variable.label_fr) return variable.label_fr;
-    if (locale === 'en' && variable.label_en) return variable.label_en;
-    return variable.label_es || key;
+  const getVariableLabel = useCallback((variable: FormulaVariable): string => {
+    if (locale === 'fr') return variable.label_fr;
+    if (locale === 'en') return variable.label_en;
+    return variable.label_es;
   }, [locale]);
 
   // Get localized variable description
-  const getVariableDescription = useCallback((variable: VariableConfig): string | undefined => {
+  const getVariableDescription = useCallback((variable: FormulaVariable): string | undefined => {
     if (locale === 'fr') return variable.description_fr;
     if (locale === 'en') return variable.description_en;
     return variable.description_es;
   }, [locale]);
 
   // Get localized formula description
-  const getFormulaDescription = useCallback((config: CalculationConfig | null | undefined): string => {
-    if (!config) return '';
-    if (locale === 'fr') return config.formula_description_fr || '';
-    if (locale === 'en') return config.formula_description_en || '';
-    return config.formula_description_es || '';
+  const getFormulaDescription = useCallback((service: FormulaService): string => {
+    if (locale === 'fr') return service.formula_description_fr;
+    if (locale === 'en') return service.formula_description_en;
+    return service.formula_description_es;
+  }, [locale]);
+
+  // Format functions
+  const formatCurrency = useCallback((value: number): string => {
+    return formatCurrencyValue(value, locale);
+  }, [locale]);
+
+  const formatPercent = useCallback((value: number): string => {
+    return new Intl.NumberFormat(locale, {
+      style: 'percent',
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 2,
+    }).format(value / 100);
   }, [locale]);
 
   // IRPF Calculation
   const irpfResult = useMemo((): CalculationResult | null => {
-    const amount = parseFloat(irpfAmount.replace(/[^\d.-]/g, ''));
-    if (isNaN(amount) || amount <= 0) return null;
+    const amount = parseNumberInput(irpfAmount);
+    if (amount <= 0) return null;
 
     let taxableRemaining = amount;
     let totalTax = 0;
@@ -273,8 +405,8 @@ function CalculateurPageContent() {
         totalTax += tax;
         breakdown.push({
           bracket: bracket.max === Infinity
-            ? `> ${formatCurrencyValue(bracket.min, locale)}`
-            : `${formatCurrencyValue(bracket.min, locale)} - ${formatCurrencyValue(bracket.max, locale)}`,
+            ? `> ${formatCurrency(bracket.min)}`
+            : `${formatCurrency(bracket.min)} - ${formatCurrency(bracket.max)}`,
           taxable: actualAmount,
           rate: bracket.rate,
           tax,
@@ -292,287 +424,169 @@ function CalculateurPageContent() {
       effectiveRate: (totalTax / amount) * 100,
       breakdown,
     };
-  }, [irpfAmount, locale]);
+  }, [irpfAmount, formatCurrency]);
 
   // VAT Calculation
-  const vatResult = useMemo((): { baseAmount: number; vatAmount: number; totalAmount: number } | null => {
-    const amount = parseFloat(vatAmount.replace(/[^\d.-]/g, ''));
-    if (isNaN(amount) || amount <= 0) return null;
+  const vatResult = useMemo(() => {
+    const amount = parseNumberInput(vatAmount);
+    if (amount <= 0) return null;
 
     if (vatType === 'add') {
       const vat = (amount * VAT_STANDARD_RATE) / 100;
-      return {
-        baseAmount: amount,
-        vatAmount: vat,
-        totalAmount: amount + vat,
-      };
+      return { baseAmount: amount, vatAmount: vat, totalAmount: amount + vat };
     } else {
       const baseAmount = amount / (1 + VAT_STANDARD_RATE / 100);
       const vat = amount - baseAmount;
-      return {
-        baseAmount,
-        vatAmount: vat,
-        totalAmount: amount,
-      };
+      return { baseAmount, vatAmount: vat, totalAmount: amount };
     }
   }, [vatAmount, vatType]);
 
   // Corporate Tax Calculation
-  const corporateResult = useMemo((): { profit: number; tax: number; netProfit: number } | null => {
-    const profit = parseFloat(corporateProfit.replace(/[^\d.-]/g, ''));
-    if (isNaN(profit) || profit <= 0) return null;
+  const corporateResult = useMemo(() => {
+    const profit = parseNumberInput(corporateProfit);
+    if (profit <= 0) return null;
 
     const tax = (profit * CORPORATE_TAX_RATE) / 100;
-    return {
-      profit,
-      tax,
-      netProfit: profit - tax,
-    };
+    return { profit, tax, netProfit: profit - tax };
   }, [corporateProfit]);
 
-  // Service Formula Calculation - triggered by button
+  // Fiscal Service Calculation
   const serviceResult = useMemo((): ServiceCalculationResult | null => {
-    if (!selectedService || !selectedServiceDetails || !calculationTriggered) return null;
+    if (!selectedService || !calculationTriggered) return null;
 
-    const pricing = selectedServiceDetails.pricing;
-    const config = pricing.calculation_config;
+    if (selectedService.type === 'percentage') {
+      const baseAmount = parseNumberInput(serviceInputs['baseAmount'] || '0');
+      if (baseAmount <= 0) return null;
 
-    if (selectedService.calculation_method === 'percentage_based') {
-      // For percentage-based, use percentage_rate from service details
-      const baseAmount = parseFloat(serviceVariables['baseAmount']?.replace(/[^\d.-]/g, '') || '0');
-      const percentageRate = pricing.percentage_rate;
-
-      if (isNaN(baseAmount) || baseAmount <= 0 || !percentageRate) return null;
-
-      // percentage_rate is stored as percentage (e.g., 0.2 for 0.2%), convert to decimal
-      const rate = percentageRate / 100;
-      const result = baseAmount * rate;
+      const result = (baseAmount * selectedService.percentage) / 100;
 
       return {
+        serviceName: getServiceName(selectedService),
         result,
-        formula: `${percentageRate}% × ${formatCurrencyValue(baseAmount, locale)}`,
-        breakdown: [{ variable: 'baseAmount', value: baseAmount, label: t('baseAmount') }]
+        formula: `${selectedService.percentage}% × ${formatCurrency(baseAmount)}`,
+        breakdown: [
+          { label: t('baseAmount'), value: formatCurrency(baseAmount) },
+          { label: t('percentageRate'), value: `${selectedService.percentage}%` },
+        ],
       };
     }
 
-    // For formula_based - use calculation_config
-    if (selectedService.calculation_method === 'formula_based' && config?.formula) {
-      // Parse all variables from input
+    if (selectedService.type === 'formula') {
       const variables: Record<string, number> = {};
-      const breakdownItems: ServiceCalculationResult['breakdown'] = [];
+      const breakdown: { label: string; value: string }[] = [];
 
-      if (config.variables) {
-        for (const [key, varConfig] of Object.entries(config.variables)) {
-          const rawValue = serviceVariables[key];
-          const parsedValue = parseFloat(rawValue?.replace(/[^\d.-]/g, '') || '0');
+      for (const variable of selectedService.variables) {
+        const inputValue = serviceInputs[variable.key];
+        const numValue = parseNumberInput(inputValue || String(variable.defaultValue || 0));
+        variables[variable.key] = numValue;
 
-          if (isNaN(parsedValue)) {
-            return null; // Invalid input
-          }
-
-          variables[key] = parsedValue;
-          breakdownItems.push({
-            variable: key,
-            value: parsedValue,
-            label: getVariableLabel(key, varConfig),
-          });
-        }
+        breakdown.push({
+          label: getVariableLabel(variable),
+          value: variable.type === 'currency' ? formatCurrency(numValue) : String(numValue),
+        });
       }
 
-      // Evaluate the formula
-      const result = evaluateFormula(config.formula, variables);
-
-      if (result === null) {
-        return null;
-      }
+      const result = evaluateFormula(selectedService.formula, variables);
+      if (result === null) return null;
 
       return {
+        serviceName: getServiceName(selectedService),
         result,
-        formula: config.formula,
-        breakdown: breakdownItems,
+        formula: getFormulaDescription(selectedService),
+        breakdown,
       };
     }
 
     return null;
-  }, [selectedService, selectedServiceDetails, serviceVariables, locale, calculationTriggered, t, getVariableLabel]);
+  }, [selectedService, serviceInputs, calculationTriggered, getServiceName, getVariableLabel, getFormulaDescription, formatCurrency, t]);
 
-  const formatCurrency = useCallback((value: number): string => {
-    return new Intl.NumberFormat(locale, {
-      style: 'decimal',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value) + ' XAF';
-  }, [locale]);
-
-  const formatPercent = useCallback((value: number): string => {
-    return new Intl.NumberFormat(locale, {
-      style: 'percent',
-      minimumFractionDigits: 1,
-      maximumFractionDigits: 2,
-    }).format(value / 100);
-  }, [locale]);
-
-  const handleReset = () => {
-    setIrpfAmount('');
-    setVatAmount('');
-    setCorporateProfit('');
-    setServiceVariables({});
-    setCalculationTriggered(false);
-  };
-
+  // Handlers
   const handleServiceChange = (value: string) => {
-    // Value is id prefixed with 'id:'
-    if (value.startsWith('id:')) {
-      const id = parseInt(value.replace('id:', ''), 10);
-      setSelectedServiceId(id);
-    } else {
-      setSelectedServiceId(null);
-    }
-    setServiceVariables({}); // Reset variables when changing service
+    const id = parseInt(value, 10);
+    setSelectedServiceId(id);
+    setServiceInputs({});
     setCalculationTriggered(false);
   };
 
-  const handleVariableChange = (key: string, value: string) => {
-    setServiceVariables(prev => ({ ...prev, [key]: value }));
-    setCalculationTriggered(false); // Reset calculation on input change
+  const handleInputChange = (key: string, value: string) => {
+    setServiceInputs(prev => ({ ...prev, [key]: value }));
+    setCalculationTriggered(false);
   };
 
   const handleCalculate = () => {
     setCalculationTriggered(true);
   };
 
-  // Render dynamic form fields based on calculation_config
-  const renderDynamicFormFields = () => {
-    if (!selectedServiceDetails) return null;
+  const handleReset = () => {
+    setIrpfAmount('');
+    setVatAmount('');
+    setCorporateProfit('');
+    setServiceInputs({});
+    setCalculationTriggered(false);
+  };
 
-    const pricing = selectedServiceDetails.pricing;
-    const config = pricing.calculation_config;
-
-    // For percentage_based - always show base amount field
-    if (selectedService?.calculation_method === 'percentage_based') {
-      return (
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="baseAmount">{t('baseAmountForPercentage')}</Label>
-            <div className="relative">
-              <Input
-                id="baseAmount"
-                type="text"
-                placeholder="1,000,000"
-                value={serviceVariables['baseAmount'] || ''}
-                onChange={(e) => handleVariableChange('baseAmount', e.target.value)}
-                className="pr-16"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                XAF
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {t('percentageRate')}: {pricing.percentage_rate ? `${pricing.percentage_rate}%` : 'N/A'}
-            </p>
-          </div>
+  // Render percentage-based form
+  const renderPercentageForm = (service: PercentageService) => (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="baseAmount">{t('baseAmountForPercentage')}</Label>
+        <div className="relative">
+          <Input
+            id="baseAmount"
+            type="text"
+            placeholder="1,000,000"
+            value={serviceInputs['baseAmount'] || ''}
+            onChange={(e) => handleInputChange('baseAmount', e.target.value)}
+            className="pr-16"
+          />
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+            XAF
+          </span>
         </div>
-      );
-    }
+        <p className="text-xs text-muted-foreground">
+          {t('percentageRate')}: {service.percentage}%
+        </p>
+      </div>
+    </div>
+  );
 
-    // For formula_based with calculation_config containing variables
-    if (selectedService?.calculation_method === 'formula_based') {
-      // If config has variables, render dynamic fields
-      if (config?.variables && Object.keys(config.variables).length > 0) {
-        const variableEntries = Object.entries(config.variables);
-
-        return (
-          <div className="space-y-4">
-            {variableEntries.map(([key, varConfig]) => {
-              const label = getVariableLabel(key, varConfig);
-              const description = getVariableDescription(varConfig);
-              const isCurrency = varConfig.type === 'currency';
-
-              return (
-                <div key={key} className="space-y-2">
-                  <Label htmlFor={key}>{label}</Label>
-                  <div className="relative">
-                    <Input
-                      id={key}
-                      type="text"
-                      placeholder={varConfig.default_value?.toString() || '0'}
-                      value={serviceVariables[key] || ''}
-                      onChange={(e) => handleVariableChange(key, e.target.value)}
-                      className={isCurrency ? 'pr-16' : ''}
-                    />
-                    {isCurrency && (
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                        XAF
-                      </span>
-                    )}
-                  </div>
-                  {description && (
-                    <p className="text-xs text-muted-foreground">{description}</p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        );
-      }
-
-      // Formula-based but no variables configured - show generic base amount field
-      return (
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="baseAmount">{t('baseAmountForPercentage')}</Label>
-            <div className="relative">
-              <Input
-                id="baseAmount"
-                type="text"
-                placeholder="1,000,000"
-                value={serviceVariables['baseAmount'] || ''}
-                onChange={(e) => handleVariableChange('baseAmount', e.target.value)}
-                className="pr-16"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                XAF
-              </span>
-            </div>
-            {config?.formula && (
-              <p className="text-xs text-muted-foreground">
-                {t('formula')}: {config.formula}
-              </p>
-            )}
-          </div>
-        </div>
-      );
-    }
-
-    // Fallback - show generic base amount field
-    return (
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="baseAmount">{t('baseAmountForPercentage')}</Label>
+  // Render formula-based form
+  const renderFormulaForm = (service: FormulaService) => (
+    <div className="space-y-4">
+      {service.variables.map((variable) => (
+        <div key={variable.key} className="space-y-2">
+          <Label htmlFor={variable.key}>{getVariableLabel(variable)}</Label>
           <div className="relative">
             <Input
-              id="baseAmount"
+              id={variable.key}
               type="text"
-              placeholder="1,000,000"
-              value={serviceVariables['baseAmount'] || ''}
-              onChange={(e) => handleVariableChange('baseAmount', e.target.value)}
-              className="pr-16"
+              placeholder={variable.defaultValue?.toString() || '0'}
+              value={serviceInputs[variable.key] || ''}
+              onChange={(e) => handleInputChange(variable.key, e.target.value)}
+              className={variable.type === 'currency' ? 'pr-16' : ''}
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-              XAF
-            </span>
+            {variable.type === 'currency' && (
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                XAF
+              </span>
+            )}
           </div>
+          {getVariableDescription(variable) && (
+            <p className="text-xs text-muted-foreground">{getVariableDescription(variable)}</p>
+          )}
         </div>
+      ))}
+
+      <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
+        <p className="font-medium mb-1">{t('formula')}:</p>
+        <p>{getFormulaDescription(service)}</p>
       </div>
-    );
-  };
+    </div>
+  );
 
   return (
     <div className="container mx-auto px-4 py-12">
-      <Breadcrumb
-        items={[{ label: t('title') }]}
-        className="mb-6"
-      />
+      <Breadcrumb items={[{ label: t('title') }]} className="mb-6" />
 
       <div className="mb-8">
         <h1 className="text-4xl font-bold mb-4">{t('title')}</h1>
@@ -605,7 +619,6 @@ function CalculateurPageContent() {
         {/* IRPF Calculator */}
         <TabsContent value="irpf">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* BLOCK 1: Input */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -626,128 +639,44 @@ function CalculateurPageContent() {
                       onChange={(e) => setIrpfAmount(e.target.value)}
                       className="pr-16"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                      XAF
-                    </span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">XAF</span>
                   </div>
                 </div>
 
-                <div className="flex gap-2">
-                  <Button
-                    onClick={handleReset}
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                    {t('reset')}
-                  </Button>
-                </div>
+                <Button onClick={handleReset} variant="outline" size="sm" className="gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  {t('reset')}
+                </Button>
 
                 <Separator />
 
-                {/* Tax Brackets Info */}
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm font-medium">
                     <Info className="h-4 w-4 text-primary" />
                     {t('taxBrackets')}
                   </div>
-                  <div className="space-y-1 bg-gradient-to-br from-muted/30 to-muted/50 p-4 rounded-lg border border-border/50">
-                    {/* 0% Bracket */}
-                    <div className="flex items-center gap-3 group hover:bg-background/50 p-2 rounded transition-colors">
-                      <div className="flex-shrink-0">
-                        <Circle className="h-3 w-3 fill-emerald-500 text-emerald-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-medium text-foreground/90">{formatCurrency(0)} - {formatCurrency(1000000)}</div>
-                      </div>
-                      <div className="flex-shrink-0">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
-                          0%
+                  <div className="space-y-1 bg-muted/30 p-4 rounded-lg border">
+                    {[
+                      { range: `${formatCurrency(0)} - ${formatCurrency(1000000)}`, rate: '0%', color: 'emerald' },
+                      { range: `${formatCurrency(1000000)} - ${formatCurrency(3000000)}`, rate: '10%', color: 'green' },
+                      { range: `${formatCurrency(3000000)} - ${formatCurrency(5000000)}`, rate: '15%', color: 'lime' },
+                      { range: `${formatCurrency(5000000)} - ${formatCurrency(10000000)}`, rate: '20%', color: 'yellow' },
+                      { range: `${formatCurrency(10000000)} - ${formatCurrency(15000000)}`, rate: '25%', color: 'orange' },
+                      { range: `> ${formatCurrency(15000000)}`, rate: '35%', color: 'red' },
+                    ].map((bracket, idx) => (
+                      <div key={idx} className="flex items-center gap-3 p-2 rounded hover:bg-background/50">
+                        <Circle className={`h-3 w-3 fill-${bracket.color}-500 text-${bracket.color}-500`} />
+                        <span className="flex-1 text-xs">{bracket.range}</span>
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold bg-${bracket.color}-100 text-${bracket.color}-800 dark:bg-${bracket.color}-900/30 dark:text-${bracket.color}-400`}>
+                          {bracket.rate}
                         </span>
                       </div>
-                    </div>
-
-                    {/* 10% Bracket */}
-                    <div className="flex items-center gap-3 group hover:bg-background/50 p-2 rounded transition-colors">
-                      <div className="flex-shrink-0">
-                        <Circle className="h-3 w-3 fill-green-500 text-green-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-medium text-foreground/90">{formatCurrency(1000000)} - {formatCurrency(3000000)}</div>
-                      </div>
-                      <div className="flex-shrink-0">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                          10%
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* 15% Bracket */}
-                    <div className="flex items-center gap-3 group hover:bg-background/50 p-2 rounded transition-colors">
-                      <div className="flex-shrink-0">
-                        <Circle className="h-3 w-3 fill-lime-500 text-lime-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-medium text-foreground/90">{formatCurrency(3000000)} - {formatCurrency(5000000)}</div>
-                      </div>
-                      <div className="flex-shrink-0">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-lime-100 text-lime-800 dark:bg-lime-900/30 dark:text-lime-400">
-                          15%
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* 20% Bracket */}
-                    <div className="flex items-center gap-3 group hover:bg-background/50 p-2 rounded transition-colors">
-                      <div className="flex-shrink-0">
-                        <Circle className="h-3 w-3 fill-yellow-500 text-yellow-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-medium text-foreground/90">{formatCurrency(5000000)} - {formatCurrency(10000000)}</div>
-                      </div>
-                      <div className="flex-shrink-0">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
-                          20%
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* 25% Bracket */}
-                    <div className="flex items-center gap-3 group hover:bg-background/50 p-2 rounded transition-colors">
-                      <div className="flex-shrink-0">
-                        <Circle className="h-3 w-3 fill-orange-500 text-orange-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-medium text-foreground/90">{formatCurrency(10000000)} - {formatCurrency(15000000)}</div>
-                      </div>
-                      <div className="flex-shrink-0">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400">
-                          25%
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* 35% Bracket */}
-                    <div className="flex items-center gap-3 group hover:bg-background/50 p-2 rounded transition-colors">
-                      <div className="flex-shrink-0">
-                        <Circle className="h-3 w-3 fill-red-500 text-red-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-medium text-foreground/90">&gt; {formatCurrency(15000000)}</div>
-                      </div>
-                      <div className="flex-shrink-0">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
-                          35%
-                        </span>
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* BLOCK 2: Result */}
             <Card className={irpfResult ? 'border-primary/50' : ''}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -759,7 +688,6 @@ function CalculateurPageContent() {
               <CardContent>
                 {irpfResult ? (
                   <div className="space-y-4">
-                    {/* Summary */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="bg-muted/50 p-4 rounded-lg">
                         <p className="text-sm text-muted-foreground">{t('grossIncome')}</p>
@@ -781,20 +709,17 @@ function CalculateurPageContent() {
 
                     <Separator />
 
-                    {/* Breakdown */}
                     <div className="space-y-2">
                       <p className="text-sm font-medium">{t('breakdownByBracket')}</p>
-                      <div className="space-y-2">
-                        {irpfResult.breakdown.map((item, idx) => (
-                          <div key={idx} className="flex items-center justify-between text-sm bg-muted/30 p-2 rounded">
-                            <div>
-                              <span className="font-medium">{item.bracket}</span>
-                              <span className="text-muted-foreground ml-2">@ {item.rate}%</span>
-                            </div>
-                            <span className="font-mono">{formatCurrency(item.tax)}</span>
+                      {irpfResult.breakdown.map((item, idx) => (
+                        <div key={idx} className="flex items-center justify-between text-sm bg-muted/30 p-2 rounded">
+                          <div>
+                            <span className="font-medium">{item.bracket}</span>
+                            <span className="text-muted-foreground ml-2">@ {item.rate}%</span>
                           </div>
-                        ))}
-                      </div>
+                          <span className="font-mono">{formatCurrency(item.tax)}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ) : (
@@ -811,7 +736,6 @@ function CalculateurPageContent() {
         {/* VAT Calculator */}
         <TabsContent value="vat">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* BLOCK 1: Input */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -824,70 +748,37 @@ function CalculateurPageContent() {
                 <div className="space-y-2">
                   <Label>{t('calculationType')}</Label>
                   <div className="flex gap-2">
-                    <Button
-                      variant={vatType === 'add' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setVatType('add')}
-                      className="flex-1"
-                    >
+                    <Button variant={vatType === 'add' ? 'default' : 'outline'} size="sm" onClick={() => setVatType('add')} className="flex-1">
                       {t('addVat')}
                     </Button>
-                    <Button
-                      variant={vatType === 'extract' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setVatType('extract')}
-                      className="flex-1"
-                    >
+                    <Button variant={vatType === 'extract' ? 'default' : 'outline'} size="sm" onClick={() => setVatType('extract')} className="flex-1">
                       {t('extractVat')}
                     </Button>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="vat-amount">
-                    {vatType === 'add' ? t('baseAmount') : t('totalWithVat')}
-                  </Label>
+                  <Label htmlFor="vat-amount">{vatType === 'add' ? t('baseAmount') : t('totalWithVat')}</Label>
                   <div className="relative">
-                    <Input
-                      id="vat-amount"
-                      type="text"
-                      placeholder="1,000,000"
-                      value={vatAmount}
-                      onChange={(e) => setVatAmount(e.target.value)}
-                      className="pr-16"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                      XAF
-                    </span>
+                    <Input id="vat-amount" type="text" placeholder="1,000,000" value={vatAmount} onChange={(e) => setVatAmount(e.target.value)} className="pr-16" />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">XAF</span>
                   </div>
                 </div>
 
-                <div className="flex gap-2">
-                  <Button
-                    onClick={handleReset}
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                    {t('reset')}
-                  </Button>
-                </div>
+                <Button onClick={handleReset} variant="outline" size="sm" className="gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  {t('reset')}
+                </Button>
 
                 <Separator />
 
                 <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
                   <p className="font-medium mb-1">{t('formula')}:</p>
-                  {vatType === 'add' ? (
-                    <p>{t('vatAddFormula')}</p>
-                  ) : (
-                    <p>{t('vatExtractFormula')}</p>
-                  )}
+                  <p>{vatType === 'add' ? t('vatAddFormula') : t('vatExtractFormula')}</p>
                 </div>
               </CardContent>
             </Card>
 
-            {/* BLOCK 2: Result */}
             <Card className={vatResult ? 'border-primary/50' : ''}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -928,7 +819,6 @@ function CalculateurPageContent() {
         {/* Corporate Tax Calculator */}
         <TabsContent value="corporate">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* BLOCK 1: Input */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -941,31 +831,15 @@ function CalculateurPageContent() {
                 <div className="space-y-2">
                   <Label htmlFor="corporate-profit">{t('taxableProfit')}</Label>
                   <div className="relative">
-                    <Input
-                      id="corporate-profit"
-                      type="text"
-                      placeholder="10,000,000"
-                      value={corporateProfit}
-                      onChange={(e) => setCorporateProfit(e.target.value)}
-                      className="pr-16"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                      XAF
-                    </span>
+                    <Input id="corporate-profit" type="text" placeholder="10,000,000" value={corporateProfit} onChange={(e) => setCorporateProfit(e.target.value)} className="pr-16" />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">XAF</span>
                   </div>
                 </div>
 
-                <div className="flex gap-2">
-                  <Button
-                    onClick={handleReset}
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                    {t('reset')}
-                  </Button>
-                </div>
+                <Button onClick={handleReset} variant="outline" size="sm" className="gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  {t('reset')}
+                </Button>
 
                 <Separator />
 
@@ -976,7 +850,6 @@ function CalculateurPageContent() {
               </CardContent>
             </Card>
 
-            {/* BLOCK 2: Result */}
             <Card className={corporateResult ? 'border-primary/50' : ''}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -1017,7 +890,6 @@ function CalculateurPageContent() {
         {/* Fiscal Services Calculator */}
         <TabsContent value="services">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* BLOCK 1: Input */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -1027,155 +899,56 @@ function CalculateurPageContent() {
                 <CardDescription>{t('fiscalServicesDesc')}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Loading State */}
-                {loadingServices && (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <span className="ml-3 text-muted-foreground">{t('loadingServices') || 'Loading services...'}</span>
-                  </div>
-                )}
+                <div className="space-y-2">
+                  <Label>{t('selectService')}</Label>
+                  <Select
+                    value={selectedServiceId?.toString() || ''}
+                    onValueChange={handleServiceChange}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={t('selectServicePlaceholder')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {calculableServices.map(service => (
+                        <SelectItem key={service.id} value={service.id.toString()}>
+                          {getServiceName(service)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {calculableServices.length} {t('servicesCount', { count: calculableServices.length })}
+                  </p>
+                </div>
 
-                {/* Error State */}
-                {servicesError && !loadingServices && (
-                  <div className="text-center py-8 text-destructive">
-                    <Info className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p>{servicesError}</p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-4"
-                      onClick={() => window.location.reload()}
-                    >
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      {t('retry') || 'Retry'}
-                    </Button>
-                  </div>
-                )}
-
-                {/* Service Selector - only show when loaded */}
-                {!loadingServices && !servicesError && (
+                {selectedService && (
                   <>
-                    <div className="space-y-2">
-                      <Label>{t('selectService')}</Label>
-                      <Select
-                        value={selectedServiceId ? `id:${selectedServiceId}` : ''}
-                        onValueChange={handleServiceChange}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={t('selectServicePlaceholder')} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {serviceList.length === 0 ? (
-                            <SelectItem value="none" disabled>
-                              {t('noServicesAvailable') || 'No services available'}
-                            </SelectItem>
-                          ) : (
-                            serviceList.map(service => (
-                              <SelectItem key={service.id} value={`id:${service.id}`}>
-                                <span>{service.name}</span>
-                              </SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
-                      {serviceList.length > 0 && (
-                        <p className="text-xs text-muted-foreground">
-                          {t('servicesCount', { count: serviceList.length }) || `${serviceList.length} services available`}
-                        </p>
-                      )}
+                    <Separator />
+
+                    {selectedService.type === 'percentage' && renderPercentageForm(selectedService)}
+                    {selectedService.type === 'formula' && renderFormulaForm(selectedService)}
+
+                    <div className="flex gap-2 pt-2">
+                      <Button onClick={handleCalculate} className="flex-1 gap-2">
+                        <Calculator className="h-4 w-4" />
+                        {t('calculate')}
+                      </Button>
+                      <Button onClick={handleReset} variant="outline" size="icon">
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
                     </div>
-
-                    {/* Loading details indicator */}
-                    {loadingDetails && (
-                      <div className="flex items-center justify-center py-4">
-                        <Loader2 className="h-5 w-5 animate-spin text-primary mr-2" />
-                        <span className="text-sm text-muted-foreground">{t('loadingDetails') || 'Loading details...'}</span>
-                      </div>
-                    )}
-
-                    {/* Error loading details */}
-                    {detailsError && !loadingDetails && selectedService && (
-                      <div className="text-center py-4 text-destructive">
-                        <Info className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">{detailsError}</p>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="mt-3"
-                          onClick={() => {
-                            const id = selectedServiceId;
-                            setSelectedServiceId(null);
-                            setTimeout(() => setSelectedServiceId(id), 100);
-                          }}
-                        >
-                          <RefreshCw className="h-4 w-4 mr-2" />
-                          {t('retry') || 'Retry'}
-                        </Button>
-                      </div>
-                    )}
-
-                    {/* Dynamic Form Fields */}
-                    {selectedService && selectedServiceDetails && !loadingDetails && !detailsError && (
-                      <>
-                        <Separator />
-
-                        {renderDynamicFormFields()}
-
-                        {/* Calculate and Reset Buttons */}
-                        <div className="flex gap-2 pt-2">
-                          <Button
-                            onClick={handleCalculate}
-                            className="flex-1 gap-2"
-                            disabled={Object.keys(serviceVariables).length === 0}
-                          >
-                            <Calculator className="h-4 w-4" />
-                            {t('calculate') || 'Calculate'}
-                          </Button>
-                          <Button
-                            onClick={handleReset}
-                            variant="outline"
-                            size="icon"
-                          >
-                            <RefreshCw className="h-4 w-4" />
-                          </Button>
-                        </div>
-
-                        <Separator />
-
-                        {/* Formula Info */}
-                        {selectedServiceDetails.pricing.calculation_config?.formula && (
-                          <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
-                            <p className="font-medium mb-1">{t('formula')}:</p>
-                            <p className="font-mono text-xs">{selectedServiceDetails.pricing.calculation_config.formula}</p>
-                            {getFormulaDescription(selectedServiceDetails.pricing.calculation_config) && (
-                              <p className="mt-2 text-muted-foreground">
-                                {getFormulaDescription(selectedServiceDetails.pricing.calculation_config)}
-                              </p>
-                            )}
-                          </div>
-                        )}
-
-                        {selectedService.calculation_method === 'percentage_based' && (
-                          <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
-                            <p className="font-medium mb-1">{t('formula')}:</p>
-                            <p>{t('result')} = {t('baseAmount')} × {selectedServiceDetails.pricing.percentage_rate ? `${selectedServiceDetails.pricing.percentage_rate}%` : 'N/A'}</p>
-                          </div>
-                        )}
-                      </>
-                    )}
-
-                    {!selectedService && serviceList.length > 0 && (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <FileText className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                        <p>{t('selectServicePrompt')}</p>
-                      </div>
-                    )}
                   </>
+                )}
+
+                {!selectedService && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                    <p>{t('selectServicePrompt')}</p>
+                  </div>
                 )}
               </CardContent>
             </Card>
 
-            {/* BLOCK 2: Result */}
             <Card className={serviceResult ? 'border-primary/50' : ''}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -1183,22 +956,19 @@ function CalculateurPageContent() {
                   {t('result')}
                 </CardTitle>
                 <CardDescription>
-                  {selectedService ? selectedService.name : t('serviceCalculationResult')}
+                  {serviceResult ? serviceResult.serviceName : t('serviceCalculationResult')}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {serviceResult ? (
                   <div className="space-y-4">
-                    <div className="grid grid-cols-1 gap-4">
-                      <div className="bg-primary/10 p-6 rounded-lg text-center">
-                        <p className="text-sm text-muted-foreground mb-2">{t('calculatedAmount')}</p>
-                        <p className="text-3xl font-bold text-primary">{formatCurrency(serviceResult.result)}</p>
-                      </div>
+                    <div className="bg-primary/10 p-6 rounded-lg text-center">
+                      <p className="text-sm text-muted-foreground mb-2">{t('calculatedAmount')}</p>
+                      <p className="text-3xl font-bold text-primary">{formatCurrency(serviceResult.result)}</p>
                     </div>
 
                     <Separator />
 
-                    {/* Breakdown */}
                     <div className="space-y-2">
                       <p className="text-sm font-medium">{t('calculationBreakdown')}</p>
                       <div className="space-y-2">
@@ -1209,9 +979,7 @@ function CalculateurPageContent() {
                         {serviceResult.breakdown.map((item, idx) => (
                           <div key={idx} className="flex items-center justify-between text-sm bg-muted/30 p-2 rounded">
                             <span className="font-medium">{item.label}</span>
-                            <span className="font-mono">
-                              {formatCurrency(item.value)}
-                            </span>
+                            <span className="font-mono">{item.value}</span>
                           </div>
                         ))}
                       </div>
@@ -1220,7 +988,7 @@ function CalculateurPageContent() {
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     <Calculator className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                    <p>{selectedService ? (calculationTriggered ? t('calculationError') || 'Calculation error' : t('enterVariables')) : t('selectServiceFirst')}</p>
+                    <p>{selectedService ? t('enterVariables') : t('selectServiceFirst')}</p>
                   </div>
                 )}
               </CardContent>
@@ -1240,7 +1008,6 @@ function CalculateurPageContent() {
   );
 }
 
-// Loading skeleton for Suspense fallback
 function CalculateurLoading() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl animate-pulse">
@@ -1256,7 +1023,6 @@ function CalculateurLoading() {
   );
 }
 
-// Main page component with Suspense boundary
 export default function CalculateurPage() {
   return (
     <Suspense fallback={<CalculateurLoading />}>
