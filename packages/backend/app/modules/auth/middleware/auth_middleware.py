@@ -13,6 +13,7 @@ from app.repositories.user_repository import UserRepository
 from app.modules.auth.services.auth_service import AuthService, get_auth_service
 
 security = HTTPBearer()
+security_optional = HTTPBearer(auto_error=False)
 user_repository = UserRepository()
 
 
@@ -177,3 +178,59 @@ def is_admin(user: UserResponse) -> bool:
         True if user is admin
     """
     return user.role == "admin"
+
+
+async def get_current_user_optional(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_optional),
+) -> Optional[UserResponse]:
+    """
+    Dependency to optionally get current user from JWT token.
+
+    Returns None if no token provided (allows anonymous access).
+    Validates token if provided and returns user.
+
+    Use this for endpoints that work for both authenticated and anonymous users,
+    like chatbot where authenticated users get personalized responses.
+
+    Args:
+        credentials: Optional Bearer token from Authorization header
+
+    Returns:
+        UserResponse if authenticated, None if anonymous
+
+    Raises:
+        HTTPException 401: If token is provided but invalid
+    """
+    if credentials is None:
+        return None
+
+    try:
+        # Validate access token and get user data
+        auth_service = get_auth_service()
+        token_data = await auth_service.validate_access_token(credentials.credentials)
+
+        if not token_data:
+            # Invalid token - return None for optional auth
+            logger.warning("Invalid token provided for optional auth endpoint")
+            return None
+
+        # Get user_id from token
+        user_id = token_data.get("user_id")
+        if not user_id:
+            return None
+
+        # Fetch full user from database
+        user = await user_repository.find_by_id(user_id)
+        if not user:
+            return None
+
+        # Check if user is active (but don't block - just return None)
+        if user.status != "active":
+            logger.warning(f"Non-active user {user_id} accessing optional auth endpoint")
+            return None
+
+        return user
+
+    except Exception as e:
+        logger.warning(f"Optional auth validation failed: {e}")
+        return None
