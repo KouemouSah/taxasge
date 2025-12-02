@@ -919,7 +919,7 @@ function CalculateurPageContent() {
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    {calculableServices.length} {t('servicesCount', { count: calculableServices.length })}
+                    {t('servicesCount', { count: calculableServices.length })}
                   </p>
                 </div>
 
