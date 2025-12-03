@@ -272,7 +272,8 @@ async def api_v1_info():
             "translations": "/api/v1/translations/ - System translations (ENUMs, UI, Forms, Messages)",
             "communications": "/api/v1/communications/ - Email, SMS, Push notification services",
             "ai": "/api/v1/ai/ - AI assistant conversations",
-            "notifications": "/api/v1/notifications/ - Multi-channel notifications"
+            "notifications": "/api/v1/notifications/ - Multi-channel notifications",
+            "accountant": "/api/v1/accountant/ - Accountant deadline tracking across client companies"
         },
         "documentation": "/docs" if settings.debug else "Contact admin for API documentation",
         "support": {
@@ -289,13 +290,15 @@ import traceback
 
 # Try to load auth router (Module 1 - Critical)
 try:
+    logger.debug("🔄 Loading auth router...")
     from app.modules.auth.api import auth_router
     app.include_router(auth_router, prefix="/api/v1/auth", tags=["authentication"])
     routers_loaded.append("auth")
-    logger.info("✅ Auth router loaded")
+    logger.info("✅ Auth router loaded (login, register, 2FA, sessions)")
 except Exception as e:
-    logger.error(f"❌ Failed to load auth router: {e}")
-    logger.error(traceback.format_exc())
+    logger.error(f"❌ CRITICAL: Failed to load auth router: {e}")
+    logger.error(f"❌ Auth router traceback:\n{traceback.format_exc()}")
+    logger.error("❌ Login/Register endpoints will NOT be available!")
 
 # Try to load fiscal_services router (Module - Fiscal Services - Phase 3)
 try:
@@ -390,6 +393,16 @@ except Exception as e:
     logger.error(f"❌ Declarations router failed: {e}")
     logger.error(traceback.format_exc())
 
+# Try to load accountant batch operations router (Module - Batch Operations)
+try:
+    from app.modules.declarations.api.accountant_batch_routes import router as accountant_batch_router
+    app.include_router(accountant_batch_router, prefix="/api/v1/accountant", tags=["accountant-batch"])
+    routers_loaded.append("accountant_batch")
+    logger.info("✅ Accountant batch operations router loaded (batch create, submit, reports)")
+except Exception as e:
+    logger.error(f"❌ Accountant batch operations router failed: {e}")
+    logger.error(traceback.format_exc())
+
 # Try to load companies router (Module - Companies System - Phase 3)
 try:
     from app.modules.companies.api import company_router
@@ -473,6 +486,16 @@ try:
     logger.info("✅ Audit logs router loaded (audit trail)")
 except Exception as e:
     logger.error(f"❌ Audit logs router failed: {e}")
+    logger.error(traceback.format_exc())
+
+# Try to load accountant router (Accountant - Deadline Tracking)
+try:
+    from app.modules.accountant import accountant_router
+    app.include_router(accountant_router, prefix="/api/v1/accountant", tags=["accountant-deadline-tracking"])
+    routers_loaded.append("accountant")
+    logger.info("✅ Accountant router loaded (deadline tracking for client companies)")
+except Exception as e:
+    logger.error(f"❌ Accountant router failed: {e}")
     logger.error(traceback.format_exc())
 
 if routers_loaded:

@@ -9,12 +9,29 @@ from typing import Optional
 from loguru import logger
 
 from app.modules.users.models.user import UserResponse
-from app.repositories.user_repository import UserRepository
-from app.modules.auth.services.auth_service import AuthService, get_auth_service
 
+# Security schemes
 security = HTTPBearer()
 security_optional = HTTPBearer(auto_error=False)
-user_repository = UserRepository()
+
+# Lazy-loaded singleton for UserRepository to avoid import-time errors
+_user_repository = None
+
+
+def get_user_repository():
+    """Get UserRepository singleton (lazy-loaded)"""
+    global _user_repository
+    if _user_repository is None:
+        from app.repositories.user_repository import UserRepository
+        _user_repository = UserRepository()
+        logger.debug("UserRepository initialized (lazy)")
+    return _user_repository
+
+
+def get_auth_service():
+    """Get AuthService singleton (lazy-loaded)"""
+    from app.modules.auth.services.auth_service import get_auth_service as _get_auth_service
+    return _get_auth_service()
 
 
 async def get_current_user(
@@ -36,7 +53,7 @@ async def get_current_user(
         HTTPException 403: If user account is suspended
     """
     try:
-        # Validate access token and get user data
+        # Validate access token and get user data (lazy-loaded)
         auth_service = get_auth_service()
         token_data = await auth_service.validate_access_token(credentials.credentials)
 
@@ -56,7 +73,8 @@ async def get_current_user(
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        # Fetch full user from database
+        # Fetch full user from database (lazy-loaded repository)
+        user_repository = get_user_repository()
         user = await user_repository.find_by_id(user_id)
         if not user:
             raise HTTPException(
@@ -205,7 +223,7 @@ async def get_current_user_optional(
         return None
 
     try:
-        # Validate access token and get user data
+        # Validate access token and get user data (lazy-loaded)
         auth_service = get_auth_service()
         token_data = await auth_service.validate_access_token(credentials.credentials)
 
@@ -219,7 +237,8 @@ async def get_current_user_optional(
         if not user_id:
             return None
 
-        # Fetch full user from database
+        # Fetch full user from database (lazy-loaded repository)
+        user_repository = get_user_repository()
         user = await user_repository.find_by_id(user_id)
         if not user:
             return None

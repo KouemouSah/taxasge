@@ -3,7 +3,7 @@
 TAXASGE DATABASE SCHEMA - COMPLETE REFERENCE
 ====================================================================================================
 
-Extracted on: 2025-11-21 19:53:16
+Extracted on: 2025-12-02 19:24:39
 Database: Supabase PostgreSQL
 Project: taxasge-dev
 
@@ -1402,6 +1402,16 @@ created_by                          uuid                      YES
 updated_by                          uuid                      YES                                      
 search_vector                       tsvector                  YES                                      
   └─ Description: Full-text search vector (Spanish). Auto-updated via trigger. Weight A for name_es, B for description_es.
+embedding                           vector                    YES                                      
+  └─ Description: Semantic embedding vector for AI search (Gemini text-embedding-004, 768 dimensions)
+embedding_generated_at              timestamp with time zone  YES                                      
+  └─ Description: Timestamp when the embedding was last generated/updated
+embedding_model                     varchar(50)               YES        'text-embedding-004'::characte
+  └─ Description: Model used to generate the embedding (e.g., text-embedding-004)
+embedding_version                   integer                   YES        1                             
+  └─ Description: Version of the embedding (incremented on regeneration)
+needs_embedding_update              boolean                   YES        true                          
+  └─ Description: Flag indicating if service needs embedding regeneration after content update
 
 Primary Key: id
 
@@ -1423,6 +1433,8 @@ Indexes:
     CREATE INDEX idx_fiscal_services_category ON public.fiscal_services USING btree (category_id, status)
   - idx_fiscal_services_search_vector
     CREATE INDEX idx_fiscal_services_search_vector ON public.fiscal_services USING gin (search_vector)
+  - idx_fiscal_services_embedding_hnsw
+    CREATE INDEX idx_fiscal_services_embedding_hnsw ON public.fiscal_services USING hnsw (embedding vector_cosine_ops) WITH (m='16', ef_construction='64')
 
 ----------------------------------------------------------------------------------------------------
 Table: FORM_TEMPLATES
@@ -3213,6 +3225,11 @@ Definition:  SELECT d.id AS declaration_id,
     d.net_tax_due,
     COALESCE(( SEL...
 
+View: v_embedding_status
+Definition:  SELECT count(*) FILTER (WHERE (embedding IS NOT NULL)) AS total_with_embeddings,
+    count(*) FILTER (WHERE (embedding IS NULL)) AS total_without_embeddings,
+    count(*) FILTER (WHERE (needs_embeddi...
+
 View: v_failed_payments_recovery
 Definition:  SELECT p.id AS payment_id,
     p.tax_declaration_id,
@@ -3313,6 +3330,42 @@ Definition:  SELECT u.id AS user_id,
 Function: apply_late_fees_to_overdue_installments
 Returns: void
 
+Function: array_to_halfvec
+Returns: USER-DEFINED
+
+Function: array_to_halfvec
+Returns: USER-DEFINED
+
+Function: array_to_halfvec
+Returns: USER-DEFINED
+
+Function: array_to_halfvec
+Returns: USER-DEFINED
+
+Function: array_to_sparsevec
+Returns: USER-DEFINED
+
+Function: array_to_sparsevec
+Returns: USER-DEFINED
+
+Function: array_to_sparsevec
+Returns: USER-DEFINED
+
+Function: array_to_sparsevec
+Returns: USER-DEFINED
+
+Function: array_to_vector
+Returns: USER-DEFINED
+
+Function: array_to_vector
+Returns: USER-DEFINED
+
+Function: array_to_vector
+Returns: USER-DEFINED
+
+Function: array_to_vector
+Returns: USER-DEFINED
+
 Function: assign_document_template
 Returns: boolean
 
@@ -3324,6 +3377,18 @@ Returns: trigger
 
 Function: audit_user_permissions
 Returns: trigger
+
+Function: avg
+Returns: USER-DEFINED
+
+Function: avg
+Returns: USER-DEFINED
+
+Function: binary_quantize
+Returns: bit
+
+Function: binary_quantize
+Returns: bit
 
 Function: calculate_next_retry
 Returns: trigger
@@ -3343,7 +3408,19 @@ Returns: integer
 Function: cleanup_expired_permissions
 Returns: integer
 
+Function: cosine_distance
+Returns: double precision
+
+Function: cosine_distance
+Returns: double precision
+
+Function: cosine_distance
+Returns: double precision
+
 Function: fiscal_services_search_vector_update
+Returns: trigger
+
+Function: flag_embedding_update
 Returns: trigger
 
 Function: generate_idempotency_key
@@ -3673,11 +3750,164 @@ Returns: internal
 Function: gtrgm_union
 Returns: USER-DEFINED
 
+Function: halfvec
+Returns: USER-DEFINED
+
+Function: halfvec_accum
+Returns: ARRAY
+
+Function: halfvec_add
+Returns: USER-DEFINED
+
+Function: halfvec_avg
+Returns: USER-DEFINED
+
+Function: halfvec_cmp
+Returns: integer
+
+Function: halfvec_combine
+Returns: ARRAY
+
+Function: halfvec_concat
+Returns: USER-DEFINED
+
+Function: halfvec_eq
+Returns: boolean
+
+Function: halfvec_ge
+Returns: boolean
+
+Function: halfvec_gt
+Returns: boolean
+
+Function: halfvec_in
+Returns: USER-DEFINED
+
+Function: halfvec_l2_squared_distance
+Returns: double precision
+
+Function: halfvec_le
+Returns: boolean
+
+Function: halfvec_lt
+Returns: boolean
+
+Function: halfvec_mul
+Returns: USER-DEFINED
+
+Function: halfvec_ne
+Returns: boolean
+
+Function: halfvec_negative_inner_product
+Returns: double precision
+
+Function: halfvec_out
+Returns: cstring
+
+Function: halfvec_recv
+Returns: USER-DEFINED
+
+Function: halfvec_send
+Returns: bytea
+
+Function: halfvec_spherical_distance
+Returns: double precision
+
+Function: halfvec_sub
+Returns: USER-DEFINED
+
+Function: halfvec_to_float4
+Returns: ARRAY
+
+Function: halfvec_to_sparsevec
+Returns: USER-DEFINED
+
+Function: halfvec_to_vector
+Returns: USER-DEFINED
+
+Function: halfvec_typmod_in
+Returns: integer
+
+Function: hamming_distance
+Returns: double precision
+
+Function: hnsw_bit_support
+Returns: internal
+
+Function: hnsw_halfvec_support
+Returns: internal
+
+Function: hnsw_sparsevec_support
+Returns: internal
+
+Function: hnswhandler
+Returns: index_am_handler
+
 Function: increment_retry_count
 Returns: trigger
 
+Function: inner_product
+Returns: double precision
+
+Function: inner_product
+Returns: double precision
+
+Function: inner_product
+Returns: double precision
+
+Function: ivfflat_bit_support
+Returns: internal
+
+Function: ivfflat_halfvec_support
+Returns: internal
+
+Function: ivfflathandler
+Returns: index_am_handler
+
+Function: jaccard_distance
+Returns: double precision
+
+Function: l1_distance
+Returns: double precision
+
+Function: l1_distance
+Returns: double precision
+
+Function: l1_distance
+Returns: double precision
+
+Function: l2_distance
+Returns: double precision
+
+Function: l2_distance
+Returns: double precision
+
+Function: l2_distance
+Returns: double precision
+
+Function: l2_norm
+Returns: double precision
+
+Function: l2_norm
+Returns: double precision
+
+Function: l2_normalize
+Returns: USER-DEFINED
+
+Function: l2_normalize
+Returns: USER-DEFINED
+
+Function: l2_normalize
+Returns: USER-DEFINED
+
 Function: lock_payment_for_agent
 Returns: jsonb
+
+Function: prepare_service_text_for_embedding
+Returns: text
+
+Function: search_fiscal_services_semantic
+Returns: record
 
 Function: set_limit
 Returns: real
@@ -3697,6 +3927,57 @@ Returns: real
 Function: similarity_op
 Returns: boolean
 
+Function: sparsevec
+Returns: USER-DEFINED
+
+Function: sparsevec_cmp
+Returns: integer
+
+Function: sparsevec_eq
+Returns: boolean
+
+Function: sparsevec_ge
+Returns: boolean
+
+Function: sparsevec_gt
+Returns: boolean
+
+Function: sparsevec_in
+Returns: USER-DEFINED
+
+Function: sparsevec_l2_squared_distance
+Returns: double precision
+
+Function: sparsevec_le
+Returns: boolean
+
+Function: sparsevec_lt
+Returns: boolean
+
+Function: sparsevec_ne
+Returns: boolean
+
+Function: sparsevec_negative_inner_product
+Returns: double precision
+
+Function: sparsevec_out
+Returns: cstring
+
+Function: sparsevec_recv
+Returns: USER-DEFINED
+
+Function: sparsevec_send
+Returns: bytea
+
+Function: sparsevec_to_halfvec
+Returns: USER-DEFINED
+
+Function: sparsevec_to_vector
+Returns: USER-DEFINED
+
+Function: sparsevec_typmod_in
+Returns: integer
+
 Function: strict_word_similarity
 Returns: real
 
@@ -3711,6 +3992,18 @@ Returns: real
 
 Function: strict_word_similarity_op
 Returns: boolean
+
+Function: subvector
+Returns: USER-DEFINED
+
+Function: subvector
+Returns: USER-DEFINED
+
+Function: sum
+Returns: USER-DEFINED
+
+Function: sum
+Returns: USER-DEFINED
 
 Function: trigger_create_ocr_queue
 Returns: trigger
@@ -3759,6 +4052,93 @@ Returns: trigger
 
 Function: validate_fiscal_service_montants
 Returns: trigger
+
+Function: vector
+Returns: USER-DEFINED
+
+Function: vector_accum
+Returns: ARRAY
+
+Function: vector_add
+Returns: USER-DEFINED
+
+Function: vector_avg
+Returns: USER-DEFINED
+
+Function: vector_cmp
+Returns: integer
+
+Function: vector_combine
+Returns: ARRAY
+
+Function: vector_concat
+Returns: USER-DEFINED
+
+Function: vector_dims
+Returns: integer
+
+Function: vector_dims
+Returns: integer
+
+Function: vector_eq
+Returns: boolean
+
+Function: vector_ge
+Returns: boolean
+
+Function: vector_gt
+Returns: boolean
+
+Function: vector_in
+Returns: USER-DEFINED
+
+Function: vector_l2_squared_distance
+Returns: double precision
+
+Function: vector_le
+Returns: boolean
+
+Function: vector_lt
+Returns: boolean
+
+Function: vector_mul
+Returns: USER-DEFINED
+
+Function: vector_ne
+Returns: boolean
+
+Function: vector_negative_inner_product
+Returns: double precision
+
+Function: vector_norm
+Returns: double precision
+
+Function: vector_out
+Returns: cstring
+
+Function: vector_recv
+Returns: USER-DEFINED
+
+Function: vector_send
+Returns: bytea
+
+Function: vector_spherical_distance
+Returns: double precision
+
+Function: vector_sub
+Returns: USER-DEFINED
+
+Function: vector_to_float4
+Returns: ARRAY
+
+Function: vector_to_halfvec
+Returns: USER-DEFINED
+
+Function: vector_to_sparsevec
+Returns: USER-DEFINED
+
+Function: vector_typmod_in
+Returns: integer
 
 Function: word_similarity
 Returns: real
