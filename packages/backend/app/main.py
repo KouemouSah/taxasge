@@ -251,6 +251,20 @@ async def root():
         "platform": "FastAPI + Firebase Functions"
     }
 
+# Debug endpoint to check loaded routers (helps diagnose 404 issues)
+@app.get("/api/v1/debug/routers")
+async def debug_routers():
+    """Debug endpoint to check which routers are loaded"""
+    return {
+        "status": "diagnostic",
+        "routers_loaded": routers_loaded,
+        "routers_count": len(routers_loaded),
+        "auth_loaded": "auth" in routers_loaded,
+        "timestamp": datetime.utcnow().isoformat(),
+        "environment": settings.environment
+    }
+
+
 # API v1 info endpoint
 @app.get("/api/v1/")
 async def api_v1_info():
