@@ -305,10 +305,24 @@ import traceback
 # Try to load auth router (Module 1 - Critical)
 try:
     logger.debug("🔄 Loading auth router...")
-    from app.modules.auth.api import auth_router
+    from app.modules.auth.api import auth_router, _auth_import_error
     app.include_router(auth_router, prefix="/api/v1/auth", tags=["authentication"])
-    routers_loaded.append("auth")
-    logger.info("✅ Auth router loaded (login, register, 2FA, sessions)")
+
+    # Check if we got the real router or the fallback dummy router
+    if _auth_import_error:
+        logger.error(f"⚠️ WARNING: Auth router loaded but with FALLBACK endpoints!")
+        logger.error(f"⚠️ Original import error: {_auth_import_error}")
+        logger.error("⚠️ Login/Register will return 503 instead of 404, but still NOT functional!")
+        routers_loaded.append("auth_FALLBACK")
+    else:
+        # Verify the router has the expected routes
+        route_count = len(auth_router.routes)
+        if route_count < 5:
+            logger.warning(f"⚠️ Auth router has only {route_count} routes - may be incomplete")
+            routers_loaded.append("auth_PARTIAL")
+        else:
+            routers_loaded.append("auth")
+            logger.info(f"✅ Auth router loaded successfully ({route_count} routes)")
 except Exception as e:
     logger.error(f"❌ CRITICAL: Failed to load auth router: {e}")
     logger.error(f"❌ Auth router traceback:\n{traceback.format_exc()}")
