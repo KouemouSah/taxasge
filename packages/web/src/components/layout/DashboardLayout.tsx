@@ -3,13 +3,16 @@
 /**
  * Dashboard Layout
  * Main layout wrapper for all dashboard pages with sidebar navigation
+ * Renders AdminSidebar for admin users, DashboardSidebar for others
  */
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { DashboardSidebar, MobileSidebar } from './DashboardSidebar'
+import { AdminSidebar } from '@/modules/admin/components'
 import { getAuthData } from '@/core/auth/storage'
+import { APP_CONSTANTS } from '@/core/config/constants'
 import type { User } from '@/types/auth'
 import { useLocale, useTranslations } from 'next-intl'
 
@@ -55,11 +58,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     )
   }
 
+  // Check if user is admin to show appropriate sidebar
+  const isAdmin = user?.role === APP_CONSTANTS.USER_ROLES.ADMIN
+
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* Desktop Sidebar */}
+      {/* Desktop Sidebar - Show AdminSidebar for admin, DashboardSidebar for others */}
       <div className="hidden md:flex md:w-64 md:flex-col">
-        <DashboardSidebar />
+        {isAdmin ? <AdminSidebar /> : <DashboardSidebar />}
       </div>
 
       {/* Main Content */}
@@ -68,7 +74,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <header className="flex h-16 items-center gap-4 border-b bg-card px-4 md:hidden">
           <MobileSidebar />
           <Image src="/logo.png" alt="TaxasGE Logo" width={32} height={32} className="h-8 w-8" />
-          <h1 className="text-lg font-semibold">TaxasGE</h1>
+          <h1 className="text-lg font-semibold">{isAdmin ? 'TaxasGE Admin' : 'TaxasGE'}</h1>
         </header>
 
         {/* Content Area */}

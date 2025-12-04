@@ -17,8 +17,9 @@
 
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { chatbotApi } from '../services/api'
+import { getAuthData } from '@/core/auth/storage'
 import type {
   ChatMessage,
   ChatRequest,
@@ -65,14 +66,18 @@ export interface UseChatReturn {
 }
 
 // =============================================================================
-// STORAGE KEYS
+// STORAGE KEYS - User-specific to prevent conversation sharing
 // =============================================================================
 
-const STORAGE_KEYS = {
-  MESSAGES: 'chatbot_messages',
-  CONVERSATION_ID: 'chatbot_conversation_id',
-  LANGUAGE: 'chatbot_language',
-} as const
+/**
+ * Generate user-specific storage keys to isolate conversations
+ * @param userId - User ID or 'guest' for anonymous users
+ */
+const getStorageKeys = (userId: string) => ({
+  MESSAGES: `chatbot_messages_${userId}`,
+  CONVERSATION_ID: `chatbot_conversation_id_${userId}`,
+  LANGUAGE: `chatbot_language_${userId}`,
+} as const)
 
 // =============================================================================
 // HOOK
@@ -89,6 +94,16 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     onSuccess,
     onStreamChunk,
   } = options
+
+  // Get current user ID for storage isolation
+  const userId = useMemo(() => {
+    if (typeof window === 'undefined') return 'guest'
+    const authData = getAuthData()
+    return authData?.user?.id || 'guest'
+  }, [])
+
+  // User-specific storage keys
+  const STORAGE_KEYS = useMemo(() => getStorageKeys(userId), [userId])
 
   // State
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -124,7 +139,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     } catch (err) {
       console.error('Failed to save to storage:', err)
     }
-  }, [messages, conversationId, language, persistToStorage])
+  }, [messages, conversationId, language, persistToStorage, STORAGE_KEYS])
 
   const loadFromStorage = useCallback(() => {
     if (!persistToStorage || typeof window === 'undefined') return
@@ -146,7 +161,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     } catch (err) {
       console.error('Failed to load from storage:', err)
     }
-  }, [persistToStorage])
+  }, [persistToStorage, STORAGE_KEYS])
 
   const clearStorage = useCallback(() => {
     if (typeof window === 'undefined') return
@@ -157,7 +172,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     } catch (err) {
       console.error('Failed to clear storage:', err)
     }
-  }, [])
+  }, [STORAGE_KEYS])
 
   // =============================================================================
   // EFFECTS
