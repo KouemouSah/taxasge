@@ -1,10 +1,12 @@
 /**
  * Token Storage Management
- * Handles JWT tokens and user data in localStorage
+ * Handles JWT tokens and user data in localStorage + HTTP cookies
+ * Cookies are needed for middleware authentication checks
  */
 
 import type { AuthData } from '@/types/auth';
 import { APP_CONSTANTS } from '@/core/config/constants';
+import { setAuthCookies, clearAuthCookies } from './cookies';
 
 const STORAGE_KEY = APP_CONSTANTS.STORAGE_KEYS.AUTH_DATA;
 
@@ -27,20 +29,33 @@ export function getAuthData(): AuthData | null {
 
 /**
  * Save authentication data to storage
+ * Also sets HTTP cookies for middleware authentication
  */
 export function setAuthData(authData: AuthData): void {
   if (typeof window === 'undefined') return;
 
+  // Store in localStorage for client-side access
   localStorage.setItem(STORAGE_KEY, JSON.stringify(authData));
+
+  // Also set HTTP cookies for middleware authentication
+  // This allows middleware to verify auth before page loads
+  if (authData.access_token && authData.user?.role) {
+    setAuthCookies(authData.access_token, authData.user.role);
+  }
 }
 
 /**
  * Clear all authentication data
+ * Also clears HTTP cookies
  */
 export function clearAuthData(): void {
   if (typeof window === 'undefined') return;
 
+  // Clear localStorage
   localStorage.removeItem(STORAGE_KEY);
+
+  // Also clear HTTP cookies used by middleware
+  clearAuthCookies();
 }
 
 /**
