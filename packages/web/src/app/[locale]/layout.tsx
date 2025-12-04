@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { routing } from '@/i18n/routing';
 import { Toaster } from '@/components/ui/toaster';
+import { Providers } from '../Providers';
 import '../globals.css';
 
 export function generateStaticParams() {
@@ -64,8 +65,10 @@ export default async function LocaleLayout({
     <html lang={locale}>
       <body className="min-h-screen">
         <NextIntlClientProvider messages={messages}>
-          {children}
-          <Toaster />
+          <Providers>
+            {children}
+            <Toaster />
+          </Providers>
         </NextIntlClientProvider>
       </body>
     </html>
