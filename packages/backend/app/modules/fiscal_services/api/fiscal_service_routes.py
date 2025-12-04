@@ -191,7 +191,7 @@ async def get_service_details(
             unit_price=service.get("unit_price"),
             validity_period_months=service.get("validity_period_months"),
             renewal_frequency_months=service.get("renewal_frequency_months"),
-            currency="GNF",
+            currency="XAF",
         )
 
         # Build category

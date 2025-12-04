@@ -102,7 +102,7 @@ class PricingInfo(BaseModel):
     unit_price: Optional[float] = None
     validity_period_months: Optional[int] = None
     renewal_frequency_months: Optional[int] = None
-    currency: str = "GNF"
+    currency: str = "XAF"
 
 
 # ===================================================================================================

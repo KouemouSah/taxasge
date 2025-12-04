@@ -20,7 +20,7 @@ def permission_required(permission_name: str):
         ```python
         @router.get("/users")
         async def list_users(
-            current_user: Dict[str, Any] = Depends(get_current_user),
+            current_user: UserResponse = Depends(get_current_user),
             _: None = Depends(permission_required("users.view_all"))
         ):
             # Route handler code
@@ -37,7 +37,7 @@ def permission_required(permission_name: str):
         HTTPException: 401 if not authenticated, 403 if permission denied
     """
     async def check_permission_dependency(
-        current_user: Dict[str, Any] = Depends(get_current_user),
+        current_user: UserResponse = Depends(get_current_user),
         permission_service: PermissionService = Depends(get_permission_service)
     ) -> None:
         if not current_user:
@@ -46,12 +46,13 @@ def permission_required(permission_name: str):
                 detail="Authentication required"
             )
 
-        # Get user ID from token payload
-        user_id = current_user.get("sub")
+        # Get user ID from UserResponse object (not a dict!)
+        # UserResponse has 'id' attribute, not 'sub'
+        user_id = str(current_user.id) if current_user.id else None
         if not user_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token payload"
+                detail="Invalid user: no ID found"
             )
 
         # Check permission
@@ -73,7 +74,7 @@ def permission_required(permission_name: str):
 
 def require_permission(permission_name: str, raise_on_deny: bool = True):
     """
-    FastAPI dependency for permission checking.
+    FastAPI dependency for permission checking (alias for permission_required).
 
     This function is designed to be used with Depends() in route definitions.
 
@@ -81,7 +82,7 @@ def require_permission(permission_name: str, raise_on_deny: bool = True):
         ```python
         @router.get("/users")
         async def list_users(
-            current_user: Dict[str, Any] = Depends(get_current_user),
+            current_user: UserResponse = Depends(get_current_user),
             _: None = Depends(require_permission("users.view_all"))
         ):
             # Route handler code
@@ -90,7 +91,7 @@ def require_permission(permission_name: str, raise_on_deny: bool = True):
 
     Args:
         permission_name: Permission name required (e.g., "users.view_all")
-        raise_on_deny: If True, raises 403 exception on permission denied
+        raise_on_deny: If True, raises 403 exception on permission denied (unused, for compatibility)
 
     Returns:
         Dependency function that checks permission
