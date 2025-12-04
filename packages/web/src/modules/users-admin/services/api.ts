@@ -28,6 +28,30 @@ import type {
 } from "../types";
 
 // =============================================================================
+// RESPONSE TRANSFORMATION
+// =============================================================================
+
+/**
+ * Backend returns status (string enum), frontend expects is_active (boolean)
+ * This function transforms the backend response to match frontend expectations
+ */
+function transformUserResponse(backendUser: any): User {
+  return {
+    id: backendUser.id,
+    email: backendUser.email,
+    first_name: backendUser.first_name,
+    last_name: backendUser.last_name,
+    role: backendUser.role,
+    // Transform status to is_active boolean
+    is_active: backendUser.status === 'active' || backendUser.is_active === true,
+    two_factor_enabled: backendUser.two_factor_enabled ?? false,
+    created_at: backendUser.created_at,
+    updated_at: backendUser.updated_at,
+    last_login: backendUser.last_login,
+  };
+}
+
+// =============================================================================
 // CONFIGURATION
 // =============================================================================
 
@@ -60,7 +84,8 @@ export const usersApi = {
     });
 
     // Backend returns: { items: User[], total: number, page: number, page_size: number, pages: number }
-    return response.items || [];
+    // Transform each user to convert status to is_active
+    return (response.items || []).map(transformUserResponse);
   },
 
   /**
@@ -69,7 +94,8 @@ export const usersApi = {
    * ROUTE: get_user() in user_management_routes.py:177
    */
   getById: async (id: string): Promise<User> => {
-    return fetchClient.get<User>(`${ADMIN_USERS_BASE}/${id}`);
+    const response = await fetchClient.get<any>(`${ADMIN_USERS_BASE}/${id}`);
+    return transformUserResponse(response);
   },
 
   /**
@@ -81,7 +107,8 @@ export const usersApi = {
    * Frontend sends plain password, backend handles bcrypt hashing
    */
   create: async (data: CreateUserRequest): Promise<User> => {
-    return fetchClient.post<User>(ADMIN_USERS_BASE, data);
+    const response = await fetchClient.post<any>(ADMIN_USERS_BASE, data);
+    return transformUserResponse(response);
   },
 
   /**
@@ -96,7 +123,8 @@ export const usersApi = {
    * - Password hashing done backend-side if password provided
    */
   update: async (id: string, data: UpdateUserRequest): Promise<User> => {
-    return fetchClient.put<User>(`${ADMIN_USERS_BASE}/${id}`, data);
+    const response = await fetchClient.put<any>(`${ADMIN_USERS_BASE}/${id}`, data);
+    return transformUserResponse(response);
   },
 
   /**
@@ -118,10 +146,13 @@ export const usersApi = {
    * BACKEND: PUT /api/v1/admin/users/{user_id}
    *
    * NOTE: This is a convenience method that uses update() internally
-   * Backend doesn't have a separate setActive endpoint
+   * Backend expects 'status' field, not 'is_active'
    */
   setActive: async (id: string, is_active: boolean): Promise<User> => {
-    return usersApi.update(id, { is_active });
+    // Backend expects status enum, not is_active boolean
+    const status = is_active ? 'active' : 'inactive';
+    const response = await fetchClient.put<any>(`${ADMIN_USERS_BASE}/${id}`, { status });
+    return transformUserResponse(response);
   },
 
   /**
@@ -136,13 +167,14 @@ export const usersApi = {
     country?: string;
     limit?: number;
   }): Promise<User[]> => {
-    return fetchClient.get<User[]>(`${ADMIN_USERS_BASE}/search`, {
+    const response = await fetchClient.get<any[]>(`${ADMIN_USERS_BASE}/search`, {
       q: params?.q,
       role: params?.role,
       status: params?.status,
       country: params?.country,
       limit: params?.limit,
     });
+    return (response || []).map(transformUserResponse);
   },
 
   /**
