@@ -64,12 +64,12 @@ async def get_current_user(
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        # Get user_id from token
-        user_id = token_data.get("user_id")
+        # Get user_id from token (JWT uses "sub" for subject/user_id)
+        user_id = token_data.get("sub")
         if not user_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token payload",
+                detail="Invalid token payload: missing user ID",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
@@ -232,8 +232,8 @@ async def get_current_user_optional(
             logger.warning("Invalid token provided for optional auth endpoint")
             return None
 
-        # Get user_id from token
-        user_id = token_data.get("user_id")
+        # Get user_id from token (JWT uses "sub" for subject/user_id)
+        user_id = token_data.get("sub")
         if not user_id:
             return None
 
