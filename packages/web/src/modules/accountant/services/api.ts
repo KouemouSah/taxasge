@@ -112,7 +112,7 @@ export const accountantDeadlinesApi = {
   getUpcoming: async (
     params?: GetDeadlinesParams
   ): Promise<DeclarationDeadline[]> => {
-    const queryParams: Record<string, any> = {}
+    const queryParams: Record<string, string | number | boolean | undefined> = {}
 
     if (params?.startDate) queryParams.start_date = params.startDate
     if (params?.endDate) queryParams.end_date = params.endDate
@@ -144,7 +144,7 @@ export const accountantDeadlinesApi = {
     companyId: string,
     params?: GetDeadlinesParams
   ): Promise<DeclarationDeadline[]> => {
-    const queryParams: Record<string, any> = {}
+    const queryParams: Record<string, string | number | boolean | undefined> = {}
 
     if (params?.startDate) queryParams.start_date = params.startDate
     if (params?.endDate) queryParams.end_date = params.endDate
@@ -171,7 +171,7 @@ export const accountantTasksApi = {
    * Returns declarations that need accountant review/action
    */
   getAll: async (params?: GetTasksParams): Promise<PendingTask[]> => {
-    const queryParams: Record<string, any> = {
+    const queryParams: Record<string, string | number | boolean | undefined> = {
       page: params?.page ?? 1,
       page_size: params?.pageSize ?? 20,
     }
