@@ -23,7 +23,7 @@ from uuid import UUID
 
 def validate_nif(nif: str) -> tuple[bool, Optional[str]]:
     """
-    Validate Equatorial Guinea NIF (Número de Identificación Fiscal)
+    Validate Equatorial Guinea NIF (Numero de Identificacion Fiscal)
 
     Format: 9 digits (can have letter suffix)
     Example: 123456789A
@@ -50,7 +50,7 @@ def validate_nif(nif: str) -> tuple[bool, Optional[str]]:
 
 def validate_nie(nie: str) -> tuple[bool, Optional[str]]:
     """
-    Validate NIE (Número de Identificación de Extranjero)
+    Validate NIE (Numero de Identificacion de Extranjero)
 
     Format: Similar to NIF but for foreign entities
 

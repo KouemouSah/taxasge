@@ -79,9 +79,20 @@ class UserRepository(BaseRepository[UserResponse]):
             "business_profile": model.business_profile.dict() if model.business_profile else None
         }
 
-    async def find_by_email(self, email: str) -> Optional[UserResponse]:
-        """Find user by email address"""
+    async def find_by_email(self, email: str, use_supabase: bool = False) -> Optional[UserResponse]:
+        """
+        Find user by email address.
+
+        Args:
+            email: User email address
+            use_supabase: Deprecated parameter, kept for backward compatibility.
+                         Always uses PostgreSQL directly.
+
+        Returns:
+            Optional[UserResponse]: User if found, None otherwise
+        """
         try:
+            # Always use direct PostgreSQL (use_supabase parameter ignored)
             query = f"SELECT * FROM {self.table_name} WHERE email = $1"
             result = await self.db_manager.execute_single(query, email)
             if result:
