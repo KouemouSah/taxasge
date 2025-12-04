@@ -61,9 +61,12 @@ class PermissionService:
         # CRITICAL: Admins have ALL permissions automatically
         try:
             user = await self.user_repo.find_by_id(user_id)
-            if user and user.role == "admin":
-                logger.debug(f"Admin user {user_id} auto-granted permission: {permission_name}")
-                return True
+            if user:
+                # Check role - handle both UserRole enum and string values
+                user_role = user.role.value if hasattr(user.role, 'value') else str(user.role)
+                if user_role == "admin":
+                    logger.debug(f"Admin user {user_id} auto-granted permission: {permission_name}")
+                    return True
         except Exception as e:
             logger.warning(f"Could not check admin status for user {user_id}: {e}")
 
