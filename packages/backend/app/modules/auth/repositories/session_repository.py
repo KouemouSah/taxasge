@@ -26,6 +26,39 @@ class SessionRepository:
         self.db_manager = db_manager
         self.table = "sessions"
 
+    def _row_to_session(self, row: asyncpg.Record) -> Session:
+        """
+        Convert asyncpg Record to Session model.
+        Handles UUID and IPv4Address conversion to strings.
+        """
+        data = dict(row)
+        # Convert UUID fields to strings
+        if 'id' in data and data['id'] is not None:
+            data['id'] = str(data['id'])
+        if 'user_id' in data and data['user_id'] is not None:
+            data['user_id'] = str(data['user_id'])
+        # Convert IPv4Address to string
+        if 'ip_address' in data and data['ip_address'] is not None:
+            data['ip_address'] = str(data['ip_address'])
+        return Session(**data)
+
+    def _row_to_session_response(self, row: asyncpg.Record) -> SessionResponse:
+        """
+        Convert asyncpg Record to SessionResponse model.
+        Handles UUID and IPv4Address conversion to strings.
+        """
+        data = dict(row)
+        # Convert UUID fields to strings
+        if 'id' in data and data['id'] is not None:
+            data['id'] = str(data['id'])
+        if 'user_id' in data and data['user_id'] is not None:
+            data['user_id'] = str(data['user_id'])
+        # Convert IPv4Address to string
+        if 'ip_address' in data and data['ip_address'] is not None:
+            data['ip_address'] = str(data['ip_address'])
+        return SessionResponse(**data)
+
+
     async def create_session(
         self,
         session_data: SessionCreate,
@@ -95,7 +128,7 @@ class SessionRepository:
                 raise Exception("Failed to create session")
 
             logger.info(f"✅ Session created: {session_id} for user {session_data.user_id}")
-            return Session(**dict(result))
+            return self._row_to_session(result)
 
         except Exception as e:
             logger.error(f"❌ Error creating session: {str(e)}")
@@ -125,7 +158,7 @@ class SessionRepository:
                 result = await self.db_manager.execute_single(query, session_id)
 
             if result:
-                return Session(**dict(result))
+                return self._row_to_session(result)
 
             return None
 
@@ -161,7 +194,7 @@ class SessionRepository:
                 result = await self.db_manager.execute_single(query, access_token, SessionStatus.active.value)
 
             if result:
-                return Session(**dict(result))
+                return self._row_to_session(result)
 
             return None
 
@@ -197,7 +230,7 @@ class SessionRepository:
                 result = await self.db_manager.execute_single(query, refresh_token, SessionStatus.active.value)
 
             if result:
-                return Session(**dict(result))
+                return self._row_to_session(result)
 
             return None
 
@@ -245,7 +278,7 @@ class SessionRepository:
                     results = await self.db_manager.execute_query(query, user_id)
 
             if results:
-                return [SessionResponse(**dict(session)) for session in results]
+                return [self._row_to_session_response(session) for session in results]
 
             return []
 
