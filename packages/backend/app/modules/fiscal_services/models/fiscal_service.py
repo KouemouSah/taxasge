@@ -59,7 +59,7 @@ class ServiceStatusEnum(str, Enum):
 class MinistryResponse(BaseModel):
     """Ministry response model"""
     id: int
-    code: str = Field(..., max_length=10, description="Unique ministry code")
+    code: str = Field(..., max_length=10, description="Unique ministry code", alias="ministry_code")
     name_es: str = Field(..., max_length=255, description="Ministry name (Spanish)")
     description_es: Optional[str] = Field(None, description="Ministry description (Spanish)")
     is_active: bool = Field(True, description="Whether ministry is active")
@@ -68,6 +68,7 @@ class MinistryResponse(BaseModel):
 
     class Config:
         from_attributes = True
+        populate_by_name = True
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -78,7 +79,7 @@ class MinistryResponse(BaseModel):
 class SectorResponse(BaseModel):
     """Sector response model"""
     id: int
-    code: str = Field(..., max_length=10, description="Unique sector code")
+    code: str = Field(..., max_length=10, description="Unique sector code", alias="sector_code")
     ministry_id: int = Field(..., description="Parent ministry ID")
     name_es: str = Field(..., max_length=255, description="Sector name (Spanish)")
     description_es: Optional[str] = Field(None, description="Sector description (Spanish)")
@@ -88,6 +89,7 @@ class SectorResponse(BaseModel):
 
     class Config:
         from_attributes = True
+        populate_by_name = True
 
 
 # ═══════════════════════════════════════════════════════════════════════════

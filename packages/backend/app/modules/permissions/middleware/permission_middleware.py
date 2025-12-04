@@ -1,8 +1,8 @@
 """
-Permission Middleware - Decorator for route permission checking
+Permission Middleware - Decorator and Dependency for route permission checking
 """
 from functools import wraps
-from typing import Callable, Optional
+from typing import Callable, Optional, Dict, Any
 from fastapi import HTTPException, status, Depends
 
 from app.modules.auth.middleware.auth_middleware import get_current_user
@@ -10,80 +10,96 @@ from app.modules.users.models.user import UserResponse
 from app.modules.permissions.services.permission_service import PermissionService, get_permission_service
 
 
-def require_permission(permission_name: str, raise_on_deny: bool = True):
+def permission_required(permission_name: str):
     """
-    Decorator to require a specific permission for a route
+    FastAPI dependency factory for permission checking.
+
+    This is the correct way to use permission checks with Depends().
 
     Usage:
         ```python
-        @router.post("/manual", response_model=Assignment)
-        @require_permission("assignment.create")
-        async def create_manual_assignment(
-            request: ManualAssignmentRequest,
-            current_user: UserResponse = Depends(get_current_user),
-            permission_service: PermissionService = Depends(get_permission_service)
+        @router.get("/users")
+        async def list_users(
+            current_user: Dict[str, Any] = Depends(get_current_user),
+            _: None = Depends(permission_required("users.view_all"))
         ):
             # Route handler code
             ...
         ```
 
     Args:
-        permission_name: Permission name required (e.g., "assignment.reassign_in_progress")
+        permission_name: Permission name required (e.g., "users.view_all")
+
+    Returns:
+        Dependency function that checks permission
+
+    Raises:
+        HTTPException: 401 if not authenticated, 403 if permission denied
+    """
+    async def check_permission_dependency(
+        current_user: Dict[str, Any] = Depends(get_current_user),
+        permission_service: PermissionService = Depends(get_permission_service)
+    ) -> None:
+        if not current_user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required"
+            )
+
+        # Get user ID from token payload
+        user_id = current_user.get("sub")
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token payload"
+            )
+
+        # Check permission
+        has_perm = await permission_service.has_permission(user_id, permission_name)
+
+        if not has_perm:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    f"Permission denied: '{permission_name}' required. "
+                    f"Contact your administrator to request this permission."
+                )
+            )
+
+        return None
+
+    return check_permission_dependency
+
+
+def require_permission(permission_name: str, raise_on_deny: bool = True):
+    """
+    FastAPI dependency for permission checking.
+
+    This function is designed to be used with Depends() in route definitions.
+
+    Usage:
+        ```python
+        @router.get("/users")
+        async def list_users(
+            current_user: Dict[str, Any] = Depends(get_current_user),
+            _: None = Depends(require_permission("users.view_all"))
+        ):
+            # Route handler code
+            ...
+        ```
+
+    Args:
+        permission_name: Permission name required (e.g., "users.view_all")
         raise_on_deny: If True, raises 403 exception on permission denied
 
     Returns:
-        Decorator function
+        Dependency function that checks permission
 
     Raises:
-        HTTPException: 403 Forbidden if user doesn't have permission
+        HTTPException: 401 if not authenticated, 403 if permission denied
     """
-    def decorator(func: Callable):
-        @wraps(func)
-        async def wrapper(*args, **kwargs):
-            # Extract current_user from kwargs (injected by Depends(get_current_user))
-            current_user: Optional[UserResponse] = kwargs.get('current_user')
-
-            if not current_user:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Authentication required"
-                )
-
-            # Extract permission_service from kwargs (injected by Depends(get_permission_service))
-            permission_service: Optional[PermissionService] = kwargs.get('permission_service')
-
-            if not permission_service:
-                # Fallback: try to get from function parameters
-                # This shouldn't happen if used correctly
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Permission service not available"
-                )
-
-            # Check permission
-            has_perm = await permission_service.has_permission(
-                current_user.id,
-                permission_name
-            )
-
-            if not has_perm:
-                if raise_on_deny:
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail=(
-                            f"Permission denied: '{permission_name}' required. "
-                            f"Contact your administrator to request this permission."
-                        )
-                    )
-                else:
-                    # If not raising, set a flag in kwargs for the handler
-                    kwargs['_permission_denied'] = True
-
-            # Call original function
-            return await func(*args, **kwargs)
-
-        return wrapper
-    return decorator
+    # Return the dependency function from permission_required
+    return permission_required(permission_name)
 
 
 def require_any_permission(*permission_names: str, raise_on_deny: bool = True):

@@ -96,11 +96,13 @@ async def list_fiscal_services(
     """List fiscal services with pagination"""
     offset = (page - 1) * page_size
     services, total = await repository.list(db, category_id, is_active, page_size, offset)
+    total_pages = (total + page_size - 1) // page_size if total > 0 else 0
     return FiscalServiceListResponse(
         services=[FiscalServiceResponse(**s) for s in services],
         total=total,
         page=page,
         page_size=page_size,
+        total_pages=total_pages,
     )
 
 
@@ -291,11 +293,13 @@ async def search_fiscal_services(
     """Advanced search for fiscal services"""
     offset = (page - 1) * page_size
     services, total = await repository.search(db, search, page_size, offset)
+    total_pages = (total + page_size - 1) // page_size if total > 0 else 0
     return FiscalServiceListResponse(
         services=[FiscalServiceResponse(**s) for s in services],
         total=total,
         page=page,
         page_size=page_size,
+        total_pages=total_pages,
     )
 
 
