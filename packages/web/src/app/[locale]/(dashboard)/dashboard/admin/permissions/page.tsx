@@ -48,7 +48,7 @@ export default function PermissionsPage() {
     search: searchQuery || undefined,
   })
 
-  const { data: permissionsByResource = {} } = usePermissionsByResource()
+  const { data: _permissionsByResource = {} } = usePermissionsByResource()
   const moduleNames = useModuleNames()
 
   // Filter permissions by search

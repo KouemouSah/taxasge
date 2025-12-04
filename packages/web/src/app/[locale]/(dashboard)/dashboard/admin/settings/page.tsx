@@ -72,8 +72,8 @@ export default function SettingsPage() {
   const tCommon = useTranslations('common')
   const queryClient = useQueryClient()
 
-  // State
-  const [isMigrationDialogOpen, setIsMigrationDialogOpen] = useState(false)
+  // State - reserved for future migration dialog
+  const [_isMigrationDialogOpen, _setIsMigrationDialogOpen] = useState(false)
 
   // Queries
   const {

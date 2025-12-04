@@ -38,6 +38,8 @@ export interface User {
   first_name: string
   last_name: string
   role: UserRole
+  role_id?: string | null  // Optional: custom role from roles table
+  role_name?: string | null  // Role name if role_id is set
   is_active: boolean  // Transformed from backend 'status' field
   two_factor_enabled: boolean
   created_at: string
@@ -68,6 +70,7 @@ export interface UpdateUserRequest {
   first_name?: string
   last_name?: string
   role?: UserRole
+  role_id?: string | null  // Optional: assign a custom role from roles table
   status?: UserStatus  // Backend expects status, not is_active
   two_factor_enabled?: boolean
 }

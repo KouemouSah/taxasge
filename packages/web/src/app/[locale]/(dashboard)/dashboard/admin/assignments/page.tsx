@@ -45,7 +45,7 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { useAssignments, useStartAssignment, useCancelAssignment } from '@/modules/assignments-admin'
-import type { Assignment, AssignmentStatus } from '@/modules/assignments-admin'
+import type { AssignmentStatus } from '@/modules/assignments-admin'
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'

@@ -133,15 +133,26 @@ export class FetchClient {
           detail: `HTTP ${response.status}: ${response.statusText}`,
         }))
 
-        // Properly stringify error message - handle objects, arrays, and strings
+        // Properly extract error message - handle various error formats
         let errorMessage: string
         if (typeof errorData.detail === 'string') {
           errorMessage = errorData.detail
         } else if (typeof errorData.message === 'string') {
           errorMessage = errorData.message
+        } else if (Array.isArray(errorData.detail)) {
+          // Handle FastAPI validation errors (array of objects)
+          // Format: [{ loc: ["body", "field"], msg: "error message", type: "..." }]
+          errorMessage = errorData.detail
+            .map((err: { msg?: string; loc?: string[] }) => {
+              const field = err.loc?.slice(1).join('.') || 'field'
+              return `${field}: ${err.msg || 'validation error'}`
+            })
+            .join('; ')
         } else if (errorData.detail && typeof errorData.detail === 'object') {
-          // Handle FastAPI validation errors (array of objects) or nested error objects
-          errorMessage = JSON.stringify(errorData.detail)
+          // Handle nested error objects
+          errorMessage = errorData.detail.msg || errorData.detail.message || JSON.stringify(errorData.detail)
+        } else if (errorData.error && typeof errorData.error === 'string') {
+          errorMessage = errorData.error
         } else {
           errorMessage = `HTTP ${response.status}: ${response.statusText}`
         }

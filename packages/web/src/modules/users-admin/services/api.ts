@@ -103,11 +103,23 @@ export const usersApi = {
    * BACKEND: POST /api/v1/admin/users
    * ROUTE: create_user() in user_management_routes.py:125
    *
-   * CRITICAL: Backend hashes password automatically using PasswordService
+   * CRITICAL: Backend expects nested profile object with first_name/last_name
+   * Backend hashes password automatically using PasswordService
    * Frontend sends plain password, backend handles bcrypt hashing
    */
   create: async (data: CreateUserRequest): Promise<User> => {
-    const response = await fetchClient.post<any>(ADMIN_USERS_BASE, data);
+    // Transform frontend flat structure to backend nested profile structure
+    const backendPayload = {
+      email: data.email,
+      password: data.password,
+      role: data.role,
+      profile: {
+        first_name: data.first_name,
+        last_name: data.last_name,
+        language: 'es', // Default language
+      },
+    };
+    const response = await fetchClient.post<any>(ADMIN_USERS_BASE, backendPayload);
     return transformUserResponse(response);
   },
 

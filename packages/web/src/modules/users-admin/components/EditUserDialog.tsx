@@ -40,6 +40,8 @@ import { useToast } from '@/hooks/use-toast'
 import { useUserLabels } from '@/hooks/use-user-labels'
 import usersApi from '../services/api'
 import { UserRole } from '@/types/user'
+import { useRoles } from '@/modules/roles-admin'
+import type { Role } from '@/modules/roles-admin'
 import type { User } from '../types'
 
 interface EditUserDialogProps {
@@ -71,12 +73,17 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
   const { toast } = useToast()
   const { getRoleLabel } = useUserLabels()
 
+  // Fetch available custom roles
+  const { data: rolesData, isLoading: rolesLoading } = useRoles({ is_system: false })
+  const customRoles = rolesData?.roles || []
+
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     email: '',
     first_name: '',
     last_name: '',
     role: UserRole.DGI_AGENT as UserRole,
+    role_id: '' as string | null,  // Custom role ID (optional)
     password: '', // Optional - only update if provided
   })
 
@@ -88,6 +95,7 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
         first_name: user.first_name,
         last_name: user.last_name,
         role: user.role as UserRole,
+        role_id: user.role_id || '',
         password: '', // Always start empty
       })
     }
@@ -106,6 +114,13 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
         first_name: formData.first_name,
         last_name: formData.last_name,
         role: formData.role,
+      }
+
+      // Include role_id if selected (null to clear, string to set)
+      if (formData.role_id) {
+        updateData.role_id = formData.role_id
+      } else {
+        updateData.role_id = null  // Explicitly clear custom role
       }
 
       // Only include password if user entered one
@@ -208,6 +223,33 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Custom Role (Optional) */}
+            <div className="grid gap-2">
+              <Label htmlFor="role_id">{t('customRole') || 'Custom Role'}</Label>
+              <Select
+                value={formData.role_id || 'none'}
+                onValueChange={(value) => setFormData({ ...formData, role_id: value === 'none' ? null : value })}
+                disabled={rolesLoading}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t('selectCustomRole') || 'Select a custom role...'} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">
+                    {t('noCustomRole') || 'No custom role'}
+                  </SelectItem>
+                  {customRoles.map((role: Role) => (
+                    <SelectItem key={role.id} value={role.id}>
+                      {role.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">
+                {t('customRoleDescription') || 'Assign a custom role for granular permissions beyond the base role.'}
+              </p>
             </div>
 
             {/* Password (Optional) */}
