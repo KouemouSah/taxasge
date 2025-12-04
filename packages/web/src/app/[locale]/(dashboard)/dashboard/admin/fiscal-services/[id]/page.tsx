@@ -119,7 +119,7 @@ export default function FiscalServiceDetailPage() {
     return (
       <Badge variant="outline" className={`${config.className} flex items-center gap-1`}>
         <Icon className="h-3 w-3" />
-        {t(`status${status.charAt(0).toUpperCase() + status.slice(1)}` as any)}
+        {t(`status${status.charAt(0).toUpperCase() + status.slice(1)}` as Parameters<typeof t>[0])}
       </Badge>
     )
   }
@@ -240,7 +240,7 @@ export default function FiscalServiceDetailPage() {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Service Type</label>
-                  <p className="mt-1">{t(`type${service.serviceType.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('')}` as any)}</p>
+                  <p className="mt-1">{t(`type${service.serviceType.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('')}` as Parameters<typeof t>[0])}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Category ID</label>
@@ -288,7 +288,7 @@ export default function FiscalServiceDetailPage() {
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Calculation Method</label>
                 <p className="mt-1 text-lg font-medium">
-                  {t(`method${service.calculationMethod.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('')}` as any)}
+                  {t(`method${service.calculationMethod.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('')}` as Parameters<typeof t>[0])}
                 </p>
               </div>
 

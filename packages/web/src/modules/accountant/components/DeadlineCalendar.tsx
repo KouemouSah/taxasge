@@ -160,7 +160,7 @@ export const DeadlineCalendar = ({
           </div>
 
           {/* View selector */}
-          <Select value={view} onValueChange={(v: any) => setView(v)}>
+          <Select value={view} onValueChange={(v: 'month' | 'week' | 'list') => setView(v)}>
             <SelectTrigger className="w-[140px]">
               <SelectValue />
             </SelectTrigger>

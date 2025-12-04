@@ -56,7 +56,7 @@ export const ClientList = ({
     return () => clearTimeout(timeoutId)
   }
 
-  const handleFilterChange = (key: keyof ClientFilters, value: any) => {
+  const handleFilterChange = (key: keyof ClientFilters, value: ClientFilters[keyof ClientFilters]) => {
     setFilters((prev) => ({
       ...prev,
       [key]: value === 'all' ? undefined : value,

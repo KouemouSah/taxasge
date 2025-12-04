@@ -51,7 +51,7 @@ export const accountantClientsApi = {
    * For now, uses /companies with role filtering + client-side stats aggregation
    */
   getAll: async (filters?: ClientFilters): Promise<PaginatedClientsResponse> => {
-    const params: Record<string, any> = {}
+    const params: Record<string, string | number | boolean | undefined> = {}
 
     if (filters?.search) params.search = filters.search
     if (filters?.status && filters.status !== 'all') params.status = filters.status

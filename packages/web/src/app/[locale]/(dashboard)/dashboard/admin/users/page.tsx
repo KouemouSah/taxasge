@@ -37,7 +37,7 @@ import { Users, RefreshCw, AlertTriangle, Search, Shield, Ban, UserPlus, Edit, T
 import { useToast } from '@/hooks/use-toast'
 import usersApi from '@/modules/users-admin/services/api'
 import type { User, UserRole } from '@/modules/users-admin/types'
-import { isCitizenOrBusiness } from '@/types/user'
+import { isCitizenOrBusiness, UserRole as UserRoleEnum } from '@/types/user'
 import { useUserLabels } from '@/hooks/use-user-labels'
 import { CreateUserDialog } from '@/modules/users-admin/components/CreateUserDialog'
 import { EditUserDialog } from '@/modules/users-admin/components/EditUserDialog'
@@ -127,7 +127,7 @@ export default function UsersPage() {
 
   const getDeleteButtonText = (role: UserRole) => {
     if (role === 'admin') return t('cannotDelete')
-    if (isCitizenOrBusiness(role as any)) return t('deactivate')
+    if (isCitizenOrBusiness(role as unknown as UserRoleEnum)) return t('deactivate')
     return t('delete')
   }
 
@@ -151,7 +151,7 @@ export default function UsersPage() {
       return
     }
 
-    const isSoftDelete = isCitizenOrBusiness(user.role as any)
+    const isSoftDelete = isCitizenOrBusiness(user.role as unknown as UserRoleEnum)
 
     const confirmMessage = isSoftDelete
       ? t('confirmDeactivate', { name: `${user.first_name} ${user.last_name}` })

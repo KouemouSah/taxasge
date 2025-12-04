@@ -219,7 +219,7 @@ export default function FiscalServicesPage() {
     const config = statusConfig[status]
     return (
       <Badge variant="outline" className={config.className}>
-        {t(`status${status.charAt(0).toUpperCase() + status.slice(1)}` as any)}
+        {t(`status${status.charAt(0).toUpperCase() + status.slice(1)}` as Parameters<typeof t>[0])}
       </Badge>
     )
   }
@@ -227,7 +227,7 @@ export default function FiscalServicesPage() {
   const getTypeBadge = (type: ServiceTypeEnum) => {
     return (
       <Badge variant="outline" className="bg-purple-50 text-purple-700">
-        {t(`type${type.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('')}` as any)}
+        {t(`type${type.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('')}` as Parameters<typeof t>[0])}
       </Badge>
     )
   }
