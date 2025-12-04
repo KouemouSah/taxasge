@@ -2,9 +2,10 @@
 Permission Service - Business logic for permission checking and management
 """
 from typing import List, Optional, Dict, Any
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Depends
 from loguru import logger
 
+from app.database.connection import get_database
 from app.modules.permissions.repositories.permission_repository import PermissionRepository
 from app.modules.permissions.repositories.role_repository import RoleRepository
 from app.modules.permissions.repositories.user_permission_repository import UserPermissionRepository
@@ -328,10 +329,10 @@ class PermissionService:
         return await self.user_permission_repo.get_user_permissions_summary(user_id)
 
 
-# Helper function for use in dependencies
-async def get_permission_service(db_connection) -> PermissionService:
+# Factory function for creating service with explicit db connection
+def create_permission_service(db_connection) -> PermissionService:
     """
-    Create permission service with repositories
+    Create permission service with repositories (for direct calls with db_connection).
 
     Args:
         db_connection: Database connection
@@ -344,3 +345,19 @@ async def get_permission_service(db_connection) -> PermissionService:
     user_permission_repo = UserPermissionRepository(db_connection)
 
     return PermissionService(permission_repo, role_repo, user_permission_repo)
+
+
+# Dependency function for use with Depends() in route definitions
+async def get_permission_service(db_connection=Depends(get_database)) -> PermissionService:
+    """
+    FastAPI dependency for permission service.
+
+    Use this with Depends(get_permission_service) in route function signatures.
+
+    Args:
+        db_connection: Database connection (injected via Depends)
+
+    Returns:
+        PermissionService instance
+    """
+    return create_permission_service(db_connection)

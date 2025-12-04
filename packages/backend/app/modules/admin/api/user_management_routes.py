@@ -177,7 +177,8 @@ async def create_user(
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user(
     user_id: str = Path(..., description="User ID"),
-    current_user: UserResponse = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user),
+    db=Depends(get_database)
 ):
     """
     Get user by ID
@@ -189,8 +190,8 @@ async def get_user(
         # For viewing other users, check permission
         if current_user.id != user_id:
             # This will check users.view permission (admins auto-approved)
-            from app.modules.permissions.services.permission_service import get_permission_service
-            perm_service = get_permission_service()
+            from app.modules.permissions.services.permission_service import create_permission_service
+            perm_service = create_permission_service(db)
             has_perm = await perm_service.has_permission(current_user.id, "users.view")
             if not has_perm:
                 raise HTTPException(
@@ -231,7 +232,8 @@ async def get_user(
 async def update_user(
     user_id: str = Path(..., description="User ID"),
     user_update: UserUpdate = ...,
-    current_user: UserResponse = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user),
+    db=Depends(get_database)
 ):
     """
     Update user by ID
@@ -248,8 +250,8 @@ async def update_user(
         # Users can update their own profile without special permission
         # For updating other users, check permission
         if current_user.id != user_id:
-            from app.modules.permissions.services.permission_service import get_permission_service
-            perm_service = get_permission_service()
+            from app.modules.permissions.services.permission_service import create_permission_service
+            perm_service = create_permission_service(db)
             has_perm = await perm_service.has_permission(current_user.id, "users.update_any")
             if not has_perm:
                 raise HTTPException(
@@ -265,8 +267,8 @@ async def update_user(
 
         # Check if user can modify protected fields
         if current_user.id != user_id and "status" in update_data:
-            from app.modules.permissions.services.permission_service import get_permission_service
-            perm_service = get_permission_service()
+            from app.modules.permissions.services.permission_service import create_permission_service
+            perm_service = create_permission_service(db)
             has_perm = await perm_service.has_permission(current_user.id, "users.update_any")
             if not has_perm:
                 del update_data["status"]
@@ -452,7 +454,8 @@ async def get_user_stats(
 async def get_user_activities(
     user_id: str = Path(..., description="User ID"),
     limit: int = Query(50, ge=1, le=200, description="Maximum activities"),
-    current_user: UserResponse = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user),
+    db=Depends(get_database)
 ):
     """
     Get user activity history
@@ -463,8 +466,8 @@ async def get_user_activities(
         # Users can view their own activities without special permission
         # For viewing other users' activities, check permission
         if current_user.id != user_id:
-            from app.modules.permissions.services.permission_service import get_permission_service
-            perm_service = get_permission_service()
+            from app.modules.permissions.services.permission_service import create_permission_service
+            perm_service = create_permission_service(db)
             has_perm = await perm_service.has_permission(current_user.id, "users.view_any_activities")
             if not has_perm:
                 raise HTTPException(

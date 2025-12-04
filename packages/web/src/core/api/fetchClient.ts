@@ -129,10 +129,24 @@ export class FetchClient {
       }
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({
+        const errorData = await response.json().catch(() => ({
           detail: `HTTP ${response.status}: ${response.statusText}`,
         }))
-        throw new Error(error.detail || error.message || `HTTP ${response.status}: ${response.statusText}`)
+
+        // Properly stringify error message - handle objects, arrays, and strings
+        let errorMessage: string
+        if (typeof errorData.detail === 'string') {
+          errorMessage = errorData.detail
+        } else if (typeof errorData.message === 'string') {
+          errorMessage = errorData.message
+        } else if (errorData.detail && typeof errorData.detail === 'object') {
+          // Handle FastAPI validation errors (array of objects) or nested error objects
+          errorMessage = JSON.stringify(errorData.detail)
+        } else {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`
+        }
+
+        throw new Error(errorMessage)
       }
 
       return response.json()

@@ -1,0 +1,173 @@
+/**
+ * Roles Admin API Service
+ * Handles all API calls to the backend roles endpoints
+ *
+ * @module roles-admin/services
+ * @author Claude Code
+ * @date 2025-12-04
+ *
+ * BACKEND ALIGNMENT:
+ * Routes: /api/v1/roles (from app/modules/permissions/api/role_routes.py)
+ * - GET    /api/v1/roles                     → get_all_roles (paginated)
+ * - GET    /api/v1/roles/system              → get_system_roles
+ * - GET    /api/v1/roles/custom              → get_custom_roles
+ * - GET    /api/v1/roles/{role_id}           → get_role_by_id
+ * - GET    /api/v1/roles/{role_id}/with-permissions → get_role_with_permissions
+ * - GET    /api/v1/roles/code/{code}         → get_role_by_code
+ * - POST   /api/v1/roles                     → create_role
+ * - PUT    /api/v1/roles/{role_id}           → update_role
+ * - DELETE /api/v1/roles/{role_id}           → delete_role
+ * - POST   /api/v1/roles/{role_id}/permissions     → assign_permissions_to_role
+ * - DELETE /api/v1/roles/{role_id}/permissions     → remove_permissions_from_role
+ * - GET    /api/v1/roles/{role_id}/permissions     → get_role_permissions
+ */
+
+import { fetchClient } from '@/core/api'
+import type {
+  Role,
+  RoleWithPermissions,
+  CreateRoleRequest,
+  UpdateRoleRequest,
+  PaginatedRolesResponse,
+  AssignPermissionsRequest,
+  RemovePermissionsRequest,
+} from '../types'
+
+// =============================================================================
+// CONFIGURATION
+// =============================================================================
+
+const ROLES_BASE = '/roles'
+
+// =============================================================================
+// ROLES API
+// =============================================================================
+
+export const rolesApi = {
+  /**
+   * Get all roles with optional filters and pagination
+   * BACKEND: GET /api/v1/roles
+   * PERMISSION: roles.view
+   */
+  getAll: async (params?: {
+    entity_type?: string | null
+    is_system?: boolean
+    page?: number
+    page_size?: number
+  }): Promise<PaginatedRolesResponse> => {
+    return fetchClient.get<PaginatedRolesResponse>(ROLES_BASE, {
+      entity_type: params?.entity_type ?? undefined,
+      is_system: params?.is_system,
+      page: params?.page || 1,
+      page_size: params?.page_size || 50,
+    })
+  },
+
+  /**
+   * Get all system (built-in) roles
+   * BACKEND: GET /api/v1/roles/system
+   * PERMISSION: roles.view
+   */
+  getSystemRoles: async (): Promise<Role[]> => {
+    return fetchClient.get<Role[]>(`${ROLES_BASE}/system`)
+  },
+
+  /**
+   * Get all custom (user-created) roles
+   * BACKEND: GET /api/v1/roles/custom
+   * PERMISSION: roles.view
+   */
+  getCustomRoles: async (): Promise<Role[]> => {
+    return fetchClient.get<Role[]>(`${ROLES_BASE}/custom`)
+  },
+
+  /**
+   * Get role by ID
+   * BACKEND: GET /api/v1/roles/{role_id}
+   * PERMISSION: roles.view
+   */
+  getById: async (id: string): Promise<Role> => {
+    return fetchClient.get<Role>(`${ROLES_BASE}/${id}`)
+  },
+
+  /**
+   * Get role with all associated permissions
+   * BACKEND: GET /api/v1/roles/{role_id}/with-permissions
+   * PERMISSION: roles.view
+   */
+  getWithPermissions: async (id: string): Promise<RoleWithPermissions> => {
+    return fetchClient.get<RoleWithPermissions>(`${ROLES_BASE}/${id}/with-permissions`)
+  },
+
+  /**
+   * Get role by code
+   * BACKEND: GET /api/v1/roles/code/{code}
+   * PERMISSION: roles.view
+   */
+  getByCode: async (code: string): Promise<Role> => {
+    return fetchClient.get<Role>(`${ROLES_BASE}/code/${code}`)
+  },
+
+  /**
+   * Create a new custom role
+   * BACKEND: POST /api/v1/roles
+   * PERMISSION: roles.create (critical)
+   */
+  create: async (data: CreateRoleRequest): Promise<Role> => {
+    return fetchClient.post<Role>(ROLES_BASE, data)
+  },
+
+  /**
+   * Update a role
+   * BACKEND: PUT /api/v1/roles/{role_id}
+   * PERMISSION: roles.update (critical)
+   */
+  update: async (id: string, data: UpdateRoleRequest): Promise<Role> => {
+    return fetchClient.put<Role>(`${ROLES_BASE}/${id}`, data)
+  },
+
+  /**
+   * Delete a role
+   * BACKEND: DELETE /api/v1/roles/{role_id}
+   * PERMISSION: roles.delete (critical)
+   */
+  delete: async (id: string): Promise<void> => {
+    await fetchClient.delete(`${ROLES_BASE}/${id}`)
+  },
+
+  /**
+   * Assign permissions to a role
+   * BACKEND: POST /api/v1/roles/{role_id}/permissions
+   * PERMISSION: roles.assign_permissions (critical)
+   */
+  assignPermissions: async (roleId: string, data: AssignPermissionsRequest): Promise<{ assigned: number; failed: number }> => {
+    return fetchClient.post(`${ROLES_BASE}/${roleId}/permissions`, data)
+  },
+
+  /**
+   * Remove permissions from a role
+   * BACKEND: DELETE /api/v1/roles/{role_id}/permissions
+   * PERMISSION: roles.assign_permissions (critical)
+   * Note: Uses POST with _method=DELETE since DELETE with body is problematic
+   */
+  removePermissions: async (roleId: string, data: RemovePermissionsRequest): Promise<{ removed: number; failed: number }> => {
+    // Use POST with data since DELETE doesn't support body in fetchClient
+    // Backend should accept both DELETE with query params or POST with body
+    return fetchClient.post(`${ROLES_BASE}/${roleId}/permissions/remove`, data)
+  },
+
+  /**
+   * Get list of permission IDs for a role
+   * BACKEND: GET /api/v1/roles/{role_id}/permissions
+   * PERMISSION: roles.view
+   */
+  getPermissions: async (roleId: string): Promise<string[]> => {
+    return fetchClient.get<string[]>(`${ROLES_BASE}/${roleId}/permissions`)
+  },
+}
+
+// =============================================================================
+// EXPORTS
+// =============================================================================
+
+export default rolesApi
