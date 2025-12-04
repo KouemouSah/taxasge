@@ -291,7 +291,6 @@ async def get_two_factor_status(
 
         return TwoFactorStatusResponse(
             two_factor_enabled=user.get('two_factor_enabled') or False,
-            two_factor_enabled_at=None,  # Column removed from database schema
             backup_codes_remaining=backup_codes_remaining
         )
 

@@ -65,7 +65,8 @@ class BaseRepository(ABC, Generic[T]):
         order_by: Optional[str] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
-        conn: Optional[asyncpg.Connection] = None
+        conn: Optional[asyncpg.Connection] = None,
+        use_supabase: bool = True  # Deprecated: kept for backward compatibility
     ) -> List[T]:
         """
         Find all entities with optional filtering
@@ -76,6 +77,8 @@ class BaseRepository(ABC, Generic[T]):
             limit: Maximum number of results
             offset: Number of results to skip
             conn: Optional database connection (if None, uses db_manager)
+            use_supabase: Deprecated parameter, kept for backward compatibility.
+                         Always uses PostgreSQL directly.
 
         Returns:
             List[T]: List of entities
@@ -174,7 +177,8 @@ class BaseRepository(ABC, Generic[T]):
         self,
         id: str,
         updates: Dict[str, Any],
-        conn: Optional[asyncpg.Connection] = None
+        conn: Optional[asyncpg.Connection] = None,
+        use_supabase: bool = True  # Deprecated: kept for backward compatibility
     ) -> Optional[T]:
         """
         Update entity by ID
@@ -183,6 +187,8 @@ class BaseRepository(ABC, Generic[T]):
             id: Entity ID
             updates: Dictionary of column=value updates
             conn: Optional database connection (if None, uses db_manager)
+            use_supabase: Deprecated parameter, kept for backward compatibility.
+                         Always uses PostgreSQL directly.
 
         Returns:
             Optional[T]: Updated entity if successful, None otherwise
@@ -252,7 +258,8 @@ class BaseRepository(ABC, Generic[T]):
     async def count(
         self,
         filters: Optional[Dict[str, Any]] = None,
-        conn: Optional[asyncpg.Connection] = None
+        conn: Optional[asyncpg.Connection] = None,
+        use_supabase: bool = True  # Deprecated: kept for backward compatibility
     ) -> int:
         """
         Count entities with optional filtering
@@ -260,6 +267,8 @@ class BaseRepository(ABC, Generic[T]):
         Args:
             filters: Dictionary of column=value filters
             conn: Optional database connection (if None, uses db_manager)
+            use_supabase: Deprecated parameter, kept for backward compatibility.
+                         Always uses PostgreSQL directly.
 
         Returns:
             int: Number of entities matching filters

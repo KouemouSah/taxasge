@@ -674,7 +674,7 @@ async def get_profile(
         from app.repositories.user_repository import UserRepository
 
         user_repo = UserRepository()
-        user = await user_repo.find_by_id(current_user["sub"])
+        user = await user_repo.get_by_id(current_user["sub"])
 
         if not user:
             raise HTTPException(
@@ -690,11 +690,11 @@ async def get_profile(
             status=user.get("status"),
             first_name=user.get("first_name"),
             last_name=user.get("last_name"),
-            phone=user.get("phone"),
+            phone=user.get("phone_number"),  # DB column is phone_number
             address=user.get("address"),
             city=user.get("city"),
             country=user.get("country"),
-            language=user.get("language"),
+            language=user.get("preferred_language", "es"),  # DB column is preferred_language
             avatar_url=user.get("avatar_url"),
             created_at=user.get("created_at"),
             updated_at=user.get("updated_at"),
