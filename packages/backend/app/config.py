@@ -91,6 +91,10 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/api/v1"
     API_HOST: str = Field(default="0.0.0.0", env="API_HOST")
     API_PORT: int = Field(default=8000, env="PORT")
+
+    # Frontend URL (for email links, password reset, etc.)
+    # Production domain: taxasge.emacsah.com
+    FRONTEND_URL: str = Field(default="https://taxasge.emacsah.com", env="FRONTEND_URL")
     
     # ========================================================================
     # SECURITY SETTINGS

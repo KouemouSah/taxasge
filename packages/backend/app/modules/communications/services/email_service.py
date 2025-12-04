@@ -194,13 +194,8 @@ class EmailService:
 
         settings = get_settings()
 
-        # Determine frontend URL based on environment
-        if settings.ENVIRONMENT == "production":
-            frontend_url = "https://taxasge-prod.web.app"
-        elif settings.ENVIRONMENT == "staging":
-            frontend_url = "https://taxasge-dev.web.app"
-        else:
-            frontend_url = "http://localhost:3000"
+        # Use configured frontend URL (production: taxasge.emacsah.com)
+        frontend_url = settings.FRONTEND_URL
 
         # IMPORTANT: URL must match Next.js route structure
         reset_url = f"{frontend_url}/auth/reset-password/confirm?token={reset_token}"

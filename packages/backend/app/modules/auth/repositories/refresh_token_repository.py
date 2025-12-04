@@ -29,6 +29,37 @@ class RefreshTokenRepository:
         self.db_manager = db_manager
         self.table = "refresh_tokens"
 
+    def _row_to_refresh_token(self, row) -> RefreshToken:
+        """
+        Convert asyncpg Record to RefreshToken model.
+        Handles UUID conversion to strings.
+        """
+        data = dict(row) if hasattr(row, 'keys') else row
+        # Convert UUID fields to strings
+        if 'id' in data and data['id'] is not None:
+            data['id'] = str(data['id'])
+        if 'user_id' in data and data['user_id'] is not None:
+            data['user_id'] = str(data['user_id'])
+        if 'session_id' in data and data['session_id'] is not None:
+            data['session_id'] = str(data['session_id'])
+        return RefreshToken(**data)
+
+    def _row_to_refresh_token_response(self, row) -> RefreshTokenResponse:
+        """
+        Convert asyncpg Record to RefreshTokenResponse model.
+        Handles UUID conversion to strings.
+        """
+        data = dict(row) if hasattr(row, 'keys') else row
+        # Convert UUID fields to strings
+        if 'id' in data and data['id'] is not None:
+            data['id'] = str(data['id'])
+        if 'user_id' in data and data['user_id'] is not None:
+            data['user_id'] = str(data['user_id'])
+        if 'session_id' in data and data['session_id'] is not None:
+            data['session_id'] = str(data['session_id'])
+        return RefreshTokenResponse(**data)
+
+
     def _hash_token(self, token: str) -> str:
         """
         Hash a refresh token for secure storage
@@ -106,7 +137,7 @@ class RefreshTokenRepository:
                 raise Exception("Failed to create refresh token")
 
             logger.info(f"✅ Refresh token created: {token_id} for user {token_data.user_id}")
-            return RefreshToken(**dict(result))
+            return self._row_to_refresh_token(result)
 
         except Exception as e:
             logger.error(f"❌ Error creating refresh token: {str(e)}")
@@ -150,7 +181,7 @@ class RefreshTokenRepository:
                     logger.warning(f"⚠️ Refresh token expired: {token_data['id']}")
                     return None
 
-                return RefreshToken(**token_data)
+                return self._row_to_refresh_token(token_data)
 
             return None
 
@@ -186,7 +217,7 @@ class RefreshTokenRepository:
                 result = await self.db_manager.execute_single(query, session_id)
 
             if result:
-                return RefreshToken(**dict(result))
+                return self._row_to_refresh_token(result)
 
             return None
 
@@ -231,7 +262,7 @@ class RefreshTokenRepository:
                 results = await self.db_manager.execute_query(query, user_id)
 
             if results:
-                return [RefreshTokenResponse(**dict(token)) for token in results]
+                return [self._row_to_refresh_token_response(token) for token in results]
 
             return []
 
