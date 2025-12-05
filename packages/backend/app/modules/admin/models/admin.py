@@ -19,7 +19,7 @@ from decimal import Decimal
 # ============================================================================
 
 # Import UserRole and UserStatus from users module (single source of truth)
-from ..users.models.user import UserRole, UserStatus
+from app.modules.users.models.user import UserRole, UserStatus
 
 
 class AuditAction(str, Enum):

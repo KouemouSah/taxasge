@@ -66,17 +66,16 @@ class UserRepository(BaseRepository[UserResponse]):
             "status": model.status.value,
             "first_name": model.first_name,
             "last_name": model.last_name,
-            "phone": model.phone,
+            "phone_number": model.phone_number,
             "address": model.address,
             "city": model.city,
-            "country": model.country,
-            "language": model.language,
+            "preferred_language": model.preferred_language,
             "avatar_url": model.avatar_url,
             "created_at": model.created_at,
             "updated_at": model.updated_at,
             "last_login": model.last_login,
-            "citizen_profile": model.citizen_profile.dict() if model.citizen_profile else None,
-            "business_profile": model.business_profile.dict() if model.business_profile else None
+            "citizen_profile": model.citizen_profile.model_dump() if model.citizen_profile else None,
+            "business_profile": model.business_profile.model_dump() if model.business_profile else None
         }
 
     async def find_by_email(self, email: str, use_supabase: bool = False) -> Optional[UserResponse]:

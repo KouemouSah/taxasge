@@ -170,10 +170,10 @@ class UserRepository:
         conn: asyncpg.Connection,
         user_id: str,
     ) -> bool:
-        """Delete user (soft delete by setting status to inactive)"""
+        """Delete user (soft delete by setting status to deactivated)"""
         query = """
             UPDATE users
-            SET status = 'inactive',
+            SET status = 'deactivated',
                 updated_at = NOW()
             WHERE id = $1
         """
