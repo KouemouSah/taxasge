@@ -108,10 +108,6 @@ export default function MinistriesPage() {
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null)
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
 
-  // Column filter states
-  const [codeFilter, setCodeFilter] = useState('')
-  const [nameFilter, setNameFilter] = useState('')
-
   // Modal states
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -283,13 +279,7 @@ export default function MinistriesPage() {
       (statusFilter === 'active' && m.is_active !== false) ||
       (statusFilter === 'inactive' && m.is_active === false)
 
-    // Column filters
-    const matchesCodeFilter = codeFilter === '' ||
-      code.toLowerCase().includes(codeFilter.toLowerCase())
-    const matchesNameFilter = nameFilter === '' ||
-      name.toLowerCase().includes(nameFilter.toLowerCase())
-
-    return matchesSearch && matchesStatus && matchesCodeFilter && matchesNameFilter
+    return matchesSearch && matchesStatus
   })
 
   // Sort ministries
@@ -340,7 +330,7 @@ export default function MinistriesPage() {
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, statusFilter, codeFilter, nameFilter, rowsPerPage])
+  }, [searchQuery, statusFilter, rowsPerPage])
 
   return (
     <div className="space-y-6">
@@ -468,42 +458,26 @@ export default function MinistriesPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>
-                      <div className="space-y-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 px-2 -ml-2 font-medium"
-                          onClick={() => handleSort('ministry_code')}
-                        >
-                          {t('tableCode')}
-                          {getSortIcon('ministry_code')}
-                        </Button>
-                        <Input
-                          placeholder={t('filterCode')}
-                          value={codeFilter}
-                          onChange={(e) => setCodeFilter(e.target.value)}
-                          className="h-7 text-xs"
-                        />
-                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 -ml-2 font-medium"
+                        onClick={() => handleSort('ministry_code')}
+                      >
+                        {t('tableCode')}
+                        {getSortIcon('ministry_code')}
+                      </Button>
                     </TableHead>
                     <TableHead>
-                      <div className="space-y-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 px-2 -ml-2 font-medium"
-                          onClick={() => handleSort('name_es')}
-                        >
-                          {t('tableName')}
-                          {getSortIcon('name_es')}
-                        </Button>
-                        <Input
-                          placeholder={t('filterName')}
-                          value={nameFilter}
-                          onChange={(e) => setNameFilter(e.target.value)}
-                          className="h-7 text-xs"
-                        />
-                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 -ml-2 font-medium"
+                        onClick={() => handleSort('name_es')}
+                      >
+                        {t('tableName')}
+                        {getSortIcon('name_es')}
+                      </Button>
                     </TableHead>
                     <TableHead>
                       <Button

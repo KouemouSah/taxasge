@@ -51,6 +51,7 @@ import type {
   ServiceKeyword,
   EntityTranslation,
 } from '@/types/fiscal-service'
+import { getAuthData } from '@/core/auth/storage'
 
 // =============================================================================
 // CONFIGURATION
@@ -77,16 +78,16 @@ class ApiClient {
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`
 
-    const token = typeof window !== 'undefined'
-      ? localStorage.getItem('auth_token')
+    const authData = typeof window !== 'undefined'
+      ? getAuthData()
       : null
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     }
 
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`
+    if (authData?.access_token) {
+      headers['Authorization'] = `Bearer ${authData.access_token}`
     }
 
     if (options.headers) {

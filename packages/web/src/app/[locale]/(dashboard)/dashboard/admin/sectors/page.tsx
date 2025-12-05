@@ -101,10 +101,6 @@ export default function SectorsPage() {
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null)
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
 
-  // Column filter states
-  const [codeFilter, setCodeFilter] = useState('')
-  const [nameFilter, setNameFilter] = useState('')
-
   // Modal states
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -288,13 +284,7 @@ export default function SectorsPage() {
       (statusFilter === 'active' && s.is_active !== false) ||
       (statusFilter === 'inactive' && s.is_active === false)
 
-    // Column filters
-    const matchesCodeFilter = codeFilter === '' ||
-      code.toLowerCase().includes(codeFilter.toLowerCase())
-    const matchesNameFilter = nameFilter === '' ||
-      name.toLowerCase().includes(nameFilter.toLowerCase())
-
-    return matchesSearch && matchesMinistry && matchesStatus && matchesCodeFilter && matchesNameFilter
+    return matchesSearch && matchesMinistry && matchesStatus
   })
 
   // Sort sectors
@@ -349,7 +339,7 @@ export default function SectorsPage() {
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, statusFilter, ministryFilter, codeFilter, nameFilter, rowsPerPage])
+  }, [searchQuery, statusFilter, ministryFilter, rowsPerPage])
 
   return (
     <div className="space-y-6">
@@ -491,42 +481,26 @@ export default function SectorsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>
-                      <div className="space-y-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 px-2 -ml-2 font-medium"
-                          onClick={() => handleSort('sector_code')}
-                        >
-                          {t('tableCode')}
-                          {getSortIcon('sector_code')}
-                        </Button>
-                        <Input
-                          placeholder={t('filterCode')}
-                          value={codeFilter}
-                          onChange={(e) => setCodeFilter(e.target.value)}
-                          className="h-7 text-xs"
-                        />
-                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 -ml-2 font-medium"
+                        onClick={() => handleSort('sector_code')}
+                      >
+                        {t('tableCode')}
+                        {getSortIcon('sector_code')}
+                      </Button>
                     </TableHead>
                     <TableHead>
-                      <div className="space-y-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 px-2 -ml-2 font-medium"
-                          onClick={() => handleSort('name_es')}
-                        >
-                          {t('tableName')}
-                          {getSortIcon('name_es')}
-                        </Button>
-                        <Input
-                          placeholder={t('filterName')}
-                          value={nameFilter}
-                          onChange={(e) => setNameFilter(e.target.value)}
-                          className="h-7 text-xs"
-                        />
-                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 -ml-2 font-medium"
+                        onClick={() => handleSort('name_es')}
+                      >
+                        {t('tableName')}
+                        {getSortIcon('name_es')}
+                      </Button>
                     </TableHead>
                     <TableHead>
                       <Button
