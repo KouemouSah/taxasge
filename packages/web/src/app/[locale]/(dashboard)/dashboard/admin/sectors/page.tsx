@@ -47,7 +47,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Layers, RefreshCw, Plus, Edit, Trash2, Search, AlertTriangle } from 'lucide-react'
+import { Layers, RefreshCw, Plus, Edit, Trash2, Search, AlertTriangle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import fiscalServicesAPI from '@/modules/fiscal-services/services/api'
 import type { Sector, Ministry } from '@/types/fiscal-service'
@@ -91,6 +91,19 @@ export default function SectorsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [ministryFilter, setMinistryFilter] = useState<number | 'all'>('all')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1)
+  const [rowsPerPage, setRowsPerPage] = useState(20)
+
+  // Sorting states
+  type SortColumn = 'sector_code' | 'name_es' | 'ministry_id' | 'display_order' | 'is_active'
+  const [sortColumn, setSortColumn] = useState<SortColumn | null>(null)
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+
+  // Column filter states
+  const [codeFilter, setCodeFilter] = useState('')
+  const [nameFilter, setNameFilter] = useState('')
 
   // Modal states
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -243,6 +256,26 @@ export default function SectorsPage() {
     return ministry?.name_es || '-'
   }
 
+  // Handle sort column click
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortColumn(column)
+      setSortDirection('asc')
+    }
+  }
+
+  // Get sort icon for column
+  const getSortIcon = (column: SortColumn) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown className="h-4 w-4 ml-1 opacity-50" />
+    }
+    return sortDirection === 'asc'
+      ? <ArrowUp className="h-4 w-4 ml-1" />
+      : <ArrowDown className="h-4 w-4 ml-1" />
+  }
+
   // Filter sectors
   const filteredSectors = sectors.filter(s => {
     const name = s.name_es || ''
@@ -254,8 +287,69 @@ export default function SectorsPage() {
     const matchesStatus = statusFilter === 'all' ||
       (statusFilter === 'active' && s.is_active !== false) ||
       (statusFilter === 'inactive' && s.is_active === false)
-    return matchesSearch && matchesMinistry && matchesStatus
+
+    // Column filters
+    const matchesCodeFilter = codeFilter === '' ||
+      code.toLowerCase().includes(codeFilter.toLowerCase())
+    const matchesNameFilter = nameFilter === '' ||
+      name.toLowerCase().includes(nameFilter.toLowerCase())
+
+    return matchesSearch && matchesMinistry && matchesStatus && matchesCodeFilter && matchesNameFilter
   })
+
+  // Sort sectors
+  const sortedSectors = [...filteredSectors].sort((a, b) => {
+    if (!sortColumn) return 0
+
+    let aValue: string | number | boolean
+    let bValue: string | number | boolean
+
+    switch (sortColumn) {
+      case 'sector_code':
+        aValue = a.sector_code || ''
+        bValue = b.sector_code || ''
+        break
+      case 'name_es':
+        aValue = a.name_es || ''
+        bValue = b.name_es || ''
+        break
+      case 'ministry_id':
+        aValue = getMinistryName(a.ministry_id)
+        bValue = getMinistryName(b.ministry_id)
+        break
+      case 'display_order':
+        aValue = a.display_order || 0
+        bValue = b.display_order || 0
+        break
+      case 'is_active':
+        aValue = a.is_active !== false
+        bValue = b.is_active !== false
+        break
+      default:
+        return 0
+    }
+
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      return sortDirection === 'asc'
+        ? aValue.localeCompare(bValue)
+        : bValue.localeCompare(aValue)
+    }
+
+    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
+    if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
+    return 0
+  })
+
+  // Pagination calculations
+  const totalPages = Math.ceil(sortedSectors.length / rowsPerPage)
+  const startIndex = (currentPage - 1) * rowsPerPage
+  const endIndex = startIndex + rowsPerPage
+  const paginatedSectors = sortedSectors.slice(startIndex, endIndex)
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, statusFilter, ministryFilter, codeFilter, nameFilter, rowsPerPage])
 
   return (
     <div className="space-y-6">
@@ -384,68 +478,209 @@ export default function SectorsPage() {
             </div>
           )}
 
-          {!isLoading && !error && filteredSectors.length === 0 && (
+          {!isLoading && !error && sortedSectors.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <Layers className="h-12 w-12 mb-4 opacity-50" />
               <p>{t('noSectorsFound')}</p>
             </div>
           )}
 
-          {!isLoading && !error && filteredSectors.length > 0 && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('tableCode')}</TableHead>
-                  <TableHead>{t('tableName')}</TableHead>
-                  <TableHead>{t('tableMinistry')}</TableHead>
-                  <TableHead>{t('tableOrder')}</TableHead>
-                  <TableHead>{t('tableStatus')}</TableHead>
-                  <TableHead className="text-right">{t('tableActions')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredSectors.map((sector) => (
-                  <TableRow key={sector.id}>
-                    <TableCell className="font-mono text-sm">
-                      {sector.sector_code}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {sector.color && (
-                          <div
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: sector.color }}
-                          />
-                        )}
-                        <span className="font-medium">{sector.name_es}</span>
+          {!isLoading && !error && sortedSectors.length > 0 && (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>
+                      <div className="space-y-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 -ml-2 font-medium"
+                          onClick={() => handleSort('sector_code')}
+                        >
+                          {t('tableCode')}
+                          {getSortIcon('sector_code')}
+                        </Button>
+                        <Input
+                          placeholder={t('filterCode')}
+                          value={codeFilter}
+                          onChange={(e) => setCodeFilter(e.target.value)}
+                          className="h-7 text-xs"
+                        />
                       </div>
-                    </TableCell>
-                    <TableCell>{getMinistryName(sector.ministry_id)}</TableCell>
-                    <TableCell>{sector.display_order || 0}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={sector.is_active !== false ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}
+                    </TableHead>
+                    <TableHead>
+                      <div className="space-y-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 -ml-2 font-medium"
+                          onClick={() => handleSort('name_es')}
+                        >
+                          {t('tableName')}
+                          {getSortIcon('name_es')}
+                        </Button>
+                        <Input
+                          placeholder={t('filterName')}
+                          value={nameFilter}
+                          onChange={(e) => setNameFilter(e.target.value)}
+                          className="h-7 text-xs"
+                        />
+                      </div>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 -ml-2 font-medium"
+                        onClick={() => handleSort('ministry_id')}
                       >
-                        {sector.is_active !== false ? t('statusActive') : t('statusInactive')}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => handleEdit(sector)}>
-                          <Edit className="h-4 w-4 mr-1" />
-                          {t('edit')}
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDeleteClick(sector)}>
-                          <Trash2 className="h-4 w-4 mr-1" />
-                          {t('delete')}
-                        </Button>
-                      </div>
-                    </TableCell>
+                        {t('tableMinistry')}
+                        {getSortIcon('ministry_id')}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 -ml-2 font-medium"
+                        onClick={() => handleSort('display_order')}
+                      >
+                        {t('tableOrder')}
+                        {getSortIcon('display_order')}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 -ml-2 font-medium"
+                        onClick={() => handleSort('is_active')}
+                      >
+                        {t('tableStatus')}
+                        {getSortIcon('is_active')}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="text-right">{t('tableActions')}</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {paginatedSectors.map((sector) => (
+                    <TableRow key={sector.id}>
+                      <TableCell className="font-mono text-sm">
+                        {sector.sector_code}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {sector.color && (
+                            <div
+                              className="w-3 h-3 rounded-full"
+                              style={{ backgroundColor: sector.color }}
+                            />
+                          )}
+                          <span className="font-medium">{sector.name_es}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{getMinistryName(sector.ministry_id)}</TableCell>
+                      <TableCell>{sector.display_order || 0}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={sector.is_active !== false ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}
+                        >
+                          {sector.is_active !== false ? t('statusActive') : t('statusInactive')}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button variant="ghost" size="sm" onClick={() => handleEdit(sector)}>
+                            <Edit className="h-4 w-4 mr-1" />
+                            {t('edit')}
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDeleteClick(sector)}>
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            {t('delete')}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              {/* Pagination Controls */}
+              <div className="flex items-center justify-between px-2 py-4 border-t">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <span>{t('rowsPerPage')}:</span>
+                  <Select
+                    value={String(rowsPerPage)}
+                    onValueChange={(v) => setRowsPerPage(Number(v))}
+                  >
+                    <SelectTrigger className="h-8 w-[70px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    {t('pageInfo', {
+                      start: sortedSectors.length === 0 ? 0 : startIndex + 1,
+                      end: Math.min(endIndex, sortedSectors.length),
+                      total: sortedSectors.length
+                    })}
+                  </span>
+
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => setCurrentPage(1)}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronsLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => setCurrentPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm px-2">
+                      {t('pageOf', { current: currentPage, total: totalPages || 1 })}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => setCurrentPage(currentPage + 1)}
+                      disabled={currentPage >= totalPages}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => setCurrentPage(totalPages)}
+                      disabled={currentPage >= totalPages}
+                    >
+                      <ChevronsRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
