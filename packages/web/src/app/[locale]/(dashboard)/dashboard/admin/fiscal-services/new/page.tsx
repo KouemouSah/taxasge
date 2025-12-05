@@ -272,7 +272,7 @@ export default function CreateFiscalServicePage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="tasaExpedicion">Expedition Fee (GNF)</Label>
+                  <Label htmlFor="tasaExpedicion">Expedition Fee (XAF)</Label>
                   <Input
                     id="tasaExpedicion"
                     type="number"
@@ -285,7 +285,7 @@ export default function CreateFiscalServicePage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="tasaRenovacion">Renewal Fee (GNF)</Label>
+                  <Label htmlFor="tasaRenovacion">Renewal Fee (XAF)</Label>
                   <Input
                     id="tasaRenovacion"
                     type="number"

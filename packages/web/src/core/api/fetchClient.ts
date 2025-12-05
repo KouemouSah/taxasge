@@ -11,9 +11,10 @@
  * - Automatic Content-Type headers
  * - Error handling with proper messages
  * - Support for all HTTP methods
+ * - Automatic token refresh on 401 errors
  */
 
-import { getAuthData } from '@/core/auth/storage'
+import { getAuthData, setAuthData, clearAuthData } from '@/core/auth/storage'
 import { appConfig } from '@/core/config/app'
 
 // =============================================================================
@@ -37,12 +38,78 @@ export interface RequestOptions extends Omit<RequestInit, 'body'> {
 export class FetchClient {
   private baseUrl: string
   private defaultHeaders: Record<string, string>
+  private isRefreshing: boolean = false
+  private refreshPromise: Promise<string | null> | null = null
 
   constructor(options: FetchClientOptions = {}) {
     this.baseUrl = options.baseUrl || `${appConfig.api.baseUrl}/api/v1`
     this.defaultHeaders = {
       'Content-Type': 'application/json',
       ...options.defaultHeaders,
+    }
+  }
+
+  /**
+   * Refresh the access token using the refresh token
+   */
+  private async refreshToken(): Promise<string | null> {
+    const authData = getAuthData()
+    if (!authData?.refresh_token) {
+      return null
+    }
+
+    try {
+      const response = await fetch(`${this.baseUrl}/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refresh_token: authData.refresh_token }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Token refresh failed')
+      }
+
+      const data = await response.json()
+      const { access_token, refresh_token } = data
+
+      // Update stored tokens
+      setAuthData({
+        ...authData,
+        access_token,
+        refresh_token,
+      })
+
+      return access_token
+    } catch {
+      // Clear auth data and redirect to login
+      clearAuthData()
+      if (typeof window !== 'undefined') {
+        window.location.href = '/auth/login'
+      }
+      return null
+    }
+  }
+
+  /**
+   * Get a fresh token, refreshing if necessary
+   */
+  private async getFreshToken(): Promise<string | null> {
+    // If already refreshing, wait for the existing refresh to complete
+    if (this.isRefreshing && this.refreshPromise) {
+      return this.refreshPromise
+    }
+
+    this.isRefreshing = true
+    this.refreshPromise = this.refreshToken()
+
+    try {
+      const token = await this.refreshPromise
+      return token
+    } finally {
+      this.isRefreshing = false
+      this.refreshPromise = null
     }
   }
 
@@ -87,11 +154,12 @@ export class FetchClient {
   }
 
   /**
-   * Make a request
+   * Make a request with automatic token refresh on 401
    */
   private async request<T>(
     endpoint: string,
-    options: RequestOptions = {}
+    options: RequestOptions = {},
+    isRetry: boolean = false
   ): Promise<T> {
     const { params, body, headers: customHeaders, ...fetchOptions } = options
 
@@ -126,6 +194,17 @@ export class FetchClient {
       // Handle 204 No Content
       if (response.status === 204) {
         return {} as T
+      }
+
+      // Handle 401 Unauthorized - attempt token refresh
+      if (response.status === 401 && !isRetry) {
+        const newToken = await this.getFreshToken()
+        if (newToken) {
+          // Retry the request with the new token
+          return this.request<T>(endpoint, options, true)
+        }
+        // If refresh failed, throw the error
+        throw new Error('Invalid or expired access token')
       }
 
       if (!response.ok) {

@@ -128,7 +128,7 @@ export default function FiscalServiceDetailPage() {
     if (!amount) return '-'
     return new Intl.NumberFormat(locale, {
       style: 'currency',
-      currency: 'GNF',
+      currency: 'XAF',
       minimumFractionDigits: 0,
     }).format(amount)
   }

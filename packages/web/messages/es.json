@@ -29,7 +29,9 @@
     "of": "de",
     "clear": "Limpiar",
     "active": "Activo",
-    "free": "Gratis"
+    "free": "Gratis",
+    "retry": "Reintentar",
+    "refresh": "Actualizar"
   },
   "nav": {
     "home": "Inicio",
@@ -1238,8 +1240,8 @@
       "errorLoading": "Error al cargar asignaciones"
     },
     "settings": {
-      "title": "Configuración de Seguridad",
-      "subtitle": "Gestione su contraseña y opciones de seguridad admin",
+      "title": "Configuración del Sistema",
+      "subtitle": "Configuración del sistema y diagnósticos",
       "adminAccount": "Cuenta de administrador",
       "adminAccountWarning": "Está conectado con una cuenta de administrador. Asegúrese de usar una contraseña fuerte y activar 2FA.",
       "password": "Contraseña",
@@ -1263,7 +1265,24 @@
       "passwordNeedLowercase": "La contraseña debe contener al menos una minúscula",
       "passwordNeedNumber": "La contraseña debe contener al menos un número",
       "passwordNeedSpecial": "La contraseña debe contener al menos un carácter especial",
-      "errorChangingPassword": "Error al cambiar la contraseña"
+      "errorChangingPassword": "Error al cambiar la contraseña",
+      "systemStatus": "Estado del Sistema",
+      "operational": "Operacional",
+      "allServicesRunning": "Todos los servicios funcionando",
+      "database": "Base de Datos",
+      "authentication": "Autenticación",
+      "diagnostics": "Diagnósticos del Sistema",
+      "diagnosticsDescription": "Verificar la configuración del sistema y el estado de los servicios",
+      "secretsConfiguration": "Configuración de Secretos",
+      "emailConfiguration": "Configuración de Email",
+      "maintenanceActions": "Acciones de Mantenimiento",
+      "maintenanceDescription": "Migraciones de base de datos y tareas de mantenimiento",
+      "grandfatherMigration": "Migración de Usuarios Existentes",
+      "grandfatherMigrationDescription": "Establecer email_verified=TRUE para usuarios creados antes del 3 de noviembre de 2025",
+      "runMigration": "Ejecutar Migración",
+      "deploymentNote": "Nota de Despliegue",
+      "deploymentNoteDescription": "Los despliegues se manejan automáticamente vía GitHub Actions. Nunca ejecute builds manuales en la nube.",
+      "systemInfo": "Información del Sistema"
     },
     "fiscalServices": {
       "title": "Servicios Fiscales",
