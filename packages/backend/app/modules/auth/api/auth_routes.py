@@ -75,6 +75,11 @@ class RegisterRequest(BaseModel):
     # Optional: Basic contact info (exist in users table)
     address: Optional[str] = Field(None, max_length=200, description="User address")
     city: Optional[str] = Field(None, max_length=100, description="City")
+    preferred_language: Optional[str] = Field(
+        None,
+        pattern="^(es|fr|en)$",
+        description="Preferred language (es/fr/en). If not provided, uses Accept-Language header"
+    )
 
     @model_validator(mode='after')
     def validate_password_strength(self):
@@ -425,6 +430,20 @@ async def register(
         # Get client info
         ip_address, user_agent = get_client_info(req)
 
+        # Determine preferred language
+        # Priority: 1. Request field, 2. Accept-Language header, 3. Default "es"
+        preferred_lang = request.preferred_language
+        if not preferred_lang:
+            # Extract from Accept-Language header
+            accept_lang = req.headers.get("Accept-Language", "")
+            # Parse Accept-Language: "es-ES,es;q=0.9,en;q=0.8" -> "es"
+            if accept_lang:
+                lang_code = accept_lang.split(",")[0].split("-")[0].lower()
+                if lang_code in ("es", "fr", "en"):
+                    preferred_lang = lang_code
+        if not preferred_lang:
+            preferred_lang = "es"  # Default to Spanish
+
         # Create UserProfile with ONLY fields that exist in users table
         # NOTE: Extended profiles (citizen/business specific) will be in MODULE_03
         user_profile = UserProfile(
@@ -433,7 +452,7 @@ async def register(
             phone=request.phone,
             address=request.address,
             city=request.city,
-            language="es",  # Default to Spanish
+            language=preferred_lang,  # Use detected or default language
         )
 
         # Create UserCreate model (NO citizen_profile/business_profile for now)

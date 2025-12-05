@@ -176,9 +176,36 @@ export default function ProfilePage() {
 
   const handleSaveNotifications = async () => {
     try {
-      // TODO: Implement API call to update notification preferences
-      // const { userApi } = await import('@/lib/api/user')
-      // await userApi.updateNotificationPreferences(notificationPrefs)
+      // Import API client
+      const { fetchClient } = await import('@/core/api/client')
+
+      // Call API to update preferences
+      const response = await fetchClient('/api/v1/users/profile', {
+        method: 'PUT',
+        body: JSON.stringify({
+          preferred_language: notificationPrefs.preferred_language,
+          email_notifications: notificationPrefs.email_notifications,
+          push_notifications: notificationPrefs.push_notifications,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update preferences')
+      }
+
+      // Update local storage with new user data
+      const updatedUser = await response.json()
+      const authData = getAuthData()
+      if (authData) {
+        const { setAuthData } = await import('@/core/auth/storage')
+        setAuthData({
+          ...authData,
+          user: {
+            ...authData.user,
+            ...notificationPrefs,
+          },
+        })
+      }
 
       toast({
         title: t('preferencesUpdated'),
@@ -191,6 +218,14 @@ export default function ProfilePage() {
           ...user,
           ...notificationPrefs,
         })
+      }
+
+      // If language changed, redirect to the new locale
+      if (notificationPrefs.preferred_language !== locale) {
+        const currentPath = window.location.pathname
+        // Replace the locale in the path
+        const newPath = currentPath.replace(`/${locale}/`, `/${notificationPrefs.preferred_language}/`)
+        router.push(newPath)
       }
     } catch (error: unknown) {
       toast({
