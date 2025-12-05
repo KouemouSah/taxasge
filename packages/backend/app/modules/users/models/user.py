@@ -186,7 +186,7 @@ class UserResponse(BaseModel):
     phone_number: Optional[str] = Field(None, description="Phone number")
     address: Optional[str] = Field(None, description="Address")
     city: Optional[str] = Field(None, description="City")
-    preferred_language: str = Field(..., description="Preferred language (es/fr/en)")
+    preferred_language: str = Field(default="es", description="Preferred language (es/fr/en)")
     avatar_url: Optional[str] = Field(None, description="Profile picture URL")
     created_at: datetime = Field(..., description="Account creation date")
     updated_at: datetime = Field(..., description="Last update date")
