@@ -32,6 +32,122 @@ const DOCUMENTS_BASE = '/document-templates'
 const PROCEDURES_BASE = '/procedure-templates'
 
 // =============================================================================
+// BACKEND RESPONSE TYPES (snake_case)
+// =============================================================================
+
+interface BackendDocumentTemplate {
+  id: number
+  template_code: string
+  document_name_es: string
+  description_es?: string
+  category?: string
+  validity_duration_months?: number
+  validity_notes?: string
+  usage_count: number
+  is_active: boolean
+  created_at: string
+  updated_at?: string
+  created_by?: number
+}
+
+interface BackendProcedureTemplate {
+  id: number
+  template_code: string
+  name_es: string
+  description_es?: string
+  category?: string
+  usage_count: number
+  is_active: boolean
+  created_at: string
+  updated_at?: string
+  created_by?: number
+}
+
+interface BackendProcedureStep {
+  id: number
+  template_id: number
+  step_number: number
+  description_es: string
+  instructions_es?: string
+  estimated_duration_minutes?: number
+  location_address?: string
+  office_hours?: string
+  requires_appointment: boolean
+  is_optional: boolean
+  created_at: string
+  updated_at?: string
+}
+
+interface DocumentTemplateListResponse {
+  templates: BackendDocumentTemplate[]
+  total: number
+  page: number
+  page_size: number
+  total_pages: number
+}
+
+interface ProcedureTemplateListResponse {
+  templates: BackendProcedureTemplate[]
+  total: number
+  page: number
+  page_size: number
+  total_pages: number
+}
+
+// =============================================================================
+// CONVERTERS (snake_case -> camelCase)
+// =============================================================================
+
+function convertDocumentTemplate(backend: BackendDocumentTemplate): DocumentTemplate {
+  return {
+    id: backend.id,
+    templateCode: backend.template_code,
+    documentNameEs: backend.document_name_es,
+    descriptionEs: backend.description_es,
+    category: backend.category,
+    validityDurationMonths: backend.validity_duration_months,
+    validityNotes: backend.validity_notes,
+    usageCount: backend.usage_count,
+    isActive: backend.is_active,
+    createdAt: backend.created_at,
+    updatedAt: backend.updated_at,
+    createdBy: backend.created_by,
+  }
+}
+
+function convertProcedureTemplate(backend: BackendProcedureTemplate): ProcedureTemplate {
+  return {
+    id: backend.id,
+    templateCode: backend.template_code,
+    nameEs: backend.name_es,
+    descriptionEs: backend.description_es,
+    category: backend.category,
+    usageCount: backend.usage_count,
+    isActive: backend.is_active,
+    createdAt: backend.created_at,
+    updatedAt: backend.updated_at,
+    createdBy: backend.created_by,
+  }
+}
+
+function convertProcedureStep(backend: BackendProcedureStep): ProcedureStep {
+  return {
+    id: backend.id,
+    templateId: backend.template_id,
+    stepNumber: backend.step_number,
+    descriptionEs: backend.description_es,
+    instructionsEs: backend.instructions_es,
+    estimatedDurationMinutes: backend.estimated_duration_minutes,
+    locationAddress: backend.location_address,
+    officeHours: backend.office_hours,
+    requiresAppointment: backend.requires_appointment,
+    isOptional: backend.is_optional,
+    createdAt: backend.created_at,
+    updatedAt: backend.updated_at,
+  }
+}
+
+// =============================================================================
 // DOCUMENT TEMPLATES API
 // =============================================================================
 
@@ -46,12 +162,13 @@ export const documentTemplatesApi = {
     page?: number
     pageSize?: number
   }): Promise<DocumentTemplate[]> => {
-    return fetchClient.get<DocumentTemplate[]>(DOCUMENTS_BASE, {
+    const response = await fetchClient.get<DocumentTemplateListResponse>(DOCUMENTS_BASE, {
       category: params?.category,
       is_active: params?.isActive,
       page: params?.page,
       page_size: params?.pageSize,
     })
+    return response.templates.map(convertDocumentTemplate)
   },
 
   /**
@@ -59,7 +176,8 @@ export const documentTemplatesApi = {
    * Get single document template
    */
   get: async (templateId: number | string): Promise<DocumentTemplate> => {
-    return fetchClient.get<DocumentTemplate>(`${DOCUMENTS_BASE}/${templateId}`)
+    const response = await fetchClient.get<BackendDocumentTemplate>(`${DOCUMENTS_BASE}/${templateId}`)
+    return convertDocumentTemplate(response)
   },
 
   /**
@@ -68,7 +186,16 @@ export const documentTemplatesApi = {
    * Auth: Required + Permission "templates.create"
    */
   create: async (data: DocumentTemplateCreate): Promise<DocumentTemplate> => {
-    return fetchClient.post<DocumentTemplate>(DOCUMENTS_BASE, data)
+    const response = await fetchClient.post<BackendDocumentTemplate>(DOCUMENTS_BASE, {
+      template_code: data.templateCode,
+      document_name_es: data.documentNameEs,
+      description_es: data.descriptionEs,
+      category: data.category,
+      validity_duration_months: data.validityDurationMonths,
+      validity_notes: data.validityNotes,
+      is_active: data.isActive,
+    })
+    return convertDocumentTemplate(response)
   },
 
   /**
@@ -80,7 +207,15 @@ export const documentTemplatesApi = {
     templateId: number | string,
     data: DocumentTemplateUpdate
   ): Promise<DocumentTemplate> => {
-    return fetchClient.put<DocumentTemplate>(`${DOCUMENTS_BASE}/${templateId}`, data)
+    const response = await fetchClient.put<BackendDocumentTemplate>(`${DOCUMENTS_BASE}/${templateId}`, {
+      document_name_es: data.documentNameEs,
+      description_es: data.descriptionEs,
+      category: data.category,
+      validity_duration_months: data.validityDurationMonths,
+      validity_notes: data.validityNotes,
+      is_active: data.isActive,
+    })
+    return convertDocumentTemplate(response)
   },
 
   /**
@@ -108,12 +243,13 @@ export const procedureTemplatesApi = {
     page?: number
     pageSize?: number
   }): Promise<ProcedureTemplate[]> => {
-    return fetchClient.get<ProcedureTemplate[]>(PROCEDURES_BASE, {
+    const response = await fetchClient.get<ProcedureTemplateListResponse>(PROCEDURES_BASE, {
       category: params?.category,
       is_active: params?.isActive,
       page: params?.page,
       page_size: params?.pageSize,
     })
+    return response.templates.map(convertProcedureTemplate)
   },
 
   /**
@@ -121,7 +257,8 @@ export const procedureTemplatesApi = {
    * Get single procedure template
    */
   get: async (templateId: number | string): Promise<ProcedureTemplate> => {
-    return fetchClient.get<ProcedureTemplate>(`${PROCEDURES_BASE}/${templateId}`)
+    const response = await fetchClient.get<BackendProcedureTemplate>(`${PROCEDURES_BASE}/${templateId}`)
+    return convertProcedureTemplate(response)
   },
 
   /**
@@ -130,7 +267,14 @@ export const procedureTemplatesApi = {
    * Auth: Required + Permission "templates.create"
    */
   create: async (data: ProcedureTemplateCreate): Promise<ProcedureTemplate> => {
-    return fetchClient.post<ProcedureTemplate>(PROCEDURES_BASE, data)
+    const response = await fetchClient.post<BackendProcedureTemplate>(PROCEDURES_BASE, {
+      template_code: data.templateCode,
+      name_es: data.nameEs,
+      description_es: data.descriptionEs,
+      category: data.category,
+      is_active: data.isActive,
+    })
+    return convertProcedureTemplate(response)
   },
 
   /**
@@ -142,7 +286,13 @@ export const procedureTemplatesApi = {
     templateId: number | string,
     data: ProcedureTemplateUpdate
   ): Promise<ProcedureTemplate> => {
-    return fetchClient.put<ProcedureTemplate>(`${PROCEDURES_BASE}/${templateId}`, data)
+    const response = await fetchClient.put<BackendProcedureTemplate>(`${PROCEDURES_BASE}/${templateId}`, {
+      name_es: data.nameEs,
+      description_es: data.descriptionEs,
+      category: data.category,
+      is_active: data.isActive,
+    })
+    return convertProcedureTemplate(response)
   },
 
   /**
@@ -165,7 +315,8 @@ export const procedureStepsApi = {
    * Get all steps for a procedure template
    */
   list: async (templateId: number | string): Promise<ProcedureStep[]> => {
-    return fetchClient.get<ProcedureStep[]>(`${PROCEDURES_BASE}/${templateId}/steps`)
+    const response = await fetchClient.get<BackendProcedureStep[]>(`${PROCEDURES_BASE}/${templateId}/steps`)
+    return response.map(convertProcedureStep)
   },
 
   /**
@@ -173,7 +324,8 @@ export const procedureStepsApi = {
    * Get single procedure step
    */
   get: async (templateId: number | string, stepId: number): Promise<ProcedureStep> => {
-    return fetchClient.get<ProcedureStep>(`${PROCEDURES_BASE}/${templateId}/steps/${stepId}`)
+    const response = await fetchClient.get<BackendProcedureStep>(`${PROCEDURES_BASE}/${templateId}/steps/${stepId}`)
+    return convertProcedureStep(response)
   },
 
   /**
@@ -185,7 +337,18 @@ export const procedureStepsApi = {
     templateId: number | string,
     data: ProcedureStepCreate
   ): Promise<ProcedureStep> => {
-    return fetchClient.post<ProcedureStep>(`${PROCEDURES_BASE}/${templateId}/steps`, data)
+    const response = await fetchClient.post<BackendProcedureStep>(`${PROCEDURES_BASE}/${templateId}/steps`, {
+      template_id: data.templateId,
+      step_number: data.stepNumber,
+      description_es: data.descriptionEs,
+      instructions_es: data.instructionsEs,
+      estimated_duration_minutes: data.estimatedDurationMinutes,
+      location_address: data.locationAddress,
+      office_hours: data.officeHours,
+      requires_appointment: data.requiresAppointment,
+      is_optional: data.isOptional,
+    })
+    return convertProcedureStep(response)
   },
 
   /**
@@ -198,10 +361,20 @@ export const procedureStepsApi = {
     stepId: number,
     data: ProcedureStepUpdate
   ): Promise<ProcedureStep> => {
-    return fetchClient.put<ProcedureStep>(
+    const response = await fetchClient.put<BackendProcedureStep>(
       `${PROCEDURES_BASE}/${templateId}/steps/${stepId}`,
-      data
+      {
+        step_number: data.stepNumber,
+        description_es: data.descriptionEs,
+        instructions_es: data.instructionsEs,
+        estimated_duration_minutes: data.estimatedDurationMinutes,
+        location_address: data.locationAddress,
+        office_hours: data.officeHours,
+        requires_appointment: data.requiresAppointment,
+        is_optional: data.isOptional,
+      }
     )
+    return convertProcedureStep(response)
   },
 
   /**
