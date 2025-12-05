@@ -181,7 +181,7 @@ export default function EditFiscalServicePage() {
                   <SelectContent>
                     {categories.map((cat) => (
                       <SelectItem key={cat.id} value={String(cat.id)}>
-                        {cat.nameEs}
+                        {cat.name_es}
                       </SelectItem>
                     ))}
                   </SelectContent>

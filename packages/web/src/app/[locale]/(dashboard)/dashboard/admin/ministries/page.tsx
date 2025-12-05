@@ -146,15 +146,15 @@ export default function MinistriesPage() {
     setSelectedMinistry(ministry)
     setFormData({
       ministry_code: ministry.code || '',
-      name_es: ministry.nameEs || '',
-      description_es: ministry.descriptionEs || '',
-      display_order: ministry.displayOrder || 0,
+      name_es: ministry.name_es || '',
+      description_es: ministry.description_es || '',
+      display_order: ministry.display_order || 0,
       icon: ministry.icon || '',
       color: ministry.color || '#3B82F6',
-      website_url: ministry.websiteUrl || '',
-      contact_email: ministry.contactEmail || '',
-      contact_phone: ministry.contactPhone || '',
-      is_active: ministry.isActive !== false,
+      website_url: ministry.website_url || '',
+      contact_email: ministry.contact_email || '',
+      contact_phone: ministry.contact_phone || '',
+      is_active: ministry.is_active !== false,
     })
     setIsDialogOpen(true)
   }
@@ -232,7 +232,7 @@ export default function MinistriesPage() {
 
   // Filter ministries
   const filteredMinistries = ministries.filter(m => {
-    const name = m.nameEs || ''
+    const name = m.name_es || ''
     const code = m.code || ''
     return searchQuery === '' ||
       name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -269,7 +269,7 @@ export default function MinistriesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {ministries.filter(m => m.isActive !== false).length}
+              {ministries.filter(m => m.is_active !== false).length}
             </div>
           </CardContent>
         </Card>
@@ -281,7 +281,7 @@ export default function MinistriesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {ministries.filter(m => m.isActive === false).length}
+              {ministries.filter(m => m.is_active === false).length}
             </div>
           </CardContent>
         </Card>
@@ -369,16 +369,16 @@ export default function MinistriesPage() {
                             style={{ backgroundColor: ministry.color }}
                           />
                         )}
-                        <span className="font-medium">{ministry.nameEs}</span>
+                        <span className="font-medium">{ministry.name_es}</span>
                       </div>
                     </TableCell>
-                    <TableCell>{ministry.displayOrder || 0}</TableCell>
+                    <TableCell>{ministry.display_order || 0}</TableCell>
                     <TableCell>
                       <Badge
                         variant="outline"
-                        className={ministry.isActive !== false ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}
+                        className={ministry.is_active !== false ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}
                       >
-                        {ministry.isActive !== false ? t('statusActive') : t('statusInactive')}
+                        {ministry.is_active !== false ? t('statusActive') : t('statusInactive')}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -549,7 +549,7 @@ export default function MinistriesPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>{t('deleteConfirmTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t('deleteConfirmDescription', { name: selectedMinistry?.nameEs || '' })}
+              {t('deleteConfirmDescription', { name: selectedMinistry?.name_es || '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

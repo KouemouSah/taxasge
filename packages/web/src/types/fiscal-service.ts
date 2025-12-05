@@ -66,41 +66,41 @@ export enum TranslatableEntityType {
 export interface Ministry {
   id: number
   code: string
-  nameEs: string
-  descriptionEs?: string
-  displayOrder?: number
+  name_es: string
+  description_es?: string
+  display_order?: number
   icon?: string
   color?: string
-  websiteUrl?: string
-  contactEmail?: string
-  contactPhone?: string
-  isActive: boolean
-  createdAt: string
-  updatedAt?: string
+  website_url?: string
+  contact_email?: string
+  contact_phone?: string
+  is_active: boolean
+  created_at: string
+  updated_at?: string
 }
 
 export interface Sector {
   id: number
   code: string
-  ministryId: number
-  nameEs: string
-  descriptionEs?: string
-  isActive: boolean
-  createdAt: string
-  updatedAt?: string
+  ministry_id: number
+  name_es: string
+  description_es?: string
+  is_active: boolean
+  created_at: string
+  updated_at?: string
 }
 
 export interface Category {
   id: number
-  categoryCode: string
-  sectorId?: number
-  ministryId?: number
-  serviceType?: ServiceTypeEnum
-  nameEs: string
-  descriptionEs?: string
-  isActive: boolean
-  createdAt: string
-  updatedAt?: string
+  category_code: string
+  sector_id?: number
+  ministry_id?: number
+  service_type?: ServiceTypeEnum
+  name_es: string
+  description_es?: string
+  is_active: boolean
+  created_at: string
+  updated_at?: string
 }
 
 // =============================================================================

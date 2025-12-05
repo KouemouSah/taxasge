@@ -198,10 +198,10 @@ export default function FiscalServicesPage() {
     const serviceCategory = categories.find(c => c.id === service.categoryId)
 
     const matchesMinistry = ministryFilter === 'all' ||
-      (serviceCategory && serviceCategory.ministryId === ministryFilter)
+      (serviceCategory && serviceCategory.ministry_id === ministryFilter)
 
     const matchesSector = sectorFilter === 'all' ||
-      (serviceCategory && serviceCategory.sectorId === sectorFilter)
+      (serviceCategory && serviceCategory.sector_id === sectorFilter)
 
     const matchesType = typeFilter === 'all' || service.serviceType === typeFilter
 
@@ -343,7 +343,7 @@ export default function FiscalServicesPage() {
                 <SelectContent>
                   <SelectItem value="all">{t('allMinistries')}</SelectItem>
                   {ministries.map((m) => (
-                    <SelectItem key={m.id} value={String(m.id)}>{m.nameEs}</SelectItem>
+                    <SelectItem key={m.id} value={String(m.id)}>{m.name_es}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -355,7 +355,7 @@ export default function FiscalServicesPage() {
                 <SelectContent>
                   <SelectItem value="all">{t('allSectors')}</SelectItem>
                   {sectors.map((s) => (
-                    <SelectItem key={s.id} value={String(s.id)}>{s.nameEs}</SelectItem>
+                    <SelectItem key={s.id} value={String(s.id)}>{s.name_es}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -367,7 +367,7 @@ export default function FiscalServicesPage() {
                 <SelectContent>
                   <SelectItem value="all">{t('allCategories')}</SelectItem>
                   {categories.map((c) => (
-                    <SelectItem key={c.id} value={String(c.id)}>{c.nameEs}</SelectItem>
+                    <SelectItem key={c.id} value={String(c.id)}>{c.name_es}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
