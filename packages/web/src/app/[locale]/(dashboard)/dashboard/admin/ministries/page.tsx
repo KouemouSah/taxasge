@@ -145,7 +145,7 @@ export default function MinistriesPage() {
   const handleEdit = (ministry: Ministry) => {
     setSelectedMinistry(ministry)
     setFormData({
-      ministry_code: ministry.code || ministry.ministryCode || '',
+      ministry_code: ministry.code || '',
       name_es: ministry.nameEs || '',
       description_es: ministry.descriptionEs || '',
       display_order: ministry.displayOrder || 0,
@@ -233,7 +233,7 @@ export default function MinistriesPage() {
   // Filter ministries
   const filteredMinistries = ministries.filter(m => {
     const name = m.nameEs || ''
-    const code = m.code || m.ministryCode || ''
+    const code = m.code || ''
     return searchQuery === '' ||
       name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       code.toLowerCase().includes(searchQuery.toLowerCase())
@@ -359,7 +359,7 @@ export default function MinistriesPage() {
                 {filteredMinistries.map((ministry) => (
                   <TableRow key={ministry.id}>
                     <TableCell className="font-mono text-sm">
-                      {ministry.code || ministry.ministryCode}
+                      {ministry.code}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">

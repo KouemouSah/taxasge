@@ -68,6 +68,12 @@ export interface Ministry {
   code: string
   nameEs: string
   descriptionEs?: string
+  displayOrder?: number
+  icon?: string
+  color?: string
+  websiteUrl?: string
+  contactEmail?: string
+  contactPhone?: string
   isActive: boolean
   createdAt: string
   updatedAt?: string
