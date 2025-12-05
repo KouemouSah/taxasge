@@ -43,8 +43,12 @@ import { BackendUnavailableAlert } from '@/modules/admin/components'
 export default function ProcedureTemplatesPage() {
   const locale = useLocale()
   const router = useRouter()
-  const t = useTranslations('templates')
+  const tAdmin = useTranslations('admin')
   const tCommon = useTranslations('common')
+
+  // Helper to get templates translations
+  const t = (key: string, params?: Record<string, string | number>) =>
+    tAdmin(`templates.${key}`, params)
   const { toast } = useToast()
 
   // Data states
