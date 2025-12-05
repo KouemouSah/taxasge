@@ -51,7 +51,8 @@ import type {
   ServiceKeyword,
   EntityTranslation,
 } from '@/types/fiscal-service'
-import { getAuthData } from '@/core/auth/storage'
+import { getAuthData, setAuthData, clearAuthData } from '@/core/auth/storage'
+import { appConfig } from '@/core/config/app'
 
 // =============================================================================
 // CONFIGURATION
@@ -67,14 +68,78 @@ const FISCAL_SERVICES_BASE = '/fiscal-services'
 
 class ApiClient {
   private baseUrl: string
+  private isRefreshing: boolean = false
+  private refreshPromise: Promise<string | null> | null = null
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl
   }
 
+  /**
+   * Refresh the access token using the refresh token
+   */
+  private async refreshToken(): Promise<string | null> {
+    const authData = getAuthData()
+    if (!authData?.refresh_token) {
+      return null
+    }
+
+    try {
+      const response = await fetch(`${appConfig.api.baseUrl}/api/v1/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: authData.refresh_token }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Token refresh failed')
+      }
+
+      const data = await response.json()
+      const { access_token, refresh_token } = data
+
+      // Update stored tokens
+      setAuthData({
+        ...authData,
+        access_token,
+        refresh_token,
+      })
+
+      return access_token
+    } catch {
+      // Clear auth data and redirect to login
+      clearAuthData()
+      if (typeof window !== 'undefined') {
+        window.location.href = '/auth/login'
+      }
+      return null
+    }
+  }
+
+  /**
+   * Get a fresh token, refreshing if necessary
+   */
+  private async getFreshToken(): Promise<string | null> {
+    if (this.isRefreshing && this.refreshPromise) {
+      return this.refreshPromise
+    }
+
+    this.isRefreshing = true
+    this.refreshPromise = this.refreshToken()
+
+    try {
+      const token = await this.refreshPromise
+      return token
+    } finally {
+      this.isRefreshing = false
+      this.refreshPromise = null
+    }
+  }
+
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    isRetry: boolean = false
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`
 
@@ -103,6 +168,16 @@ class ApiClient {
       ...options,
       headers,
     })
+
+    // Handle 401 Unauthorized - attempt token refresh
+    if (response.status === 401 && !isRetry) {
+      const newToken = await this.getFreshToken()
+      if (newToken) {
+        // Retry the request with the new token
+        return this.request<T>(endpoint, options, true)
+      }
+      throw new Error('Invalid or expired access token')
+    }
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({
