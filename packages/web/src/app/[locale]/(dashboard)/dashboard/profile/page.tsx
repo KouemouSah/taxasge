@@ -177,24 +177,16 @@ export default function ProfilePage() {
   const handleSaveNotifications = async () => {
     try {
       // Import API client
-      const { fetchClient } = await import('@/core/api/client')
+      const { fetchClient } = await import('@/core/api/fetchClient')
 
       // Call API to update preferences
-      const response = await fetchClient('/api/v1/users/profile', {
-        method: 'PUT',
-        body: JSON.stringify({
-          preferred_language: notificationPrefs.preferred_language,
-          email_notifications: notificationPrefs.email_notifications,
-          push_notifications: notificationPrefs.push_notifications,
-        }),
+      const updatedUser = await fetchClient.put('/users/profile', {
+        preferred_language: notificationPrefs.preferred_language,
+        email_notifications: notificationPrefs.email_notifications,
+        push_notifications: notificationPrefs.push_notifications,
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to update preferences')
-      }
-
       // Update local storage with new user data
-      const updatedUser = await response.json()
       const authData = getAuthData()
       if (authData) {
         const { setAuthData } = await import('@/core/auth/storage')
