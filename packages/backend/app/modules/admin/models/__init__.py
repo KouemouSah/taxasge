@@ -10,16 +10,23 @@ from app.modules.admin.models.admin import (
     UserUpdate,
     UserResponse,
     UserListResponse,
-    AuditLog,
+    UserStats,
+    AuditLogBase,
     AuditLogCreate,
     AuditLogResponse,
-    SystemRule,
+    AuditLogFilter,
+    SystemRuleBase,
     SystemRuleCreate,
     SystemRuleUpdate,
     SystemRuleResponse,
+    SystemRuleListResponse,
     SystemDiagnostics,
     MigrationResult,
 )
+
+# Aliases for backward compatibility
+AuditLog = AuditLogResponse
+SystemRule = SystemRuleResponse
 
 __all__ = [
     "UserRole",
@@ -31,13 +38,18 @@ __all__ = [
     "UserUpdate",
     "UserResponse",
     "UserListResponse",
+    "UserStats",
     "AuditLog",
+    "AuditLogBase",
     "AuditLogCreate",
     "AuditLogResponse",
+    "AuditLogFilter",
     "SystemRule",
+    "SystemRuleBase",
     "SystemRuleCreate",
     "SystemRuleUpdate",
     "SystemRuleResponse",
+    "SystemRuleListResponse",
     "SystemDiagnostics",
     "MigrationResult",
 ]
