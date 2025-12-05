@@ -65,7 +65,7 @@ export enum TranslatableEntityType {
 
 export interface Ministry {
   id: number
-  code: string
+  ministry_code: string
   name_es: string
   description_es?: string
   display_order?: number
@@ -81,10 +81,13 @@ export interface Ministry {
 
 export interface Sector {
   id: number
-  code: string
+  sector_code: string
   ministry_id: number
   name_es: string
   description_es?: string
+  display_order?: number
+  icon?: string
+  color?: string
   is_active: boolean
   created_at: string
   updated_at?: string
@@ -98,6 +101,9 @@ export interface Category {
   service_type?: ServiceTypeEnum
   name_es: string
   description_es?: string
+  display_order?: number
+  icon?: string
+  color?: string
   is_active: boolean
   created_at: string
   updated_at?: string

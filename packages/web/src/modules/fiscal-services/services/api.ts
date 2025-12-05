@@ -158,7 +158,7 @@ export const hierarchyApi = {
     get: async (ministryId: number): Promise<Ministry> => {
       return client.get<Ministry>(`${FISCAL_SERVICES_BASE}/admin/ministries/${ministryId}`)
     },
-    create: async (data: Omit<Ministry, 'id' | 'createdAt' | 'updatedAt'>): Promise<Ministry> => {
+    create: async (data: Omit<Ministry, 'id' | 'created_at' | 'updated_at'>): Promise<Ministry> => {
       return client.post<Ministry>(`${FISCAL_SERVICES_BASE}/admin/ministries`, data)
     },
     update: async (ministryId: number, data: Partial<Ministry>): Promise<Ministry> => {
@@ -181,7 +181,7 @@ export const hierarchyApi = {
     get: async (sectorId: number): Promise<Sector> => {
       return client.get<Sector>(`${FISCAL_SERVICES_BASE}/admin/sectors/${sectorId}`)
     },
-    create: async (data: Omit<Sector, 'id' | 'createdAt' | 'updatedAt'>): Promise<Sector> => {
+    create: async (data: Omit<Sector, 'id' | 'created_at' | 'updated_at'>): Promise<Sector> => {
       return client.post<Sector>(`${FISCAL_SERVICES_BASE}/admin/sectors`, data)
     },
     update: async (sectorId: number, data: Partial<Sector>): Promise<Sector> => {
@@ -204,7 +204,7 @@ export const hierarchyApi = {
     get: async (categoryId: number): Promise<Category> => {
       return client.get<Category>(`${FISCAL_SERVICES_BASE}/admin/categories/${categoryId}`)
     },
-    create: async (data: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>): Promise<Category> => {
+    create: async (data: Omit<Category, 'id' | 'created_at' | 'updated_at'>): Promise<Category> => {
       return client.post<Category>(`${FISCAL_SERVICES_BASE}/admin/categories`, data)
     },
     update: async (categoryId: number, data: Partial<Category>): Promise<Category> => {

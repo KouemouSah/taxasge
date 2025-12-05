@@ -1,16 +1,12 @@
 'use client'
 
 /**
- * Ministries Admin Page
- * Complete CRUD management for ministries hierarchy
- *
- * @module dashboard/admin/ministries
- * @author Claude Code
- * @date 2025-12-05
+ * Sectors Admin Page
+ * CRUD management for sectors hierarchy
  */
 
 import { useState, useEffect } from 'react'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -18,6 +14,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -44,45 +47,41 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Building2, RefreshCw, Plus, Edit, Trash2, Search, AlertTriangle } from 'lucide-react'
+import { Layers, RefreshCw, Plus, Edit, Trash2, Search, AlertTriangle } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import fiscalServicesAPI from '@/modules/fiscal-services/services/api'
-import type { Ministry } from '@/types/fiscal-service'
+import type { Sector, Ministry } from '@/types/fiscal-service'
 import { BackendUnavailableAlert } from '@/modules/admin/components'
 
-interface MinistryFormData {
-  ministry_code: string
+interface SectorFormData {
+  sector_code: string
+  ministry_id: number | null
   name_es: string
   description_es: string
   display_order: number
   icon: string
   color: string
-  website_url: string
-  contact_email: string
-  contact_phone: string
   is_active: boolean
 }
 
-const defaultFormData: MinistryFormData = {
-  ministry_code: '',
+const defaultFormData: SectorFormData = {
+  sector_code: '',
+  ministry_id: null,
   name_es: '',
   description_es: '',
   display_order: 0,
   icon: '',
-  color: '#3B82F6',
-  website_url: '',
-  contact_email: '',
-  contact_phone: '',
+  color: '#10B981',
   is_active: true,
 }
 
-export default function MinistriesPage() {
-  const _locale = useLocale()
-  const t = useTranslations('admin.ministries')
+export default function SectorsPage() {
+  const t = useTranslations('admin.sectors')
   const tCommon = useTranslations('common')
   const { toast } = useToast()
 
   // Data states
+  const [sectors, setSectors] = useState<Sector[]>([])
   const [ministries, setMinistries] = useState<Ministry[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -90,22 +89,27 @@ export default function MinistriesPage() {
 
   // Filter states
   const [searchQuery, setSearchQuery] = useState('')
+  const [ministryFilter, setMinistryFilter] = useState<number | 'all'>('all')
 
   // Modal states
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [selectedMinistry, setSelectedMinistry] = useState<Ministry | null>(null)
-  const [formData, setFormData] = useState<MinistryFormData>(defaultFormData)
+  const [selectedSector, setSelectedSector] = useState<Sector | null>(null)
+  const [formData, setFormData] = useState<SectorFormData>(defaultFormData)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Fetch ministries
-  const fetchMinistries = async () => {
+  // Fetch data
+  const fetchData = async () => {
     setIsLoading(true)
     setError(null)
 
     try {
-      const data = await fiscalServicesAPI.hierarchy.ministries.list()
-      setMinistries(data)
+      const [sectorsData, ministriesData] = await Promise.all([
+        fiscalServicesAPI.hierarchy.sectors.list(),
+        fiscalServicesAPI.hierarchy.ministries.list(),
+      ])
+      setSectors(sectorsData)
+      setMinistries(ministriesData)
       setIsBackendUnavailable(false)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : t('errorLoading')
@@ -126,42 +130,40 @@ export default function MinistriesPage() {
   }
 
   useEffect(() => {
-    fetchMinistries()
+    fetchData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleRefresh = () => {
-    fetchMinistries()
+    fetchData()
   }
 
   // Open create dialog
   const handleCreate = () => {
-    setSelectedMinistry(null)
+    setSelectedSector(null)
     setFormData(defaultFormData)
     setIsDialogOpen(true)
   }
 
   // Open edit dialog
-  const handleEdit = (ministry: Ministry) => {
-    setSelectedMinistry(ministry)
+  const handleEdit = (sector: Sector) => {
+    setSelectedSector(sector)
     setFormData({
-      ministry_code: ministry.ministry_code || '',
-      name_es: ministry.name_es || '',
-      description_es: ministry.description_es || '',
-      display_order: ministry.display_order || 0,
-      icon: ministry.icon || '',
-      color: ministry.color || '#3B82F6',
-      website_url: ministry.website_url || '',
-      contact_email: ministry.contact_email || '',
-      contact_phone: ministry.contact_phone || '',
-      is_active: ministry.is_active !== false,
+      sector_code: sector.sector_code || '',
+      ministry_id: sector.ministry_id || null,
+      name_es: sector.name_es || '',
+      description_es: sector.description_es || '',
+      display_order: sector.display_order || 0,
+      icon: sector.icon || '',
+      color: sector.color || '#10B981',
+      is_active: sector.is_active !== false,
     })
     setIsDialogOpen(true)
   }
 
   // Open delete confirmation
-  const handleDeleteClick = (ministry: Ministry) => {
-    setSelectedMinistry(ministry)
+  const handleDeleteClick = (sector: Sector) => {
+    setSelectedSector(sector)
     setIsDeleteDialogOpen(true)
   }
 
@@ -170,7 +172,7 @@ export default function MinistriesPage() {
     setIsSubmitting(true)
 
     try {
-      if (!formData.ministry_code || !formData.name_es) {
+      if (!formData.sector_code || !formData.name_es || !formData.ministry_id) {
         toast({
           variant: 'destructive',
           title: t('errorTitle'),
@@ -180,24 +182,28 @@ export default function MinistriesPage() {
         return
       }
 
-      if (selectedMinistry) {
-        // Update
-        await fiscalServicesAPI.hierarchy.ministries.update(selectedMinistry.id, formData)
+      // Convert null to undefined for API compatibility
+      const apiData = {
+        ...formData,
+        ministry_id: formData.ministry_id ?? undefined,
+      }
+
+      if (selectedSector) {
+        await fiscalServicesAPI.hierarchy.sectors.update(selectedSector.id, apiData)
         toast({
           title: t('successTitle'),
-          description: t('ministryUpdated'),
+          description: t('sectorUpdated'),
         })
       } else {
-        // Create
-        await fiscalServicesAPI.hierarchy.ministries.create(formData as unknown as Omit<Ministry, 'id' | 'createdAt' | 'updatedAt'>)
+        await fiscalServicesAPI.hierarchy.sectors.create(apiData as Omit<Sector, 'id' | 'created_at' | 'updated_at'>)
         toast({
           title: t('successTitle'),
-          description: t('ministryCreated'),
+          description: t('sectorCreated'),
         })
       }
 
       setIsDialogOpen(false)
-      fetchMinistries()
+      fetchData()
     } catch (err) {
       toast({
         variant: 'destructive',
@@ -209,18 +215,18 @@ export default function MinistriesPage() {
     }
   }
 
-  // Delete ministry
+  // Delete sector
   const handleDelete = async () => {
-    if (!selectedMinistry) return
+    if (!selectedSector) return
 
     try {
-      await fiscalServicesAPI.hierarchy.ministries.delete(selectedMinistry.id)
+      await fiscalServicesAPI.hierarchy.sectors.delete(selectedSector.id)
       toast({
         title: t('successTitle'),
-        description: t('ministryDeleted'),
+        description: t('sectorDeleted'),
       })
       setIsDeleteDialogOpen(false)
-      fetchMinistries()
+      fetchData()
     } catch (err) {
       toast({
         variant: 'destructive',
@@ -230,13 +236,21 @@ export default function MinistriesPage() {
     }
   }
 
-  // Filter ministries
-  const filteredMinistries = ministries.filter(m => {
-    const name = m.name_es || ''
-    const code = m.ministry_code || ''
-    return searchQuery === '' ||
+  // Get ministry name by ID
+  const getMinistryName = (ministryId: number) => {
+    const ministry = ministries.find(m => m.id === ministryId)
+    return ministry?.name_es || '-'
+  }
+
+  // Filter sectors
+  const filteredSectors = sectors.filter(s => {
+    const name = s.name_es || ''
+    const code = s.sector_code || ''
+    const matchesSearch = searchQuery === '' ||
       name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       code.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesMinistry = ministryFilter === 'all' || s.ministry_id === ministryFilter
+    return matchesSearch && matchesMinistry
   })
 
   return (
@@ -255,21 +269,21 @@ export default function MinistriesPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('statsTotal')}</CardTitle>
-            <Building2 className="h-4 w-4 text-muted-foreground" />
+            <Layers className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{ministries.length}</div>
+            <div className="text-2xl font-bold">{sectors.length}</div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('statsActive')}</CardTitle>
-            <Building2 className="h-4 w-4 text-green-500" />
+            <Layers className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {ministries.filter(m => m.is_active !== false).length}
+              {sectors.filter(s => s.is_active !== false).length}
             </div>
           </CardContent>
         </Card>
@@ -277,17 +291,17 @@ export default function MinistriesPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('statsInactive')}</CardTitle>
-            <Building2 className="h-4 w-4 text-gray-400" />
+            <Layers className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {ministries.filter(m => m.is_active === false).length}
+              {sectors.filter(s => s.is_active === false).length}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Ministries Table */}
+      {/* Sectors Table */}
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-4">
@@ -295,7 +309,7 @@ export default function MinistriesPage() {
               <div>
                 <CardTitle>{t('listTitle')}</CardTitle>
                 <CardDescription>
-                  {t('ministriesFound', { count: filteredMinistries.length })}
+                  {t('sectorsFound', { count: filteredSectors.length })}
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">
@@ -305,20 +319,36 @@ export default function MinistriesPage() {
                 </Button>
                 <Button size="sm" onClick={handleCreate}>
                   <Plus className="h-4 w-4 mr-2" />
-                  {t('createMinistry')}
+                  {t('createSector')}
                 </Button>
               </div>
             </div>
 
-            {/* Search */}
-            <div className="relative max-w-sm">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder={t('searchPlaceholder')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
+            {/* Filters */}
+            <div className="flex gap-4">
+              <div className="relative max-w-sm">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder={t('searchPlaceholder')}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Select
+                value={String(ministryFilter)}
+                onValueChange={(v) => setMinistryFilter(v === 'all' ? 'all' : Number(v))}
+              >
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder={t('filterByMinistry')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t('allMinistries')}</SelectItem>
+                  {ministries.map((m) => (
+                    <SelectItem key={m.id} value={String(m.id)}>{m.name_es}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardHeader>
@@ -337,57 +367,59 @@ export default function MinistriesPage() {
             </div>
           )}
 
-          {!isLoading && !error && filteredMinistries.length === 0 && (
+          {!isLoading && !error && filteredSectors.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <Building2 className="h-12 w-12 mb-4 opacity-50" />
-              <p>{t('noMinistriesFound')}</p>
+              <Layers className="h-12 w-12 mb-4 opacity-50" />
+              <p>{t('noSectorsFound')}</p>
             </div>
           )}
 
-          {!isLoading && !error && filteredMinistries.length > 0 && (
+          {!isLoading && !error && filteredSectors.length > 0 && (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>{t('tableCode')}</TableHead>
                   <TableHead>{t('tableName')}</TableHead>
+                  <TableHead>{t('tableMinistry')}</TableHead>
                   <TableHead>{t('tableOrder')}</TableHead>
                   <TableHead>{t('tableStatus')}</TableHead>
                   <TableHead className="text-right">{t('tableActions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredMinistries.map((ministry) => (
-                  <TableRow key={ministry.id}>
+                {filteredSectors.map((sector) => (
+                  <TableRow key={sector.id}>
                     <TableCell className="font-mono text-sm">
-                      {ministry.ministry_code}
+                      {sector.sector_code}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        {ministry.color && (
+                        {sector.color && (
                           <div
                             className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: ministry.color }}
+                            style={{ backgroundColor: sector.color }}
                           />
                         )}
-                        <span className="font-medium">{ministry.name_es}</span>
+                        <span className="font-medium">{sector.name_es}</span>
                       </div>
                     </TableCell>
-                    <TableCell>{ministry.display_order || 0}</TableCell>
+                    <TableCell>{getMinistryName(sector.ministry_id)}</TableCell>
+                    <TableCell>{sector.display_order || 0}</TableCell>
                     <TableCell>
                       <Badge
                         variant="outline"
-                        className={ministry.is_active !== false ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}
+                        className={sector.is_active !== false ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}
                       >
-                        {ministry.is_active !== false ? t('statusActive') : t('statusInactive')}
+                        {sector.is_active !== false ? t('statusActive') : t('statusInactive')}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => handleEdit(ministry)}>
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(sector)}>
                           <Edit className="h-4 w-4 mr-1" />
                           {t('edit')}
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDeleteClick(ministry)}>
+                        <Button variant="ghost" size="sm" onClick={() => handleDeleteClick(sector)}>
                           <Trash2 className="h-4 w-4 mr-1" />
                           {t('delete')}
                         </Button>
@@ -406,34 +438,41 @@ export default function MinistriesPage() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              {selectedMinistry ? t('editMinistry') : t('createMinistry')}
+              {selectedSector ? t('editSector') : t('createSector')}
             </DialogTitle>
             <DialogDescription>
-              {selectedMinistry ? t('editMinistryDescription') : t('createMinistryDescription')}
+              {selectedSector ? t('editSectorDescription') : t('createSectorDescription')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="ministry_code">{t('fieldCode')} *</Label>
+                <Label htmlFor="sector_code">{t('fieldCode')} *</Label>
                 <Input
-                  id="ministry_code"
-                  value={formData.ministry_code}
-                  onChange={(e) => setFormData({ ...formData, ministry_code: e.target.value })}
-                  placeholder="e.g., MHAP"
+                  id="sector_code"
+                  value={formData.sector_code}
+                  onChange={(e) => setFormData({ ...formData, sector_code: e.target.value })}
+                  placeholder="e.g., TRIB"
                   maxLength={10}
-                  disabled={!!selectedMinistry}
+                  disabled={!!selectedSector}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="display_order">{t('fieldOrder')}</Label>
-                <Input
-                  id="display_order"
-                  type="number"
-                  value={formData.display_order}
-                  onChange={(e) => setFormData({ ...formData, display_order: Number(e.target.value) })}
-                />
+                <Label htmlFor="ministry_id">{t('fieldMinistry')} *</Label>
+                <Select
+                  value={formData.ministry_id ? String(formData.ministry_id) : ''}
+                  onValueChange={(v) => setFormData({ ...formData, ministry_id: Number(v) })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('selectMinistry')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ministries.map((m) => (
+                      <SelectItem key={m.id} value={String(m.id)}>{m.name_es}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -443,7 +482,7 @@ export default function MinistriesPage() {
                 id="name_es"
                 value={formData.name_es}
                 onChange={(e) => setFormData({ ...formData, name_es: e.target.value })}
-                placeholder="e.g., Ministerio de Hacienda y Presupuestos"
+                placeholder="e.g., Tributos y Recaudaciones"
               />
             </div>
 
@@ -457,14 +496,23 @@ export default function MinistriesPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="display_order">{t('fieldOrder')}</Label>
+                <Input
+                  id="display_order"
+                  type="number"
+                  value={formData.display_order}
+                  onChange={(e) => setFormData({ ...formData, display_order: Number(e.target.value) })}
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="icon">{t('fieldIcon')}</Label>
                 <Input
                   id="icon"
                   value={formData.icon}
                   onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-                  placeholder="e.g., building-columns"
+                  placeholder="e.g., layers"
                 />
               </div>
               <div className="space-y-2">
@@ -486,39 +534,6 @@ export default function MinistriesPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="contact_email">{t('fieldEmail')}</Label>
-                <Input
-                  id="contact_email"
-                  type="email"
-                  value={formData.contact_email}
-                  onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
-                  placeholder="info@ministry.gq"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="contact_phone">{t('fieldPhone')}</Label>
-                <Input
-                  id="contact_phone"
-                  value={formData.contact_phone}
-                  onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
-                  placeholder="+240 222 123 456"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="website_url">{t('fieldWebsite')}</Label>
-              <Input
-                id="website_url"
-                type="url"
-                value={formData.website_url}
-                onChange={(e) => setFormData({ ...formData, website_url: e.target.value })}
-                placeholder="https://www.ministry.gq"
-              />
-            </div>
-
             <div className="flex items-center space-x-2">
               <Switch
                 id="is_active"
@@ -537,7 +552,7 @@ export default function MinistriesPage() {
               {isSubmitting ? (
                 <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
               ) : null}
-              {selectedMinistry ? t('saveChanges') : t('create')}
+              {selectedSector ? t('saveChanges') : t('create')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -549,7 +564,7 @@ export default function MinistriesPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>{t('deleteConfirmTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t('deleteConfirmDescription', { name: selectedMinistry?.name_es || '' })}
+              {t('deleteConfirmDescription', { name: selectedSector?.name_es || '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
