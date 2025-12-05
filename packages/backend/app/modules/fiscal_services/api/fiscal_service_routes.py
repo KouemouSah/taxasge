@@ -7,8 +7,14 @@ from loguru import logger
 import time
 
 from app.modules.fiscal_services.models import (
+    MinistryCreate,
+    MinistryUpdate,
     MinistryResponse,
+    SectorCreate,
+    SectorUpdate,
     SectorResponse,
+    CategoryCreate,
+    CategoryUpdate,
     CategoryResponse,
     FiscalServiceCreate,
     FiscalServiceUpdate,
@@ -435,6 +441,527 @@ async def calculate_service_amount(
 
 
 # ========== ADMIN ENDPOINTS ==========
+
+# ============================================================================
+# ADMIN: MINISTRY MANAGEMENT
+# ============================================================================
+
+@router.post("/admin/ministries", response_model=MinistryResponse, status_code=status.HTTP_201_CREATED)
+async def create_ministry(
+    data: MinistryCreate,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+    _: None = Depends(require_permission("fiscal_services.manage_hierarchy"))
+):
+    """
+    Create a new ministry
+
+    Requires fiscal_services.manage_hierarchy permission
+
+    - **ministry_code**: Unique ministry code (max 10 chars)
+    - **name_es**: Ministry name in Spanish
+    - **description_es**: Optional description
+    - **display_order**: Display order for sorting (default 0)
+    - **icon**: Optional icon identifier
+    - **color**: Optional hex color code (#RRGGBB)
+    - **website_url**: Optional ministry website
+    - **contact_email**: Optional contact email
+    - **contact_phone**: Optional contact phone
+    - **is_active**: Whether ministry is active (default True)
+    """
+    user_id = current_user["sub"]
+
+    try:
+        # Check if ministry code already exists
+        existing = await repository.get_ministry_by_code(db, data.ministry_code)
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Ministry with code '{data.ministry_code}' already exists"
+            )
+
+        # Create ministry
+        ministry_data = data.dict()
+        result = await repository.create_ministry(db, ministry_data)
+
+        logger.info(f"Admin {user_id} created ministry {result['id']} ({data.ministry_code})")
+        return MinistryResponse(**result)
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error creating ministry: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error creating ministry: {str(e)}"
+        )
+
+
+@router.get("/admin/ministries/{ministry_id}", response_model=MinistryResponse)
+async def get_ministry_by_id(
+    ministry_id: int,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+    _: None = Depends(require_permission("fiscal_services.manage_hierarchy"))
+):
+    """Get ministry by ID - Requires fiscal_services.manage_hierarchy permission"""
+    ministry = await repository.get_ministry_by_id(db, ministry_id)
+    if not ministry:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Ministry with ID {ministry_id} not found"
+        )
+    return MinistryResponse(**ministry)
+
+
+@router.put("/admin/ministries/{ministry_id}", response_model=MinistryResponse)
+async def update_ministry(
+    ministry_id: int,
+    data: MinistryUpdate,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+    _: None = Depends(require_permission("fiscal_services.manage_hierarchy"))
+):
+    """
+    Update a ministry
+
+    Requires fiscal_services.manage_hierarchy permission
+
+    All fields are optional. Only provided fields will be updated.
+    """
+    user_id = current_user["sub"]
+
+    try:
+        # Check if ministry exists
+        existing = await repository.get_ministry_by_id(db, ministry_id)
+        if not existing:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Ministry with ID {ministry_id} not found"
+            )
+
+        # Update ministry
+        update_data = data.dict(exclude_unset=True)
+        if not update_data:
+            return MinistryResponse(**existing)
+
+        result = await repository.update_ministry(db, ministry_id, update_data)
+
+        logger.info(f"Admin {user_id} updated ministry {ministry_id}")
+        return MinistryResponse(**result)
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error updating ministry {ministry_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating ministry: {str(e)}"
+        )
+
+
+@router.delete("/admin/ministries/{ministry_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_ministry(
+    ministry_id: int,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+    _: None = Depends(require_permission("fiscal_services.manage_hierarchy"))
+):
+    """
+    Delete a ministry
+
+    Requires fiscal_services.manage_hierarchy permission
+
+    Will fail if the ministry has dependent sectors.
+    """
+    user_id = current_user["sub"]
+
+    try:
+        # Check if ministry exists
+        existing = await repository.get_ministry_by_id(db, ministry_id)
+        if not existing:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Ministry with ID {ministry_id} not found"
+            )
+
+        # Delete ministry
+        deleted = await repository.delete_ministry(db, ministry_id)
+        if not deleted:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to delete ministry"
+            )
+
+        logger.info(f"Admin {user_id} deleted ministry {ministry_id}")
+        return None
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Error deleting ministry {ministry_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting ministry: {str(e)}"
+        )
+
+
+# ============================================================================
+# ADMIN: SECTOR MANAGEMENT
+# ============================================================================
+
+@router.post("/admin/sectors", response_model=SectorResponse, status_code=status.HTTP_201_CREATED)
+async def create_sector(
+    data: SectorCreate,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+    _: None = Depends(require_permission("fiscal_services.manage_hierarchy"))
+):
+    """
+    Create a new sector
+
+    Requires fiscal_services.manage_hierarchy permission
+
+    - **sector_code**: Unique sector code (max 10 chars)
+    - **ministry_id**: Parent ministry ID (required)
+    - **name_es**: Sector name in Spanish
+    - **description_es**: Optional description
+    - **display_order**: Display order for sorting (default 0)
+    - **icon**: Optional icon identifier
+    - **color**: Optional hex color code (#RRGGBB)
+    - **is_active**: Whether sector is active (default True)
+    """
+    user_id = current_user["sub"]
+
+    try:
+        # Check if sector code already exists
+        existing = await repository.get_sector_by_code(db, data.sector_code)
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Sector with code '{data.sector_code}' already exists"
+            )
+
+        # Create sector
+        sector_data = data.dict()
+        result = await repository.create_sector(db, sector_data)
+
+        logger.info(f"Admin {user_id} created sector {result['id']} ({data.sector_code})")
+        return SectorResponse(**result)
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error creating sector: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error creating sector: {str(e)}"
+        )
+
+
+@router.get("/admin/sectors/{sector_id}", response_model=SectorResponse)
+async def get_sector_by_id(
+    sector_id: int,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+    _: None = Depends(require_permission("fiscal_services.manage_hierarchy"))
+):
+    """Get sector by ID - Requires fiscal_services.manage_hierarchy permission"""
+    sector = await repository.get_sector_by_id(db, sector_id)
+    if not sector:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Sector with ID {sector_id} not found"
+        )
+    return SectorResponse(**sector)
+
+
+@router.put("/admin/sectors/{sector_id}", response_model=SectorResponse)
+async def update_sector(
+    sector_id: int,
+    data: SectorUpdate,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+    _: None = Depends(require_permission("fiscal_services.manage_hierarchy"))
+):
+    """
+    Update a sector
+
+    Requires fiscal_services.manage_hierarchy permission
+
+    All fields are optional. Only provided fields will be updated.
+    """
+    user_id = current_user["sub"]
+
+    try:
+        # Check if sector exists
+        existing = await repository.get_sector_by_id(db, sector_id)
+        if not existing:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Sector with ID {sector_id} not found"
+            )
+
+        # Update sector
+        update_data = data.dict(exclude_unset=True)
+        if not update_data:
+            return SectorResponse(**existing)
+
+        result = await repository.update_sector(db, sector_id, update_data)
+
+        logger.info(f"Admin {user_id} updated sector {sector_id}")
+        return SectorResponse(**result)
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error updating sector {sector_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating sector: {str(e)}"
+        )
+
+
+@router.delete("/admin/sectors/{sector_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_sector(
+    sector_id: int,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+    _: None = Depends(require_permission("fiscal_services.manage_hierarchy"))
+):
+    """
+    Delete a sector
+
+    Requires fiscal_services.manage_hierarchy permission
+
+    Will fail if the sector has dependent categories.
+    """
+    user_id = current_user["sub"]
+
+    try:
+        # Check if sector exists
+        existing = await repository.get_sector_by_id(db, sector_id)
+        if not existing:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Sector with ID {sector_id} not found"
+            )
+
+        # Delete sector
+        deleted = await repository.delete_sector(db, sector_id)
+        if not deleted:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to delete sector"
+            )
+
+        logger.info(f"Admin {user_id} deleted sector {sector_id}")
+        return None
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Error deleting sector {sector_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting sector: {str(e)}"
+        )
+
+
+# ============================================================================
+# ADMIN: CATEGORY MANAGEMENT
+# ============================================================================
+
+@router.post("/admin/categories", response_model=CategoryResponse, status_code=status.HTTP_201_CREATED)
+async def create_category(
+    data: CategoryCreate,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+    _: None = Depends(require_permission("fiscal_services.manage_hierarchy"))
+):
+    """
+    Create a new category
+
+    Requires fiscal_services.manage_hierarchy permission
+
+    - **category_code**: Unique category code (max 10 chars)
+    - **sector_id**: Optional parent sector ID
+    - **ministry_id**: Optional parent ministry ID
+    - **service_type**: Optional service type classification
+    - **name_es**: Category name in Spanish
+    - **description_es**: Optional description
+    - **display_order**: Display order for sorting (default 0)
+    - **icon**: Optional icon identifier
+    - **color**: Optional hex color code (#RRGGBB)
+    - **is_active**: Whether category is active (default True)
+    """
+    user_id = current_user["sub"]
+
+    try:
+        # Check if category code already exists
+        existing = await repository.get_category_by_code(db, data.category_code)
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Category with code '{data.category_code}' already exists"
+            )
+
+        # Create category
+        category_data = data.dict()
+        result = await repository.create_category(db, category_data)
+
+        logger.info(f"Admin {user_id} created category {result['id']} ({data.category_code})")
+        return CategoryResponse(**result)
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error creating category: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error creating category: {str(e)}"
+        )
+
+
+@router.get("/admin/categories/{category_id}", response_model=CategoryResponse)
+async def get_category_by_id(
+    category_id: int,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+    _: None = Depends(require_permission("fiscal_services.manage_hierarchy"))
+):
+    """Get category by ID - Requires fiscal_services.manage_hierarchy permission"""
+    category = await repository.get_category_by_id(db, category_id)
+    if not category:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Category with ID {category_id} not found"
+        )
+    return CategoryResponse(**category)
+
+
+@router.put("/admin/categories/{category_id}", response_model=CategoryResponse)
+async def update_category(
+    category_id: int,
+    data: CategoryUpdate,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+    _: None = Depends(require_permission("fiscal_services.manage_hierarchy"))
+):
+    """
+    Update a category
+
+    Requires fiscal_services.manage_hierarchy permission
+
+    All fields are optional. Only provided fields will be updated.
+    """
+    user_id = current_user["sub"]
+
+    try:
+        # Check if category exists
+        existing = await repository.get_category_by_id(db, category_id)
+        if not existing:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Category with ID {category_id} not found"
+            )
+
+        # Update category
+        update_data = data.dict(exclude_unset=True)
+        if not update_data:
+            return CategoryResponse(**existing)
+
+        result = await repository.update_category(db, category_id, update_data)
+
+        logger.info(f"Admin {user_id} updated category {category_id}")
+        return CategoryResponse(**result)
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error updating category {category_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating category: {str(e)}"
+        )
+
+
+@router.delete("/admin/categories/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_category(
+    category_id: int,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+    _: None = Depends(require_permission("fiscal_services.manage_hierarchy"))
+):
+    """
+    Delete a category
+
+    Requires fiscal_services.manage_hierarchy permission
+
+    Will fail if the category has dependent fiscal services.
+    """
+    user_id = current_user["sub"]
+
+    try:
+        # Check if category exists
+        existing = await repository.get_category_by_id(db, category_id)
+        if not existing:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Category with ID {category_id} not found"
+            )
+
+        # Delete category
+        deleted = await repository.delete_category(db, category_id)
+        if not deleted:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to delete category"
+            )
+
+        logger.info(f"Admin {user_id} deleted category {category_id}")
+        return None
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Error deleting category {category_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting category: {str(e)}"
+        )
+
+
+# ============================================================================
+# ADMIN: FISCAL SERVICE MANAGEMENT
+# ============================================================================
 
 @router.post("/admin/services", response_model=FiscalServiceResponse, status_code=status.HTTP_201_CREATED)
 async def create_fiscal_service(

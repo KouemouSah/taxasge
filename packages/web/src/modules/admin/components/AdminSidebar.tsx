@@ -26,6 +26,10 @@ import {
   LogOut,
   ClipboardList,
   ListOrdered,
+  UserCog,
+  Building2,
+  Layers,
+  FolderTree,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { clearAuthData } from '@/core/auth/storage'
@@ -65,6 +69,11 @@ export default function AdminSidebar() {
           icon: Key,
         },
         {
+          title: t('nav.userPermissions'),
+          href: `/${locale}/dashboard/admin/user-permissions`,
+          icon: UserCog,
+        },
+        {
           title: t('nav.assignments'),
           href: `/${locale}/dashboard/admin/assignments`,
           icon: ClipboardList,
@@ -78,6 +87,21 @@ export default function AdminSidebar() {
           title: t('nav.fiscalServices'),
           href: `/${locale}/dashboard/admin/fiscal-services`,
           icon: FileText,
+        },
+        {
+          title: t('nav.ministries'),
+          href: `/${locale}/dashboard/admin/ministries`,
+          icon: Building2,
+        },
+        {
+          title: t('nav.sectors'),
+          href: `/${locale}/dashboard/admin/sectors`,
+          icon: Layers,
+        },
+        {
+          title: t('nav.categories'),
+          href: `/${locale}/dashboard/admin/categories`,
+          icon: FolderTree,
         },
       ],
     },

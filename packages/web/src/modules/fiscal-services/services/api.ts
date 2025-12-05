@@ -155,6 +155,18 @@ export const hierarchyApi = {
     list: async (): Promise<Ministry[]> => {
       return client.get<Ministry[]>(`${FISCAL_SERVICES_BASE}/ministries`)
     },
+    get: async (ministryId: number): Promise<Ministry> => {
+      return client.get<Ministry>(`${FISCAL_SERVICES_BASE}/admin/ministries/${ministryId}`)
+    },
+    create: async (data: Omit<Ministry, 'id' | 'createdAt' | 'updatedAt'>): Promise<Ministry> => {
+      return client.post<Ministry>(`${FISCAL_SERVICES_BASE}/admin/ministries`, data)
+    },
+    update: async (ministryId: number, data: Partial<Ministry>): Promise<Ministry> => {
+      return client.put<Ministry>(`${FISCAL_SERVICES_BASE}/admin/ministries/${ministryId}`, data)
+    },
+    delete: async (ministryId: number): Promise<void> => {
+      return client.delete<void>(`${FISCAL_SERVICES_BASE}/admin/ministries/${ministryId}`)
+    },
   },
 
   /**
@@ -166,6 +178,18 @@ export const hierarchyApi = {
       const query = ministryId ? `?ministry_id=${ministryId}` : ''
       return client.get<Sector[]>(`${FISCAL_SERVICES_BASE}/sectors${query}`)
     },
+    get: async (sectorId: number): Promise<Sector> => {
+      return client.get<Sector>(`${FISCAL_SERVICES_BASE}/admin/sectors/${sectorId}`)
+    },
+    create: async (data: Omit<Sector, 'id' | 'createdAt' | 'updatedAt'>): Promise<Sector> => {
+      return client.post<Sector>(`${FISCAL_SERVICES_BASE}/admin/sectors`, data)
+    },
+    update: async (sectorId: number, data: Partial<Sector>): Promise<Sector> => {
+      return client.put<Sector>(`${FISCAL_SERVICES_BASE}/admin/sectors/${sectorId}`, data)
+    },
+    delete: async (sectorId: number): Promise<void> => {
+      return client.delete<void>(`${FISCAL_SERVICES_BASE}/admin/sectors/${sectorId}`)
+    },
   },
 
   /**
@@ -176,6 +200,18 @@ export const hierarchyApi = {
     list: async (sectorId?: number): Promise<Category[]> => {
       const query = sectorId ? `?sector_id=${sectorId}` : ''
       return client.get<Category[]>(`${FISCAL_SERVICES_BASE}/categories${query}`)
+    },
+    get: async (categoryId: number): Promise<Category> => {
+      return client.get<Category>(`${FISCAL_SERVICES_BASE}/admin/categories/${categoryId}`)
+    },
+    create: async (data: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>): Promise<Category> => {
+      return client.post<Category>(`${FISCAL_SERVICES_BASE}/admin/categories`, data)
+    },
+    update: async (categoryId: number, data: Partial<Category>): Promise<Category> => {
+      return client.put<Category>(`${FISCAL_SERVICES_BASE}/admin/categories/${categoryId}`, data)
+    },
+    delete: async (categoryId: number): Promise<void> => {
+      return client.delete<void>(`${FISCAL_SERVICES_BASE}/admin/categories/${categoryId}`)
     },
   },
 }

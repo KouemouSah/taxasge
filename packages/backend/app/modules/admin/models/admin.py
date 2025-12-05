@@ -18,28 +18,8 @@ from decimal import Decimal
 # ENUMS (from DATABASE_SCHEMA_REFERENCE.md)
 # ============================================================================
 
-class UserRole(str, Enum):
-    """
-    User roles in the system
-
-    Admin can create all roles except citizen and business
-    (citizen and business self-register via /api/auth/register)
-    """
-    CITIZEN = "citizen"
-    BUSINESS = "business"
-    ACCOUNTANT = "accountant"
-    ADMIN = "admin"
-    SUPERVISOR = "supervisor"
-    DGI_AGENT = "dgi_agent"
-    MINISTRY_AGENT = "ministry_agent"
-
-
-class UserStatus(str, Enum):
-    """User account status"""
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-    SUSPENDED = "suspended"
-    PENDING = "pending"
+# Import UserRole and UserStatus from users module (single source of truth)
+from ..users.models.user import UserRole, UserStatus
 
 
 class AuditAction(str, Enum):
@@ -91,8 +71,8 @@ class UserBase(BaseModel):
     phone_number: Optional[str] = Field(None, max_length=20)
     document_type: Optional[str] = Field(None, max_length=20)
     document_number: Optional[str] = Field(None, max_length=50)
-    role: UserRole = UserRole.CITIZEN
-    status: UserStatus = UserStatus.ACTIVE
+    role: UserRole = UserRole.citizen  # Updated to lowercase to match users module
+    status: UserStatus = UserStatus.active  # Updated to lowercase to match users module
     preferred_language: str = Field(default="es", max_length=2)
     email_notifications: bool = True
     push_notifications: bool = True

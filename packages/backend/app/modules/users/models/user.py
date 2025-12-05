@@ -25,11 +25,19 @@ class UserRole(str, Enum):
 
 
 class UserStatus(str, Enum):
-    """User account status enumeration"""
+    """
+    User account status enumeration - MUST match user_status_enum in database
+
+    Database enum values (from DATABASE_SCHEMA_REFERENCE.md):
+    - active: User account is active and can access the system
+    - suspended: User account is temporarily suspended
+    - pending_verification: User registered but email not verified yet
+    - deactivated: User account is permanently deactivated (soft delete for citizen/business)
+    """
     active = "active"
-    inactive = "inactive"
     suspended = "suspended"
     pending_verification = "pending_verification"
+    deactivated = "deactivated"
 
 
 class UserProfile(BaseModel):
@@ -37,22 +45,28 @@ class UserProfile(BaseModel):
     Base user profile information
 
     IMPORTANT: Aligned with schema_taxage.sql users table (lines 1044-1078)
-    phone → maps to phone_number in database
-    language → maps to preferred_language in database
+    phone_number → database column: phone_number (varchar 20)
+    preferred_language → database column: preferred_language (varchar 2)
+
+    Field aliases allow camelCase in API while using snake_case in DB
     """
     first_name: str = Field(..., min_length=2, max_length=50, description="User first name")
     last_name: str = Field(..., min_length=2, max_length=50, description="User last name")
-    phone: Optional[str] = Field(
+    phone_number: Optional[str] = Field(
         None,
+        alias="phone",  # Accept 'phone' in API requests for backward compatibility
         pattern=r"^(222|555|551|333)\d{6}$",
-        description="Guinée Équatoriale phone (9 digits: 222/555/551/333 + 6 digits)"
+        description="Guinée Équatoriale phone (9 digits: 222/555/551/333 + 6 digits)",
+        serialization_alias="phone_number"  # Always return as phone_number
     )
     address: Optional[str] = Field(None, max_length=200, description="User address")
     city: Optional[str] = Field(None, max_length=100, description="City")
-    language: str = Field(
+    preferred_language: str = Field(
         default="es",
+        alias="language",  # Accept 'language' in API requests for backward compatibility
         pattern="^(es|fr|en)$",
-        description="Preferred language (maps to preferred_language in DB)"
+        description="Preferred language (es/fr/en)",
+        serialization_alias="preferred_language"  # Always return as preferred_language
     )
     avatar_url: Optional[str] = Field(None, description="Profile picture URL")
 
@@ -102,20 +116,34 @@ class UserCreate(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    """Model for user updates"""
+    """
+    Model for user updates
+
+    Uses phone_number as primary field name (matches DB) with alias for compatibility
+    """
     first_name: Optional[str] = Field(None, min_length=2, max_length=50)
     last_name: Optional[str] = Field(None, min_length=2, max_length=50)
     email: Optional[EmailStr] = Field(None, description="User email address")
-    phone: Optional[str] = Field(None, description="Phone number in E.164 format")
+    phone_number: Optional[str] = Field(
+        None,
+        alias="phone",  # Accept 'phone' for backward compatibility
+        description="Phone number in E.164 format",
+        serialization_alias="phone_number"
+    )
     address: Optional[str] = Field(None, max_length=200)
     city: Optional[str] = Field(None, max_length=100)
-    language: Optional[str] = Field(None, pattern="^(es|fr|en)$")
+    preferred_language: Optional[str] = Field(
+        None,
+        alias="language",  # Accept 'language' for backward compatibility
+        pattern="^(es|fr|en)$",
+        serialization_alias="preferred_language"
+    )
     avatar_url: Optional[str] = None
 
     # Allow status updates for admins
     status: Optional[UserStatus] = None
 
-    @validator('phone')
+    @validator('phone_number')
     def validate_phone_e164(cls, v):
         """Validate phone number in E.164 format (+240XXXXXXXXX)"""
         if v is None:
@@ -144,17 +172,21 @@ class PasswordChange(BaseModel):
 
 
 class UserResponse(BaseModel):
-    """Model for user response (public data)"""
+    """
+    Model for user response (public data)
+
+    Field names match database columns (phone_number, preferred_language)
+    """
     id: str = Field(..., description="User ID")
     email: EmailStr = Field(..., description="User email")
     role: UserRole = Field(..., description="User role")
     status: UserStatus = Field(..., description="User status")
     first_name: str = Field(..., description="User first name")
     last_name: str = Field(..., description="User last name")
-    phone: Optional[str] = Field(None, description="Phone number")
+    phone_number: Optional[str] = Field(None, description="Phone number")
     address: Optional[str] = Field(None, description="Address")
     city: Optional[str] = Field(None, description="City")
-    language: str = Field(..., description="Preferred language")
+    preferred_language: str = Field(..., description="Preferred language (es/fr/en)")
     avatar_url: Optional[str] = Field(None, description="Profile picture URL")
     created_at: datetime = Field(..., description="Account creation date")
     updated_at: datetime = Field(..., description="Last update date")

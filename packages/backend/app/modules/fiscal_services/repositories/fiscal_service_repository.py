@@ -17,35 +17,281 @@ class FiscalServiceRepository:
     # ========== MINISTRIES ==========
     async def list_ministries(self, conn: asyncpg.Connection) -> List[Dict[str, Any]]:
         """List all ministries"""
-        query = "SELECT * FROM ministries ORDER BY code"
+        query = "SELECT * FROM ministries ORDER BY display_order, ministry_code"
         results = await conn.fetch(query)
         return [dict(r) for r in results]
 
+    async def get_ministry_by_id(self, conn: asyncpg.Connection, ministry_id: int) -> Optional[Dict[str, Any]]:
+        """Get ministry by ID"""
+        query = "SELECT * FROM ministries WHERE id = $1"
+        result = await conn.fetchrow(query, ministry_id)
+        return dict(result) if result else None
+
+    async def get_ministry_by_code(self, conn: asyncpg.Connection, ministry_code: str) -> Optional[Dict[str, Any]]:
+        """Get ministry by code"""
+        query = "SELECT * FROM ministries WHERE ministry_code = $1"
+        result = await conn.fetchrow(query, ministry_code)
+        return dict(result) if result else None
+
+    async def create_ministry(self, conn: asyncpg.Connection, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a new ministry"""
+        query = """
+            INSERT INTO ministries (
+                ministry_code, name_es, description_es, display_order,
+                icon, color, website_url, contact_email, contact_phone, is_active
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            RETURNING *
+        """
+        result = await conn.fetchrow(
+            query,
+            data.get("ministry_code"),
+            data.get("name_es"),
+            data.get("description_es"),
+            data.get("display_order", 0),
+            data.get("icon"),
+            data.get("color"),
+            data.get("website_url"),
+            data.get("contact_email"),
+            data.get("contact_phone"),
+            data.get("is_active", True),
+        )
+        return dict(result)
+
+    async def update_ministry(
+        self, conn: asyncpg.Connection, ministry_id: int, data: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
+        """Update ministry"""
+        updates = []
+        params = [ministry_id]
+        param_idx = 2
+
+        for field, value in data.items():
+            if value is not None:
+                updates.append(f"{field} = ${param_idx}")
+                params.append(value)
+                param_idx += 1
+
+        if not updates:
+            return await self.get_ministry_by_id(conn, ministry_id)
+
+        updates.append("updated_at = NOW()")
+        query = f"UPDATE ministries SET {', '.join(updates)} WHERE id = $1 RETURNING *"
+        result = await conn.fetchrow(query, *params)
+        return dict(result) if result else None
+
+    async def delete_ministry(self, conn: asyncpg.Connection, ministry_id: int) -> bool:
+        """Delete ministry (fails if has sectors)"""
+        # Check for dependent sectors
+        check_query = "SELECT COUNT(*) FROM sectors WHERE ministry_id = $1"
+        count = await conn.fetchval(check_query, ministry_id)
+
+        if count > 0:
+            raise ValueError(f"Cannot delete ministry: {count} sectors depend on it")
+
+        result = await conn.execute("DELETE FROM ministries WHERE id = $1", ministry_id)
+        return result == "DELETE 1"
+
     # ========== SECTORS ==========
     async def list_sectors(
-        self, conn: asyncpg.Connection, ministry_id: Optional[str] = None
+        self, conn: asyncpg.Connection, ministry_id: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """List sectors, optionally filtered by ministry"""
         if ministry_id:
-            query = "SELECT * FROM sectors WHERE ministry_id = $1 ORDER BY code"
+            query = "SELECT * FROM sectors WHERE ministry_id = $1 ORDER BY display_order, sector_code"
             results = await conn.fetch(query, ministry_id)
         else:
-            query = "SELECT * FROM sectors ORDER BY code"
+            query = "SELECT * FROM sectors ORDER BY display_order, sector_code"
             results = await conn.fetch(query)
         return [dict(r) for r in results]
 
+    async def get_sector_by_id(self, conn: asyncpg.Connection, sector_id: int) -> Optional[Dict[str, Any]]:
+        """Get sector by ID"""
+        query = "SELECT * FROM sectors WHERE id = $1"
+        result = await conn.fetchrow(query, sector_id)
+        return dict(result) if result else None
+
+    async def get_sector_by_code(self, conn: asyncpg.Connection, sector_code: str) -> Optional[Dict[str, Any]]:
+        """Get sector by code"""
+        query = "SELECT * FROM sectors WHERE sector_code = $1"
+        result = await conn.fetchrow(query, sector_code)
+        return dict(result) if result else None
+
+    async def create_sector(self, conn: asyncpg.Connection, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a new sector"""
+        # Verify ministry exists
+        ministry = await self.get_ministry_by_id(conn, data.get("ministry_id"))
+        if not ministry:
+            raise ValueError(f"Ministry with ID {data.get('ministry_id')} not found")
+
+        query = """
+            INSERT INTO sectors (
+                sector_code, ministry_id, name_es, description_es,
+                display_order, icon, color, is_active
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING *
+        """
+        result = await conn.fetchrow(
+            query,
+            data.get("sector_code"),
+            data.get("ministry_id"),
+            data.get("name_es"),
+            data.get("description_es"),
+            data.get("display_order", 0),
+            data.get("icon"),
+            data.get("color"),
+            data.get("is_active", True),
+        )
+        return dict(result)
+
+    async def update_sector(
+        self, conn: asyncpg.Connection, sector_id: int, data: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
+        """Update sector"""
+        # If ministry_id is being updated, verify it exists
+        if "ministry_id" in data and data["ministry_id"] is not None:
+            ministry = await self.get_ministry_by_id(conn, data["ministry_id"])
+            if not ministry:
+                raise ValueError(f"Ministry with ID {data['ministry_id']} not found")
+
+        updates = []
+        params = [sector_id]
+        param_idx = 2
+
+        for field, value in data.items():
+            if value is not None:
+                updates.append(f"{field} = ${param_idx}")
+                params.append(value)
+                param_idx += 1
+
+        if not updates:
+            return await self.get_sector_by_id(conn, sector_id)
+
+        updates.append("updated_at = NOW()")
+        query = f"UPDATE sectors SET {', '.join(updates)} WHERE id = $1 RETURNING *"
+        result = await conn.fetchrow(query, *params)
+        return dict(result) if result else None
+
+    async def delete_sector(self, conn: asyncpg.Connection, sector_id: int) -> bool:
+        """Delete sector (fails if has categories)"""
+        # Check for dependent categories
+        check_query = "SELECT COUNT(*) FROM categories WHERE sector_id = $1"
+        count = await conn.fetchval(check_query, sector_id)
+
+        if count > 0:
+            raise ValueError(f"Cannot delete sector: {count} categories depend on it")
+
+        result = await conn.execute("DELETE FROM sectors WHERE id = $1", sector_id)
+        return result == "DELETE 1"
+
     # ========== CATEGORIES ==========
     async def list_categories(
-        self, conn: asyncpg.Connection, sector_id: Optional[str] = None
+        self, conn: asyncpg.Connection, sector_id: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """List categories, optionally filtered by sector"""
         if sector_id:
-            query = "SELECT * FROM categories WHERE sector_id = $1 ORDER BY code"
+            query = "SELECT * FROM categories WHERE sector_id = $1 ORDER BY display_order, category_code"
             results = await conn.fetch(query, sector_id)
         else:
-            query = "SELECT * FROM categories ORDER BY code"
+            query = "SELECT * FROM categories ORDER BY display_order, category_code"
             results = await conn.fetch(query)
         return [dict(r) for r in results]
+
+    async def get_category_by_id(self, conn: asyncpg.Connection, category_id: int) -> Optional[Dict[str, Any]]:
+        """Get category by ID"""
+        query = "SELECT * FROM categories WHERE id = $1"
+        result = await conn.fetchrow(query, category_id)
+        return dict(result) if result else None
+
+    async def get_category_by_code(self, conn: asyncpg.Connection, category_code: str) -> Optional[Dict[str, Any]]:
+        """Get category by code"""
+        query = "SELECT * FROM categories WHERE category_code = $1"
+        result = await conn.fetchrow(query, category_code)
+        return dict(result) if result else None
+
+    async def create_category(self, conn: asyncpg.Connection, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a new category"""
+        # Verify sector exists if provided
+        if data.get("sector_id"):
+            sector = await self.get_sector_by_id(conn, data.get("sector_id"))
+            if not sector:
+                raise ValueError(f"Sector with ID {data.get('sector_id')} not found")
+
+        # Verify ministry exists if provided
+        if data.get("ministry_id"):
+            ministry = await self.get_ministry_by_id(conn, data.get("ministry_id"))
+            if not ministry:
+                raise ValueError(f"Ministry with ID {data.get('ministry_id')} not found")
+
+        query = """
+            INSERT INTO categories (
+                category_code, sector_id, ministry_id, service_type,
+                name_es, description_es, display_order, icon, color, is_active
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            RETURNING *
+        """
+        result = await conn.fetchrow(
+            query,
+            data.get("category_code"),
+            data.get("sector_id"),
+            data.get("ministry_id"),
+            data.get("service_type"),
+            data.get("name_es"),
+            data.get("description_es"),
+            data.get("display_order", 0),
+            data.get("icon"),
+            data.get("color"),
+            data.get("is_active", True),
+        )
+        return dict(result)
+
+    async def update_category(
+        self, conn: asyncpg.Connection, category_id: int, data: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
+        """Update category"""
+        # Verify sector exists if being updated
+        if "sector_id" in data and data["sector_id"] is not None:
+            sector = await self.get_sector_by_id(conn, data["sector_id"])
+            if not sector:
+                raise ValueError(f"Sector with ID {data['sector_id']} not found")
+
+        # Verify ministry exists if being updated
+        if "ministry_id" in data and data["ministry_id"] is not None:
+            ministry = await self.get_ministry_by_id(conn, data["ministry_id"])
+            if not ministry:
+                raise ValueError(f"Ministry with ID {data['ministry_id']} not found")
+
+        updates = []
+        params = [category_id]
+        param_idx = 2
+
+        for field, value in data.items():
+            if value is not None:
+                updates.append(f"{field} = ${param_idx}")
+                params.append(value)
+                param_idx += 1
+
+        if not updates:
+            return await self.get_category_by_id(conn, category_id)
+
+        updates.append("updated_at = NOW()")
+        query = f"UPDATE categories SET {', '.join(updates)} WHERE id = $1 RETURNING *"
+        result = await conn.fetchrow(query, *params)
+        return dict(result) if result else None
+
+    async def delete_category(self, conn: asyncpg.Connection, category_id: int) -> bool:
+        """Delete category (fails if has fiscal services)"""
+        # Check for dependent fiscal services
+        check_query = "SELECT COUNT(*) FROM fiscal_services WHERE category_id = $1"
+        count = await conn.fetchval(check_query, category_id)
+
+        if count > 0:
+            raise ValueError(f"Cannot delete category: {count} fiscal services depend on it")
+
+        result = await conn.execute("DELETE FROM categories WHERE id = $1", category_id)
+        return result == "DELETE 1"
 
     # ========== FISCAL SERVICES ==========
     async def create(

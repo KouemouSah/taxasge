@@ -31,11 +31,14 @@ from app.modules.fiscal_services.models.fiscal_service import (
     ServiceStatusEnum,
 
     # Hierarchy Models
+    MinistryCreate,
+    MinistryUpdate,
     MinistryResponse,
+    SectorCreate,
+    SectorUpdate,
     SectorResponse,
 
     # Categories
-    CategoryBase,
     CategoryCreate,
     CategoryUpdate,
     CategoryResponse,
@@ -151,11 +154,14 @@ __all__ = [
     "TranslatableEntityType",
 
     # Hierarchy Models
+    "MinistryCreate",
+    "MinistryUpdate",
     "MinistryResponse",
+    "SectorCreate",
+    "SectorUpdate",
     "SectorResponse",
 
     # Categories
-    "CategoryBase",
     "CategoryCreate",
     "CategoryUpdate",
     "CategoryResponse",

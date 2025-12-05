@@ -56,12 +56,61 @@ class ServiceStatusEnum(str, Enum):
 # ═══════════════════════════════════════════════════════════════════════════
 
 
+class MinistryCreate(BaseModel):
+    """Create ministry request"""
+    ministry_code: str = Field(..., max_length=10, description="Unique ministry code")
+    name_es: str = Field(..., max_length=255, description="Ministry name (Spanish)")
+    description_es: Optional[str] = Field(None, description="Ministry description (Spanish)")
+    display_order: int = Field(0, description="Display order for sorting")
+    icon: Optional[str] = Field(None, max_length=100, description="Icon identifier")
+    color: Optional[str] = Field(None, max_length=7, pattern=r"^#[0-9A-Fa-f]{6}$", description="Hex color code")
+    website_url: Optional[str] = Field(None, max_length=255, description="Ministry website URL")
+    contact_email: Optional[str] = Field(None, max_length=255, description="Contact email")
+    contact_phone: Optional[str] = Field(None, max_length=50, description="Contact phone")
+    is_active: bool = Field(True, description="Whether ministry is active")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "ministry_code": "MHAP",
+                "name_es": "Ministerio de Hacienda y Presupuestos",
+                "description_es": "Gestión de la política fiscal y presupuestaria",
+                "display_order": 1,
+                "icon": "building-columns",
+                "color": "#3B82F6",
+                "website_url": "https://www.hacienda.gq",
+                "contact_email": "info@hacienda.gq",
+                "contact_phone": "+240 222 123 456",
+                "is_active": True
+            }
+        }
+
+
+class MinistryUpdate(BaseModel):
+    """Update ministry request - all fields optional"""
+    name_es: Optional[str] = Field(None, max_length=255, description="Ministry name (Spanish)")
+    description_es: Optional[str] = Field(None, description="Ministry description (Spanish)")
+    display_order: Optional[int] = Field(None, description="Display order for sorting")
+    icon: Optional[str] = Field(None, max_length=100, description="Icon identifier")
+    color: Optional[str] = Field(None, max_length=7, pattern=r"^#[0-9A-Fa-f]{6}$", description="Hex color code")
+    website_url: Optional[str] = Field(None, max_length=255, description="Ministry website URL")
+    contact_email: Optional[str] = Field(None, max_length=255, description="Contact email")
+    contact_phone: Optional[str] = Field(None, max_length=50, description="Contact phone")
+    is_active: Optional[bool] = Field(None, description="Whether ministry is active")
+
+
 class MinistryResponse(BaseModel):
     """Ministry response model"""
     id: int
     code: str = Field(..., max_length=10, description="Unique ministry code", alias="ministry_code")
     name_es: str = Field(..., max_length=255, description="Ministry name (Spanish)")
     description_es: Optional[str] = Field(None, description="Ministry description (Spanish)")
+    display_order: int = Field(0, description="Display order for sorting")
+    icon: Optional[str] = Field(None, description="Icon identifier")
+    color: Optional[str] = Field(None, description="Hex color code")
+    website_url: Optional[str] = Field(None, description="Ministry website URL")
+    contact_email: Optional[str] = Field(None, description="Contact email")
+    contact_phone: Optional[str] = Field(None, description="Contact phone")
     is_active: bool = Field(True, description="Whether ministry is active")
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -76,6 +125,43 @@ class MinistryResponse(BaseModel):
 # ═══════════════════════════════════════════════════════════════════════════
 
 
+class SectorCreate(BaseModel):
+    """Create sector request"""
+    sector_code: str = Field(..., max_length=10, description="Unique sector code")
+    ministry_id: int = Field(..., description="Parent ministry ID")
+    name_es: str = Field(..., max_length=255, description="Sector name (Spanish)")
+    description_es: Optional[str] = Field(None, description="Sector description (Spanish)")
+    display_order: int = Field(0, description="Display order for sorting")
+    icon: Optional[str] = Field(None, max_length=100, description="Icon identifier")
+    color: Optional[str] = Field(None, max_length=7, pattern=r"^#[0-9A-Fa-f]{6}$", description="Hex color code")
+    is_active: bool = Field(True, description="Whether sector is active")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "sector_code": "IMPUESTOS",
+                "ministry_id": 1,
+                "name_es": "Impuestos Directos",
+                "description_es": "Gestión de impuestos directos",
+                "display_order": 1,
+                "icon": "receipt-tax",
+                "color": "#10B981",
+                "is_active": True
+            }
+        }
+
+
+class SectorUpdate(BaseModel):
+    """Update sector request - all fields optional"""
+    ministry_id: Optional[int] = Field(None, description="Parent ministry ID")
+    name_es: Optional[str] = Field(None, max_length=255, description="Sector name (Spanish)")
+    description_es: Optional[str] = Field(None, description="Sector description (Spanish)")
+    display_order: Optional[int] = Field(None, description="Display order for sorting")
+    icon: Optional[str] = Field(None, max_length=100, description="Icon identifier")
+    color: Optional[str] = Field(None, max_length=7, pattern=r"^#[0-9A-Fa-f]{6}$", description="Hex color code")
+    is_active: Optional[bool] = Field(None, description="Whether sector is active")
+
+
 class SectorResponse(BaseModel):
     """Sector response model"""
     id: int
@@ -83,6 +169,9 @@ class SectorResponse(BaseModel):
     ministry_id: int = Field(..., description="Parent ministry ID")
     name_es: str = Field(..., max_length=255, description="Sector name (Spanish)")
     description_es: Optional[str] = Field(None, description="Sector description (Spanish)")
+    display_order: int = Field(0, description="Display order for sorting")
+    icon: Optional[str] = Field(None, description="Icon identifier")
+    color: Optional[str] = Field(None, description="Hex color code")
     is_active: bool = Field(True, description="Whether sector is active")
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -97,20 +186,34 @@ class SectorResponse(BaseModel):
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-class CategoryBase(BaseModel):
-    """Base category model"""
+class CategoryCreate(BaseModel):
+    """Create category request"""
     category_code: str = Field(..., max_length=10, description="Unique category code")
     sector_id: Optional[int] = Field(None, description="Sector this category belongs to")
     ministry_id: Optional[int] = Field(None, description="Ministry managing this category")
     service_type: Optional[ServiceTypeEnum] = Field(None, description="Type of services in this category")
     name_es: str = Field(..., max_length=255, description="Category name (Spanish)")
     description_es: Optional[str] = Field(None, description="Category description (Spanish)")
+    display_order: int = Field(0, description="Display order for sorting")
+    icon: Optional[str] = Field(None, max_length=100, description="Icon identifier")
+    color: Optional[str] = Field(None, max_length=7, pattern=r"^#[0-9A-Fa-f]{6}$", description="Hex color code")
     is_active: bool = Field(True, description="Whether category is active")
 
-
-class CategoryCreate(CategoryBase):
-    """Create category request"""
-    pass
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "category_code": "IVA",
+                "sector_id": 1,
+                "ministry_id": 1,
+                "service_type": "declaration_tax",
+                "name_es": "IVA - Impuesto sobre el Valor Añadido",
+                "description_es": "Declaraciones de IVA",
+                "display_order": 1,
+                "icon": "calculator",
+                "color": "#F59E0B",
+                "is_active": True
+            }
+        }
 
 
 class CategoryUpdate(BaseModel):
@@ -120,12 +223,25 @@ class CategoryUpdate(BaseModel):
     service_type: Optional[ServiceTypeEnum] = None
     name_es: Optional[str] = Field(None, max_length=255)
     description_es: Optional[str] = None
+    display_order: Optional[int] = None
+    icon: Optional[str] = Field(None, max_length=100)
+    color: Optional[str] = Field(None, max_length=7, pattern=r"^#[0-9A-Fa-f]{6}$")
     is_active: Optional[bool] = None
 
 
-class CategoryResponse(CategoryBase):
+class CategoryResponse(BaseModel):
     """Category response"""
     id: int
+    category_code: str = Field(..., max_length=10, description="Unique category code")
+    sector_id: Optional[int] = Field(None, description="Sector this category belongs to")
+    ministry_id: Optional[int] = Field(None, description="Ministry managing this category")
+    service_type: Optional[ServiceTypeEnum] = Field(None, description="Type of services in this category")
+    name_es: str = Field(..., max_length=255, description="Category name (Spanish)")
+    description_es: Optional[str] = Field(None, description="Category description (Spanish)")
+    display_order: int = Field(0, description="Display order for sorting")
+    icon: Optional[str] = Field(None, description="Icon identifier")
+    color: Optional[str] = Field(None, description="Hex color code")
+    is_active: bool = Field(True, description="Whether category is active")
     created_at: datetime
     updated_at: Optional[datetime] = None
 
