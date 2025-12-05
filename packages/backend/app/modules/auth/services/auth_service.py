@@ -211,10 +211,12 @@ class AuthService:
             # Check user status
             if user.status == UserStatus.suspended:
                 raise Exception("Account is suspended")
-            elif user.status == UserStatus.inactive:
-                raise Exception("Account is inactive")
+            elif user.status == UserStatus.deactivated or user.status == UserStatus.inactive:
+                raise Exception("Account is deactivated")
             elif user.status == UserStatus.pending_verification:
-                raise Exception("Account is pending verification")
+                raise Exception("Email verification required. Please check your email.")
+            elif user.status != UserStatus.active:
+                raise Exception("Account is not active")
 
             logger.info(f"User logged in: {user.email} (ID: {user.id})")
 

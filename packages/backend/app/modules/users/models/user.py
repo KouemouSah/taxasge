@@ -33,11 +33,13 @@ class UserStatus(str, Enum):
     - suspended: User account is temporarily suspended
     - pending_verification: User registered but email not verified yet
     - deactivated: User account is permanently deactivated (soft delete for citizen/business)
+    - inactive: Legacy status, treated as deactivated (for backward compatibility)
     """
     active = "active"
     suspended = "suspended"
     pending_verification = "pending_verification"
     deactivated = "deactivated"
+    inactive = "inactive"  # Legacy status - treated as deactivated
 
 
 class UserProfile(BaseModel):

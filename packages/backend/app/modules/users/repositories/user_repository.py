@@ -41,10 +41,10 @@ class UserRepository(BaseRepository[UserResponse]):
             status=UserStatus(data["status"]),
             first_name=data["first_name"],
             last_name=data["last_name"],
-            phone=data.get("phone_number"),  # Note: DB column is phone_number
+            phone_number=data.get("phone_number"),  # DB column: phone_number
             address=data.get("address"),
             city=data.get("city"),
-            language=data.get("preferred_language", "es"),  # Note: DB column is preferred_language
+            preferred_language=data.get("preferred_language", "es"),  # DB column: preferred_language
             avatar_url=data.get("avatar_url"),
             created_at=data["created_at"],
             updated_at=data["updated_at"],
