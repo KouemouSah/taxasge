@@ -62,6 +62,12 @@ google-api-core>=2.14.0
 # Vector Database
 pgvector>=0.2.4  # PostgreSQL vector extension Python client
 
+# OCR & Document Processing
+opencv-python-headless>=4.8.0
+pytesseract>=0.3.10
+pdf2image>=1.16.3
+Pillow>=10.0.0
+
 # Legacy ML (deprecated - for migration)
 tensorflow>=2.16.1
 scikit-learn>=1.3.0
