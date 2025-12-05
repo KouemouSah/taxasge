@@ -58,8 +58,8 @@ import { appConfig } from '@/core/config/app'
 // CONFIGURATION
 // =============================================================================
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-const API_VERSION = '/api/v1'
+const API_BASE_URL = appConfig.api.baseUrl
+const API_VERSION = `/api/${appConfig.api.version}`
 const FISCAL_SERVICES_BASE = '/fiscal-services'
 
 // =============================================================================
@@ -85,7 +85,7 @@ class ApiClient {
     }
 
     try {
-      const response = await fetch(`${appConfig.api.baseUrl}/api/v1/auth/refresh`, {
+      const response = await fetch(`${API_BASE_URL}${API_VERSION}/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refresh_token: authData.refresh_token }),
