@@ -107,6 +107,7 @@ export default function CategoriesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [sectorFilter, setSectorFilter] = useState<number | 'all'>('all')
   const [ministryFilter, setMinistryFilter] = useState<number | 'all'>('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
 
   // Modal states
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -273,6 +274,20 @@ export default function CategoriesPage() {
     return ministry?.name_es || '-'
   }
 
+  // Get the ministry ID for a category (directly or via sector)
+  const getCategoryMinistryId = (category: Category): number | undefined => {
+    // Direct ministry link
+    if (category.ministry_id) {
+      return category.ministry_id
+    }
+    // Via sector
+    if (category.sector_id) {
+      const sector = sectors.find(s => s.id === category.sector_id)
+      return sector?.ministry_id
+    }
+    return undefined
+  }
+
   // Filter categories
   const filteredCategories = categories.filter(c => {
     const name = c.name_es || ''
@@ -280,9 +295,23 @@ export default function CategoriesPage() {
     const matchesSearch = searchQuery === '' ||
       name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       code.toLowerCase().includes(searchQuery.toLowerCase())
+
+    // Sector filter
     const matchesSector = sectorFilter === 'all' || c.sector_id === sectorFilter
-    const matchesMinistry = ministryFilter === 'all' || c.ministry_id === ministryFilter
-    return matchesSearch && matchesSector && matchesMinistry
+
+    // Ministry filter - check both direct ministry_id and via sector
+    let matchesMinistry = true
+    if (ministryFilter !== 'all') {
+      const categoryMinistryId = getCategoryMinistryId(c)
+      matchesMinistry = categoryMinistryId === ministryFilter
+    }
+
+    // Status filter
+    const matchesStatus = statusFilter === 'all' ||
+      (statusFilter === 'active' && c.is_active !== false) ||
+      (statusFilter === 'inactive' && c.is_active === false)
+
+    return matchesSearch && matchesSector && matchesMinistry && matchesStatus
   })
 
   // Get filtered sectors based on ministry selection
@@ -401,6 +430,19 @@ export default function CategoriesPage() {
                   {filteredSectorsForSelect.map((s) => (
                     <SelectItem key={s.id} value={String(s.id)}>{s.name_es}</SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={statusFilter}
+                onValueChange={(v) => setStatusFilter(v as 'all' | 'active' | 'inactive')}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder={t('filterByStatus')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t('allStatuses')}</SelectItem>
+                  <SelectItem value="active">{t('statusActive')}</SelectItem>
+                  <SelectItem value="inactive">{t('statusInactive')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>

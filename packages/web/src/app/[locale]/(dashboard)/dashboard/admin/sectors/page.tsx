@@ -90,6 +90,7 @@ export default function SectorsPage() {
   // Filter states
   const [searchQuery, setSearchQuery] = useState('')
   const [ministryFilter, setMinistryFilter] = useState<number | 'all'>('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
 
   // Modal states
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -250,7 +251,10 @@ export default function SectorsPage() {
       name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       code.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesMinistry = ministryFilter === 'all' || s.ministry_id === ministryFilter
-    return matchesSearch && matchesMinistry
+    const matchesStatus = statusFilter === 'all' ||
+      (statusFilter === 'active' && s.is_active !== false) ||
+      (statusFilter === 'inactive' && s.is_active === false)
+    return matchesSearch && matchesMinistry && matchesStatus
   })
 
   return (
@@ -325,7 +329,7 @@ export default function SectorsPage() {
             </div>
 
             {/* Filters */}
-            <div className="flex gap-4">
+            <div className="flex gap-4 flex-wrap">
               <div className="relative max-w-sm">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -347,6 +351,19 @@ export default function SectorsPage() {
                   {ministries.map((m) => (
                     <SelectItem key={m.id} value={String(m.id)}>{m.name_es}</SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={statusFilter}
+                onValueChange={(v) => setStatusFilter(v as 'all' | 'active' | 'inactive')}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder={t('filterByStatus')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t('allStatuses')}</SelectItem>
+                  <SelectItem value="active">{t('statusActive')}</SelectItem>
+                  <SelectItem value="inactive">{t('statusInactive')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
