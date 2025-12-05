@@ -74,11 +74,23 @@ def permission_required(permission_name: str):
 
 def require_permission(permission_name: str, raise_on_deny: bool = True):
     """
-    FastAPI dependency for permission checking (alias for permission_required).
+    Decorator/Dependency for permission checking.
 
-    This function is designed to be used with Depends() in route definitions.
+    Can be used both as a decorator and with Depends().
 
-    Usage:
+    Usage as decorator:
+        ```python
+        @router.get("/users")
+        @require_permission("users.view_all")
+        async def list_users(
+            current_user: UserResponse = Depends(get_current_user),
+            permission_service: PermissionService = Depends(get_permission_service)
+        ):
+            # Route handler code
+            ...
+        ```
+
+    Usage with Depends():
         ```python
         @router.get("/users")
         async def list_users(
@@ -91,16 +103,52 @@ def require_permission(permission_name: str, raise_on_deny: bool = True):
 
     Args:
         permission_name: Permission name required (e.g., "users.view_all")
-        raise_on_deny: If True, raises 403 exception on permission denied (unused, for compatibility)
+        raise_on_deny: If True, raises 403 exception on permission denied
 
     Returns:
-        Dependency function that checks permission
+        Decorator function or dependency function
 
     Raises:
         HTTPException: 401 if not authenticated, 403 if permission denied
     """
-    # Return the dependency function from permission_required
-    return permission_required(permission_name)
+    def decorator(func: Callable):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            current_user: Optional[UserResponse] = kwargs.get('current_user')
+
+            if not current_user:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Authentication required"
+                )
+
+            permission_service: Optional[PermissionService] = kwargs.get('permission_service')
+
+            if not permission_service:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Permission service not available"
+                )
+
+            # Check permission
+            has_perm = await permission_service.has_permission(str(current_user.id), permission_name)
+
+            if not has_perm:
+                if raise_on_deny:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail=(
+                            f"Permission denied: '{permission_name}' required. "
+                            f"Contact your administrator to request this permission."
+                        )
+                    )
+                else:
+                    kwargs['_permission_denied'] = True
+
+            return await func(*args, **kwargs)
+
+        return wrapper
+    return decorator
 
 
 def require_any_permission(*permission_names: str, raise_on_deny: bool = True):

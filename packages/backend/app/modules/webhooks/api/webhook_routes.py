@@ -6,7 +6,7 @@ Endpoints pour webhooks BANGE et réconciliation transactions
 
 from fastapi import APIRouter, HTTPException, Depends, status, Query, Request, Header
 from fastapi.security import HTTPBearer
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from loguru import logger
 import json
 

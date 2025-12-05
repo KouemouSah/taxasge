@@ -49,7 +49,7 @@ from app.modules.fiscal_services.repositories.search_repository import SearchRep
 from app.modules.fiscal_services.repositories.service_details_repository import ServiceDetailsRepository
 from app.modules.fiscal_services.services import CalculationService
 from app.modules.auth.middleware.auth_middleware import get_current_user
-from app.modules.permissions.middleware.permission_middleware import require_permission
+from app.modules.permissions.middleware.permission_middleware import permission_required
 from app.database.connection import get_database
 
 router = APIRouter(tags=["Fiscal Services"])
@@ -451,7 +451,7 @@ async def create_ministry(
     data: MinistryCreate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(require_permission("fiscal_services.manage_hierarchy"))
+    _: None = Depends(permission_required("fiscal_services.manage_hierarchy"))
 ):
     """
     Create a new ministry
@@ -504,7 +504,7 @@ async def get_ministry_by_id(
     ministry_id: int,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(require_permission("fiscal_services.manage_hierarchy"))
+    _: None = Depends(permission_required("fiscal_services.manage_hierarchy"))
 ):
     """Get ministry by ID - Requires fiscal_services.manage_hierarchy permission"""
     ministry = await repository.get_ministry_by_id(db, ministry_id)
@@ -522,7 +522,7 @@ async def update_ministry(
     data: MinistryUpdate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(require_permission("fiscal_services.manage_hierarchy"))
+    _: None = Depends(permission_required("fiscal_services.manage_hierarchy"))
 ):
     """
     Update a ministry
@@ -569,7 +569,7 @@ async def delete_ministry(
     ministry_id: int,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(require_permission("fiscal_services.manage_hierarchy"))
+    _: None = Depends(permission_required("fiscal_services.manage_hierarchy"))
 ):
     """
     Delete a ministry
@@ -624,7 +624,7 @@ async def create_sector(
     data: SectorCreate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(require_permission("fiscal_services.manage_hierarchy"))
+    _: None = Depends(permission_required("fiscal_services.manage_hierarchy"))
 ):
     """
     Create a new sector
@@ -675,7 +675,7 @@ async def get_sector_by_id(
     sector_id: int,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(require_permission("fiscal_services.manage_hierarchy"))
+    _: None = Depends(permission_required("fiscal_services.manage_hierarchy"))
 ):
     """Get sector by ID - Requires fiscal_services.manage_hierarchy permission"""
     sector = await repository.get_sector_by_id(db, sector_id)
@@ -693,7 +693,7 @@ async def update_sector(
     data: SectorUpdate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(require_permission("fiscal_services.manage_hierarchy"))
+    _: None = Depends(permission_required("fiscal_services.manage_hierarchy"))
 ):
     """
     Update a sector
@@ -740,7 +740,7 @@ async def delete_sector(
     sector_id: int,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(require_permission("fiscal_services.manage_hierarchy"))
+    _: None = Depends(permission_required("fiscal_services.manage_hierarchy"))
 ):
     """
     Delete a sector
@@ -795,7 +795,7 @@ async def create_category(
     data: CategoryCreate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(require_permission("fiscal_services.manage_hierarchy"))
+    _: None = Depends(permission_required("fiscal_services.manage_hierarchy"))
 ):
     """
     Create a new category
@@ -848,7 +848,7 @@ async def get_category_by_id(
     category_id: int,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(require_permission("fiscal_services.manage_hierarchy"))
+    _: None = Depends(permission_required("fiscal_services.manage_hierarchy"))
 ):
     """Get category by ID - Requires fiscal_services.manage_hierarchy permission"""
     category = await repository.get_category_by_id(db, category_id)
@@ -866,7 +866,7 @@ async def update_category(
     data: CategoryUpdate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(require_permission("fiscal_services.manage_hierarchy"))
+    _: None = Depends(permission_required("fiscal_services.manage_hierarchy"))
 ):
     """
     Update a category
@@ -913,7 +913,7 @@ async def delete_category(
     category_id: int,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(require_permission("fiscal_services.manage_hierarchy"))
+    _: None = Depends(permission_required("fiscal_services.manage_hierarchy"))
 ):
     """
     Delete a category
@@ -968,7 +968,7 @@ async def create_fiscal_service(
     service: FiscalServiceCreate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(require_permission("fiscal_services.create"))
+    _: None = Depends(permission_required("fiscal_services.create"))
 ):
     """Create new fiscal service - Requires fiscal_services.create permission"""
     user_id = current_user["sub"]
@@ -989,7 +989,7 @@ async def update_fiscal_service(
     update_data: FiscalServiceUpdate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(require_permission("fiscal_services.update"))
+    _: None = Depends(permission_required("fiscal_services.update"))
 ):
     """Update fiscal service - Requires fiscal_services.update permission"""
     user_id = current_user["sub"]
@@ -1007,7 +1007,7 @@ async def delete_fiscal_service(
     service_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(require_permission("fiscal_services.delete"))
+    _: None = Depends(permission_required("fiscal_services.delete"))
 ):
     """Delete fiscal service - Requires fiscal_services.delete permission"""
     user_id = current_user["sub"]
@@ -1026,7 +1026,7 @@ async def delete_fiscal_service(
 async def get_fiscal_services_statistics(
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(require_permission("fiscal_services.view_stats"))
+    _: None = Depends(permission_required("fiscal_services.view_stats"))
 ):
     """
     Get comprehensive fiscal services statistics
@@ -1064,7 +1064,7 @@ async def bulk_import_fiscal_services(
     services: List[FiscalServiceCreate],
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(require_permission("fiscal_services.bulk_import"))
+    _: None = Depends(permission_required("fiscal_services.bulk_import"))
 ):
     """
     Bulk import fiscal services
@@ -1119,7 +1119,7 @@ async def bulk_update_service_status(
     new_status: str,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(require_permission("fiscal_services.bulk_update"))
+    _: None = Depends(permission_required("fiscal_services.bulk_update"))
 ):
     """
     Bulk update service status
