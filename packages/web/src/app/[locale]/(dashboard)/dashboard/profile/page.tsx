@@ -180,7 +180,7 @@ export default function ProfilePage() {
       const { fetchClient } = await import('@/core/api/fetchClient')
 
       // Call API to update preferences
-      const updatedUser = await fetchClient.put('/users/profile', {
+      await fetchClient.put('/users/profile', {
         preferred_language: notificationPrefs.preferred_language,
         email_notifications: notificationPrefs.email_notifications,
         push_notifications: notificationPrefs.push_notifications,
