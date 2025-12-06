@@ -30,7 +30,9 @@
     "of": "of",
     "clear": "Clear",
     "active": "Active",
-    "free": "Free"
+    "free": "Free",
+    "refresh": "Refresh",
+    "retry": "Retry"
   },
   "nav": {
     "home": "Home",
@@ -859,6 +861,9 @@
       "auditLogs": "Audit Logs",
       "settings": "Settings",
       "fiscalServices": "Fiscal Services",
+      "ministries": "Ministries",
+      "sectors": "Sectors",
+      "categories": "Categories",
       "templates": "Templates",
       "documentTemplates": "Document Templates",
       "procedureTemplates": "Procedure Templates",

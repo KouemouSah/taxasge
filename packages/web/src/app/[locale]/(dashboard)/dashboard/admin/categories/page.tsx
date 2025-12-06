@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -51,6 +51,7 @@ import { FolderTree, RefreshCw, Plus, Edit, Trash2, Search, AlertTriangle, Chevr
 import { useToast } from '@/hooks/use-toast'
 import fiscalServicesAPI from '@/modules/fiscal-services/services/api'
 import type { Category, Sector, Ministry, ServiceTypeEnum } from '@/types/fiscal-service'
+import { getLocalizedName } from '@/types/fiscal-service'
 import { BackendUnavailableAlert } from '@/modules/admin/components'
 
 interface CategoryFormData {
@@ -91,6 +92,7 @@ const SERVICE_TYPES: ServiceTypeEnum[] = [
 ]
 
 export default function CategoriesPage() {
+  const locale = useLocale()
   const t = useTranslations('admin.categories')
   const tCommon = useTranslations('common')
   const { toast } = useToast()
@@ -273,14 +275,14 @@ export default function CategoriesPage() {
   const getSectorName = (sectorId: number | undefined) => {
     if (!sectorId) return '-'
     const sector = sectors.find(s => s.id === sectorId)
-    return sector?.name_es || '-'
+    return sector ? getLocalizedName(sector, locale) : '-'
   }
 
   // Get ministry name by ID
   const getMinistryName = (ministryId: number | undefined) => {
     if (!ministryId) return '-'
     const ministry = ministries.find(m => m.id === ministryId)
-    return ministry?.name_es || '-'
+    return ministry ? getLocalizedName(ministry, locale) : '-'
   }
 
   // Get the ministry ID for a category (directly or via sector)
@@ -319,7 +321,7 @@ export default function CategoriesPage() {
 
   // Filter categories
   const filteredCategories = categories.filter(c => {
-    const name = c.name_es || ''
+    const name = getLocalizedName(c, locale)
     const code = c.category_code || ''
     const matchesSearch = searchQuery === '' ||
       name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -501,7 +503,7 @@ export default function CategoriesPage() {
                 <SelectContent>
                   <SelectItem value="all">{t('allMinistries')}</SelectItem>
                   {ministries.map((m) => (
-                    <SelectItem key={m.id} value={String(m.id)}>{m.name_es}</SelectItem>
+                    <SelectItem key={m.id} value={String(m.id)}>{getLocalizedName(m, locale)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -515,7 +517,7 @@ export default function CategoriesPage() {
                 <SelectContent>
                   <SelectItem value="all">{t('allSectors')}</SelectItem>
                   {filteredSectorsForSelect.map((s) => (
-                    <SelectItem key={s.id} value={String(s.id)}>{s.name_es}</SelectItem>
+                    <SelectItem key={s.id} value={String(s.id)}>{getLocalizedName(s, locale)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -645,7 +647,7 @@ export default function CategoriesPage() {
                               style={{ backgroundColor: category.color }}
                             />
                           )}
-                          <span className="font-medium">{category.name_es}</span>
+                          <span className="font-medium">{getLocalizedName(category, locale)}</span>
                         </div>
                       </TableCell>
                       <TableCell>{getSectorName(category.sector_id)}</TableCell>
@@ -816,7 +818,7 @@ export default function CategoriesPage() {
                   <SelectContent>
                     <SelectItem value="none">{t('noMinistry')}</SelectItem>
                     {ministries.map((m) => (
-                      <SelectItem key={m.id} value={String(m.id)}>{m.name_es}</SelectItem>
+                      <SelectItem key={m.id} value={String(m.id)}>{getLocalizedName(m, locale)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -836,7 +838,7 @@ export default function CategoriesPage() {
                       ? sectors.filter(s => s.ministry_id === formData.ministry_id)
                       : sectors
                     ).map((s) => (
-                      <SelectItem key={s.id} value={String(s.id)}>{s.name_es}</SelectItem>
+                      <SelectItem key={s.id} value={String(s.id)}>{getLocalizedName(s, locale)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -931,7 +933,7 @@ export default function CategoriesPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>{t('deleteConfirmTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t('deleteConfirmDescription', { name: selectedCategory?.name_es || '' })}
+              {t('deleteConfirmDescription', { name: selectedCategory ? getLocalizedName(selectedCategory, locale) : '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

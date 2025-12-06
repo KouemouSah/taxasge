@@ -55,6 +55,7 @@ import { Building2, RefreshCw, Plus, Edit, Trash2, Search, AlertTriangle, Chevro
 import { useToast } from '@/hooks/use-toast'
 import fiscalServicesAPI from '@/modules/fiscal-services/services/api'
 import type { Ministry } from '@/types/fiscal-service'
+import { getLocalizedName } from '@/types/fiscal-service'
 import { BackendUnavailableAlert } from '@/modules/admin/components'
 
 interface MinistryFormData {
@@ -269,7 +270,7 @@ export default function MinistriesPage() {
 
   // Filter ministries
   const filteredMinistries = ministries.filter(m => {
-    const name = m.name_es || ''
+    const name = getLocalizedName(m, locale)
     const code = m.ministry_code || ''
     const matchesSearch = searchQuery === '' ||
       name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -518,7 +519,7 @@ export default function MinistriesPage() {
                               style={{ backgroundColor: ministry.color }}
                             />
                           )}
-                          <span className="font-medium">{ministry.name_es}</span>
+                          <span className="font-medium">{getLocalizedName(ministry, locale)}</span>
                         </div>
                       </TableCell>
                       <TableCell>{ministry.display_order || 0}</TableCell>
@@ -772,7 +773,7 @@ export default function MinistriesPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>{t('deleteConfirmTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t('deleteConfirmDescription', { name: selectedMinistry?.name_es || '' })}
+              {t('deleteConfirmDescription', { name: selectedMinistry ? getLocalizedName(selectedMinistry, locale) : '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

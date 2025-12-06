@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -51,6 +51,7 @@ import { Layers, RefreshCw, Plus, Edit, Trash2, Search, AlertTriangle, ChevronLe
 import { useToast } from '@/hooks/use-toast'
 import fiscalServicesAPI from '@/modules/fiscal-services/services/api'
 import type { Sector, Ministry } from '@/types/fiscal-service'
+import { getLocalizedName } from '@/types/fiscal-service'
 import { BackendUnavailableAlert } from '@/modules/admin/components'
 
 interface SectorFormData {
@@ -76,6 +77,7 @@ const defaultFormData: SectorFormData = {
 }
 
 export default function SectorsPage() {
+  const locale = useLocale()
   const t = useTranslations('admin.sectors')
   const tCommon = useTranslations('common')
   const { toast } = useToast()
@@ -249,7 +251,7 @@ export default function SectorsPage() {
   // Get ministry name by ID
   const getMinistryName = (ministryId: number) => {
     const ministry = ministries.find(m => m.id === ministryId)
-    return ministry?.name_es || '-'
+    return ministry ? getLocalizedName(ministry, locale) : '-'
   }
 
   // Handle sort column click
@@ -274,7 +276,7 @@ export default function SectorsPage() {
 
   // Filter sectors
   const filteredSectors = sectors.filter(s => {
-    const name = s.name_es || ''
+    const name = getLocalizedName(s, locale)
     const code = s.sector_code || ''
     const matchesSearch = searchQuery === '' ||
       name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -433,7 +435,7 @@ export default function SectorsPage() {
                 <SelectContent>
                   <SelectItem value="all">{t('allMinistries')}</SelectItem>
                   {ministries.map((m) => (
-                    <SelectItem key={m.id} value={String(m.id)}>{m.name_es}</SelectItem>
+                    <SelectItem key={m.id} value={String(m.id)}>{getLocalizedName(m, locale)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -552,7 +554,7 @@ export default function SectorsPage() {
                               style={{ backgroundColor: sector.color }}
                             />
                           )}
-                          <span className="font-medium">{sector.name_es}</span>
+                          <span className="font-medium">{getLocalizedName(sector, locale)}</span>
                         </div>
                       </TableCell>
                       <TableCell>{getMinistryName(sector.ministry_id)}</TableCell>
@@ -695,7 +697,7 @@ export default function SectorsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {ministries.map((m) => (
-                      <SelectItem key={m.id} value={String(m.id)}>{m.name_es}</SelectItem>
+                      <SelectItem key={m.id} value={String(m.id)}>{getLocalizedName(m, locale)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -790,7 +792,7 @@ export default function SectorsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>{t('deleteConfirmTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t('deleteConfirmDescription', { name: selectedSector?.name_es || '' })}
+              {t('deleteConfirmDescription', { name: selectedSector ? getLocalizedName(selectedSector, locale) : '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

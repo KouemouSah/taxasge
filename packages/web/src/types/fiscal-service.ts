@@ -67,7 +67,11 @@ export interface Ministry {
   id: number
   ministry_code: string
   name_es: string
+  name_fr?: string
+  name_en?: string
   description_es?: string
+  description_fr?: string
+  description_en?: string
   display_order?: number
   icon?: string
   color?: string
@@ -84,7 +88,11 @@ export interface Sector {
   sector_code: string
   ministry_id: number
   name_es: string
+  name_fr?: string
+  name_en?: string
   description_es?: string
+  description_fr?: string
+  description_en?: string
   display_order?: number
   icon?: string
   color?: string
@@ -100,7 +108,11 @@ export interface Category {
   ministry_id?: number
   service_type?: ServiceTypeEnum
   name_es: string
+  name_fr?: string
+  name_en?: string
   description_es?: string
+  description_fr?: string
+  description_en?: string
   display_order?: number
   icon?: string
   color?: string
@@ -525,4 +537,38 @@ export function isActiveService(service: FiscalServiceResponse): boolean {
  */
 export function requiresDocuments(service: FiscalServiceResponse & { requiredDocuments?: unknown[] }): boolean {
   return Array.isArray(service.requiredDocuments) && service.requiredDocuments.length > 0
+}
+
+// =============================================================================
+// LOCALIZATION HELPERS
+// =============================================================================
+
+type LocalizableEntity = Ministry | Sector | Category
+
+/**
+ * Get localized name for an entity based on locale
+ * Falls back to Spanish (name_es) if translation not available
+ */
+export function getLocalizedName(entity: LocalizableEntity, locale: string): string {
+  if (locale === 'fr' && entity.name_fr) {
+    return entity.name_fr
+  }
+  if (locale === 'en' && entity.name_en) {
+    return entity.name_en
+  }
+  return entity.name_es
+}
+
+/**
+ * Get localized description for an entity based on locale
+ * Falls back to Spanish (description_es) if translation not available
+ */
+export function getLocalizedDescription(entity: LocalizableEntity, locale: string): string | undefined {
+  if (locale === 'fr' && entity.description_fr) {
+    return entity.description_fr
+  }
+  if (locale === 'en' && entity.description_en) {
+    return entity.description_en
+  }
+  return entity.description_es
 }

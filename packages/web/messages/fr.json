@@ -30,7 +30,9 @@
     "of": "sur",
     "clear": "Effacer",
     "active": "Actif",
-    "free": "Gratuit"
+    "free": "Gratuit",
+    "refresh": "Actualiser",
+    "retry": "Réessayer"
   },
   "nav": {
     "home": "Accueil",
@@ -859,6 +861,9 @@
       "auditLogs": "Logs d'Audit",
       "settings": "Paramètres",
       "fiscalServices": "Services Fiscaux",
+      "ministries": "Ministères",
+      "sectors": "Secteurs",
+      "categories": "Catégories",
       "templates": "Modèles",
       "documentTemplates": "Modèles de Documents",
       "procedureTemplates": "Modèles de Procédures",
