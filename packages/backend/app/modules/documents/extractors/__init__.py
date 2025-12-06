@@ -18,6 +18,10 @@ from app.modules.documents.extractors.zone_label_extractor import (
     zone_label_extractor,
     ZoneLabelExtractor
 )
+from app.modules.documents.extractors.template_based_extractor import (
+    TemplateBasedExtractor,
+    DeclarationDatabaseMapper
+)
 
 __all__ = [
     "BaseExtractor",
@@ -27,5 +31,7 @@ __all__ = [
     "DocumentTemplate",
     "FieldConfig",
     "zone_label_extractor",
-    "ZoneLabelExtractor"
+    "ZoneLabelExtractor",
+    "TemplateBasedExtractor",
+    "DeclarationDatabaseMapper"
 ]
