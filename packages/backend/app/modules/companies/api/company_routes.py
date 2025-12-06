@@ -26,7 +26,7 @@ async def create_company(
     db = Depends(get_database),
 ):
     """Create new company"""
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
     result = await company_repository.create(db, company, user_id)
     logger.info(f"User {user_id} created company {result['id']}")
     return CompanyResponse(**result)
@@ -40,7 +40,7 @@ async def list_companies(
     db = Depends(get_database),
 ):
     """List user's companies"""
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
     offset = (page - 1) * page_size
     companies, total = await company_repository.list_by_user(db, user_id, page_size, offset)
     return CompanyListResponse(
@@ -58,7 +58,7 @@ async def get_company(
     db = Depends(get_database),
 ):
     """Get company by ID"""
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     # Check membership
     role = await company_repository.check_membership(db, company_id, user_id)
@@ -80,7 +80,7 @@ async def update_company(
     db = Depends(get_database),
 ):
     """Update company (owner/admin only)"""
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     role = await company_repository.check_membership(db, company_id, user_id)
     if role not in ["company_owner", "company_admin"]:
@@ -107,7 +107,7 @@ async def delete_company(
     - company_owner role in the company, OR
     - companies.delete permission (admin override)
     """
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     # Check if user has admin permission to delete any company
     from app.modules.permissions.services.permission_service import get_permission_service
@@ -135,7 +135,7 @@ async def get_company_members(
     db = Depends(get_database),
 ):
     """Get company members"""
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     role = await company_repository.check_membership(db, company_id, user_id)
     if not role:
@@ -160,7 +160,7 @@ async def add_company_member(
     - company_owner or company_admin role in the company, OR
     - companies.manage_members permission (admin override)
     """
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     # Check if user has admin permission to manage any company's members
     from app.modules.permissions.services.permission_service import get_permission_service
@@ -186,7 +186,7 @@ async def remove_company_member(
     db = Depends(get_database),
 ):
     """Remove member from company (owner/admin only)"""
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     user_role = await company_repository.check_membership(db, company_id, user_id)
     if user_role not in ["company_owner", "company_admin"]:

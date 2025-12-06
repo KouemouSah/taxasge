@@ -109,7 +109,7 @@ async def create_declaration(
         DeclarationResponse: Created declaration with UUID
     """
     try:
-        user_id = current_user["sub"]
+        user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
         # Override user_id from token (security)
         declaration.user_id = user_id
@@ -156,7 +156,7 @@ async def list_declarations(
         DeclarationListResponse: Paginated list with metadata
     """
     try:
-        user_id = current_user["sub"]
+        user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
         offset = (page - 1) * page_size
 
@@ -210,7 +210,7 @@ async def get_declaration(
         DeclarationResponse: Declaration with related data
     """
     try:
-        user_id = current_user["sub"]
+        user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
         declaration = await declaration_repository.get_by_id(db, declaration_id)
 
@@ -271,7 +271,7 @@ async def update_declaration(
         DeclarationResponse: Updated declaration
     """
     try:
-        user_id = current_user["sub"]
+        user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
         # Check ownership and status
         declaration = await declaration_repository.get_by_id(db, declaration_id)
@@ -351,7 +351,7 @@ async def delete_declaration(
         Dict: Success message
     """
     try:
-        user_id = current_user["sub"]
+        user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
         # Check ownership and status
         declaration = await declaration_repository.get_by_id(db, declaration_id)
@@ -435,7 +435,7 @@ async def submit_declaration(
         DeclarationResponse: Submitted declaration
     """
     try:
-        user_id = current_user["sub"]
+        user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
         # Check ownership and status
         declaration = await declaration_repository.get_by_id(db, declaration_id)
@@ -519,7 +519,7 @@ async def get_declaration_workflow_status(
         DeclarationWorkflowStatus: Workflow state with stages and actions
     """
     try:
-        user_id = current_user["sub"]
+        user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
         # Check ownership and authorization
         declaration = await declaration_repository.get_by_id(db, declaration_id)

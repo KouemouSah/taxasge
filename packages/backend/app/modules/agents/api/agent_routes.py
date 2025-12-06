@@ -57,7 +57,7 @@ async def create_agent(
     _: None = Depends(permission_required("agents.create"))
 ):
     """Create new ministry agent - Requires agents.create permission"""
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     # Set assigned_by if not provided
     if not agent.assigned_by:
@@ -129,7 +129,7 @@ async def deactivate_agent(
     _: None = Depends(permission_required("agents.deactivate"))
 ):
     """Deactivate agent - Requires agents.deactivate permission"""
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     success = await agent_repository.deactivate(db, agent_id, user_id, reason)
     if not success:
@@ -166,7 +166,7 @@ async def create_assignment(
     _: None = Depends(permission_required("assignments.create"))
 ):
     """Create new assignment - Requires assignments.create permission"""
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     # Set assigned_by if not provided
     if not assignment.assigned_by:
@@ -352,7 +352,7 @@ async def complete_queue_item(
     db = Depends(get_database),
 ):
     """Mark queue item as completed"""
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
     completed = await assignment_repository.complete_queue_item(db, queue_id, user_id)
     logger.info(f"Queue item {queue_id} completed by {user_id}")
     return {"message": "Queue item completed", "item": AgentWorkQueueResponse(**completed)}
@@ -366,7 +366,7 @@ async def escalate_queue_item(
     db = Depends(get_database),
 ):
     """Escalate queue item"""
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
     escalated = await assignment_repository.escalate_queue_item(db, queue_id, user_id, reason)
     logger.info(f"Queue item {queue_id} escalated by {user_id}")
     return AgentWorkQueueResponse(**escalated)

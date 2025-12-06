@@ -142,7 +142,7 @@ async def batch_create_declarations(
         BatchCreateResponse: Results with per-client success/failure
     """
     try:
-        accountant_user_id = current_user["sub"]
+        accountant_user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
         # Validate accountant has batch_create permission
         # (This would be handled by permission middleware in production)
@@ -241,7 +241,7 @@ async def batch_submit_declarations(
         BatchSubmitResponse: Results with per-declaration success/failure
     """
     try:
-        accountant_user_id = current_user["sub"]
+        accountant_user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
         # Check batch size for async processing
         is_large_batch = len(request.declaration_ids) > 50
@@ -350,7 +350,7 @@ async def generate_report(
         ReportGenerateResponse: Report metadata and download URL
     """
     try:
-        accountant_user_id = current_user["sub"]
+        accountant_user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
         # Generate report (always async for complex reports)
         report_result = await _generate_report_async(
@@ -395,7 +395,7 @@ async def get_batch_summary(
         BatchOperationSummary: Summary statistics and active jobs
     """
     try:
-        accountant_user_id = current_user["sub"]
+        accountant_user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
         # TODO: Implement summary retrieval from batch_operations table
         # For now, return mock data
@@ -443,7 +443,7 @@ async def get_batch_status(
         BatchJobStatus: Current status and progress information
     """
     try:
-        accountant_user_id = current_user["sub"]
+        accountant_user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
         # TODO: Implement job status retrieval from batch_jobs table
         # For now, return mock data

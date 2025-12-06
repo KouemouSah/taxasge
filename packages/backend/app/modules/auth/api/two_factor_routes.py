@@ -62,7 +62,7 @@ async def enable_two_factor(
     **Source:** TASK-M01-011
     """
     try:
-        user_id = current_user["sub"]
+        user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
         # Check if 2FA already enabled
         user_repo = UserRepository()
@@ -134,7 +134,7 @@ async def verify_two_factor_setup(
     **Source:** TASK-M01-011
     """
     try:
-        user_id = current_user["sub"]
+        user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
         # Verify code and enable 2FA
         success = await two_factor_service.verify_and_enable_2fa(
@@ -203,7 +203,7 @@ async def disable_two_factor(
     **Source:** TASK-M01-011
     """
     try:
-        user_id = current_user["sub"]
+        user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
         # Get user
         user_repo = UserRepository()
@@ -269,7 +269,7 @@ async def get_two_factor_status(
     **Source:** TASK-M01-011
     """
     try:
-        user_id = current_user["sub"]
+        user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
         # Get user
         user_repo = UserRepository()

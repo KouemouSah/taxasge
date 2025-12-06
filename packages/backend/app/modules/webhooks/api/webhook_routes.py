@@ -168,7 +168,7 @@ async def manual_reconcile(
     - bank_transactions.payment_id → payments.id
     - payments.bank_transaction_id → bank_transactions.id
     """
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     try:
         result = await repository.reconcile(
@@ -210,7 +210,8 @@ async def create_bank_configuration(
     """Create bank configuration - Requires webhooks.create permission"""
 
     result = await repository.create_bank_config(db, config)
-    logger.info(f"Super admin {current_user['sub']} created bank config {config.bank_code}")
+    admin_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
+    logger.info(f"Super admin {admin_id} created bank config {config.bank_code}")
     return BankConfigurationResponse(**result)
 
 
@@ -228,5 +229,6 @@ async def update_bank_configuration(
     if not updated:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bank configuration not found")
 
-    logger.info(f"Super admin {current_user['sub']} updated bank config {config_id}")
+    admin_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
+    logger.info(f"Super admin {admin_id} updated bank config {config_id}")
     return BankConfigurationResponse(**updated)

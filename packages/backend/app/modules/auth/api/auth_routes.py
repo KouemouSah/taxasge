@@ -693,7 +693,8 @@ async def get_profile(
         from app.repositories.user_repository import UserRepository
 
         user_repo = UserRepository()
-        user = await user_repo.get_by_id(current_user["sub"])
+        user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
+        user = await user_repo.get_by_id(user_id)
 
         if not user:
             raise HTTPException(
@@ -1117,8 +1118,8 @@ async def resend_verification_email(
     Source: .github/docs-internal/Documentations/Backend/API_REFERENCE.md
     """
     try:
-        user_id = current_user["sub"]
-        email = current_user["email"]
+        user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
+        email = current_user.email if hasattr(current_user, 'email') else current_user.get("email")
 
         # Get existing verification code from pending_registrations
         from app.repositories.pending_registration_repository import PendingRegistrationRepository
@@ -1230,7 +1231,7 @@ async def get_sessions(
     Source: .github/docs-internal/Documentations/Backend/RAPPORT_MODULE_01_AUTHENTICATION.md line 414-417
     """
     try:
-        user_id = current_user["sub"]
+        user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
         access_token = credentials.credentials
 
         # Get active sessions via SessionService

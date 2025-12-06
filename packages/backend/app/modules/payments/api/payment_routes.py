@@ -42,7 +42,7 @@ async def create_payment(
 
     Polymorphic: Must provide EITHER tax_declaration_id OR fiscal_service_id (XOR)
     """
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     # Verify user_id matches
     if payment.user_id != user_id:
@@ -78,7 +78,7 @@ async def get_payment(
     db=Depends(get_database),
 ):
     """Get payment by ID"""
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     payment = await repository.get_by_id(db, payment_id)
     if not payment:
@@ -99,7 +99,7 @@ async def list_payments(
     db=Depends(get_database),
 ):
     """List user payments"""
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
     offset = (page - 1) * page_size
 
     payments, total = await repository.list_by_user(db, user_id, page_size, offset)
@@ -124,7 +124,7 @@ async def update_payment(
     Users can update their own payments (limited fields)
     Admins with payments.update permission can update any payment (all fields)
     """
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     payment = await repository.get_by_id(db, payment_id)
     if not payment:
@@ -154,7 +154,7 @@ async def create_payment_plan(
     db=Depends(get_database),
 ):
     """Create payment plan (échéancier) for a payment"""
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     # Verify payment ownership
     payment = await repository.get_by_id(db, payment_id)
@@ -185,7 +185,8 @@ async def get_payment_plan(
 
     # Get payment to check ownership
     payment = await repository.get_by_id(db, plan["payment_id"])
-    if payment["user_id"] != current_user["sub"]:
+    owner_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
+    if payment["user_id"] != owner_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your payment plan")
 
     return PaymentPlanResponse(**plan)

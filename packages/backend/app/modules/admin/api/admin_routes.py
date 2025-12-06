@@ -33,7 +33,7 @@ async def migrate_grandfather_users(
     ADMIN ONLY - Requires admin.run_migrations permission
     """
     try:
-        user_id = current_user["sub"]
+        user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
         logger.info(f"Migration 002 requested by user {user_id}")
 
         # Execute UPDATE
@@ -83,7 +83,7 @@ async def check_secrets_configuration(
     ADMIN ONLY - Requires admin.view_diagnostics permission
     """
     try:
-        user_id = current_user["sub"]
+        user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
         logger.info(f"Secrets diagnostic requested by user {user_id}")
 
         # Validate secrets availability
