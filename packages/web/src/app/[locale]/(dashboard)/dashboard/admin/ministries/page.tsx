@@ -85,7 +85,7 @@ const defaultFormData: MinistryFormData = {
 }
 
 export default function MinistriesPage() {
-  const _locale = useLocale()
+  const locale = useLocale()
   const t = useTranslations('admin.ministries')
   const tCommon = useTranslations('common')
   const { toast } = useToast()
@@ -122,7 +122,7 @@ export default function MinistriesPage() {
     setError(null)
 
     try {
-      const data = await fiscalServicesAPI.hierarchy.ministries.list()
+      const data = await fiscalServicesAPI.hierarchy.ministries.list(locale)
       setMinistries(data)
       setIsBackendUnavailable(false)
     } catch (err) {
@@ -146,7 +146,7 @@ export default function MinistriesPage() {
   useEffect(() => {
     fetchMinistries()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [locale])
 
   const handleRefresh = () => {
     fetchMinistries()

@@ -117,8 +117,8 @@ export default function SectorsPage() {
 
     try {
       const [sectorsData, ministriesData] = await Promise.all([
-        fiscalServicesAPI.hierarchy.sectors.list(),
-        fiscalServicesAPI.hierarchy.ministries.list(),
+        fiscalServicesAPI.hierarchy.sectors.list(undefined, locale),
+        fiscalServicesAPI.hierarchy.ministries.list(locale),
       ])
       setSectors(sectorsData)
       setMinistries(ministriesData)
@@ -144,7 +144,7 @@ export default function SectorsPage() {
   useEffect(() => {
     fetchData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [locale])
 
   const handleRefresh = () => {
     fetchData()

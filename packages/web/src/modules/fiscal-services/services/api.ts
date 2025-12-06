@@ -225,11 +225,11 @@ const client = new ApiClient(API_BASE_URL + API_VERSION)
 export const hierarchyApi = {
   /**
    * GET /api/v1/fiscal-services/ministries
-   * List all ministries
+   * List all ministries with i18n support
    */
   ministries: {
-    list: async (): Promise<Ministry[]> => {
-      return client.get<Ministry[]>(`${FISCAL_SERVICES_BASE}/ministries`)
+    list: async (language: string = 'es'): Promise<Ministry[]> => {
+      return client.get<Ministry[]>(`${FISCAL_SERVICES_BASE}/ministries?language=${language}`)
     },
     get: async (ministryId: number): Promise<Ministry> => {
       return client.get<Ministry>(`${FISCAL_SERVICES_BASE}/admin/ministries/${ministryId}`)
@@ -246,13 +246,15 @@ export const hierarchyApi = {
   },
 
   /**
-   * GET /api/v1/fiscal-services/sectors?ministry_id={id}
-   * List sectors, optionally filtered by ministry
+   * GET /api/v1/fiscal-services/sectors?ministry_id={id}&language={lang}
+   * List sectors, optionally filtered by ministry, with i18n support
    */
   sectors: {
-    list: async (ministryId?: number): Promise<Sector[]> => {
-      const query = ministryId ? `?ministry_id=${ministryId}` : ''
-      return client.get<Sector[]>(`${FISCAL_SERVICES_BASE}/sectors${query}`)
+    list: async (ministryId?: number, language: string = 'es'): Promise<Sector[]> => {
+      const params = new URLSearchParams()
+      params.append('language', language)
+      if (ministryId) params.append('ministry_id', String(ministryId))
+      return client.get<Sector[]>(`${FISCAL_SERVICES_BASE}/sectors?${params.toString()}`)
     },
     get: async (sectorId: number): Promise<Sector> => {
       return client.get<Sector>(`${FISCAL_SERVICES_BASE}/admin/sectors/${sectorId}`)
@@ -269,13 +271,15 @@ export const hierarchyApi = {
   },
 
   /**
-   * GET /api/v1/fiscal-services/categories?sector_id={id}
-   * List categories, optionally filtered by sector
+   * GET /api/v1/fiscal-services/categories?sector_id={id}&language={lang}
+   * List categories, optionally filtered by sector, with i18n support
    */
   categories: {
-    list: async (sectorId?: number): Promise<Category[]> => {
-      const query = sectorId ? `?sector_id=${sectorId}` : ''
-      return client.get<Category[]>(`${FISCAL_SERVICES_BASE}/categories${query}`)
+    list: async (sectorId?: number, language: string = 'es'): Promise<Category[]> => {
+      const params = new URLSearchParams()
+      params.append('language', language)
+      if (sectorId) params.append('sector_id', String(sectorId))
+      return client.get<Category[]>(`${FISCAL_SERVICES_BASE}/categories?${params.toString()}`)
     },
     get: async (categoryId: number): Promise<Category> => {
       return client.get<Category>(`${FISCAL_SERVICES_BASE}/admin/categories/${categoryId}`)
@@ -503,11 +507,11 @@ export const documentsApi = {
 
   /**
    * GET /api/v1/document-templates
-   * Get all available document templates
+   * Get all available document templates with i18n support
    */
   templates: {
-    list: async (): Promise<DocumentTemplate[]> => {
-      return client.get<DocumentTemplate[]>('/document-templates')
+    list: async (language: string = 'es'): Promise<DocumentTemplate[]> => {
+      return client.get<DocumentTemplate[]>(`/document-templates?language=${language}`)
     },
   },
 }
@@ -562,11 +566,11 @@ export const proceduresApi = {
 
   /**
    * GET /api/v1/procedure-templates
-   * Get all available procedure templates
+   * Get all available procedure templates with i18n support
    */
   templates: {
-    list: async (): Promise<ProcedureTemplate[]> => {
-      return client.get<ProcedureTemplate[]>('/procedure-templates')
+    list: async (language: string = 'es'): Promise<ProcedureTemplate[]> => {
+      return client.get<ProcedureTemplate[]>(`/procedure-templates?language=${language}`)
     },
 
     /**

@@ -134,9 +134,9 @@ export default function CategoriesPage() {
 
     try {
       const [categoriesData, sectorsData, ministriesData] = await Promise.all([
-        fiscalServicesAPI.hierarchy.categories.list(),
-        fiscalServicesAPI.hierarchy.sectors.list(),
-        fiscalServicesAPI.hierarchy.ministries.list(),
+        fiscalServicesAPI.hierarchy.categories.list(undefined, locale),
+        fiscalServicesAPI.hierarchy.sectors.list(undefined, locale),
+        fiscalServicesAPI.hierarchy.ministries.list(locale),
       ])
       setCategories(categoriesData)
       setSectors(sectorsData)
@@ -163,7 +163,7 @@ export default function CategoriesPage() {
   useEffect(() => {
     fetchData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [locale])
 
   const handleRefresh = () => {
     fetchData()

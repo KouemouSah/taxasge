@@ -15,10 +15,32 @@ class FiscalServiceRepository:
     """Repository for fiscal services catalog"""
 
     # ========== MINISTRIES ==========
-    async def list_ministries(self, conn: asyncpg.Connection) -> List[Dict[str, Any]]:
-        """List all ministries"""
-        query = "SELECT * FROM ministries ORDER BY display_order, ministry_code"
-        results = await conn.fetch(query)
+    async def list_ministries(
+        self, conn: asyncpg.Connection, language: str = "es"
+    ) -> List[Dict[str, Any]]:
+        """List all ministries with i18n support"""
+        query = """
+            SELECT
+                m.id, m.ministry_code,
+                COALESCE(et_name.translation_text, m.name_es) as name_es,
+                COALESCE(et_desc.translation_text, m.description_es) as description_es,
+                m.display_order, m.icon, m.color,
+                m.website_url, m.contact_email, m.contact_phone,
+                m.is_active, m.created_at, m.updated_at
+            FROM ministries m
+            LEFT JOIN entity_translations et_name ON
+                et_name.entity_type = 'ministry'
+                AND et_name.entity_code = m.ministry_code
+                AND et_name.field_name = 'name'
+                AND et_name.language_code = $1
+            LEFT JOIN entity_translations et_desc ON
+                et_desc.entity_type = 'ministry'
+                AND et_desc.entity_code = m.ministry_code
+                AND et_desc.field_name = 'description'
+                AND et_desc.language_code = $1
+            ORDER BY m.display_order, m.ministry_code
+        """
+        results = await conn.fetch(query, language)
         return [dict(r) for r in results]
 
     async def get_ministry_by_id(self, conn: asyncpg.Connection, ministry_id: int) -> Optional[Dict[str, Any]]:
@@ -94,15 +116,34 @@ class FiscalServiceRepository:
 
     # ========== SECTORS ==========
     async def list_sectors(
-        self, conn: asyncpg.Connection, ministry_id: Optional[int] = None
+        self, conn: asyncpg.Connection, ministry_id: Optional[int] = None, language: str = "es"
     ) -> List[Dict[str, Any]]:
-        """List sectors, optionally filtered by ministry"""
+        """List sectors with i18n support, optionally filtered by ministry"""
+        base_query = """
+            SELECT
+                s.id, s.sector_code, s.ministry_id,
+                COALESCE(et_name.translation_text, s.name_es) as name_es,
+                COALESCE(et_desc.translation_text, s.description_es) as description_es,
+                s.display_order, s.icon, s.color,
+                s.is_active, s.created_at, s.updated_at
+            FROM sectors s
+            LEFT JOIN entity_translations et_name ON
+                et_name.entity_type = 'sector'
+                AND et_name.entity_code = s.sector_code
+                AND et_name.field_name = 'name'
+                AND et_name.language_code = $1
+            LEFT JOIN entity_translations et_desc ON
+                et_desc.entity_type = 'sector'
+                AND et_desc.entity_code = s.sector_code
+                AND et_desc.field_name = 'description'
+                AND et_desc.language_code = $1
+        """
         if ministry_id:
-            query = "SELECT * FROM sectors WHERE ministry_id = $1 ORDER BY display_order, sector_code"
-            results = await conn.fetch(query, ministry_id)
+            query = base_query + " WHERE s.ministry_id = $2 ORDER BY s.display_order, s.sector_code"
+            results = await conn.fetch(query, language, ministry_id)
         else:
-            query = "SELECT * FROM sectors ORDER BY display_order, sector_code"
-            results = await conn.fetch(query)
+            query = base_query + " ORDER BY s.display_order, s.sector_code"
+            results = await conn.fetch(query, language)
         return [dict(r) for r in results]
 
     async def get_sector_by_id(self, conn: asyncpg.Connection, sector_id: int) -> Optional[Dict[str, Any]]:
@@ -187,15 +228,34 @@ class FiscalServiceRepository:
 
     # ========== CATEGORIES ==========
     async def list_categories(
-        self, conn: asyncpg.Connection, sector_id: Optional[int] = None
+        self, conn: asyncpg.Connection, sector_id: Optional[int] = None, language: str = "es"
     ) -> List[Dict[str, Any]]:
-        """List categories, optionally filtered by sector"""
+        """List categories with i18n support, optionally filtered by sector"""
+        base_query = """
+            SELECT
+                c.id, c.category_code, c.sector_id, c.ministry_id, c.service_type,
+                COALESCE(et_name.translation_text, c.name_es) as name_es,
+                COALESCE(et_desc.translation_text, c.description_es) as description_es,
+                c.display_order, c.icon, c.color,
+                c.is_active, c.created_at, c.updated_at
+            FROM categories c
+            LEFT JOIN entity_translations et_name ON
+                et_name.entity_type = 'category'
+                AND et_name.entity_code = c.category_code
+                AND et_name.field_name = 'name'
+                AND et_name.language_code = $1
+            LEFT JOIN entity_translations et_desc ON
+                et_desc.entity_type = 'category'
+                AND et_desc.entity_code = c.category_code
+                AND et_desc.field_name = 'description'
+                AND et_desc.language_code = $1
+        """
         if sector_id:
-            query = "SELECT * FROM categories WHERE sector_id = $1 ORDER BY display_order, category_code"
-            results = await conn.fetch(query, sector_id)
+            query = base_query + " WHERE c.sector_id = $2 ORDER BY c.display_order, c.category_code"
+            results = await conn.fetch(query, language, sector_id)
         else:
-            query = "SELECT * FROM categories ORDER BY display_order, category_code"
-            results = await conn.fetch(query)
+            query = base_query + " ORDER BY c.display_order, c.category_code"
+            results = await conn.fetch(query, language)
         return [dict(r) for r in results]
 
     async def get_category_by_id(self, conn: asyncpg.Connection, category_id: int) -> Optional[Dict[str, Any]]:

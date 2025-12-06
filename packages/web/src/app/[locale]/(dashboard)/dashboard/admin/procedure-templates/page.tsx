@@ -70,7 +70,7 @@ export default function ProcedureTemplatesPage() {
   const fetchAllCategories = async () => {
     try {
       // Fetch first page with large size to get categories
-      const response = await templatesAPI.procedures.listPaginated({ pageSize: 1000 })
+      const response = await templatesAPI.procedures.listPaginated({ pageSize: 1000, language: locale })
       const categories = Array.from(new Set(response.templates.map(t => t.category).filter(Boolean))) as string[]
       setAllCategories(categories)
     } catch {
@@ -87,11 +87,13 @@ export default function ProcedureTemplatesPage() {
       const params: {
         category?: string
         isActive?: boolean
+        language: string
         page: number
         pageSize: number
       } = {
         page,
         pageSize: PAGE_SIZE,
+        language: locale,
       }
 
       if (categoryFilter !== 'all') {
@@ -128,12 +130,13 @@ export default function ProcedureTemplatesPage() {
 
   useEffect(() => {
     fetchAllCategories()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locale])
 
   useEffect(() => {
     fetchTemplates(1) // Reset to page 1 when filters change
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoryFilter, statusFilter])
+  }, [categoryFilter, statusFilter, locale])
 
   const handleRefresh = () => {
     fetchTemplates(currentPage)

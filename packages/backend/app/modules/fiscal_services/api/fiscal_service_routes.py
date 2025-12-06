@@ -63,29 +63,34 @@ calculation_service = CalculationService()
 # ========== HIERARCHY ENDPOINTS ==========
 
 @router.get("/ministries", response_model=List[MinistryResponse])
-async def list_ministries(db=Depends(get_database)):
-    """List all ministries (Ministères)"""
-    ministries = await repository.list_ministries(db)
+async def list_ministries(
+    language: str = Query("es", pattern="^(es|fr|en)$", description="Language code for translations"),
+    db=Depends(get_database),
+):
+    """List all ministries (Ministères) with i18n support"""
+    ministries = await repository.list_ministries(db, language=language)
     return [MinistryResponse(**m) for m in ministries]
 
 
 @router.get("/sectors", response_model=List[SectorResponse])
 async def list_sectors(
-    ministry_id: str = Query(None, description="Filter by ministry"),
+    ministry_id: int = Query(None, description="Filter by ministry ID"),
+    language: str = Query("es", pattern="^(es|fr|en)$", description="Language code for translations"),
     db=Depends(get_database),
 ):
-    """List sectors (Secteurs), optionally filtered by ministry"""
-    sectors = await repository.list_sectors(db, ministry_id)
+    """List sectors (Secteurs), optionally filtered by ministry, with i18n support"""
+    sectors = await repository.list_sectors(db, ministry_id=ministry_id, language=language)
     return [SectorResponse(**s) for s in sectors]
 
 
 @router.get("/categories", response_model=List[CategoryResponse])
 async def list_categories(
-    sector_id: str = Query(None, description="Filter by sector"),
+    sector_id: int = Query(None, description="Filter by sector ID"),
+    language: str = Query("es", pattern="^(es|fr|en)$", description="Language code for translations"),
     db=Depends(get_database),
 ):
-    """List categories (Catégories), optionally filtered by sector"""
-    categories = await repository.list_categories(db, sector_id)
+    """List categories (Catégories), optionally filtered by sector, with i18n support"""
+    categories = await repository.list_categories(db, sector_id=sector_id, language=language)
     return [CategoryResponse(**c) for c in categories]
 
 

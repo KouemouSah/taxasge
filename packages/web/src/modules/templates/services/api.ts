@@ -171,17 +171,19 @@ function convertProcedureStep(backend: BackendProcedureStep): ProcedureStep {
 export const documentTemplatesApi = {
   /**
    * GET /api/v1/document-templates
-   * Get all document templates
+   * Get all document templates with i18n support
    */
   list: async (params?: {
     category?: string
     isActive?: boolean
+    language?: string
     page?: number
     pageSize?: number
   }): Promise<DocumentTemplate[]> => {
     const response = await fetchClient.get<DocumentTemplateListResponse>(DOCUMENTS_BASE, {
       category: params?.category,
       is_active: params?.isActive,
+      language: params?.language || 'es',
       page: params?.page,
       page_size: params?.pageSize,
     })
@@ -190,17 +192,19 @@ export const documentTemplatesApi = {
 
   /**
    * GET /api/v1/document-templates (with pagination info)
-   * Get document templates with pagination metadata
+   * Get document templates with pagination metadata and i18n support
    */
   listPaginated: async (params?: {
     category?: string
     isActive?: boolean
+    language?: string
     page?: number
     pageSize?: number
   }): Promise<PaginatedDocumentTemplates> => {
     const response = await fetchClient.get<DocumentTemplateListResponse>(DOCUMENTS_BASE, {
       category: params?.category,
       is_active: params?.isActive,
+      language: params?.language || 'es',
       page: params?.page || 1,
       page_size: params?.pageSize || 20,
     })
@@ -277,17 +281,19 @@ export const documentTemplatesApi = {
 export const procedureTemplatesApi = {
   /**
    * GET /api/v1/procedure-templates
-   * Get all procedure templates
+   * Get all procedure templates with i18n support
    */
   list: async (params?: {
     category?: string
     isActive?: boolean
+    language?: string
     page?: number
     pageSize?: number
   }): Promise<ProcedureTemplate[]> => {
     const response = await fetchClient.get<ProcedureTemplateListResponse>(PROCEDURES_BASE, {
       category: params?.category,
       is_active: params?.isActive,
+      language: params?.language || 'es',
       page: params?.page,
       page_size: params?.pageSize,
     })
@@ -296,17 +302,19 @@ export const procedureTemplatesApi = {
 
   /**
    * GET /api/v1/procedure-templates (with pagination info)
-   * Get procedure templates with pagination metadata
+   * Get procedure templates with pagination metadata and i18n support
    */
   listPaginated: async (params?: {
     category?: string
     isActive?: boolean
+    language?: string
     page?: number
     pageSize?: number
   }): Promise<PaginatedProcedureTemplates> => {
     const response = await fetchClient.get<ProcedureTemplateListResponse>(PROCEDURES_BASE, {
       category: params?.category,
       is_active: params?.isActive,
+      language: params?.language || 'es',
       page: params?.page || 1,
       page_size: params?.pageSize || 20,
     })

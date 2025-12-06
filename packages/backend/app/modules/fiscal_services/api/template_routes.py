@@ -48,12 +48,13 @@ procedure_template_router = APIRouter(tags=["Procedure Templates"])
 async def list_document_templates(
     category: Optional[str] = Query(None, description="Filter by category"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
+    language: str = Query("es", description="Language code for translations (es, fr, en)"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=1000, description="Page size"),
     db=Depends(get_database),
 ):
     """
-    List all document templates with pagination
+    List all document templates with pagination and i18n support
 
     Public endpoint - no authentication required for listing
     """
@@ -62,30 +63,46 @@ async def list_document_templates(
 
         # Build WHERE clause
         where_clauses = []
-        params = []
-        param_idx = 1
+        params = [language]  # $1 is always language
+        param_idx = 2
 
         if category:
-            where_clauses.append(f"category = ${param_idx}")
+            where_clauses.append(f"dt.category = ${param_idx}")
             params.append(category)
             param_idx += 1
 
         if is_active is not None:
-            where_clauses.append(f"is_active = ${param_idx}")
+            where_clauses.append(f"dt.is_active = ${param_idx}")
             params.append(is_active)
             param_idx += 1
 
         where_clause = " AND ".join(where_clauses) if where_clauses else "TRUE"
 
         # Count total
-        count_query = f"SELECT COUNT(*) FROM document_templates WHERE {where_clause}"
-        total = await db.fetchval(count_query, *params)
+        count_query = f"SELECT COUNT(*) FROM document_templates dt WHERE {where_clause}"
+        total = await db.fetchval(count_query, *params[1:])  # Skip language param for count
 
-        # Get data
+        # Get data with i18n support
         data_query = f"""
-            SELECT * FROM document_templates
+            SELECT
+                dt.id, dt.template_code,
+                COALESCE(et_name.translation_text, dt.document_name_es) as document_name_es,
+                COALESCE(et_desc.translation_text, dt.description_es) as description_es,
+                dt.category, dt.validity_duration_months, dt.validity_notes,
+                dt.usage_count, dt.is_active, dt.created_at, dt.updated_at
+            FROM document_templates dt
+            LEFT JOIN entity_translations et_name ON
+                et_name.entity_type = 'document_template'
+                AND et_name.entity_code = dt.template_code
+                AND et_name.field_name = 'name'
+                AND et_name.language_code = $1
+            LEFT JOIN entity_translations et_desc ON
+                et_desc.entity_type = 'document_template'
+                AND et_desc.entity_code = dt.template_code
+                AND et_desc.field_name = 'description'
+                AND et_desc.language_code = $1
             WHERE {where_clause}
-            ORDER BY created_at DESC
+            ORDER BY dt.created_at DESC
             LIMIT ${param_idx} OFFSET ${param_idx + 1}
         """
         params.extend([page_size, offset])
@@ -317,12 +334,13 @@ async def delete_document_template(
 async def list_procedure_templates(
     category: Optional[str] = Query(None, description="Filter by category"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
+    language: str = Query("es", description="Language code for translations (es, fr, en)"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=1000, description="Page size"),
     db=Depends(get_database),
 ):
     """
-    List all procedure templates with pagination
+    List all procedure templates with pagination and i18n support
 
     Public endpoint - no authentication required for listing
     """
@@ -331,30 +349,45 @@ async def list_procedure_templates(
 
         # Build WHERE clause
         where_clauses = []
-        params = []
-        param_idx = 1
+        params = [language]  # $1 is always language
+        param_idx = 2
 
         if category:
-            where_clauses.append(f"category = ${param_idx}")
+            where_clauses.append(f"pt.category = ${param_idx}")
             params.append(category)
             param_idx += 1
 
         if is_active is not None:
-            where_clauses.append(f"is_active = ${param_idx}")
+            where_clauses.append(f"pt.is_active = ${param_idx}")
             params.append(is_active)
             param_idx += 1
 
         where_clause = " AND ".join(where_clauses) if where_clauses else "TRUE"
 
         # Count total
-        count_query = f"SELECT COUNT(*) FROM procedure_templates WHERE {where_clause}"
-        total = await db.fetchval(count_query, *params)
+        count_query = f"SELECT COUNT(*) FROM procedure_templates pt WHERE {where_clause}"
+        total = await db.fetchval(count_query, *params[1:])  # Skip language param for count
 
-        # Get data
+        # Get data with i18n support
         data_query = f"""
-            SELECT * FROM procedure_templates
+            SELECT
+                pt.id, pt.template_code,
+                COALESCE(et_name.translation_text, pt.name_es) as name_es,
+                COALESCE(et_desc.translation_text, pt.description_es) as description_es,
+                pt.category, pt.usage_count, pt.is_active, pt.created_at, pt.updated_at
+            FROM procedure_templates pt
+            LEFT JOIN entity_translations et_name ON
+                et_name.entity_type = 'procedure_template'
+                AND et_name.entity_code = pt.template_code
+                AND et_name.field_name = 'name'
+                AND et_name.language_code = $1
+            LEFT JOIN entity_translations et_desc ON
+                et_desc.entity_type = 'procedure_template'
+                AND et_desc.entity_code = pt.template_code
+                AND et_desc.field_name = 'description'
+                AND et_desc.language_code = $1
             WHERE {where_clause}
-            ORDER BY created_at DESC
+            ORDER BY pt.created_at DESC
             LIMIT ${param_idx} OFFSET ${param_idx + 1}
         """
         params.extend([page_size, offset])
