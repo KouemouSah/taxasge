@@ -10,7 +10,7 @@ from typing import Dict, Any
 import asyncpg
 
 from app.modules.auth.middleware.auth_middleware import get_current_user
-from app.modules.permissions.middleware.permission_middleware import require_permission
+from app.modules.permissions.middleware.permission_middleware import permission_required
 from app.database.connection import get_database as get_db
 from app.core.secrets import validate_secrets_available
 from app.config import get_settings
@@ -24,7 +24,7 @@ async def migrate_grandfather_users(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     current_user: Dict[str, Any] = Depends(get_current_user),
     db: asyncpg.Connection = Depends(get_db),
-    _: None = Depends(require_permission("admin.run_migrations"))
+    _: None = Depends(permission_required("admin.run_migrations"))
 ):
     """
     Execute Migration 002: Grandfather existing users
@@ -74,7 +74,7 @@ async def migrate_grandfather_users(
 async def check_secrets_configuration(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     current_user: Dict[str, Any] = Depends(get_current_user),
-    _: None = Depends(require_permission("admin.view_diagnostics"))
+    _: None = Depends(permission_required("admin.view_diagnostics"))
 ):
     """
     Diagnostic endpoint: Check secrets configuration status

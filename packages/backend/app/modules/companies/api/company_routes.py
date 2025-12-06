@@ -11,7 +11,7 @@ from app.modules.companies.models import (
 )
 from app.modules.companies.repositories import CompanyRepository
 from app.modules.auth.middleware.auth_middleware import get_current_user
-from app.modules.permissions.middleware.permission_middleware import require_permission
+from app.modules.permissions.middleware.permission_middleware import permission_required
 from app.database.connection import get_database
 
 router = APIRouter(tags=["Companies"])

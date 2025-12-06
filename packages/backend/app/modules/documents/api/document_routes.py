@@ -42,7 +42,7 @@ from app.modules.auth.middleware.auth_middleware import (
     get_current_admin_user as require_admin,
     get_current_operator_user as require_operator
 )
-from app.modules.permissions.middleware.permission_middleware import require_permission
+from app.modules.permissions.middleware.permission_middleware import permission_required
 
 router = APIRouter(tags=["Documents"])
 
@@ -987,7 +987,7 @@ async def get_processing_stats(
 @router.get("/stats/admin", response_model=Dict[str, Any])
 async def get_admin_stats(
     current_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(require_permission("documents.view_stats"))
+    _: None = Depends(permission_required("documents.view_stats"))
 ):
     """Get global processing statistics - Requires documents.view_stats permission"""
     try:

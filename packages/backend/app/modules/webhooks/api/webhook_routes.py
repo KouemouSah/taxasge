@@ -24,7 +24,7 @@ from app.modules.webhooks.models import (
 from app.modules.webhooks.repositories import WebhookRepository
 from app.modules.webhooks.services import HMACService
 from app.modules.auth.middleware.auth_middleware import get_current_user
-from app.modules.permissions.middleware.permission_middleware import require_permission
+from app.modules.permissions.middleware.permission_middleware import permission_required
 from app.database.connection import get_database
 
 router = APIRouter(tags=["Webhooks"])
@@ -123,7 +123,7 @@ async def list_unreconciled_transactions(
     page_size: int = Query(20, ge=1, le=100),
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(require_permission("webhooks.view"))
+    _: None = Depends(permission_required("webhooks.view"))
 ):
     """List unreconciled bank transactions - Requires webhooks.view permission"""
 
@@ -143,7 +143,7 @@ async def get_bank_transaction(
     transaction_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(require_permission("webhooks.view"))
+    _: None = Depends(permission_required("webhooks.view"))
 ):
     """Get bank transaction by ID - Requires webhooks.view permission"""
 
@@ -159,7 +159,7 @@ async def manual_reconcile(
     reconcile: ReconcileRequest,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(require_permission("webhooks.update"))
+    _: None = Depends(permission_required("webhooks.update"))
 ):
     """
     Manual reconciliation - Requires webhooks.update permission
@@ -205,7 +205,7 @@ async def create_bank_configuration(
     config: BankConfigurationCreate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(require_permission("webhooks.create"))
+    _: None = Depends(permission_required("webhooks.create"))
 ):
     """Create bank configuration - Requires webhooks.create permission"""
 
@@ -220,7 +220,7 @@ async def update_bank_configuration(
     update_data: BankConfigurationUpdate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(require_permission("webhooks.update"))
+    _: None = Depends(permission_required("webhooks.update"))
 ):
     """Update bank configuration - Requires webhooks.update permission"""
 

@@ -22,7 +22,7 @@ from app.modules.admin.models.admin import (
 )
 from app.modules.admin.repositories.audit_repository import AuditRepository
 from app.modules.auth.middleware.auth_middleware import get_current_user
-from app.modules.permissions.middleware.permission_middleware import require_permission
+from app.modules.permissions.middleware.permission_middleware import permission_required
 from app.database.connection import get_database
 
 # =============================================================================
@@ -74,7 +74,7 @@ async def list_audit_logs(
     page_size: int = Query(20, ge=1, le=100, description="Page size"),
     current_user=Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(require_permission("audit.view")),
+    _: None = Depends(permission_required("audit.view")),
 ):
     """
     List audit logs with filters
@@ -122,7 +122,7 @@ async def get_audit_stats(
     end_date: Optional[datetime] = Query(None, description="Stats to date"),
     current_user=Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(require_permission("audit.view_stats")),
+    _: None = Depends(permission_required("audit.view_stats")),
 ):
     """
     Get audit log statistics
@@ -151,7 +151,7 @@ async def get_audit_log(
     audit_id: str = Path(..., description="Audit log ID"),
     current_user=Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(require_permission("audit.view")),
+    _: None = Depends(permission_required("audit.view")),
 ):
     """
     Get a single audit log by ID
@@ -186,7 +186,7 @@ async def get_audit_logs_by_entity(
     limit: int = Query(50, ge=1, le=200, description="Maximum logs to return"),
     current_user=Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(require_permission("audit.view")),
+    _: None = Depends(permission_required("audit.view")),
 ):
     """
     Get all audit logs for a specific entity
@@ -226,7 +226,7 @@ async def get_user_audit_logs(
     page_size: int = Query(20, ge=1, le=100, description="Page size"),
     current_user=Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(require_permission("audit.view")),
+    _: None = Depends(permission_required("audit.view")),
 ):
     """
     Get audit logs for a specific user

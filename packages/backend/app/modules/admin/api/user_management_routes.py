@@ -25,7 +25,7 @@ router = APIRouter(tags=["Admin - User Management"])
 # NOTE: Authentication moved to app.core.auth (JWT-based, no mocks)
 # Re-export for backward compatibility with tests
 from app.modules.auth.middleware.auth_middleware import get_current_user
-from app.modules.permissions.middleware.permission_middleware import require_permission
+from app.modules.permissions.middleware.permission_middleware import permission_required
 
 # Make get_current_user available for patching in tests
 __all__ = ["router", "get_current_user"]
@@ -67,7 +67,7 @@ async def list_users(
     status: Optional[UserStatus] = Query(None, description="Filter by status"),
     search: Optional[str] = Query(None, description="Search query"),
     admin_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(require_permission("users.view_all"))
+    _: None = Depends(permission_required("users.view_all"))
 ):
     """List all users with pagination - Requires users.view_all permission"""
     try:
@@ -126,7 +126,7 @@ async def list_users(
 async def create_user(
     user_create: UserCreate,
     admin_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(require_permission("users.create"))
+    _: None = Depends(permission_required("users.create"))
 ):
     """Create new user - Requires users.create permission"""
     try:
@@ -326,7 +326,7 @@ async def update_user(
 async def delete_user(
     user_id: str = Path(..., description="User ID"),
     admin_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(require_permission("users.delete"))
+    _: None = Depends(permission_required("users.delete"))
 ):
     """Delete user by ID - Requires users.delete permission"""
     try:
@@ -382,7 +382,7 @@ async def search_users(
     country: Optional[str] = Query(None, description="Filter by country"),
     limit: int = Query(20, ge=1, le=100, description="Maximum results"),
     current_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(require_permission("users.search"))
+    _: None = Depends(permission_required("users.search"))
 ):
     """Search users - Requires users.search permission"""
     try:
@@ -425,7 +425,7 @@ async def search_users(
 @router.get("/stats", response_model=UserStats)
 async def get_user_stats(
     admin_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(require_permission("users.view_stats"))
+    _: None = Depends(permission_required("users.view_stats"))
 ):
     """Get user statistics - Requires users.view_stats permission"""
     try:
