@@ -781,14 +781,14 @@ export default function CategoriesPage() {
               <div className="space-y-2">
                 <Label htmlFor="service_type">{t('fieldServiceType')}</Label>
                 <Select
-                  value={formData.service_type || ''}
-                  onValueChange={(v) => setFormData({ ...formData, service_type: v as ServiceTypeEnum || null })}
+                  value={formData.service_type || 'none'}
+                  onValueChange={(v) => setFormData({ ...formData, service_type: v === 'none' ? null : v as ServiceTypeEnum })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder={t('selectServiceType')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">{t('noServiceType')}</SelectItem>
+                    <SelectItem value="none">{t('noServiceType')}</SelectItem>
                     {SERVICE_TYPES.map((type) => (
                       <SelectItem key={type} value={type}>{type.replace(/_/g, ' ')}</SelectItem>
                     ))}
@@ -801,11 +801,11 @@ export default function CategoriesPage() {
               <div className="space-y-2">
                 <Label htmlFor="ministry_id">{t('fieldMinistry')}</Label>
                 <Select
-                  value={formData.ministry_id ? String(formData.ministry_id) : ''}
+                  value={formData.ministry_id ? String(formData.ministry_id) : 'none'}
                   onValueChange={(v) => {
                     setFormData({
                       ...formData,
-                      ministry_id: v ? Number(v) : null,
+                      ministry_id: v === 'none' ? null : Number(v),
                       sector_id: null
                     })
                   }}
@@ -814,7 +814,7 @@ export default function CategoriesPage() {
                     <SelectValue placeholder={t('selectMinistry')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">{t('noMinistry')}</SelectItem>
+                    <SelectItem value="none">{t('noMinistry')}</SelectItem>
                     {ministries.map((m) => (
                       <SelectItem key={m.id} value={String(m.id)}>{m.name_es}</SelectItem>
                     ))}
@@ -824,14 +824,14 @@ export default function CategoriesPage() {
               <div className="space-y-2">
                 <Label htmlFor="sector_id">{t('fieldSector')}</Label>
                 <Select
-                  value={formData.sector_id ? String(formData.sector_id) : ''}
-                  onValueChange={(v) => setFormData({ ...formData, sector_id: v ? Number(v) : null })}
+                  value={formData.sector_id ? String(formData.sector_id) : 'none'}
+                  onValueChange={(v) => setFormData({ ...formData, sector_id: v === 'none' ? null : Number(v) })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder={t('selectSector')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">{t('noSector')}</SelectItem>
+                    <SelectItem value="none">{t('noSector')}</SelectItem>
                     {(formData.ministry_id
                       ? sectors.filter(s => s.ministry_id === formData.ministry_id)
                       : sectors
