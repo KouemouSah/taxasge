@@ -602,8 +602,8 @@ async def list_procedure_steps(
     """Get all steps for a procedure template"""
     try:
         # Check template exists
-        existing = await db.fetchval(
-            "SELECT id FROM procedure_templates WHERE id = $1",
+        existing = await db.fetchrow(
+            "SELECT id, template_code FROM procedure_templates WHERE id = $1",
             template_id
         )
         if not existing:
@@ -612,12 +612,17 @@ async def list_procedure_steps(
                 detail=f"Procedure template {template_id} not found"
             )
 
+        template_code = existing["template_code"]
+        logger.info(f"[STEPS] Fetching steps for template_id={template_id}, template_code={template_code}")
+
         query = """
             SELECT * FROM procedure_template_steps
             WHERE template_id = $1
             ORDER BY step_number ASC
         """
         results = await db.fetch(query, template_id)
+
+        logger.info(f"[STEPS] Found {len(results)} steps for template_id={template_id}")
 
         return [ProcedureStepResponse(**dict(r)) for r in results]
 
@@ -885,4 +890,83 @@ async def reorder_procedure_steps(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error reordering procedure steps"
+        )
+
+
+# =============================================================================
+# DIAGNOSTIC ENDPOINTS (for debugging data issues)
+# =============================================================================
+
+
+@procedure_template_router.get("/debug/steps-diagnostic")
+async def diagnose_procedure_steps(
+    db=Depends(get_database),
+):
+    """
+    Diagnostic endpoint to check procedure_template_steps data consistency.
+
+    Returns:
+    - Total steps in the database
+    - Steps with valid template_id (exists in procedure_templates)
+    - Steps with orphaned template_id (doesn't exist in procedure_templates)
+    - Sample of procedure_templates without steps
+    """
+    try:
+        # Total steps
+        total_steps = await db.fetchval("SELECT COUNT(*) FROM procedure_template_steps")
+
+        # Steps with valid template_id
+        valid_steps = await db.fetchval("""
+            SELECT COUNT(*) FROM procedure_template_steps pts
+            WHERE EXISTS (SELECT 1 FROM procedure_templates pt WHERE pt.id = pts.template_id)
+        """)
+
+        # Steps with orphaned template_id
+        orphaned_steps = await db.fetchval("""
+            SELECT COUNT(*) FROM procedure_template_steps pts
+            WHERE NOT EXISTS (SELECT 1 FROM procedure_templates pt WHERE pt.id = pts.template_id)
+        """)
+
+        # Get distinct template_ids from steps
+        step_template_ids = await db.fetch("""
+            SELECT DISTINCT template_id FROM procedure_template_steps
+            ORDER BY template_id
+            LIMIT 20
+        """)
+
+        # Get procedure templates without steps (first 10)
+        templates_without_steps = await db.fetch("""
+            SELECT pt.id, pt.template_code, pt.name_es
+            FROM procedure_templates pt
+            WHERE NOT EXISTS (
+                SELECT 1 FROM procedure_template_steps pts WHERE pts.template_id = pt.id
+            )
+            ORDER BY pt.id
+            LIMIT 10
+        """)
+
+        # Get procedure templates with steps (first 10)
+        templates_with_steps = await db.fetch("""
+            SELECT pt.id, pt.template_code, pt.name_es, COUNT(pts.id) as step_count
+            FROM procedure_templates pt
+            JOIN procedure_template_steps pts ON pts.template_id = pt.id
+            GROUP BY pt.id, pt.template_code, pt.name_es
+            ORDER BY pt.id
+            LIMIT 10
+        """)
+
+        return {
+            "total_steps_in_database": total_steps,
+            "steps_with_valid_template_id": valid_steps,
+            "steps_with_orphaned_template_id": orphaned_steps,
+            "distinct_template_ids_in_steps": [r["template_id"] for r in step_template_ids],
+            "templates_without_steps": [dict(r) for r in templates_without_steps],
+            "templates_with_steps": [dict(r) for r in templates_with_steps],
+        }
+
+    except Exception as e:
+        logger.error(f"Error in steps diagnostic: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Diagnostic error: {str(e)}"
         )
