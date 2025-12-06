@@ -94,6 +94,23 @@ interface ProcedureTemplateListResponse {
   total_pages: number
 }
 
+// Paginated response types for frontend
+export interface PaginatedDocumentTemplates {
+  templates: DocumentTemplate[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
+
+export interface PaginatedProcedureTemplates {
+  templates: ProcedureTemplate[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
+
 // =============================================================================
 // CONVERTERS (snake_case -> camelCase)
 // =============================================================================
@@ -169,6 +186,31 @@ export const documentTemplatesApi = {
       page_size: params?.pageSize,
     })
     return response.templates.map(convertDocumentTemplate)
+  },
+
+  /**
+   * GET /api/v1/document-templates (with pagination info)
+   * Get document templates with pagination metadata
+   */
+  listPaginated: async (params?: {
+    category?: string
+    isActive?: boolean
+    page?: number
+    pageSize?: number
+  }): Promise<PaginatedDocumentTemplates> => {
+    const response = await fetchClient.get<DocumentTemplateListResponse>(DOCUMENTS_BASE, {
+      category: params?.category,
+      is_active: params?.isActive,
+      page: params?.page || 1,
+      page_size: params?.pageSize || 20,
+    })
+    return {
+      templates: response.templates.map(convertDocumentTemplate),
+      total: response.total,
+      page: response.page,
+      pageSize: response.page_size,
+      totalPages: response.total_pages,
+    }
   },
 
   /**
@@ -250,6 +292,31 @@ export const procedureTemplatesApi = {
       page_size: params?.pageSize,
     })
     return response.templates.map(convertProcedureTemplate)
+  },
+
+  /**
+   * GET /api/v1/procedure-templates (with pagination info)
+   * Get procedure templates with pagination metadata
+   */
+  listPaginated: async (params?: {
+    category?: string
+    isActive?: boolean
+    page?: number
+    pageSize?: number
+  }): Promise<PaginatedProcedureTemplates> => {
+    const response = await fetchClient.get<ProcedureTemplateListResponse>(PROCEDURES_BASE, {
+      category: params?.category,
+      is_active: params?.isActive,
+      page: params?.page || 1,
+      page_size: params?.pageSize || 20,
+    })
+    return {
+      templates: response.templates.map(convertProcedureTemplate),
+      total: response.total,
+      page: response.page,
+      pageSize: response.page_size,
+      totalPages: response.total_pages,
+    }
   },
 
   /**

@@ -1485,7 +1485,8 @@
       "active": "Actif",
       "inactive": "Inactif",
       "loading": "Chargement...",
-      "refresh": "Actualiser"
+      "refresh": "Actualiser",
+      "showingResults": "Affichage {start}-{end} sur {total} résultats"
     },
     "ministries": {
       "title": "Gestion des Ministères",

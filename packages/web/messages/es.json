@@ -1705,7 +1705,8 @@
       "active": "Activo",
       "inactive": "Inactivo",
       "loading": "Cargando...",
-      "refresh": "Actualizar"
+      "refresh": "Actualizar",
+      "showingResults": "Mostrando {start}-{end} de {total} resultados"
     }
   },
   "categories": {

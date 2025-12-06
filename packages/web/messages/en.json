@@ -1485,7 +1485,8 @@
       "active": "Active",
       "inactive": "Inactive",
       "loading": "Loading...",
-      "refresh": "Refresh"
+      "refresh": "Refresh",
+      "showingResults": "Showing {start}-{end} of {total} results"
     },
     "ministries": {
       "title": "Ministry Management",

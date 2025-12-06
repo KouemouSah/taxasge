@@ -2,14 +2,9 @@
 
 /**
  * Document Templates Admin Page
- * List view with filters and CRUD actions
- *
- * PHASE 10.3: Document Templates List Page
- * CRITICAL: 100% backend-aligned with document_template_routes.py
+ * List view with filters, CRUD actions, and pagination
  *
  * @module dashboard/admin/document-templates
- * @author Claude Code
- * @date 2025-11-25
  */
 
 import { useState, useEffect } from 'react'
@@ -34,11 +29,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { FileText, RefreshCw, AlertTriangle, Search, Plus, Eye, Edit, Trash2, CheckCircle2, XCircle } from 'lucide-react'
+import { FileText, RefreshCw, AlertTriangle, Search, Plus, Eye, Edit, Trash2, CheckCircle2, XCircle, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import templatesAPI from '@/modules/templates/services/api'
 import type { DocumentTemplate } from '@/types/fiscal-service'
 import { BackendUnavailableAlert } from '@/modules/admin/components'
+
+const PAGE_SIZE = 20
 
 export default function DocumentTemplatesPage() {
   const locale = useLocale()
@@ -46,13 +43,15 @@ export default function DocumentTemplatesPage() {
   const tAdmin = useTranslations('admin')
   const tCommon = useTranslations('common')
 
-  // Helper to get templates translations
   const t = (key: string, params?: Record<string, string | number>) =>
     tAdmin(`templates.${key}`, params)
   const { toast } = useToast()
 
   // Data states
   const [templates, setTemplates] = useState<DocumentTemplate[]>([])
+  const [totalTemplates, setTotalTemplates] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const [currentPage, setCurrentPage] = useState(1)
 
   // UI states
   const [isLoading, setIsLoading] = useState(true)
@@ -64,8 +63,23 @@ export default function DocumentTemplatesPage() {
   const [categoryFilter, setCategoryFilter] = useState<string | 'all'>('all')
   const [statusFilter, setStatusFilter] = useState<boolean | 'all'>('all')
 
-  // Fetch document templates with filters
-  const fetchTemplates = async () => {
+  // All categories for filter dropdown (fetched separately)
+  const [allCategories, setAllCategories] = useState<string[]>([])
+
+  // Fetch all categories once for the filter dropdown
+  const fetchAllCategories = async () => {
+    try {
+      // Fetch first page with large size to get categories
+      const response = await templatesAPI.documents.listPaginated({ pageSize: 1000 })
+      const categories = Array.from(new Set(response.templates.map(t => t.category).filter(Boolean))) as string[]
+      setAllCategories(categories)
+    } catch {
+      // Silently fail, categories filter will be empty
+    }
+  }
+
+  // Fetch document templates with filters and pagination
+  const fetchTemplates = async (page: number = 1) => {
     setIsLoading(true)
     setError(null)
 
@@ -73,7 +87,12 @@ export default function DocumentTemplatesPage() {
       const params: {
         category?: string
         isActive?: boolean
-      } = {}
+        page: number
+        pageSize: number
+      } = {
+        page,
+        pageSize: PAGE_SIZE,
+      }
 
       if (categoryFilter !== 'all') {
         params.category = categoryFilter
@@ -83,8 +102,11 @@ export default function DocumentTemplatesPage() {
         params.isActive = statusFilter
       }
 
-      const response = await templatesAPI.documents.list(params)
-      setTemplates(response)
+      const response = await templatesAPI.documents.listPaginated(params)
+      setTemplates(response.templates)
+      setTotalTemplates(response.total)
+      setTotalPages(response.totalPages)
+      setCurrentPage(response.page)
       setIsBackendUnavailable(false)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : t('errorLoadingDocuments')
@@ -105,12 +127,22 @@ export default function DocumentTemplatesPage() {
   }
 
   useEffect(() => {
-    fetchTemplates()
+    fetchAllCategories()
+  }, [])
+
+  useEffect(() => {
+    fetchTemplates(1) // Reset to page 1 when filters change
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryFilter, statusFilter])
 
   const handleRefresh = () => {
-    fetchTemplates()
+    fetchTemplates(currentPage)
+  }
+
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      fetchTemplates(page)
+    }
   }
 
   const handleDelete = async (template: DocumentTemplate) => {
@@ -122,7 +154,7 @@ export default function DocumentTemplatesPage() {
         title: t('successTitle'),
         description: t('documentDeleted'),
       })
-      fetchTemplates()
+      fetchTemplates(currentPage)
     } catch (err) {
       toast({
         variant: 'destructive',
@@ -132,7 +164,7 @@ export default function DocumentTemplatesPage() {
     }
   }
 
-  // Filter templates by search query
+  // Filter templates by search query (client-side for current page)
   const filteredTemplates = templates.filter(template => {
     const matchesSearch = searchQuery === '' ||
       template.templateCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -142,8 +174,9 @@ export default function DocumentTemplatesPage() {
     return matchesSearch
   })
 
-  // Get unique categories for filter dropdown
-  const uniqueCategories = Array.from(new Set(templates.map(t => t.category).filter(Boolean)))
+  // Calculate displayed range
+  const startItem = (currentPage - 1) * PAGE_SIZE + 1
+  const endItem = Math.min(currentPage * PAGE_SIZE, totalTemplates)
 
   return (
     <div className="space-y-6 p-6">
@@ -177,8 +210,8 @@ export default function DocumentTemplatesPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{tCommon('seeAll')}</SelectItem>
-              {uniqueCategories.map(category => (
-                <SelectItem key={category} value={category!}>{category}</SelectItem>
+              {allCategories.map(category => (
+                <SelectItem key={category} value={category}>{category}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -219,7 +252,9 @@ export default function DocumentTemplatesPage() {
             {t('documentsTitle')}
           </CardTitle>
           <CardDescription>
-            {filteredTemplates.length} {filteredTemplates.length === 1 ? 'template' : 'templates'} {searchQuery && 'found'}
+            {totalTemplates > 0
+              ? `${startItem}-${endItem} de ${totalTemplates} templates`
+              : '0 templates'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -252,75 +287,107 @@ export default function DocumentTemplatesPage() {
               )}
             </div>
           ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t('tableCode')}</TableHead>
-                    <TableHead>{t('tableName')}</TableHead>
-                    <TableHead>{t('tableCategory')}</TableHead>
-                    <TableHead>{t('tableUsageCount')}</TableHead>
-                    <TableHead>{t('tableStatus')}</TableHead>
-                    <TableHead className="text-right">{t('tableActions')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredTemplates.map((template) => (
-                    <TableRow key={template.id}>
-                      <TableCell className="font-mono text-sm">{template.templateCode}</TableCell>
-                      <TableCell className="font-medium">{template.documentNameEs}</TableCell>
-                      <TableCell>
-                        {template.category ? (
-                          <Badge variant="outline">{template.category}</Badge>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell>{template.usageCount}</TableCell>
-                      <TableCell>
-                        {template.isActive ? (
-                          <Badge className="bg-green-500">
-                            <CheckCircle2 className="mr-1 h-3 w-3" />
-                            {t('active')}
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">
-                            <XCircle className="mr-1 h-3 w-3" />
-                            {t('inactive')}
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => router.push(`/${locale}/dashboard/admin/document-templates/${template.id}`)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => router.push(`/${locale}/dashboard/admin/document-templates/${template.id}/edit`)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(template)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+            <>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t('tableCode')}</TableHead>
+                      <TableHead>{t('tableName')}</TableHead>
+                      <TableHead>{t('tableCategory')}</TableHead>
+                      <TableHead>{t('tableUsageCount')}</TableHead>
+                      <TableHead>{t('tableStatus')}</TableHead>
+                      <TableHead className="text-right">{t('tableActions')}</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredTemplates.map((template) => (
+                      <TableRow key={template.id}>
+                        <TableCell className="font-mono text-sm">{template.templateCode}</TableCell>
+                        <TableCell className="font-medium">{template.documentNameEs}</TableCell>
+                        <TableCell>
+                          {template.category ? (
+                            <Badge variant="outline">{template.category}</Badge>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>{template.usageCount}</TableCell>
+                        <TableCell>
+                          {template.isActive ? (
+                            <Badge className="bg-green-500">
+                              <CheckCircle2 className="mr-1 h-3 w-3" />
+                              {t('active')}
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary">
+                              <XCircle className="mr-1 h-3 w-3" />
+                              {t('inactive')}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => router.push(`/${locale}/dashboard/admin/document-templates/${template.id}`)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => router.push(`/${locale}/dashboard/admin/document-templates/${template.id}/edit`)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(template)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <p className="text-sm text-muted-foreground">
+                    {t('showingResults', { start: startItem, end: endItem, total: totalTemplates })}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage <= 1 || isLoading}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm">
+                      {currentPage} / {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage >= totalPages || isLoading}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
