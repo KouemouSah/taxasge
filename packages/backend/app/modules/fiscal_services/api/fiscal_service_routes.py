@@ -419,7 +419,7 @@ async def calculate_service_amount(
     db=Depends(get_database),
 ):
     """Calculate amount for a fiscal service"""
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     # Verify service exists
     service = await repository.get_by_id(db, request.fiscal_service_id)
@@ -469,7 +469,7 @@ async def create_ministry(
     - **contact_phone**: Optional contact phone
     - **is_active**: Whether ministry is active (default True)
     """
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     try:
         # Check if ministry code already exists
@@ -531,7 +531,7 @@ async def update_ministry(
 
     All fields are optional. Only provided fields will be updated.
     """
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     try:
         # Check if ministry exists
@@ -578,7 +578,7 @@ async def delete_ministry(
 
     Will fail if the ministry has dependent sectors.
     """
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     try:
         # Check if ministry exists
@@ -640,7 +640,7 @@ async def create_sector(
     - **color**: Optional hex color code (#RRGGBB)
     - **is_active**: Whether sector is active (default True)
     """
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     try:
         # Check if sector code already exists
@@ -702,7 +702,7 @@ async def update_sector(
 
     All fields are optional. Only provided fields will be updated.
     """
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     try:
         # Check if sector exists
@@ -749,7 +749,7 @@ async def delete_sector(
 
     Will fail if the sector has dependent categories.
     """
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     try:
         # Check if sector exists
@@ -813,7 +813,7 @@ async def create_category(
     - **color**: Optional hex color code (#RRGGBB)
     - **is_active**: Whether category is active (default True)
     """
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     try:
         # Check if category code already exists
@@ -875,7 +875,7 @@ async def update_category(
 
     All fields are optional. Only provided fields will be updated.
     """
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     try:
         # Check if category exists
@@ -922,7 +922,7 @@ async def delete_category(
 
     Will fail if the category has dependent fiscal services.
     """
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     try:
         # Check if category exists
@@ -971,7 +971,7 @@ async def create_fiscal_service(
     _: None = Depends(permission_required("fiscal_services.create"))
 ):
     """Create new fiscal service - Requires fiscal_services.create permission"""
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     # Check if code already exists
     existing = await repository.get_by_code(db, service.code)
@@ -992,7 +992,7 @@ async def update_fiscal_service(
     _: None = Depends(permission_required("fiscal_services.update"))
 ):
     """Update fiscal service - Requires fiscal_services.update permission"""
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     updated = await repository.update(db, service_id, update_data)
     if not updated:
@@ -1010,7 +1010,7 @@ async def delete_fiscal_service(
     _: None = Depends(permission_required("fiscal_services.delete"))
 ):
     """Delete fiscal service - Requires fiscal_services.delete permission"""
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     deleted = await repository.delete(db, service_id)
     if not deleted:
@@ -1043,7 +1043,7 @@ async def get_fiscal_services_statistics(
         - Most used services (top 10)
         - Total calculations and views
     """
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     try:
         stats = await repository.get_statistics(db)
@@ -1081,7 +1081,7 @@ async def bulk_import_fiscal_services(
         - failed_imports: Number of failed imports
         - Details of failed services
     """
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     if len(services) > 100:
         raise HTTPException(
@@ -1139,7 +1139,7 @@ async def bulk_update_service_status(
         - updated_count: Number of successfully updated services
         - failed_updates: Number of failed updates
     """
-    user_id = current_user["sub"]
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     if len(service_ids) > 50:
         raise HTTPException(

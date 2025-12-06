@@ -151,7 +151,7 @@ async def create_document_template(
     Requires templates.create permission
     """
     try:
-        user_id = current_user.get("sub") if isinstance(current_user, dict) else current_user.id
+        user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
         # Check for duplicate template_code
         existing = await db.fetchval(
@@ -167,9 +167,9 @@ async def create_document_template(
         query = """
             INSERT INTO document_templates (
                 template_code, document_name_es, description_es, category,
-                validity_duration_months, validity_notes, is_active, created_by
+                validity_duration_months, validity_notes, is_active
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING *
         """
         result = await db.fetchrow(
@@ -181,7 +181,6 @@ async def create_document_template(
             template.validity_duration_months,
             template.validity_notes,
             template.is_active,
-            user_id,
         )
 
         logger.info(f"Document template created: {template.template_code} by user {user_id}")
@@ -432,7 +431,7 @@ async def create_procedure_template(
     Requires templates.create permission
     """
     try:
-        user_id = current_user.get("sub") if isinstance(current_user, dict) else current_user.id
+        user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
         # Check for duplicate template_code
         existing = await db.fetchval(
@@ -447,9 +446,9 @@ async def create_procedure_template(
 
         query = """
             INSERT INTO procedure_templates (
-                template_code, name_es, description_es, category, is_active, created_by
+                template_code, name_es, description_es, category, is_active
             )
-            VALUES ($1, $2, $3, $4, $5, $6)
+            VALUES ($1, $2, $3, $4, $5)
             RETURNING *
         """
         result = await db.fetchrow(
@@ -459,7 +458,6 @@ async def create_procedure_template(
             template.description_es,
             template.category,
             template.is_active,
-            user_id,
         )
 
         logger.info(f"Procedure template created: {template.template_code} by user {user_id}")
