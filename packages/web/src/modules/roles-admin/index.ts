@@ -27,3 +27,6 @@ export {
   useAssignPermissions,
   useRemovePermissions,
 } from './hooks/useRoles'
+
+// Components
+export { RolePermissionsDialog } from './components/RolePermissionsDialog'
