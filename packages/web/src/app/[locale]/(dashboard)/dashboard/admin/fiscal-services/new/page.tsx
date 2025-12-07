@@ -116,7 +116,7 @@ export default function CreateFiscalServicePage() {
   // Filter sectors when ministry changes
   useEffect(() => {
     if (selectedMinistry) {
-      const filtered = sectors.filter(s => s.ministry_id === selectedMinistry)
+      const filtered = sectors.filter(s => (s.ministryId ?? s.ministry_id) === selectedMinistry)
       setFilteredSectors(filtered)
       setSelectedSector(null)
       setFilteredCategories([])
@@ -129,7 +129,7 @@ export default function CreateFiscalServicePage() {
   // Filter categories when sector changes
   useEffect(() => {
     if (selectedSector) {
-      const filtered = categories.filter(c => c.sector_id === selectedSector)
+      const filtered = categories.filter(c => (c.sectorId ?? c.sector_id) === selectedSector)
       setFilteredCategories(filtered)
       setFormData(prev => ({ ...prev, categoryId: 0 }))
     } else {
@@ -430,7 +430,7 @@ export default function CreateFiscalServicePage() {
                     </SelectTrigger>
                     <SelectContent>
                       {ministries.map((m) => (
-                        <SelectItem key={m.id} value={String(m.id)}>{m.name_es}</SelectItem>
+                        <SelectItem key={m.id} value={String(m.id)}>{m.nameEs || m.name_es}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -448,7 +448,7 @@ export default function CreateFiscalServicePage() {
                     </SelectTrigger>
                     <SelectContent>
                       {filteredSectors.map((s) => (
-                        <SelectItem key={s.id} value={String(s.id)}>{s.name_es}</SelectItem>
+                        <SelectItem key={s.id} value={String(s.id)}>{s.nameEs || s.name_es}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -466,7 +466,7 @@ export default function CreateFiscalServicePage() {
                     </SelectTrigger>
                     <SelectContent>
                       {filteredCategories.map((c) => (
-                        <SelectItem key={c.id} value={String(c.id)}>{c.name_es}</SelectItem>
+                        <SelectItem key={c.id} value={String(c.id)}>{c.nameEs || c.name_es}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
