@@ -63,6 +63,33 @@ const API_VERSION = `/api/${appConfig.api.version}`
 const FISCAL_SERVICES_BASE = '/fiscal-services'
 
 // =============================================================================
+// UTILITY FUNCTIONS - snake_case to camelCase transformation
+// =============================================================================
+
+/**
+ * Convert snake_case string to camelCase
+ */
+function snakeToCamel(str: string): string {
+  return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
+}
+
+/**
+ * Transform object keys from snake_case to camelCase (recursive)
+ */
+function transformKeys<T>(obj: unknown): T {
+  if (obj === null || obj === undefined) return obj as T
+  if (Array.isArray(obj)) return obj.map(item => transformKeys(item)) as T
+  if (typeof obj !== 'object') return obj as T
+
+  const transformed: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+    const camelKey = snakeToCamel(key)
+    transformed[camelKey] = transformKeys(value)
+  }
+  return transformed as T
+}
+
+// =============================================================================
 // HTTP CLIENT
 // =============================================================================
 
@@ -229,16 +256,20 @@ export const hierarchyApi = {
    */
   ministries: {
     list: async (language: string = 'es'): Promise<Ministry[]> => {
-      return client.get<Ministry[]>(`${FISCAL_SERVICES_BASE}/ministries?language=${language}`)
+      const response = await client.get<Ministry[]>(`${FISCAL_SERVICES_BASE}/ministries?language=${language}`)
+      return transformKeys<Ministry[]>(response)
     },
     get: async (ministryId: number): Promise<Ministry> => {
-      return client.get<Ministry>(`${FISCAL_SERVICES_BASE}/admin/ministries/${ministryId}`)
+      const response = await client.get<Ministry>(`${FISCAL_SERVICES_BASE}/admin/ministries/${ministryId}`)
+      return transformKeys<Ministry>(response)
     },
     create: async (data: Omit<Ministry, 'id' | 'created_at' | 'updated_at'>): Promise<Ministry> => {
-      return client.post<Ministry>(`${FISCAL_SERVICES_BASE}/admin/ministries`, data)
+      const response = await client.post<Ministry>(`${FISCAL_SERVICES_BASE}/admin/ministries`, data)
+      return transformKeys<Ministry>(response)
     },
     update: async (ministryId: number, data: Partial<Ministry>): Promise<Ministry> => {
-      return client.put<Ministry>(`${FISCAL_SERVICES_BASE}/admin/ministries/${ministryId}`, data)
+      const response = await client.put<Ministry>(`${FISCAL_SERVICES_BASE}/admin/ministries/${ministryId}`, data)
+      return transformKeys<Ministry>(response)
     },
     delete: async (ministryId: number): Promise<void> => {
       return client.delete<void>(`${FISCAL_SERVICES_BASE}/admin/ministries/${ministryId}`)
@@ -254,16 +285,20 @@ export const hierarchyApi = {
       const params = new URLSearchParams()
       params.append('language', language)
       if (ministryId) params.append('ministry_id', String(ministryId))
-      return client.get<Sector[]>(`${FISCAL_SERVICES_BASE}/sectors?${params.toString()}`)
+      const response = await client.get<Sector[]>(`${FISCAL_SERVICES_BASE}/sectors?${params.toString()}`)
+      return transformKeys<Sector[]>(response)
     },
     get: async (sectorId: number): Promise<Sector> => {
-      return client.get<Sector>(`${FISCAL_SERVICES_BASE}/admin/sectors/${sectorId}`)
+      const response = await client.get<Sector>(`${FISCAL_SERVICES_BASE}/admin/sectors/${sectorId}`)
+      return transformKeys<Sector>(response)
     },
     create: async (data: Omit<Sector, 'id' | 'created_at' | 'updated_at'>): Promise<Sector> => {
-      return client.post<Sector>(`${FISCAL_SERVICES_BASE}/admin/sectors`, data)
+      const response = await client.post<Sector>(`${FISCAL_SERVICES_BASE}/admin/sectors`, data)
+      return transformKeys<Sector>(response)
     },
     update: async (sectorId: number, data: Partial<Sector>): Promise<Sector> => {
-      return client.put<Sector>(`${FISCAL_SERVICES_BASE}/admin/sectors/${sectorId}`, data)
+      const response = await client.put<Sector>(`${FISCAL_SERVICES_BASE}/admin/sectors/${sectorId}`, data)
+      return transformKeys<Sector>(response)
     },
     delete: async (sectorId: number): Promise<void> => {
       return client.delete<void>(`${FISCAL_SERVICES_BASE}/admin/sectors/${sectorId}`)
@@ -279,16 +314,20 @@ export const hierarchyApi = {
       const params = new URLSearchParams()
       params.append('language', language)
       if (sectorId) params.append('sector_id', String(sectorId))
-      return client.get<Category[]>(`${FISCAL_SERVICES_BASE}/categories?${params.toString()}`)
+      const response = await client.get<Category[]>(`${FISCAL_SERVICES_BASE}/categories?${params.toString()}`)
+      return transformKeys<Category[]>(response)
     },
     get: async (categoryId: number): Promise<Category> => {
-      return client.get<Category>(`${FISCAL_SERVICES_BASE}/admin/categories/${categoryId}`)
+      const response = await client.get<Category>(`${FISCAL_SERVICES_BASE}/admin/categories/${categoryId}`)
+      return transformKeys<Category>(response)
     },
     create: async (data: Omit<Category, 'id' | 'created_at' | 'updated_at'>): Promise<Category> => {
-      return client.post<Category>(`${FISCAL_SERVICES_BASE}/admin/categories`, data)
+      const response = await client.post<Category>(`${FISCAL_SERVICES_BASE}/admin/categories`, data)
+      return transformKeys<Category>(response)
     },
     update: async (categoryId: number, data: Partial<Category>): Promise<Category> => {
-      return client.put<Category>(`${FISCAL_SERVICES_BASE}/admin/categories/${categoryId}`, data)
+      const response = await client.put<Category>(`${FISCAL_SERVICES_BASE}/admin/categories/${categoryId}`, data)
+      return transformKeys<Category>(response)
     },
     delete: async (categoryId: number): Promise<void> => {
       return client.delete<void>(`${FISCAL_SERVICES_BASE}/admin/categories/${categoryId}`)
@@ -320,9 +359,10 @@ export const fiscalServicesApi = {
     if (params?.language) queryParams.append('language', params.language)
 
     const query = queryParams.toString()
-    return client.get<FiscalServiceListResponse>(
+    const response = await client.get<FiscalServiceListResponse>(
       `${FISCAL_SERVICES_BASE}${query ? `?${query}` : ''}`
     )
+    return transformKeys<FiscalServiceListResponse>(response)
   },
 
   /**
@@ -330,7 +370,8 @@ export const fiscalServicesApi = {
    * Get single fiscal service by ID
    */
   get: async (serviceId: number | string): Promise<FiscalServiceResponse> => {
-    return client.get<FiscalServiceResponse>(`${FISCAL_SERVICES_BASE}/${serviceId}`)
+    const response = await client.get<FiscalServiceResponse>(`${FISCAL_SERVICES_BASE}/${serviceId}`)
+    return transformKeys<FiscalServiceResponse>(response)
   },
 
   /**
@@ -343,10 +384,11 @@ export const fiscalServicesApi = {
     pageSize: number = 50
   ): Promise<FiscalServiceListResponse> => {
     const query = `?page=${page}&page_size=${pageSize}`
-    return client.post<FiscalServiceListResponse>(
+    const response = await client.post<FiscalServiceListResponse>(
       `${FISCAL_SERVICES_BASE}/search${query}`,
       filters
     )
+    return transformKeys<FiscalServiceListResponse>(response)
   },
 
   /**
@@ -354,9 +396,10 @@ export const fiscalServicesApi = {
    * Get most used fiscal services
    */
   popular: async (limit: number = 10): Promise<FiscalServiceResponse[]> => {
-    return client.get<FiscalServiceResponse[]>(
+    const response = await client.get<FiscalServiceResponse[]>(
       `${FISCAL_SERVICES_BASE}/popular/list?limit=${limit}`
     )
+    return transformKeys<FiscalServiceResponse[]>(response)
   },
 
   /**
@@ -364,9 +407,10 @@ export const fiscalServicesApi = {
    * Get recently used fiscal services
    */
   recent: async (limit: number = 10): Promise<FiscalServiceResponse[]> => {
-    return client.get<FiscalServiceResponse[]>(
+    const response = await client.get<FiscalServiceResponse[]>(
       `${FISCAL_SERVICES_BASE}/recent/list?limit=${limit}`
     )
+    return transformKeys<FiscalServiceResponse[]>(response)
   },
 
   /**
@@ -390,7 +434,8 @@ export const fiscalServicesAdminApi = {
    * Auth: Required + Permission "fiscal_services.create"
    */
   create: async (data: FiscalServiceCreate): Promise<FiscalServiceResponse> => {
-    return client.post<FiscalServiceResponse>(`${FISCAL_SERVICES_BASE}/admin/services`, data)
+    const response = await client.post<FiscalServiceResponse>(`${FISCAL_SERVICES_BASE}/admin/services`, data)
+    return transformKeys<FiscalServiceResponse>(response)
   },
 
   /**
@@ -399,10 +444,11 @@ export const fiscalServicesAdminApi = {
    * Auth: Required + Permission "fiscal_services.update"
    */
   update: async (serviceId: number | string, data: FiscalServiceUpdate): Promise<FiscalServiceResponse> => {
-    return client.put<FiscalServiceResponse>(
+    const response = await client.put<FiscalServiceResponse>(
       `${FISCAL_SERVICES_BASE}/admin/services/${serviceId}`,
       data
     )
+    return transformKeys<FiscalServiceResponse>(response)
   },
 
   /**
@@ -422,7 +468,8 @@ export const fiscalServicesAdminApi = {
    * Auth: Required + Permission "fiscal_services.view_stats"
    */
   stats: async (): Promise<FiscalServiceStats> => {
-    return client.get<FiscalServiceStats>(`${FISCAL_SERVICES_BASE}/admin/stats`)
+    const response = await client.get<FiscalServiceStats>(`${FISCAL_SERVICES_BASE}/admin/stats`)
+    return transformKeys<FiscalServiceStats>(response)
   },
 
   /**
@@ -469,9 +516,10 @@ export const documentsApi = {
    * Get all document assignments for a service
    */
   list: async (serviceId: number | string): Promise<ServiceDocumentAssignment[]> => {
-    return client.get<ServiceDocumentAssignment[]>(
+    const response = await client.get<ServiceDocumentAssignment[]>(
       `${FISCAL_SERVICES_BASE}/${serviceId}/documents`
     )
+    return transformKeys<ServiceDocumentAssignment[]>(response)
   },
 
   /**
@@ -488,10 +536,11 @@ export const documentsApi = {
       customNotes?: string
     }
   ): Promise<ServiceDocumentAssignment> => {
-    return client.post<ServiceDocumentAssignment>(
+    const response = await client.post<ServiceDocumentAssignment>(
       `${FISCAL_SERVICES_BASE}/${serviceId}/documents`,
       data
     )
+    return transformKeys<ServiceDocumentAssignment>(response)
   },
 
   /**
@@ -513,7 +562,8 @@ export const documentsApi = {
    */
   templates: {
     list: async (language: string = 'es'): Promise<DocumentTemplate[]> => {
-      return client.get<DocumentTemplate[]>(`/document-templates?language=${language}`)
+      const response = await client.get<DocumentTemplate[]>(`/document-templates?language=${language}`)
+      return transformKeys<DocumentTemplate[]>(response)
     },
   },
 }
@@ -528,9 +578,10 @@ export const proceduresApi = {
    * Get all procedure assignments for a service
    */
   list: async (serviceId: number | string): Promise<ServiceProcedureAssignment[]> => {
-    return client.get<ServiceProcedureAssignment[]>(
+    const response = await client.get<ServiceProcedureAssignment[]>(
       `${FISCAL_SERVICES_BASE}/${serviceId}/procedures`
     )
+    return transformKeys<ServiceProcedureAssignment[]>(response)
   },
 
   /**
@@ -544,13 +595,14 @@ export const proceduresApi = {
       appliesTo?: string
       displayOrder?: number
       customNotes?: string
-      overrideSteps?: Record<string, any>
+      overrideSteps?: Record<string, unknown>
     }
   ): Promise<ServiceProcedureAssignment> => {
-    return client.post<ServiceProcedureAssignment>(
+    const response = await client.post<ServiceProcedureAssignment>(
       `${FISCAL_SERVICES_BASE}/${serviceId}/procedures`,
       data
     )
+    return transformKeys<ServiceProcedureAssignment>(response)
   },
 
   /**
@@ -572,7 +624,8 @@ export const proceduresApi = {
    */
   templates: {
     list: async (language: string = 'es'): Promise<ProcedureTemplate[]> => {
-      return client.get<ProcedureTemplate[]>(`/procedure-templates?language=${language}`)
+      const response = await client.get<ProcedureTemplate[]>(`/procedure-templates?language=${language}`)
+      return transformKeys<ProcedureTemplate[]>(response)
     },
 
     /**
@@ -580,7 +633,8 @@ export const proceduresApi = {
      * Get steps for a procedure template
      */
     steps: async (templateId: number): Promise<ProcedureStep[]> => {
-      return client.get<ProcedureStep[]>(`/procedure-templates/${templateId}/steps`)
+      const response = await client.get<ProcedureStep[]>(`/procedure-templates/${templateId}/steps`)
+      return transformKeys<ProcedureStep[]>(response)
     },
   },
 }
@@ -595,7 +649,8 @@ export const keywordsApi = {
    * Get all keywords for a service
    */
   list: async (serviceId: number | string): Promise<ServiceKeyword[]> => {
-    return client.get<ServiceKeyword[]>(`${FISCAL_SERVICES_BASE}/${serviceId}/keywords`)
+    const response = await client.get<ServiceKeyword[]>(`${FISCAL_SERVICES_BASE}/${serviceId}/keywords`)
+    return transformKeys<ServiceKeyword[]>(response)
   },
 
   /**
@@ -610,10 +665,11 @@ export const keywordsApi = {
       weight: number
     }
   ): Promise<ServiceKeyword> => {
-    return client.post<ServiceKeyword>(
+    const response = await client.post<ServiceKeyword>(
       `${FISCAL_SERVICES_BASE}/${serviceId}/keywords`,
       data
     )
+    return transformKeys<ServiceKeyword>(response)
   },
 
   /**
@@ -640,9 +696,10 @@ export const translationsApi = {
    * Get all translations for a service
    */
   list: async (serviceId: number | string): Promise<EntityTranslation[]> => {
-    return client.get<EntityTranslation[]>(
+    const response = await client.get<EntityTranslation[]>(
       `${FISCAL_SERVICES_BASE}/${serviceId}/translations`
     )
+    return transformKeys<EntityTranslation[]>(response)
   },
 
   /**
@@ -658,10 +715,11 @@ export const translationsApi = {
       translationSource?: string
     }
   ): Promise<EntityTranslation> => {
-    return client.post<EntityTranslation>(
+    const response = await client.post<EntityTranslation>(
       `${FISCAL_SERVICES_BASE}/${serviceId}/translations`,
       data
     )
+    return transformKeys<EntityTranslation>(response)
   },
 
   /**
