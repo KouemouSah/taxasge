@@ -80,7 +80,10 @@ apiClient.interceptors.response.use(
       if (!authData?.refresh_token) {
         clearAuthData();
         if (typeof window !== 'undefined') {
-          window.location.href = '/auth/login';
+          // Extract locale from current URL path (e.g., /es/dashboard -> es)
+          const pathParts = window.location.pathname.split('/');
+          const locale = pathParts[1] && ['es', 'fr', 'en'].includes(pathParts[1]) ? pathParts[1] : 'es';
+          window.location.href = `/${locale}/auth`;
         }
         return Promise.reject(error);
       }
@@ -117,7 +120,10 @@ apiClient.interceptors.response.use(
         clearAuthData();
 
         if (typeof window !== 'undefined') {
-          window.location.href = '/auth/login';
+          // Extract locale from current URL path (e.g., /es/dashboard -> es)
+          const pathParts = window.location.pathname.split('/');
+          const locale = pathParts[1] && ['es', 'fr', 'en'].includes(pathParts[1]) ? pathParts[1] : 'es';
+          window.location.href = `/${locale}/auth`;
         }
 
         isRefreshing = false;

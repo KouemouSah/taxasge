@@ -66,59 +66,100 @@ export enum TranslatableEntityType {
 export interface Ministry {
   id: number
   ministry_code: string
+  ministryCode?: string  // camelCase alias after transformKeys
   name_es: string
+  nameEs?: string        // camelCase alias after transformKeys
   name_fr?: string
+  nameFr?: string        // camelCase alias after transformKeys
   name_en?: string
+  nameEn?: string        // camelCase alias after transformKeys
   description_es?: string
+  descriptionEs?: string // camelCase alias after transformKeys
   description_fr?: string
+  descriptionFr?: string // camelCase alias after transformKeys
   description_en?: string
+  descriptionEn?: string // camelCase alias after transformKeys
   display_order?: number
+  displayOrder?: number  // camelCase alias after transformKeys
   icon?: string
   color?: string
   website_url?: string
+  websiteUrl?: string    // camelCase alias after transformKeys
   contact_email?: string
+  contactEmail?: string  // camelCase alias after transformKeys
   contact_phone?: string
+  contactPhone?: string  // camelCase alias after transformKeys
   is_active: boolean
+  isActive?: boolean     // camelCase alias after transformKeys
   created_at: string
+  createdAt?: string     // camelCase alias after transformKeys
   updated_at?: string
+  updatedAt?: string     // camelCase alias after transformKeys
 }
 
 export interface Sector {
   id: number
   sector_code: string
+  sectorCode?: string    // camelCase alias after transformKeys
   ministry_id: number
+  ministryId?: number    // camelCase alias after transformKeys
   name_es: string
+  nameEs?: string        // camelCase alias after transformKeys
   name_fr?: string
+  nameFr?: string        // camelCase alias after transformKeys
   name_en?: string
+  nameEn?: string        // camelCase alias after transformKeys
   description_es?: string
+  descriptionEs?: string // camelCase alias after transformKeys
   description_fr?: string
+  descriptionFr?: string // camelCase alias after transformKeys
   description_en?: string
+  descriptionEn?: string // camelCase alias after transformKeys
   display_order?: number
+  displayOrder?: number  // camelCase alias after transformKeys
   icon?: string
   color?: string
   is_active: boolean
+  isActive?: boolean     // camelCase alias after transformKeys
   created_at: string
+  createdAt?: string     // camelCase alias after transformKeys
   updated_at?: string
+  updatedAt?: string     // camelCase alias after transformKeys
 }
 
 export interface Category {
   id: number
   category_code: string
+  categoryCode?: string  // camelCase alias after transformKeys
   sector_id?: number
+  sectorId?: number      // camelCase alias after transformKeys
   ministry_id?: number
+  ministryId?: number    // camelCase alias after transformKeys
   service_type?: ServiceTypeEnum
+  serviceType?: ServiceTypeEnum // camelCase alias after transformKeys
   name_es: string
+  nameEs?: string        // camelCase alias after transformKeys
+  name?: string          // fallback for generic name
   name_fr?: string
+  nameFr?: string        // camelCase alias after transformKeys
   name_en?: string
+  nameEn?: string        // camelCase alias after transformKeys
   description_es?: string
+  descriptionEs?: string // camelCase alias after transformKeys
   description_fr?: string
+  descriptionFr?: string // camelCase alias after transformKeys
   description_en?: string
+  descriptionEn?: string // camelCase alias after transformKeys
   display_order?: number
+  displayOrder?: number  // camelCase alias after transformKeys
   icon?: string
   color?: string
   is_active: boolean
+  isActive?: boolean     // camelCase alias after transformKeys
   created_at: string
+  createdAt?: string     // camelCase alias after transformKeys
   updated_at?: string
+  updatedAt?: string     // camelCase alias after transformKeys
 }
 
 // =============================================================================
