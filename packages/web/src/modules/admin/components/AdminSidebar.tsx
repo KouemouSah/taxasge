@@ -143,7 +143,8 @@ export default function AdminSidebar() {
       title: t('nav.logoutSuccess'),
       description: t('nav.logoutMessage'),
     })
-    router.push(`/${locale}/auth`)
+    // Redirect to homepage after logout
+    router.push(`/${locale}`)
   }
 
   return (
