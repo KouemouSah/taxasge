@@ -21,11 +21,17 @@ import usersApi from '@/modules/users-admin/services/api'
 import auditLogsApi from '@/modules/audit-logs-admin/services/api'
 
 interface UserStats {
-  total_users: number
-  active_users: number
-  new_users_this_month: number
-  users_by_role: Record<string, number>
-  users_by_status: Record<string, number>
+  // Backend returns snake_case, transformKeys converts to camelCase
+  totalUsers?: number
+  total_users?: number  // fallback
+  activeUsers?: number
+  active_users?: number  // fallback
+  newUsersThisMonth?: number
+  new_users_this_month?: number  // fallback
+  usersByRole?: Record<string, number>
+  users_by_role?: Record<string, number>  // fallback
+  usersByStatus?: Record<string, number>
+  users_by_status?: Record<string, number>  // fallback
 }
 
 interface AuditStats {
@@ -54,12 +60,13 @@ export default function StatsCards() {
         ])
 
         if (usersData.status === 'fulfilled') {
+          const data = usersData.value as UserStats
           setUserStats({
-            total_users: usersData.value.total || 0,
-            active_users: usersData.value.by_status?.active || 0,
-            new_users_this_month: 0, // Not provided by current API
-            users_by_role: usersData.value.by_role || {},
-            users_by_status: usersData.value.by_status || {},
+            totalUsers: data.totalUsers ?? data.total_users ?? 0,
+            activeUsers: data.activeUsers ?? data.active_users ?? 0,
+            newUsersThisMonth: data.newUsersThisMonth ?? data.new_users_this_month ?? 0,
+            usersByRole: data.usersByRole ?? data.users_by_role ?? {},
+            usersByStatus: data.usersByStatus ?? data.users_by_status ?? {},
           })
         }
 
@@ -77,16 +84,18 @@ export default function StatsCards() {
   }, [])
 
   // Calculate derived stats
-  const totalUsers = userStats?.total_users || 0
-  const activeRoles = userStats ? Object.keys(userStats.users_by_role).length : 0
+  const totalUsers = userStats?.totalUsers ?? userStats?.total_users ?? 0
+  const usersByRole = userStats?.usersByRole ?? userStats?.users_by_role ?? {}
+  const activeRoles = Object.keys(usersByRole).length
   const totalPermissions = 52 // Static for now - permissions catalog
   const activityCount = auditStats?.total_logs || 0
+  const activeUsers = userStats?.activeUsers ?? userStats?.active_users ?? 0
 
   const stats = [
     {
       name: t('totalUsersLabel'),
       value: totalUsers.toLocaleString(),
-      change: userStats?.active_users ? `${Math.round((userStats.active_users / totalUsers) * 100)}%` : '0%',
+      change: activeUsers && totalUsers ? `${Math.round((activeUsers / totalUsers) * 100)}% activos` : '0%',
       changeType: 'positive' as const,
       icon: Users,
       description: t('vsLastMonth'),

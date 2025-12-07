@@ -193,11 +193,16 @@ export const usersApi = {
    * Get user statistics
    * BACKEND: GET /api/v1/admin/users/stats
    * ROUTE: get_user_stats() in user_management_routes.py:423
+   *
+   * Backend returns: total_users, active_users, new_users_this_month, users_by_role, users_by_status
    */
   getStats: async (): Promise<{
-    total: number;
-    by_role: Record<string, number>;
-    by_status: Record<string, number>;
+    total_users: number;
+    active_users: number;
+    new_users_this_month: number;
+    users_by_role: Record<string, number>;
+    users_by_status: Record<string, number>;
+    users_by_city?: Record<string, number>;
   }> => {
     return fetchClient.get(`${ADMIN_USERS_BASE}/stats`);
   },
