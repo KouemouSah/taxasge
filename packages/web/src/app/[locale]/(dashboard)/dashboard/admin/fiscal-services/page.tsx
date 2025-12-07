@@ -202,10 +202,10 @@ export default function FiscalServicesPage() {
     const serviceCategory = categories.find(c => c.id === service.categoryId)
 
     const matchesMinistry = ministryFilter === 'all' ||
-      (serviceCategory && serviceCategory.ministry_id === ministryFilter)
+      (serviceCategory && (serviceCategory.ministryId ?? serviceCategory.ministry_id) === ministryFilter)
 
     const matchesSector = sectorFilter === 'all' ||
-      (serviceCategory && serviceCategory.sector_id === sectorFilter)
+      (serviceCategory && (serviceCategory.sectorId ?? serviceCategory.sector_id) === sectorFilter)
 
     const matchesType = typeFilter === 'all' || service.serviceType === typeFilter
 
@@ -347,7 +347,7 @@ export default function FiscalServicesPage() {
                 <SelectContent>
                   <SelectItem value="all">{t('allMinistries')}</SelectItem>
                   {ministries.map((m) => (
-                    <SelectItem key={m.id} value={String(m.id)}>{m.name_es}</SelectItem>
+                    <SelectItem key={m.id} value={String(m.id)}>{m.nameEs || m.name_es}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -359,7 +359,7 @@ export default function FiscalServicesPage() {
                 <SelectContent>
                   <SelectItem value="all">{t('allSectors')}</SelectItem>
                   {sectors.map((s) => (
-                    <SelectItem key={s.id} value={String(s.id)}>{s.name_es}</SelectItem>
+                    <SelectItem key={s.id} value={String(s.id)}>{s.nameEs || s.name_es}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -371,7 +371,7 @@ export default function FiscalServicesPage() {
                 <SelectContent>
                   <SelectItem value="all">{t('allCategories')}</SelectItem>
                   {categories.map((c) => (
-                    <SelectItem key={c.id} value={String(c.id)}>{c.name_es}</SelectItem>
+                    <SelectItem key={c.id} value={String(c.id)}>{c.nameEs || c.name_es}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
