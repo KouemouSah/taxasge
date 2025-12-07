@@ -303,19 +303,21 @@ export const hierarchyApi = {
 export const fiscalServicesApi = {
   /**
    * GET /api/v1/fiscal-services
-   * List fiscal services with pagination
+   * List fiscal services with pagination and filters
    */
   list: async (params?: {
     page?: number
     pageSize?: number
     categoryId?: number
-    isActive?: boolean
+    status?: string
+    language?: string
   }): Promise<FiscalServiceListResponse> => {
     const queryParams = new URLSearchParams()
     if (params?.page) queryParams.append('page', String(params.page))
     if (params?.pageSize) queryParams.append('page_size', String(params.pageSize))
     if (params?.categoryId) queryParams.append('category_id', String(params.categoryId))
-    if (params?.isActive !== undefined) queryParams.append('is_active', String(params.isActive))
+    if (params?.status) queryParams.append('status', params.status)
+    if (params?.language) queryParams.append('language', params.language)
 
     const query = queryParams.toString()
     return client.get<FiscalServiceListResponse>(

@@ -34,7 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { FileText, RefreshCw, AlertTriangle, Search, Plus, Upload, Eye, Edit, Trash2, TrendingUp, CheckCircle2, BarChart3 } from 'lucide-react'
+import { FileText, RefreshCw, AlertTriangle, Search, Plus, Upload, Eye, Edit, Trash2, TrendingUp, CheckCircle2, BarChart3, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import fiscalServicesAPI from '@/modules/fiscal-services/services/api'
 import type {
@@ -76,9 +76,10 @@ export default function FiscalServicesPage() {
   const [statusFilter, setStatusFilter] = useState<ServiceStatusEnum | 'all'>('all')
 
   // Pagination states
-  const [currentPage, _setCurrentPage] = useState(1)
-  const [pageSize] = useState(20)
-  const [_totalServices, setTotalServices] = useState(0)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+  const [totalServices, setTotalServices] = useState(0)
+  const totalPages = Math.ceil(totalServices / pageSize)
 
   // Fetch hierarchy data (ministries, sectors, categories)
   const fetchHierarchyData = async () => {
@@ -106,10 +107,12 @@ export default function FiscalServicesPage() {
         page?: number
         pageSize?: number
         categoryId?: number
-        isActive?: boolean
+        status?: string
+        language?: string
       } = {
         page: currentPage,
         pageSize,
+        language: locale,
       }
 
       if (categoryFilter !== 'all') {
@@ -117,7 +120,7 @@ export default function FiscalServicesPage() {
       }
 
       if (statusFilter !== 'all') {
-        params.isActive = statusFilter === 'active'
+        params.status = statusFilter
       }
 
       const response = await fiscalServicesAPI.services.list(params)
@@ -411,47 +414,97 @@ export default function FiscalServicesPage() {
           )}
 
           {!isLoading && !error && filteredServices.length > 0 && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('tableCode')}</TableHead>
-                  <TableHead>{t('tableName')}</TableHead>
-                  <TableHead>{t('tableType')}</TableHead>
-                  <TableHead>{t('tableStatus')}</TableHead>
-                  <TableHead>{t('tableExpeditionAmount')}</TableHead>
-                  <TableHead>{t('tableRenewalAmount')}</TableHead>
-                  <TableHead className="text-right">{t('tableActions')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredServices.map((service) => (
-                  <TableRow key={service.id}>
-                    <TableCell className="font-mono text-sm">{service.serviceCode}</TableCell>
-                    <TableCell className="font-medium">{service.nameEs}</TableCell>
-                    <TableCell>{getTypeBadge(service.serviceType)}</TableCell>
-                    <TableCell>{getStatusBadge(service.status)}</TableCell>
-                    <TableCell>{formatCurrency(service.tasaExpedicion)}</TableCell>
-                    <TableCell>{formatCurrency(service.tasaRenovacion)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => router.push(`/${locale}/dashboard/admin/fiscal-services/${service.id}`)}>
-                          <Eye className="h-4 w-4 mr-1" />
-                          {t('view')}
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => router.push(`/${locale}/dashboard/admin/fiscal-services/${service.id}/edit`)}>
-                          <Edit className="h-4 w-4 mr-1" />
-                          {t('edit')}
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDelete(service)}>
-                          <Trash2 className="h-4 w-4 mr-1" />
-                          {t('delete')}
-                        </Button>
-                      </div>
-                    </TableCell>
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t('tableCode')}</TableHead>
+                    <TableHead>{t('tableName')}</TableHead>
+                    <TableHead>{t('tableType')}</TableHead>
+                    <TableHead>{t('tableStatus')}</TableHead>
+                    <TableHead>{t('tableExpeditionAmount')}</TableHead>
+                    <TableHead>{t('tableRenewalAmount')}</TableHead>
+                    <TableHead className="text-right">{t('tableActions')}</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredServices.map((service) => (
+                    <TableRow key={service.id}>
+                      <TableCell className="font-mono text-sm">{service.serviceCode}</TableCell>
+                      <TableCell className="font-medium">{service.nameEs}</TableCell>
+                      <TableCell>{getTypeBadge(service.serviceType)}</TableCell>
+                      <TableCell>{getStatusBadge(service.status)}</TableCell>
+                      <TableCell>{formatCurrency(service.tasaExpedicion)}</TableCell>
+                      <TableCell>{formatCurrency(service.tasaRenovacion)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button variant="ghost" size="sm" onClick={() => router.push(`/${locale}/dashboard/admin/fiscal-services/${service.id}`)}>
+                            <Eye className="h-4 w-4 mr-1" />
+                            {t('view')}
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => router.push(`/${locale}/dashboard/admin/fiscal-services/${service.id}/edit`)}>
+                            <Edit className="h-4 w-4 mr-1" />
+                            {t('edit')}
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDelete(service)}>
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            {t('delete')}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              {/* Pagination Controls */}
+              <div className="flex items-center justify-between px-2 py-4 border-t">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">{t('rowsPerPage')}</span>
+                  <Select
+                    value={String(pageSize)}
+                    onValueChange={(v) => {
+                      setPageSize(Number(v))
+                      setCurrentPage(1)
+                    }}
+                  >
+                    <SelectTrigger className="w-[70px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    {t('page')} {currentPage} {t('of')} {totalPages || 1}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    {t('previous')}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage >= totalPages}
+                  >
+                    {t('next')}
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

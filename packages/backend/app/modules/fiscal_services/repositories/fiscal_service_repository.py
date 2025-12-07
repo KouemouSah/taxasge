@@ -451,7 +451,7 @@ class FiscalServiceRepository:
         self,
         conn: asyncpg.Connection,
         category_id: Optional[str] = None,
-        is_active: Optional[bool] = None,
+        status: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[List[Dict[str, Any]], int]:
@@ -465,9 +465,9 @@ class FiscalServiceRepository:
             params.append(category_id)
             param_idx += 1
 
-        if is_active is not None:
-            conditions.append(f"fs.is_active = ${param_idx}")
-            params.append(is_active)
+        if status is not None:
+            conditions.append(f"fs.status = ${param_idx}")
+            params.append(status)
             param_idx += 1
 
         where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
@@ -476,19 +476,39 @@ class FiscalServiceRepository:
         count_query = f"SELECT COUNT(*) FROM fiscal_services fs {where_clause}"
         total = await conn.fetchval(count_query, *params)
 
-        # Data
+        # Data - Optimized query with aggregated keywords
         data_query = f"""
             SELECT
-                fs.*,
-                c.name_fr as category_name,
-                s.name_fr as sector_name,
-                m.name_fr as ministry_name
+                fs.id,
+                fs.service_code,
+                fs.category_id,
+                fs.name_es,
+                fs.description_es,
+                fs.service_type,
+                fs.calculation_method,
+                fs.tasa_expedicion,
+                fs.tasa_renovacion,
+                fs.status,
+                fs.priority,
+                fs.processing_time_days,
+                fs.view_count,
+                fs.created_at,
+                fs.updated_at,
+                c.name_es as category_name,
+                s.name_es as sector_name,
+                m.name_es as ministry_name,
+                COALESCE(
+                    (SELECT array_agg(sk.keyword)
+                     FROM service_keywords sk
+                     WHERE sk.fiscal_service_id = fs.id),
+                    ARRAY[]::text[]
+                ) as keywords
             FROM fiscal_services fs
-            JOIN categories c ON fs.category_id = c.id
-            JOIN sectors s ON c.sector_id = s.id
-            JOIN ministries m ON s.ministry_id = m.id
+            LEFT JOIN categories c ON fs.category_id = c.id
+            LEFT JOIN sectors s ON c.sector_id = s.id
+            LEFT JOIN ministries m ON s.ministry_id = m.id
             {where_clause}
-            ORDER BY fs.code
+            ORDER BY fs.service_code
             LIMIT ${param_idx} OFFSET ${param_idx + 1}
         """
         params.extend([limit, offset])
@@ -497,12 +517,7 @@ class FiscalServiceRepository:
         services = []
         for r in results:
             service = dict(r)
-            # Get keywords
-            keywords = await conn.fetch(
-                "SELECT keyword FROM service_keywords WHERE fiscal_service_id = $1",
-                service["id"],
-            )
-            service["keywords"] = [k["keyword"] for k in keywords]
+            service["keywords"] = list(service.get("keywords") or [])
             service["required_documents"] = []
             services.append(service)
 
@@ -544,9 +559,9 @@ class FiscalServiceRepository:
             params.append(search.calculation_type.value)
             param_idx += 1
 
-        if search.is_active is not None:
-            conditions.append(f"fs.is_active = ${param_idx}")
-            params.append(search.is_active)
+        if search.status is not None:
+            conditions.append(f"fs.status = ${param_idx}")
+            params.append(search.status)
             param_idx += 1
 
         if search.requires_documents is not None:

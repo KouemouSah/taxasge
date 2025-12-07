@@ -42,8 +42,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Shield, Plus, Search, Pencil, Trash2, Loader2, AlertCircle, Lock, Building2 } from 'lucide-react'
-import { useRoles, useCreateRole, useUpdateRole, useDeleteRole } from '@/modules/roles-admin'
+import { Shield, Plus, Search, Pencil, Trash2, Loader2, AlertCircle, Lock, Building2, Key } from 'lucide-react'
+import { useRoles, useCreateRole, useUpdateRole, useDeleteRole, RolePermissionsDialog } from '@/modules/roles-admin'
 import type { Role, CreateRoleRequest, UpdateRoleRequest } from '@/modules/roles-admin'
 import { toast } from 'sonner'
 
@@ -57,6 +57,7 @@ export default function RolesPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isPermissionsDialogOpen, setIsPermissionsDialogOpen] = useState(false)
   const [selectedRole, setSelectedRole] = useState<Role | null>(null)
 
   // Form state
@@ -144,6 +145,11 @@ export default function RolesPage() {
   const openDeleteDialog = (role: Role) => {
     setSelectedRole(role)
     setIsDeleteDialogOpen(true)
+  }
+
+  const openPermissionsDialog = (role: Role) => {
+    setSelectedRole(role)
+    setIsPermissionsDialogOpen(true)
   }
 
   const resetForm = () => {
@@ -373,6 +379,14 @@ export default function RolesPage() {
                           <Button
                             variant="ghost"
                             size="icon"
+                            onClick={() => openPermissionsDialog(role)}
+                            title={t('managePermissions') || 'Manage Permissions'}
+                          >
+                            <Key className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() => openEditDialog(role)}
                             disabled={role.is_system}
                             title={role.is_system ? (t('cannotEditSystem') || 'Cannot edit system roles') : ''}
@@ -467,6 +481,13 @@ export default function RolesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Role Permissions Dialog */}
+      <RolePermissionsDialog
+        role={selectedRole}
+        open={isPermissionsDialogOpen}
+        onOpenChange={setIsPermissionsDialogOpen}
+      />
     </div>
   )
 }

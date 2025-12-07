@@ -99,14 +99,15 @@ async def list_categories(
 @router.get("", response_model=FiscalServiceListResponse)
 async def list_fiscal_services(
     page: int = Query(1, ge=1),
-    page_size: int = Query(50, ge=1, le=100),
+    page_size: int = Query(20, ge=1, le=100),
     category_id: str = Query(None, description="Filter by category"),
-    is_active: bool = Query(True, description="Filter by active status"),
+    status: str = Query(None, description="Filter by status (active, inactive, draft, deprecated)"),
+    language: str = Query("es", pattern="^(es|fr|en)$", description="Language for translations"),
     db=Depends(get_database),
 ):
-    """List fiscal services with pagination"""
+    """List fiscal services with pagination and i18n support"""
     offset = (page - 1) * page_size
-    services, total = await repository.list(db, category_id, is_active, page_size, offset)
+    services, total = await repository.list(db, category_id, status, page_size, offset)
     total_pages = (total + page_size - 1) // page_size if total > 0 else 0
     return FiscalServiceListResponse(
         services=[FiscalServiceResponse(**s) for s in services],
