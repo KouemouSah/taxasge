@@ -1024,7 +1024,13 @@
       "customRole": "Rôle personnalisé (Optionnel)",
       "selectCustomRole": "Sélectionner un rôle personnalisé...",
       "noCustomRole": "Aucun rôle personnalisé",
-      "customRoleDescription": "Attribuer un rôle personnalisé pour des permissions granulaires au-delà du rôle de base."
+      "customRoleDescription": "Attribuer un rôle personnalisé pour des permissions granulaires au-delà du rôle de base.",
+      "backendUnavailableTitle": "Backend indisponible",
+      "backendUnavailableDescription": "Impossible de se connecter au serveur backend.",
+      "backendUnavailableReason1": "Le serveur backend est arrêté",
+      "backendUnavailableReason2": "Problèmes de réseau ou de connectivité",
+      "backendUnavailableReason3": "Erreur de configuration du serveur",
+      "backendUnavailableInstructions": "Contactez l'administrateur système si le problème persiste."
     },
     "roles": {
       "title": "Rôles",

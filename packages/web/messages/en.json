@@ -1024,7 +1024,13 @@
       "customRole": "Custom Role (Optional)",
       "selectCustomRole": "Select a custom role...",
       "noCustomRole": "No custom role",
-      "customRoleDescription": "Assign a custom role for granular permissions beyond the base role."
+      "customRoleDescription": "Assign a custom role for granular permissions beyond the base role.",
+      "backendUnavailableTitle": "Backend Unavailable",
+      "backendUnavailableDescription": "Unable to connect to the backend server.",
+      "backendUnavailableReason1": "The backend server is down",
+      "backendUnavailableReason2": "Network or connectivity issues",
+      "backendUnavailableReason3": "Server configuration error",
+      "backendUnavailableInstructions": "Contact the system administrator if the problem persists."
     },
     "roles": {
       "title": "Roles",

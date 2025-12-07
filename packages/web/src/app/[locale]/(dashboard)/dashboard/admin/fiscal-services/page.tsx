@@ -84,9 +84,9 @@ export default function FiscalServicesPage() {
   const fetchHierarchyData = async () => {
     try {
       const [ministriesData, sectorsData, categoriesData] = await Promise.all([
-        fiscalServicesAPI.hierarchy.ministries.list(),
-        fiscalServicesAPI.hierarchy.sectors.list(),
-        fiscalServicesAPI.hierarchy.categories.list(),
+        fiscalServicesAPI.hierarchy.ministries.list(locale),
+        fiscalServicesAPI.hierarchy.sectors.list(undefined, locale),
+        fiscalServicesAPI.hierarchy.categories.list(undefined, locale),
       ])
       setMinistries(ministriesData)
       setSectors(sectorsData)
@@ -155,12 +155,13 @@ export default function FiscalServicesPage() {
   useEffect(() => {
     fetchHierarchyData()
     fetchStats()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locale])
 
   useEffect(() => {
     fetchServices()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, categoryFilter, statusFilter])
+  }, [currentPage, categoryFilter, statusFilter, locale])
 
   const handleRefresh = () => {
     fetchServices()
