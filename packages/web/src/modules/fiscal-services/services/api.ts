@@ -562,11 +562,13 @@ export const documentsApi = {
   /**
    * GET /api/v1/document-templates
    * Get all available document templates with i18n support
+   * Note: Backend returns paginated response, extract templates array
    */
   templates: {
     list: async (language: string = 'es'): Promise<DocumentTemplate[]> => {
-      const response = await client.get<DocumentTemplate[]>(`/document-templates?language=${language}`)
-      return transformKeys<DocumentTemplate[]>(response)
+      const response = await client.get<{ templates: DocumentTemplate[]; total: number }>(`/document-templates?language=${language}`)
+      const transformed = transformKeys<{ templates: DocumentTemplate[] }>(response)
+      return transformed.templates || []
     },
   },
 }
@@ -624,11 +626,13 @@ export const proceduresApi = {
   /**
    * GET /api/v1/procedure-templates
    * Get all available procedure templates with i18n support
+   * Note: Backend returns paginated response, extract templates array
    */
   templates: {
     list: async (language: string = 'es'): Promise<ProcedureTemplate[]> => {
-      const response = await client.get<ProcedureTemplate[]>(`/procedure-templates?language=${language}`)
-      return transformKeys<ProcedureTemplate[]>(response)
+      const response = await client.get<{ templates: ProcedureTemplate[]; total: number }>(`/procedure-templates?language=${language}`)
+      const transformed = transformKeys<{ templates: ProcedureTemplate[] }>(response)
+      return transformed.templates || []
     },
 
     /**
