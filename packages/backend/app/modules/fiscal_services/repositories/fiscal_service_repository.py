@@ -454,6 +454,18 @@ class FiscalServiceRepository:
 
         service_dict = dict(result)
 
+        # Ensure JSONB fields have proper defaults (Pydantic expects dict/list, not None)
+        json_dict_fields = ["calculation_config", "penalty_calculation_rules", "eligibility_criteria"]
+        json_list_fields = ["rate_tiers", "exemption_conditions", "regulatory_articles"]
+
+        for field in json_dict_fields:
+            if service_dict.get(field) is None:
+                service_dict[field] = {}
+
+        for field in json_list_fields:
+            if service_dict.get(field) is None:
+                service_dict[field] = []
+
         # Get keywords
         keywords = await conn.fetch(
             "SELECT keyword FROM service_keywords WHERE fiscal_service_id = $1",
