@@ -454,17 +454,23 @@ class FiscalServiceRepository:
 
         service_dict = dict(result)
 
-        # Ensure JSONB fields have proper defaults (Pydantic expects dict/list, not None)
+        # Ensure JSONB/array fields have proper defaults (Pydantic expects dict/list)
+        # Handle None, empty strings, and invalid types
         json_dict_fields = ["calculation_config", "penalty_calculation_rules", "eligibility_criteria"]
         json_list_fields = ["rate_tiers", "exemption_conditions", "regulatory_articles"]
 
         for field in json_dict_fields:
-            if service_dict.get(field) is None:
+            val = service_dict.get(field)
+            if not isinstance(val, dict):
                 service_dict[field] = {}
 
         for field in json_list_fields:
-            if service_dict.get(field) is None:
+            val = service_dict.get(field)
+            if not isinstance(val, (list, tuple)):
                 service_dict[field] = []
+            elif isinstance(val, tuple):
+                # Convert PostgreSQL ARRAY (tuple) to list
+                service_dict[field] = list(val)
 
         # Get keywords
         keywords = await conn.fetch(
