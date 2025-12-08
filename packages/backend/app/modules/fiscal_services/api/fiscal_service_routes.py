@@ -119,7 +119,7 @@ async def list_fiscal_services(
 
 
 @router.get("/{service_id}", response_model=FiscalServiceResponse)
-async def get_fiscal_service(service_id: str, db=Depends(get_database)):
+async def get_fiscal_service(service_id: int, db=Depends(get_database)):
     """Get fiscal service by ID"""
     service = await repository.get_by_id(db, service_id)
     if not service:
@@ -991,7 +991,7 @@ async def create_fiscal_service(
 
 @router.put("/admin/services/{service_id}", response_model=FiscalServiceResponse)
 async def update_fiscal_service(
-    service_id: str,
+    service_id: int,
     update_data: FiscalServiceUpdate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
@@ -1010,7 +1010,7 @@ async def update_fiscal_service(
 
 @router.delete("/admin/services/{service_id}", status_code=status.HTTP_200_OK)
 async def delete_fiscal_service(
-    service_id: str,
+    service_id: int,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
     _: None = Depends(permission_required("fiscal_services.delete"))

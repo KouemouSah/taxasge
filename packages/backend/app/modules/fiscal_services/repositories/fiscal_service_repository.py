@@ -397,7 +397,7 @@ class FiscalServiceRepository:
         return service_dict
 
     async def get_by_id(
-        self, conn: asyncpg.Connection, service_id: str
+        self, conn: asyncpg.Connection, service_id: int
     ) -> Optional[Dict[str, Any]]:
         """Get fiscal service by ID with hierarchical data"""
         query = """
@@ -685,7 +685,7 @@ class FiscalServiceRepository:
         return services
 
     async def update(
-        self, conn: asyncpg.Connection, service_id: str, update_data: FiscalServiceUpdate
+        self, conn: asyncpg.Connection, service_id: int, update_data: FiscalServiceUpdate
     ) -> Optional[Dict[str, Any]]:
         """Update fiscal service"""
         updates = []
@@ -727,7 +727,7 @@ class FiscalServiceRepository:
 
         return await self.get_by_id(conn, service_id)
 
-    async def delete(self, conn: asyncpg.Connection, service_id: str) -> bool:
+    async def delete(self, conn: asyncpg.Connection, service_id: int) -> bool:
         """Delete fiscal service"""
         # Delete keywords
         await conn.execute(
@@ -751,7 +751,7 @@ class FiscalServiceRepository:
         return result == "DELETE 1"
 
     async def increment_usage(
-        self, conn: asyncpg.Connection, service_id: str
+        self, conn: asyncpg.Connection, service_id: int
     ) -> None:
         """Increment usage counter"""
         await conn.execute(
