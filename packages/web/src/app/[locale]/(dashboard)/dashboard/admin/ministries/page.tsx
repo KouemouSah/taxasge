@@ -163,16 +163,16 @@ export default function MinistriesPage() {
   const handleEdit = (ministry: Ministry) => {
     setSelectedMinistry(ministry)
     setFormData({
-      ministry_code: ministry.ministry_code || '',
-      name_es: ministry.name_es || '',
-      description_es: ministry.description_es || '',
-      display_order: ministry.display_order || 0,
+      ministry_code: ministry.ministryCode || ministry.ministry_code || '',
+      name_es: ministry.nameEs || ministry.name_es || '',
+      description_es: ministry.descriptionEs || ministry.description_es || '',
+      display_order: ministry.displayOrder ?? ministry.display_order ?? 0,
       icon: ministry.icon || '',
       color: ministry.color || '#3B82F6',
-      website_url: ministry.website_url || '',
-      contact_email: ministry.contact_email || '',
-      contact_phone: ministry.contact_phone || '',
-      is_active: ministry.is_active !== false,
+      website_url: ministry.websiteUrl || ministry.website_url || '',
+      contact_email: ministry.contactEmail || ministry.contact_email || '',
+      contact_phone: ministry.contactPhone || ministry.contact_phone || '',
+      is_active: (ministry.isActive ?? ministry.is_active) !== false,
     })
     setIsDialogOpen(true)
   }
@@ -271,14 +271,15 @@ export default function MinistriesPage() {
   // Filter ministries
   const filteredMinistries = ministries.filter(m => {
     const name = getLocalizedName(m, locale)
-    const code = m.ministry_code || ''
+    const code = m.ministryCode || m.ministry_code || ''
     const matchesSearch = searchQuery === '' ||
       name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       code.toLowerCase().includes(searchQuery.toLowerCase())
 
+    const isActive = (m.isActive ?? m.is_active) !== false
     const matchesStatus = statusFilter === 'all' ||
-      (statusFilter === 'active' && m.is_active !== false) ||
-      (statusFilter === 'inactive' && m.is_active === false)
+      (statusFilter === 'active' && isActive) ||
+      (statusFilter === 'inactive' && !isActive)
 
     return matchesSearch && matchesStatus
   })
@@ -292,20 +293,20 @@ export default function MinistriesPage() {
 
     switch (sortColumn) {
       case 'ministry_code':
-        aValue = a.ministry_code || ''
-        bValue = b.ministry_code || ''
+        aValue = a.ministryCode || a.ministry_code || ''
+        bValue = b.ministryCode || b.ministry_code || ''
         break
       case 'name_es':
-        aValue = a.name_es || ''
-        bValue = b.name_es || ''
+        aValue = a.nameEs || a.name_es || ''
+        bValue = b.nameEs || b.name_es || ''
         break
       case 'display_order':
-        aValue = a.display_order || 0
-        bValue = b.display_order || 0
+        aValue = a.displayOrder ?? a.display_order ?? 0
+        bValue = b.displayOrder ?? b.display_order ?? 0
         break
       case 'is_active':
-        aValue = a.is_active !== false
-        bValue = b.is_active !== false
+        aValue = (a.isActive ?? a.is_active) !== false
+        bValue = (b.isActive ?? b.is_active) !== false
         break
       default:
         return 0
@@ -363,7 +364,7 @@ export default function MinistriesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {ministries.filter(m => m.is_active !== false).length}
+              {ministries.filter(m => (m.isActive ?? m.is_active) !== false).length}
             </div>
           </CardContent>
         </Card>
@@ -375,7 +376,7 @@ export default function MinistriesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {ministries.filter(m => m.is_active === false).length}
+              {ministries.filter(m => (m.isActive ?? m.is_active) === false).length}
             </div>
           </CardContent>
         </Card>
@@ -509,7 +510,7 @@ export default function MinistriesPage() {
                   {paginatedMinistries.map((ministry) => (
                     <TableRow key={ministry.id}>
                       <TableCell className="font-mono text-sm">
-                        {ministry.ministry_code}
+                        {ministry.ministryCode || ministry.ministry_code}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -522,13 +523,13 @@ export default function MinistriesPage() {
                           <span className="font-medium">{getLocalizedName(ministry, locale)}</span>
                         </div>
                       </TableCell>
-                      <TableCell>{ministry.display_order || 0}</TableCell>
+                      <TableCell>{ministry.displayOrder ?? ministry.display_order ?? 0}</TableCell>
                       <TableCell>
                         <Badge
                           variant="outline"
-                          className={ministry.is_active !== false ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}
+                          className={(ministry.isActive ?? ministry.is_active) !== false ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}
                         >
-                          {ministry.is_active !== false ? t('statusActive') : t('statusInactive')}
+                          {(ministry.isActive ?? ministry.is_active) !== false ? t('statusActive') : t('statusInactive')}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">

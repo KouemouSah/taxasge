@@ -161,14 +161,14 @@ export default function SectorsPage() {
   const handleEdit = (sector: Sector) => {
     setSelectedSector(sector)
     setFormData({
-      sector_code: sector.sector_code || '',
-      ministry_id: sector.ministry_id || null,
-      name_es: sector.name_es || '',
-      description_es: sector.description_es || '',
-      display_order: sector.display_order || 0,
+      sector_code: sector.sectorCode || sector.sector_code || '',
+      ministry_id: sector.ministryId ?? sector.ministry_id ?? null,
+      name_es: sector.nameEs || sector.name_es || '',
+      description_es: sector.descriptionEs || sector.description_es || '',
+      display_order: sector.displayOrder ?? sector.display_order ?? 0,
       icon: sector.icon || '',
       color: sector.color || '#10B981',
-      is_active: sector.is_active !== false,
+      is_active: (sector.isActive ?? sector.is_active) !== false,
     })
     setIsDialogOpen(true)
   }
@@ -277,14 +277,16 @@ export default function SectorsPage() {
   // Filter sectors
   const filteredSectors = sectors.filter(s => {
     const name = getLocalizedName(s, locale)
-    const code = s.sector_code || ''
+    const code = s.sectorCode || s.sector_code || ''
     const matchesSearch = searchQuery === '' ||
       name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       code.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesMinistry = ministryFilter === 'all' || s.ministry_id === ministryFilter
+    const ministryId = s.ministryId ?? s.ministry_id
+    const matchesMinistry = ministryFilter === 'all' || ministryId === ministryFilter
+    const isActive = (s.isActive ?? s.is_active) !== false
     const matchesStatus = statusFilter === 'all' ||
-      (statusFilter === 'active' && s.is_active !== false) ||
-      (statusFilter === 'inactive' && s.is_active === false)
+      (statusFilter === 'active' && isActive) ||
+      (statusFilter === 'inactive' && !isActive)
 
     return matchesSearch && matchesMinistry && matchesStatus
   })
@@ -298,24 +300,24 @@ export default function SectorsPage() {
 
     switch (sortColumn) {
       case 'sector_code':
-        aValue = a.sector_code || ''
-        bValue = b.sector_code || ''
+        aValue = a.sectorCode || a.sector_code || ''
+        bValue = b.sectorCode || b.sector_code || ''
         break
       case 'name_es':
-        aValue = a.name_es || ''
-        bValue = b.name_es || ''
+        aValue = a.nameEs || a.name_es || ''
+        bValue = b.nameEs || b.name_es || ''
         break
       case 'ministry_id':
-        aValue = getMinistryName(a.ministry_id)
-        bValue = getMinistryName(b.ministry_id)
+        aValue = getMinistryName(a.ministryId ?? a.ministry_id)
+        bValue = getMinistryName(b.ministryId ?? b.ministry_id)
         break
       case 'display_order':
-        aValue = a.display_order || 0
-        bValue = b.display_order || 0
+        aValue = a.displayOrder ?? a.display_order ?? 0
+        bValue = b.displayOrder ?? b.display_order ?? 0
         break
       case 'is_active':
-        aValue = a.is_active !== false
-        bValue = b.is_active !== false
+        aValue = (a.isActive ?? a.is_active) !== false
+        bValue = (b.isActive ?? b.is_active) !== false
         break
       default:
         return 0
@@ -373,7 +375,7 @@ export default function SectorsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {sectors.filter(s => s.is_active !== false).length}
+              {sectors.filter(s => (s.isActive ?? s.is_active) !== false).length}
             </div>
           </CardContent>
         </Card>
@@ -385,7 +387,7 @@ export default function SectorsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {sectors.filter(s => s.is_active === false).length}
+              {sectors.filter(s => (s.isActive ?? s.is_active) === false).length}
             </div>
           </CardContent>
         </Card>
@@ -544,7 +546,7 @@ export default function SectorsPage() {
                   {paginatedSectors.map((sector) => (
                     <TableRow key={sector.id}>
                       <TableCell className="font-mono text-sm">
-                        {sector.sector_code}
+                        {sector.sectorCode || sector.sector_code}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -557,14 +559,14 @@ export default function SectorsPage() {
                           <span className="font-medium">{getLocalizedName(sector, locale)}</span>
                         </div>
                       </TableCell>
-                      <TableCell>{getMinistryName(sector.ministry_id)}</TableCell>
-                      <TableCell>{sector.display_order || 0}</TableCell>
+                      <TableCell>{getMinistryName(sector.ministryId ?? sector.ministry_id)}</TableCell>
+                      <TableCell>{sector.displayOrder ?? sector.display_order ?? 0}</TableCell>
                       <TableCell>
                         <Badge
                           variant="outline"
-                          className={sector.is_active !== false ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}
+                          className={(sector.isActive ?? sector.is_active) !== false ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}
                         >
-                          {sector.is_active !== false ? t('statusActive') : t('statusInactive')}
+                          {(sector.isActive ?? sector.is_active) !== false ? t('statusActive') : t('statusInactive')}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">

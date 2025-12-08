@@ -598,28 +598,36 @@ type LocalizableEntity = Ministry | Sector | Category
 
 /**
  * Get localized name for an entity based on locale
- * Falls back to Spanish (name_es) if translation not available
+ * Falls back to Spanish (name_es/nameEs) if translation not available
+ * Supports both snake_case (backend) and camelCase (transformed) formats
  */
 export function getLocalizedName(entity: LocalizableEntity, locale: string): string {
-  if (locale === 'fr' && entity.name_fr) {
-    return entity.name_fr
+  // Check French - both camelCase and snake_case
+  if (locale === 'fr' && (entity.nameFr || entity.name_fr)) {
+    return entity.nameFr || entity.name_fr || ''
   }
-  if (locale === 'en' && entity.name_en) {
-    return entity.name_en
+  // Check English - both camelCase and snake_case
+  if (locale === 'en' && (entity.nameEn || entity.name_en)) {
+    return entity.nameEn || entity.name_en || ''
   }
-  return entity.name_es
+  // Default to Spanish - both camelCase and snake_case
+  return entity.nameEs || entity.name_es || ''
 }
 
 /**
  * Get localized description for an entity based on locale
- * Falls back to Spanish (description_es) if translation not available
+ * Falls back to Spanish (description_es/descriptionEs) if translation not available
+ * Supports both snake_case (backend) and camelCase (transformed) formats
  */
 export function getLocalizedDescription(entity: LocalizableEntity, locale: string): string | undefined {
-  if (locale === 'fr' && entity.description_fr) {
-    return entity.description_fr
+  // Check French - both camelCase and snake_case
+  if (locale === 'fr' && (entity.descriptionFr || entity.description_fr)) {
+    return entity.descriptionFr || entity.description_fr
   }
-  if (locale === 'en' && entity.description_en) {
-    return entity.description_en
+  // Check English - both camelCase and snake_case
+  if (locale === 'en' && (entity.descriptionEn || entity.description_en)) {
+    return entity.descriptionEn || entity.description_en
   }
-  return entity.description_es
+  // Default to Spanish - both camelCase and snake_case
+  return entity.descriptionEs || entity.description_es
 }

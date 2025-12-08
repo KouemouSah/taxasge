@@ -180,16 +180,16 @@ export default function CategoriesPage() {
   const handleEdit = (category: Category) => {
     setSelectedCategory(category)
     setFormData({
-      category_code: category.category_code || '',
-      sector_id: category.sector_id || null,
-      ministry_id: category.ministry_id || null,
-      service_type: category.service_type || null,
-      name_es: category.name_es || '',
-      description_es: category.description_es || '',
-      display_order: category.display_order || 0,
+      category_code: category.categoryCode || category.category_code || '',
+      sector_id: category.sectorId ?? category.sector_id ?? null,
+      ministry_id: category.ministryId ?? category.ministry_id ?? null,
+      service_type: category.serviceType || category.service_type || null,
+      name_es: category.nameEs || category.name_es || '',
+      description_es: category.descriptionEs || category.description_es || '',
+      display_order: category.displayOrder ?? category.display_order ?? 0,
       icon: category.icon || '',
       color: category.color || '#3B82F6',
-      is_active: category.is_active !== false,
+      is_active: (category.isActive ?? category.is_active) !== false,
     })
     setIsDialogOpen(true)
   }
@@ -287,14 +287,16 @@ export default function CategoriesPage() {
 
   // Get the ministry ID for a category (directly or via sector)
   const getCategoryMinistryId = (category: Category): number | undefined => {
-    // Direct ministry link
-    if (category.ministry_id) {
-      return category.ministry_id
+    // Direct ministry link - check both camelCase and snake_case
+    const directMinistryId = category.ministryId ?? category.ministry_id
+    if (directMinistryId) {
+      return directMinistryId
     }
-    // Via sector
-    if (category.sector_id) {
-      const sector = sectors.find(s => s.id === category.sector_id)
-      return sector?.ministry_id
+    // Via sector - check both camelCase and snake_case
+    const sectorId = category.sectorId ?? category.sector_id
+    if (sectorId) {
+      const sector = sectors.find(s => s.id === sectorId)
+      return sector?.ministryId ?? sector?.ministry_id
     }
     return undefined
   }
@@ -322,13 +324,14 @@ export default function CategoriesPage() {
   // Filter categories
   const filteredCategories = categories.filter(c => {
     const name = getLocalizedName(c, locale)
-    const code = c.category_code || ''
+    const code = c.categoryCode || c.category_code || ''
     const matchesSearch = searchQuery === '' ||
       name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       code.toLowerCase().includes(searchQuery.toLowerCase())
 
-    // Sector filter
-    const matchesSector = sectorFilter === 'all' || c.sector_id === sectorFilter
+    // Sector filter - check both camelCase and snake_case
+    const categorySectorId = c.sectorId ?? c.sector_id
+    const matchesSector = sectorFilter === 'all' || categorySectorId === sectorFilter
 
     // Ministry filter - check both direct ministry_id and via sector
     let matchesMinistry = true
@@ -337,10 +340,11 @@ export default function CategoriesPage() {
       matchesMinistry = categoryMinistryId === ministryFilter
     }
 
-    // Status filter
+    // Status filter - check both camelCase and snake_case
+    const isActive = (c.isActive ?? c.is_active) !== false
     const matchesStatus = statusFilter === 'all' ||
-      (statusFilter === 'active' && c.is_active !== false) ||
-      (statusFilter === 'inactive' && c.is_active === false)
+      (statusFilter === 'active' && isActive) ||
+      (statusFilter === 'inactive' && !isActive)
 
     return matchesSearch && matchesSector && matchesMinistry && matchesStatus
   })
@@ -354,28 +358,28 @@ export default function CategoriesPage() {
 
     switch (sortColumn) {
       case 'category_code':
-        aValue = a.category_code || ''
-        bValue = b.category_code || ''
+        aValue = a.categoryCode || a.category_code || ''
+        bValue = b.categoryCode || b.category_code || ''
         break
       case 'name_es':
-        aValue = a.name_es || ''
-        bValue = b.name_es || ''
+        aValue = getLocalizedName(a, locale)
+        bValue = getLocalizedName(b, locale)
         break
       case 'sector_id':
-        aValue = getSectorName(a.sector_id)
-        bValue = getSectorName(b.sector_id)
+        aValue = getSectorName(a.sectorId ?? a.sector_id)
+        bValue = getSectorName(b.sectorId ?? b.sector_id)
         break
       case 'ministry_id':
-        aValue = getMinistryName(a.ministry_id)
-        bValue = getMinistryName(b.ministry_id)
+        aValue = getMinistryName(a.ministryId ?? a.ministry_id)
+        bValue = getMinistryName(b.ministryId ?? b.ministry_id)
         break
       case 'display_order':
-        aValue = a.display_order || 0
-        bValue = b.display_order || 0
+        aValue = a.displayOrder ?? a.display_order ?? 0
+        bValue = b.displayOrder ?? b.display_order ?? 0
         break
       case 'is_active':
-        aValue = a.is_active !== false
-        bValue = b.is_active !== false
+        aValue = (a.isActive ?? a.is_active) !== false
+        bValue = (b.isActive ?? b.is_active) !== false
         break
       default:
         return 0
@@ -405,7 +409,7 @@ export default function CategoriesPage() {
 
   // Get filtered sectors based on ministry selection
   const filteredSectorsForSelect = ministryFilter !== 'all'
-    ? sectors.filter(s => s.ministry_id === ministryFilter)
+    ? sectors.filter(s => (s.ministryId ?? s.ministry_id) === ministryFilter)
     : sectors
 
   return (
@@ -438,7 +442,7 @@ export default function CategoriesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {categories.filter(c => c.is_active !== false).length}
+              {categories.filter(c => (c.isActive ?? c.is_active) !== false).length}
             </div>
           </CardContent>
         </Card>
@@ -450,7 +454,7 @@ export default function CategoriesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {categories.filter(c => c.is_active === false).length}
+              {categories.filter(c => (c.isActive ?? c.is_active) === false).length}
             </div>
           </CardContent>
         </Card>
@@ -637,7 +641,7 @@ export default function CategoriesPage() {
                   {paginatedCategories.map((category) => (
                     <TableRow key={category.id}>
                       <TableCell className="font-mono text-sm">
-                        {category.category_code}
+                        {category.categoryCode || category.category_code}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -650,15 +654,15 @@ export default function CategoriesPage() {
                           <span className="font-medium">{getLocalizedName(category, locale)}</span>
                         </div>
                       </TableCell>
-                      <TableCell>{getSectorName(category.sector_id)}</TableCell>
-                      <TableCell>{getMinistryName(category.ministry_id)}</TableCell>
-                      <TableCell>{category.display_order || 0}</TableCell>
+                      <TableCell>{getSectorName(category.sectorId ?? category.sector_id)}</TableCell>
+                      <TableCell>{getMinistryName(category.ministryId ?? category.ministry_id)}</TableCell>
+                      <TableCell>{category.displayOrder ?? category.display_order ?? 0}</TableCell>
                       <TableCell>
                         <Badge
                           variant="outline"
-                          className={category.is_active !== false ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}
+                          className={(category.isActive ?? category.is_active) !== false ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}
                         >
-                          {category.is_active !== false ? t('statusActive') : t('statusInactive')}
+                          {(category.isActive ?? category.is_active) !== false ? t('statusActive') : t('statusInactive')}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
@@ -835,7 +839,7 @@ export default function CategoriesPage() {
                   <SelectContent>
                     <SelectItem value="none">{t('noSector')}</SelectItem>
                     {(formData.ministry_id
-                      ? sectors.filter(s => s.ministry_id === formData.ministry_id)
+                      ? sectors.filter(s => (s.ministryId ?? s.ministry_id) === formData.ministry_id)
                       : sectors
                     ).map((s) => (
                       <SelectItem key={s.id} value={String(s.id)}>{getLocalizedName(s, locale)}</SelectItem>
