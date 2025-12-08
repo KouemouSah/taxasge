@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, HTTPException, Depends, status, Query
 from fastapi.security import HTTPBearer
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from loguru import logger
 import time
 
@@ -106,8 +106,8 @@ async def list_categories(
 async def list_fiscal_services(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    category_id: str = Query(None, description="Filter by category"),
-    status: str = Query(None, description="Filter by status (active, inactive, draft, deprecated)"),
+    category_id: Optional[int] = Query(None, description="Filter by category"),
+    status: Optional[str] = Query(None, description="Filter by status (active, inactive, draft, deprecated)"),
     language: str = Query("es", pattern="^(es|fr|en)$", description="Language for translations"),
     db=Depends(get_database),
 ):
