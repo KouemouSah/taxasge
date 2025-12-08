@@ -337,6 +337,9 @@ export interface ServiceDocumentAssignment {
   customNotes?: string
   assignedAt: string
   assignedBy?: number
+  // Populated by joins in repository
+  documentName?: string
+  serviceName?: string
 }
 
 // =============================================================================
@@ -419,6 +422,9 @@ export interface ServiceProcedureAssignment {
   overrideSteps?: Record<string, any>
   assignedAt: string
   assignedBy?: number
+  // Populated by joins in repository
+  procedureName?: string
+  serviceName?: string
 }
 
 // =============================================================================

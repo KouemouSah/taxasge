@@ -27,13 +27,15 @@ import {
   AlertTriangle,
   FileText,
   CheckCircle2,
-  Calendar,
   DollarSign,
   Info,
   BookOpen,
   Building,
   Settings,
   Clock,
+  Link2,
+  Check,
+  X,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import fiscalServicesAPI from '@/modules/fiscal-services/services/api'
@@ -43,6 +45,8 @@ import type {
   Ministry,
   Sector,
   Category,
+  ServiceDocumentAssignment,
+  ServiceProcedureAssignment,
 } from '@/types/fiscal-service'
 import { BackendUnavailableAlert } from '@/modules/admin/components'
 
@@ -64,6 +68,28 @@ export default function FiscalServiceDetailPage() {
   const [ministries, setMinistries] = useState<Ministry[]>([])
   const [sectors, setSectors] = useState<Sector[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+
+  // Assignments data
+  const [documentAssignments, setDocumentAssignments] = useState<ServiceDocumentAssignment[]>([])
+  const [procedureAssignments, setProcedureAssignments] = useState<ServiceProcedureAssignment[]>([])
+  const [isLoadingAssignments, setIsLoadingAssignments] = useState(false)
+
+  const fetchAssignments = async () => {
+    if (!serviceId) return
+    setIsLoadingAssignments(true)
+    try {
+      const [docs, procs] = await Promise.all([
+        fiscalServicesAPI.documents.list(serviceId),
+        fiscalServicesAPI.procedures.list(serviceId),
+      ])
+      setDocumentAssignments(docs)
+      setProcedureAssignments(procs)
+    } catch (err) {
+      console.error('Error fetching assignments:', err)
+    } finally {
+      setIsLoadingAssignments(false)
+    }
+  }
 
   const fetchHierarchy = async () => {
     try {
@@ -109,6 +135,7 @@ export default function FiscalServiceDetailPage() {
   useEffect(() => {
     fetchService()
     fetchHierarchy()
+    fetchAssignments()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serviceId])
 
@@ -255,7 +282,7 @@ export default function FiscalServiceDetailPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="basic" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="basic">
             <Info className="h-4 w-4 mr-2" />
             {t('tabs.basic')}
@@ -275,6 +302,10 @@ export default function FiscalServiceDetailPage() {
           <TabsTrigger value="legal">
             <BookOpen className="h-4 w-4 mr-2" />
             {t('tabs.legal')}
+          </TabsTrigger>
+          <TabsTrigger value="assignments">
+            <Link2 className="h-4 w-4 mr-2" />
+            {t('tabs.assignments')}
           </TabsTrigger>
           <TabsTrigger value="advanced">
             <Settings className="h-4 w-4 mr-2" />
@@ -542,6 +573,117 @@ export default function FiscalServiceDetailPage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Assignments Tab */}
+        <TabsContent value="assignments" className="space-y-6">
+          {isLoadingAssignments ? (
+            <div className="flex items-center justify-center h-32">
+              <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-muted-foreground">{t('loading')}</span>
+            </div>
+          ) : (
+            <>
+              {/* Document Assignments */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    {t('assignedDocuments')}
+                    <Badge variant="secondary" className="ml-2">{documentAssignments.length}</Badge>
+                  </CardTitle>
+                  <CardDescription>{t('assignedDocumentsDescription')}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {documentAssignments.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <FileText className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                      <p>{t('noAssignedDocuments')}</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {documentAssignments.map((doc) => (
+                        <div
+                          key={doc.id}
+                          className="flex items-center justify-between p-4 border rounded-lg bg-muted/30"
+                        >
+                          <div className="flex-1">
+                            <p className="font-medium">{doc.documentName || `Document #${doc.documentTemplateId}`}</p>
+                            {doc.customNotes && (
+                              <p className="text-sm text-muted-foreground mt-1">{doc.customNotes}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">{t('requiredForExpedition')}:</span>
+                              {doc.isRequiredExpedition ? (
+                                <Check className="h-4 w-4 text-green-600" />
+                              ) : (
+                                <X className="h-4 w-4 text-red-500" />
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">{t('requiredForRenewal')}:</span>
+                              {doc.isRequiredRenewal ? (
+                                <Check className="h-4 w-4 text-green-600" />
+                              ) : (
+                                <X className="h-4 w-4 text-red-500" />
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Procedure Assignments */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BookOpen className="h-5 w-5" />
+                    {t('assignedProcedures')}
+                    <Badge variant="secondary" className="ml-2">{procedureAssignments.length}</Badge>
+                  </CardTitle>
+                  <CardDescription>{t('assignedProceduresDescription')}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {procedureAssignments.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                      <p>{t('noAssignedProcedures')}</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {procedureAssignments.map((proc) => (
+                        <div
+                          key={proc.id}
+                          className="flex items-center justify-between p-4 border rounded-lg bg-muted/30"
+                        >
+                          <div className="flex-1">
+                            <p className="font-medium">{proc.procedureName || `Procedure #${proc.templateId}`}</p>
+                            {proc.customNotes && (
+                              <p className="text-sm text-muted-foreground mt-1">{proc.customNotes}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">{t('appliesTo')}:</span>
+                            <Badge variant="outline">
+                              {proc.appliesTo === 'expedition' ? t('expedition') :
+                               proc.appliesTo === 'renewal' ? t('renewal') :
+                               proc.appliesTo === 'both' ? t('both') :
+                               proc.appliesTo || '-'}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          )}
         </TabsContent>
 
         {/* Advanced Tab */}

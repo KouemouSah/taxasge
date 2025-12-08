@@ -44,6 +44,12 @@ from app.modules.fiscal_services.models.service_details import (
     RelatedServiceItem,
     KeywordItem,
 )
+from app.modules.fiscal_services.models.templates import (
+    ServiceDocumentAssignmentCreate,
+    ServiceDocumentAssignmentResponse,
+    ServiceProcedureAssignmentCreate,
+    ServiceProcedureAssignmentResponse,
+)
 from app.modules.fiscal_services.repositories import FiscalServiceRepository
 from app.modules.fiscal_services.repositories.search_repository import SearchRepository
 from app.modules.fiscal_services.repositories.service_details_repository import ServiceDetailsRepository
@@ -1184,6 +1190,262 @@ async def bulk_update_service_status(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error processing bulk update: {str(e)}"
+        )
+
+
+# ============================================================================
+# SERVICE DOCUMENT ASSIGNMENTS
+# ============================================================================
+
+@router.get("/{service_id}/documents", response_model=List[ServiceDocumentAssignmentResponse])
+async def list_service_documents(
+    service_id: int,
+    language: str = Query("es", pattern="^(es|fr|en)$", description="Language for translations"),
+    db=Depends(get_database),
+):
+    """
+    List all document assignments for a fiscal service
+
+    Returns documents with translated names based on the language parameter.
+    """
+    try:
+        # Verify service exists
+        service = await repository.get_by_id(db, service_id)
+        if not service:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Service with ID {service_id} not found"
+            )
+
+        documents = await repository.list_document_assignments(db, service_id, language)
+        return [ServiceDocumentAssignmentResponse(**d) for d in documents]
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error listing documents for service {service_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error listing documents: {str(e)}"
+        )
+
+
+@router.post("/{service_id}/documents", response_model=ServiceDocumentAssignmentResponse, status_code=status.HTTP_201_CREATED)
+async def assign_document_to_service(
+    service_id: int,
+    data: ServiceDocumentAssignmentCreate,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+    _: None = Depends(permission_required("fiscal_services.update"))
+):
+    """
+    Assign a document template to a fiscal service
+
+    Requires fiscal_services.update permission
+
+    - **document_template_id**: ID of the document template to assign
+    - **is_required_expedition**: Whether document is required for initial issuance
+    - **is_required_renewal**: Whether document is required for renewal
+    - **display_order**: Order in which document appears in the list
+    - **custom_notes**: Optional custom notes for this assignment
+    """
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
+
+    try:
+        # Verify service exists
+        service = await repository.get_by_id(db, service_id)
+        if not service:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Service with ID {service_id} not found"
+            )
+
+        # Ensure service_id matches
+        if data.fiscal_service_id != service_id:
+            data.fiscal_service_id = service_id
+
+        assignment = await repository.create_document_assignment(db, data.model_dump(), user_id)
+        logger.info(f"User {user_id} assigned document {data.document_template_id} to service {service_id}")
+        return ServiceDocumentAssignmentResponse(**assignment)
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        if "unique constraint" in str(e).lower() or "duplicate" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This document is already assigned to this service"
+            )
+        logger.error(f"Error assigning document to service {service_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error assigning document: {str(e)}"
+        )
+
+
+@router.delete("/{service_id}/documents/{assignment_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def unassign_document_from_service(
+    service_id: int,
+    assignment_id: int,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+    _: None = Depends(permission_required("fiscal_services.update"))
+):
+    """
+    Remove a document assignment from a fiscal service
+
+    Requires fiscal_services.update permission
+    """
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
+
+    try:
+        deleted = await repository.delete_document_assignment(db, service_id, assignment_id)
+        if not deleted:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Document assignment {assignment_id} not found for service {service_id}"
+            )
+
+        logger.info(f"User {user_id} removed document assignment {assignment_id} from service {service_id}")
+        return None
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error removing document assignment {assignment_id} from service {service_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error removing document assignment: {str(e)}"
+        )
+
+
+# ============================================================================
+# SERVICE PROCEDURE ASSIGNMENTS
+# ============================================================================
+
+@router.get("/{service_id}/procedures", response_model=List[ServiceProcedureAssignmentResponse])
+async def list_service_procedures(
+    service_id: int,
+    language: str = Query("es", pattern="^(es|fr|en)$", description="Language for translations"),
+    db=Depends(get_database),
+):
+    """
+    List all procedure assignments for a fiscal service
+
+    Returns procedures with translated names based on the language parameter.
+    """
+    try:
+        # Verify service exists
+        service = await repository.get_by_id(db, service_id)
+        if not service:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Service with ID {service_id} not found"
+            )
+
+        procedures = await repository.list_procedure_assignments(db, service_id, language)
+        return [ServiceProcedureAssignmentResponse(**p) for p in procedures]
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error listing procedures for service {service_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error listing procedures: {str(e)}"
+        )
+
+
+@router.post("/{service_id}/procedures", response_model=ServiceProcedureAssignmentResponse, status_code=status.HTTP_201_CREATED)
+async def assign_procedure_to_service(
+    service_id: int,
+    data: ServiceProcedureAssignmentCreate,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+    _: None = Depends(permission_required("fiscal_services.update"))
+):
+    """
+    Assign a procedure template to a fiscal service
+
+    Requires fiscal_services.update permission
+
+    - **template_id**: ID of the procedure template to assign
+    - **applies_to**: When procedure applies: 'expedition', 'renewal', or 'both'
+    - **display_order**: Order in which procedure appears in the list
+    - **custom_notes**: Optional custom notes for this assignment
+    - **override_steps**: Optional JSONB to override specific steps for this service
+    """
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
+
+    try:
+        # Verify service exists
+        service = await repository.get_by_id(db, service_id)
+        if not service:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Service with ID {service_id} not found"
+            )
+
+        # Ensure service_id matches
+        if data.fiscal_service_id != service_id:
+            data.fiscal_service_id = service_id
+
+        assignment = await repository.create_procedure_assignment(db, data.model_dump(), user_id)
+        logger.info(f"User {user_id} assigned procedure {data.template_id} to service {service_id}")
+        return ServiceProcedureAssignmentResponse(**assignment)
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        if "unique constraint" in str(e).lower() or "duplicate" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This procedure is already assigned to this service"
+            )
+        logger.error(f"Error assigning procedure to service {service_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error assigning procedure: {str(e)}"
+        )
+
+
+@router.delete("/{service_id}/procedures/{assignment_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def unassign_procedure_from_service(
+    service_id: int,
+    assignment_id: int,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+    _: None = Depends(permission_required("fiscal_services.update"))
+):
+    """
+    Remove a procedure assignment from a fiscal service
+
+    Requires fiscal_services.update permission
+    """
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
+
+    try:
+        deleted = await repository.delete_procedure_assignment(db, service_id, assignment_id)
+        if not deleted:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Procedure assignment {assignment_id} not found for service {service_id}"
+            )
+
+        logger.info(f"User {user_id} removed procedure assignment {assignment_id} from service {service_id}")
+        return None
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error removing procedure assignment {assignment_id} from service {service_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error removing procedure assignment: {str(e)}"
         )
 
 

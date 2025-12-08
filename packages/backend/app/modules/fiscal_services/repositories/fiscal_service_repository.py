@@ -992,3 +992,159 @@ class FiscalServiceRepository:
             "updated": updated,
             "failed": failed
         }
+
+    # ========== DOCUMENT ASSIGNMENTS ==========
+    async def list_document_assignments(
+        self, conn: asyncpg.Connection, service_id: int, language: str = "es"
+    ) -> List[Dict[str, Any]]:
+        """List document assignments for a service with i18n support"""
+        query = """
+            SELECT
+                sda.id,
+                sda.fiscal_service_id,
+                sda.document_template_id,
+                sda.is_required_expedition,
+                sda.is_required_renewal,
+                sda.display_order,
+                sda.custom_notes,
+                sda.assigned_at,
+                sda.assigned_by,
+                COALESCE(et.translation_text, dt.document_name_es) as document_name,
+                fs.name_es as service_name
+            FROM service_document_assignments sda
+            JOIN document_templates dt ON sda.document_template_id = dt.id
+            JOIN fiscal_services fs ON sda.fiscal_service_id = fs.id
+            LEFT JOIN entity_translations et ON
+                et.entity_type = 'document_template'
+                AND et.entity_code = dt.template_code
+                AND et.field_name = 'name'
+                AND et.language_code = $1
+            WHERE sda.fiscal_service_id = $2
+            ORDER BY sda.display_order, sda.id
+        """
+        results = await conn.fetch(query, language, service_id)
+        return [dict(r) for r in results]
+
+    async def create_document_assignment(
+        self, conn: asyncpg.Connection, data: Dict[str, Any], user_id: int
+    ) -> Dict[str, Any]:
+        """Create a document assignment"""
+        # Verify document template exists
+        doc_check = await conn.fetchrow(
+            "SELECT id FROM document_templates WHERE id = $1",
+            data.get("document_template_id")
+        )
+        if not doc_check:
+            raise ValueError(f"Document template with ID {data.get('document_template_id')} not found")
+
+        query = """
+            INSERT INTO service_document_assignments (
+                fiscal_service_id, document_template_id,
+                is_required_expedition, is_required_renewal,
+                display_order, custom_notes, assigned_by
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING *
+        """
+        result = await conn.fetchrow(
+            query,
+            data.get("fiscal_service_id"),
+            data.get("document_template_id"),
+            data.get("is_required_expedition", True),
+            data.get("is_required_renewal", False),
+            data.get("display_order", 1),
+            data.get("custom_notes"),
+            user_id,
+        )
+        return dict(result)
+
+    async def delete_document_assignment(
+        self, conn: asyncpg.Connection, service_id: int, assignment_id: int
+    ) -> bool:
+        """Delete a document assignment"""
+        result = await conn.execute(
+            "DELETE FROM service_document_assignments WHERE id = $1 AND fiscal_service_id = $2",
+            assignment_id, service_id
+        )
+        return result == "DELETE 1"
+
+    # ========== PROCEDURE ASSIGNMENTS ==========
+    async def list_procedure_assignments(
+        self, conn: asyncpg.Connection, service_id: int, language: str = "es"
+    ) -> List[Dict[str, Any]]:
+        """List procedure assignments for a service with i18n support"""
+        query = """
+            SELECT
+                spa.id,
+                spa.fiscal_service_id,
+                spa.template_id,
+                spa.applies_to,
+                spa.display_order,
+                spa.custom_notes,
+                spa.override_steps,
+                spa.assigned_at,
+                spa.assigned_by,
+                COALESCE(et.translation_text, pt.name_es) as procedure_name,
+                fs.name_es as service_name
+            FROM service_procedure_assignments spa
+            JOIN procedure_templates pt ON spa.template_id = pt.id
+            JOIN fiscal_services fs ON spa.fiscal_service_id = fs.id
+            LEFT JOIN entity_translations et ON
+                et.entity_type = 'procedure_template'
+                AND et.entity_code = pt.template_code
+                AND et.field_name = 'name'
+                AND et.language_code = $1
+            WHERE spa.fiscal_service_id = $2
+            ORDER BY spa.display_order, spa.id
+        """
+        results = await conn.fetch(query, language, service_id)
+        return [dict(r) for r in results]
+
+    async def create_procedure_assignment(
+        self, conn: asyncpg.Connection, data: Dict[str, Any], user_id: int
+    ) -> Dict[str, Any]:
+        """Create a procedure assignment"""
+        import json
+
+        # Verify procedure template exists
+        proc_check = await conn.fetchrow(
+            "SELECT id FROM procedure_templates WHERE id = $1",
+            data.get("template_id")
+        )
+        if not proc_check:
+            raise ValueError(f"Procedure template with ID {data.get('template_id')} not found")
+
+        override_steps = data.get("override_steps")
+        if override_steps and not isinstance(override_steps, str):
+            override_steps = json.dumps(override_steps)
+
+        query = """
+            INSERT INTO service_procedure_assignments (
+                fiscal_service_id, template_id,
+                applies_to, display_order, custom_notes,
+                override_steps, assigned_by
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING *
+        """
+        result = await conn.fetchrow(
+            query,
+            data.get("fiscal_service_id"),
+            data.get("template_id"),
+            data.get("applies_to"),
+            data.get("display_order", 1),
+            data.get("custom_notes"),
+            override_steps,
+            user_id,
+        )
+        return dict(result)
+
+    async def delete_procedure_assignment(
+        self, conn: asyncpg.Connection, service_id: int, assignment_id: int
+    ) -> bool:
+        """Delete a procedure assignment"""
+        result = await conn.execute(
+            "DELETE FROM service_procedure_assignments WHERE id = $1 AND fiscal_service_id = $2",
+            assignment_id, service_id
+        )
+        return result == "DELETE 1"

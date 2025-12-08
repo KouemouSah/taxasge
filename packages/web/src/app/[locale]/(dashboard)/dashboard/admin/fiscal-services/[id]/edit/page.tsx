@@ -37,7 +37,13 @@ import {
   Clock,
   BookOpen,
   Settings,
+  Link2,
+  Plus,
+  Trash2,
+  Check,
+  X,
 } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
 import fiscalServicesAPI from '@/modules/fiscal-services/services/api'
 import type {
@@ -49,6 +55,10 @@ import type {
   ServiceTypeEnum,
   ServiceStatusEnum,
   CalculationMethodEnum,
+  ServiceDocumentAssignment,
+  ServiceProcedureAssignment,
+  DocumentTemplate,
+  ProcedureTemplate,
 } from '@/types/fiscal-service'
 
 export default function EditFiscalServicePage() {
@@ -72,6 +82,26 @@ export default function EditFiscalServicePage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [formData, setFormData] = useState<FiscalServiceUpdate>({})
+
+  // Assignments state
+  const [documentAssignments, setDocumentAssignments] = useState<ServiceDocumentAssignment[]>([])
+  const [procedureAssignments, setProcedureAssignments] = useState<ServiceProcedureAssignment[]>([])
+  const [documentTemplates, setDocumentTemplates] = useState<DocumentTemplate[]>([])
+  const [procedureTemplates, setProcedureTemplates] = useState<ProcedureTemplate[]>([])
+  const [isLoadingAssignments, setIsLoadingAssignments] = useState(false)
+  const [isAssigning, setIsAssigning] = useState(false)
+
+  // New assignment form state
+  const [newDocAssignment, setNewDocAssignment] = useState<{
+    documentTemplateId: number | null
+    isRequiredExpedition: boolean
+    isRequiredRenewal: boolean
+  }>({ documentTemplateId: null, isRequiredExpedition: true, isRequiredRenewal: false })
+
+  const [newProcAssignment, setNewProcAssignment] = useState<{
+    templateId: number | null
+    appliesTo: string
+  }>({ templateId: null, appliesTo: 'both' })
 
   useEffect(() => {
     const fetchData = async () => {
@@ -170,6 +200,134 @@ export default function EditFiscalServicePage() {
     }
   }, [selectedSector, categories])
 
+  // Fetch assignments and templates
+  const fetchAssignments = async () => {
+    if (!serviceId) return
+    setIsLoadingAssignments(true)
+    try {
+      const [docs, procs, docTemplates, procTemplates] = await Promise.all([
+        fiscalServicesAPI.documents.list(serviceId),
+        fiscalServicesAPI.procedures.list(serviceId),
+        fiscalServicesAPI.documents.templates.list(locale),
+        fiscalServicesAPI.procedures.templates.list(locale),
+      ])
+      setDocumentAssignments(docs)
+      setProcedureAssignments(procs)
+      setDocumentTemplates(docTemplates)
+      setProcedureTemplates(procTemplates)
+    } catch (err) {
+      console.error('Error fetching assignments:', err)
+    } finally {
+      setIsLoadingAssignments(false)
+    }
+  }
+
+  useEffect(() => {
+    if (serviceId) {
+      fetchAssignments()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serviceId])
+
+  // Handle document assignment
+  const handleAssignDocument = async () => {
+    if (!newDocAssignment.documentTemplateId) return
+    setIsAssigning(true)
+    try {
+      await fiscalServicesAPI.documents.assign(serviceId, {
+        documentTemplateId: newDocAssignment.documentTemplateId,
+        isRequiredExpedition: newDocAssignment.isRequiredExpedition,
+        isRequiredRenewal: newDocAssignment.isRequiredRenewal,
+      })
+      toast({
+        title: t('successTitle'),
+        description: t('documentAssigned'),
+      })
+      setNewDocAssignment({ documentTemplateId: null, isRequiredExpedition: true, isRequiredRenewal: false })
+      fetchAssignments()
+    } catch (err) {
+      toast({
+        variant: 'destructive',
+        title: t('errorTitle'),
+        description: err instanceof Error ? err.message : t('errorAssigning'),
+      })
+    } finally {
+      setIsAssigning(false)
+    }
+  }
+
+  // Handle procedure assignment
+  const handleAssignProcedure = async () => {
+    if (!newProcAssignment.templateId) return
+    setIsAssigning(true)
+    try {
+      await fiscalServicesAPI.procedures.assign(serviceId, {
+        templateId: newProcAssignment.templateId,
+        appliesTo: newProcAssignment.appliesTo,
+      })
+      toast({
+        title: t('successTitle'),
+        description: t('procedureAssigned'),
+      })
+      setNewProcAssignment({ templateId: null, appliesTo: 'both' })
+      fetchAssignments()
+    } catch (err) {
+      toast({
+        variant: 'destructive',
+        title: t('errorTitle'),
+        description: err instanceof Error ? err.message : t('errorAssigning'),
+      })
+    } finally {
+      setIsAssigning(false)
+    }
+  }
+
+  // Handle unassign document
+  const handleUnassignDocument = async (assignmentId: number) => {
+    if (!confirm(t('confirmUnassign'))) return
+    try {
+      await fiscalServicesAPI.documents.unassign(serviceId, assignmentId)
+      toast({
+        title: t('successTitle'),
+        description: t('assignmentRemoved'),
+      })
+      fetchAssignments()
+    } catch (err) {
+      toast({
+        variant: 'destructive',
+        title: t('errorTitle'),
+        description: err instanceof Error ? err.message : t('errorRemoving'),
+      })
+    }
+  }
+
+  // Handle unassign procedure
+  const handleUnassignProcedure = async (assignmentId: number) => {
+    if (!confirm(t('confirmUnassign'))) return
+    try {
+      await fiscalServicesAPI.procedures.unassign(serviceId, assignmentId)
+      toast({
+        title: t('successTitle'),
+        description: t('assignmentRemoved'),
+      })
+      fetchAssignments()
+    } catch (err) {
+      toast({
+        variant: 'destructive',
+        title: t('errorTitle'),
+        description: err instanceof Error ? err.message : t('errorRemoving'),
+      })
+    }
+  }
+
+  // Get available templates (not already assigned)
+  const availableDocTemplates = documentTemplates.filter(
+    dt => !documentAssignments.some(da => da.documentTemplateId === dt.id)
+  )
+  const availableProcTemplates = procedureTemplates.filter(
+    pt => !procedureAssignments.some(pa => pa.templateId === pt.id)
+  )
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
@@ -265,7 +423,7 @@ export default function EditFiscalServicePage() {
       {/* Form with Tabs */}
       <form onSubmit={handleSubmit}>
         <Tabs defaultValue="basic" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="basic" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
               <span className="hidden md:inline">{t('basicInformation')}</span>
@@ -285,6 +443,10 @@ export default function EditFiscalServicePage() {
             <TabsTrigger value="legal" className="flex items-center gap-2">
               <BookOpen className="h-4 w-4" />
               <span className="hidden md:inline">Legal</span>
+            </TabsTrigger>
+            <TabsTrigger value="assignments" className="flex items-center gap-2">
+              <Link2 className="h-4 w-4" />
+              <span className="hidden md:inline">{t('tabs.assignments')}</span>
             </TabsTrigger>
             <TabsTrigger value="advanced" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
@@ -732,6 +894,219 @@ export default function EditFiscalServicePage() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Assignments Tab */}
+          <TabsContent value="assignments" className="space-y-6">
+            {isLoadingAssignments ? (
+              <div className="flex items-center justify-center h-32">
+                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-muted-foreground">{t('loading')}</span>
+              </div>
+            ) : (
+              <>
+                {/* Document Assignments */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <FileText className="h-5 w-5" />
+                      {t('assignedDocuments')}
+                      <Badge variant="secondary" className="ml-2">{documentAssignments.length}</Badge>
+                    </CardTitle>
+                    <CardDescription>{t('assignedDocumentsDescription')}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Existing assignments */}
+                    {documentAssignments.length === 0 ? (
+                      <div className="text-center py-6 text-muted-foreground">
+                        <FileText className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                        <p>{t('noAssignedDocuments')}</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {documentAssignments.map((doc) => (
+                          <div
+                            key={doc.id}
+                            className="flex items-center justify-between p-3 border rounded-lg bg-muted/30"
+                          >
+                            <div className="flex-1">
+                              <p className="font-medium">{doc.documentName || `Document #${doc.documentTemplateId}`}</p>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-1 text-xs">
+                                <span className="text-muted-foreground">{t('expedition')}:</span>
+                                {doc.isRequiredExpedition ? <Check className="h-4 w-4 text-green-600" /> : <X className="h-4 w-4 text-red-500" />}
+                              </div>
+                              <div className="flex items-center gap-1 text-xs">
+                                <span className="text-muted-foreground">{t('renewal')}:</span>
+                                {doc.isRequiredRenewal ? <Check className="h-4 w-4 text-green-600" /> : <X className="h-4 w-4 text-red-500" />}
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleUnassignDocument(doc.id)}
+                              >
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Add new assignment */}
+                    {availableDocTemplates.length > 0 && (
+                      <div className="pt-4 border-t space-y-3">
+                        <Label>{t('assignDocument')}</Label>
+                        <div className="flex items-end gap-3">
+                          <div className="flex-1">
+                            <Select
+                              value={String(newDocAssignment.documentTemplateId || '')}
+                              onValueChange={(v) => setNewDocAssignment({ ...newDocAssignment, documentTemplateId: Number(v) })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder={t('selectDocument')} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {availableDocTemplates.map((dt) => (
+                                  <SelectItem key={dt.id} value={String(dt.id)}>
+                                    {dt.documentNameEs || dt.templateCode}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              id="reqExp"
+                              checked={newDocAssignment.isRequiredExpedition}
+                              onCheckedChange={(v) => setNewDocAssignment({ ...newDocAssignment, isRequiredExpedition: v })}
+                            />
+                            <Label htmlFor="reqExp" className="text-xs">{t('expedition')}</Label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              id="reqRen"
+                              checked={newDocAssignment.isRequiredRenewal}
+                              onCheckedChange={(v) => setNewDocAssignment({ ...newDocAssignment, isRequiredRenewal: v })}
+                            />
+                            <Label htmlFor="reqRen" className="text-xs">{t('renewal')}</Label>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={handleAssignDocument}
+                            disabled={!newDocAssignment.documentTemplateId || isAssigning}
+                          >
+                            {isAssigning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Procedure Assignments */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BookOpen className="h-5 w-5" />
+                      {t('assignedProcedures')}
+                      <Badge variant="secondary" className="ml-2">{procedureAssignments.length}</Badge>
+                    </CardTitle>
+                    <CardDescription>{t('assignedProceduresDescription')}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Existing assignments */}
+                    {procedureAssignments.length === 0 ? (
+                      <div className="text-center py-6 text-muted-foreground">
+                        <BookOpen className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                        <p>{t('noAssignedProcedures')}</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {procedureAssignments.map((proc) => (
+                          <div
+                            key={proc.id}
+                            className="flex items-center justify-between p-3 border rounded-lg bg-muted/30"
+                          >
+                            <div className="flex-1">
+                              <p className="font-medium">{proc.procedureName || `Procedure #${proc.templateId}`}</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <Badge variant="outline">
+                                {proc.appliesTo === 'expedition' ? t('expedition') :
+                                 proc.appliesTo === 'renewal' ? t('renewal') :
+                                 proc.appliesTo === 'both' ? t('both') :
+                                 proc.appliesTo || '-'}
+                              </Badge>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleUnassignProcedure(proc.id)}
+                              >
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Add new assignment */}
+                    {availableProcTemplates.length > 0 && (
+                      <div className="pt-4 border-t space-y-3">
+                        <Label>{t('assignProcedure')}</Label>
+                        <div className="flex items-end gap-3">
+                          <div className="flex-1">
+                            <Select
+                              value={String(newProcAssignment.templateId || '')}
+                              onValueChange={(v) => setNewProcAssignment({ ...newProcAssignment, templateId: Number(v) })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder={t('selectProcedure')} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {availableProcTemplates.map((pt) => (
+                                  <SelectItem key={pt.id} value={String(pt.id)}>
+                                    {pt.nameEs || pt.templateCode}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="w-32">
+                            <Select
+                              value={newProcAssignment.appliesTo}
+                              onValueChange={(v) => setNewProcAssignment({ ...newProcAssignment, appliesTo: v })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="expedition">{t('expedition')}</SelectItem>
+                                <SelectItem value="renewal">{t('renewal')}</SelectItem>
+                                <SelectItem value="both">{t('both')}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={handleAssignProcedure}
+                            disabled={!newProcAssignment.templateId || isAssigning}
+                          >
+                            {isAssigning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </>
+            )}
           </TabsContent>
 
           {/* Advanced Tab */}
