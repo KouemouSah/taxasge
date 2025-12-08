@@ -1,18 +1,18 @@
 'use client'
 
 /**
- * Fiscal Service Create Form
- * Create new fiscal service with all fields and tabs
+ * Fiscal Service Create Form - Complete with All Fields and Tabs
+ * Create new fiscal service with all database fields (49 columns)
  *
  * PHASE 8.2: Service Creation Form
  * CRITICAL: 100% backend-aligned with FiscalServiceCreate
  *
  * @module dashboard/admin/fiscal-services/new
  * @author Claude Code
- * @date 2025-12-07
+ * @date 2025-12-08
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Select,
@@ -28,9 +29,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ArrowLeft, Save, Loader2, Building2, FileText, Link2 } from 'lucide-react'
+import {
+  ArrowLeft,
+  Save,
+  Loader2,
+  Building2,
+  FileText,
+  Link2,
+  Calculator,
+  Clock,
+  BookOpen,
+  Settings,
+  Trash2,
+  Check,
+  X,
+} from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
 import fiscalServicesAPI from '@/modules/fiscal-services/services/api'
+import { SearchableTemplateTable } from '@/modules/fiscal-services/components'
 import type {
   FiscalServiceCreate,
   Category,
@@ -42,6 +59,21 @@ import type {
   DocumentTemplate,
   ProcedureTemplate,
 } from '@/types/fiscal-service'
+
+// Type for selected document with assignment options
+interface SelectedDocument {
+  id: number
+  isRequiredExpedition: boolean
+  isRequiredRenewal: boolean
+  name?: string
+}
+
+// Type for selected procedure with assignment options
+interface SelectedProcedure {
+  id: number
+  appliesTo: string
+  name?: string
+}
 
 export default function CreateFiscalServicePage() {
   const router = useRouter()
@@ -60,24 +92,59 @@ export default function CreateFiscalServicePage() {
   const [documentTemplates, setDocumentTemplates] = useState<DocumentTemplate[]>([])
   const [procedureTemplates, setProcedureTemplates] = useState<ProcedureTemplate[]>([])
 
-  // Assignments
-  const [selectedDocuments, setSelectedDocuments] = useState<number[]>([])
-  const [selectedProcedures, setSelectedProcedures] = useState<number[]>([])
+  // Assignments with options
+  const [selectedDocuments, setSelectedDocuments] = useState<SelectedDocument[]>([])
+  const [selectedProcedures, setSelectedProcedures] = useState<SelectedProcedure[]>([])
+  const [isAssigning, setIsAssigning] = useState(false)
 
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isLoadingData, setIsLoadingData] = useState(true)
   const [selectedMinistry, setSelectedMinistry] = useState<number | null>(null)
   const [selectedSector, setSelectedSector] = useState<number | null>(null)
 
-  // Form state - Essential fields only
+  // Form state - ALL fields from fiscal_services table
   const [formData, setFormData] = useState<Partial<FiscalServiceCreate>>({
+    // Basic
     serviceCode: '',
     categoryId: 0,
     nameEs: '',
     descriptionEs: '',
     serviceType: 'registration_fee' as ServiceTypeEnum,
-    calculationMethod: 'fixed_both' as CalculationMethodEnum,
     status: 'draft' as ServiceStatusEnum,
+    processingTimeDays: 1,
+
+    // Calculation
+    calculationMethod: 'fixed_both' as CalculationMethodEnum,
+    tasaExpedicion: undefined,
+    tasaRenovacion: undefined,
+    expeditionFormula: '',
+    expeditionUnitMeasure: '',
+    renewalFormula: '',
+    renewalUnitMeasure: '',
+    basePercentage: undefined,
+    percentageOf: '',
+    unitRate: undefined,
+    unitType: '',
+
+    // Validity & Penalties
+    validityPeriodMonths: undefined,
+    renewalFrequencyMonths: undefined,
+    gracePeriodDays: 0,
+    latePenaltyPercentage: undefined,
+    latePenaltyFixed: undefined,
+
+    // Legal
+    legalReference: '',
+    regulatoryArticles: [],
     tariffEffectiveFrom: new Date().toISOString().split('T')[0],
+    tariffEffectiveTo: undefined,
+
+    // Advanced
+    priority: 0,
+    complexityLevel: 1,
+    parentServiceId: undefined,
+    tierGroupName: '',
+    isTierComponent: false,
   })
 
   useEffect(() => {
@@ -106,6 +173,8 @@ export default function CreateFiscalServicePage() {
         setProcedureTemplates(procs)
       } catch (err) {
         console.error('Error fetching templates:', err)
+      } finally {
+        setIsLoadingData(false)
       }
     }
 
@@ -137,6 +206,64 @@ export default function CreateFiscalServicePage() {
     }
   }, [selectedSector, categories])
 
+  // Handle document assignment from SearchableTemplateTable
+  const handleAssignDocuments = useCallback((selectedIds: number[], options?: Record<string, boolean | string>) => {
+    setIsAssigning(true)
+    const isRequiredExpedition = options?.isRequiredExpedition === true
+    const isRequiredRenewal = options?.isRequiredRenewal === true
+
+    const newDocs: SelectedDocument[] = selectedIds.map(id => {
+      const template = documentTemplates.find(dt => dt.id === id)
+      return {
+        id,
+        isRequiredExpedition,
+        isRequiredRenewal,
+        name: template?.documentNameEs || template?.templateCode || `Doc #${id}`,
+      }
+    })
+
+    setSelectedDocuments(prev => [...prev, ...newDocs])
+    setIsAssigning(false)
+
+    toast({
+      title: t('successTitle'),
+      description: `${selectedIds.length} ${t('documentAssigned')}`,
+    })
+  }, [documentTemplates, toast, t])
+
+  // Handle procedure assignment from SearchableTemplateTable
+  const handleAssignProcedures = useCallback((selectedIds: number[], options?: Record<string, boolean | string>) => {
+    setIsAssigning(true)
+    const appliesTo = (options?.appliesTo as string) || 'both'
+
+    const newProcs: SelectedProcedure[] = selectedIds.map(id => {
+      const template = procedureTemplates.find(pt => pt.id === id)
+      return {
+        id,
+        appliesTo,
+        name: template?.nameEs || template?.templateCode || `Proc #${id}`,
+      }
+    })
+
+    setSelectedProcedures(prev => [...prev, ...newProcs])
+    setIsAssigning(false)
+
+    toast({
+      title: t('successTitle'),
+      description: `${selectedIds.length} ${t('procedureAssigned')}`,
+    })
+  }, [procedureTemplates, toast, t])
+
+  // Remove document assignment
+  const removeDocumentAssignment = (docId: number) => {
+    setSelectedDocuments(prev => prev.filter(d => d.id !== docId))
+  }
+
+  // Remove procedure assignment
+  const removeProcedureAssignment = (procId: number) => {
+    setSelectedProcedures(prev => prev.filter(p => p.id !== procId))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
@@ -153,44 +280,72 @@ export default function CreateFiscalServicePage() {
         return
       }
 
-      // Create service
+      // Create service with ALL fields
       const createData: FiscalServiceCreate = {
+        // Required fields
         serviceCode: formData.serviceCode!,
         categoryId: formData.categoryId!,
         nameEs: formData.nameEs!,
-        descriptionEs: formData.descriptionEs,
-        serviceType: formData.serviceType as ServiceTypeEnum,
-        calculationMethod: formData.calculationMethod as CalculationMethodEnum,
-        tasaExpedicion: formData.tasaExpedicion,
-        tasaRenovacion: formData.tasaRenovacion,
-        basePercentage: formData.basePercentage,
-        percentageOf: formData.percentageOf,
-        unitRate: formData.unitRate,
-        unitType: formData.unitType,
-        expeditionFormula: formData.expeditionFormula,
-        renewalFormula: formData.renewalFormula,
-        status: formData.status as ServiceStatusEnum,
         tariffEffectiveFrom: formData.tariffEffectiveFrom!,
+
+        // Basic
+        descriptionEs: formData.descriptionEs || undefined,
+        serviceType: formData.serviceType as ServiceTypeEnum,
+        status: formData.status as ServiceStatusEnum,
+        processingTimeDays: formData.processingTimeDays || 1,
+
+        // Calculation
+        calculationMethod: formData.calculationMethod as CalculationMethodEnum,
+        tasaExpedicion: formData.tasaExpedicion || undefined,
+        tasaRenovacion: formData.tasaRenovacion || undefined,
+        expeditionFormula: formData.expeditionFormula || undefined,
+        expeditionUnitMeasure: formData.expeditionUnitMeasure || undefined,
+        renewalFormula: formData.renewalFormula || undefined,
+        renewalUnitMeasure: formData.renewalUnitMeasure || undefined,
+        basePercentage: formData.basePercentage || undefined,
+        percentageOf: formData.percentageOf || undefined,
+        unitRate: formData.unitRate || undefined,
+        unitType: formData.unitType || undefined,
+
+        // Validity & Penalties
+        validityPeriodMonths: formData.validityPeriodMonths || undefined,
+        renewalFrequencyMonths: formData.renewalFrequencyMonths || undefined,
+        gracePeriodDays: formData.gracePeriodDays || 0,
+        latePenaltyPercentage: formData.latePenaltyPercentage || undefined,
+        latePenaltyFixed: formData.latePenaltyFixed || undefined,
+
+        // Legal
+        legalReference: formData.legalReference || undefined,
+        regulatoryArticles: formData.regulatoryArticles?.length ? formData.regulatoryArticles : undefined,
+        tariffEffectiveTo: formData.tariffEffectiveTo || undefined,
+
+        // Advanced
+        priority: formData.priority || 0,
+        complexityLevel: formData.complexityLevel || 1,
+        parentServiceId: formData.parentServiceId || undefined,
+        tierGroupName: formData.tierGroupName || undefined,
+        isTierComponent: formData.isTierComponent || false,
       }
 
       const newService = await fiscalServicesAPI.admin.create(createData)
 
-      // Assign documents and procedures if any selected
+      // Assign documents with their options
       if (selectedDocuments.length > 0) {
-        for (const docId of selectedDocuments) {
+        for (const doc of selectedDocuments) {
           await fiscalServicesAPI.documents.assign(newService.id, {
-            documentTemplateId: docId,
-            isRequiredExpedition: true,
-            isRequiredRenewal: false,
+            documentTemplateId: doc.id,
+            isRequiredExpedition: doc.isRequiredExpedition,
+            isRequiredRenewal: doc.isRequiredRenewal,
           })
         }
       }
 
+      // Assign procedures with their options
       if (selectedProcedures.length > 0) {
-        for (const procId of selectedProcedures) {
+        for (const proc of selectedProcedures) {
           await fiscalServicesAPI.procedures.assign(newService.id, {
-            templateId: procId,
-            appliesTo: 'both',
+            templateId: proc.id,
+            appliesTo: proc.appliesTo,
           })
         }
       }
@@ -211,22 +366,6 @@ export default function CreateFiscalServicePage() {
     }
   }
 
-  const toggleDocumentSelection = (docId: number) => {
-    setSelectedDocuments(prev =>
-      prev.includes(docId)
-        ? prev.filter(id => id !== docId)
-        : [...prev, docId]
-    )
-  }
-
-  const toggleProcedureSelection = (procId: number) => {
-    setSelectedProcedures(prev =>
-      prev.includes(procId)
-        ? prev.filter(id => id !== procId)
-        : [...prev, procId]
-    )
-  }
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -244,22 +383,38 @@ export default function CreateFiscalServicePage() {
       {/* Form */}
       <form onSubmit={handleSubmit}>
         <Tabs defaultValue="basic" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="basic" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
-              {t('basicInformation')}
+              <span className="hidden md:inline">{t('basicInformation')}</span>
             </TabsTrigger>
             <TabsTrigger value="hierarchy" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
-              {t('hierarchyTab')}
+              <span className="hidden md:inline">{t('hierarchyTab')}</span>
+            </TabsTrigger>
+            <TabsTrigger value="calculation" className="flex items-center gap-2">
+              <Calculator className="h-4 w-4" />
+              <span className="hidden md:inline">{t('calculation')}</span>
+            </TabsTrigger>
+            <TabsTrigger value="validity" className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              <span className="hidden md:inline">{t('validityTab') || 'Validez'}</span>
+            </TabsTrigger>
+            <TabsTrigger value="legal" className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              <span className="hidden md:inline">{t('legalTab') || 'Legal'}</span>
             </TabsTrigger>
             <TabsTrigger value="assignments" className="flex items-center gap-2">
               <Link2 className="h-4 w-4" />
-              {t('assignmentsTab')}
+              <span className="hidden md:inline">{t('assignmentsTab')}</span>
+            </TabsTrigger>
+            <TabsTrigger value="advanced" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              <span className="hidden md:inline">{t('advancedTab') || 'Avanzado'}</span>
             </TabsTrigger>
           </TabsList>
 
-          {/* Basic Information Tab */}
+          {/* Tab 1: Basic Information */}
           <TabsContent value="basic" className="space-y-6">
             <Card>
               <CardHeader>
@@ -344,175 +499,21 @@ export default function CreateFiscalServicePage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="tariffEffectiveFrom">{t('effectiveFrom')} *</Label>
+                    <Label htmlFor="processingTimeDays">{t('processingTime') || 'Tiempo de procesamiento (días)'}</Label>
                     <Input
-                      id="tariffEffectiveFrom"
-                      type="date"
-                      value={formData.tariffEffectiveFrom}
-                      onChange={(e) => setFormData({ ...formData, tariffEffectiveFrom: e.target.value })}
-                      required
+                      id="processingTimeDays"
+                      type="number"
+                      min="0"
+                      value={formData.processingTimeDays || ''}
+                      onChange={(e) => setFormData({ ...formData, processingTimeDays: Number(e.target.value) || 1 })}
                     />
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Calculation */}
-            <Card>
-              <CardHeader>
-                <CardTitle>{t('calculation')}</CardTitle>
-                <CardDescription>{t('calculationDesc')}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="calculationMethod">{t('calculationMethod')} *</Label>
-                  <Select
-                    value={formData.calculationMethod}
-                    onValueChange={(v) => setFormData({ ...formData, calculationMethod: v as CalculationMethodEnum })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="fixed_expedition">{t('methodFixedExpedition')}</SelectItem>
-                      <SelectItem value="fixed_renewal">{t('methodFixedRenewal')}</SelectItem>
-                      <SelectItem value="fixed_both">{t('methodFixedBoth')}</SelectItem>
-                      <SelectItem value="percentage_based">{t('methodPercentageBased')}</SelectItem>
-                      <SelectItem value="unit_based">{t('methodUnitBased')}</SelectItem>
-                      <SelectItem value="tiered_rates">{t('methodTieredRates')}</SelectItem>
-                      <SelectItem value="formula_based">{t('methodFormulaBased')}</SelectItem>
-                      <SelectItem value="fixed_plus_unit">{t('methodFixedPlusUnit')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Fixed Fees - for fixed_expedition, fixed_renewal, fixed_both, fixed_plus_unit */}
-                {['fixed_expedition', 'fixed_both', 'fixed_plus_unit'].includes(formData.calculationMethod || '') && (
-                  <div className="space-y-2">
-                    <Label htmlFor="tasaExpedicion">{t('expeditionFee')} (XAF)</Label>
-                    <Input
-                      id="tasaExpedicion"
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={formData.tasaExpedicion || ''}
-                      onChange={(e) => setFormData({ ...formData, tasaExpedicion: Number(e.target.value) })}
-                      placeholder="0"
-                    />
-                  </div>
-                )}
-
-                {['fixed_renewal', 'fixed_both', 'fixed_plus_unit'].includes(formData.calculationMethod || '') && (
-                  <div className="space-y-2">
-                    <Label htmlFor="tasaRenovacion">{t('renewalFee')} (XAF)</Label>
-                    <Input
-                      id="tasaRenovacion"
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={formData.tasaRenovacion || ''}
-                      onChange={(e) => setFormData({ ...formData, tasaRenovacion: Number(e.target.value) })}
-                      placeholder="0"
-                    />
-                  </div>
-                )}
-
-                {/* Percentage Based */}
-                {formData.calculationMethod === 'percentage_based' && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="basePercentage">{t('basePercentage')} (%)</Label>
-                      <Input
-                        id="basePercentage"
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                        value={formData.basePercentage || ''}
-                        onChange={(e) => setFormData({ ...formData, basePercentage: Number(e.target.value) })}
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="percentageOf">{t('percentageOf')}</Label>
-                      <Input
-                        id="percentageOf"
-                        type="text"
-                        value={formData.percentageOf || ''}
-                        onChange={(e) => setFormData({ ...formData, percentageOf: e.target.value })}
-                        placeholder="valor_declarado"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Unit Based */}
-                {['unit_based', 'fixed_plus_unit'].includes(formData.calculationMethod || '') && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="unitRate">{t('unitRate')} (XAF)</Label>
-                      <Input
-                        id="unitRate"
-                        type="number"
-                        min="0"
-                        step="1"
-                        value={formData.unitRate || ''}
-                        onChange={(e) => setFormData({ ...formData, unitRate: Number(e.target.value) })}
-                        placeholder="0"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="unitType">{t('unitType')}</Label>
-                      <Input
-                        id="unitType"
-                        type="text"
-                        value={formData.unitType || ''}
-                        onChange={(e) => setFormData({ ...formData, unitType: e.target.value })}
-                        placeholder="unidad, m², kg, etc."
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Formula Based */}
-                {formData.calculationMethod === 'formula_based' && (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="expeditionFormula">{t('expeditionFormula')}</Label>
-                      <Input
-                        id="expeditionFormula"
-                        type="text"
-                        value={formData.expeditionFormula || ''}
-                        onChange={(e) => setFormData({ ...formData, expeditionFormula: e.target.value })}
-                        placeholder="base_value * 0.05 + 10000"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="renewalFormula">{t('renewalFormula')}</Label>
-                      <Input
-                        id="renewalFormula"
-                        type="text"
-                        value={formData.renewalFormula || ''}
-                        onChange={(e) => setFormData({ ...formData, renewalFormula: e.target.value })}
-                        placeholder="base_value * 0.03 + 5000"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Tiered Rates - complex configuration notice */}
-                {formData.calculationMethod === 'tiered_rates' && (
-                  <div className="p-4 border rounded-lg bg-muted/30">
-                    <p className="text-sm text-muted-foreground">
-                      {t('tieredRatesNotice') || 'Las tarifas escalonadas se configuran después de crear el servicio.'}
-                    </p>
-                  </div>
-                )}
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* Hierarchy Tab */}
+          {/* Tab 2: Hierarchy */}
           <TabsContent value="hierarchy" className="space-y-6">
             <Card>
               <CardHeader>
@@ -576,36 +577,349 @@ export default function CreateFiscalServicePage() {
             </Card>
           </TabsContent>
 
-          {/* Assignments Tab */}
+          {/* Tab 3: Calculation */}
+          <TabsContent value="calculation" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('calculation')}</CardTitle>
+                <CardDescription>{t('calculationDesc')}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="calculationMethod">{t('calculationMethod')} *</Label>
+                  <Select
+                    value={formData.calculationMethod}
+                    onValueChange={(v) => setFormData({ ...formData, calculationMethod: v as CalculationMethodEnum })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="fixed_expedition">{t('methodFixedExpedition')}</SelectItem>
+                      <SelectItem value="fixed_renewal">{t('methodFixedRenewal')}</SelectItem>
+                      <SelectItem value="fixed_both">{t('methodFixedBoth')}</SelectItem>
+                      <SelectItem value="percentage_based">{t('methodPercentageBased')}</SelectItem>
+                      <SelectItem value="unit_based">{t('methodUnitBased')}</SelectItem>
+                      <SelectItem value="tiered_rates">{t('methodTieredRates')}</SelectItem>
+                      <SelectItem value="formula_based">{t('methodFormulaBased')}</SelectItem>
+                      <SelectItem value="fixed_plus_unit">{t('methodFixedPlusUnit')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="tasaExpedicion">{t('expeditionFee')} (XAF)</Label>
+                    <Input
+                      id="tasaExpedicion"
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={formData.tasaExpedicion || ''}
+                      onChange={(e) => setFormData({ ...formData, tasaExpedicion: Number(e.target.value) || undefined })}
+                      placeholder="0"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="tasaRenovacion">{t('renewalFee')} (XAF)</Label>
+                    <Input
+                      id="tasaRenovacion"
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={formData.tasaRenovacion || ''}
+                      onChange={(e) => setFormData({ ...formData, tasaRenovacion: Number(e.target.value) || undefined })}
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="expeditionFormula">{t('expeditionFormula') || 'Fórmula de Expedición'}</Label>
+                    <Input
+                      id="expeditionFormula"
+                      value={formData.expeditionFormula || ''}
+                      onChange={(e) => setFormData({ ...formData, expeditionFormula: e.target.value })}
+                      placeholder="ej. base * 0.05"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="expeditionUnitMeasure">{t('expeditionUnitMeasure') || 'Unidad de Expedición'}</Label>
+                    <Input
+                      id="expeditionUnitMeasure"
+                      value={formData.expeditionUnitMeasure || ''}
+                      onChange={(e) => setFormData({ ...formData, expeditionUnitMeasure: e.target.value })}
+                      placeholder="ej. documento, página"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="renewalFormula">{t('renewalFormula') || 'Fórmula de Renovación'}</Label>
+                    <Input
+                      id="renewalFormula"
+                      value={formData.renewalFormula || ''}
+                      onChange={(e) => setFormData({ ...formData, renewalFormula: e.target.value })}
+                      placeholder="ej. base * 0.03"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="renewalUnitMeasure">{t('renewalUnitMeasure') || 'Unidad de Renovación'}</Label>
+                    <Input
+                      id="renewalUnitMeasure"
+                      value={formData.renewalUnitMeasure || ''}
+                      onChange={(e) => setFormData({ ...formData, renewalUnitMeasure: e.target.value })}
+                      placeholder="ej. documento, página"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="basePercentage">{t('basePercentage') || 'Porcentaje Base'} (%)</Label>
+                    <Input
+                      id="basePercentage"
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={formData.basePercentage || ''}
+                      onChange={(e) => setFormData({ ...formData, basePercentage: Number(e.target.value) || undefined })}
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="percentageOf">{t('percentageOf') || 'Porcentaje de'}</Label>
+                    <Input
+                      id="percentageOf"
+                      value={formData.percentageOf || ''}
+                      onChange={(e) => setFormData({ ...formData, percentageOf: e.target.value })}
+                      placeholder="ej. valor_declarado, capital_social"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="unitRate">{t('unitRate') || 'Tarifa por Unidad'} (XAF)</Label>
+                    <Input
+                      id="unitRate"
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={formData.unitRate || ''}
+                      onChange={(e) => setFormData({ ...formData, unitRate: Number(e.target.value) || undefined })}
+                      placeholder="0"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="unitType">{t('unitType') || 'Tipo de Unidad'}</Label>
+                    <Input
+                      id="unitType"
+                      value={formData.unitType || ''}
+                      onChange={(e) => setFormData({ ...formData, unitType: e.target.value })}
+                      placeholder="ej. kg, unidad, m²"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Tab 4: Validity & Penalties */}
+          <TabsContent value="validity" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('validityTitle') || 'Validez y Renovación'}</CardTitle>
+                <CardDescription>{t('validityDescription') || 'Períodos de validez, renovación y penalidades'}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="validityPeriodMonths">{t('validityPeriod') || 'Período de Validez (meses)'}</Label>
+                    <Input
+                      id="validityPeriodMonths"
+                      type="number"
+                      min="0"
+                      value={formData.validityPeriodMonths || ''}
+                      onChange={(e) => setFormData({ ...formData, validityPeriodMonths: Number(e.target.value) || undefined })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="renewalFrequencyMonths">{t('renewalFrequency') || 'Frecuencia de Renovación (meses)'}</Label>
+                    <Input
+                      id="renewalFrequencyMonths"
+                      type="number"
+                      min="0"
+                      value={formData.renewalFrequencyMonths || ''}
+                      onChange={(e) => setFormData({ ...formData, renewalFrequencyMonths: Number(e.target.value) || undefined })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="gracePeriodDays">{t('gracePeriod') || 'Período de Gracia (días)'}</Label>
+                    <Input
+                      id="gracePeriodDays"
+                      type="number"
+                      min="0"
+                      value={formData.gracePeriodDays || ''}
+                      onChange={(e) => setFormData({ ...formData, gracePeriodDays: Number(e.target.value) || 0 })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="latePenaltyPercentage">{t('latePenaltyPercentage') || 'Penalidad por Atraso (%)'}</Label>
+                    <Input
+                      id="latePenaltyPercentage"
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={formData.latePenaltyPercentage || ''}
+                      onChange={(e) => setFormData({ ...formData, latePenaltyPercentage: Number(e.target.value) || undefined })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="latePenaltyFixed">{t('latePenaltyFixed') || 'Penalidad Fija (XAF)'}</Label>
+                    <Input
+                      id="latePenaltyFixed"
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={formData.latePenaltyFixed || ''}
+                      onChange={(e) => setFormData({ ...formData, latePenaltyFixed: Number(e.target.value) || undefined })}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Tab 5: Legal */}
+          <TabsContent value="legal" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('legalTitle') || 'Información Legal'}</CardTitle>
+                <CardDescription>{t('legalDescription') || 'Referencias legales y fechas de vigencia'}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="legalReference">{t('legalReference') || 'Referencia Legal'}</Label>
+                  <Textarea
+                    id="legalReference"
+                    value={formData.legalReference || ''}
+                    onChange={(e) => setFormData({ ...formData, legalReference: e.target.value })}
+                    placeholder="Ley, decreto o reglamento aplicable..."
+                    rows={3}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="regulatoryArticles">{t('regulatoryArticles') || 'Artículos Regulatorios (uno por línea)'}</Label>
+                  <Textarea
+                    id="regulatoryArticles"
+                    value={(formData.regulatoryArticles || []).join('\n')}
+                    onChange={(e) => setFormData({ ...formData, regulatoryArticles: e.target.value.split('\n').filter(s => s.trim()) })}
+                    placeholder="Art. 1&#10;Art. 2&#10;Art. 3"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="tariffEffectiveFrom">{t('effectiveFrom')} *</Label>
+                    <Input
+                      id="tariffEffectiveFrom"
+                      type="date"
+                      value={formData.tariffEffectiveFrom}
+                      onChange={(e) => setFormData({ ...formData, tariffEffectiveFrom: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="tariffEffectiveTo">{t('effectiveTo') || 'Vigente hasta'}</Label>
+                    <Input
+                      id="tariffEffectiveTo"
+                      type="date"
+                      value={formData.tariffEffectiveTo || ''}
+                      onChange={(e) => setFormData({ ...formData, tariffEffectiveTo: e.target.value || undefined })}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Tab 6: Assignments */}
           <TabsContent value="assignments" className="space-y-6">
             {/* Document Assignments */}
             <Card>
               <CardHeader>
-                <CardTitle>{t('documentsTitle')}</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  {t('documentsTitle')}
+                  <Badge variant="secondary" className="ml-2">{selectedDocuments.length}</Badge>
+                </CardTitle>
                 <CardDescription>{t('documentsSubtitle')}</CardDescription>
               </CardHeader>
-              <CardContent>
-                {documentTemplates.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">{t('noDocuments')}</p>
-                ) : (
-                  <div className="grid grid-cols-2 gap-2">
-                    {documentTemplates.map((doc) => (
+              <CardContent className="space-y-4">
+                {/* Existing assignments */}
+                {selectedDocuments.length > 0 && (
+                  <div className="space-y-2 mb-4">
+                    <Label className="text-sm font-medium">{t('assignedDocuments') || 'Documentos asignados'}</Label>
+                    {selectedDocuments.map((doc) => (
                       <div
                         key={doc.id}
-                        className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                          selectedDocuments.includes(doc.id)
-                            ? 'border-primary bg-primary/5'
-                            : 'hover:border-muted-foreground/50'
-                        }`}
-                        onClick={() => toggleDocumentSelection(doc.id)}
+                        className="flex items-center justify-between p-3 border rounded-lg bg-muted/30"
                       >
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm font-medium">{doc.documentNameEs || doc.templateCode}</span>
+                        <div className="flex-1">
+                          <p className="font-medium">{doc.name}</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-1 text-xs">
+                            <span className="text-muted-foreground">{t('expedition')}:</span>
+                            {doc.isRequiredExpedition ? <Check className="h-4 w-4 text-green-600" /> : <X className="h-4 w-4 text-red-500" />}
+                          </div>
+                          <div className="flex items-center gap-1 text-xs">
+                            <span className="text-muted-foreground">{t('renewal')}:</span>
+                            {doc.isRequiredRenewal ? <Check className="h-4 w-4 text-green-600" /> : <X className="h-4 w-4 text-red-500" />}
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeDocumentAssignment(doc.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
                         </div>
                       </div>
                     ))}
                   </div>
+                )}
+
+                {/* Searchable template table for documents */}
+                {!isLoadingData && (
+                  <SearchableTemplateTable
+                    type="document"
+                    templates={documentTemplates}
+                    excludeIds={selectedDocuments.map(d => d.id)}
+                    onAssign={handleAssignDocuments}
+                    locale={locale}
+                    isAssigning={isAssigning}
+                  />
                 )}
               </CardContent>
             </Card>
@@ -613,32 +927,135 @@ export default function CreateFiscalServicePage() {
             {/* Procedure Assignments */}
             <Card>
               <CardHeader>
-                <CardTitle>{t('proceduresTitle')}</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Link2 className="h-5 w-5" />
+                  {t('proceduresTitle')}
+                  <Badge variant="secondary" className="ml-2">{selectedProcedures.length}</Badge>
+                </CardTitle>
                 <CardDescription>{t('proceduresSubtitle')}</CardDescription>
               </CardHeader>
-              <CardContent>
-                {procedureTemplates.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">{t('noProcedures')}</p>
-                ) : (
-                  <div className="grid grid-cols-2 gap-2">
-                    {procedureTemplates.map((proc) => (
+              <CardContent className="space-y-4">
+                {/* Existing assignments */}
+                {selectedProcedures.length > 0 && (
+                  <div className="space-y-2 mb-4">
+                    <Label className="text-sm font-medium">{t('assignedProcedures') || 'Procedimientos asignados'}</Label>
+                    {selectedProcedures.map((proc) => (
                       <div
                         key={proc.id}
-                        className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                          selectedProcedures.includes(proc.id)
-                            ? 'border-primary bg-primary/5'
-                            : 'hover:border-muted-foreground/50'
-                        }`}
-                        onClick={() => toggleProcedureSelection(proc.id)}
+                        className="flex items-center justify-between p-3 border rounded-lg bg-muted/30"
                       >
-                        <div className="flex items-center gap-2">
-                          <Link2 className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm font-medium">{proc.nameEs || proc.templateCode}</span>
+                        <div className="flex-1">
+                          <p className="font-medium">{proc.name}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Badge variant="outline">
+                            {proc.appliesTo === 'expedition' ? t('expedition') :
+                             proc.appliesTo === 'renewal' ? t('renewal') :
+                             proc.appliesTo === 'both' ? t('both') :
+                             proc.appliesTo || '-'}
+                          </Badge>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeProcedureAssignment(proc.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
+
+                {/* Searchable template table for procedures */}
+                {!isLoadingData && (
+                  <SearchableTemplateTable
+                    type="procedure"
+                    templates={procedureTemplates}
+                    excludeIds={selectedProcedures.map(p => p.id)}
+                    onAssign={handleAssignProcedures}
+                    locale={locale}
+                    isAssigning={isAssigning}
+                  />
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Tab 7: Advanced */}
+          <TabsContent value="advanced" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('advancedTitle') || 'Configuración Avanzada'}</CardTitle>
+                <CardDescription>{t('advancedDescription') || 'Prioridad, complejidad y agrupaciones'}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="priority">{t('priority') || 'Prioridad'}</Label>
+                    <Input
+                      id="priority"
+                      type="number"
+                      min="0"
+                      value={formData.priority || ''}
+                      onChange={(e) => setFormData({ ...formData, priority: Number(e.target.value) || 0 })}
+                    />
+                    <p className="text-xs text-muted-foreground">Mayor número = mayor prioridad</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="complexityLevel">{t('complexityLevel') || 'Nivel de Complejidad (1-5)'}</Label>
+                    <Select
+                      value={String(formData.complexityLevel || '')}
+                      onValueChange={(v) => setFormData({ ...formData, complexityLevel: Number(v) || 1 })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar nivel" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1 - Muy Simple</SelectItem>
+                        <SelectItem value="2">2 - Simple</SelectItem>
+                        <SelectItem value="3">3 - Moderado</SelectItem>
+                        <SelectItem value="4">4 - Complejo</SelectItem>
+                        <SelectItem value="5">5 - Muy Complejo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="parentServiceId">{t('parentService') || 'Servicio Padre (ID)'}</Label>
+                    <Input
+                      id="parentServiceId"
+                      type="number"
+                      min="0"
+                      value={formData.parentServiceId || ''}
+                      onChange={(e) => setFormData({ ...formData, parentServiceId: Number(e.target.value) || undefined })}
+                    />
+                    <p className="text-xs text-muted-foreground">Para sub-servicios</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="tierGroupName">{t('tierGroup') || 'Nombre de Grupo de Tarifa'}</Label>
+                    <Input
+                      id="tierGroupName"
+                      value={formData.tierGroupName || ''}
+                      onChange={(e) => setFormData({ ...formData, tierGroupName: e.target.value })}
+                      placeholder="ej. tarifas_vehiculos"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="isTierComponent"
+                    checked={formData.isTierComponent || false}
+                    onCheckedChange={(checked) => setFormData({ ...formData, isTierComponent: checked })}
+                  />
+                  <Label htmlFor="isTierComponent">{t('isTierComponent') || 'Es componente de tarifa escalonada'}</Label>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

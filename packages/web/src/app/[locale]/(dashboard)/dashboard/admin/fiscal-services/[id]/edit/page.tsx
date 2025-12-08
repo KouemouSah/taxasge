@@ -46,6 +46,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
 import fiscalServicesAPI from '@/modules/fiscal-services/services/api'
+import { SearchableTemplateTable } from '@/modules/fiscal-services/components'
 import type {
   FiscalServiceResponse,
   FiscalServiceUpdate,
@@ -320,13 +321,69 @@ export default function EditFiscalServicePage() {
     }
   }
 
-  // Get available templates (not already assigned)
-  const availableDocTemplates = documentTemplates.filter(
-    dt => !documentAssignments.some(da => da.documentTemplateId === dt.id)
-  )
-  const availableProcTemplates = procedureTemplates.filter(
-    pt => !procedureAssignments.some(pa => pa.templateId === pt.id)
-  )
+  // Handle multi-document assignment from SearchableTemplateTable
+  const handleAssignDocuments = async (selectedIds: number[], options?: Record<string, boolean | string>) => {
+    if (selectedIds.length === 0) return
+    setIsAssigning(true)
+    const isRequiredExpedition = options?.isRequiredExpedition === true
+    const isRequiredRenewal = options?.isRequiredRenewal === true
+
+    try {
+      for (const docId of selectedIds) {
+        await fiscalServicesAPI.documents.assign(serviceId, {
+          documentTemplateId: docId,
+          isRequiredExpedition,
+          isRequiredRenewal,
+        })
+      }
+      toast({
+        title: t('successTitle'),
+        description: `${selectedIds.length} ${t('documentAssigned')}`,
+      })
+      fetchAssignments()
+    } catch (err) {
+      toast({
+        variant: 'destructive',
+        title: t('errorTitle'),
+        description: err instanceof Error ? err.message : t('errorAssigning'),
+      })
+    } finally {
+      setIsAssigning(false)
+    }
+  }
+
+  // Handle multi-procedure assignment from SearchableTemplateTable
+  const handleAssignProcedures = async (selectedIds: number[], options?: Record<string, boolean | string>) => {
+    if (selectedIds.length === 0) return
+    setIsAssigning(true)
+    const appliesTo = (options?.appliesTo as string) || 'both'
+
+    try {
+      for (const procId of selectedIds) {
+        await fiscalServicesAPI.procedures.assign(serviceId, {
+          templateId: procId,
+          appliesTo,
+        })
+      }
+      toast({
+        title: t('successTitle'),
+        description: `${selectedIds.length} ${t('procedureAssigned')}`,
+      })
+      fetchAssignments()
+    } catch (err) {
+      toast({
+        variant: 'destructive',
+        title: t('errorTitle'),
+        description: err instanceof Error ? err.message : t('errorAssigning'),
+      })
+    } finally {
+      setIsAssigning(false)
+    }
+  }
+
+  // Get IDs of already assigned templates
+  const assignedDocIds = documentAssignments.map(da => da.documentTemplateId)
+  const assignedProcIds = procedureAssignments.map(pa => pa.templateId)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -955,55 +1012,15 @@ export default function EditFiscalServicePage() {
                       </div>
                     )}
 
-                    {/* Add new assignment */}
-                    {availableDocTemplates.length > 0 && (
-                      <div className="pt-4 border-t space-y-3">
-                        <Label>{t('assignDocument')}</Label>
-                        <div className="flex items-end gap-3">
-                          <div className="flex-1">
-                            <Select
-                              value={String(newDocAssignment.documentTemplateId || '')}
-                              onValueChange={(v) => setNewDocAssignment({ ...newDocAssignment, documentTemplateId: Number(v) })}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder={t('selectDocument')} />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {availableDocTemplates.map((dt) => (
-                                  <SelectItem key={dt.id} value={String(dt.id)}>
-                                    {dt.documentNameEs || dt.templateCode}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Switch
-                              id="reqExp"
-                              checked={newDocAssignment.isRequiredExpedition}
-                              onCheckedChange={(v) => setNewDocAssignment({ ...newDocAssignment, isRequiredExpedition: v })}
-                            />
-                            <Label htmlFor="reqExp" className="text-xs">{t('expedition')}</Label>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Switch
-                              id="reqRen"
-                              checked={newDocAssignment.isRequiredRenewal}
-                              onCheckedChange={(v) => setNewDocAssignment({ ...newDocAssignment, isRequiredRenewal: v })}
-                            />
-                            <Label htmlFor="reqRen" className="text-xs">{t('renewal')}</Label>
-                          </div>
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={handleAssignDocument}
-                            disabled={!newDocAssignment.documentTemplateId || isAssigning}
-                          >
-                            {isAssigning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                          </Button>
-                        </div>
-                      </div>
-                    )}
+                    {/* Searchable template table for documents */}
+                    <SearchableTemplateTable
+                      type="document"
+                      templates={documentTemplates}
+                      excludeIds={assignedDocIds}
+                      onAssign={handleAssignDocuments}
+                      locale={locale}
+                      isAssigning={isAssigning}
+                    />
                   </CardContent>
                 </Card>
 
@@ -1055,54 +1072,15 @@ export default function EditFiscalServicePage() {
                       </div>
                     )}
 
-                    {/* Add new assignment */}
-                    {availableProcTemplates.length > 0 && (
-                      <div className="pt-4 border-t space-y-3">
-                        <Label>{t('assignProcedure')}</Label>
-                        <div className="flex items-end gap-3">
-                          <div className="flex-1">
-                            <Select
-                              value={String(newProcAssignment.templateId || '')}
-                              onValueChange={(v) => setNewProcAssignment({ ...newProcAssignment, templateId: Number(v) })}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder={t('selectProcedure')} />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {availableProcTemplates.map((pt) => (
-                                  <SelectItem key={pt.id} value={String(pt.id)}>
-                                    {pt.nameEs || pt.templateCode}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="w-32">
-                            <Select
-                              value={newProcAssignment.appliesTo}
-                              onValueChange={(v) => setNewProcAssignment({ ...newProcAssignment, appliesTo: v })}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="expedition">{t('expedition')}</SelectItem>
-                                <SelectItem value="renewal">{t('renewal')}</SelectItem>
-                                <SelectItem value="both">{t('both')}</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={handleAssignProcedure}
-                            disabled={!newProcAssignment.templateId || isAssigning}
-                          >
-                            {isAssigning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                          </Button>
-                        </div>
-                      </div>
-                    )}
+                    {/* Searchable template table for procedures */}
+                    <SearchableTemplateTable
+                      type="procedure"
+                      templates={procedureTemplates}
+                      excludeIds={assignedProcIds}
+                      onAssign={handleAssignProcedures}
+                      locale={locale}
+                      isAssigning={isAssigning}
+                    />
                   </CardContent>
                 </Card>
               </>

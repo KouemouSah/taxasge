@@ -4,3 +4,4 @@
 
 export { SearchBar } from './SearchBar';
 export { ServiceCard } from './ServiceCard';
+export { SearchableTemplateTable } from './SearchableTemplateTable';
