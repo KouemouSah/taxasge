@@ -403,9 +403,9 @@ class FiscalServiceRepository:
         query = """
             SELECT
                 fs.*,
-                c.name_fr as category_name,
-                s.name_fr as sector_name,
-                m.name_fr as ministry_name
+                c.name_es as category_name,
+                s.name_es as sector_name,
+                m.name_es as ministry_name
             FROM fiscal_services fs
             JOIN categories c ON fs.category_id = c.id
             JOIN sectors s ON c.sector_id = s.id
@@ -429,13 +429,13 @@ class FiscalServiceRepository:
 
         # Get required documents
         docs = await conn.fetch(
-            """SELECT d.name_fr
+            """SELECT d.document_name_es
                FROM service_document_assignments sda
                JOIN document_templates d ON sda.document_template_id = d.id
                WHERE sda.fiscal_service_id = $1""",
             service_id,
         )
-        service_dict["required_documents"] = [d["name_fr"] for d in docs]
+        service_dict["required_documents"] = [d["document_name_es"] for d in docs]
 
         return service_dict
 
@@ -534,7 +534,7 @@ class FiscalServiceRepository:
         # Text search
         if search.query:
             conditions.append(
-                f"(fs.name_fr ILIKE ${param_idx} OR fs.description_fr ILIKE ${param_idx} OR EXISTS (SELECT 1 FROM service_keywords sk WHERE sk.fiscal_service_id = fs.id AND sk.keyword ILIKE ${param_idx}))"
+                f"(fs.name_es ILIKE ${param_idx} OR fs.description_es ILIKE ${param_idx} OR EXISTS (SELECT 1 FROM service_keywords sk WHERE sk.fiscal_service_id = fs.id AND sk.keyword ILIKE ${param_idx}))"
             )
             params.append(f"%{search.query}%")
             param_idx += 1
@@ -591,9 +591,9 @@ class FiscalServiceRepository:
         data_query = f"""
             SELECT DISTINCT
                 fs.*,
-                c.name_fr as category_name,
-                s.name_fr as sector_name,
-                m.name_fr as ministry_name
+                c.name_es as category_name,
+                s.name_es as sector_name,
+                m.name_es as ministry_name
             FROM fiscal_services fs
             JOIN categories c ON fs.category_id = c.id
             JOIN sectors s ON c.sector_id = s.id
@@ -625,9 +625,9 @@ class FiscalServiceRepository:
         query = """
             SELECT
                 fs.*,
-                c.name_fr as category_name,
-                s.name_fr as sector_name,
-                m.name_fr as ministry_name
+                c.name_es as category_name,
+                s.name_es as sector_name,
+                m.name_es as ministry_name
             FROM fiscal_services fs
             JOIN categories c ON fs.category_id = c.id
             JOIN sectors s ON c.sector_id = s.id
@@ -658,9 +658,9 @@ class FiscalServiceRepository:
         query = """
             SELECT
                 fs.*,
-                c.name_fr as category_name,
-                s.name_fr as sector_name,
-                m.name_fr as ministry_name
+                c.name_es as category_name,
+                s.name_es as sector_name,
+                m.name_es as ministry_name
             FROM fiscal_services fs
             JOIN categories c ON fs.category_id = c.id
             JOIN sectors s ON c.sector_id = s.id

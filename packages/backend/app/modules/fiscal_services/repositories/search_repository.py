@@ -43,12 +43,10 @@ class SearchRepository:
         params: List[Any] = []
         param_idx = 1
 
-        # Text search
+        # Text search (Spanish only - name_es, description_es in DB)
         if q:
             conditions.append(f"""(
                 fs.name_es ILIKE ${param_idx}
-                OR fs.name_fr ILIKE ${param_idx}
-                OR fs.name_en ILIKE ${param_idx}
                 OR fs.description_es ILIKE ${param_idx}
                 OR c.name_es ILIKE ${param_idx}
                 OR EXISTS (
