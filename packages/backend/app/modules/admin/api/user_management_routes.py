@@ -176,7 +176,7 @@ async def create_user(
 
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user(
-    user_id: str = Path(..., description="User ID"),
+    user_id: str = Path(..., description="User ID", pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"),
     current_user: UserResponse = Depends(get_current_user),
     db=Depends(get_database)
 ):
@@ -230,7 +230,7 @@ async def get_user(
 
 @router.put("/{user_id}", response_model=UserResponse)
 async def update_user(
-    user_id: str = Path(..., description="User ID"),
+    user_id: str = Path(..., description="User ID", pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"),
     user_update: UserUpdate = ...,
     current_user: UserResponse = Depends(get_current_user),
     db=Depends(get_database)
@@ -324,7 +324,7 @@ async def update_user(
 
 @router.delete("/{user_id}", status_code=status.HTTP_200_OK)
 async def delete_user(
-    user_id: str = Path(..., description="User ID"),
+    user_id: str = Path(..., description="User ID", pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"),
     admin_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("users.delete"))
 ):
@@ -452,7 +452,7 @@ async def get_user_stats(
 
 @router.get("/{user_id}/activities", response_model=List[UserActivity])
 async def get_user_activities(
-    user_id: str = Path(..., description="User ID"),
+    user_id: str = Path(..., description="User ID", pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"),
     limit: int = Query(50, ge=1, le=200, description="Maximum activities"),
     current_user: UserResponse = Depends(get_current_user),
     db=Depends(get_database)
