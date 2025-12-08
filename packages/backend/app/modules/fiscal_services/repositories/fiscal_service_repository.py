@@ -357,42 +357,78 @@ class FiscalServiceRepository:
     async def create(
         self, conn: asyncpg.Connection, service: FiscalServiceCreate
     ) -> Dict[str, Any]:
-        """Create fiscal service"""
+        """Create fiscal service - matches database schema exactly"""
+        import json
+
         query = """
             INSERT INTO fiscal_services (
-                category_id, code, name_fr, name_en, description_fr, description_en,
-                base_amount, calculation_type, is_active, requires_documents,
-                requires_procedure, estimated_duration_days, created_at, updated_at
+                service_code, category_id, name_es, description_es,
+                service_type, calculation_method,
+                tasa_expedicion, tasa_renovacion,
+                base_percentage, percentage_of, unit_rate, unit_type,
+                expedition_formula, expedition_unit_measure,
+                renewal_formula, renewal_unit_measure,
+                calculation_config, rate_tiers,
+                tier_group_name, is_tier_component,
+                validity_period_months, renewal_frequency_months, grace_period_days,
+                late_penalty_percentage, late_penalty_fixed,
+                penalty_calculation_rules, eligibility_criteria, exemption_conditions,
+                parent_service_id, legal_reference, regulatory_articles,
+                tariff_effective_from, tariff_effective_to,
+                processing_time_days, priority, complexity_level, status,
+                created_at, updated_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
+            VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+                $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
+                $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
+                $31, $32, $33, $34, $35, $36, $37,
+                NOW(), NOW()
+            )
             RETURNING *
         """
         result = await conn.fetchrow(
             query,
+            service.service_code,
             service.category_id,
-            service.code,
-            service.name_fr,
-            service.name_en,
-            service.description_fr,
-            service.description_en,
-            service.base_amount,
-            service.calculation_type.value,
-            service.is_active,
-            service.requires_documents,
-            service.requires_procedure,
-            service.estimated_duration_days,
+            service.name_es,
+            service.description_es,
+            service.service_type.value if service.service_type else None,
+            service.calculation_method.value if service.calculation_method else None,
+            service.tasa_expedicion,
+            service.tasa_renovacion,
+            service.base_percentage,
+            service.percentage_of,
+            service.unit_rate,
+            service.unit_type,
+            service.expedition_formula,
+            service.expedition_unit_measure,
+            service.renewal_formula,
+            service.renewal_unit_measure,
+            json.dumps(service.calculation_config) if service.calculation_config else '{}',
+            json.dumps(service.rate_tiers) if service.rate_tiers else '[]',
+            service.tier_group_name,
+            service.is_tier_component,
+            service.validity_period_months,
+            service.renewal_frequency_months,
+            service.grace_period_days,
+            service.late_penalty_percentage,
+            service.late_penalty_fixed,
+            json.dumps(service.penalty_calculation_rules) if service.penalty_calculation_rules else '{}',
+            json.dumps(service.eligibility_criteria) if service.eligibility_criteria else '{}',
+            json.dumps(service.exemption_conditions) if service.exemption_conditions else '[]',
+            service.parent_service_id,
+            service.legal_reference,
+            service.regulatory_articles,
+            service.tariff_effective_from,
+            service.tariff_effective_to,
+            service.processing_time_days,
+            service.priority,
+            service.complexity_level,
+            service.status.value if service.status else 'active',
         )
 
         service_dict = dict(result)
-
-        # Add keywords
-        if service.keywords:
-            for keyword in service.keywords:
-                await conn.execute(
-                    "INSERT INTO service_keywords (fiscal_service_id, keyword) VALUES ($1, $2)",
-                    service_dict["id"],
-                    keyword.lower(),
-                )
 
         return service_dict
 
@@ -442,8 +478,8 @@ class FiscalServiceRepository:
     async def get_by_code(
         self, conn: asyncpg.Connection, code: str
     ) -> Optional[Dict[str, Any]]:
-        """Get fiscal service by code"""
-        query = "SELECT * FROM fiscal_services WHERE code = $1"
+        """Get fiscal service by service_code"""
+        query = "SELECT * FROM fiscal_services WHERE service_code = $1"
         result = await conn.fetchrow(query, code)
         return dict(result) if result else None
 
@@ -687,16 +723,26 @@ class FiscalServiceRepository:
     async def update(
         self, conn: asyncpg.Connection, service_id: int, update_data: FiscalServiceUpdate
     ) -> Optional[Dict[str, Any]]:
-        """Update fiscal service"""
+        """Update fiscal service - matches database schema"""
+        import json
+
         updates = []
         params = [service_id]
         param_idx = 2
 
-        for field, value in update_data.dict(exclude_unset=True, exclude={"keywords"}).items():
+        # Fields that need special handling (enums and JSON)
+        enum_fields = {"service_type", "calculation_method", "status"}
+        json_fields = {"calculation_config", "rate_tiers", "penalty_calculation_rules",
+                       "eligibility_criteria", "exemption_conditions"}
+
+        for field, value in update_data.model_dump(exclude_unset=True).items():
             if value is not None:
-                if field == "calculation_type":
+                if field in enum_fields:
                     updates.append(f"{field} = ${param_idx}")
-                    params.append(value.value)
+                    params.append(value.value if hasattr(value, 'value') else value)
+                elif field in json_fields:
+                    updates.append(f"{field} = ${param_idx}")
+                    params.append(json.dumps(value) if not isinstance(value, str) else value)
                 else:
                     updates.append(f"{field} = ${param_idx}")
                     params.append(value)
@@ -705,25 +751,13 @@ class FiscalServiceRepository:
         if not updates:
             return await self.get_by_id(conn, service_id)
 
-        updates.append(f"updated_at = NOW()")
+        updates.append("updated_at = NOW()")
 
         query = f"UPDATE fiscal_services SET {', '.join(updates)} WHERE id = $1 RETURNING *"
         result = await conn.fetchrow(query, *params)
 
         if not result:
             return None
-
-        # Update keywords if provided
-        if update_data.keywords is not None:
-            await conn.execute(
-                "DELETE FROM service_keywords WHERE fiscal_service_id = $1", service_id
-            )
-            for keyword in update_data.keywords:
-                await conn.execute(
-                    "INSERT INTO service_keywords (fiscal_service_id, keyword) VALUES ($1, $2)",
-                    service_id,
-                    keyword.lower(),
-                )
 
         return await self.get_by_id(conn, service_id)
 

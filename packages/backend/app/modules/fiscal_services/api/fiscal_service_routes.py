@@ -980,7 +980,7 @@ async def create_fiscal_service(
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     # Check if code already exists
-    existing = await repository.get_by_code(db, service.code)
+    existing = await repository.get_by_code(db, service.service_code)
     if existing:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Service code already exists")
 

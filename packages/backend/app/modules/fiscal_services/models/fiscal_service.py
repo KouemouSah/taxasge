@@ -8,9 +8,9 @@ Tables implemented:
 Note: fiscal_service_data table belongs to DECLARATIONS module (user declarations)
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, Dict, Any, List
-from datetime import datetime
+from datetime import datetime, date
 from enum import Enum
 
 
@@ -257,6 +257,8 @@ class CategoryResponse(BaseModel):
 class FiscalServiceBase(BaseModel):
     """Base fiscal service model - matches database schema exactly"""
 
+    model_config = ConfigDict(extra='ignore', from_attributes=True)
+
     # Core identification
     service_code: str = Field(..., max_length=20, description="Unique service code")
     category_id: int = Field(..., description="Category ID (references categories.id)")
@@ -270,38 +272,70 @@ class FiscalServiceBase(BaseModel):
     calculation_method: CalculationMethodEnum = Field(..., description="How to calculate the amount")
 
     # Fixed amounts for expedition and renewal
-    tasa_expedicion: Optional[float] = Field(None, ge=0, description="Fixed fee for first issuance (GNF)")
-    tasa_renovacion: Optional[float] = Field(None, ge=0, description="Fixed fee for renewal (GNF)")
+    tasa_expedicion: Optional[float] = Field(None, ge=0, description="Fixed fee for first issuance (XAF)")
+    tasa_renovacion: Optional[float] = Field(None, ge=0, description="Fixed fee for renewal (XAF)")
 
-    # Variable calculation parameters
-    percentage_rate: Optional[float] = Field(None, ge=0, le=100, description="Percentage rate if percentage_based")
-    unit_price: Optional[float] = Field(None, ge=0, description="Price per unit if unit_based")
+    # Variable calculation parameters (matching database column names)
+    base_percentage: Optional[float] = Field(None, ge=0, le=100, description="Percentage rate if percentage_based")
+    percentage_of: Optional[str] = Field(None, max_length=100, description="What the percentage applies to")
+    unit_rate: Optional[float] = Field(None, ge=0, description="Price per unit if unit_based")
+    unit_type: Optional[str] = Field(None, max_length=50, description="Type of unit (quantity, weight, etc.)")
+
+    # Formulas for expedition and renewal
+    expedition_formula: Optional[str] = Field(None, description="Formula for expedition calculation")
+    expedition_unit_measure: Optional[str] = Field(None, max_length=50, description="Unit of measure for expedition")
+    renewal_formula: Optional[str] = Field(None, description="Formula for renewal calculation")
+    renewal_unit_measure: Optional[str] = Field(None, max_length=50, description="Unit of measure for renewal")
 
     # Advanced calculation configuration
     calculation_config: Optional[Dict[str, Any]] = Field(
-        None,
+        default_factory=dict,
         description="JSON config for complex calculations (formulas, variables, conditions)"
     )
     rate_tiers: Optional[List[Dict[str, Any]]] = Field(
-        None,
+        default_factory=list,
         description="Progressive rate brackets for tiered_rates method"
     )
+
+    # Tier grouping
+    tier_group_name: Optional[str] = Field(None, max_length=100, description="Name of tier grouping")
+    is_tier_component: Optional[bool] = Field(False, description="Whether this is part of tiered calculation")
 
     # Validity and renewal
     validity_period_months: Optional[int] = Field(None, ge=0, description="How long the service is valid (months)")
     renewal_frequency_months: Optional[int] = Field(None, ge=0, description="How often renewal is required")
+    grace_period_days: Optional[int] = Field(0, ge=0, description="Grace period before penalties")
+
+    # Penalty configuration
+    late_penalty_percentage: Optional[float] = Field(None, description="Late payment penalty percentage")
+    late_penalty_fixed: Optional[float] = Field(None, description="Fixed late payment penalty")
+    penalty_calculation_rules: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Rules for penalty calculation")
+
+    # Eligibility and exemptions
+    eligibility_criteria: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Eligibility requirements")
+    exemption_conditions: Optional[List[Dict[str, Any]]] = Field(default_factory=list, description="Exemption conditions")
 
     # Hierarchical services
     parent_service_id: Optional[int] = Field(None, description="Parent service for sub-services")
 
-    # Additional metadata
-    required_documents: Optional[List[str]] = Field(None, description="List of required document types")
+    # Legal and regulatory
+    legal_reference: Optional[str] = Field(None, description="Legal basis for this service")
+    regulatory_articles: Optional[List[str]] = Field(None, description="Regulatory articles")
+
+    # Tariff dates
+    tariff_effective_from: Optional[date] = Field(None, description="When tariff is effective")
+    tariff_effective_to: Optional[date] = Field(None, description="When tariff expires")
+
+    # Processing and priority
     processing_time_days: Optional[int] = Field(None, ge=0, description="Estimated processing time")
-    legal_reference: Optional[str] = Field(None, max_length=500, description="Legal basis for this service")
-    notes: Optional[str] = Field(None, description="Additional notes or instructions")
+    priority: Optional[int] = Field(0, description="Service priority")
+    complexity_level: Optional[int] = Field(1, ge=1, le=5, description="Complexity level 1-5")
 
     # Status
-    status: ServiceStatusEnum = Field(ServiceStatusEnum.ACTIVE, description="Service status")
+    status: Optional[ServiceStatusEnum] = Field(ServiceStatusEnum.ACTIVE, description="Service status")
+
+    # Computed field for API compatibility (not in DB, populated by repository)
+    required_documents: Optional[List[str]] = Field(None, description="List of required document types")
 
 
 class FiscalServiceCreate(FiscalServiceBase):
@@ -310,7 +344,9 @@ class FiscalServiceCreate(FiscalServiceBase):
 
 
 class FiscalServiceUpdate(BaseModel):
-    """Update fiscal service request - all fields optional"""
+    """Update fiscal service request - all fields optional, matching database schema"""
+    model_config = ConfigDict(extra='ignore')
+
     category_id: Optional[int] = None
     name_es: Optional[str] = Field(None, max_length=255)
     description_es: Optional[str] = None
@@ -318,28 +354,54 @@ class FiscalServiceUpdate(BaseModel):
     calculation_method: Optional[CalculationMethodEnum] = None
     tasa_expedicion: Optional[float] = Field(None, ge=0)
     tasa_renovacion: Optional[float] = Field(None, ge=0)
-    percentage_rate: Optional[float] = Field(None, ge=0, le=100)
-    unit_price: Optional[float] = Field(None, ge=0)
+    base_percentage: Optional[float] = Field(None, ge=0, le=100)
+    percentage_of: Optional[str] = Field(None, max_length=100)
+    unit_rate: Optional[float] = Field(None, ge=0)
+    unit_type: Optional[str] = Field(None, max_length=50)
+    expedition_formula: Optional[str] = None
+    expedition_unit_measure: Optional[str] = Field(None, max_length=50)
+    renewal_formula: Optional[str] = None
+    renewal_unit_measure: Optional[str] = Field(None, max_length=50)
     calculation_config: Optional[Dict[str, Any]] = None
     rate_tiers: Optional[List[Dict[str, Any]]] = None
+    tier_group_name: Optional[str] = Field(None, max_length=100)
+    is_tier_component: Optional[bool] = None
     validity_period_months: Optional[int] = Field(None, ge=0)
     renewal_frequency_months: Optional[int] = Field(None, ge=0)
+    grace_period_days: Optional[int] = Field(None, ge=0)
+    late_penalty_percentage: Optional[float] = None
+    late_penalty_fixed: Optional[float] = None
+    penalty_calculation_rules: Optional[Dict[str, Any]] = None
+    eligibility_criteria: Optional[Dict[str, Any]] = None
+    exemption_conditions: Optional[List[Dict[str, Any]]] = None
     parent_service_id: Optional[int] = None
-    required_documents: Optional[List[str]] = None
+    legal_reference: Optional[str] = None
+    regulatory_articles: Optional[List[str]] = None
+    tariff_effective_from: Optional[date] = None
+    tariff_effective_to: Optional[date] = None
     processing_time_days: Optional[int] = Field(None, ge=0)
-    legal_reference: Optional[str] = Field(None, max_length=500)
-    notes: Optional[str] = None
+    priority: Optional[int] = None
+    complexity_level: Optional[int] = Field(None, ge=1, le=5)
     status: Optional[ServiceStatusEnum] = None
 
 
 class FiscalServiceResponse(FiscalServiceBase):
-    """Fiscal service response"""
+    """Fiscal service response - inherits model_config from FiscalServiceBase"""
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    # Additional computed/joined fields from repository
+    category_name: Optional[str] = None
+    sector_name: Optional[str] = None
+    ministry_name: Optional[str] = None
+    keywords: Optional[List[str]] = None
+
+    # Usage statistics
+    view_count: Optional[int] = 0
+    calculation_count: Optional[int] = 0
+    payment_count: Optional[int] = 0
+    favorite_count: Optional[int] = 0
 
 
 class FiscalServiceWithCategory(FiscalServiceResponse):
