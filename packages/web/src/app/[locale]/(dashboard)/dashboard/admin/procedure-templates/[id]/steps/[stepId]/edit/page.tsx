@@ -79,6 +79,7 @@ export default function EditProcedureStepPage() {
     }
 
     fetchStep()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templateId, stepId, toast])
 
   const handleSubmit = async (e: React.FormEvent) => {

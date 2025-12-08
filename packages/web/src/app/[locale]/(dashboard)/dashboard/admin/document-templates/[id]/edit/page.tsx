@@ -73,6 +73,7 @@ export default function EditDocumentTemplatePage() {
     }
 
     fetchTemplate()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templateId, toast])
 
   const handleSubmit = async (e: React.FormEvent) => {

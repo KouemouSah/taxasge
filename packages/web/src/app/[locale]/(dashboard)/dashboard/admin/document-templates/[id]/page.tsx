@@ -54,6 +54,7 @@ export default function ViewDocumentTemplatePage() {
     }
 
     fetchTemplate()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templateId, toast])
 
   const handleDelete = async () => {

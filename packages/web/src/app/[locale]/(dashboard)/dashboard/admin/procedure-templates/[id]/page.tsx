@@ -67,6 +67,7 @@ export default function ViewProcedureTemplatePage() {
     }
 
     fetchData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templateId, toast])
 
   const handleDelete = async () => {
