@@ -1538,7 +1538,10 @@
       "metadata": "Metadatos",
       "createdAt": "Creado",
       "updatedAt": "Actualizado",
-      "by": "Por"
+      "by": "Por",
+      "expeditionFormula": "Fórmula de Expedición",
+      "renewalFormula": "Fórmula de Renovación",
+      "tieredRatesNotice": "Las tarifas escalonadas se configuran después de crear el servicio."
     },
     "ministries": {
       "title": "Gestión de Ministerios",

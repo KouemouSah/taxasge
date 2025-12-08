@@ -1521,7 +1521,10 @@
       "metadata": "Métadonnées",
       "createdAt": "Créé",
       "updatedAt": "Mis à jour",
-      "by": "Par"
+      "by": "Par",
+      "expeditionFormula": "Formule d'Émission",
+      "renewalFormula": "Formule de Renouvellement",
+      "tieredRatesNotice": "Les tarifs échelonnés sont configurés après la création du service."
     },
     "templates": {
       "documentsTitle": "Modèles de Documents",

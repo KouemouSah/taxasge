@@ -163,6 +163,12 @@ export default function CreateFiscalServicePage() {
         calculationMethod: formData.calculationMethod as CalculationMethodEnum,
         tasaExpedicion: formData.tasaExpedicion,
         tasaRenovacion: formData.tasaRenovacion,
+        basePercentage: formData.basePercentage,
+        percentageOf: formData.percentageOf,
+        unitRate: formData.unitRate,
+        unitType: formData.unitType,
+        expeditionFormula: formData.expeditionFormula,
+        renewalFormula: formData.renewalFormula,
         status: formData.status as ServiceStatusEnum,
         tariffEffectiveFrom: formData.tariffEffectiveFrom!,
       }
@@ -380,9 +386,10 @@ export default function CreateFiscalServicePage() {
                   </Select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                {/* Fixed Fees - for fixed_expedition, fixed_renewal, fixed_both, fixed_plus_unit */}
+                {['fixed_expedition', 'fixed_both', 'fixed_plus_unit'].includes(formData.calculationMethod || '') && (
                   <div className="space-y-2">
-                    <Label htmlFor="tasaExpedicion">{t('expeditionFee')}</Label>
+                    <Label htmlFor="tasaExpedicion">{t('expeditionFee')} (XAF)</Label>
                     <Input
                       id="tasaExpedicion"
                       type="number"
@@ -393,9 +400,11 @@ export default function CreateFiscalServicePage() {
                       placeholder="0"
                     />
                   </div>
+                )}
 
+                {['fixed_renewal', 'fixed_both', 'fixed_plus_unit'].includes(formData.calculationMethod || '') && (
                   <div className="space-y-2">
-                    <Label htmlFor="tasaRenovacion">{t('renewalFee')}</Label>
+                    <Label htmlFor="tasaRenovacion">{t('renewalFee')} (XAF)</Label>
                     <Input
                       id="tasaRenovacion"
                       type="number"
@@ -406,7 +415,99 @@ export default function CreateFiscalServicePage() {
                       placeholder="0"
                     />
                   </div>
-                </div>
+                )}
+
+                {/* Percentage Based */}
+                {formData.calculationMethod === 'percentage_based' && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="basePercentage">{t('basePercentage')} (%)</Label>
+                      <Input
+                        id="basePercentage"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        value={formData.basePercentage || ''}
+                        onChange={(e) => setFormData({ ...formData, basePercentage: Number(e.target.value) })}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="percentageOf">{t('percentageOf')}</Label>
+                      <Input
+                        id="percentageOf"
+                        type="text"
+                        value={formData.percentageOf || ''}
+                        onChange={(e) => setFormData({ ...formData, percentageOf: e.target.value })}
+                        placeholder="valor_declarado"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Unit Based */}
+                {['unit_based', 'fixed_plus_unit'].includes(formData.calculationMethod || '') && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="unitRate">{t('unitRate')} (XAF)</Label>
+                      <Input
+                        id="unitRate"
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={formData.unitRate || ''}
+                        onChange={(e) => setFormData({ ...formData, unitRate: Number(e.target.value) })}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="unitType">{t('unitType')}</Label>
+                      <Input
+                        id="unitType"
+                        type="text"
+                        value={formData.unitType || ''}
+                        onChange={(e) => setFormData({ ...formData, unitType: e.target.value })}
+                        placeholder="unidad, m², kg, etc."
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Formula Based */}
+                {formData.calculationMethod === 'formula_based' && (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="expeditionFormula">{t('expeditionFormula')}</Label>
+                      <Input
+                        id="expeditionFormula"
+                        type="text"
+                        value={formData.expeditionFormula || ''}
+                        onChange={(e) => setFormData({ ...formData, expeditionFormula: e.target.value })}
+                        placeholder="base_value * 0.05 + 10000"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="renewalFormula">{t('renewalFormula')}</Label>
+                      <Input
+                        id="renewalFormula"
+                        type="text"
+                        value={formData.renewalFormula || ''}
+                        onChange={(e) => setFormData({ ...formData, renewalFormula: e.target.value })}
+                        placeholder="base_value * 0.03 + 5000"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Tiered Rates - complex configuration notice */}
+                {formData.calculationMethod === 'tiered_rates' && (
+                  <div className="p-4 border rounded-lg bg-muted/30">
+                    <p className="text-sm text-muted-foreground">
+                      {t('tieredRatesNotice') || 'Las tarifas escalonadas se configuran después de crear el servicio.'}
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

@@ -283,6 +283,10 @@ export interface FiscalServiceResponse extends FiscalServiceBase {
   updatedAt: string
   createdBy?: string
   updatedBy?: string
+  // Hierarchy names from backend JOIN
+  categoryName?: string
+  sectorName?: string
+  ministryName?: string
 }
 
 export interface FiscalServiceWithCategory extends FiscalServiceResponse {

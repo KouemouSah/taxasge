@@ -394,7 +394,7 @@ export default function FiscalServiceDetailPage() {
                 <div className="p-4 border rounded-lg bg-muted/30">
                   <label className="text-sm font-medium text-muted-foreground">{t('category')}</label>
                   <p className="mt-1 text-lg font-medium">
-                    {category ? (category.name_es || category.nameEs) : `ID: ${service.categoryId}`}
+                    {service.categoryName || (category ? (category.name_es || category.nameEs) : `ID: ${service.categoryId}`)}
                   </p>
                   {category && (category.category_code || category.categoryCode) && (
                     <p className="text-xs text-muted-foreground font-mono mt-1">

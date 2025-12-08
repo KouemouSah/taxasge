@@ -504,7 +504,7 @@ class FiscalServiceRepository:
     async def list(
         self,
         conn: asyncpg.Connection,
-        category_id: Optional[str] = None,
+        category_id: Optional[int] = None,
         status: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
