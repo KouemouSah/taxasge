@@ -38,7 +38,6 @@ import {
   BookOpen,
   Settings,
   Link2,
-  Plus,
   Trash2,
   Check,
   X,
@@ -91,18 +90,6 @@ export default function EditFiscalServicePage() {
   const [procedureTemplates, setProcedureTemplates] = useState<ProcedureTemplate[]>([])
   const [isLoadingAssignments, setIsLoadingAssignments] = useState(false)
   const [isAssigning, setIsAssigning] = useState(false)
-
-  // New assignment form state
-  const [newDocAssignment, setNewDocAssignment] = useState<{
-    documentTemplateId: number | null
-    isRequiredExpedition: boolean
-    isRequiredRenewal: boolean
-  }>({ documentTemplateId: null, isRequiredExpedition: true, isRequiredRenewal: false })
-
-  const [newProcAssignment, setNewProcAssignment] = useState<{
-    templateId: number | null
-    appliesTo: string
-  }>({ templateId: null, appliesTo: 'both' })
 
   useEffect(() => {
     const fetchData = async () => {
@@ -229,59 +216,6 @@ export default function EditFiscalServicePage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serviceId])
-
-  // Handle document assignment
-  const handleAssignDocument = async () => {
-    if (!newDocAssignment.documentTemplateId) return
-    setIsAssigning(true)
-    try {
-      await fiscalServicesAPI.documents.assign(serviceId, {
-        documentTemplateId: newDocAssignment.documentTemplateId,
-        isRequiredExpedition: newDocAssignment.isRequiredExpedition,
-        isRequiredRenewal: newDocAssignment.isRequiredRenewal,
-      })
-      toast({
-        title: t('successTitle'),
-        description: t('documentAssigned'),
-      })
-      setNewDocAssignment({ documentTemplateId: null, isRequiredExpedition: true, isRequiredRenewal: false })
-      fetchAssignments()
-    } catch (err) {
-      toast({
-        variant: 'destructive',
-        title: t('errorTitle'),
-        description: err instanceof Error ? err.message : t('errorAssigning'),
-      })
-    } finally {
-      setIsAssigning(false)
-    }
-  }
-
-  // Handle procedure assignment
-  const handleAssignProcedure = async () => {
-    if (!newProcAssignment.templateId) return
-    setIsAssigning(true)
-    try {
-      await fiscalServicesAPI.procedures.assign(serviceId, {
-        templateId: newProcAssignment.templateId,
-        appliesTo: newProcAssignment.appliesTo,
-      })
-      toast({
-        title: t('successTitle'),
-        description: t('procedureAssigned'),
-      })
-      setNewProcAssignment({ templateId: null, appliesTo: 'both' })
-      fetchAssignments()
-    } catch (err) {
-      toast({
-        variant: 'destructive',
-        title: t('errorTitle'),
-        description: err instanceof Error ? err.message : t('errorAssigning'),
-      })
-    } finally {
-      setIsAssigning(false)
-    }
-  }
 
   // Handle unassign document
   const handleUnassignDocument = async (assignmentId: number) => {

@@ -46,7 +46,7 @@ interface SearchableTemplateTableProps {
   templates: DocumentTemplate[] | ProcedureTemplate[]
   excludeIds: number[]
   onAssign: (selectedIds: number[], options?: Record<string, boolean | string>) => void
-  locale: string
+  locale?: string // Reserved for future i18n support
   isAssigning?: boolean
 }
 
@@ -57,7 +57,7 @@ export function SearchableTemplateTable({
   templates,
   excludeIds,
   onAssign,
-  locale,
+  locale: _locale,
   isAssigning = false,
 }: SearchableTemplateTableProps) {
   const t = useTranslations('admin.fiscalServices')
