@@ -224,6 +224,49 @@ export default function FiscalServicesPage() {
     })
   }, [services, categories, sectors, searchQuery, ministryFilter, sectorFilter, typeFilter])
 
+  // Cascading filter: Sectors filtered by selected ministry
+  const filteredSectors = useMemo(() => {
+    if (ministryFilter === 'all') return sectors
+    return sectors.filter(s => {
+      const sectorMinistryId = s.ministryId ?? s.ministry_id
+      return sectorMinistryId === ministryFilter
+    })
+  }, [sectors, ministryFilter])
+
+  // Cascading filter: Categories filtered by selected sector (or ministry if no sector selected)
+  const filteredCategories = useMemo(() => {
+    if (sectorFilter !== 'all') {
+      // Filter by selected sector
+      return categories.filter(c => {
+        const categorySectorId = c.sectorId ?? c.sector_id
+        return categorySectorId === sectorFilter
+      })
+    }
+    if (ministryFilter !== 'all') {
+      // Filter by sectors of the selected ministry
+      const ministrySectorIds = filteredSectors.map(s => s.id)
+      return categories.filter(c => {
+        const categorySectorId = c.sectorId ?? c.sector_id
+        const categoryMinistryId = c.ministryId ?? c.ministry_id
+        return categoryMinistryId === ministryFilter ||
+               (categorySectorId && ministrySectorIds.includes(categorySectorId))
+      })
+    }
+    return categories
+  }, [categories, sectorFilter, ministryFilter, filteredSectors])
+
+  // Reset child filters when parent filter changes
+  useEffect(() => {
+    // When ministry changes, reset sector and category
+    setSectorFilter('all')
+    setCategoryFilter('all')
+  }, [ministryFilter])
+
+  useEffect(() => {
+    // When sector changes, reset category
+    setCategoryFilter('all')
+  }, [sectorFilter])
+
   // Client-side pagination
   const totalPages = Math.ceil(filteredServices.length / pageSize)
   const paginatedServices = useMemo(() => {
@@ -382,7 +425,7 @@ export default function FiscalServicesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">{t('allSectors')}</SelectItem>
-                  {sectors.map((s) => (
+                  {filteredSectors.map((s) => (
                     <SelectItem key={s.id} value={String(s.id)}>{s.nameEs || s.name_es}</SelectItem>
                   ))}
                 </SelectContent>
@@ -394,7 +437,7 @@ export default function FiscalServicesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">{t('allCategories')}</SelectItem>
-                  {categories.map((c) => (
+                  {filteredCategories.map((c) => (
                     <SelectItem key={c.id} value={String(c.id)}>{c.nameEs || c.name_es}</SelectItem>
                   ))}
                 </SelectContent>
