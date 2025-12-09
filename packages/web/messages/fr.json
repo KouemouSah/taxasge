@@ -1734,7 +1734,17 @@
       "fieldEmail": "Email de contact",
       "fieldPhone": "Téléphone de contact",
       "fieldWebsite": "Site web",
-      "fieldActive": "Ministère actif"
+      "fieldActive": "Ministère actif",
+      "descriptionPlaceholder": "Décrivez le ministère...",
+      "uploadImage": "Télécharger l'image",
+      "changeImage": "Changer l'image",
+      "deleteImage": "Supprimer",
+      "imagePreview": "Aperçu",
+      "uploading": "Téléchargement...",
+      "dropHere": "Déposez l'image ici",
+      "orClickToSelect": "ou cliquez pour sélectionner",
+      "imageUploaded": "Image téléchargée avec succès",
+      "imageDeleted": "Image supprimée"
     },
     "sectors": {
       "title": "Gestion des Secteurs",

@@ -57,6 +57,7 @@ import fiscalServicesAPI from '@/modules/fiscal-services/services/api'
 import type { Ministry } from '@/types/fiscal-service'
 import { getLocalizedName } from '@/types/fiscal-service'
 import { BackendUnavailableAlert } from '@/modules/admin/components'
+import { MinistryImageUpload } from '@/components/ui/ministry-image-upload'
 
 interface MinistryFormData {
   ministry_code: string
@@ -628,7 +629,7 @@ export default function MinistriesPage() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {selectedMinistry ? t('editMinistry') : t('createMinistry')}
@@ -680,6 +681,42 @@ export default function MinistriesPage() {
                 placeholder={t('descriptionPlaceholder') || 'Describe the ministry...'}
               />
             </div>
+
+            {/* Ministry Image Upload */}
+            <MinistryImageUpload
+              ministryCode={formData.ministry_code}
+              onUploadSuccess={(url) => {
+                toast({
+                  title: t('successTitle'),
+                  description: t('imageUploaded') || 'Imagen subida correctamente',
+                })
+              }}
+              onUploadError={(error) => {
+                toast({
+                  variant: 'destructive',
+                  title: t('errorTitle'),
+                  description: error,
+                })
+              }}
+              onDelete={() => {
+                toast({
+                  title: t('successTitle'),
+                  description: t('imageDeleted') || 'Imagen eliminada',
+                })
+              }}
+              disabled={!formData.ministry_code}
+              labels={{
+                upload: t('uploadImage') || 'Subir imagen',
+                change: t('changeImage') || 'Cambiar imagen',
+                delete: t('deleteImage') || 'Eliminar',
+                preview: t('imagePreview') || 'Vista previa',
+                dimensions: '800 x 600 px',
+                uploading: t('uploading') || 'Subiendo...',
+                dropHere: t('dropHere') || 'Arrastra la imagen aquí',
+                orClickToSelect: t('orClickToSelect') || 'o haz clic para seleccionar',
+                error: t('errorTitle') || 'Error',
+              }}
+            />
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

@@ -135,9 +135,18 @@ export default function MinistryDetailPage() {
             {/* Description */}
             <div>
               <h3 className="text-lg font-semibold mb-3">{t('description')}</h3>
-              <p className="text-muted-foreground text-justify whitespace-pre-line">
-                {ministry.description || t('noDescription')}
-              </p>
+              {ministry.description ? (
+                <div
+                  className="text-muted-foreground text-justify prose prose-sm max-w-none
+                    prose-headings:text-foreground prose-headings:font-semibold
+                    prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
+                    prose-p:my-2 prose-ul:my-2 prose-ol:my-2
+                    prose-strong:text-foreground"
+                  dangerouslySetInnerHTML={{ __html: ministry.description }}
+                />
+              ) : (
+                <p className="text-muted-foreground">{t('noDescription')}</p>
+              )}
             </div>
 
             {/* Location and Opening Hours */}

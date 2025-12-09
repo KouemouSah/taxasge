@@ -1734,7 +1734,17 @@
       "fieldEmail": "Contact Email",
       "fieldPhone": "Contact Phone",
       "fieldWebsite": "Website",
-      "fieldActive": "Active Ministry"
+      "fieldActive": "Active Ministry",
+      "descriptionPlaceholder": "Describe the ministry...",
+      "uploadImage": "Upload image",
+      "changeImage": "Change image",
+      "deleteImage": "Delete",
+      "imagePreview": "Preview",
+      "uploading": "Uploading...",
+      "dropHere": "Drop image here",
+      "orClickToSelect": "or click to select",
+      "imageUploaded": "Image uploaded successfully",
+      "imageDeleted": "Image deleted"
     },
     "sectors": {
       "title": "Sector Management",

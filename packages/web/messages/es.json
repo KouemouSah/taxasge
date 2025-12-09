@@ -1625,7 +1625,17 @@
       "fieldEmail": "Email de Contacto",
       "fieldPhone": "Teléfono de Contacto",
       "fieldWebsite": "Sitio Web",
-      "fieldActive": "Ministerio Activo"
+      "fieldActive": "Ministerio Activo",
+      "descriptionPlaceholder": "Describe el ministerio...",
+      "uploadImage": "Subir imagen",
+      "changeImage": "Cambiar imagen",
+      "deleteImage": "Eliminar",
+      "imagePreview": "Vista previa",
+      "uploading": "Subiendo...",
+      "dropHere": "Arrastra la imagen aquí",
+      "orClickToSelect": "o haz clic para seleccionar",
+      "imageUploaded": "Imagen subida correctamente",
+      "imageDeleted": "Imagen eliminada"
     },
     "sectors": {
       "title": "Gestión de Sectores",
