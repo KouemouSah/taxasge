@@ -607,9 +607,10 @@ export default function CreateFiscalServicePage() {
                   </Select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                {/* Fixed Expedition: tasaExpedicion only */}
+                {formData.calculationMethod === 'fixed_expedition' && (
                   <div className="space-y-2">
-                    <Label htmlFor="tasaExpedicion">{t('expeditionFee')} (XAF)</Label>
+                    <Label htmlFor="tasaExpedicion">{t('expeditionFee')} (XAF) *</Label>
                     <Input
                       id="tasaExpedicion"
                       type="number"
@@ -620,9 +621,12 @@ export default function CreateFiscalServicePage() {
                       placeholder="0"
                     />
                   </div>
+                )}
 
+                {/* Fixed Renewal: tasaRenovacion only */}
+                {formData.calculationMethod === 'fixed_renewal' && (
                   <div className="space-y-2">
-                    <Label htmlFor="tasaRenovacion">{t('renewalFee')} (XAF)</Label>
+                    <Label htmlFor="tasaRenovacion">{t('renewalFee')} (XAF) *</Label>
                     <Input
                       id="tasaRenovacion"
                       type="number"
@@ -633,102 +637,202 @@ export default function CreateFiscalServicePage() {
                       placeholder="0"
                     />
                   </div>
-                </div>
+                )}
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="expeditionFormula">{t('expeditionFormula') || 'Fórmula de Expedición'}</Label>
-                    <Input
-                      id="expeditionFormula"
-                      value={formData.expeditionFormula || ''}
-                      onChange={(e) => setFormData({ ...formData, expeditionFormula: e.target.value })}
-                      placeholder="ej. base * 0.05"
-                    />
+                {/* Fixed Both: tasaExpedicion + tasaRenovacion */}
+                {formData.calculationMethod === 'fixed_both' && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="tasaExpedicion">{t('expeditionFee')} (XAF) *</Label>
+                      <Input
+                        id="tasaExpedicion"
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={formData.tasaExpedicion || ''}
+                        onChange={(e) => setFormData({ ...formData, tasaExpedicion: Number(e.target.value) || undefined })}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="tasaRenovacion">{t('renewalFee')} (XAF) *</Label>
+                      <Input
+                        id="tasaRenovacion"
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={formData.tasaRenovacion || ''}
+                        onChange={(e) => setFormData({ ...formData, tasaRenovacion: Number(e.target.value) || undefined })}
+                        placeholder="0"
+                      />
+                    </div>
                   </div>
+                )}
 
-                  <div className="space-y-2">
-                    <Label htmlFor="expeditionUnitMeasure">{t('expeditionUnitMeasure') || 'Unidad de Expedición'}</Label>
-                    <Input
-                      id="expeditionUnitMeasure"
-                      value={formData.expeditionUnitMeasure || ''}
-                      onChange={(e) => setFormData({ ...formData, expeditionUnitMeasure: e.target.value })}
-                      placeholder="ej. documento, página"
-                    />
+                {/* Percentage Based: basePercentage + percentageOf */}
+                {formData.calculationMethod === 'percentage_based' && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="basePercentage">{t('basePercentage') || 'Porcentaje Base'} (%) *</Label>
+                      <Input
+                        id="basePercentage"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        value={formData.basePercentage || ''}
+                        onChange={(e) => setFormData({ ...formData, basePercentage: Number(e.target.value) || undefined })}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="percentageOf">{t('percentageOf') || 'Porcentaje de'} *</Label>
+                      <Input
+                        id="percentageOf"
+                        value={formData.percentageOf || ''}
+                        onChange={(e) => setFormData({ ...formData, percentageOf: e.target.value })}
+                        placeholder="ej. valor_declarado, capital_social"
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="renewalFormula">{t('renewalFormula') || 'Fórmula de Renovación'}</Label>
-                    <Input
-                      id="renewalFormula"
-                      value={formData.renewalFormula || ''}
-                      onChange={(e) => setFormData({ ...formData, renewalFormula: e.target.value })}
-                      placeholder="ej. base * 0.03"
-                    />
+                {/* Unit Based: unitRate + unitType */}
+                {formData.calculationMethod === 'unit_based' && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="unitRate">{t('unitRate') || 'Tarifa por Unidad'} (XAF) *</Label>
+                      <Input
+                        id="unitRate"
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={formData.unitRate || ''}
+                        onChange={(e) => setFormData({ ...formData, unitRate: Number(e.target.value) || undefined })}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="unitType">{t('unitType') || 'Tipo de Unidad'} *</Label>
+                      <Input
+                        id="unitType"
+                        value={formData.unitType || ''}
+                        onChange={(e) => setFormData({ ...formData, unitType: e.target.value })}
+                        placeholder="ej. kg, unidad, m²"
+                      />
+                    </div>
                   </div>
+                )}
 
-                  <div className="space-y-2">
-                    <Label htmlFor="renewalUnitMeasure">{t('renewalUnitMeasure') || 'Unidad de Renovación'}</Label>
-                    <Input
-                      id="renewalUnitMeasure"
-                      value={formData.renewalUnitMeasure || ''}
-                      onChange={(e) => setFormData({ ...formData, renewalUnitMeasure: e.target.value })}
-                      placeholder="ej. documento, página"
-                    />
+                {/* Tiered Rates: message about configuration after creation */}
+                {formData.calculationMethod === 'tiered_rates' && (
+                  <div className="p-4 bg-muted/50 rounded-lg border border-dashed">
+                    <p className="text-sm text-muted-foreground">
+                      {t('tieredRatesNotice') || 'Las tarifas escalonadas se configuran después de crear el servicio.'}
+                    </p>
                   </div>
-                </div>
+                )}
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="basePercentage">{t('basePercentage') || 'Porcentaje Base'} (%)</Label>
-                    <Input
-                      id="basePercentage"
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      value={formData.basePercentage || ''}
-                      onChange={(e) => setFormData({ ...formData, basePercentage: Number(e.target.value) || undefined })}
-                      placeholder="0.00"
-                    />
-                  </div>
+                {/* Formula Based: formulas + unit measures */}
+                {formData.calculationMethod === 'formula_based' && (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="expeditionFormula">{t('expeditionFormula') || 'Fórmula de Expedición'} *</Label>
+                        <Input
+                          id="expeditionFormula"
+                          value={formData.expeditionFormula || ''}
+                          onChange={(e) => setFormData({ ...formData, expeditionFormula: e.target.value })}
+                          placeholder="ej. base * 0.05"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="expeditionUnitMeasure">{t('expeditionUnitMeasure') || 'Unidad de Expedición'}</Label>
+                        <Input
+                          id="expeditionUnitMeasure"
+                          value={formData.expeditionUnitMeasure || ''}
+                          onChange={(e) => setFormData({ ...formData, expeditionUnitMeasure: e.target.value })}
+                          placeholder="ej. documento, página"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="renewalFormula">{t('renewalFormula') || 'Fórmula de Renovación'}</Label>
+                        <Input
+                          id="renewalFormula"
+                          value={formData.renewalFormula || ''}
+                          onChange={(e) => setFormData({ ...formData, renewalFormula: e.target.value })}
+                          placeholder="ej. base * 0.03"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="renewalUnitMeasure">{t('renewalUnitMeasure') || 'Unidad de Renovación'}</Label>
+                        <Input
+                          id="renewalUnitMeasure"
+                          value={formData.renewalUnitMeasure || ''}
+                          onChange={(e) => setFormData({ ...formData, renewalUnitMeasure: e.target.value })}
+                          placeholder="ej. documento, página"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
 
-                  <div className="space-y-2">
-                    <Label htmlFor="percentageOf">{t('percentageOf') || 'Porcentaje de'}</Label>
-                    <Input
-                      id="percentageOf"
-                      value={formData.percentageOf || ''}
-                      onChange={(e) => setFormData({ ...formData, percentageOf: e.target.value })}
-                      placeholder="ej. valor_declarado, capital_social"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="unitRate">{t('unitRate') || 'Tarifa por Unidad'} (XAF)</Label>
-                    <Input
-                      id="unitRate"
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={formData.unitRate || ''}
-                      onChange={(e) => setFormData({ ...formData, unitRate: Number(e.target.value) || undefined })}
-                      placeholder="0"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="unitType">{t('unitType') || 'Tipo de Unidad'}</Label>
-                    <Input
-                      id="unitType"
-                      value={formData.unitType || ''}
-                      onChange={(e) => setFormData({ ...formData, unitType: e.target.value })}
-                      placeholder="ej. kg, unidad, m²"
-                    />
-                  </div>
-                </div>
+                {/* Fixed Plus Unit: fixed fees + unit fields */}
+                {formData.calculationMethod === 'fixed_plus_unit' && (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="tasaExpedicion">{t('expeditionFee')} (XAF)</Label>
+                        <Input
+                          id="tasaExpedicion"
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={formData.tasaExpedicion || ''}
+                          onChange={(e) => setFormData({ ...formData, tasaExpedicion: Number(e.target.value) || undefined })}
+                          placeholder="0"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="tasaRenovacion">{t('renewalFee')} (XAF)</Label>
+                        <Input
+                          id="tasaRenovacion"
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={formData.tasaRenovacion || ''}
+                          onChange={(e) => setFormData({ ...formData, tasaRenovacion: Number(e.target.value) || undefined })}
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="unitRate">{t('unitRate') || 'Tarifa por Unidad'} (XAF) *</Label>
+                        <Input
+                          id="unitRate"
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={formData.unitRate || ''}
+                          onChange={(e) => setFormData({ ...formData, unitRate: Number(e.target.value) || undefined })}
+                          placeholder="0"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="unitType">{t('unitType') || 'Tipo de Unidad'} *</Label>
+                        <Input
+                          id="unitType"
+                          value={formData.unitType || ''}
+                          onChange={(e) => setFormData({ ...formData, unitType: e.target.value })}
+                          placeholder="ej. kg, unidad, m²"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
