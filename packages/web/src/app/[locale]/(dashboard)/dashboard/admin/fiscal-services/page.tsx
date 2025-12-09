@@ -495,14 +495,7 @@ export default function FiscalServicesPage() {
                   </Select>
                 </div>
 
-                <div className="flex items-center gap-4">
-                  <span className="text-sm text-muted-foreground">
-                    {t('showingResults', {
-                      start: filteredServices.length === 0 ? 0 : (currentPage - 1) * pageSize + 1,
-                      end: Math.min(currentPage * pageSize, filteredServices.length),
-                      total: filteredServices.length,
-                    })}
-                  </span>
+                <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">
                     {t('page')} {currentPage} {t('of')} {totalPages || 1}
                   </span>
