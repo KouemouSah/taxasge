@@ -12,7 +12,7 @@
  * @date 2025-11-25
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -78,8 +78,7 @@ export default function FiscalServicesPage() {
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
-  const [totalServices, setTotalServices] = useState(0)
-  const totalPages = Math.ceil(totalServices / pageSize)
+  const [_totalServices, setTotalServices] = useState(0)
 
   // Fetch hierarchy data (ministries, sectors, categories)
   const fetchHierarchyData = async () => {
@@ -97,7 +96,7 @@ export default function FiscalServicesPage() {
     }
   }
 
-  // Fetch fiscal services with filters
+  // Fetch ALL fiscal services (for client-side filtering on ministry/sector)
   const fetchServices = async () => {
     setIsLoading(true)
     setError(null)
@@ -110,15 +109,17 @@ export default function FiscalServicesPage() {
         status?: string
         language?: string
       } = {
-        page: currentPage,
-        pageSize,
+        page: 1,
+        pageSize: 1000, // Load ALL services for client-side ministry/sector filtering
         language: locale,
       }
 
+      // Category filter is sent to backend
       if (categoryFilter !== 'all') {
         params.categoryId = categoryFilter
       }
 
+      // Status filter is sent to backend
       if (statusFilter !== 'all') {
         params.status = statusFilter
       }
@@ -164,7 +165,7 @@ export default function FiscalServicesPage() {
   useEffect(() => {
     fetchServices()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, categoryFilter, statusFilter, locale])
+  }, [categoryFilter, statusFilter, locale])
 
   const handleRefresh = () => {
     fetchServices()
@@ -192,25 +193,39 @@ export default function FiscalServicesPage() {
     }
   }
 
-  // Filter services by search query and hierarchy
-  const filteredServices = services.filter(service => {
-    const matchesSearch = searchQuery === '' ||
-      service.serviceCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      service.nameEs.toLowerCase().includes(searchQuery.toLowerCase())
+  // Filter services by search query and hierarchy (client-side filtering on ALL data)
+  const filteredServices = useMemo(() => {
+    return services.filter(service => {
+      const matchesSearch = searchQuery === '' ||
+        service.serviceCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        service.nameEs.toLowerCase().includes(searchQuery.toLowerCase())
 
-    // Find category for this service
-    const serviceCategory = categories.find(c => c.id === service.categoryId)
+      // Find category for this service
+      const serviceCategory = categories.find(c => c.id === service.categoryId)
 
-    const matchesMinistry = ministryFilter === 'all' ||
-      (serviceCategory && (serviceCategory.ministryId ?? serviceCategory.ministry_id) === ministryFilter)
+      const matchesMinistry = ministryFilter === 'all' ||
+        (serviceCategory && (serviceCategory.ministryId ?? serviceCategory.ministry_id) === ministryFilter)
 
-    const matchesSector = sectorFilter === 'all' ||
-      (serviceCategory && (serviceCategory.sectorId ?? serviceCategory.sector_id) === sectorFilter)
+      const matchesSector = sectorFilter === 'all' ||
+        (serviceCategory && (serviceCategory.sectorId ?? serviceCategory.sector_id) === sectorFilter)
 
-    const matchesType = typeFilter === 'all' || service.serviceType === typeFilter
+      const matchesType = typeFilter === 'all' || service.serviceType === typeFilter
 
-    return matchesSearch && matchesMinistry && matchesSector && matchesType
-  })
+      return matchesSearch && matchesMinistry && matchesSector && matchesType
+    })
+  }, [services, categories, searchQuery, ministryFilter, sectorFilter, typeFilter])
+
+  // Client-side pagination
+  const totalPages = Math.ceil(filteredServices.length / pageSize)
+  const paginatedServices = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize
+    return filteredServices.slice(startIndex, startIndex + pageSize)
+  }, [filteredServices, currentPage, pageSize])
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, ministryFilter, sectorFilter, typeFilter, categoryFilter, statusFilter])
 
   const getStatusBadge = (status: ServiceStatusEnum) => {
     const statusConfig: Record<ServiceStatusEnum, { className: string }> = {
@@ -428,7 +443,7 @@ export default function FiscalServicesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredServices.map((service) => (
+                  {paginatedServices.map((service) => (
                     <TableRow key={service.id}>
                       <TableCell className="font-mono text-sm">{service.serviceCode}</TableCell>
                       <TableCell className="font-medium">{service.nameEs}</TableCell>
@@ -480,7 +495,14 @@ export default function FiscalServicesPage() {
                   </Select>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm text-muted-foreground">
+                    {t('showingResults', {
+                      start: filteredServices.length === 0 ? 0 : (currentPage - 1) * pageSize + 1,
+                      end: Math.min(currentPage * pageSize, filteredServices.length),
+                      total: filteredServices.length,
+                    })}
+                  </span>
                   <span className="text-sm text-muted-foreground">
                     {t('page')} {currentPage} {t('of')} {totalPages || 1}
                   </span>
