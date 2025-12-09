@@ -1894,7 +1894,9 @@
         "Applications": "Solicitudes",
         "Contracts": "Contratos",
         "Receipts": "Recibos",
-        "Reports": "Informes"
+        "Reports": "Informes",
+        "general": "General",
+        "General": "General"
       }
     }
   },

@@ -47,12 +47,22 @@ export default function DocumentTemplatesPage() {
     tAdmin(`templates.${key}`, params)
   const { toast } = useToast()
 
-  // Helper to translate category names
+  // Helper to translate category names using next-intl
   const translateCategory = (category: string): string => {
-    const key = `templates.templateCategories.${category}` as Parameters<typeof tAdmin>[0]
-    const translated = tAdmin.raw(key)
-    // If translation exists, return it; otherwise return original category
-    return typeof translated === 'string' ? translated : category
+    // Use try-catch because next-intl throws if key doesn't exist
+    try {
+      // Access the nested templateCategories object
+      const key = `templates.templateCategories.${category}` as Parameters<typeof tAdmin>[0]
+      const translation = tAdmin(key)
+      // If translation returns the key itself, return original category
+      if (translation.includes('templateCategories')) {
+        return category
+      }
+      return translation
+    } catch {
+      // If translation fails, return original category
+      return category
+    }
   }
 
   // Data states
