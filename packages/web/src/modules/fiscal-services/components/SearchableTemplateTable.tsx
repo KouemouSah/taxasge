@@ -4,6 +4,9 @@
  * SearchableTemplateTable Component
  * Reusable table for searching and selecting document/procedure templates
  * with pagination, filtering, and multi-select functionality
+ *
+ * IMPORTANT: Table only shows AFTER user performs a search (text or category filter)
+ * This prevents showing 700+ results immediately on load
  */
 
 import { useState, useMemo, useCallback, useEffect } from 'react'
@@ -75,6 +78,9 @@ export function SearchableTemplateTable({
   // Procedure-specific assignment options
   const [appliesTo, setAppliesTo] = useState<string>('both')
 
+  // Determine if user has started searching (text or category)
+  const hasSearched = searchQuery.trim().length > 0 || categoryFilter !== 'all'
+
   // Get available templates (excluding already assigned)
   const availableTemplates = useMemo(() => {
     return templates.filter(t => !excludeIds.includes(t.id))
@@ -92,6 +98,9 @@ export function SearchableTemplateTable({
 
   // Filter templates by search query and category
   const filteredTemplates = useMemo(() => {
+    // If no search performed yet, return empty array
+    if (!hasSearched) return []
+
     const query = searchQuery.toLowerCase().trim()
 
     return availableTemplates.filter(template => {
@@ -121,7 +130,7 @@ export function SearchableTemplateTable({
 
       return true
     })
-  }, [availableTemplates, searchQuery, categoryFilter, type])
+  }, [availableTemplates, searchQuery, categoryFilter, type, hasSearched])
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredTemplates.length / ITEMS_PER_PAGE)
@@ -210,6 +219,9 @@ export function SearchableTemplateTable({
             <Link2 className="h-4 w-4" />
           )}
           {type === 'document' ? t('searchDocuments') : t('searchProcedures')}
+          <Badge variant="outline" className="ml-2 font-normal">
+            {availableTemplates.length} {t('available') || 'disponibles'}
+          </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -218,7 +230,7 @@ export function SearchableTemplateTable({
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder={t('searchPlaceholder')}
+              placeholder={t('searchPlaceholder') || 'Código, nombre, palabra clave...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -237,8 +249,22 @@ export function SearchableTemplateTable({
           </Select>
         </div>
 
-        {/* Results Table */}
-        {filteredTemplates.length === 0 ? (
+        {/* Initial State - Before Search */}
+        {!hasSearched ? (
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
+            <Search className="h-12 w-12 mb-4 opacity-30" />
+            <p className="text-sm font-medium">
+              {t('searchToShowResults') || 'Escribe para buscar'}
+            </p>
+            <p className="text-xs mt-1">
+              {type === 'document'
+                ? (t('searchDocumentsHint', { count: availableTemplates.length }) || `${availableTemplates.length} documentos disponibles`)
+                : (t('searchProceduresHint', { count: availableTemplates.length }) || `${availableTemplates.length} procedimientos disponibles`)
+              }
+            </p>
+          </div>
+        ) : filteredTemplates.length === 0 ? (
+          /* No Results After Search */
           <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
             {type === 'document' ? (
               <FileText className="h-10 w-10 mb-2 opacity-50" />
@@ -248,6 +274,7 @@ export function SearchableTemplateTable({
             <p className="text-sm">{t('noResults')}</p>
           </div>
         ) : (
+          /* Results Table */
           <>
             <div className="border rounded-lg overflow-hidden">
               <Table>
@@ -261,10 +288,10 @@ export function SearchableTemplateTable({
                         onCheckedChange={toggleAllOnPage}
                       />
                     </TableHead>
-                    <TableHead className="w-[100px]">{t('tableCode') || 'Codigo'}</TableHead>
+                    <TableHead className="w-[100px]">{t('tableCode') || 'Código'}</TableHead>
                     <TableHead>{t('tableName') || 'Nombre'}</TableHead>
-                    <TableHead className="w-[120px]">{t('tableCategory') || 'Categoria'}</TableHead>
-                    <TableHead className="hidden md:table-cell">{t('tableDescription') || 'Descripcion'}</TableHead>
+                    <TableHead className="w-[120px]">{t('tableCategory') || 'Categoría'}</TableHead>
+                    <TableHead className="hidden md:table-cell">{t('tableDescription') || 'Descripción'}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
