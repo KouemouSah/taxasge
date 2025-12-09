@@ -364,9 +364,30 @@ async def list_procedure_templates(
     try:
         offset = (page - 1) * page_size
 
-        # Build WHERE clause
+        # Build WHERE clause for count (no language param needed)
+        count_where_clauses = []
+        count_params = []
+        count_idx = 1
+
+        if category:
+            count_where_clauses.append(f"pt.category = ${count_idx}")
+            count_params.append(category)
+            count_idx += 1
+
+        if is_active is not None:
+            count_where_clauses.append(f"pt.is_active = ${count_idx}")
+            count_params.append(is_active)
+            count_idx += 1
+
+        count_where_clause = " AND ".join(count_where_clauses) if count_where_clauses else "TRUE"
+
+        # Count total
+        count_query = f"SELECT COUNT(*) FROM procedure_templates pt WHERE {count_where_clause}"
+        total = await db.fetchval(count_query, *count_params)
+
+        # Build WHERE clause for data query ($1 is language)
         where_clauses = []
-        params = [language]  # $1 is always language
+        params = [language]
         param_idx = 2
 
         if category:
@@ -380,10 +401,6 @@ async def list_procedure_templates(
             param_idx += 1
 
         where_clause = " AND ".join(where_clauses) if where_clauses else "TRUE"
-
-        # Count total
-        count_query = f"SELECT COUNT(*) FROM procedure_templates pt WHERE {where_clause}"
-        total = await db.fetchval(count_query, *params[1:])  # Skip language param for count
 
         # Get data with i18n support
         data_query = f"""
