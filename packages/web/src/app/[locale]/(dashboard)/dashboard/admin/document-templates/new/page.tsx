@@ -15,10 +15,30 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { ArrowLeft, Save, FileText } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import templatesAPI from '@/modules/templates/services/api'
 import type { DocumentTemplateCreate } from '@/types/fiscal-service'
+
+// Valid document template categories (must match database check constraint)
+const DOCUMENT_CATEGORIES = [
+  'academic',
+  'aircraft',
+  'authorization',
+  'certificate',
+  'general',
+  'identity',
+  'payment_proof',
+  'photo',
+  'property',
+] as const
 
 export default function NewDocumentTemplatePage() {
   const locale = useLocale()
@@ -133,12 +153,21 @@ export default function NewDocumentTemplatePage() {
             {/* Category */}
             <div className="space-y-2">
               <Label htmlFor="category">{t('category')}</Label>
-              <Input
-                id="category"
+              <Select
                 value={formData.category || ''}
-                onChange={(e) => handleInputChange('category', e.target.value)}
-                placeholder={t('categoryPlaceholder')}
-              />
+                onValueChange={(value) => handleInputChange('category', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t('categoryPlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {DOCUMENT_CATEGORIES.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {t(`categories.${category}`) || category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Validity Duration */}
