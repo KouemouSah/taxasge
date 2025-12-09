@@ -47,22 +47,68 @@ export default function DocumentTemplatesPage() {
     tAdmin(`templates.${key}`, params)
   const { toast } = useToast()
 
-  // Helper to translate category names using next-intl
+  // Static translations map for categories (Spanish)
+  // Database stores categories in English, we translate to display language
+  const categoryTranslationsEs: Record<string, string> = {
+    'Identity Documents': 'Documentos de Identidad',
+    'Fiscal Certificates': 'Certificados Fiscales',
+    'Legal Documents': 'Documentos Legales',
+    'Professional Documents': 'Documentos Profesionales',
+    'Civil Registry': 'Registro Civil',
+    'Property Documents': 'Documentos de Propiedad',
+    'Immigration Documents': 'Documentos de Inmigración',
+    'Business Documents': 'Documentos Empresariales',
+    'Educational Documents': 'Documentos Educativos',
+    'Health Documents': 'Documentos de Salud',
+    'Tax Documents': 'Documentos Fiscales',
+    'Financial Documents': 'Documentos Financieros',
+    'Administrative Documents': 'Documentos Administrativos',
+    'Permits and Licenses': 'Permisos y Licencias',
+    'Certificates': 'Certificados',
+    'Declarations': 'Declaraciones',
+    'Applications': 'Solicitudes',
+    'Contracts': 'Contratos',
+    'Receipts': 'Recibos',
+    'Reports': 'Informes',
+    'general': 'General',
+    'General': 'General',
+  }
+
+  const categoryTranslationsFr: Record<string, string> = {
+    'Identity Documents': 'Documents d\'Identité',
+    'Fiscal Certificates': 'Certificats Fiscaux',
+    'Legal Documents': 'Documents Juridiques',
+    'Professional Documents': 'Documents Professionnels',
+    'Civil Registry': 'Registre Civil',
+    'Property Documents': 'Documents de Propriété',
+    'Immigration Documents': 'Documents d\'Immigration',
+    'Business Documents': 'Documents d\'Entreprise',
+    'Educational Documents': 'Documents Éducatifs',
+    'Health Documents': 'Documents de Santé',
+    'Tax Documents': 'Documents Fiscaux',
+    'Financial Documents': 'Documents Financiers',
+    'Administrative Documents': 'Documents Administratifs',
+    'Permits and Licenses': 'Permis et Licences',
+    'Certificates': 'Certificats',
+    'Declarations': 'Déclarations',
+    'Applications': 'Demandes',
+    'Contracts': 'Contrats',
+    'Receipts': 'Reçus',
+    'Reports': 'Rapports',
+    'general': 'Général',
+    'General': 'Général',
+  }
+
+  // Helper to translate category names based on current locale
   const translateCategory = (category: string): string => {
-    // Use try-catch because next-intl throws if key doesn't exist
-    try {
-      // Access the nested templateCategories object
-      const key = `templates.templateCategories.${category}` as Parameters<typeof tAdmin>[0]
-      const translation = tAdmin(key)
-      // If translation returns the key itself, return original category
-      if (translation.includes('templateCategories')) {
-        return category
-      }
-      return translation
-    } catch {
-      // If translation fails, return original category
-      return category
+    if (locale === 'es') {
+      return categoryTranslationsEs[category] || category
     }
+    if (locale === 'fr') {
+      return categoryTranslationsFr[category] || category
+    }
+    // English or unknown locale - return original
+    return category
   }
 
   // Data states
