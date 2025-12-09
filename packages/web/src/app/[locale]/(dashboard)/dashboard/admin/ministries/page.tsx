@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { Switch } from '@/components/ui/switch'
 import {
   Table,
@@ -674,11 +674,10 @@ export default function MinistriesPage() {
 
             <div className="space-y-2">
               <Label htmlFor="description_es">{t('fieldDescription')}</Label>
-              <Textarea
-                id="description_es"
+              <RichTextEditor
                 value={formData.description_es}
-                onChange={(e) => setFormData({ ...formData, description_es: e.target.value })}
-                rows={3}
+                onChange={(value) => setFormData({ ...formData, description_es: value })}
+                placeholder={t('descriptionPlaceholder') || 'Describe the ministry...'}
               />
             </div>
 
