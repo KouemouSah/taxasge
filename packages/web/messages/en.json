@@ -1651,6 +1651,7 @@
       "errorLoadingSteps": "Error loading steps",
       "successTitle": "Success",
       "errorTitle": "Error",
+      "requiredFieldsMissing": "Please complete the required fields (code and name)",
       "tableCode": "Code",
       "tableName": "Name",
       "tableCategory": "Category",

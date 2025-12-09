@@ -1651,6 +1651,7 @@
       "errorLoadingSteps": "Erreur lors du chargement des étapes",
       "successTitle": "Succès",
       "errorTitle": "Erreur",
+      "requiredFieldsMissing": "Veuillez compléter les champs requis (code et nom)",
       "tableCode": "Code",
       "tableName": "Nom",
       "tableCategory": "Catégorie",

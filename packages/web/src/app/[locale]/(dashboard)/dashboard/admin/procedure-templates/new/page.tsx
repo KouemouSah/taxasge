@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
-import { ArrowLeft, Save, ListOrdered, Info } from 'lucide-react'
+import { ArrowLeft, Save, ListOrdered, Plus } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import templatesAPI from '@/modules/templates/services/api'
 import type { ProcedureTemplateCreate } from '@/types/fiscal-service'
@@ -38,17 +38,24 @@ export default function NewProcedureTemplatePage() {
     isActive: true,
   })
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, redirectToAddSteps: boolean = false) => {
     e.preventDefault()
     setIsSubmitting(true)
 
     try {
-      await templatesAPI.procedures.create(formData)
+      const createdTemplate = await templatesAPI.procedures.create(formData)
       toast({
         title: t('successTitle'),
         description: t('procedureCreated'),
       })
-      router.push(`/${locale}/dashboard/admin/procedure-templates`)
+
+      if (redirectToAddSteps) {
+        // Redirect to add steps page
+        router.push(`/${locale}/dashboard/admin/procedure-templates/${createdTemplate.id}/steps/new`)
+      } else {
+        // Redirect to edit page where user can manage steps
+        router.push(`/${locale}/dashboard/admin/procedure-templates/${createdTemplate.id}/edit`)
+      }
     } catch (err) {
       toast({
         variant: 'destructive',
@@ -58,6 +65,22 @@ export default function NewProcedureTemplatePage() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const handleSaveAndAddSteps = async () => {
+    // Validate required fields
+    if (!formData.templateCode || !formData.nameEs) {
+      toast({
+        variant: 'destructive',
+        title: t('errorTitle'),
+        description: t('requiredFieldsMissing'),
+      })
+      return
+    }
+
+    // Create a fake event to pass to handleSubmit
+    const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+    await handleSubmit(fakeEvent, true)
   }
 
   const handleInputChange = (field: keyof ProcedureTemplateCreate, value: string | boolean) => {
@@ -172,19 +195,30 @@ export default function NewProcedureTemplatePage() {
       {/* Procedure Steps Section */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ListOrdered className="h-5 w-5" />
-            {t('procedureSteps')}
-          </CardTitle>
-          <CardDescription>{t('procedureStepsDescription')}</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <ListOrdered className="h-5 w-5" />
+                {t('procedureSteps')}
+              </CardTitle>
+              <CardDescription>
+                0 {t('steps')}
+              </CardDescription>
+            </div>
+            <Button size="sm" onClick={handleSaveAndAddSteps} disabled={isSubmitting}>
+              <Plus className="h-4 w-4 mr-2" />
+              {t('addStep')}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center justify-center gap-4 py-12 text-center rounded-lg border-2 border-dashed">
-            <Info className="h-12 w-12 text-muted-foreground" />
-            <div>
-              <p className="font-medium">{t('stepsAvailableAfterCreation')}</p>
-              <p className="text-sm text-muted-foreground">{t('stepsAvailableAfterCreationDescription')}</p>
-            </div>
+          <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
+            <ListOrdered className="h-12 w-12 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">{t('noSteps')}</p>
+            <Button size="sm" onClick={handleSaveAndAddSteps} disabled={isSubmitting}>
+              <Plus className="h-4 w-4 mr-2" />
+              {t('addStep')}
+            </Button>
           </div>
         </CardContent>
       </Card>
