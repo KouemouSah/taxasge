@@ -1264,7 +1264,8 @@ async def assign_document_to_service(
         if data.fiscal_service_id != service_id:
             data.fiscal_service_id = service_id
 
-        assignment = await repository.create_document_assignment(db, data.model_dump(), user_id)
+        # Note: assigned_by is integer column but user_id is UUID, passing None for now
+        assignment = await repository.create_document_assignment(db, data.model_dump(), None)
         logger.info(f"User {user_id} assigned document {data.document_template_id} to service {service_id}")
         return ServiceDocumentAssignmentResponse(**assignment)
 
@@ -1392,7 +1393,8 @@ async def assign_procedure_to_service(
         if data.fiscal_service_id != service_id:
             data.fiscal_service_id = service_id
 
-        assignment = await repository.create_procedure_assignment(db, data.model_dump(), user_id)
+        # Note: assigned_by is integer column but user_id is UUID, passing None for now
+        assignment = await repository.create_procedure_assignment(db, data.model_dump(), None)
         logger.info(f"User {user_id} assigned procedure {data.template_id} to service {service_id}")
         return ServiceProcedureAssignmentResponse(**assignment)
 

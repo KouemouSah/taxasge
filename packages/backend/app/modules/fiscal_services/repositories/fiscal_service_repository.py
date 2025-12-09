@@ -359,6 +359,7 @@ class FiscalServiceRepository:
     ) -> Dict[str, Any]:
         """Create fiscal service - matches database schema exactly"""
         import json
+        from datetime import date
 
         query = """
             INSERT INTO fiscal_services (
@@ -420,7 +421,7 @@ class FiscalServiceRepository:
             service.parent_service_id,
             service.legal_reference,
             service.regulatory_articles,
-            service.tariff_effective_from,
+            service.tariff_effective_from or date.today(),
             service.tariff_effective_to,
             service.processing_time_days,
             service.priority,
