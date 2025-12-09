@@ -47,6 +47,14 @@ export default function DocumentTemplatesPage() {
     tAdmin(`templates.${key}`, params)
   const { toast } = useToast()
 
+  // Helper to translate category names
+  const translateCategory = (category: string): string => {
+    const key = `templates.templateCategories.${category}` as Parameters<typeof tAdmin>[0]
+    const translated = tAdmin.raw(key)
+    // If translation exists, return it; otherwise return original category
+    return typeof translated === 'string' ? translated : category
+  }
+
   // Data states
   const [templates, setTemplates] = useState<DocumentTemplate[]>([])
   const [totalTemplates, setTotalTemplates] = useState(0)
@@ -214,7 +222,7 @@ export default function DocumentTemplatesPage() {
             <SelectContent>
               <SelectItem value="all">{tCommon('seeAll')}</SelectItem>
               {allCategories.map(category => (
-                <SelectItem key={category} value={category}>{category}</SelectItem>
+                <SelectItem key={category} value={category}>{translateCategory(category)}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -310,7 +318,7 @@ export default function DocumentTemplatesPage() {
                         <TableCell className="font-medium">{template.documentNameEs}</TableCell>
                         <TableCell>
                           {template.category ? (
-                            <Badge variant="outline">{template.category}</Badge>
+                            <Badge variant="outline">{translateCategory(template.category)}</Badge>
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}

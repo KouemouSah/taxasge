@@ -1873,7 +1873,29 @@
       "inactive": "Inactivo",
       "loading": "Cargando...",
       "refresh": "Actualizar",
-      "showingResults": "Mostrando {start}-{end} de {total} resultados"
+      "showingResults": "Mostrando {start}-{end} de {total} resultados",
+      "templateCategories": {
+        "Identity Documents": "Documentos de Identidad",
+        "Fiscal Certificates": "Certificados Fiscales",
+        "Legal Documents": "Documentos Legales",
+        "Professional Documents": "Documentos Profesionales",
+        "Civil Registry": "Registro Civil",
+        "Property Documents": "Documentos de Propiedad",
+        "Immigration Documents": "Documentos de Inmigración",
+        "Business Documents": "Documentos Empresariales",
+        "Educational Documents": "Documentos Educativos",
+        "Health Documents": "Documentos de Salud",
+        "Tax Documents": "Documentos Fiscales",
+        "Financial Documents": "Documentos Financieros",
+        "Administrative Documents": "Documentos Administrativos",
+        "Permits and Licenses": "Permisos y Licencias",
+        "Certificates": "Certificados",
+        "Declarations": "Declaraciones",
+        "Applications": "Solicitudes",
+        "Contracts": "Contratos",
+        "Receipts": "Recibos",
+        "Reports": "Informes"
+      }
     }
   },
   "categories": {
