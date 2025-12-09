@@ -27,7 +27,6 @@ import {
 } from '@/lib/firebase-storage'
 import {
   Upload,
-  X,
   Trash2,
   RefreshCw,
   ImageIcon,

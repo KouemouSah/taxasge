@@ -685,7 +685,7 @@ export default function MinistriesPage() {
             {/* Ministry Image Upload */}
             <MinistryImageUpload
               ministryCode={formData.ministry_code}
-              onUploadSuccess={(url) => {
+              onUploadSuccess={() => {
                 toast({
                   title: t('successTitle'),
                   description: t('imageUploaded') || 'Imagen subida correctamente',
