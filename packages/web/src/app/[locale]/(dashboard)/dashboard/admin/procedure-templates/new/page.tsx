@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
-import { ArrowLeft, Save, ListOrdered } from 'lucide-react'
+import { ArrowLeft, Save, ListOrdered, Info } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import templatesAPI from '@/modules/templates/services/api'
 import type { ProcedureTemplateCreate } from '@/types/fiscal-service'
@@ -168,6 +168,26 @@ export default function NewProcedureTemplatePage() {
           </CardContent>
         </Card>
       </form>
+
+      {/* Procedure Steps Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ListOrdered className="h-5 w-5" />
+            {t('procedureSteps')}
+          </CardTitle>
+          <CardDescription>{t('procedureStepsDescription')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center gap-4 py-12 text-center rounded-lg border-2 border-dashed">
+            <Info className="h-12 w-12 text-muted-foreground" />
+            <div>
+              <p className="font-medium">{t('stepsAvailableAfterCreation')}</p>
+              <p className="text-sm text-muted-foreground">{t('stepsAvailableAfterCreationDescription')}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
