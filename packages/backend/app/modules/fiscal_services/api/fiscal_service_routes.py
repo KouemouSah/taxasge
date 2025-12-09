@@ -105,7 +105,7 @@ async def list_categories(
 @router.get("", response_model=FiscalServiceListResponse)
 async def list_fiscal_services(
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(20, ge=1, le=1000),
     category_id: Optional[int] = Query(None, description="Filter by category"),
     status: Optional[str] = Query(None, description="Filter by status (active, inactive, draft, deprecated)"),
     language: str = Query("es", pattern="^(es|fr|en)$", description="Language for translations"),
