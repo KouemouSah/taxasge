@@ -122,7 +122,7 @@ export default function NewProcedureTemplatePage() {
                 id="templateCode"
                 value={formData.templateCode}
                 onChange={(e) => handleInputChange('templateCode', e.target.value)}
-                placeholder="PROC-001"
+                placeholder="PROC_001"
                 required
               />
             </div>

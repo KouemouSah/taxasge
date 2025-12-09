@@ -121,7 +121,7 @@ export default function NewDocumentTemplatePage() {
                 id="templateCode"
                 value={formData.templateCode}
                 onChange={(e) => handleInputChange('templateCode', e.target.value)}
-                placeholder="DOC-001"
+                placeholder="DOC_001"
                 required
               />
             </div>
