@@ -194,6 +194,7 @@ export default function FiscalServicesPage() {
   }
 
   // Filter services by search query and hierarchy (client-side filtering on ALL data)
+  // Hierarchy: fiscal_services → categories → sectors → ministries
   const filteredServices = useMemo(() => {
     return services.filter(service => {
       const matchesSearch = searchQuery === '' ||
@@ -203,17 +204,25 @@ export default function FiscalServicesPage() {
       // Find category for this service
       const serviceCategory = categories.find(c => c.id === service.categoryId)
 
-      const matchesMinistry = ministryFilter === 'all' ||
-        (serviceCategory && (serviceCategory.ministryId ?? serviceCategory.ministry_id) === ministryFilter)
+      // Find sector via category.sector_id for ministry lookup
+      const categorySectorId = serviceCategory?.sectorId ?? serviceCategory?.sector_id
+      const serviceSector = categorySectorId ? sectors.find(s => s.id === categorySectorId) : null
 
-      const matchesSector = sectorFilter === 'all' ||
-        (serviceCategory && (serviceCategory.sectorId ?? serviceCategory.sector_id) === sectorFilter)
+      // Ministry filter: category may have direct ministry_id OR inherit via sector
+      const categoryMinistryId = serviceCategory?.ministryId ?? serviceCategory?.ministry_id
+      const sectorMinistryId = serviceSector?.ministryId ?? serviceSector?.ministry_id
+      const matchesMinistry = ministryFilter === 'all' ||
+        categoryMinistryId === ministryFilter ||
+        sectorMinistryId === ministryFilter
+
+      // Sector filter: check category's sector_id
+      const matchesSector = sectorFilter === 'all' || categorySectorId === sectorFilter
 
       const matchesType = typeFilter === 'all' || service.serviceType === typeFilter
 
       return matchesSearch && matchesMinistry && matchesSector && matchesType
     })
-  }, [services, categories, searchQuery, ministryFilter, sectorFilter, typeFilter])
+  }, [services, categories, sectors, searchQuery, ministryFilter, sectorFilter, typeFilter])
 
   // Client-side pagination
   const totalPages = Math.ceil(filteredServices.length / pageSize)
