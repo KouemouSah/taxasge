@@ -74,6 +74,13 @@ function snakeToCamel(str: string): string {
 }
 
 /**
+ * Convert camelCase string to snake_case
+ */
+function camelToSnake(str: string): string {
+  return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)
+}
+
+/**
  * Transform object keys from snake_case to camelCase (recursive)
  */
 function transformKeys<T>(obj: unknown): T {
@@ -85,6 +92,24 @@ function transformKeys<T>(obj: unknown): T {
   for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
     const camelKey = snakeToCamel(key)
     transformed[camelKey] = transformKeys(value)
+  }
+  return transformed as T
+}
+
+/**
+ * Transform object keys from camelCase to snake_case (recursive)
+ * Used for sending data to backend
+ */
+function toSnakeCase<T>(obj: unknown): T {
+  if (obj === null || obj === undefined) return obj as T
+  if (Array.isArray(obj)) return obj.map(item => toSnakeCase(item)) as T
+  if (obj instanceof Date) return obj.toISOString().split('T')[0] as unknown as T
+  if (typeof obj !== 'object') return obj as T
+
+  const transformed: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+    const snakeKey = camelToSnake(key)
+    transformed[snakeKey] = toSnakeCase(value)
   }
   return transformed as T
 }
@@ -267,11 +292,11 @@ export const hierarchyApi = {
       return transformKeys<Ministry>(response)
     },
     create: async (data: Omit<Ministry, 'id' | 'created_at' | 'updated_at'>): Promise<Ministry> => {
-      const response = await client.post<Ministry>(`${FISCAL_SERVICES_BASE}/admin/ministries`, data)
+      const response = await client.post<Ministry>(`${FISCAL_SERVICES_BASE}/admin/ministries`, toSnakeCase(data))
       return transformKeys<Ministry>(response)
     },
     update: async (ministryId: number, data: Partial<Ministry>): Promise<Ministry> => {
-      const response = await client.put<Ministry>(`${FISCAL_SERVICES_BASE}/admin/ministries/${ministryId}`, data)
+      const response = await client.put<Ministry>(`${FISCAL_SERVICES_BASE}/admin/ministries/${ministryId}`, toSnakeCase(data))
       return transformKeys<Ministry>(response)
     },
     delete: async (ministryId: number): Promise<void> => {
@@ -296,11 +321,11 @@ export const hierarchyApi = {
       return transformKeys<Sector>(response)
     },
     create: async (data: Omit<Sector, 'id' | 'created_at' | 'updated_at'>): Promise<Sector> => {
-      const response = await client.post<Sector>(`${FISCAL_SERVICES_BASE}/admin/sectors`, data)
+      const response = await client.post<Sector>(`${FISCAL_SERVICES_BASE}/admin/sectors`, toSnakeCase(data))
       return transformKeys<Sector>(response)
     },
     update: async (sectorId: number, data: Partial<Sector>): Promise<Sector> => {
-      const response = await client.put<Sector>(`${FISCAL_SERVICES_BASE}/admin/sectors/${sectorId}`, data)
+      const response = await client.put<Sector>(`${FISCAL_SERVICES_BASE}/admin/sectors/${sectorId}`, toSnakeCase(data))
       return transformKeys<Sector>(response)
     },
     delete: async (sectorId: number): Promise<void> => {
@@ -325,11 +350,11 @@ export const hierarchyApi = {
       return transformKeys<Category>(response)
     },
     create: async (data: Omit<Category, 'id' | 'created_at' | 'updated_at'>): Promise<Category> => {
-      const response = await client.post<Category>(`${FISCAL_SERVICES_BASE}/admin/categories`, data)
+      const response = await client.post<Category>(`${FISCAL_SERVICES_BASE}/admin/categories`, toSnakeCase(data))
       return transformKeys<Category>(response)
     },
     update: async (categoryId: number, data: Partial<Category>): Promise<Category> => {
-      const response = await client.put<Category>(`${FISCAL_SERVICES_BASE}/admin/categories/${categoryId}`, data)
+      const response = await client.put<Category>(`${FISCAL_SERVICES_BASE}/admin/categories/${categoryId}`, toSnakeCase(data))
       return transformKeys<Category>(response)
     },
     delete: async (categoryId: number): Promise<void> => {
@@ -437,7 +462,7 @@ export const fiscalServicesAdminApi = {
    * Auth: Required + Permission "fiscal_services.create"
    */
   create: async (data: FiscalServiceCreate): Promise<FiscalServiceResponse> => {
-    const response = await client.post<FiscalServiceResponse>(`${FISCAL_SERVICES_BASE}/admin/services`, data)
+    const response = await client.post<FiscalServiceResponse>(`${FISCAL_SERVICES_BASE}/admin/services`, toSnakeCase(data))
     return transformKeys<FiscalServiceResponse>(response)
   },
 
@@ -449,7 +474,7 @@ export const fiscalServicesAdminApi = {
   update: async (serviceId: number | string, data: FiscalServiceUpdate): Promise<FiscalServiceResponse> => {
     const response = await client.put<FiscalServiceResponse>(
       `${FISCAL_SERVICES_BASE}/admin/services/${serviceId}`,
-      data
+      toSnakeCase(data)
     )
     return transformKeys<FiscalServiceResponse>(response)
   },
@@ -541,7 +566,7 @@ export const documentsApi = {
   ): Promise<ServiceDocumentAssignment> => {
     const response = await client.post<ServiceDocumentAssignment>(
       `${FISCAL_SERVICES_BASE}/${serviceId}/documents`,
-      data
+      toSnakeCase(data)
     )
     return transformKeys<ServiceDocumentAssignment>(response)
   },
@@ -606,7 +631,7 @@ export const proceduresApi = {
   ): Promise<ServiceProcedureAssignment> => {
     const response = await client.post<ServiceProcedureAssignment>(
       `${FISCAL_SERVICES_BASE}/${serviceId}/procedures`,
-      data
+      toSnakeCase(data)
     )
     return transformKeys<ServiceProcedureAssignment>(response)
   },
@@ -676,7 +701,7 @@ export const keywordsApi = {
   ): Promise<ServiceKeyword> => {
     const response = await client.post<ServiceKeyword>(
       `${FISCAL_SERVICES_BASE}/${serviceId}/keywords`,
-      data
+      toSnakeCase(data)
     )
     return transformKeys<ServiceKeyword>(response)
   },
@@ -726,7 +751,7 @@ export const translationsApi = {
   ): Promise<EntityTranslation> => {
     const response = await client.post<EntityTranslation>(
       `${FISCAL_SERVICES_BASE}/${serviceId}/translations`,
-      data
+      toSnakeCase(data)
     )
     return transformKeys<EntityTranslation>(response)
   },
