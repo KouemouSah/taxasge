@@ -116,6 +116,10 @@ jobs:
         id: deploy
         run: |
           echo "🚀 Deploying to Cloud Run..."
+
+          # Escape the service account JSON for Cloud Run env var
+          FIREBASE_SA_ESCAPED=$(echo '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' | jq -c .)
+
           gcloud run deploy ${{ env.SERVICE_NAME }} \
             --image gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
             --platform managed \
@@ -138,6 +142,7 @@ jobs:
             --set-env-vars="GEMINI_CHAT_MODEL=gemini-2.0-flash" \
             --set-env-vars="GEMINI_PRO_MODEL=gemini-2.0-flash" \
             --set-env-vars="GEMINI_EMBEDDING_MODEL=text-embedding-004" \
+            --set-env-vars="^##^FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV=${FIREBASE_SA_ESCAPED}" \
             --min-instances=0 \
             --max-instances=10 \
             --memory=1Gi \
