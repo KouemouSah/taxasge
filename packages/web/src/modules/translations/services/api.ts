@@ -100,7 +100,7 @@ export const entityTranslationsApi = {
   search: async (
     params: EntityTranslationSearchParams
   ): Promise<EntityTranslationListResponse> => {
-    return fetchClient.get(ENTITY_BASE, {
+    return fetchClient.get(`${ENTITY_BASE}/`, {
       entity_type: params.entity_type,
       entity_code: params.entity_code,
       language_code: params.language_code,
@@ -142,7 +142,7 @@ export const entityTranslationsApi = {
    * BACKEND: POST /api/v1/translations/entities
    */
   create: async (data: EntityTranslationCreate): Promise<EntityTranslation> => {
-    return fetchClient.post(ENTITY_BASE, data)
+    return fetchClient.post(`${ENTITY_BASE}/`, data)
   },
 
   /**
@@ -250,7 +250,7 @@ export const systemTranslationsApi = {
   search: async (
     params: SystemTranslationSearchParams
   ): Promise<SystemTranslationListResponse> => {
-    return fetchClient.get(SYSTEM_BASE, {
+    return fetchClient.get(`${SYSTEM_BASE}/`, {
       category: params.category,
       key_code: params.key_code,
       context: params.context,
@@ -289,7 +289,7 @@ export const systemTranslationsApi = {
    * BACKEND: POST /api/v1/translations
    */
   create: async (data: SystemTranslationCreate): Promise<SystemTranslation> => {
-    return fetchClient.post(SYSTEM_BASE, data)
+    return fetchClient.post(`${SYSTEM_BASE}/`, data)
   },
 
   /**
@@ -379,7 +379,7 @@ export const frontendTranslationsApi = {
   search: async (
     params: FrontendTranslationSearchParams
   ): Promise<SystemTranslationListResponse> => {
-    return fetchClient.get(FRONTEND_BASE, {
+    return fetchClient.get(`${FRONTEND_BASE}/`, {
       namespace: params.namespace,
       key_code: params.key_code,
       search_term: params.search_term,
@@ -400,7 +400,7 @@ export const frontendTranslationsApi = {
     en: string,
     description?: string
   ): Promise<SystemTranslation> => {
-    return fetchClient.post(FRONTEND_BASE, undefined, {
+    return fetchClient.post(`${FRONTEND_BASE}/`, undefined, {
       namespace,
       key_code: keyCode,
       es,
