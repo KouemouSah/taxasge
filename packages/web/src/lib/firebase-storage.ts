@@ -7,6 +7,7 @@
  */
 
 import { appConfig } from '@/core/config/app'
+import { getAuthData } from '@/core/auth/storage'
 
 // Constants
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
@@ -23,7 +24,8 @@ export interface UploadResult {
  */
 function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null
-  return localStorage.getItem(appConfig.auth.tokenKey)
+  const authData = getAuthData()
+  return authData?.access_token || null
 }
 
 /**
