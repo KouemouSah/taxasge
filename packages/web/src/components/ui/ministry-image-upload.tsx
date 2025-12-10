@@ -2,13 +2,13 @@
 
 /**
  * Ministry Image Upload Component
- * Upload, preview, modify and delete ministry images
+ * Upload, preview, modify and delete ministry images via backend API
  *
  * Features:
  * - Drag & drop or click to upload
  * - Preview thumbnail
- * - Auto resize to 800x600
- * - Upload to Firebase Storage
+ * - Auto resize to 800x600 (on backend)
+ * - Upload via backend API with signed URLs
  * - Modify/delete existing images
  *
  * @module components/ui/ministry-image-upload
@@ -33,7 +33,7 @@ import {
 } from 'lucide-react'
 
 interface MinistryImageUploadProps {
-  ministryCode: string
+  ministryId?: number
   onUploadSuccess?: (url: string) => void
   onUploadError?: (error: string) => void
   onDelete?: () => void
@@ -53,7 +53,7 @@ interface MinistryImageUploadProps {
 }
 
 export function MinistryImageUpload({
-  ministryCode,
+  ministryId,
   onUploadSuccess,
   onUploadError,
   onDelete,
@@ -82,12 +82,12 @@ export function MinistryImageUpload({
     error: errorLabel = 'Error',
   } = labels
 
-  // Check for existing image on mount and when ministry code changes
+  // Check for existing image on mount and when ministry ID changes
   useEffect(() => {
-    if (ministryCode) {
+    if (ministryId) {
       const checkExisting = async () => {
-        // getMinistryImageWithToken returns URL with access token (or null if not exists)
-        const imageUrl = await getMinistryImageWithToken(ministryCode)
+        // getMinistryImageWithToken returns signed URL (or null if not exists)
+        const imageUrl = await getMinistryImageWithToken(ministryId)
         if (imageUrl) {
           setHasExistingImage(true)
           setPreviewUrl(imageUrl)
@@ -99,14 +99,14 @@ export function MinistryImageUpload({
       }
       checkExisting()
     }
-  }, [ministryCode])
+  }, [ministryId])
 
   // Handle file selection
   const handleFileSelect = useCallback(
     async (file: File) => {
-      if (!ministryCode) {
-        setError('Ministry code is required')
-        onUploadError?.('Ministry code is required')
+      if (!ministryId) {
+        setError('Ministry ID is required')
+        onUploadError?.('Ministry ID is required')
         return
       }
 
@@ -119,7 +119,7 @@ export function MinistryImageUpload({
       setImageLoadError(false)
 
       try {
-        const result = await uploadMinistryImage(file, ministryCode)
+        const result = await uploadMinistryImage(file, ministryId)
 
         if (result.success && result.url) {
           setPreviewUrl(result.url)
@@ -141,7 +141,7 @@ export function MinistryImageUpload({
         URL.revokeObjectURL(localPreview)
       }
     },
-    [ministryCode, onUploadSuccess, onUploadError]
+    [ministryId, onUploadSuccess, onUploadError]
   )
 
   // Handle file input change
@@ -183,13 +183,13 @@ export function MinistryImageUpload({
 
   // Handle delete
   const handleDelete = async () => {
-    if (!ministryCode) return
+    if (!ministryId) return
 
     setIsUploading(true)
     setError(null)
 
     try {
-      const result = await deleteMinistryImage(ministryCode)
+      const result = await deleteMinistryImage(ministryId)
 
       if (result.success) {
         setPreviewUrl(null)
@@ -287,7 +287,7 @@ export function MinistryImageUpload({
           variant="outline"
           size="sm"
           onClick={handleClick}
-          disabled={disabled || isUploading || !ministryCode}
+          disabled={disabled || isUploading || !ministryId}
         >
           {isUploading ? (
             <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -322,10 +322,10 @@ export function MinistryImageUpload({
         disabled={disabled || isUploading}
       />
 
-      {/* Ministry code hint */}
-      {!ministryCode && (
+      {/* Ministry ID hint */}
+      {!ministryId && (
         <p className="text-xs text-muted-foreground">
-          Ingresa el código del ministerio primero
+          Guarda el ministerio primero para subir una imagen
         </p>
       )}
     </div>

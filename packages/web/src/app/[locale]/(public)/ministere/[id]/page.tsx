@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { Building2, ArrowLeft, FileText, FolderOpen, Layers, MapPin, Clock } from 'lucide-react';
 import Breadcrumb from '@/components/ui/breadcrumb';
 import { getMinistryDetails, type MinistryDetails } from '@/core/api/homepage';
-import { getMinistryImageWithToken } from '@/lib/firebase-storage';
+import { getMinistryImageUrl } from '@/lib/firebase-storage';
 
 export default function MinistryDetailPage() {
   const params = useParams();
@@ -43,14 +43,12 @@ export default function MinistryDetailPage() {
 
         setMinistry(result);
 
-        // Load image URL with token
-        if (result.ministry_code) {
-          const url = await getMinistryImageWithToken(result.ministry_code);
-          if (url) {
-            setImageUrl(url);
-          } else {
-            setImageError(true);
-          }
+        // Load image URL from backend (returns signed URL)
+        const url = await getMinistryImageUrl(parseInt(ministryId));
+        if (url) {
+          setImageUrl(url);
+        } else {
+          setImageError(true);
         }
       } catch (err) {
         console.error('Failed to fetch ministry details:', err);

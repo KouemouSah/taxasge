@@ -1,10 +1,13 @@
 """Fiscal Service Routes - 850 tax services catalog API"""
 
-from fastapi import APIRouter, HTTPException, Depends, status, Query
+from fastapi import APIRouter, HTTPException, Depends, status, Query, UploadFile, File
 from fastapi.security import HTTPBearer
 from typing import Dict, Any, List, Optional
 from loguru import logger
+from pydantic import BaseModel
 import time
+from io import BytesIO
+from PIL import Image
 
 from app.modules.fiscal_services.models import (
     MinistryCreate,
@@ -57,6 +60,7 @@ from app.modules.fiscal_services.services import CalculationService
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.permissions.middleware.permission_middleware import permission_required
 from app.database.connection import get_database
+from app.modules.documents.services.storage_service import firebase_storage_service
 
 router = APIRouter(tags=["Fiscal Services"])
 security = HTTPBearer()
@@ -624,6 +628,363 @@ async def delete_ministry(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error deleting ministry: {str(e)}"
+        )
+
+
+# ============================================================================
+# ADMIN: MINISTRY IMAGE MANAGEMENT
+# ============================================================================
+
+# Constants for ministry images
+MINISTRY_IMAGE_FOLDER = "application-attachments/ministerios"
+MINISTRY_IMAGE_MAX_SIZE = 5 * 1024 * 1024  # 5MB
+MINISTRY_IMAGE_TARGET_SIZE = (800, 600)
+
+
+class MinistryImageResponse(BaseModel):
+    """Response model for ministry image operations"""
+    success: bool
+    url: Optional[str] = None
+    message: Optional[str] = None
+
+
+def resize_image_to_target(image_bytes: bytes, target_size: tuple = (800, 600)) -> bytes:
+    """Resize image to target dimensions (800x600) with center crop"""
+    img = Image.open(BytesIO(image_bytes))
+
+    # Convert to RGB if necessary
+    if img.mode in ('RGBA', 'P'):
+        img = img.convert('RGB')
+
+    # Calculate scaling to cover target dimensions
+    target_width, target_height = target_size
+    source_width, source_height = img.size
+
+    source_aspect = source_width / source_height
+    target_aspect = target_width / target_height
+
+    if source_aspect > target_aspect:
+        # Image is wider - scale by height, crop width
+        new_height = target_height
+        new_width = int(source_width * (target_height / source_height))
+    else:
+        # Image is taller - scale by width, crop height
+        new_width = target_width
+        new_height = int(source_height * (target_width / source_width))
+
+    # Resize
+    img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+    # Center crop
+    left = (new_width - target_width) // 2
+    top = (new_height - target_height) // 2
+    right = left + target_width
+    bottom = top + target_height
+    img = img.crop((left, top, right, bottom))
+
+    # Save to bytes
+    output = BytesIO()
+    img.save(output, format='JPEG', quality=85, optimize=True)
+    return output.getvalue()
+
+
+@router.post("/admin/ministries/{ministry_id}/image", response_model=MinistryImageResponse)
+async def upload_ministry_image(
+    ministry_id: int,
+    file: UploadFile = File(...),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+    _: None = Depends(permission_required("fiscal_services.manage_hierarchy"))
+):
+    """
+    Upload or replace ministry image
+
+    - Accepts JPEG, PNG, WebP images
+    - Auto-resizes to 800x600 pixels
+    - Saves as {ministry_code}.jpg
+
+    Requires fiscal_services.manage_hierarchy permission
+    """
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
+
+    try:
+        # Get ministry to get the code
+        ministry = await repository.get_ministry_by_id(db, ministry_id)
+        if not ministry:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Ministry with ID {ministry_id} not found"
+            )
+
+        ministry_code = ministry.get("ministry_code")
+        if not ministry_code:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ministry has no code"
+            )
+
+        # Validate file type
+        content_type = file.content_type or ""
+        if not content_type.startswith("image/"):
+            raise HTTPException(
+                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                detail="File must be an image (JPEG, PNG, or WebP)"
+            )
+
+        # Read file content
+        content = await file.read()
+
+        # Validate file size
+        if len(content) > MINISTRY_IMAGE_MAX_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"File too large. Max size: {MINISTRY_IMAGE_MAX_SIZE / (1024*1024)}MB"
+            )
+
+        # Resize image to 800x600
+        resized_content = resize_image_to_target(content, MINISTRY_IMAGE_TARGET_SIZE)
+
+        # Initialize storage if needed
+        if not firebase_storage_service._initialized:
+            await firebase_storage_service.initialize()
+
+        # Upload to Firebase Storage
+        file_path = f"{MINISTRY_IMAGE_FOLDER}/{ministry_code}.jpg"
+        blob = firebase_storage_service.bucket.blob(file_path)
+
+        # Set metadata
+        blob.metadata = {
+            "uploadedBy": user_id,
+            "uploadedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "ministryId": str(ministry_id),
+            "ministryCode": ministry_code,
+        }
+
+        # Upload
+        blob.upload_from_string(
+            resized_content,
+            content_type="image/jpeg",
+            timeout=300
+        )
+
+        # Generate signed URL (1 year)
+        from datetime import timedelta
+        signed_url = blob.generate_signed_url(
+            version="v4",
+            expiration=timedelta(days=365),
+            method="GET"
+        )
+
+        logger.info(f"Admin {user_id} uploaded image for ministry {ministry_id} ({ministry_code})")
+
+        return MinistryImageResponse(
+            success=True,
+            url=signed_url,
+            message="Image uploaded successfully"
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error uploading ministry image for {ministry_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error uploading image: {str(e)}"
+        )
+
+
+@router.get("/admin/ministries/{ministry_id}/image", response_model=MinistryImageResponse)
+async def get_ministry_image_url(
+    ministry_id: int,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database)
+):
+    """
+    Get signed URL for ministry image
+
+    Returns a URL valid for 24 hours
+    """
+    try:
+        # Get ministry to get the code
+        ministry = await repository.get_ministry_by_id(db, ministry_id)
+        if not ministry:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Ministry with ID {ministry_id} not found"
+            )
+
+        ministry_code = ministry.get("ministry_code")
+        if not ministry_code:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ministry has no code"
+            )
+
+        # Initialize storage if needed
+        if not firebase_storage_service._initialized:
+            await firebase_storage_service.initialize()
+
+        # Check if image exists
+        file_path = f"{MINISTRY_IMAGE_FOLDER}/{ministry_code}.jpg"
+        blob = firebase_storage_service.bucket.blob(file_path)
+
+        if not blob.exists():
+            return MinistryImageResponse(
+                success=False,
+                url=None,
+                message="Image not found"
+            )
+
+        # Generate signed URL (24 hours)
+        from datetime import timedelta
+        signed_url = blob.generate_signed_url(
+            version="v4",
+            expiration=timedelta(hours=24),
+            method="GET"
+        )
+
+        return MinistryImageResponse(
+            success=True,
+            url=signed_url,
+            message="Image URL generated"
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting ministry image URL for {ministry_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error getting image URL: {str(e)}"
+        )
+
+
+@router.get("/ministries/{ministry_id}/image", response_model=MinistryImageResponse)
+async def get_ministry_image_url_public(
+    ministry_id: int,
+    db=Depends(get_database)
+):
+    """
+    Get signed URL for ministry image (public endpoint)
+
+    Returns a URL valid for 24 hours
+    No authentication required
+    """
+    try:
+        # Get ministry to get the code
+        ministry = await repository.get_ministry_by_id(db, ministry_id)
+        if not ministry:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Ministry with ID {ministry_id} not found"
+            )
+
+        ministry_code = ministry.get("ministry_code")
+        if not ministry_code:
+            return MinistryImageResponse(
+                success=False,
+                url=None,
+                message="Ministry has no code"
+            )
+
+        # Initialize storage if needed
+        if not firebase_storage_service._initialized:
+            await firebase_storage_service.initialize()
+
+        # Check if image exists
+        file_path = f"{MINISTRY_IMAGE_FOLDER}/{ministry_code}.jpg"
+        blob = firebase_storage_service.bucket.blob(file_path)
+
+        if not blob.exists():
+            return MinistryImageResponse(
+                success=False,
+                url=None,
+                message="Image not found"
+            )
+
+        # Generate signed URL (24 hours)
+        from datetime import timedelta
+        signed_url = blob.generate_signed_url(
+            version="v4",
+            expiration=timedelta(hours=24),
+            method="GET"
+        )
+
+        return MinistryImageResponse(
+            success=True,
+            url=signed_url,
+            message="Image URL generated"
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting public ministry image URL for {ministry_id}: {e}")
+        return MinistryImageResponse(
+            success=False,
+            url=None,
+            message="Error getting image"
+        )
+
+
+@router.delete("/admin/ministries/{ministry_id}/image", response_model=MinistryImageResponse)
+async def delete_ministry_image(
+    ministry_id: int,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+    _: None = Depends(permission_required("fiscal_services.manage_hierarchy"))
+):
+    """
+    Delete ministry image
+
+    Requires fiscal_services.manage_hierarchy permission
+    """
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
+
+    try:
+        # Get ministry to get the code
+        ministry = await repository.get_ministry_by_id(db, ministry_id)
+        if not ministry:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Ministry with ID {ministry_id} not found"
+            )
+
+        ministry_code = ministry.get("ministry_code")
+        if not ministry_code:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ministry has no code"
+            )
+
+        # Initialize storage if needed
+        if not firebase_storage_service._initialized:
+            await firebase_storage_service.initialize()
+
+        # Delete image
+        file_path = f"{MINISTRY_IMAGE_FOLDER}/{ministry_code}.jpg"
+        blob = firebase_storage_service.bucket.blob(file_path)
+
+        if blob.exists():
+            blob.delete()
+            logger.info(f"Admin {user_id} deleted image for ministry {ministry_id} ({ministry_code})")
+            return MinistryImageResponse(
+                success=True,
+                message="Image deleted successfully"
+            )
+        else:
+            return MinistryImageResponse(
+                success=True,
+                message="Image was already deleted"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting ministry image for {ministry_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting image: {str(e)}"
         )
 
 

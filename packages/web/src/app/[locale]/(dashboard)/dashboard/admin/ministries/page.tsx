@@ -684,7 +684,7 @@ export default function MinistriesPage() {
 
             {/* Ministry Image Upload */}
             <MinistryImageUpload
-              ministryCode={formData.ministry_code}
+              ministryId={selectedMinistry?.id}
               onUploadSuccess={() => {
                 toast({
                   title: t('successTitle'),
@@ -704,7 +704,7 @@ export default function MinistriesPage() {
                   description: t('imageDeleted') || 'Imagen eliminada',
                 })
               }}
-              disabled={!formData.ministry_code}
+              disabled={!selectedMinistry?.id}
               labels={{
                 upload: t('uploadImage') || 'Subir imagen',
                 change: t('changeImage') || 'Cambiar imagen',

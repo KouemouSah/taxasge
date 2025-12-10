@@ -1,19 +1,16 @@
 /**
  * Firebase Storage Utilities
  * Upload, delete, and resize images for ministries
+ * Uses backend API for authenticated operations with signed URLs
  *
  * @module lib/firebase-storage
  */
 
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
-import { storage } from './firebase'
+import { appConfig } from '@/core/config/app'
 
 // Constants
-const MINISTRIES_FOLDER = 'application-attachments/ministerios'
-const TARGET_WIDTH = 800
-const TARGET_HEIGHT = 600
-const IMAGE_QUALITY = 0.85
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+const FISCAL_SERVICES_API_URL = `${appConfig.api.baseUrl}/api/${appConfig.api.version}/fiscal-services`
 
 export interface UploadResult {
   success: boolean
@@ -22,81 +19,22 @@ export interface UploadResult {
 }
 
 /**
- * Resize image to target dimensions (800x600) maintaining aspect ratio
- * Uses canvas API for client-side resizing
+ * Get auth token from localStorage
  */
-export async function resizeImage(file: File): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d')
-
-    if (!ctx) {
-      reject(new Error('Canvas context not available'))
-      return
-    }
-
-    img.onload = () => {
-      // Set canvas dimensions to target size
-      canvas.width = TARGET_WIDTH
-      canvas.height = TARGET_HEIGHT
-
-      // Calculate scaling to cover the target dimensions (crop if needed)
-      const sourceAspect = img.width / img.height
-      const targetAspect = TARGET_WIDTH / TARGET_HEIGHT
-
-      let sourceX = 0
-      let sourceY = 0
-      let sourceWidth = img.width
-      let sourceHeight = img.height
-
-      if (sourceAspect > targetAspect) {
-        // Image is wider - crop horizontally
-        sourceWidth = img.height * targetAspect
-        sourceX = (img.width - sourceWidth) / 2
-      } else {
-        // Image is taller - crop vertically
-        sourceHeight = img.width / targetAspect
-        sourceY = (img.height - sourceHeight) / 2
-      }
-
-      // Draw the image with cropping
-      ctx.drawImage(
-        img,
-        sourceX, sourceY, sourceWidth, sourceHeight,
-        0, 0, TARGET_WIDTH, TARGET_HEIGHT
-      )
-
-      // Convert to blob
-      canvas.toBlob(
-        (blob) => {
-          if (blob) {
-            resolve(blob)
-          } else {
-            reject(new Error('Failed to convert canvas to blob'))
-          }
-        },
-        'image/jpeg',
-        IMAGE_QUALITY
-      )
-    }
-
-    img.onerror = () => {
-      reject(new Error('Failed to load image'))
-    }
-
-    // Load image from file
-    img.src = URL.createObjectURL(file)
-  })
+function getAuthToken(): string | null {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem(appConfig.auth.tokenKey)
 }
 
 /**
- * Upload ministry image to Firebase Storage
- * Resizes to 800x600 and saves as {ministry_code}.jpg
+ * Upload ministry image via backend API
+ * Backend resizes to 800x600 and saves as {ministry_code}.jpg
+ * @param file - Image file to upload
+ * @param ministryId - Ministry numeric ID
  */
 export async function uploadMinistryImage(
   file: File,
-  ministryCode: string
+  ministryId: number
 ): Promise<UploadResult> {
   try {
     // Validate file size
@@ -115,32 +53,43 @@ export async function uploadMinistryImage(
       }
     }
 
-    // Check if storage is available
-    if (!storage) {
+    // Get auth token
+    const token = getAuthToken()
+    if (!token) {
       return {
         success: false,
-        error: 'Firebase Storage not initialized',
+        error: 'Authentication required',
       }
     }
 
-    // Resize image
-    const resizedBlob = await resizeImage(file)
+    // Create form data
+    const formData = new FormData()
+    formData.append('file', file)
 
-    // Create reference with ministry code as filename
-    const fileName = `${ministryCode}.jpg`
-    const storageRef = ref(storage, `${MINISTRIES_FOLDER}/${fileName}`)
+    // Upload via backend API
+    const response = await fetch(
+      `${FISCAL_SERVICES_API_URL}/admin/ministries/${ministryId}/image`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      }
+    )
 
-    // Upload
-    await uploadBytes(storageRef, resizedBlob, {
-      contentType: 'image/jpeg',
-    })
+    const data = await response.json()
 
-    // Get download URL
-    const url = await getDownloadURL(storageRef)
+    if (!response.ok || !data.success) {
+      return {
+        success: false,
+        error: data.message || data.detail || 'Upload failed',
+      }
+    }
 
     return {
       success: true,
-      url,
+      url: data.url,
     }
   } catch (error) {
     console.error('Error uploading ministry image:', error)
@@ -152,33 +101,43 @@ export async function uploadMinistryImage(
 }
 
 /**
- * Delete ministry image from Firebase Storage
+ * Delete ministry image via backend API
+ * @param ministryId - Ministry numeric ID
  */
-export async function deleteMinistryImage(ministryCode: string): Promise<UploadResult> {
+export async function deleteMinistryImage(ministryId: number): Promise<UploadResult> {
   try {
-    if (!storage) {
+    // Get auth token
+    const token = getAuthToken()
+    if (!token) {
       return {
         success: false,
-        error: 'Firebase Storage not initialized',
+        error: 'Authentication required',
       }
     }
 
-    const fileName = `${ministryCode}.jpg`
-    const storageRef = ref(storage, `${MINISTRIES_FOLDER}/${fileName}`)
+    const response = await fetch(
+      `${FISCAL_SERVICES_API_URL}/admin/ministries/${ministryId}/image`,
+      {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    )
 
-    await deleteObject(storageRef)
+    const data = await response.json()
+
+    if (!response.ok || !data.success) {
+      return {
+        success: false,
+        error: data.message || data.detail || 'Delete failed',
+      }
+    }
 
     return {
       success: true,
     }
   } catch (error) {
-    // If file doesn't exist, consider it a success
-    if (error instanceof Error && error.message.includes('object-not-found')) {
-      return {
-        success: true,
-      }
-    }
-
     console.error('Error deleting ministry image:', error)
     return {
       success: false,
@@ -188,38 +147,74 @@ export async function deleteMinistryImage(ministryCode: string): Promise<UploadR
 }
 
 /**
- * Get ministry image URL
- * Returns the Firebase Storage public URL format
+ * Get ministry image URL via backend API (public endpoint)
+ * Returns signed URL that works without authentication
+ * @param ministryId - Ministry numeric ID
  */
-export function getMinistryImageUrl(ministryCode: string): string {
-  const bucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'taxasge-dev.firebasestorage.app'
-  const encodedPath = encodeURIComponent(`${MINISTRIES_FOLDER}/${ministryCode}.jpg`)
-  return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodedPath}?alt=media`
-}
-
-/**
- * Check if ministry image exists and return its URL with token
- * Returns null if image doesn't exist
- */
-export async function getMinistryImageWithToken(ministryCode: string): Promise<string | null> {
+export async function getMinistryImageUrl(ministryId: number): Promise<string | null> {
   try {
-    if (!storage) return null
+    const response = await fetch(
+      `${FISCAL_SERVICES_API_URL}/ministries/${ministryId}/image`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    )
 
-    const fileName = `${ministryCode}.jpg`
-    const storageRef = ref(storage, `${MINISTRIES_FOLDER}/${fileName}`)
+    if (!response.ok) {
+      return null
+    }
 
-    // getDownloadURL returns URL with access token that works with Firebase rules
-    const url = await getDownloadURL(storageRef)
-    return url
+    const data = await response.json()
+    return data.success && data.url ? data.url : null
   } catch {
     return null
   }
 }
 
 /**
- * Check if ministry image exists (legacy, for backwards compatibility)
+ * Get ministry image URL with auth token (admin endpoint)
+ * Returns signed URL for authenticated users
+ * @param ministryId - Ministry numeric ID
  */
-export async function checkMinistryImageExists(ministryCode: string): Promise<boolean> {
-  const url = await getMinistryImageWithToken(ministryCode)
+export async function getMinistryImageWithToken(ministryId: number): Promise<string | null> {
+  try {
+    const token = getAuthToken()
+    if (!token) {
+      // Fall back to public endpoint
+      return getMinistryImageUrl(ministryId)
+    }
+
+    const response = await fetch(
+      `${FISCAL_SERVICES_API_URL}/admin/ministries/${ministryId}/image`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    )
+
+    if (!response.ok) {
+      // Fall back to public endpoint
+      return getMinistryImageUrl(ministryId)
+    }
+
+    const data = await response.json()
+    return data.success && data.url ? data.url : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Check if ministry image exists
+ * @param ministryId - Ministry numeric ID
+ */
+export async function checkMinistryImageExists(ministryId: number): Promise<boolean> {
+  const url = await getMinistryImageUrl(ministryId)
   return url !== null
 }
