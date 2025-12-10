@@ -51,6 +51,10 @@ export const translationKeys = {
     ) => [...translationKeys.entity.all, 'detail', type, code, lang, field] as const,
     grouped: (type: TranslatableEntityType, code: string) =>
       [...translationKeys.entity.all, 'grouped', type, code] as const,
+    sourceList: (type: TranslatableEntityType, search?: string) =>
+      [...translationKeys.entity.all, 'source', type, 'list', search] as const,
+    sourceContent: (type: TranslatableEntityType, code: string) =>
+      [...translationKeys.entity.all, 'source', type, code] as const,
   },
   // System translations
   system: {
@@ -272,6 +276,37 @@ export function useDeleteEntityAllTranslations() {
       queryClient.invalidateQueries({ queryKey: translationKeys.entity.lists() })
       queryClient.invalidateQueries({ queryKey: translationKeys.entity.stats() })
     },
+  })
+}
+
+/**
+ * List source entities for translation workbench
+ * Gets entities from source tables (ministries, sectors, etc.) with Spanish content
+ */
+export function useSourceEntities(
+  entityType: TranslatableEntityType,
+  search?: string,
+  limit: number = 50,
+  offset: number = 0
+) {
+  return useQuery({
+    queryKey: translationKeys.entity.sourceList(entityType, search),
+    queryFn: () => entityTranslationsApi.listSourceEntities(entityType, search, limit, offset),
+    enabled: !!entityType,
+  })
+}
+
+/**
+ * Get source content for a specific entity (Spanish fields from source table)
+ */
+export function useSourceContent(
+  entityType: TranslatableEntityType,
+  entityCode: string
+) {
+  return useQuery({
+    queryKey: translationKeys.entity.sourceContent(entityType, entityCode),
+    queryFn: () => entityTranslationsApi.getSourceContent(entityType, entityCode),
+    enabled: !!entityType && !!entityCode,
   })
 }
 

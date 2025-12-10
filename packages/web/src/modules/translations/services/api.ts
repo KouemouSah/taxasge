@@ -223,6 +223,49 @@ export const entityTranslationsApi = {
   ): Promise<{ message: string; count: number }> => {
     return fetchClient.delete(`${ENTITY_BASE}/${entityType}/${entityCode}`)
   },
+
+  /**
+   * List source entities with Spanish content for translation
+   * BACKEND: GET /api/v1/translations/entities/source/{entity_type}
+   */
+  listSourceEntities: async (
+    entityType: TranslatableEntityType,
+    search?: string,
+    limit: number = 50,
+    offset: number = 0
+  ): Promise<{
+    entity_type: string
+    entities: Array<{
+      entity_code: string
+      name_es: string
+      description_es: string
+    }>
+    total: number
+    limit: number
+    offset: number
+  }> => {
+    return fetchClient.get(`${ENTITY_BASE}/source/${entityType}`, {
+      search,
+      limit,
+      offset,
+    })
+  },
+
+  /**
+   * Get Spanish source content for translation workbench
+   * BACKEND: GET /api/v1/translations/entities/source/{entity_type}/{entity_code}
+   */
+  getSourceContent: async (
+    entityType: TranslatableEntityType,
+    entityCode: string
+  ): Promise<{
+    entity_type: string
+    entity_code: string
+    source_language: string
+    fields: Record<string, string>
+  }> => {
+    return fetchClient.get(`${ENTITY_BASE}/source/${entityType}/${entityCode}`)
+  },
 }
 
 // =============================================================================

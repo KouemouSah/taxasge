@@ -1328,6 +1328,30 @@
         "editTranslation": "Editar Traducción",
         "translationSaved": "Traducción guardada",
         "translationCreated": "Traducción creada"
+      },
+      "workbench": {
+        "title": "Banco de Traducción",
+        "description": "Traducir entidades del español al francés e inglés",
+        "openWorkbench": "Abrir Banco de Traducción",
+        "selectEntityType": "Seleccionar tipo de entidad",
+        "selectEntity": "Seleccionar entidad a traducir",
+        "searchEntities": "Buscar entidades...",
+        "noEntitiesFound": "No se encontraron entidades",
+        "sourceLanguage": "Idioma fuente (Español)",
+        "targetLanguages": "Idiomas destino",
+        "field": "Campo",
+        "spanish": "Español (fuente)",
+        "french": "Francés",
+        "english": "Inglés",
+        "saveTranslations": "Guardar Traducciones",
+        "saving": "Guardando...",
+        "translationsSaved": "Traducciones guardadas correctamente",
+        "loadingSource": "Cargando contenido fuente...",
+        "loadingExisting": "Cargando traducciones existentes...",
+        "noSourceContent": "No se encontró contenido fuente para esta entidad",
+        "selectEntityFirst": "Seleccione una entidad para comenzar a traducir",
+        "existingTranslation": "Traducción existente",
+        "noTranslation": "Sin traducción"
       }
     },
     "settings": {

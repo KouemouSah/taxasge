@@ -266,6 +266,218 @@ class EntityTranslationService:
         """
         return await self.repository.export_by_entity_type(conn, entity_type)
 
+    async def get_source_content(
+        self,
+        conn: asyncpg.Connection,
+        entity_type: str,
+        entity_code: str,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get Spanish source content from the source table
+
+        Maps entity_type to source table and fetches Spanish fields:
+        - ministry -> ministries (ministry_code, name_es, description_es)
+        - sector -> sectors (sector_code, name_es, description_es)
+        - category -> categories (category_code, name_es, description_es)
+        - service -> fiscal_services (service_code, name_es, description_es)
+        - procedure_template -> procedure_templates (template_code, name_es, description_es)
+        - procedure_step -> procedure_template_steps (id, description_es, instructions_es)
+        - document_template -> document_templates (template_code, document_name_es, description_es)
+
+        Returns:
+            {entity_type, entity_code, source_language, fields: {field_name: value}}
+        """
+        # Define table mappings
+        table_mapping = {
+            "ministry": {
+                "table": "ministries",
+                "code_column": "ministry_code",
+                "fields": ["name_es", "description_es"],
+            },
+            "sector": {
+                "table": "sectors",
+                "code_column": "sector_code",
+                "fields": ["name_es", "description_es"],
+            },
+            "category": {
+                "table": "categories",
+                "code_column": "category_code",
+                "fields": ["name_es", "description_es"],
+            },
+            "service": {
+                "table": "fiscal_services",
+                "code_column": "service_code",
+                "fields": ["name_es", "description_es"],
+            },
+            "procedure_template": {
+                "table": "procedure_templates",
+                "code_column": "template_code",
+                "fields": ["name_es", "description_es"],
+            },
+            "procedure_step": {
+                "table": "procedure_template_steps",
+                "code_column": "id",
+                "fields": ["description_es", "instructions_es"],
+            },
+            "document_template": {
+                "table": "document_templates",
+                "code_column": "template_code",
+                "fields": ["document_name_es", "description_es"],
+            },
+        }
+
+        if entity_type not in table_mapping:
+            logger.warning(f"Unknown entity type: {entity_type}")
+            return None
+
+        mapping = table_mapping[entity_type]
+        table = mapping["table"]
+        code_column = mapping["code_column"]
+        fields = mapping["fields"]
+
+        # Build query
+        fields_select = ", ".join(fields)
+
+        # For procedure_step, entity_code is the id (integer)
+        if entity_type == "procedure_step":
+            query = f"SELECT {fields_select} FROM {table} WHERE {code_column} = $1::integer"
+        else:
+            query = f"SELECT {fields_select} FROM {table} WHERE {code_column} = $1"
+
+        try:
+            row = await conn.fetchrow(query, entity_code)
+            if not row:
+                return None
+
+            # Build response with normalized field names
+            result_fields = {}
+            for field in fields:
+                value = row.get(field)
+                # Normalize field name (remove _es suffix, handle document_name_es -> name)
+                normalized_name = field.replace("_es", "")
+                if normalized_name == "document_name":
+                    normalized_name = "name"
+                result_fields[normalized_name] = value or ""
+
+            return {
+                "entity_type": entity_type,
+                "entity_code": entity_code,
+                "source_language": "es",
+                "fields": result_fields,
+            }
+
+        except Exception as e:
+            logger.error(f"Error fetching source content for {entity_type}/{entity_code}: {e}")
+            return None
+
+    async def list_source_entities(
+        self,
+        conn: asyncpg.Connection,
+        entity_type: str,
+        search_term: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[List[Dict[str, Any]], int]:
+        """
+        List entities from source table with Spanish content
+
+        Returns:
+            Tuple of (entities list, total count)
+        """
+        table_mapping = {
+            "ministry": {
+                "table": "ministries",
+                "code_column": "ministry_code",
+                "name_column": "name_es",
+                "description_column": "description_es",
+            },
+            "sector": {
+                "table": "sectors",
+                "code_column": "sector_code",
+                "name_column": "name_es",
+                "description_column": "description_es",
+            },
+            "category": {
+                "table": "categories",
+                "code_column": "category_code",
+                "name_column": "name_es",
+                "description_column": "description_es",
+            },
+            "service": {
+                "table": "fiscal_services",
+                "code_column": "service_code",
+                "name_column": "name_es",
+                "description_column": "description_es",
+            },
+            "procedure_template": {
+                "table": "procedure_templates",
+                "code_column": "template_code",
+                "name_column": "name_es",
+                "description_column": "description_es",
+            },
+            "procedure_step": {
+                "table": "procedure_template_steps",
+                "code_column": "id",
+                "name_column": "description_es",
+                "description_column": "instructions_es",
+            },
+            "document_template": {
+                "table": "document_templates",
+                "code_column": "template_code",
+                "name_column": "document_name_es",
+                "description_column": "description_es",
+            },
+        }
+
+        if entity_type not in table_mapping:
+            return [], 0
+
+        mapping = table_mapping[entity_type]
+        table = mapping["table"]
+        code_column = mapping["code_column"]
+        name_column = mapping["name_column"]
+        description_column = mapping["description_column"]
+
+        # Cast id to text for procedure_step
+        code_select = f"CAST({code_column} AS TEXT)" if entity_type == "procedure_step" else code_column
+
+        # Build WHERE clause
+        where_clause = ""
+        params = []
+        param_idx = 1
+
+        if search_term:
+            where_clause = f"WHERE ({name_column} ILIKE ${param_idx} OR {code_select} ILIKE ${param_idx})"
+            params.append(f"%{search_term}%")
+            param_idx += 1
+
+        # Count query
+        count_query = f"SELECT COUNT(*) FROM {table} {where_clause}"
+        total = await conn.fetchval(count_query, *params)
+
+        # Data query
+        data_query = f"""
+            SELECT {code_select} as entity_code, {name_column} as name_es, {description_column} as description_es
+            FROM {table}
+            {where_clause}
+            ORDER BY {name_column}
+            LIMIT ${param_idx} OFFSET ${param_idx + 1}
+        """
+        params.extend([limit, offset])
+
+        rows = await conn.fetch(data_query, *params)
+
+        entities = [
+            {
+                "entity_code": row["entity_code"],
+                "name_es": row["name_es"] or "",
+                "description_es": row["description_es"] or "",
+            }
+            for row in rows
+        ]
+
+        return entities, total
+
     async def import_translations(
         self,
         conn: asyncpg.Connection,

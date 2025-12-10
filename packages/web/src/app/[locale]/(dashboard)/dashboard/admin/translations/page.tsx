@@ -54,6 +54,7 @@ import {
   Loader2,
   Plus,
   Pencil,
+  Wrench,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -70,6 +71,10 @@ import {
   useUpsertEntityTranslation,
   useCreateSystemTranslation,
   useUpdateSystemTranslation,
+  useSourceEntities,
+  useSourceContent,
+  useEntityGroupedTranslations,
+  useBulkUpsertEntityTranslations,
 } from '@/modules/translations/hooks'
 import type {
   TranslatableEntityType,
@@ -98,6 +103,33 @@ function EntityTranslationsTab() {
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editingTranslation, setEditingTranslation] = useState<EntityTranslation | null>(null)
   const [editText, setEditText] = useState('')
+
+  // Workbench modal state
+  const [workbenchOpen, setWorkbenchOpen] = useState(false)
+  const [workbenchEntityType, setWorkbenchEntityType] = useState<TranslatableEntityType | ''>('')
+  const [workbenchEntityCode, setWorkbenchEntityCode] = useState('')
+  const [workbenchSearch, setWorkbenchSearch] = useState('')
+  const [workbenchTranslations, setWorkbenchTranslations] = useState<Record<string, { fr: string; en: string }>>({})
+
+  // Workbench data fetching
+  const { data: sourceEntitiesData, isLoading: loadingSourceEntities } = useSourceEntities(
+    workbenchEntityType as TranslatableEntityType,
+    workbenchSearch || undefined,
+    100,
+    0
+  )
+
+  const { data: sourceContentData, isLoading: loadingSourceContent } = useSourceContent(
+    workbenchEntityType as TranslatableEntityType,
+    workbenchEntityCode
+  )
+
+  const { data: existingTranslationsData, isLoading: loadingExisting } = useEntityGroupedTranslations(
+    workbenchEntityType as TranslatableEntityType,
+    workbenchEntityCode
+  )
+
+  const bulkUpsertMutation = useBulkUpsertEntityTranslations()
 
   const { data: statsData, isLoading: statsLoading } = useEntityTranslationStats()
   const { data: translationsData, isLoading, refetch } = useEntityTranslations({
@@ -165,6 +197,69 @@ function EntityTranslationsTab() {
     return opt?.flag || code
   }
 
+  // Workbench handlers
+  const handleSelectWorkbenchEntity = (code: string) => {
+    setWorkbenchEntityCode(code)
+    setWorkbenchTranslations({})
+  }
+
+  // Initialize workbench translations from existing data
+  const initializeWorkbenchTranslations = () => {
+    if (!sourceContentData?.fields) return
+
+    const newTranslations: Record<string, { fr: string; en: string }> = {}
+    Object.keys(sourceContentData.fields).forEach((field) => {
+      const existing = existingTranslationsData?.translations?.[field]
+      newTranslations[field] = {
+        fr: existing?.fr || '',
+        en: existing?.en || '',
+      }
+    })
+    setWorkbenchTranslations(newTranslations)
+  }
+
+  // Effect to initialize translations when source content loads
+  if (sourceContentData?.fields && Object.keys(workbenchTranslations).length === 0 && !loadingExisting) {
+    initializeWorkbenchTranslations()
+  }
+
+  const handleSaveWorkbenchTranslations = async () => {
+    if (!workbenchEntityType || !workbenchEntityCode || !sourceContentData?.fields) return
+
+    const translations = Object.entries(workbenchTranslations)
+      .filter(([, trans]) => trans.fr || trans.en)
+      .map(([fieldName, trans]) => ({
+        entity_type: workbenchEntityType as TranslatableEntityType,
+        entity_code: workbenchEntityCode,
+        field_name: fieldName,
+        es: sourceContentData.fields[fieldName] || '',
+        fr: trans.fr,
+        en: trans.en,
+        translation_source: 'manual' as const,
+      }))
+
+    if (translations.length === 0) {
+      toast({ variant: 'destructive', title: t('common.error'), description: 'No translations to save' })
+      return
+    }
+
+    try {
+      await bulkUpsertMutation.mutateAsync({ translations })
+      toast({ title: t('common.success'), description: t('workbench.translationsSaved') })
+      refetch()
+    } catch (err) {
+      toast({ variant: 'destructive', title: t('common.error'), description: String(err) })
+    }
+  }
+
+  const handleOpenWorkbench = () => {
+    setWorkbenchOpen(true)
+    setWorkbenchEntityType('')
+    setWorkbenchEntityCode('')
+    setWorkbenchSearch('')
+    setWorkbenchTranslations({})
+  }
+
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
@@ -202,6 +297,10 @@ function EntityTranslationsTab() {
               <CardDescription>{t('entity.description')}</CardDescription>
             </div>
             <div className="flex items-center gap-2">
+              <Button variant="default" size="sm" onClick={handleOpenWorkbench}>
+                <Wrench className="h-4 w-4 mr-2" />
+                {t('workbench.openWorkbench')}
+              </Button>
               <Button variant="outline" size="sm" onClick={() => refetch()}>
                 <RefreshCw className="h-4 w-4 mr-2" />
                 {t('common.refresh')}
@@ -348,6 +447,171 @@ function EntityTranslationsTab() {
             <Button onClick={handleSaveEdit} disabled={upsertMutation.isPending}>
               {upsertMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               {t('common.save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Translation Workbench Modal */}
+      <Dialog open={workbenchOpen} onOpenChange={setWorkbenchOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wrench className="h-5 w-5" />
+              {t('workbench.title')}
+            </DialogTitle>
+            <DialogDescription>{t('workbench.description')}</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {/* Entity Type Selection */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>{t('workbench.selectEntityType')}</Label>
+                <Select
+                  value={workbenchEntityType}
+                  onValueChange={(v) => {
+                    setWorkbenchEntityType(v as TranslatableEntityType)
+                    setWorkbenchEntityCode('')
+                    setWorkbenchTranslations({})
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('workbench.selectEntityType')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ENTITY_TYPE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {locale === 'fr' ? opt.label_fr : locale === 'en' ? opt.label_en : opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {workbenchEntityType && (
+                <div>
+                  <Label>{t('workbench.searchEntities')}</Label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder={t('workbench.searchEntities')}
+                      value={workbenchSearch}
+                      onChange={(e) => setWorkbenchSearch(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Entity List */}
+            {workbenchEntityType && (
+              <div>
+                <Label>{t('workbench.selectEntity')}</Label>
+                <div className="border rounded-md max-h-48 overflow-y-auto mt-2">
+                  {loadingSourceEntities ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      {t('common.loading')}
+                    </div>
+                  ) : !sourceEntitiesData?.entities?.length ? (
+                    <div className="text-center text-muted-foreground py-4">
+                      {t('workbench.noEntitiesFound')}
+                    </div>
+                  ) : (
+                    <div className="divide-y">
+                      {sourceEntitiesData.entities.map((entity) => (
+                        <div
+                          key={entity.entity_code}
+                          className={`p-3 cursor-pointer hover:bg-muted transition-colors ${
+                            workbenchEntityCode === entity.entity_code ? 'bg-primary/10 border-l-2 border-primary' : ''
+                          }`}
+                          onClick={() => handleSelectWorkbenchEntity(entity.entity_code)}
+                        >
+                          <div className="font-mono text-sm font-medium">{entity.entity_code}</div>
+                          <div className="text-sm text-muted-foreground truncate">{entity.name_es}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Translation Form */}
+            {workbenchEntityCode && sourceContentData?.fields && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-4 gap-4 font-medium text-sm border-b pb-2">
+                  <div>{t('workbench.field')}</div>
+                  <div>{t('workbench.spanish')}</div>
+                  <div>{t('workbench.french')}</div>
+                  <div>{t('workbench.english')}</div>
+                </div>
+
+                {loadingSourceContent || loadingExisting ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    {t('workbench.loadingSource')}
+                  </div>
+                ) : (
+                  Object.entries(sourceContentData.fields).map(([fieldName, spanishValue]) => (
+                    <div key={fieldName} className="grid grid-cols-4 gap-4 items-start">
+                      <div className="font-mono text-sm py-2">{fieldName}</div>
+                      <div className="bg-muted p-2 rounded text-sm min-h-[60px]">
+                        {spanishValue || <span className="text-muted-foreground italic">-</span>}
+                      </div>
+                      <div>
+                        <Textarea
+                          value={workbenchTranslations[fieldName]?.fr || ''}
+                          onChange={(e) =>
+                            setWorkbenchTranslations((prev) => ({
+                              ...prev,
+                              [fieldName]: { ...prev[fieldName], fr: e.target.value, en: prev[fieldName]?.en || '' },
+                            }))
+                          }
+                          placeholder={t('workbench.french')}
+                          rows={2}
+                          className="text-sm"
+                        />
+                      </div>
+                      <div>
+                        <Textarea
+                          value={workbenchTranslations[fieldName]?.en || ''}
+                          onChange={(e) =>
+                            setWorkbenchTranslations((prev) => ({
+                              ...prev,
+                              [fieldName]: { ...prev[fieldName], en: e.target.value, fr: prev[fieldName]?.fr || '' },
+                            }))
+                          }
+                          placeholder={t('workbench.english')}
+                          rows={2}
+                          className="text-sm"
+                        />
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {!workbenchEntityCode && workbenchEntityType && (
+              <div className="text-center text-muted-foreground py-8">
+                {t('workbench.selectEntityFirst')}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWorkbenchOpen(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              onClick={handleSaveWorkbenchTranslations}
+              disabled={!workbenchEntityCode || bulkUpsertMutation.isPending}
+            >
+              {bulkUpsertMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {t('workbench.saveTranslations')}
             </Button>
           </DialogFooter>
         </DialogContent>

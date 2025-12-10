@@ -1328,6 +1328,30 @@
         "editTranslation": "Modifier Traduction",
         "translationSaved": "Traduction enregistrée",
         "translationCreated": "Traduction créée"
+      },
+      "workbench": {
+        "title": "Atelier de Traduction",
+        "description": "Traduire les entités de l'espagnol vers le français et l'anglais",
+        "openWorkbench": "Ouvrir l'Atelier de Traduction",
+        "selectEntityType": "Sélectionner le type d'entité",
+        "selectEntity": "Sélectionner l'entité à traduire",
+        "searchEntities": "Rechercher des entités...",
+        "noEntitiesFound": "Aucune entité trouvée",
+        "sourceLanguage": "Langue source (Espagnol)",
+        "targetLanguages": "Langues cibles",
+        "field": "Champ",
+        "spanish": "Espagnol (source)",
+        "french": "Français",
+        "english": "Anglais",
+        "saveTranslations": "Enregistrer les Traductions",
+        "saving": "Enregistrement...",
+        "translationsSaved": "Traductions enregistrées avec succès",
+        "loadingSource": "Chargement du contenu source...",
+        "loadingExisting": "Chargement des traductions existantes...",
+        "noSourceContent": "Aucun contenu source trouvé pour cette entité",
+        "selectEntityFirst": "Sélectionnez une entité pour commencer la traduction",
+        "existingTranslation": "Traduction existante",
+        "noTranslation": "Aucune traduction"
       }
     },
     "settings": {

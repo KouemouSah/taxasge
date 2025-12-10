@@ -50,6 +50,8 @@ async def list_entity_types():
             {"value": "category", "label": "Categorías", "label_fr": "Catégories", "label_en": "Categories"},
             {"value": "service", "label": "Servicios Fiscales", "label_fr": "Services Fiscaux", "label_en": "Fiscal Services"},
             {"value": "procedure_template", "label": "Procedimientos", "label_fr": "Procédures", "label_en": "Procedures"},
+            {"value": "procedure_step", "label": "Pasos de Procedimiento", "label_fr": "Étapes de Procédure", "label_en": "Procedure Steps"},
+            {"value": "document_template", "label": "Plantillas de Documento", "label_fr": "Modèles de Document", "label_en": "Document Templates"},
         ]
     }
 
@@ -126,6 +128,83 @@ async def export_entity_translations(
 
     except Exception as e:
         logger.error(f"Error exporting {entity_type} translations: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/source/{entity_type}")
+async def list_source_entities(
+    entity_type: TranslatableEntityType,
+    search: Optional[str] = Query(None, description="Search term for name or code"),
+    limit: int = Query(50, ge=1, le=200, description="Max results"),
+    offset: int = Query(0, ge=0, description="Pagination offset"),
+    conn: asyncpg.Connection = Depends(get_db),
+):
+    """
+    List entities from source table with Spanish content
+
+    This endpoint allows browsing entities by type to select which one to translate.
+
+    Args:
+        entity_type: Entity type (ministry, sector, category, service, etc.)
+        search: Optional search term
+        limit: Max results
+        offset: Pagination offset
+
+    Returns:
+        List of {entity_code, name_es, description_es}
+    """
+    service = EntityTranslationService()
+
+    try:
+        entities, total = await service.list_source_entities(
+            conn, entity_type.value, search, limit, offset
+        )
+        return {
+            "entity_type": entity_type.value,
+            "entities": entities,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+        }
+
+    except Exception as e:
+        logger.error(f"Error listing source entities for {entity_type}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/source/{entity_type}/{entity_code}")
+async def get_source_content(
+    entity_type: TranslatableEntityType,
+    entity_code: str,
+    conn: asyncpg.Connection = Depends(get_db),
+):
+    """
+    Get Spanish source content from the source table
+
+    This endpoint fetches the Spanish content that will be translated.
+    Used by the Translation Workbench to show the source text.
+
+    Args:
+        entity_type: Entity type
+        entity_code: Entity code (or id for procedure_step)
+
+    Returns:
+        {entity_type, entity_code, source_language: "es", fields: {name: "...", description: "..."}}
+    """
+    service = EntityTranslationService()
+
+    try:
+        result = await service.get_source_content(conn, entity_type.value, entity_code)
+
+        if result is None:
+            raise HTTPException(status_code=404, detail=f"Entity not found: {entity_type.value}/{entity_code}")
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching source content for {entity_type}/{entity_code}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
