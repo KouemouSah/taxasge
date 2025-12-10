@@ -162,19 +162,24 @@ class FirebaseStorageService:
         except Exception as e:
             raise Exception(f"Bucket access test failed: {e}")
 
-    def _get_service_account_email(self) -> Optional[str]:
+    def _get_iam_signing_credentials(self):
         """
-        Get service account email from various sources.
-        Used for IAM-based URL signing on Cloud Run.
+        Get IAM-based signing credentials for Cloud Run.
+        This creates credentials that use the IAM signBlob API.
         """
         try:
-            # Try to get from environment (Cloud Run sets this)
-            import os
-            sa_email = os.environ.get("GOOGLE_SERVICE_ACCOUNT_EMAIL")
-            if sa_email:
-                return sa_email
+            import google.auth
+            from google.auth import iam
+            from google.auth.transport import requests as auth_requests
 
-            # Try to get from metadata server (Cloud Run)
+            # Get default credentials (Compute Engine on Cloud Run)
+            credentials, project = google.auth.default()
+
+            # Refresh credentials to ensure we have a valid token
+            auth_request = auth_requests.Request()
+            credentials.refresh(auth_request)
+
+            # Get service account email from metadata server
             import requests
             metadata_url = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/email"
             response = requests.get(
@@ -182,12 +187,33 @@ class FirebaseStorageService:
                 headers={"Metadata-Flavor": "Google"},
                 timeout=2
             )
-            if response.status_code == 200:
-                return response.text.strip()
-        except Exception as e:
-            logger.debug(f"Could not get service account email: {e}")
+            if response.status_code != 200:
+                logger.warning("Could not get service account email from metadata")
+                return None, None
 
-        return None
+            sa_email = response.text.strip()
+            logger.info(f"Got service account email: {sa_email}")
+
+            # Create IAM signer using the token credentials
+            signer = iam.Signer(
+                auth_request,
+                credentials,
+                sa_email
+            )
+
+            # Create signing credentials
+            from google.oauth2 import service_account
+            signing_credentials = service_account.Credentials(
+                signer,
+                service_account_email=sa_email,
+                token_uri="https://oauth2.googleapis.com/token"
+            )
+
+            return signing_credentials, sa_email
+
+        except Exception as e:
+            logger.error(f"Failed to create IAM signing credentials: {e}")
+            return None, None
 
     def generate_signed_url(
         self,
@@ -200,7 +226,7 @@ class FirebaseStorageService:
 
         This method ensures signed URLs work on Cloud Run where default credentials
         (Compute Engine credentials) don't have private keys for signing.
-        It falls back to IAM-based signing using the service account email.
+        It uses IAM-based signing via the signBlob API.
 
         Args:
             blob: The GCS blob to generate URL for
@@ -223,20 +249,20 @@ class FirebaseStorageService:
                 credentials=self._service_account_credentials
             )
         else:
-            # On Cloud Run: use IAM-based signing with service account email
-            # This uses the IAM signBlob API instead of requiring a private key
-            sa_email = self._get_service_account_email()
-            if sa_email:
-                logger.info(f"Using IAM-based signing with service account: {sa_email}")
+            # On Cloud Run: use IAM-based signing credentials
+            # This creates credentials that use the IAM signBlob API
+            signing_credentials, sa_email = self._get_iam_signing_credentials()
+            if signing_credentials:
+                logger.info(f"Using IAM signer with service account: {sa_email}")
                 return blob.generate_signed_url(
                     version="v4",
                     expiration=expiration,
                     method=method,
-                    service_account_email=sa_email
+                    credentials=signing_credentials
                 )
             else:
                 # Last resort: try default (will fail on Cloud Run)
-                logger.warning("No service account credentials or email available for signing")
+                logger.warning("No signing credentials available")
                 return blob.generate_signed_url(
                     version="v4",
                     expiration=expiration,
