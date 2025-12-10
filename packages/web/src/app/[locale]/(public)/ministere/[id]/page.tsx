@@ -11,9 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { Building2, ArrowLeft, FileText, FolderOpen, Layers, MapPin, Clock } from 'lucide-react';
 import Breadcrumb from '@/components/ui/breadcrumb';
 import { getMinistryDetails, type MinistryDetails } from '@/core/api/homepage';
-
-// Firebase Storage URL for ministry images
-const FIREBASE_STORAGE_URL = 'https://taxasge-dev.firebasestorage.app/application-attachments/ministerios';
+import { getMinistryImageUrl } from '@/lib/firebase-storage';
 
 export default function MinistryDetailPage() {
   const params = useParams();
@@ -115,7 +113,7 @@ export default function MinistryDetailPage() {
         <div className="relative w-full aspect-[4/3] bg-muted rounded-lg overflow-hidden">
           {!imageError ? (
             <Image
-              src={`${FIREBASE_STORAGE_URL}/${ministry.ministry_code}.jpg`}
+              src={getMinistryImageUrl(ministry.ministry_code)}
               alt={ministry.name}
               fill
               className="object-cover"

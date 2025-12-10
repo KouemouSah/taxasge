@@ -189,11 +189,12 @@ export async function deleteMinistryImage(ministryCode: string): Promise<UploadR
 
 /**
  * Get ministry image URL
- * Returns the expected URL path (doesn't check if image exists)
+ * Returns the Firebase Storage public URL format
  */
 export function getMinistryImageUrl(ministryCode: string): string {
   const bucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'taxasge-dev.firebasestorage.app'
-  return `https://${bucket}/${MINISTRIES_FOLDER}/${ministryCode}.jpg`
+  const encodedPath = encodeURIComponent(`${MINISTRIES_FOLDER}/${ministryCode}.jpg`)
+  return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodedPath}?alt=media`
 }
 
 /**
