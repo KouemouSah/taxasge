@@ -1351,7 +1351,9 @@
         "noSourceContent": "No source content found for this entity",
         "selectEntityFirst": "Select an entity to start translating",
         "existingTranslation": "Existing translation",
-        "noTranslation": "No translation"
+        "noTranslation": "No translation",
+        "untranslatedOnly": "Untranslated only",
+        "entitiesCount": "entities"
       }
     },
     "settings": {

@@ -232,7 +232,8 @@ export const entityTranslationsApi = {
     entityType: TranslatableEntityType,
     search?: string,
     limit: number = 50,
-    offset: number = 0
+    offset: number = 0,
+    untranslatedOnly: boolean = false
   ): Promise<{
     entity_type: string
     entities: Array<{
@@ -243,11 +244,13 @@ export const entityTranslationsApi = {
     total: number
     limit: number
     offset: number
+    untranslated_only: boolean
   }> => {
     return fetchClient.get(`${ENTITY_BASE}/source/${entityType}`, {
       search,
       limit,
       offset,
+      untranslated_only: untranslatedOnly,
     })
   },
 

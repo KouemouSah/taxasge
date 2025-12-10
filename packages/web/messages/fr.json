@@ -1351,7 +1351,9 @@
         "noSourceContent": "Aucun contenu source trouvé pour cette entité",
         "selectEntityFirst": "Sélectionnez une entité pour commencer la traduction",
         "existingTranslation": "Traduction existante",
-        "noTranslation": "Aucune traduction"
+        "noTranslation": "Aucune traduction",
+        "untranslatedOnly": "Uniquement les entités non traduites",
+        "entitiesCount": "entités"
       }
     },
     "settings": {

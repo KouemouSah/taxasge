@@ -1351,7 +1351,9 @@
         "noSourceContent": "No se encontró contenido fuente para esta entidad",
         "selectEntityFirst": "Seleccione una entidad para comenzar a traducir",
         "existingTranslation": "Traducción existente",
-        "noTranslation": "Sin traducción"
+        "noTranslation": "Sin traducción",
+        "untranslatedOnly": "Solo entidades sin traducción",
+        "entitiesCount": "entidades"
       }
     },
     "settings": {

@@ -137,6 +137,7 @@ async def list_source_entities(
     search: Optional[str] = Query(None, description="Search term for name or code"),
     limit: int = Query(50, ge=1, le=200, description="Max results"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
+    untranslated_only: bool = Query(False, description="Only show entities without translations"),
     conn: asyncpg.Connection = Depends(get_db),
 ):
     """
@@ -149,6 +150,7 @@ async def list_source_entities(
         search: Optional search term
         limit: Max results
         offset: Pagination offset
+        untranslated_only: If True, only return entities without any translations
 
     Returns:
         List of {entity_code, name_es, description_es}
@@ -157,7 +159,7 @@ async def list_source_entities(
 
     try:
         entities, total = await service.list_source_entities(
-            conn, entity_type.value, search, limit, offset
+            conn, entity_type.value, search, limit, offset, untranslated_only
         )
         return {
             "entity_type": entity_type.value,
@@ -165,6 +167,7 @@ async def list_source_entities(
             "total": total,
             "limit": limit,
             "offset": offset,
+            "untranslated_only": untranslated_only,
         }
 
     except Exception as e:

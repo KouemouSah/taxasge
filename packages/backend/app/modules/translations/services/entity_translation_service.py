@@ -377,9 +377,17 @@ class EntityTranslationService:
         search_term: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
+        untranslated_only: bool = False,
     ) -> tuple[List[Dict[str, Any]], int]:
         """
         List entities from source table with Spanish content
+
+        Args:
+            entity_type: Type of entity to list
+            search_term: Optional search filter
+            limit: Max results per page
+            offset: Pagination offset
+            untranslated_only: If True, only return entities without translations
 
         Returns:
             Tuple of (entities list, total count)
@@ -441,26 +449,42 @@ class EntityTranslationService:
         # Cast id to text for procedure_step
         code_select = f"CAST({code_column} AS TEXT)" if entity_type == "procedure_step" else code_column
 
-        # Build WHERE clause
-        where_clause = ""
+        # Build WHERE conditions
+        where_conditions = []
         params = []
         param_idx = 1
 
         if search_term:
-            where_clause = f"WHERE ({name_column} ILIKE ${param_idx} OR {code_select} ILIKE ${param_idx})"
+            where_conditions.append(f"({name_column} ILIKE ${param_idx} OR {code_select} ILIKE ${param_idx})")
             params.append(f"%{search_term}%")
             param_idx += 1
 
+        # Build JOIN and filter for untranslated entities
+        join_clause = ""
+        if untranslated_only:
+            # LEFT JOIN with entity_translations to find entities without any translations
+            join_clause = f"""
+                LEFT JOIN entity_translations et ON
+                    et.entity_type = '{entity_type}' AND
+                    et.entity_code = {code_select}
+            """
+            where_conditions.append("et.id IS NULL")
+
+        where_clause = ""
+        if where_conditions:
+            where_clause = "WHERE " + " AND ".join(where_conditions)
+
         # Count query
-        count_query = f"SELECT COUNT(*) FROM {table} {where_clause}"
+        count_query = f"SELECT COUNT(DISTINCT s.{code_column}) FROM {table} s {join_clause} {where_clause}"
         total = await conn.fetchval(count_query, *params)
 
         # Data query
         data_query = f"""
-            SELECT {code_select} as entity_code, {name_column} as name_es, {description_column} as description_es
-            FROM {table}
+            SELECT DISTINCT {code_select} as entity_code, s.{name_column} as name_es, s.{description_column} as description_es
+            FROM {table} s
+            {join_clause}
             {where_clause}
-            ORDER BY {name_column}
+            ORDER BY s.{name_column}
             LIMIT ${param_idx} OFFSET ${param_idx + 1}
         """
         params.extend([limit, offset])

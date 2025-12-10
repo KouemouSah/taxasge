@@ -42,6 +42,7 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Languages,
   RefreshCw,
@@ -110,13 +111,15 @@ function EntityTranslationsTab() {
   const [workbenchEntityCode, setWorkbenchEntityCode] = useState('')
   const [workbenchSearch, setWorkbenchSearch] = useState('')
   const [workbenchTranslations, setWorkbenchTranslations] = useState<Record<string, { fr: string; en: string }>>({})
+  const [workbenchUntranslatedOnly, setWorkbenchUntranslatedOnly] = useState(true) // Default to showing only untranslated
 
   // Workbench data fetching
   const { data: sourceEntitiesData, isLoading: loadingSourceEntities } = useSourceEntities(
     workbenchEntityType as TranslatableEntityType,
     workbenchSearch || undefined,
     100,
-    0
+    0,
+    workbenchUntranslatedOnly
   )
 
   const { data: sourceContentData, isLoading: loadingSourceContent } = useSourceContent(
@@ -504,6 +507,25 @@ function EntityTranslationsTab() {
                 </div>
               )}
             </div>
+
+            {/* Untranslated Only Filter */}
+            {workbenchEntityType && (
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="untranslated-only"
+                  checked={workbenchUntranslatedOnly}
+                  onCheckedChange={(checked) => setWorkbenchUntranslatedOnly(checked === true)}
+                />
+                <Label htmlFor="untranslated-only" className="text-sm cursor-pointer">
+                  {t('workbench.untranslatedOnly')}
+                </Label>
+                {sourceEntitiesData?.total !== undefined && (
+                  <Badge variant="secondary" className="ml-2">
+                    {sourceEntitiesData.total} {t('workbench.entitiesCount')}
+                  </Badge>
+                )}
+              </div>
+            )}
 
             {/* Entity List */}
             {workbenchEntityType && (
