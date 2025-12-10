@@ -769,11 +769,11 @@ async def upload_ministry_image(
             timeout=300
         )
 
-        # Generate signed URL (1 year)
+        # Generate signed URL (7 days - max allowed by GCS)
         from datetime import timedelta
         signed_url = blob.generate_signed_url(
             version="v4",
-            expiration=timedelta(days=365),
+            expiration=timedelta(days=7),  # Max allowed by GCS
             method="GET"
         )
 
