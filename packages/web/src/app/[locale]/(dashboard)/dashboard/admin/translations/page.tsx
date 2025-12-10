@@ -125,7 +125,7 @@ function EntityTranslationsTab() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {statsLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : statsData?.total || 0}
+              {statsLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : statsData?.total_translations || 0}
             </div>
           </CardContent>
         </Card>

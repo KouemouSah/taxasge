@@ -124,10 +124,11 @@ export interface EntityTranslationGrouped {
  * Entity translation statistics
  */
 export interface EntityTranslationStats {
-  total: number
+  total_translations: number
   by_entity_type: Record<string, number>
   by_language: Record<string, number>
   by_field: Record<string, number>
+  distinct_entities?: Record<string, number>
 }
 
 /**

@@ -179,4 +179,4 @@ class EntityTranslationStats(BaseModel):
     by_entity_type: dict  # {ministry: count, sector: count, category: count}
     by_language: dict  # {es: count, fr: count, en: count}
     by_field: dict  # {name: count, description: count}
-    coverage_by_type: dict  # {ministry: {es: %, fr: %, en: %}}
+    distinct_entities: dict = {}  # {ministry: count, sector: count, category: count}
