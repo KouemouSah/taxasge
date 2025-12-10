@@ -229,7 +229,7 @@ export const entityTranslationsApi = {
 // SYSTEM TRANSLATIONS API - /api/v1/translations
 // =============================================================================
 
-const SYSTEM_BASE = '/translations'
+const SYSTEM_BASE = '/translations/system'
 
 export const systemTranslationsApi = {
   /**

@@ -37,7 +37,7 @@ from app.database.connection import get_database as get_db
 from app.modules.auth.middleware.auth_middleware import get_current_user
 
 
-router = APIRouter(prefix="/translations", tags=["Translations"])
+router = APIRouter(prefix="/translations/system", tags=["System Translations"])
 
 
 # ============================================================================
