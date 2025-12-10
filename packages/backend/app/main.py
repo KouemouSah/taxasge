@@ -461,17 +461,8 @@ except Exception as e:
     logger.error(f"❌ Webhooks router failed: {e}")
     logger.error(traceback.format_exc())
 
-# Try to load translations router (Module - Translations System - System translations)
-try:
-    from app.modules.translations.api.translation_routes import router as translation_router
-    app.include_router(translation_router, prefix="/api/v1", tags=["translations"])
-    routers_loaded.append("translations")
-    logger.info("✅ Translations router loaded (ENUMs, UI, Forms, Messages)")
-except Exception as e:
-    logger.error(f"❌ Translations router failed: {e}")
-    logger.error(traceback.format_exc())
-
-# Try to load entity translations router (Admin CRUD for ministry/sector/category translations)
+# Try to load entity translations router FIRST (Admin CRUD for ministry/sector/category translations)
+# IMPORTANT: Must be loaded BEFORE translation_router to avoid /{translation_id} route conflict
 try:
     from app.modules.translations.api.entity_translation_routes import router as entity_translation_router
     app.include_router(entity_translation_router, prefix="/api/v1", tags=["entity-translations"])
@@ -481,7 +472,8 @@ except Exception as e:
     logger.error(f"❌ Entity translations router failed: {e}")
     logger.error(traceback.format_exc())
 
-# Try to load frontend translations router (Admin CRUD for frontend UI JSON translations)
+# Try to load frontend translations router SECOND (Admin CRUD for frontend UI JSON translations)
+# IMPORTANT: Must be loaded BEFORE translation_router to avoid /{translation_id} route conflict
 try:
     from app.modules.translations.api.frontend_translation_routes import router as frontend_translation_router
     app.include_router(frontend_translation_router, prefix="/api/v1", tags=["frontend-translations"])
@@ -489,6 +481,17 @@ try:
     logger.info("✅ Frontend translations router loaded (UI JSON sync)")
 except Exception as e:
     logger.error(f"❌ Frontend translations router failed: {e}")
+    logger.error(traceback.format_exc())
+
+# Try to load translations router LAST (Module - Translations System - System translations)
+# IMPORTANT: Must be loaded AFTER entity/frontend routers because it has /{translation_id} route
+try:
+    from app.modules.translations.api.translation_routes import router as translation_router
+    app.include_router(translation_router, prefix="/api/v1", tags=["translations"])
+    routers_loaded.append("translations")
+    logger.info("✅ Translations router loaded (ENUMs, UI, Forms, Messages)")
+except Exception as e:
+    logger.error(f"❌ Translations router failed: {e}")
     logger.error(traceback.format_exc())
 
 # Try to load communications router (Module - Communications System - Email/SMS/Push)
