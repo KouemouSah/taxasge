@@ -16,9 +16,9 @@
 
 /**
  * Entity type enum - matches database translatable_entity_type
- * Values: ministry, sector, category, service, procedure_template
+ * Values: ministry, sector, category, service, procedure_template, procedure_step, document_template
  */
-export type TranslatableEntityType = 'ministry' | 'sector' | 'category' | 'service' | 'procedure_template'
+export type TranslatableEntityType = 'ministry' | 'sector' | 'category' | 'service' | 'procedure_template' | 'procedure_step' | 'document_template'
 
 /**
  * Language code enum - matches backend LanguageCode
@@ -283,6 +283,8 @@ export const ENTITY_TYPE_OPTIONS: EntityTypeOption[] = [
   { value: 'category', label: 'Categorías', label_fr: 'Catégories', label_en: 'Categories' },
   { value: 'service', label: 'Servicios Fiscales', label_fr: 'Services Fiscaux', label_en: 'Fiscal Services' },
   { value: 'procedure_template', label: 'Procedimientos', label_fr: 'Procédures', label_en: 'Procedures' },
+  { value: 'procedure_step', label: 'Pasos de Procedimiento', label_fr: 'Étapes de Procédure', label_en: 'Procedure Steps' },
+  { value: 'document_template', label: 'Plantillas de Documento', label_fr: 'Modèles de Document', label_en: 'Document Templates' },
 ]
 
 export const LANGUAGE_OPTIONS = [
