@@ -1246,6 +1246,90 @@
       "urgent": "URGENTE",
       "errorLoading": "Erreur lors du chargement des assignations"
     },
+    "translations": {
+      "title": "Gestion des Traductions",
+      "subtitle": "Gérer toutes les traductions backend et frontend en un seul endroit",
+      "tabs": {
+        "entity": "Traductions d'Entités",
+        "system": "Traductions Système",
+        "frontend": "UI Frontend"
+      },
+      "entity": {
+        "title": "Traductions d'Entités",
+        "description": "Traductions pour ministères, secteurs et catégories",
+        "total": "Total",
+        "ministry": "Ministères",
+        "sector": "Secteurs",
+        "category": "Catégories",
+        "fiscalService": "Services Fiscaux",
+        "document": "Documents",
+        "procedure": "Procédures",
+        "searchPlaceholder": "Rechercher code d'entité ou texte...",
+        "entityType": "Type d'entité",
+        "allTypes": "Tous les types",
+        "noTranslations": "Aucune traduction d'entité trouvée",
+        "tableHeaders": {
+          "type": "Type",
+          "entityCode": "Code Entité",
+          "field": "Champ",
+          "language": "Langue",
+          "translation": "Traduction",
+          "actions": "Actions"
+        }
+      },
+      "system": {
+        "title": "Traductions Système",
+        "description": "ENUMs, libellés UI, formulaires et messages système",
+        "searchPlaceholder": "Rechercher clé ou traduction...",
+        "category": "Catégorie",
+        "allCategories": "Toutes les catégories",
+        "noTranslations": "Aucune traduction système trouvée",
+        "tableHeaders": {
+          "category": "Catégorie",
+          "key": "Clé",
+          "es": "ES",
+          "fr": "FR",
+          "en": "EN",
+          "actions": "Actions"
+        }
+      },
+      "frontend": {
+        "title": "Traductions UI Frontend",
+        "description": "Traductions JSON next-intl pour l'application web",
+        "totalKeys": "Total Clés",
+        "coverage": "Couverture",
+        "missing": "manquante(s)",
+        "namespace": "Namespace",
+        "allNamespaces": "Tous les namespaces",
+        "noTranslations": "Aucune traduction frontend trouvée",
+        "tableHeaders": {
+          "namespace": "Namespace",
+          "key": "Clé"
+        }
+      },
+      "common": {
+        "refresh": "Actualiser",
+        "loading": "Chargement...",
+        "showing": "Affichage {start}-{end} sur {total}",
+        "previous": "Précédent",
+        "next": "Suivant",
+        "success": "Succès",
+        "error": "Erreur",
+        "deleteConfirm": "Supprimer la traduction pour {entity}?",
+        "translationDeleted": "Traduction supprimée",
+        "languageFilter": "Filtrer par langue",
+        "allLanguages": "Toutes les langues",
+        "add": "Ajouter",
+        "edit": "Modifier",
+        "delete": "Supprimer",
+        "save": "Enregistrer",
+        "cancel": "Annuler",
+        "addTranslation": "Ajouter Traduction",
+        "editTranslation": "Modifier Traduction",
+        "translationSaved": "Traduction enregistrée",
+        "translationCreated": "Traduction créée"
+      }
+    },
     "settings": {
       "title": "Paramètres de Sécurité",
       "subtitle": "Gérez votre mot de passe et vos options de sécurité admin",

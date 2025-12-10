@@ -1246,6 +1246,90 @@
       "urgent": "URGENT",
       "errorLoading": "Error loading assignments"
     },
+    "translations": {
+      "title": "Translations Management",
+      "subtitle": "Manage all backend and frontend translations in one place",
+      "tabs": {
+        "entity": "Entity Translations",
+        "system": "System Translations",
+        "frontend": "Frontend UI"
+      },
+      "entity": {
+        "title": "Entity Translations",
+        "description": "Translations for ministries, sectors, and categories",
+        "total": "Total",
+        "ministry": "Ministries",
+        "sector": "Sectors",
+        "category": "Categories",
+        "fiscalService": "Fiscal Services",
+        "document": "Documents",
+        "procedure": "Procedures",
+        "searchPlaceholder": "Search entity code or text...",
+        "entityType": "Entity Type",
+        "allTypes": "All Types",
+        "noTranslations": "No entity translations found",
+        "tableHeaders": {
+          "type": "Type",
+          "entityCode": "Entity Code",
+          "field": "Field",
+          "language": "Language",
+          "translation": "Translation",
+          "actions": "Actions"
+        }
+      },
+      "system": {
+        "title": "System Translations",
+        "description": "ENUMs, UI labels, forms, and system messages",
+        "searchPlaceholder": "Search key or translation...",
+        "category": "Category",
+        "allCategories": "All Categories",
+        "noTranslations": "No system translations found",
+        "tableHeaders": {
+          "category": "Category",
+          "key": "Key",
+          "es": "ES",
+          "fr": "FR",
+          "en": "EN",
+          "actions": "Actions"
+        }
+      },
+      "frontend": {
+        "title": "Frontend UI Translations",
+        "description": "next-intl JSON translations for the web application",
+        "totalKeys": "Total Keys",
+        "coverage": "Coverage",
+        "missing": "missing",
+        "namespace": "Namespace",
+        "allNamespaces": "All Namespaces",
+        "noTranslations": "No frontend translations found",
+        "tableHeaders": {
+          "namespace": "Namespace",
+          "key": "Key"
+        }
+      },
+      "common": {
+        "refresh": "Refresh",
+        "loading": "Loading...",
+        "showing": "Showing {start}-{end} of {total}",
+        "previous": "Previous",
+        "next": "Next",
+        "success": "Success",
+        "error": "Error",
+        "deleteConfirm": "Delete translation for {entity}?",
+        "translationDeleted": "Translation deleted",
+        "languageFilter": "Filter by language",
+        "allLanguages": "All languages",
+        "add": "Add",
+        "edit": "Edit",
+        "delete": "Delete",
+        "save": "Save",
+        "cancel": "Cancel",
+        "addTranslation": "Add Translation",
+        "editTranslation": "Edit Translation",
+        "translationSaved": "Translation saved",
+        "translationCreated": "Translation created"
+      }
+    },
     "settings": {
       "title": "Security Settings",
       "subtitle": "Manage your password and admin security options",

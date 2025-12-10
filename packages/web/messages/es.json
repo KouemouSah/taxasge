@@ -1246,6 +1246,90 @@
       "urgent": "URGENTE",
       "errorLoading": "Error al cargar asignaciones"
     },
+    "translations": {
+      "title": "Gestión de Traducciones",
+      "subtitle": "Gestionar todas las traducciones del backend y frontend en un solo lugar",
+      "tabs": {
+        "entity": "Traducciones de Entidades",
+        "system": "Traducciones del Sistema",
+        "frontend": "UI Frontend"
+      },
+      "entity": {
+        "title": "Traducciones de Entidades",
+        "description": "Traducciones para ministerios, sectores y categorías",
+        "total": "Total",
+        "ministry": "Ministerios",
+        "sector": "Sectores",
+        "category": "Categorías",
+        "fiscalService": "Servicios Fiscales",
+        "document": "Documentos",
+        "procedure": "Procedimientos",
+        "searchPlaceholder": "Buscar código de entidad o texto...",
+        "entityType": "Tipo de entidad",
+        "allTypes": "Todos los tipos",
+        "noTranslations": "No se encontraron traducciones de entidades",
+        "tableHeaders": {
+          "type": "Tipo",
+          "entityCode": "Código Entidad",
+          "field": "Campo",
+          "language": "Idioma",
+          "translation": "Traducción",
+          "actions": "Acciones"
+        }
+      },
+      "system": {
+        "title": "Traducciones del Sistema",
+        "description": "ENUMs, etiquetas de UI, formularios y mensajes del sistema",
+        "searchPlaceholder": "Buscar clave o traducción...",
+        "category": "Categoría",
+        "allCategories": "Todas las categorías",
+        "noTranslations": "No se encontraron traducciones del sistema",
+        "tableHeaders": {
+          "category": "Categoría",
+          "key": "Clave",
+          "es": "ES",
+          "fr": "FR",
+          "en": "EN",
+          "actions": "Acciones"
+        }
+      },
+      "frontend": {
+        "title": "Traducciones UI Frontend",
+        "description": "Traducciones JSON de next-intl para la aplicación web",
+        "totalKeys": "Total Claves",
+        "coverage": "Cobertura",
+        "missing": "faltante(s)",
+        "namespace": "Namespace",
+        "allNamespaces": "Todos los namespaces",
+        "noTranslations": "No se encontraron traducciones frontend",
+        "tableHeaders": {
+          "namespace": "Namespace",
+          "key": "Clave"
+        }
+      },
+      "common": {
+        "refresh": "Actualizar",
+        "loading": "Cargando...",
+        "showing": "Mostrando {start}-{end} de {total}",
+        "previous": "Anterior",
+        "next": "Siguiente",
+        "success": "Éxito",
+        "error": "Error",
+        "deleteConfirm": "¿Eliminar traducción para {entity}?",
+        "translationDeleted": "Traducción eliminada",
+        "languageFilter": "Filtrar por idioma",
+        "allLanguages": "Todos los idiomas",
+        "add": "Agregar",
+        "edit": "Editar",
+        "delete": "Eliminar",
+        "save": "Guardar",
+        "cancel": "Cancelar",
+        "addTranslation": "Agregar Traducción",
+        "editTranslation": "Editar Traducción",
+        "translationSaved": "Traducción guardada",
+        "translationCreated": "Traducción creada"
+      }
+    },
     "settings": {
       "title": "Configuración del Sistema",
       "subtitle": "Configuración del sistema y diagnósticos",
