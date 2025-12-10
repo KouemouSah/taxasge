@@ -867,6 +867,7 @@
       "templates": "Modèles",
       "documentTemplates": "Modèles de Documents",
       "procedureTemplates": "Modèles de Procédures",
+      "translations": "Traductions",
       "logout": "Déconnexion",
       "logoutConfirm": "Êtes-vous sûr de vouloir vous déconnecter ?",
       "logoutSuccess": "Déconnexion réussie",

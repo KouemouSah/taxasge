@@ -30,6 +30,7 @@ import {
   Building2,
   Layers,
   FolderTree,
+  Languages,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { clearAuthData } from '@/core/auth/storage'
@@ -127,6 +128,11 @@ export default function AdminSidebar() {
           title: t('nav.auditLogs'),
           href: `/${locale}/dashboard/admin/audit-logs`,
           icon: FileText,
+        },
+        {
+          title: t('nav.translations'),
+          href: `/${locale}/dashboard/admin/translations`,
+          icon: Languages,
         },
         {
           title: t('nav.settings'),

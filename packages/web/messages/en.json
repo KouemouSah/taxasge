@@ -867,6 +867,7 @@
       "templates": "Templates",
       "documentTemplates": "Document Templates",
       "procedureTemplates": "Procedure Templates",
+      "translations": "Translations",
       "logout": "Logout",
       "logoutConfirm": "Are you sure you want to logout?",
       "logoutSuccess": "Logged out successfully",

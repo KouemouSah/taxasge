@@ -867,6 +867,7 @@
       "templates": "Plantillas",
       "documentTemplates": "Plantillas de Documentos",
       "procedureTemplates": "Plantillas de Procedimientos",
+      "translations": "Traducciones",
       "logout": "Cerrar sesión",
       "logoutConfirm": "¿Está seguro de cerrar sesión?",
       "logoutSuccess": "Sesión cerrada exitosamente",
