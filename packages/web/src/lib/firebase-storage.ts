@@ -198,18 +198,28 @@ export function getMinistryImageUrl(ministryCode: string): string {
 }
 
 /**
- * Check if ministry image exists
+ * Check if ministry image exists and return its URL with token
+ * Returns null if image doesn't exist
  */
-export async function checkMinistryImageExists(ministryCode: string): Promise<boolean> {
+export async function getMinistryImageWithToken(ministryCode: string): Promise<string | null> {
   try {
-    if (!storage) return false
+    if (!storage) return null
 
     const fileName = `${ministryCode}.jpg`
     const storageRef = ref(storage, `${MINISTRIES_FOLDER}/${fileName}`)
 
-    await getDownloadURL(storageRef)
-    return true
+    // getDownloadURL returns URL with access token that works with Firebase rules
+    const url = await getDownloadURL(storageRef)
+    return url
   } catch {
-    return false
+    return null
   }
+}
+
+/**
+ * Check if ministry image exists (legacy, for backwards compatibility)
+ */
+export async function checkMinistryImageExists(ministryCode: string): Promise<boolean> {
+  const url = await getMinistryImageWithToken(ministryCode)
+  return url !== null
 }

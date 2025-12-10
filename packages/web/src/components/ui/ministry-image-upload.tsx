@@ -22,8 +22,7 @@ import { cn } from '@/lib/utils'
 import {
   uploadMinistryImage,
   deleteMinistryImage,
-  getMinistryImageUrl,
-  checkMinistryImageExists,
+  getMinistryImageWithToken,
 } from '@/lib/firebase-storage'
 import {
   Upload,
@@ -87,11 +86,15 @@ export function MinistryImageUpload({
   useEffect(() => {
     if (ministryCode) {
       const checkExisting = async () => {
-        const exists = await checkMinistryImageExists(ministryCode)
-        setHasExistingImage(exists)
-        if (exists) {
-          setPreviewUrl(getMinistryImageUrl(ministryCode))
+        // getMinistryImageWithToken returns URL with access token (or null if not exists)
+        const imageUrl = await getMinistryImageWithToken(ministryCode)
+        if (imageUrl) {
+          setHasExistingImage(true)
+          setPreviewUrl(imageUrl)
           setImageLoadError(false)
+        } else {
+          setHasExistingImage(false)
+          setPreviewUrl(null)
         }
       }
       checkExisting()

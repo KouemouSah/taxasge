@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { Building2, ArrowLeft, FileText, FolderOpen, Layers, MapPin, Clock } from 'lucide-react';
 import Breadcrumb from '@/components/ui/breadcrumb';
 import { getMinistryDetails, type MinistryDetails } from '@/core/api/homepage';
-import { getMinistryImageUrl } from '@/lib/firebase-storage';
+import { getMinistryImageWithToken } from '@/lib/firebase-storage';
 
 export default function MinistryDetailPage() {
   const params = useParams();
@@ -24,6 +24,7 @@ export default function MinistryDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
 
   // Fetch ministry details
   useEffect(() => {
@@ -34,12 +35,23 @@ export default function MinistryDetailPage() {
         setLoading(true);
         setError(null);
         setImageError(false);
+        setImageUrl(null);
 
         const result = await getMinistryDetails(parseInt(ministryId), {
           language: locale,
         });
 
         setMinistry(result);
+
+        // Load image URL with token
+        if (result.ministry_code) {
+          const url = await getMinistryImageWithToken(result.ministry_code);
+          if (url) {
+            setImageUrl(url);
+          } else {
+            setImageError(true);
+          }
+        }
       } catch (err) {
         console.error('Failed to fetch ministry details:', err);
         setError(t('errorLoading'));
@@ -111,9 +123,9 @@ export default function MinistryDetailPage() {
 
         {/* BLOCK 1 (LEFT): Ministry Image */}
         <div className="relative w-full aspect-[4/3] bg-muted rounded-lg overflow-hidden">
-          {!imageError ? (
+          {!imageError && imageUrl ? (
             <Image
-              src={getMinistryImageUrl(ministry.ministry_code)}
+              src={imageUrl}
               alt={ministry.name}
               fill
               className="object-cover"
