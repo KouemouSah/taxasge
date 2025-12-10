@@ -19,6 +19,10 @@ class TranslatableEntityType(str, Enum):
     MINISTRY = "ministry"
     SECTOR = "sector"
     CATEGORY = "category"
+    SERVICE = "service"
+    PROCEDURE_TEMPLATE = "procedure_template"
+    PROCEDURE_STEP = "procedure_step"
+    DOCUMENT_TEMPLATE = "document_template"
 
 
 class LanguageCode(str, Enum):
