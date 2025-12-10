@@ -60,7 +60,6 @@ from app.modules.fiscal_services.services import CalculationService
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.permissions.middleware.permission_middleware import permission_required
 from app.database.connection import get_database
-from app.modules.documents.services.storage_service import firebase_storage_service
 
 router = APIRouter(tags=["Fiscal Services"])
 security = HTTPBearer()
@@ -708,6 +707,9 @@ async def upload_ministry_image(
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     try:
+        # Lazy import to avoid module-level import errors
+        from app.modules.documents.services.storage_service import firebase_storage_service
+
         # Get ministry to get the code
         ministry = await repository.get_ministry_by_id(db, ministry_id)
         if not ministry:
@@ -805,6 +807,9 @@ async def get_ministry_image_url(
     Returns a URL valid for 24 hours
     """
     try:
+        # Lazy import to avoid module-level import errors
+        from app.modules.documents.services.storage_service import firebase_storage_service
+
         # Get ministry to get the code
         ministry = await repository.get_ministry_by_id(db, ministry_id)
         if not ministry:
@@ -871,6 +876,9 @@ async def get_ministry_image_url_public(
     No authentication required
     """
     try:
+        # Lazy import to avoid module-level import errors
+        from app.modules.documents.services.storage_service import firebase_storage_service
+
         # Get ministry to get the code
         ministry = await repository.get_ministry_by_id(db, ministry_id)
         if not ministry:
@@ -942,6 +950,9 @@ async def delete_ministry_image(
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     try:
+        # Lazy import to avoid module-level import errors
+        from app.modules.documents.services.storage_service import firebase_storage_service
+
         # Get ministry to get the code
         ministry = await repository.get_ministry_by_id(db, ministry_id)
         if not ministry:
