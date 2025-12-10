@@ -471,6 +471,26 @@ except Exception as e:
     logger.error(f"❌ Translations router failed: {e}")
     logger.error(traceback.format_exc())
 
+# Try to load entity translations router (Admin CRUD for ministry/sector/category translations)
+try:
+    from app.modules.translations.api.entity_translation_routes import router as entity_translation_router
+    app.include_router(entity_translation_router, prefix="/api/v1", tags=["entity-translations"])
+    routers_loaded.append("entity-translations")
+    logger.info("✅ Entity translations router loaded (Ministries, Sectors, Categories)")
+except Exception as e:
+    logger.error(f"❌ Entity translations router failed: {e}")
+    logger.error(traceback.format_exc())
+
+# Try to load frontend translations router (Admin CRUD for frontend UI JSON translations)
+try:
+    from app.modules.translations.api.frontend_translation_routes import router as frontend_translation_router
+    app.include_router(frontend_translation_router, prefix="/api/v1", tags=["frontend-translations"])
+    routers_loaded.append("frontend-translations")
+    logger.info("✅ Frontend translations router loaded (UI JSON sync)")
+except Exception as e:
+    logger.error(f"❌ Frontend translations router failed: {e}")
+    logger.error(traceback.format_exc())
+
 # Try to load communications router (Module - Communications System - Email/SMS/Push)
 try:
     from app.modules.communications.api import router as communication_router
