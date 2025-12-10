@@ -771,8 +771,8 @@ async def upload_ministry_image(
 
         # Generate signed URL (7 days - max allowed by GCS)
         from datetime import timedelta
-        signed_url = blob.generate_signed_url(
-            version="v4",
+        signed_url = firebase_storage_service.generate_signed_url(
+            blob,
             expiration=timedelta(days=7),  # Max allowed by GCS
             method="GET"
         )
@@ -842,8 +842,8 @@ async def get_ministry_image_url(
 
         # Generate signed URL (24 hours)
         from datetime import timedelta
-        signed_url = blob.generate_signed_url(
-            version="v4",
+        signed_url = firebase_storage_service.generate_signed_url(
+            blob,
             expiration=timedelta(hours=24),
             method="GET"
         )
@@ -912,8 +912,8 @@ async def get_ministry_image_url_public(
 
         # Generate signed URL (24 hours)
         from datetime import timedelta
-        signed_url = blob.generate_signed_url(
-            version="v4",
+        signed_url = firebase_storage_service.generate_signed_url(
+            blob,
             expiration=timedelta(hours=24),
             method="GET"
         )

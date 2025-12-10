@@ -94,6 +94,7 @@ class FirebaseStorageService:
         self.client: Optional[gcs.Client] = None
         self.bucket: Optional[gcs.Bucket] = None
         self._initialized = False
+        self._service_account_credentials = None  # Store for signing URLs
 
     async def initialize(self) -> bool:
         """Initialize Firebase Storage client"""
@@ -119,8 +120,16 @@ class FirebaseStorageService:
             if settings.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV:
                 service_account_info = json.loads(settings.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV)
                 self.client = gcs.Client.from_service_account_info(service_account_info)
+                # Store service account credentials for signing URLs
+                from google.oauth2 import service_account as sa_credentials
+                self._service_account_credentials = sa_credentials.Credentials.from_service_account_info(
+                    service_account_info
+                )
+                logger.info("Using service account credentials for URL signing")
             else:
                 self.client = gcs.Client()
+                self._service_account_credentials = None
+                logger.info("Using default credentials (URL signing may not work)")
 
             self.bucket = self.client.bucket(self.config.bucket_name)
 
@@ -152,6 +161,46 @@ class FirebaseStorageService:
 
         except Exception as e:
             raise Exception(f"Bucket access test failed: {e}")
+
+    def generate_signed_url(
+        self,
+        blob: gcs.Blob,
+        expiration: timedelta = timedelta(hours=24),
+        method: str = "GET"
+    ) -> str:
+        """
+        Generate signed URL for a blob using service account credentials.
+
+        This method ensures signed URLs work on Cloud Run where default credentials
+        (Compute Engine credentials) don't have private keys for signing.
+
+        Args:
+            blob: The GCS blob to generate URL for
+            expiration: URL expiration time (max 7 days for GCS)
+            method: HTTP method (GET, PUT, etc.)
+
+        Returns:
+            Signed URL string
+
+        Raises:
+            Exception: If credentials are not available for signing
+        """
+        if self._service_account_credentials:
+            # Use explicit service account credentials for signing
+            return blob.generate_signed_url(
+                version="v4",
+                expiration=expiration,
+                method=method,
+                credentials=self._service_account_credentials
+            )
+        else:
+            # Fallback: try without explicit credentials (may fail on Cloud Run)
+            logger.warning("No service account credentials available for signing, attempting default")
+            return blob.generate_signed_url(
+                version="v4",
+                expiration=expiration,
+                method=method
+            )
 
     async def upload_user_document(
         self,
@@ -230,8 +279,8 @@ class FirebaseStorageService:
             )
 
             # Generate signed URL (24h validity)
-            signed_url = blob.generate_signed_url(
-                version="v4",
+            signed_url = self.generate_signed_url(
+                blob,
                 expiration=timedelta(hours=24),
                 method="GET"
             )
@@ -332,8 +381,8 @@ class FirebaseStorageService:
             )
 
             # Generate signed URL (24h validity)
-            signed_url = blob.generate_signed_url(
-                version="v4",
+            signed_url = self.generate_signed_url(
+                blob,
                 expiration=timedelta(hours=24),
                 method="GET"
             )
@@ -436,8 +485,8 @@ class FirebaseStorageService:
             )
 
             # Generate signed URL (expires with file)
-            signed_url = blob.generate_signed_url(
-                version="v4",
+            signed_url = self.generate_signed_url(
+                blob,
                 expiration=timedelta(minutes=expires_in_minutes),
                 method="GET"
             )
@@ -536,10 +585,10 @@ class FirebaseStorageService:
                 timeout=300
             )
 
-            # Generate signed URL (long expiration for public assets)
-            signed_url = blob.generate_signed_url(
-                version="v4",
-                expiration=timedelta(days=365),  # 1 year for system assets
+            # Generate signed URL (max 7 days for GCS)
+            signed_url = self.generate_signed_url(
+                blob,
+                expiration=timedelta(days=7),  # Max allowed by GCS
                 method="GET"
             )
 
@@ -634,10 +683,10 @@ class FirebaseStorageService:
                 timeout=300
             )
 
-            # Generate signed URL (long expiration for profile pictures)
-            signed_url = blob.generate_signed_url(
-                version="v4",
-                expiration=timedelta(days=30),  # 30 days for profile pictures
+            # Generate signed URL (max 7 days for GCS)
+            signed_url = self.generate_signed_url(
+                blob,
+                expiration=timedelta(days=7),  # Max allowed by GCS
                 method="GET"
             )
 
@@ -742,10 +791,11 @@ class FirebaseStorageService:
                 if blob_metadata.get("user_id") != user_id:
                     raise HTTPException(status_code=403, detail="Access denied")
 
-            # Generate signed URL
-            signed_url = blob.generate_signed_url(
-                version="v4",
-                expiration=timedelta(hours=expiration_hours),
+            # Generate signed URL (cap at 7 days max for GCS)
+            max_hours = min(expiration_hours, 168)  # 168 hours = 7 days
+            signed_url = self.generate_signed_url(
+                blob,
+                expiration=timedelta(hours=max_hours),
                 method="GET"
             )
 
