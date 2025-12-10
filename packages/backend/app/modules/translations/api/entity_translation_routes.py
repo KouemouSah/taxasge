@@ -48,6 +48,8 @@ async def list_entity_types():
             {"value": "ministry", "label": "Ministerios", "label_fr": "Ministères", "label_en": "Ministries"},
             {"value": "sector", "label": "Sectores", "label_fr": "Secteurs", "label_en": "Sectors"},
             {"value": "category", "label": "Categorías", "label_fr": "Catégories", "label_en": "Categories"},
+            {"value": "service", "label": "Servicios Fiscales", "label_fr": "Services Fiscaux", "label_en": "Fiscal Services"},
+            {"value": "procedure_template", "label": "Procedimientos", "label_fr": "Procédures", "label_en": "Procedures"},
         ]
     }
 

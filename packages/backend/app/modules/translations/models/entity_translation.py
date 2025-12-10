@@ -2,10 +2,10 @@
 Entity Translation Models - Pydantic models for entity_translations table
 
 For database schema, see: docs-internal/database/DATABASE_SCHEMA_REFERENCE.md
-Table: entity_translations (ministry, sector, category translations)
+Table: entity_translations (ministry, sector, category, service, procedure_template translations)
 
 Primary Key: (entity_type, entity_code, language_code, field_name)
-ENUM: translatable_entity_type = ministry, sector, category
+ENUM: translatable_entity_type = ministry, sector, category, service, procedure_template
 """
 
 from typing import Optional, List

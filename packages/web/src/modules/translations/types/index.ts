@@ -16,9 +16,9 @@
 
 /**
  * Entity type enum - matches database translatable_entity_type
- * CRITICAL: Only ministry, sector, category are valid (NOT fiscal_service)
+ * Values: ministry, sector, category, service, procedure_template
  */
-export type TranslatableEntityType = 'ministry' | 'sector' | 'category'
+export type TranslatableEntityType = 'ministry' | 'sector' | 'category' | 'service' | 'procedure_template'
 
 /**
  * Language code enum - matches backend LanguageCode
@@ -281,6 +281,8 @@ export const ENTITY_TYPE_OPTIONS: EntityTypeOption[] = [
   { value: 'ministry', label: 'Ministerios', label_fr: 'Ministères', label_en: 'Ministries' },
   { value: 'sector', label: 'Sectores', label_fr: 'Secteurs', label_en: 'Sectors' },
   { value: 'category', label: 'Categorías', label_fr: 'Catégories', label_en: 'Categories' },
+  { value: 'service', label: 'Servicios Fiscales', label_fr: 'Services Fiscaux', label_en: 'Fiscal Services' },
+  { value: 'procedure_template', label: 'Procedimientos', label_fr: 'Procédures', label_en: 'Procedures' },
 ]
 
 export const LANGUAGE_OPTIONS = [
