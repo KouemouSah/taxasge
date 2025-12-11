@@ -396,103 +396,123 @@ async def sync_frontend_from_json_files(
     Returns:
         Sync result with statistics
     """
-    user_id = current_user.get("sub")
+    import traceback
 
-    json_data = {
-        "es": data.es,
-        "fr": data.fr,
-        "en": data.en,
-    }
+    try:
+        user_id = current_user.get("sub")
+        logger.info(f"Starting sync-from-json for user: {user_id}")
 
-    # Flatten all languages
-    es_flat = flatten_json(json_data["es"])
-    fr_flat = flatten_json(json_data["fr"])
-    en_flat = flatten_json(json_data["en"])
+        json_data = {
+            "es": data.es,
+            "fr": data.fr,
+            "en": data.en,
+        }
 
-    # Get all unique keys
-    all_keys = set(es_flat.keys()) | set(fr_flat.keys()) | set(en_flat.keys())
+        logger.info(f"Received JSON data - es keys: {len(data.es)}, fr keys: {len(data.fr)}, en keys: {len(data.en)}")
 
-    logger.info(f"Syncing {len(all_keys)} translation keys from JSON files")
+        # Flatten all languages
+        es_flat = flatten_json(json_data["es"])
+        fr_flat = flatten_json(json_data["fr"])
+        en_flat = flatten_json(json_data["en"])
 
-    stats = {"created": 0, "updated": 0, "errors": 0, "total": len(all_keys)}
-    errors = []
+        logger.info(f"Flattened - es: {len(es_flat)}, fr: {len(fr_flat)}, en: {len(en_flat)}")
 
-    # Process each key
-    for full_key in all_keys:
-        # Split key into namespace and remaining key
-        parts = full_key.split('.', 1)
-        if len(parts) == 1:
-            namespace = parts[0]
-            key_code = ""
-        else:
-            namespace = parts[0]
-            key_code = parts[1]
+        # Get all unique keys
+        all_keys = set(es_flat.keys()) | set(fr_flat.keys()) | set(en_flat.keys())
 
-        category = f"{FRONTEND_CATEGORY_PREFIX}{namespace}"
+        logger.info(f"Syncing {len(all_keys)} translation keys from JSON files")
 
-        es_value = es_flat.get(full_key, "")
-        fr_value = fr_flat.get(full_key, "")
-        en_value = en_flat.get(full_key, "")
+        stats = {"created": 0, "updated": 0, "errors": 0, "total": len(all_keys)}
+        errors = []
 
-        try:
-            # Check if exists (handle NULL context)
-            check_query = """
-                SELECT id FROM translations
-                WHERE category = $1 AND key_code = $2 AND context IS NULL
-            """
-            existing = await conn.fetchrow(check_query, category, key_code)
-
-            if existing:
-                # Update
-                update_query = """
-                    UPDATE translations
-                    SET es = $2, fr = $3, en = $4, updated_at = NOW(),
-                        updated_by = $5, version = version + 1
-                    WHERE id = $1
-                """
-                await conn.execute(
-                    update_query,
-                    existing["id"],
-                    es_value,
-                    fr_value,
-                    en_value,
-                    user_id,
-                )
-                stats["updated"] += 1
+        # Process each key
+        for full_key in all_keys:
+            # Split key into namespace and remaining key
+            parts = full_key.split('.', 1)
+            if len(parts) == 1:
+                namespace = parts[0]
+                key_code = ""
             else:
-                # Insert
-                insert_query = """
-                    INSERT INTO translations (
-                        category, key_code, context, es, fr, en,
-                        description, translation_source,
-                        created_by, updated_by, created_at, updated_at, version
-                    )
-                    VALUES ($1, $2, NULL, $3, $4, $5, NULL, 'json_sync', $6, $6, NOW(), NOW(), 1)
+                namespace = parts[0]
+                key_code = parts[1]
+
+            category = f"{FRONTEND_CATEGORY_PREFIX}{namespace}"
+
+            es_value = es_flat.get(full_key, "")
+            fr_value = fr_flat.get(full_key, "")
+            en_value = en_flat.get(full_key, "")
+
+            try:
+                # Check if exists (handle NULL context)
+                check_query = """
+                    SELECT id FROM translations
+                    WHERE category = $1 AND key_code = $2 AND context IS NULL
                 """
-                await conn.execute(
-                    insert_query,
-                    category,
-                    key_code,
-                    es_value,
-                    fr_value,
-                    en_value,
-                    user_id,
-                )
-                stats["created"] += 1
+                existing = await conn.fetchrow(check_query, category, key_code)
 
-        except Exception as e:
-            logger.error(f"Error syncing {full_key}: {e}")
-            errors.append(f"{full_key}: {str(e)}")
-            stats["errors"] += 1
+                if existing:
+                    # Update
+                    update_query = """
+                        UPDATE translations
+                        SET es = $2, fr = $3, en = $4, updated_at = NOW(),
+                            updated_by = $5, version = version + 1
+                        WHERE id = $1
+                    """
+                    await conn.execute(
+                        update_query,
+                        existing["id"],
+                        es_value,
+                        fr_value,
+                        en_value,
+                        user_id,
+                    )
+                    stats["updated"] += 1
+                else:
+                    # Insert
+                    insert_query = """
+                        INSERT INTO translations (
+                            category, key_code, context, es, fr, en,
+                            description, translation_source,
+                            created_by, updated_by, created_at, updated_at, version
+                        )
+                        VALUES ($1, $2, NULL, $3, $4, $5, NULL, 'json_sync', $6, $6, NOW(), NOW(), 1)
+                    """
+                    await conn.execute(
+                        insert_query,
+                        category,
+                        key_code,
+                        es_value,
+                        fr_value,
+                        en_value,
+                        user_id,
+                    )
+                    stats["created"] += 1
 
-    logger.info(f"Sync complete: {stats}")
+            except Exception as e:
+                logger.error(f"Error syncing {full_key}: {e}")
+                errors.append(f"{full_key}: {str(e)}")
+                stats["errors"] += 1
 
-    return {
-        "message": "Sync completed",
-        "stats": stats,
-        "errors": errors[:10] if errors else [],
-        "namespaces_synced": list(set(k.split('.')[0] for k in all_keys)),
-    }
+        logger.info(f"Sync complete: {stats}")
+
+        return {
+            "message": "Sync completed",
+            "stats": stats,
+            "errors": errors[:10] if errors else [],
+            "namespaces_synced": list(set(k.split('.')[0] for k in all_keys)),
+        }
+
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        logger.error(f"Fatal error in sync-from-json: {e}\n{error_trace}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": str(e),
+                "type": type(e).__name__,
+                "trace": error_trace.split("\n")[-5:],  # Last 5 lines of traceback
+            }
+        )
 
 
 # ============================================================================
