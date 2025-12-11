@@ -416,8 +416,9 @@ class EntityTranslationRepository:
             field_name = t["field_name"]
             source = t.get("translation_source", "import")
 
-            # Upsert each language
-            for lang in ["es", "fr", "en"]:
+            # Upsert each target language (fr, en only - es is source language)
+            # Spanish content is stored in source tables (ministries, sectors, etc.)
+            for lang in ["fr", "en"]:
                 if lang in t and t[lang]:
                     result = await self.upsert(
                         conn,
