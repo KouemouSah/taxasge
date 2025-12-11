@@ -2,37 +2,28 @@
  * useUserLabels Hook
  *
  * Centralized hook for translating user roles and statuses
- * Aligned with backend UserRole and UserStatus enums
+ * Uses hybrid approach: API for roles (real-time), static for statuses
  *
  * @module hooks
  * @author Claude Code
- * @date 2025-11-24
+ * @date 2025-12-11
  */
 
 import { useTranslations } from 'next-intl'
 import { UserRole, UserStatus } from '@/types/user'
+import { useEnumLabels } from './use-enum-labels'
 
 export function useUserLabels() {
   const t = useTranslations('admin')
+  const { getLabel: getEnumLabel, isLoading: isLoadingEnums } = useEnumLabels()
 
   /**
    * Get translated label for user role
+   * Uses hybrid approach: API first (real-time), then static fallback
    */
   const getRoleLabel = (role: UserRole | string): string => {
-    const roleMap: Record<UserRole, string> = {
-      [UserRole.CITIZEN]: t('userRoles.citizen'),
-      [UserRole.BUSINESS]: t('userRoles.business'),
-      [UserRole.ACCOUNTANT]: t('userRoles.accountant'),
-      [UserRole.ADMIN]: t('userRoles.admin'),
-      [UserRole.DGI_AGENT]: t('userRoles.dgiAgent'),
-      [UserRole.SUPERVISOR_JUNIOR_DGI]: t('userRoles.supervisorJuniorDgi'),
-      [UserRole.SUPERVISOR_READONLY]: t('userRoles.supervisorReadonly'),
-      [UserRole.SUPERVISOR_SENIOR]: t('userRoles.supervisorSenior'),
-      [UserRole.MINISTRY_AGENT]: t('userRoles.ministryAgent'),
-      [UserRole.SUPERVISOR_DGI]: t('userRoles.supervisorDgi'),
-    }
-
-    return roleMap[role as UserRole] || role
+    // Use the hybrid enum labels hook (API + fallback)
+    return getEnumLabel('user_role_enum', role as string)
   }
 
   /**
@@ -51,10 +42,10 @@ export function useUserLabels() {
 
   /**
    * Get all role options for filters/selects
+   * Uses hybrid approach for labels (API + fallback)
    */
-  const getRoleOptions = () => {
-    return [
-      { value: 'all', label: t('users.allRoles') },
+  const getRoleOptions = (includeAll = true) => {
+    const options = [
       { value: UserRole.CITIZEN, label: getRoleLabel(UserRole.CITIZEN) },
       { value: UserRole.BUSINESS, label: getRoleLabel(UserRole.BUSINESS) },
       { value: UserRole.ACCOUNTANT, label: getRoleLabel(UserRole.ACCOUNTANT) },
@@ -81,6 +72,11 @@ export function useUserLabels() {
         label: getRoleLabel(UserRole.SUPERVISOR_DGI),
       },
     ]
+
+    if (includeAll) {
+      return [{ value: 'all', label: t('users.allRoles') }, ...options]
+    }
+    return options
   }
 
   /**
@@ -155,5 +151,6 @@ export function useUserLabels() {
     getStatusOptions,
     getRoleOptionsGrouped,
     getRoleCategoryLabel,
+    isLoadingRoles: isLoadingEnums,
   }
 }
