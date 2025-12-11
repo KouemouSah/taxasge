@@ -23,7 +23,6 @@ import type {
   SystemTranslationCreate,
   SystemTranslationUpdate,
   SystemTranslationSearchParams,
-  SystemCategoriesResponse,
   FrontendTranslationSearchParams,
 } from '../types'
 
