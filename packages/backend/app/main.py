@@ -265,6 +265,54 @@ async def debug_routers():
     }
 
 
+@app.get("/api/v1/debug/enum-import")
+async def debug_enum_import():
+    """Debug endpoint to diagnose enum router import errors"""
+    import_errors = []
+    import_success = []
+
+    # Test each import in the chain
+    try:
+        from app.modules.translations.repositories.translation_repository import TranslationRepository
+        import_success.append("translation_repository.TranslationRepository")
+    except Exception as e:
+        import_errors.append({"module": "translation_repository.TranslationRepository", "error": str(e), "type": type(e).__name__})
+
+    try:
+        from app.modules.translations.repositories.enum_repository import EnumRepository, MODIFIABLE_ENUMS
+        import_success.append("enum_repository.EnumRepository")
+        import_success.append(f"MODIFIABLE_ENUMS: {MODIFIABLE_ENUMS}")
+    except Exception as e:
+        import_errors.append({"module": "enum_repository.EnumRepository", "error": str(e), "type": type(e).__name__})
+
+    try:
+        from app.modules.translations.services.enum_service import EnumService
+        import_success.append("enum_service.EnumService")
+    except Exception as e:
+        import_errors.append({"module": "enum_service.EnumService", "error": str(e), "type": type(e).__name__})
+
+    try:
+        from app.modules.auth.middleware.auth_middleware import get_current_user, get_current_admin_user
+        import_success.append("auth_middleware.get_current_user")
+        import_success.append("auth_middleware.get_current_admin_user")
+    except Exception as e:
+        import_errors.append({"module": "auth_middleware", "error": str(e), "type": type(e).__name__})
+
+    try:
+        from app.modules.translations.api.enum_routes import router as enum_router
+        import_success.append("enum_routes.router")
+    except Exception as e:
+        import_errors.append({"module": "enum_routes.router", "error": str(e), "type": type(e).__name__})
+
+    return {
+        "status": "diagnostic",
+        "enum_router_loaded": "enums" in routers_loaded,
+        "import_success": import_success,
+        "import_errors": import_errors,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+
 # API v1 info endpoint
 @app.get("/api/v1/")
 async def api_v1_info():
