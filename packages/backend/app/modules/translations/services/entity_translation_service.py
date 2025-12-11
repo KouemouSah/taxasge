@@ -447,7 +447,8 @@ class EntityTranslationService:
         description_column = mapping["description_column"]
 
         # Cast id to text for procedure_step
-        code_select = f"CAST({code_column} AS TEXT)" if entity_type == "procedure_step" else code_column
+        # code_select without alias for SELECT clause
+        code_select = f"CAST(s.{code_column} AS TEXT)" if entity_type == "procedure_step" else f"s.{code_column}"
 
         # Build WHERE conditions
         where_conditions = []
@@ -455,7 +456,7 @@ class EntityTranslationService:
         param_idx = 1
 
         if search_term:
-            where_conditions.append(f"({name_column} ILIKE ${param_idx} OR {code_select} ILIKE ${param_idx})")
+            where_conditions.append(f"(s.{name_column} ILIKE ${param_idx} OR {code_select} ILIKE ${param_idx})")
             params.append(f"%{search_term}%")
             param_idx += 1
 
