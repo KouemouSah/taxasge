@@ -234,6 +234,27 @@ def get_all_groups(language: str = "es") -> List[Dict]:
     return groups
 
 
+def get_categories_for_group(group_code: str) -> List[str]:
+    """
+    Get all category codes that belong to a specific group.
+
+    Args:
+        group_code: The group code (enum type or functional group)
+
+    Returns:
+        List of category codes belonging to this group
+    """
+    categories = []
+
+    for cat_code, metadata in CATEGORY_METADATA.items():
+        # Get effective group (db_enum if exists, otherwise functional group)
+        effective_group = metadata.db_enum if metadata.db_enum else metadata.group
+        if effective_group == group_code:
+            categories.append(cat_code)
+
+    return categories
+
+
 @dataclass
 class CategoryMetadata:
     """Metadata for a translation category"""

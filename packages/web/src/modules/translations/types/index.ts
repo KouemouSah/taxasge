@@ -240,6 +240,7 @@ export interface SystemTranslationUpdate {
  */
 export interface SystemTranslationSearchParams {
   category?: string
+  group?: string  // Filter by group (ENUM type or functional group)
   key_code?: string
   context?: string
   search_term?: string

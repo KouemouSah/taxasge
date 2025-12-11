@@ -309,6 +309,7 @@ export const systemTranslationsApi = {
   ): Promise<SystemTranslationListResponse> => {
     return fetchClient.get(`${SYSTEM_BASE}/`, {
       category: params.category,
+      group: params.group,
       key_code: params.key_code,
       context: params.context,
       search_term: params.search_term,

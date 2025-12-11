@@ -107,6 +107,7 @@ class TranslationBatchCreate(BaseModel):
 class TranslationSearchParams(BaseModel):
     """Model for translation search parameters"""
     category: Optional[str] = Field(None, description="Filter by category")
+    categories_in: Optional[list[str]] = Field(None, description="Filter by multiple categories (for group filtering)")
     key_code: Optional[str] = Field(None, description="Search in key_code")
     context: Optional[str] = Field(None, description="Filter by context")
     search_term: Optional[str] = Field(None, description="Full-text search in translations (any language)")

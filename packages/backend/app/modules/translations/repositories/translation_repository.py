@@ -282,6 +282,7 @@ class TranslationRepository:
         self,
         conn: asyncpg.Connection,
         category: Optional[str] = None,
+        categories_in: Optional[List[str]] = None,
         key_code: Optional[str] = None,
         context: Optional[str] = None,
         search_term: Optional[str] = None,
@@ -293,7 +294,8 @@ class TranslationRepository:
 
         Args:
             conn: Database connection
-            category: Optional category filter
+            category: Optional category filter (single category)
+            categories_in: Optional list of categories to filter (for group filtering)
             key_code: Optional key_code search (ILIKE)
             context: Optional context filter
             search_term: Optional full-text search in translations
@@ -311,6 +313,10 @@ class TranslationRepository:
         if category:
             where_conditions.append(f"category = ${param_counter}")
             params.append(category)
+            param_counter += 1
+        elif categories_in and len(categories_in) > 0:
+            where_conditions.append(f"category = ANY(${param_counter})")
+            params.append(categories_in)
             param_counter += 1
 
         if key_code:

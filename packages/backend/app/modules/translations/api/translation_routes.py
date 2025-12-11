@@ -30,7 +30,7 @@ from app.modules.translations.models.translation import (
     TranslationSearchParams,
     TranslationListResponse,
 )
-from app.modules.translations.models.category_metadata import enrich_categories, get_all_groups
+from app.modules.translations.models.category_metadata import enrich_categories, get_all_groups, get_categories_for_group
 from app.modules.translations.services.translation_service import TranslationService
 from app.modules.translations.services.language_service import LanguageService
 from app.modules.translations.middleware.language_middleware import detect_language
@@ -229,6 +229,7 @@ async def create_translation_batch(
 @router.get("/", response_model=TranslationListResponse)
 async def search_translations(
     category: Optional[str] = Query(None, description="Filter by category"),
+    group: Optional[str] = Query(None, description="Filter by group (ENUM type or functional group)"),
     key_code: Optional[str] = Query(None, description="Search in key_code"),
     context: Optional[str] = Query(None, description="Filter by context"),
     search_term: Optional[str] = Query(None, description="Full-text search"),
@@ -241,6 +242,7 @@ async def search_translations(
 
     Args:
         category: Optional category filter
+        group: Optional group filter (filters by all categories belonging to this group)
         key_code: Optional key_code search (partial match)
         context: Optional context filter
         search_term: Optional full-text search in translations
@@ -253,8 +255,15 @@ async def search_translations(
     service = TranslationService()
 
     try:
+        # If group is specified, get all categories for that group
+        categories_in = None
+        if group and not category:
+            categories_in = get_categories_for_group(group)
+            logger.debug(f"Group '{group}' resolved to categories: {categories_in}")
+
         search_params = TranslationSearchParams(
             category=category,
+            categories_in=categories_in,
             key_code=key_code,
             context=context,
             search_term=search_term,

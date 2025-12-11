@@ -700,6 +700,7 @@ function SystemTranslationsTab() {
   }
   const { data: translationsData, isLoading, refetch } = useSystemTranslations({
     category: categoryFilter === 'all' ? undefined : categoryFilter,
+    group: groupFilter === 'all' ? undefined : groupFilter,
     search_term: searchQuery || undefined,
     limit: pageSize,
     offset: page * pageSize,

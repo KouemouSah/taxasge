@@ -256,6 +256,7 @@ class TranslationService:
         return await self.repo.search(
             conn,
             search_params.category,
+            search_params.categories_in,
             search_params.key_code,
             search_params.context,
             search_params.search_term,
