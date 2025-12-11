@@ -499,8 +499,8 @@ export const frontendTranslationsApi = {
    * Sync all frontend translations from JSON files
    * BACKEND: POST /api/v1/translations/frontend/sync-from-json
    *
-   * Reads es.json, fr.json, en.json from the server and imports
-   * all translations into the database.
+   * Imports es.json, fr.json, en.json statically and sends them
+   * to the backend for import into the database.
    */
   syncFromJson: async (): Promise<{
     message: string
@@ -513,7 +513,19 @@ export const frontendTranslationsApi = {
     errors: string[]
     namespaces_synced: string[]
   }> => {
-    return fetchClient.post(`${FRONTEND_BASE}/sync-from-json`, undefined)
+    // Import JSON files statically (Next.js supports JSON imports)
+    const [esModule, frModule, enModule] = await Promise.all([
+      import('@/../messages/es.json'),
+      import('@/../messages/fr.json'),
+      import('@/../messages/en.json'),
+    ])
+
+    // Send all three language files to the backend
+    return fetchClient.post(`${FRONTEND_BASE}/sync-from-json`, {
+      es: esModule.default,
+      fr: frModule.default,
+      en: enModule.default,
+    })
   },
 }
 

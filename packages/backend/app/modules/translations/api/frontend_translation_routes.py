@@ -19,6 +19,7 @@ Prefix: /api/v1/translations/frontend
 
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from pydantic import BaseModel
 from loguru import logger
 import asyncpg
 import json
@@ -366,66 +367,42 @@ async def import_frontend_json_file(
     )
 
 
+class SyncFromJsonRequest(BaseModel):
+    """Request body for sync-from-json endpoint"""
+    es: Dict[str, Any]
+    fr: Dict[str, Any]
+    en: Dict[str, Any]
+
+    class Config:
+        extra = "forbid"
+
+
 @router.post("/sync-from-json")
 async def sync_frontend_from_json_files(
+    data: SyncFromJsonRequest,
     conn: asyncpg.Connection = Depends(get_db),
     current_user: Dict[str, Any] = Depends(get_current_user),
 ):
     """
-    Sync all frontend translations from JSON files (es.json, fr.json, en.json)
+    Sync all frontend translations from JSON data provided by the frontend.
 
-    This reads the JSON files from packages/web/messages/ and imports
-    all translations into the database. Existing translations are updated,
-    new ones are created.
+    The frontend reads es.json, fr.json, en.json and sends them in the request body.
+    This allows the backend to work in Cloud Run where it doesn't have access
+    to the frontend's message files.
+
+    Args:
+        data: JSON object containing es, fr, en translation dictionaries
 
     Returns:
         Sync result with statistics
     """
-    from pathlib import Path
-    import os
-
     user_id = current_user.get("sub")
 
-    # Find the messages directory
-    # In production: /app/packages/web/messages
-    # In development: relative to backend
-    possible_paths = [
-        Path("/app/packages/web/messages"),  # Docker/Cloud Run
-        Path(__file__).parent.parent.parent.parent.parent.parent / "web" / "messages",  # Local dev
-    ]
-
-    messages_dir = None
-    for p in possible_paths:
-        if p.exists():
-            messages_dir = p
-            break
-
-    if not messages_dir:
-        raise HTTPException(
-            status_code=500,
-            detail="Messages directory not found. Expected at packages/web/messages/"
-        )
-
-    languages = ["es", "fr", "en"]
-    json_data = {}
-
-    # Read all JSON files
-    for lang in languages:
-        file_path = messages_dir / f"{lang}.json"
-        if not file_path.exists():
-            raise HTTPException(
-                status_code=500,
-                detail=f"JSON file not found: {file_path}"
-            )
-
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                json_data[lang] = json.load(f)
-        except json.JSONDecodeError as e:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Invalid JSON in {lang}.json: {str(e)}"
-            )
+    json_data = {
+        "es": data.es,
+        "fr": data.fr,
+        "en": data.en,
+    }
 
     # Flatten all languages
     es_flat = flatten_json(json_data["es"])
