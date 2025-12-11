@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 from loguru import logger
 import asyncpg
 
-from app.database.connection import get_db
+from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user, get_current_admin_user
 from app.modules.translations.services.enum_service import EnumService
 from app.modules.translations.repositories.enum_repository import MODIFIABLE_ENUMS
@@ -53,7 +53,7 @@ class UpdateEnumTranslationRequest(BaseModel):
 @router.get("/")
 async def list_modifiable_enums(
     language: str = Query("es", description="Language for labels (es, fr, en)"),
-    conn: asyncpg.Connection = Depends(get_db),
+    conn: asyncpg.Connection = Depends(get_database),
     _: None = Depends(get_current_admin_user),
 ):
     """
@@ -79,7 +79,7 @@ async def list_modifiable_enums(
 async def get_enum_values(
     enum_name: str,
     language: str = Query("es", description="Language for display (es, fr, en)"),
-    conn: asyncpg.Connection = Depends(get_db),
+    conn: asyncpg.Connection = Depends(get_database),
     _: None = Depends(get_current_admin_user),
 ):
     """
@@ -110,7 +110,7 @@ async def get_enum_values(
 async def add_enum_value(
     enum_name: str,
     request: AddEnumValueRequest,
-    conn: asyncpg.Connection = Depends(get_db),
+    conn: asyncpg.Connection = Depends(get_database),
     current_user = Depends(get_current_user),
     _: None = Depends(get_current_admin_user),
 ):
@@ -151,7 +151,7 @@ async def update_enum_translation(
     enum_name: str,
     value: str,
     request: UpdateEnumTranslationRequest,
-    conn: asyncpg.Connection = Depends(get_db),
+    conn: asyncpg.Connection = Depends(get_database),
     current_user = Depends(get_current_user),
     _: None = Depends(get_current_admin_user),
 ):
@@ -191,7 +191,7 @@ async def update_enum_translation(
 async def archive_enum_value(
     enum_name: str,
     value: str,
-    conn: asyncpg.Connection = Depends(get_db),
+    conn: asyncpg.Connection = Depends(get_database),
     _: None = Depends(get_current_admin_user),
 ):
     """
@@ -223,7 +223,7 @@ async def archive_enum_value(
 async def restore_enum_value(
     enum_name: str,
     value: str,
-    conn: asyncpg.Connection = Depends(get_db),
+    conn: asyncpg.Connection = Depends(get_database),
     _: None = Depends(get_current_admin_user),
 ):
     """
@@ -253,7 +253,7 @@ async def restore_enum_value(
 @router.get("/untranslated/list")
 async def get_untranslated_enum_values(
     enum_name: Optional[str] = Query(None, description="Filter by specific ENUM"),
-    conn: asyncpg.Connection = Depends(get_db),
+    conn: asyncpg.Connection = Depends(get_database),
     _: None = Depends(get_current_admin_user),
 ):
     """
