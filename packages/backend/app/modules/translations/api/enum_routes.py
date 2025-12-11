@@ -19,7 +19,7 @@ from loguru import logger
 import asyncpg
 
 from app.database.connection import get_db
-from app.modules.auth.dependencies import get_current_user, require_permission
+from app.modules.auth.middleware.auth_middleware import get_current_user, get_current_admin_user
 from app.modules.translations.services.enum_service import EnumService
 from app.modules.translations.repositories.enum_repository import MODIFIABLE_ENUMS
 
@@ -54,7 +54,7 @@ class UpdateEnumTranslationRequest(BaseModel):
 async def list_modifiable_enums(
     language: str = Query("es", description="Language for labels (es, fr, en)"),
     conn: asyncpg.Connection = Depends(get_db),
-    _: None = Depends(require_permission("read:translations")),
+    _: None = Depends(get_current_admin_user),
 ):
     """
     List all modifiable ENUM types with metadata
@@ -80,7 +80,7 @@ async def get_enum_values(
     enum_name: str,
     language: str = Query("es", description="Language for display (es, fr, en)"),
     conn: asyncpg.Connection = Depends(get_db),
-    _: None = Depends(require_permission("read:translations")),
+    _: None = Depends(get_current_admin_user),
 ):
     """
     Get all values for a specific ENUM with translation status
@@ -112,7 +112,7 @@ async def add_enum_value(
     request: AddEnumValueRequest,
     conn: asyncpg.Connection = Depends(get_db),
     current_user = Depends(get_current_user),
-    _: None = Depends(require_permission("write:translations")),
+    _: None = Depends(get_current_admin_user),
 ):
     """
     Add a new value to an ENUM type
@@ -153,7 +153,7 @@ async def update_enum_translation(
     request: UpdateEnumTranslationRequest,
     conn: asyncpg.Connection = Depends(get_db),
     current_user = Depends(get_current_user),
-    _: None = Depends(require_permission("write:translations")),
+    _: None = Depends(get_current_admin_user),
 ):
     """
     Update translation for an ENUM value
@@ -192,7 +192,7 @@ async def archive_enum_value(
     enum_name: str,
     value: str,
     conn: asyncpg.Connection = Depends(get_db),
-    _: None = Depends(require_permission("write:translations")),
+    _: None = Depends(get_current_admin_user),
 ):
     """
     Archive an ENUM value
@@ -224,7 +224,7 @@ async def restore_enum_value(
     enum_name: str,
     value: str,
     conn: asyncpg.Connection = Depends(get_db),
-    _: None = Depends(require_permission("write:translations")),
+    _: None = Depends(get_current_admin_user),
 ):
     """
     Restore an archived ENUM value
@@ -254,7 +254,7 @@ async def restore_enum_value(
 async def get_untranslated_enum_values(
     enum_name: Optional[str] = Query(None, description="Filter by specific ENUM"),
     conn: asyncpg.Connection = Depends(get_db),
-    _: None = Depends(require_permission("read:translations")),
+    _: None = Depends(get_current_admin_user),
 ):
     """
     Get list of ENUM values without translations
