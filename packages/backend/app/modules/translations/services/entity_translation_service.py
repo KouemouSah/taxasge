@@ -464,12 +464,14 @@ class EntityTranslationService:
         join_clause = ""
         if untranslated_only:
             # LEFT JOIN with entity_translations to find entities without any translations
+            # Note: entity_translations uses composite PK (entity_type, entity_code, language_code, field_name)
+            # so we check for et.entity_type IS NULL (no id column exists)
             join_clause = f"""
                 LEFT JOIN entity_translations et ON
                     et.entity_type = '{entity_type}' AND
                     et.entity_code = {code_select}
             """
-            where_conditions.append("et.id IS NULL")
+            where_conditions.append("et.entity_type IS NULL")
 
         where_clause = ""
         if where_conditions:
