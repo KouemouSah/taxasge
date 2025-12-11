@@ -274,7 +274,7 @@ async def import_frontend_json(
         raise HTTPException(status_code=400, detail="No data provided")
 
     category = f"{FRONTEND_CATEGORY_PREFIX}{namespace}"
-    user_id = current_user.get("sub")
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub") if isinstance(current_user, dict) else None
 
     # Flatten the nested JSON
     flat_data = flatten_json(data)
@@ -629,7 +629,7 @@ async def create_frontend_translation(
     """
     service = TranslationService()
     category = f"{FRONTEND_CATEGORY_PREFIX}{namespace}"
-    user_id = current_user.get("sub")
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub") if isinstance(current_user, dict) else None
 
     translation_data = TranslationCreate(
         category=category,
@@ -669,7 +669,7 @@ async def update_frontend_translation(
         Updated translation
     """
     service = TranslationService()
-    user_id = current_user.get("sub")
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub") if isinstance(current_user, dict) else None
 
     result = await service.update_translation(conn, translation_id, update_data, user_id)
 
