@@ -351,3 +351,111 @@ export const TRANSLATION_QUALITY_OPTIONS = [
   { value: 'reviewed' as TranslationQuality, label: 'Revisado', color: 'blue' },
   { value: 'approved' as TranslationQuality, label: 'Aprobado', color: 'green' },
 ]
+
+// =============================================================================
+// ENUM MANAGEMENT TYPES
+// =============================================================================
+
+/**
+ * Modifiable ENUM types
+ */
+export type ModifiableEnumType =
+  | 'user_role_enum'
+  | 'declaration_status_enum'
+  | 'payment_status_enum'
+  | 'document_status_enum'
+  | 'service_type_enum'
+  | 'calculation_method_enum'
+
+/**
+ * ENUM metadata from backend
+ */
+export interface EnumMetadata {
+  enum_name: ModifiableEnumType
+  label: string
+  total_values: number
+  active_count: number
+  archived_count: number
+}
+
+/**
+ * ENUM value with translation status
+ */
+export interface EnumValueWithTranslation {
+  value: string
+  display_value: string
+  is_archived: boolean
+  usage_count: number
+  can_archive: boolean
+  has_translation: boolean
+  translation_id: number | null
+  es: string | null
+  fr: string | null
+  en: string | null
+}
+
+/**
+ * Response from GET /enums/{enum_name}
+ */
+export interface EnumValuesResponse {
+  enum_name: string
+  category: string
+  values: EnumValueWithTranslation[]
+  total: number
+  with_translation: number
+  without_translation: number
+}
+
+/**
+ * Request for adding a new ENUM value
+ */
+export interface AddEnumValueRequest {
+  value: string
+  es: string
+  fr: string
+  en: string
+}
+
+/**
+ * Request for updating ENUM translation
+ */
+export interface UpdateEnumTranslationRequest {
+  es?: string
+  fr?: string
+  en?: string
+}
+
+/**
+ * Response from add/archive/restore operations
+ */
+export interface EnumOperationResponse {
+  enum_name: string
+  message: string
+  [key: string]: unknown
+}
+
+/**
+ * Untranslated ENUM value
+ */
+export interface UntranslatedEnumValue {
+  enum_name: string
+  category: string
+  value: string
+}
+
+/**
+ * Modifiable ENUMs list with labels
+ */
+export const MODIFIABLE_ENUM_OPTIONS: Array<{
+  value: ModifiableEnumType
+  label_es: string
+  label_fr: string
+  label_en: string
+}> = [
+  { value: 'user_role_enum', label_es: 'Roles de Usuario', label_fr: 'Rôles Utilisateur', label_en: 'User Roles' },
+  { value: 'declaration_status_enum', label_es: 'Estados de Declaración', label_fr: 'Statuts de Déclaration', label_en: 'Declaration Status' },
+  { value: 'payment_status_enum', label_es: 'Estados de Pago', label_fr: 'Statuts de Paiement', label_en: 'Payment Status' },
+  { value: 'document_status_enum', label_es: 'Estados de Documento', label_fr: 'Statuts de Document', label_en: 'Document Status' },
+  { value: 'service_type_enum', label_es: 'Tipos de Servicio', label_fr: 'Types de Service', label_en: 'Service Types' },
+  { value: 'calculation_method_enum', label_es: 'Métodos de Cálculo', label_fr: 'Méthodes de Calcul', label_en: 'Calculation Methods' },
+]

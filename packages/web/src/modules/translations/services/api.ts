@@ -35,6 +35,14 @@ import type {
   FrontendTranslationStats,
   FrontendTranslationSearchParams,
   FrontendTranslationImportResult,
+  // ENUM management
+  ModifiableEnumType,
+  EnumMetadata,
+  EnumValuesResponse,
+  AddEnumValueRequest,
+  UpdateEnumTranslationRequest,
+  EnumOperationResponse,
+  UntranslatedEnumValue,
 } from '../types'
 
 // =============================================================================
@@ -489,6 +497,98 @@ export const frontendTranslationsApi = {
 }
 
 // =============================================================================
+// ENUM MANAGEMENT API - /api/v1/enums
+// =============================================================================
+
+const ENUM_BASE = '/enums'
+
+export const enumManagementApi = {
+  /**
+   * List all modifiable ENUM types
+   * BACKEND: GET /api/v1/enums
+   */
+  listModifiableEnums: async (
+    language: LanguageCode = 'es'
+  ): Promise<{
+    enums: EnumMetadata[]
+    count: number
+  }> => {
+    return fetchClient.get(`${ENUM_BASE}/`, { language })
+  },
+
+  /**
+   * Get all values for a specific ENUM with translation status
+   * BACKEND: GET /api/v1/enums/{enum_name}
+   */
+  getEnumValues: async (
+    enumName: ModifiableEnumType,
+    language: LanguageCode = 'es'
+  ): Promise<EnumValuesResponse> => {
+    return fetchClient.get(`${ENUM_BASE}/${enumName}`, { language })
+  },
+
+  /**
+   * Add a new value to an ENUM type
+   * BACKEND: POST /api/v1/enums/{enum_name}/values
+   */
+  addEnumValue: async (
+    enumName: ModifiableEnumType,
+    data: AddEnumValueRequest
+  ): Promise<EnumOperationResponse> => {
+    return fetchClient.post(`${ENUM_BASE}/${enumName}/values`, data)
+  },
+
+  /**
+   * Update translation for an ENUM value
+   * BACKEND: PUT /api/v1/enums/{enum_name}/values/{value}/translation
+   */
+  updateEnumTranslation: async (
+    enumName: ModifiableEnumType,
+    value: string,
+    data: UpdateEnumTranslationRequest
+  ): Promise<Record<string, unknown>> => {
+    return fetchClient.put(`${ENUM_BASE}/${enumName}/values/${value}/translation`, data)
+  },
+
+  /**
+   * Archive an ENUM value
+   * BACKEND: POST /api/v1/enums/{enum_name}/values/{value}/archive
+   */
+  archiveEnumValue: async (
+    enumName: ModifiableEnumType,
+    value: string
+  ): Promise<EnumOperationResponse> => {
+    return fetchClient.post(`${ENUM_BASE}/${enumName}/values/${value}/archive`, undefined)
+  },
+
+  /**
+   * Restore an archived ENUM value
+   * BACKEND: POST /api/v1/enums/{enum_name}/values/{value}/restore
+   */
+  restoreEnumValue: async (
+    enumName: ModifiableEnumType,
+    value: string
+  ): Promise<EnumOperationResponse> => {
+    return fetchClient.post(`${ENUM_BASE}/${enumName}/values/${value}/restore`, undefined)
+  },
+
+  /**
+   * Get list of ENUM values without translations
+   * BACKEND: GET /api/v1/enums/untranslated/list
+   */
+  getUntranslatedValues: async (
+    enumName?: ModifiableEnumType
+  ): Promise<{
+    untranslated: UntranslatedEnumValue[]
+    count: number
+  }> => {
+    return fetchClient.get(`${ENUM_BASE}/untranslated/list`, {
+      enum_name: enumName,
+    })
+  },
+}
+
+// =============================================================================
 // EXPORTS
 // =============================================================================
 
@@ -496,6 +596,7 @@ export const translationsApi = {
   entity: entityTranslationsApi,
   system: systemTranslationsApi,
   frontend: frontendTranslationsApi,
+  enums: enumManagementApi,
 }
 
 export default translationsApi

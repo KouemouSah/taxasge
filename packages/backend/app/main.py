@@ -494,6 +494,16 @@ except Exception as e:
     logger.error(f"❌ Translations router failed: {e}")
     logger.error(traceback.format_exc())
 
+# Try to load ENUM management router (Module - Translations System - ENUM value management)
+try:
+    from app.modules.translations.api.enum_routes import router as enum_router
+    app.include_router(enum_router, prefix="/api/v1", tags=["enum-management"])
+    routers_loaded.append("enums")
+    logger.info("✅ ENUM management router loaded (add/modify/archive ENUM values)")
+except Exception as e:
+    logger.error(f"❌ ENUM management router failed: {e}")
+    logger.error(traceback.format_exc())
+
 # Try to load communications router (Module - Communications System - Email/SMS/Push)
 try:
     from app.modules.communications.api import router as communication_router
