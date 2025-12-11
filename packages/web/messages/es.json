@@ -1305,6 +1305,14 @@
         "namespace": "Namespace",
         "allNamespaces": "Todos los namespaces",
         "noTranslations": "No se encontraron traducciones frontend",
+        "clickSyncToImport": "Haga clic en \"Sincronizar desde JSON\" para importar traducciones de los archivos de mensajes",
+        "syncFromJson": "Sincronizar desde JSON",
+        "syncConfirm": "¿Sincronizar todas las traducciones desde los archivos JSON? Esto actualizará las traducciones existentes y creará nuevas.",
+        "syncComplete": "Sincronización completada",
+        "created": "creadas",
+        "updated": "actualizadas",
+        "selectNamespace": "Seleccionar namespace",
+        "addTranslationDesc": "Agregar una nueva clave de traducción con valores para todos los idiomas",
         "tableHeaders": {
           "namespace": "Namespace",
           "key": "Clave"

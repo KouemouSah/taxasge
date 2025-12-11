@@ -571,6 +571,21 @@ export function useDeleteFrontendTranslation() {
   })
 }
 
+/**
+ * Sync all frontend translations from JSON files
+ * Reads es.json, fr.json, en.json from server and imports into DB
+ */
+export function useSyncFrontendFromJson() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: () => frontendTranslationsApi.syncFromJson(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: translationKeys.frontend.all })
+    },
+  })
+}
+
 // =============================================================================
 // ENUM MANAGEMENT HOOKS
 // =============================================================================

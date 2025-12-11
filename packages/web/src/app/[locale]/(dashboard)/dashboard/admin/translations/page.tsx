@@ -77,6 +77,9 @@ import {
   useUpsertEntityTranslation,
   useCreateSystemTranslation,
   useUpdateSystemTranslation,
+  useUpdateFrontendTranslation,
+  useCreateFrontendTranslation,
+  useSyncFrontendFromJson,
   useSourceEntities,
   useSourceContent,
   useEntityGroupedTranslations,
@@ -1437,9 +1440,38 @@ function EnumManagementTab() {
 // FRONTEND UI TRANSLATIONS TAB
 // =============================================================================
 
+// Namespace groups for organization by pages/blocks
+const NAMESPACE_GROUPS = {
+  pages: {
+    label: 'Pages',
+    namespaces: ['hero', 'stats', 'features', 'directory', 'home', 'services', 'guide', 'about', 'calculator'],
+  },
+  layout: {
+    label: 'Layout',
+    namespaces: ['nav', 'footer', 'common', 'metadata'],
+  },
+  admin: {
+    label: 'Admin Panel',
+    namespaces: ['admin', 'dashboard'],
+  },
+  auth: {
+    label: 'Authentication',
+    namespaces: ['auth', 'profile'],
+  },
+  features: {
+    label: 'Features',
+    namespaces: ['chat', 'declarations', 'documents', 'notifications', 'payments'],
+  },
+  errors: {
+    label: 'Errors & Messages',
+    namespaces: ['errors', 'validation'],
+  },
+}
+
 function FrontendTranslationsTab() {
   const _locale = useLocale() as LanguageCode
   const t = useTranslations('admin.translations')
+  const tCommon = useTranslations('common')
   const { toast } = useToast()
 
   const [namespaceFilter, setNamespaceFilter] = useState<string>('all')
@@ -1447,8 +1479,23 @@ function FrontendTranslationsTab() {
   const [page, setPage] = useState(0)
   const pageSize = 50
 
-  const { data: statsData, isLoading: statsLoading } = useFrontendTranslationStats()
-  const { data: namespacesData } = useFrontendNamespaces()
+  // Edit modal state
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [editingTranslation, setEditingTranslation] = useState<SystemTranslation | null>(null)
+  const [editFormData, setEditFormData] = useState({ es: '', fr: '', en: '' })
+
+  // Add modal state
+  const [addModalOpen, setAddModalOpen] = useState(false)
+  const [addFormData, setAddFormData] = useState({
+    namespace: '',
+    key_code: '',
+    es: '',
+    fr: '',
+    en: '',
+  })
+
+  const { data: statsData, isLoading: statsLoading, refetch: refetchStats } = useFrontendTranslationStats()
+  const { data: namespacesData, refetch: refetchNamespaces } = useFrontendNamespaces()
   const { data: translationsData, isLoading, refetch } = useFrontendTranslations({
     namespace: namespaceFilter === 'all' ? undefined : namespaceFilter,
     search_term: searchQuery || undefined,
@@ -1457,6 +1504,9 @@ function FrontendTranslationsTab() {
   })
 
   const deleteMutation = useDeleteFrontendTranslation()
+  const updateMutation = useUpdateFrontendTranslation()
+  const createMutation = useCreateFrontendTranslation()
+  const syncMutation = useSyncFrontendFromJson()
 
   const handleDelete = async (tr: SystemTranslation) => {
     if (!confirm(t('common.deleteConfirm', { entity: tr.key_code }))) return
@@ -1465,6 +1515,71 @@ function FrontendTranslationsTab() {
       await deleteMutation.mutateAsync(tr.id)
       toast({ title: t('common.success'), description: t('common.translationDeleted') })
       refetch()
+    } catch (err) {
+      toast({ variant: 'destructive', title: t('common.error'), description: String(err) })
+    }
+  }
+
+  const handleEdit = (tr: SystemTranslation) => {
+    setEditingTranslation(tr)
+    setEditFormData({ es: tr.es || '', fr: tr.fr || '', en: tr.en || '' })
+    setEditModalOpen(true)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editingTranslation) return
+
+    try {
+      await updateMutation.mutateAsync({
+        id: editingTranslation.id,
+        data: editFormData,
+      })
+      toast({ title: t('common.success'), description: t('common.translationUpdated') })
+      setEditModalOpen(false)
+      refetch()
+    } catch (err) {
+      toast({ variant: 'destructive', title: t('common.error'), description: String(err) })
+    }
+  }
+
+  const handleAdd = async () => {
+    if (!addFormData.namespace || !addFormData.key_code) {
+      toast({ variant: 'destructive', title: t('common.error'), description: 'Namespace and key are required' })
+      return
+    }
+
+    try {
+      await createMutation.mutateAsync({
+        namespace: addFormData.namespace,
+        keyCode: addFormData.key_code,
+        es: addFormData.es,
+        fr: addFormData.fr,
+        en: addFormData.en,
+      })
+      toast({ title: t('common.success'), description: t('common.translationCreated') })
+      setAddModalOpen(false)
+      setAddFormData({ namespace: '', key_code: '', es: '', fr: '', en: '' })
+      refetch()
+      refetchStats()
+    } catch (err) {
+      toast({ variant: 'destructive', title: t('common.error'), description: String(err) })
+    }
+  }
+
+  const handleSyncFromJson = async () => {
+    if (!confirm(t('frontend.syncConfirm') || 'Sync all translations from JSON files? This will update existing translations and create new ones.')) {
+      return
+    }
+
+    try {
+      const result = await syncMutation.mutateAsync()
+      toast({
+        title: t('common.success'),
+        description: `${t('frontend.syncComplete') || 'Sync complete'}: ${result.stats.created} ${t('frontend.created') || 'created'}, ${result.stats.updated} ${t('frontend.updated') || 'updated'}`,
+      })
+      refetch()
+      refetchStats()
+      refetchNamespaces()
     } catch (err) {
       toast({ variant: 'destructive', title: t('common.error'), description: String(err) })
     }
@@ -1513,6 +1628,23 @@ function FrontendTranslationsTab() {
               <CardDescription>{t('frontend.description')}</CardDescription>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSyncFromJson}
+                disabled={syncMutation.isPending}
+              >
+                {syncMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                {t('frontend.syncFromJson') || 'Sync from JSON'}
+              </Button>
+              <Button size="sm" onClick={() => setAddModalOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                {t('common.add') || tCommon('save').replace('Guardar', 'Agregar')}
+              </Button>
               <Button variant="outline" size="sm" onClick={() => refetch()}>
                 <RefreshCw className="h-4 w-4 mr-2" />
                 {t('common.refresh')}
@@ -1540,7 +1672,25 @@ function FrontendTranslationsTab() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t('frontend.allNamespaces')}</SelectItem>
-                {namespacesData?.namespaces?.map(ns => (
+                {/* Group namespaces by category */}
+                {Object.entries(NAMESPACE_GROUPS).map(([groupKey, group]) => {
+                  const groupNamespaces = namespacesData?.namespaces?.filter(ns => group.namespaces.includes(ns)) || []
+                  if (groupNamespaces.length === 0) return null
+                  return (
+                    <div key={groupKey}>
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
+                        {group.label}
+                      </div>
+                      {groupNamespaces.map(ns => (
+                        <SelectItem key={ns} value={ns}>{ns}</SelectItem>
+                      ))}
+                    </div>
+                  )
+                })}
+                {/* Other namespaces not in any group */}
+                {namespacesData?.namespaces?.filter(ns =>
+                  !Object.values(NAMESPACE_GROUPS).some(g => g.namespaces.includes(ns))
+                ).map(ns => (
                   <SelectItem key={ns} value={ns}>{ns}</SelectItem>
                 ))}
               </SelectContent>
@@ -1556,6 +1706,7 @@ function FrontendTranslationsTab() {
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <Globe className="h-12 w-12 mb-4 opacity-50" />
               <p>{t('frontend.noTranslations')}</p>
+              <p className="text-sm mt-2">{t('frontend.clickSyncToImport') || 'Click "Sync from JSON" to import translations from message files'}</p>
             </div>
           ) : (
             <>
@@ -1572,7 +1723,7 @@ function FrontendTranslationsTab() {
                 </TableHeader>
                 <TableBody>
                   {translationsData.translations.map((tr) => (
-                    <TableRow key={tr.id}>
+                    <TableRow key={tr.id} className="group">
                       <TableCell>
                         <Badge variant="outline">{tr.category.replace('frontend.', '')}</Badge>
                       </TableCell>
@@ -1581,9 +1732,14 @@ function FrontendTranslationsTab() {
                       <TableCell className="max-w-[150px] truncate" title={tr.fr}>{tr.fr}</TableCell>
                       <TableCell className="max-w-[150px] truncate" title={tr.en}>{tr.en}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => handleDelete(tr)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button variant="ghost" size="sm" onClick={() => handleEdit(tr)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDelete(tr)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -1607,6 +1763,137 @@ function FrontendTranslationsTab() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Translation Modal */}
+      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>{t('common.editTranslation') || 'Edit Translation'}</DialogTitle>
+            <DialogDescription>
+              {editingTranslation && (
+                <span className="font-mono text-sm">
+                  {editingTranslation.category.replace('frontend.', '')}.{editingTranslation.key_code}
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-es">ES - Spanish</Label>
+              <Textarea
+                id="edit-es"
+                value={editFormData.es}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, es: e.target.value }))}
+                rows={2}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-fr">FR - French</Label>
+              <Textarea
+                id="edit-fr"
+                value={editFormData.fr}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, fr: e.target.value }))}
+                rows={2}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-en">EN - English</Label>
+              <Textarea
+                id="edit-en"
+                value={editFormData.en}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, en: e.target.value }))}
+                rows={2}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditModalOpen(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button onClick={handleSaveEdit} disabled={updateMutation.isPending}>
+              {updateMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              {t('common.save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Translation Modal */}
+      <Dialog open={addModalOpen} onOpenChange={setAddModalOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>{t('common.addTranslation') || 'Add Translation'}</DialogTitle>
+            <DialogDescription>
+              {t('frontend.addTranslationDesc') || 'Add a new translation key with values for all languages'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="add-namespace">{t('frontend.namespace')}</Label>
+                <Select
+                  value={addFormData.namespace}
+                  onValueChange={(v) => setAddFormData(prev => ({ ...prev, namespace: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('frontend.selectNamespace') || 'Select namespace'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {namespacesData?.namespaces?.map(ns => (
+                      <SelectItem key={ns} value={ns}>{ns}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="add-key">{t('frontend.tableHeaders.key')}</Label>
+                <Input
+                  id="add-key"
+                  value={addFormData.key_code}
+                  onChange={(e) => setAddFormData(prev => ({ ...prev, key_code: e.target.value }))}
+                  placeholder="button.submit"
+                />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="add-es">ES - Spanish</Label>
+              <Textarea
+                id="add-es"
+                value={addFormData.es}
+                onChange={(e) => setAddFormData(prev => ({ ...prev, es: e.target.value }))}
+                rows={2}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="add-fr">FR - French</Label>
+              <Textarea
+                id="add-fr"
+                value={addFormData.fr}
+                onChange={(e) => setAddFormData(prev => ({ ...prev, fr: e.target.value }))}
+                rows={2}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="add-en">EN - English</Label>
+              <Textarea
+                id="add-en"
+                value={addFormData.en}
+                onChange={(e) => setAddFormData(prev => ({ ...prev, en: e.target.value }))}
+                rows={2}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddModalOpen(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button onClick={handleAdd} disabled={createMutation.isPending}>
+              {createMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              {t('common.save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

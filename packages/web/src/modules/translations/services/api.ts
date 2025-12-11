@@ -494,6 +494,27 @@ export const frontendTranslationsApi = {
   delete: async (id: number): Promise<{ message: string }> => {
     return fetchClient.delete(`${FRONTEND_BASE}/${id}`)
   },
+
+  /**
+   * Sync all frontend translations from JSON files
+   * BACKEND: POST /api/v1/translations/frontend/sync-from-json
+   *
+   * Reads es.json, fr.json, en.json from the server and imports
+   * all translations into the database.
+   */
+  syncFromJson: async (): Promise<{
+    message: string
+    stats: {
+      created: number
+      updated: number
+      errors: number
+      total: number
+    }
+    errors: string[]
+    namespaces_synced: string[]
+  }> => {
+    return fetchClient.post(`${FRONTEND_BASE}/sync-from-json`, undefined)
+  },
 }
 
 // =============================================================================

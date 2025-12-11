@@ -366,6 +366,158 @@ async def import_frontend_json_file(
     )
 
 
+@router.post("/sync-from-json")
+async def sync_frontend_from_json_files(
+    conn: asyncpg.Connection = Depends(get_db),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """
+    Sync all frontend translations from JSON files (es.json, fr.json, en.json)
+
+    This reads the JSON files from packages/web/messages/ and imports
+    all translations into the database. Existing translations are updated,
+    new ones are created.
+
+    Returns:
+        Sync result with statistics
+    """
+    from pathlib import Path
+    import os
+
+    user_id = current_user.get("sub")
+
+    # Find the messages directory
+    # In production: /app/packages/web/messages
+    # In development: relative to backend
+    possible_paths = [
+        Path("/app/packages/web/messages"),  # Docker/Cloud Run
+        Path(__file__).parent.parent.parent.parent.parent.parent / "web" / "messages",  # Local dev
+    ]
+
+    messages_dir = None
+    for p in possible_paths:
+        if p.exists():
+            messages_dir = p
+            break
+
+    if not messages_dir:
+        raise HTTPException(
+            status_code=500,
+            detail="Messages directory not found. Expected at packages/web/messages/"
+        )
+
+    languages = ["es", "fr", "en"]
+    json_data = {}
+
+    # Read all JSON files
+    for lang in languages:
+        file_path = messages_dir / f"{lang}.json"
+        if not file_path.exists():
+            raise HTTPException(
+                status_code=500,
+                detail=f"JSON file not found: {file_path}"
+            )
+
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                json_data[lang] = json.load(f)
+        except json.JSONDecodeError as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Invalid JSON in {lang}.json: {str(e)}"
+            )
+
+    # Flatten all languages
+    es_flat = flatten_json(json_data["es"])
+    fr_flat = flatten_json(json_data["fr"])
+    en_flat = flatten_json(json_data["en"])
+
+    # Get all unique keys
+    all_keys = set(es_flat.keys()) | set(fr_flat.keys()) | set(en_flat.keys())
+
+    logger.info(f"Syncing {len(all_keys)} translation keys from JSON files")
+
+    stats = {"created": 0, "updated": 0, "errors": 0, "total": len(all_keys)}
+    errors = []
+
+    # Process each key
+    for full_key in all_keys:
+        # Split key into namespace and remaining key
+        parts = full_key.split('.', 1)
+        if len(parts) == 1:
+            namespace = parts[0]
+            key_code = ""
+        else:
+            namespace = parts[0]
+            key_code = parts[1]
+
+        category = f"{FRONTEND_CATEGORY_PREFIX}{namespace}"
+
+        es_value = es_flat.get(full_key, "")
+        fr_value = fr_flat.get(full_key, "")
+        en_value = en_flat.get(full_key, "")
+
+        try:
+            # Check if exists (handle NULL context)
+            check_query = """
+                SELECT id FROM translations
+                WHERE category = $1 AND key_code = $2 AND context IS NULL
+            """
+            existing = await conn.fetchrow(check_query, category, key_code)
+
+            if existing:
+                # Update
+                update_query = """
+                    UPDATE translations
+                    SET es = $2, fr = $3, en = $4, updated_at = NOW(),
+                        updated_by = $5, version = version + 1
+                    WHERE id = $1
+                """
+                await conn.execute(
+                    update_query,
+                    existing["id"],
+                    es_value,
+                    fr_value,
+                    en_value,
+                    user_id,
+                )
+                stats["updated"] += 1
+            else:
+                # Insert
+                insert_query = """
+                    INSERT INTO translations (
+                        category, key_code, context, es, fr, en,
+                        description, translation_source,
+                        created_by, updated_by, created_at, updated_at, version
+                    )
+                    VALUES ($1, $2, NULL, $3, $4, $5, NULL, 'json_sync', $6, $6, NOW(), NOW(), 1)
+                """
+                await conn.execute(
+                    insert_query,
+                    category,
+                    key_code,
+                    es_value,
+                    fr_value,
+                    en_value,
+                    user_id,
+                )
+                stats["created"] += 1
+
+        except Exception as e:
+            logger.error(f"Error syncing {full_key}: {e}")
+            errors.append(f"{full_key}: {str(e)}")
+            stats["errors"] += 1
+
+    logger.info(f"Sync complete: {stats}")
+
+    return {
+        "message": "Sync completed",
+        "stats": stats,
+        "errors": errors[:10] if errors else [],
+        "namespaces_synced": list(set(k.split('.')[0] for k in all_keys)),
+    }
+
+
 # ============================================================================
 # CRUD ENDPOINTS
 # ============================================================================

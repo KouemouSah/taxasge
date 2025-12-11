@@ -1305,6 +1305,14 @@
         "namespace": "Namespace",
         "allNamespaces": "All Namespaces",
         "noTranslations": "No frontend translations found",
+        "clickSyncToImport": "Click \"Sync from JSON\" to import translations from message files",
+        "syncFromJson": "Sync from JSON",
+        "syncConfirm": "Sync all translations from JSON files? This will update existing translations and create new ones.",
+        "syncComplete": "Sync completed",
+        "created": "created",
+        "updated": "updated",
+        "selectNamespace": "Select namespace",
+        "addTranslationDesc": "Add a new translation key with values for all languages",
         "tableHeaders": {
           "namespace": "Namespace",
           "key": "Key"
