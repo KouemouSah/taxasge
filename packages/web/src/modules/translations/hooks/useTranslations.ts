@@ -12,6 +12,7 @@ import {
   entityTranslationsApi,
   systemTranslationsApi,
   frontendTranslationsApi,
+  enumManagementApi,
 } from '../services/api'
 import type {
   EntityTranslationCreate,
@@ -24,6 +25,9 @@ import type {
   SystemTranslationUpdate,
   SystemTranslationSearchParams,
   FrontendTranslationSearchParams,
+  ModifiableEnumType,
+  AddEnumValueRequest,
+  UpdateEnumTranslationRequest,
 } from '../types'
 
 // =============================================================================
@@ -77,6 +81,15 @@ export const translationKeys = {
       [...translationKeys.frontend.all, 'export', namespace, lang] as const,
     exportAll: (lang: LanguageCode) =>
       [...translationKeys.frontend.all, 'export-all', lang] as const,
+  },
+  // ENUM management
+  enums: {
+    all: ['enum-management'] as const,
+    list: (language: LanguageCode) => [...translationKeys.enums.all, 'list', language] as const,
+    values: (enumName: ModifiableEnumType, language: LanguageCode) =>
+      [...translationKeys.enums.all, 'values', enumName, language] as const,
+    untranslated: (enumName?: ModifiableEnumType) =>
+      [...translationKeys.enums.all, 'untranslated', enumName] as const,
   },
 }
 
@@ -554,6 +567,108 @@ export function useDeleteFrontendTranslation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: translationKeys.frontend.lists() })
       queryClient.invalidateQueries({ queryKey: translationKeys.frontend.stats() })
+    },
+  })
+}
+
+// =============================================================================
+// ENUM MANAGEMENT HOOKS
+// =============================================================================
+
+/**
+ * List modifiable ENUM types with metadata
+ */
+export function useModifiableEnums(language: LanguageCode = 'es') {
+  return useQuery({
+    queryKey: translationKeys.enums.list(language),
+    queryFn: () => enumManagementApi.listModifiableEnums(language),
+  })
+}
+
+/**
+ * Get ENUM values with translation status
+ */
+export function useEnumValues(enumName: ModifiableEnumType, language: LanguageCode = 'es') {
+  return useQuery({
+    queryKey: translationKeys.enums.values(enumName, language),
+    queryFn: () => enumManagementApi.getEnumValues(enumName, language),
+    enabled: !!enumName,
+  })
+}
+
+/**
+ * Get untranslated ENUM values
+ */
+export function useUntranslatedEnumValues(enumName?: ModifiableEnumType) {
+  return useQuery({
+    queryKey: translationKeys.enums.untranslated(enumName),
+    queryFn: () => enumManagementApi.getUntranslatedValues(enumName),
+  })
+}
+
+/**
+ * Add a new ENUM value
+ */
+export function useAddEnumValue() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ enumName, data }: { enumName: ModifiableEnumType; data: AddEnumValueRequest }) =>
+      enumManagementApi.addEnumValue(enumName, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: translationKeys.enums.all })
+    },
+  })
+}
+
+/**
+ * Update ENUM translation
+ */
+export function useUpdateEnumTranslation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      enumName,
+      value,
+      data,
+    }: {
+      enumName: ModifiableEnumType
+      value: string
+      data: UpdateEnumTranslationRequest
+    }) => enumManagementApi.updateEnumTranslation(enumName, value, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: translationKeys.enums.all })
+    },
+  })
+}
+
+/**
+ * Archive an ENUM value
+ */
+export function useArchiveEnumValue() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ enumName, value }: { enumName: ModifiableEnumType; value: string }) =>
+      enumManagementApi.archiveEnumValue(enumName, value),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: translationKeys.enums.all })
+    },
+  })
+}
+
+/**
+ * Restore an archived ENUM value
+ */
+export function useRestoreEnumValue() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ enumName, value }: { enumName: ModifiableEnumType; value: string }) =>
+      enumManagementApi.restoreEnumValue(enumName, value),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: translationKeys.enums.all })
     },
   })
 }

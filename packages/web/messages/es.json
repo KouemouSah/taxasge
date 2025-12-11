@@ -1252,6 +1252,7 @@
       "tabs": {
         "entity": "Traducciones de Entidades",
         "system": "Traducciones del Sistema",
+        "enums": "Sistema ENUMs",
         "frontend": "UI Frontend"
       },
       "entity": {
@@ -1307,6 +1308,37 @@
         "tableHeaders": {
           "namespace": "Namespace",
           "key": "Clave"
+        }
+      },
+      "enums": {
+        "title": "Gestión de ENUMs",
+        "description": "Administrar valores ENUM de PostgreSQL y sus traducciones",
+        "totalEnums": "Total ENUMs",
+        "totalValues": "Total Valores",
+        "withoutTranslation": "Sin Traducción",
+        "needsTranslation": "Requiere traducción",
+        "selectEnum": "Seleccionar ENUM",
+        "selectEnumFirst": "Seleccione un tipo ENUM para ver sus valores",
+        "noValues": "No hay valores para este ENUM",
+        "showArchived": "Mostrar archivados",
+        "addValue": "Agregar Valor",
+        "addValueTitle": "Agregar Nuevo Valor ENUM",
+        "valueCode": "Código del valor",
+        "valueCodeHint": "Use snake_case (ej: nuevo_estado)",
+        "valueAdded": "Valor agregado correctamente",
+        "valueArchived": "Valor archivado correctamente",
+        "valueRestored": "Valor restaurado correctamente",
+        "archiveConfirm": "¿Archivar el valor '{value}'?",
+        "restoreConfirm": "¿Restaurar el valor '{value}'?",
+        "cannotArchive": "No se puede archivar: {count} registro(s) en uso",
+        "cannotArchiveTooltip": "Este valor está en uso y no puede ser archivado",
+        "translated": "Traducido",
+        "untranslated": "Sin traducción",
+        "archived": "Archivado",
+        "tableHeaders": {
+          "value": "Valor",
+          "status": "Estado",
+          "usage": "Uso"
         }
       },
       "common": {

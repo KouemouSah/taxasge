@@ -56,6 +56,10 @@ import {
   Plus,
   Pencil,
   Wrench,
+  Database,
+  Archive,
+  RotateCcw,
+  AlertTriangle,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -77,6 +81,12 @@ import {
   useSourceContent,
   useEntityGroupedTranslations,
   useBulkUpsertEntityTranslations,
+  useModifiableEnums,
+  useEnumValues,
+  useAddEnumValue,
+  useUpdateEnumTranslation,
+  useArchiveEnumValue,
+  useRestoreEnumValue,
 } from '@/modules/translations/hooks'
 import type {
   TranslatableEntityType,
@@ -85,8 +95,10 @@ import type {
   SystemTranslation,
   SystemCategory,
   TranslationGroup,
+  ModifiableEnumType,
+  EnumValueWithTranslation,
 } from '@/modules/translations/types'
-import { ENTITY_TYPE_OPTIONS, LANGUAGE_OPTIONS } from '@/modules/translations/types'
+import { ENTITY_TYPE_OPTIONS, LANGUAGE_OPTIONS, MODIFIABLE_ENUM_OPTIONS } from '@/modules/translations/types'
 
 // =============================================================================
 // ENTITY TRANSLATIONS TAB
@@ -996,6 +1008,432 @@ function SystemTranslationsTab() {
 }
 
 // =============================================================================
+// ENUM MANAGEMENT TAB
+// =============================================================================
+
+function EnumManagementTab() {
+  const locale = useLocale() as LanguageCode
+  const t = useTranslations('admin.translations')
+  const { toast } = useToast()
+
+  const [selectedEnum, setSelectedEnum] = useState<ModifiableEnumType | ''>('')
+  const [showArchived, setShowArchived] = useState(false)
+
+  // Add modal state
+  const [addModalOpen, setAddModalOpen] = useState(false)
+  const [addFormData, setAddFormData] = useState({ value: '', es: '', fr: '', en: '' })
+
+  // Edit modal state
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [editingValue, setEditingValue] = useState<EnumValueWithTranslation | null>(null)
+  const [editFormData, setEditFormData] = useState({ es: '', fr: '', en: '' })
+
+  const { data: enumsData, isLoading: enumsLoading } = useModifiableEnums(locale)
+  const { data: valuesData, isLoading: valuesLoading, refetch } = useEnumValues(
+    selectedEnum as ModifiableEnumType,
+    locale
+  )
+
+  const addMutation = useAddEnumValue()
+  const updateMutation = useUpdateEnumTranslation()
+  const archiveMutation = useArchiveEnumValue()
+  const restoreMutation = useRestoreEnumValue()
+
+  const getEnumLabel = (enumName: string) => {
+    const opt = MODIFIABLE_ENUM_OPTIONS.find(o => o.value === enumName)
+    if (!opt) return enumName
+    return locale === 'fr' ? opt.label_fr : locale === 'en' ? opt.label_en : opt.label_es
+  }
+
+  const handleAdd = () => {
+    setAddFormData({ value: '', es: '', fr: '', en: '' })
+    setAddModalOpen(true)
+  }
+
+  const handleSaveAdd = async () => {
+    if (!selectedEnum) return
+
+    try {
+      await addMutation.mutateAsync({
+        enumName: selectedEnum as ModifiableEnumType,
+        data: addFormData,
+      })
+      toast({ title: t('common.success'), description: t('enums.valueAdded') })
+      setAddModalOpen(false)
+      refetch()
+    } catch (err) {
+      toast({ variant: 'destructive', title: t('common.error'), description: String(err) })
+    }
+  }
+
+  const handleEdit = (val: EnumValueWithTranslation) => {
+    setEditingValue(val)
+    setEditFormData({
+      es: val.es || '',
+      fr: val.fr || '',
+      en: val.en || '',
+    })
+    setEditModalOpen(true)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!selectedEnum || !editingValue) return
+
+    try {
+      await updateMutation.mutateAsync({
+        enumName: selectedEnum as ModifiableEnumType,
+        value: editingValue.value,
+        data: editFormData,
+      })
+      toast({ title: t('common.success'), description: t('common.translationSaved') })
+      setEditModalOpen(false)
+      refetch()
+    } catch (err) {
+      toast({ variant: 'destructive', title: t('common.error'), description: String(err) })
+    }
+  }
+
+  const handleArchive = async (val: EnumValueWithTranslation) => {
+    if (!selectedEnum) return
+    if (!val.can_archive) {
+      toast({
+        variant: 'destructive',
+        title: t('common.error'),
+        description: t('enums.cannotArchive', { count: val.usage_count }),
+      })
+      return
+    }
+    if (!confirm(t('enums.archiveConfirm', { value: val.display_value }))) return
+
+    try {
+      await archiveMutation.mutateAsync({
+        enumName: selectedEnum as ModifiableEnumType,
+        value: val.value,
+      })
+      toast({ title: t('common.success'), description: t('enums.valueArchived') })
+      refetch()
+    } catch (err) {
+      toast({ variant: 'destructive', title: t('common.error'), description: String(err) })
+    }
+  }
+
+  const handleRestore = async (val: EnumValueWithTranslation) => {
+    if (!selectedEnum) return
+    if (!confirm(t('enums.restoreConfirm', { value: val.display_value }))) return
+
+    try {
+      await restoreMutation.mutateAsync({
+        enumName: selectedEnum as ModifiableEnumType,
+        value: val.value,
+      })
+      toast({ title: t('common.success'), description: t('enums.valueRestored') })
+      refetch()
+    } catch (err) {
+      toast({ variant: 'destructive', title: t('common.error'), description: String(err) })
+    }
+  }
+
+  const filteredValues = valuesData?.values?.filter((v: EnumValueWithTranslation) =>
+    showArchived ? true : !v.is_archived
+  ) || []
+
+  return (
+    <div className="space-y-6">
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-3">
+        {enumsLoading ? (
+          <Card>
+            <CardContent className="flex items-center justify-center py-6">
+              <Loader2 className="h-5 w-5 animate-spin" />
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">{t('enums.totalEnums')}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{enumsData?.count || 0}</div>
+              </CardContent>
+            </Card>
+            {selectedEnum && valuesData && (
+              <>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">{t('enums.totalValues')}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{valuesData.total}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">{t('enums.withoutTranslation')}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-2">
+                      <div className="text-2xl font-bold">{valuesData.without_translation}</div>
+                      {valuesData.without_translation > 0 && (
+                        <Badge variant="destructive">{t('enums.needsTranslation')}</Badge>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
+          </>
+        )}
+      </div>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>{t('enums.title')}</CardTitle>
+              <CardDescription>{t('enums.description')}</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              {selectedEnum && (
+                <Button variant="default" size="sm" onClick={handleAdd}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  {t('enums.addValue')}
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                {t('common.refresh')}
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4 mb-4 flex-wrap">
+            <Select
+              value={selectedEnum}
+              onValueChange={(v) => setSelectedEnum(v as ModifiableEnumType | '')}
+            >
+              <SelectTrigger className="w-[280px]">
+                <SelectValue placeholder={t('enums.selectEnum')} />
+              </SelectTrigger>
+              <SelectContent>
+                {enumsData?.enums?.map((enumItem: { enum_name: string; label: string; total_values: number }) => (
+                  <SelectItem key={enumItem.enum_name} value={enumItem.enum_name}>
+                    <span className="flex items-center gap-2">
+                      <span>{enumItem.label}</span>
+                      <Badge variant="secondary" className="text-xs">{enumItem.total_values}</Badge>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {selectedEnum && (
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="show-archived"
+                  checked={showArchived}
+                  onCheckedChange={(checked) => setShowArchived(checked === true)}
+                />
+                <Label htmlFor="show-archived" className="text-sm cursor-pointer">
+                  {t('enums.showArchived')}
+                </Label>
+              </div>
+            )}
+          </div>
+
+          {!selectedEnum ? (
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <Database className="h-12 w-12 mb-4 opacity-50" />
+              <p>{t('enums.selectEnumFirst')}</p>
+            </div>
+          ) : valuesLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin mr-2" />
+              {t('common.loading')}
+            </div>
+          ) : !filteredValues.length ? (
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <Database className="h-12 w-12 mb-4 opacity-50" />
+              <p>{t('enums.noValues')}</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t('enums.tableHeaders.value')}</TableHead>
+                  <TableHead>{t('enums.tableHeaders.status')}</TableHead>
+                  <TableHead>{t('system.tableHeaders.es')}</TableHead>
+                  <TableHead>{t('system.tableHeaders.fr')}</TableHead>
+                  <TableHead>{t('system.tableHeaders.en')}</TableHead>
+                  <TableHead>{t('enums.tableHeaders.usage')}</TableHead>
+                  <TableHead className="text-right">{t('system.tableHeaders.actions')}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredValues.map((val: EnumValueWithTranslation) => (
+                  <TableRow key={val.value} className={val.is_archived ? 'opacity-60' : ''}>
+                    <TableCell className="font-mono text-sm">{val.display_value}</TableCell>
+                    <TableCell>
+                      {val.is_archived ? (
+                        <Badge variant="secondary">
+                          <Archive className="h-3 w-3 mr-1" />
+                          {t('enums.archived')}
+                        </Badge>
+                      ) : val.has_translation ? (
+                        <Badge variant="default">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          {t('enums.translated')}
+                        </Badge>
+                      ) : (
+                        <Badge variant="destructive">
+                          <AlertTriangle className="h-3 w-3 mr-1" />
+                          {t('enums.untranslated')}
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="max-w-[120px] truncate" title={val.es || ''}>
+                      {val.es || <span className="text-muted-foreground italic">-</span>}
+                    </TableCell>
+                    <TableCell className="max-w-[120px] truncate" title={val.fr || ''}>
+                      {val.fr || <span className="text-muted-foreground italic">-</span>}
+                    </TableCell>
+                    <TableCell className="max-w-[120px] truncate" title={val.en || ''}>
+                      {val.en || <span className="text-muted-foreground italic">-</span>}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{val.usage_count}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="sm" onClick={() => handleEdit(val)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      {val.is_archived ? (
+                        <Button variant="ghost" size="sm" onClick={() => handleRestore(val)}>
+                          <RotateCcw className="h-4 w-4" />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleArchive(val)}
+                          disabled={!val.can_archive}
+                          title={!val.can_archive ? t('enums.cannotArchiveTooltip') : ''}
+                        >
+                          <Archive className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Add Value Modal */}
+      <Dialog open={addModalOpen} onOpenChange={setAddModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('enums.addValueTitle')}</DialogTitle>
+            <DialogDescription>
+              {selectedEnum && getEnumLabel(selectedEnum)}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4">
+            <div>
+              <Label>{t('enums.valueCode')}</Label>
+              <Input
+                value={addFormData.value}
+                onChange={(e) => setAddFormData({ ...addFormData, value: e.target.value.toLowerCase().replace(/\s+/g, '_') })}
+                placeholder="new_value"
+                className="font-mono"
+              />
+              <p className="text-xs text-muted-foreground mt-1">{t('enums.valueCodeHint')}</p>
+            </div>
+            <div>
+              <Label>ES (Español)</Label>
+              <Input
+                value={addFormData.es}
+                onChange={(e) => setAddFormData({ ...addFormData, es: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label>FR (Français)</Label>
+              <Input
+                value={addFormData.fr}
+                onChange={(e) => setAddFormData({ ...addFormData, fr: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label>EN (English)</Label>
+              <Input
+                value={addFormData.en}
+                onChange={(e) => setAddFormData({ ...addFormData, en: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddModalOpen(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button onClick={handleSaveAdd} disabled={addMutation.isPending || !addFormData.value}>
+              {addMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {t('common.save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Translation Modal */}
+      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('common.editTranslation')}</DialogTitle>
+            <DialogDescription>
+              {editingValue?.display_value}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4">
+            <div>
+              <Label>ES (Español)</Label>
+              <Input
+                value={editFormData.es}
+                onChange={(e) => setEditFormData({ ...editFormData, es: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label>FR (Français)</Label>
+              <Input
+                value={editFormData.fr}
+                onChange={(e) => setEditFormData({ ...editFormData, fr: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label>EN (English)</Label>
+              <Input
+                value={editFormData.en}
+                onChange={(e) => setEditFormData({ ...editFormData, en: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditModalOpen(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button onClick={handleSaveEdit} disabled={updateMutation.isPending}>
+              {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {t('common.save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+// =============================================================================
 // FRONTEND UI TRANSLATIONS TAB
 // =============================================================================
 
@@ -1197,7 +1635,7 @@ export default function TranslationsAdminPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="entity" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="entity" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             {t('tabs.entity')}
@@ -1205,6 +1643,10 @@ export default function TranslationsAdminPage() {
           <TabsTrigger value="system" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
             {t('tabs.system')}
+          </TabsTrigger>
+          <TabsTrigger value="enums" className="flex items-center gap-2">
+            <Database className="h-4 w-4" />
+            {t('tabs.enums')}
           </TabsTrigger>
           <TabsTrigger value="frontend" className="flex items-center gap-2">
             <Globe className="h-4 w-4" />
@@ -1218,6 +1660,10 @@ export default function TranslationsAdminPage() {
 
         <TabsContent value="system" className="mt-6">
           <SystemTranslationsTab />
+        </TabsContent>
+
+        <TabsContent value="enums" className="mt-6">
+          <EnumManagementTab />
         </TabsContent>
 
         <TabsContent value="frontend" className="mt-6">
