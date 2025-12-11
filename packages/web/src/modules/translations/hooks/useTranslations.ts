@@ -23,6 +23,7 @@ import type {
   SystemTranslationCreate,
   SystemTranslationUpdate,
   SystemTranslationSearchParams,
+  SystemCategoriesResponse,
   FrontendTranslationSearchParams,
 } from '../types'
 
@@ -59,7 +60,7 @@ export const translationKeys = {
   // System translations
   system: {
     all: ['system-translations'] as const,
-    categories: () => [...translationKeys.system.all, 'categories'] as const,
+    categories: (language: LanguageCode = 'es') => [...translationKeys.system.all, 'categories', language] as const,
     lists: () => [...translationKeys.system.all, 'list'] as const,
     list: (params: SystemTranslationSearchParams) =>
       [...translationKeys.system.lists(), params] as const,
@@ -316,12 +317,14 @@ export function useSourceContent(
 // =============================================================================
 
 /**
- * Get system translation categories
+ * Get system translation categories with localized labels
+ *
+ * @param language - Language code for labels (es, fr, en)
  */
-export function useSystemCategories() {
+export function useSystemCategories(language: LanguageCode = 'es') {
   return useQuery({
-    queryKey: translationKeys.system.categories(),
-    queryFn: () => systemTranslationsApi.getCategories(),
+    queryKey: translationKeys.system.categories(language),
+    queryFn: () => systemTranslationsApi.getCategories(language),
   })
 }
 

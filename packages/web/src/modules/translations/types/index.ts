@@ -146,6 +146,28 @@ export interface EntityTranslationListResponse {
 // =============================================================================
 
 /**
+ * Enriched system category with localized labels
+ * Backend returns these from GET /translations/system/categories
+ */
+export interface SystemCategory {
+  code: string
+  label: string
+  description: string | null
+  db_table: string | null
+  db_column: string | null
+  db_enum: string | null
+}
+
+/**
+ * Response from GET /translations/system/categories
+ */
+export interface SystemCategoriesResponse {
+  categories: SystemCategory[]
+  count: number
+  language: LanguageCode
+}
+
+/**
  * System translation record
  * Maps to: translations table
  * Used for: ENUMs, UI labels, forms, messages

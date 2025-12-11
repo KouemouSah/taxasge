@@ -82,6 +82,7 @@ import type {
   LanguageCode,
   EntityTranslation,
   SystemTranslation,
+  SystemCategory,
 } from '@/modules/translations/types'
 import { ENTITY_TYPE_OPTIONS, LANGUAGE_OPTIONS } from '@/modules/translations/types'
 
@@ -647,7 +648,7 @@ function EntityTranslationsTab() {
 // =============================================================================
 
 function SystemTranslationsTab() {
-  const _locale = useLocale() as LanguageCode
+  const locale = useLocale() as LanguageCode
   const t = useTranslations('admin.translations')
   const { toast } = useToast()
 
@@ -661,7 +662,20 @@ function SystemTranslationsTab() {
   const [editingTranslation, setEditingTranslation] = useState<SystemTranslation | null>(null)
   const [formData, setFormData] = useState({ category: '', key_code: '', es: '', fr: '', en: '', description: '' })
 
-  const { data: categoriesData } = useSystemCategories()
+  // Pass locale to get localized category labels
+  const { data: categoriesData } = useSystemCategories(locale)
+
+  // Helper to get category label from code
+  const getCategoryLabel = (code: string): string => {
+    const category = categoriesData?.categories?.find((c: SystemCategory) => c.code === code)
+    return category?.label || code
+  }
+
+  // Helper to get category info (table/enum)
+  const getCategoryInfo = (code: string): { table?: string | null; enum?: string | null } => {
+    const category = categoriesData?.categories?.find((c: SystemCategory) => c.code === code)
+    return { table: category?.db_table, enum: category?.db_enum }
+  }
   const { data: translationsData, isLoading, refetch } = useSystemTranslations({
     category: categoryFilter === 'all' ? undefined : categoryFilter,
     search_term: searchQuery || undefined,
@@ -759,13 +773,20 @@ function SystemTranslationsTab() {
               value={categoryFilter}
               onValueChange={(v) => { setCategoryFilter(v); setPage(0); }}
             >
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-[280px]">
                 <SelectValue placeholder={t('system.category')} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t('system.allCategories')}</SelectItem>
-                {categoriesData?.categories?.map(cat => (
-                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                {categoriesData?.categories?.map((cat: SystemCategory) => (
+                  <SelectItem key={cat.code} value={cat.code}>
+                    <span className="flex items-center gap-2">
+                      <span>{cat.label}</span>
+                      {cat.db_enum && (
+                        <span className="text-xs text-muted-foreground">({cat.db_enum})</span>
+                      )}
+                    </span>
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -795,10 +816,22 @@ function SystemTranslationsTab() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {translationsData.translations.map((tr) => (
+                  {translationsData.translations.map((tr) => {
+                    const catInfo = getCategoryInfo(tr.category)
+                    return (
                     <TableRow key={tr.id}>
                       <TableCell>
-                        <Badge variant="secondary">{tr.category}</Badge>
+                        <div className="flex flex-col gap-1">
+                          <Badge variant="secondary" title={tr.category}>
+                            {getCategoryLabel(tr.category)}
+                          </Badge>
+                          {(catInfo.table || catInfo.enum) && (
+                            <span className="text-xs text-muted-foreground">
+                              {catInfo.enum && <span className="font-mono">{catInfo.enum}</span>}
+                              {catInfo.table && !catInfo.enum && <span>📋 {catInfo.table}</span>}
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="font-mono text-sm">{tr.key_code}</TableCell>
                       <TableCell className="max-w-[150px] truncate" title={tr.es}>{tr.es}</TableCell>
@@ -813,7 +846,7 @@ function SystemTranslationsTab() {
                         </Button>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )})}
                 </TableBody>
               </Table>
 

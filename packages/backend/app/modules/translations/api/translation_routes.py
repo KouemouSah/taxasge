@@ -18,7 +18,7 @@ Note: entity_translations (for fiscal services) is in fiscal_services module
 """
 
 from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Header
 from loguru import logger
 import asyncpg
 
@@ -30,6 +30,7 @@ from app.modules.translations.models.translation import (
     TranslationSearchParams,
     TranslationListResponse,
 )
+from app.modules.translations.models.category_metadata import enrich_categories
 from app.modules.translations.services.translation_service import TranslationService
 from app.modules.translations.services.language_service import LanguageService
 from app.modules.translations.middleware.language_middleware import detect_language
@@ -46,19 +47,36 @@ router = APIRouter(prefix="/translations/system", tags=["System Translations"])
 
 @router.get("/categories")
 async def list_categories(
+    language: Optional[str] = Query(
+        "es",
+        description="Language code for labels (es, fr, en)",
+        regex="^(es|fr|en)$"
+    ),
     conn: asyncpg.Connection = Depends(get_db),
 ):
     """
-    Get list of all translation categories
+    Get list of all translation categories with localized labels
+
+    Args:
+        language: Language code for labels (default: es)
 
     Returns:
-        List of unique category strings
+        List of categories with code, label, description, and DB associations
     """
     service = TranslationService()
 
     try:
-        categories = await service.get_all_categories(conn)
-        return {"categories": categories}
+        # Get raw category codes from database
+        category_codes = await service.get_all_categories(conn)
+
+        # Enrich with metadata (localized labels, DB associations)
+        enriched_categories = enrich_categories(category_codes, language or "es")
+
+        return {
+            "categories": enriched_categories,
+            "count": len(enriched_categories),
+            "language": language or "es",
+        }
 
     except Exception as e:
         logger.error(f"Error fetching categories: {e}")

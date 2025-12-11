@@ -29,6 +29,7 @@ import type {
   SystemTranslationUpdate,
   SystemTranslationSearchParams,
   SystemTranslationListResponse,
+  SystemCategoriesResponse,
   // Frontend translations
   FrontendTranslationStats,
   FrontendTranslationSearchParams,
@@ -279,14 +280,13 @@ const SYSTEM_BASE = '/translations/system'
 
 export const systemTranslationsApi = {
   /**
-   * Get list of categories
-   * BACKEND: GET /api/v1/translations/categories
+   * Get list of categories with localized labels
+   * BACKEND: GET /api/v1/translations/system/categories
+   *
+   * @param language - Language code for labels (es, fr, en)
    */
-  getCategories: async (): Promise<{
-    categories: string[]
-    count: number
-  }> => {
-    return fetchClient.get(`${SYSTEM_BASE}/categories`)
+  getCategories: async (language: LanguageCode = 'es'): Promise<SystemCategoriesResponse> => {
+    return fetchClient.get(`${SYSTEM_BASE}/categories`, { language })
   },
 
   /**
