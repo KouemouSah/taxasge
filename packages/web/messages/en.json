@@ -1283,6 +1283,8 @@
         "searchPlaceholder": "Search key or translation...",
         "category": "Category",
         "allCategories": "All Categories",
+        "group": "Group",
+        "allGroups": "All Groups",
         "noTranslations": "No system translations found",
         "tableHeaders": {
           "category": "Category",

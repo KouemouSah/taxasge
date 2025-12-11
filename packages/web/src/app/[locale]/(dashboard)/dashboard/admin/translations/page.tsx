@@ -63,6 +63,7 @@ import {
   useEntityTranslationStats,
   useSystemTranslations,
   useSystemCategories,
+  useSystemGroups,
   useFrontendTranslations,
   useFrontendTranslationStats,
   useFrontendNamespaces,
@@ -83,6 +84,7 @@ import type {
   EntityTranslation,
   SystemTranslation,
   SystemCategory,
+  TranslationGroup,
 } from '@/modules/translations/types'
 import { ENTITY_TYPE_OPTIONS, LANGUAGE_OPTIONS } from '@/modules/translations/types'
 
@@ -652,6 +654,7 @@ function SystemTranslationsTab() {
   const t = useTranslations('admin.translations')
   const { toast } = useToast()
 
+  const [groupFilter, setGroupFilter] = useState<string>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [page, setPage] = useState(0)
@@ -662,8 +665,15 @@ function SystemTranslationsTab() {
   const [editingTranslation, setEditingTranslation] = useState<SystemTranslation | null>(null)
   const [formData, setFormData] = useState({ category: '', key_code: '', es: '', fr: '', en: '', description: '' })
 
-  // Pass locale to get localized category labels
+  // Pass locale to get localized category and group labels
   const { data: categoriesData } = useSystemCategories(locale)
+  const { data: groupsData } = useSystemGroups(locale)
+
+  // Filter categories by selected group
+  const filteredCategories = categoriesData?.categories?.filter((cat: SystemCategory) => {
+    if (groupFilter === 'all') return true
+    return cat.group === groupFilter
+  }) || []
 
   // Helper to get category label from code
   const getCategoryLabel = (code: string): string => {
@@ -671,10 +681,22 @@ function SystemTranslationsTab() {
     return category?.label || code
   }
 
-  // Helper to get category info (table/enum)
-  const getCategoryInfo = (code: string): { table?: string | null; enum?: string | null } => {
+  // Helper to get category info (table/enum/group)
+  const getCategoryInfo = (code: string): { table?: string | null; enum?: string | null; group?: string; groupLabel?: string } => {
     const category = categoriesData?.categories?.find((c: SystemCategory) => c.code === code)
-    return { table: category?.db_table, enum: category?.db_enum }
+    return {
+      table: category?.db_table,
+      enum: category?.db_enum,
+      group: category?.group,
+      groupLabel: category?.group_label
+    }
+  }
+
+  // Reset category filter when group changes
+  const handleGroupChange = (group: string) => {
+    setGroupFilter(group)
+    setCategoryFilter('all')
+    setPage(0)
   }
   const { data: translationsData, isLoading, refetch } = useSystemTranslations({
     category: categoryFilter === 'all' ? undefined : categoryFilter,
@@ -759,7 +781,7 @@ function SystemTranslationsTab() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-4 mb-4">
+          <div className="flex items-center gap-4 mb-4 flex-wrap">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -769,6 +791,44 @@ function SystemTranslationsTab() {
                 className="pl-9"
               />
             </div>
+            {/* Group filter (ENUM types + functional groups) */}
+            <Select
+              value={groupFilter}
+              onValueChange={handleGroupChange}
+            >
+              <SelectTrigger className="w-[240px]">
+                <SelectValue placeholder={t('system.group')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('system.allGroups')}</SelectItem>
+                {/* Enum groups */}
+                {groupsData?.groups?.filter((g: TranslationGroup) => g.type === 'enum').map((group: TranslationGroup) => (
+                  <SelectItem key={group.code} value={group.code}>
+                    <span className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs px-1">ENUM</Badge>
+                      <span>{group.label}</span>
+                    </span>
+                  </SelectItem>
+                ))}
+                {/* Separator if we have both types */}
+                {groupsData?.groups?.some((g: TranslationGroup) => g.type === 'enum') &&
+                 groupsData?.groups?.some((g: TranslationGroup) => g.type === 'functional') && (
+                  <SelectItem value="_separator" disabled className="opacity-30">
+                    ─────────────
+                  </SelectItem>
+                )}
+                {/* Functional groups */}
+                {groupsData?.groups?.filter((g: TranslationGroup) => g.type === 'functional').map((group: TranslationGroup) => (
+                  <SelectItem key={group.code} value={group.code}>
+                    <span className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs px-1">UI</Badge>
+                      <span>{group.label}</span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {/* Category filter (filtered by selected group) */}
             <Select
               value={categoryFilter}
               onValueChange={(v) => { setCategoryFilter(v); setPage(0); }}
@@ -778,7 +838,7 @@ function SystemTranslationsTab() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t('system.allCategories')}</SelectItem>
-                {categoriesData?.categories?.map((cat: SystemCategory) => (
+                {filteredCategories.map((cat: SystemCategory) => (
                   <SelectItem key={cat.code} value={cat.code}>
                     <span className="flex items-center gap-2">
                       <span>{cat.label}</span>
@@ -825,12 +885,13 @@ function SystemTranslationsTab() {
                           <Badge variant="secondary" title={tr.category}>
                             {getCategoryLabel(tr.category)}
                           </Badge>
-                          {(catInfo.table || catInfo.enum) && (
-                            <span className="text-xs text-muted-foreground">
-                              {catInfo.enum && <span className="font-mono">{catInfo.enum}</span>}
-                              {catInfo.table && !catInfo.enum && <span>📋 {catInfo.table}</span>}
-                            </span>
-                          )}
+                          <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
+                            {catInfo.groupLabel && (
+                              <span className="text-primary/70">{catInfo.groupLabel}</span>
+                            )}
+                            {catInfo.enum && <span className="font-mono">{catInfo.enum}</span>}
+                            {catInfo.table && !catInfo.enum && <span>📋 {catInfo.table}</span>}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell className="font-mono text-sm">{tr.key_code}</TableCell>

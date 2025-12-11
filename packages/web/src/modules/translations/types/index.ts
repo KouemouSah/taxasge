@@ -156,6 +156,29 @@ export interface SystemCategory {
   db_table: string | null
   db_column: string | null
   db_enum: string | null
+  group: string  // Group code (enum type or functional group)
+  group_label: string  // Localized group label
+}
+
+/**
+ * Translation group (ENUM type or functional group)
+ * Backend returns these from GET /translations/system/groups
+ */
+export interface TranslationGroup {
+  code: string  // Group code (e.g., "user_role_enum", "ui")
+  label: string  // Localized label
+  type: 'enum' | 'functional'  // Group type
+  table: string | null  // Associated DB table (for enum groups)
+  column: string | null  // Associated DB column (for enum groups)
+}
+
+/**
+ * Response from GET /translations/system/groups
+ */
+export interface TranslationGroupsResponse {
+  groups: TranslationGroup[]
+  count: number
+  language: LanguageCode
 }
 
 /**

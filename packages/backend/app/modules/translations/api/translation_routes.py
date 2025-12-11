@@ -30,7 +30,7 @@ from app.modules.translations.models.translation import (
     TranslationSearchParams,
     TranslationListResponse,
 )
-from app.modules.translations.models.category_metadata import enrich_categories
+from app.modules.translations.models.category_metadata import enrich_categories, get_all_groups
 from app.modules.translations.services.translation_service import TranslationService
 from app.modules.translations.services.language_service import LanguageService
 from app.modules.translations.middleware.language_middleware import detect_language
@@ -80,6 +80,41 @@ async def list_categories(
 
     except Exception as e:
         logger.error(f"Error fetching categories: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/groups")
+async def list_groups(
+    language: Optional[str] = Query(
+        "es",
+        description="Language code for labels (es, fr, en)",
+        regex="^(es|fr|en)$"
+    ),
+):
+    """
+    Get list of translation groups (ENUM types + functional groups)
+
+    Groups are based on:
+    - PostgreSQL ENUM types (declaration_status_enum, payment_method_enum, etc.)
+    - Functional groups (ui, forms, messages, notifications, chatbot)
+
+    Args:
+        language: Language code for labels (default: es)
+
+    Returns:
+        List of groups with code, label, type, and DB associations
+    """
+    try:
+        groups = get_all_groups(language or "es")
+
+        return {
+            "groups": groups,
+            "count": len(groups),
+            "language": language or "es",
+        }
+
+    except Exception as e:
+        logger.error(f"Error fetching groups: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

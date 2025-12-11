@@ -1281,6 +1281,8 @@
         "title": "Traducciones del Sistema",
         "description": "ENUMs, etiquetas de UI, formularios y mensajes del sistema",
         "searchPlaceholder": "Buscar clave o traducción...",
+        "group": "Grupo",
+        "allGroups": "Todos los grupos",
         "category": "Categoría",
         "allCategories": "Todas las categorías",
         "noTranslations": "No se encontraron traducciones del sistema",

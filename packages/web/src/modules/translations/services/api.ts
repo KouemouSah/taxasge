@@ -30,6 +30,7 @@ import type {
   SystemTranslationSearchParams,
   SystemTranslationListResponse,
   SystemCategoriesResponse,
+  TranslationGroupsResponse,
   // Frontend translations
   FrontendTranslationStats,
   FrontendTranslationSearchParams,
@@ -287,6 +288,16 @@ export const systemTranslationsApi = {
    */
   getCategories: async (language: LanguageCode = 'es'): Promise<SystemCategoriesResponse> => {
     return fetchClient.get(`${SYSTEM_BASE}/categories`, { language })
+  },
+
+  /**
+   * Get list of translation groups (ENUM types + functional groups)
+   * BACKEND: GET /api/v1/translations/system/groups
+   *
+   * @param language - Language code for labels (es, fr, en)
+   */
+  getGroups: async (language: LanguageCode = 'es'): Promise<TranslationGroupsResponse> => {
+    return fetchClient.get(`${SYSTEM_BASE}/groups`, { language })
   },
 
   /**

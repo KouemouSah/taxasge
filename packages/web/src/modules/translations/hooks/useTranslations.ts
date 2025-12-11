@@ -328,6 +328,18 @@ export function useSystemCategories(language: LanguageCode = 'es') {
 }
 
 /**
+ * Get system translation groups (ENUM types + functional groups)
+ *
+ * @param language - Language code for labels (es, fr, en)
+ */
+export function useSystemGroups(language: LanguageCode = 'es') {
+  return useQuery({
+    queryKey: [...translationKeys.system.all, 'groups', language] as const,
+    queryFn: () => systemTranslationsApi.getGroups(language),
+  })
+}
+
+/**
  * Search system translations
  */
 export function useSystemTranslations(params: SystemTranslationSearchParams) {
