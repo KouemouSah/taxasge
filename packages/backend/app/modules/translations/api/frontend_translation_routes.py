@@ -399,7 +399,8 @@ async def sync_frontend_from_json_files(
     import traceback
 
     try:
-        user_id = current_user.get("sub")
+        # current_user is a UserResponse Pydantic model, not a dict
+        user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub") if isinstance(current_user, dict) else None
         logger.info(f"Starting sync-from-json for user: {user_id}")
 
         json_data = {
