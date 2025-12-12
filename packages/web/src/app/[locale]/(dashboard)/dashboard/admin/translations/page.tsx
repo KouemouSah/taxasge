@@ -61,7 +61,6 @@ import {
   RotateCcw,
   AlertTriangle,
   Github,
-  Upload,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import {
