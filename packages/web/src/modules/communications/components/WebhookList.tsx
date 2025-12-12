@@ -17,7 +17,6 @@ import {
   Trash2,
   TestTube,
   FileText,
-  ExternalLink,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import {
@@ -52,7 +51,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { WebhookResponse } from '../types'
 

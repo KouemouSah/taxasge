@@ -170,7 +170,7 @@ export function SmsCharCounter({ content, maxSegments = 10, className }: SmsChar
             <div className="text-sm">
               <p className="font-medium text-yellow-800">Approaching limit</p>
               <p className="text-yellow-700">
-                You're close to the maximum segment limit. Consider shortening the message.
+                You&apos;re close to the maximum segment limit. Consider shortening the message.
               </p>
             </div>
           </div>

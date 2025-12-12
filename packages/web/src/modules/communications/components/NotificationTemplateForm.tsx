@@ -74,7 +74,7 @@ export function NotificationTemplateForm({ template, locale, mode }: Notificatio
   const router = useRouter()
   const [newVariable, setNewVariable] = useState('')
   const [showPreview, setShowPreview] = useState(false)
-  const [previewLanguage, setPreviewLanguage] = useState<'es' | 'fr' | 'en'>('es')
+  const [previewLanguage] = useState<'es' | 'fr' | 'en'>('es')
   const [previewVars, setPreviewVars] = useState<Record<string, string>>({})
 
   const createMutation = useCreateNotificationTemplate()
@@ -180,7 +180,7 @@ export function NotificationTemplateForm({ template, locale, mode }: Notificatio
   const handlePreview = async () => {
     if (template) {
       try {
-        const result = await previewMutation.mutateAsync({
+        await previewMutation.mutateAsync({
           templateId: template.id,
           language: previewLanguage,
           variables: previewVars,

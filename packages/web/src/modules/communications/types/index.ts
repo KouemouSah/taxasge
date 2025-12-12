@@ -362,13 +362,6 @@ export interface UssdConfigResponse extends UssdConfigBase {
   createdBy?: number
 }
 
-export interface UssdConfigListResponse {
-  configs: UssdConfigResponse[]
-  total: number
-  page: number
-  pageSize: number
-}
-
 export interface UssdConfigListParams {
   page?: number
   pageSize?: number
@@ -382,10 +375,4 @@ export interface MenuValidationResult {
   menuCount: number
   optionCount: number
   maxDepth: number
-}
-
-export interface UssdOperatorInfo {
-  value: UssdOperator
-  name: string
-  description: string
 }

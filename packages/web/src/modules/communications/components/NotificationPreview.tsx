@@ -123,7 +123,7 @@ export function NotificationPreview({ preview, onClose, isDialog = true }: Notif
         <p className="font-medium mb-1">Preview Information</p>
         <p className="text-blue-700">
           This is how the notification will appear to users in the application. The actual
-          notification may vary slightly based on the user's device and browser.
+          notification may vary slightly based on the user&apos;s device and browser.
         </p>
       </div>
     </div>

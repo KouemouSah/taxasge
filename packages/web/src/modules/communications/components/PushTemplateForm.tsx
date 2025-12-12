@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { RefreshCw, Plus, X, Eye } from 'lucide-react'
+import { RefreshCw, Plus, X } from 'lucide-react'
 import type { PushTemplateCreate, PushTemplateUpdate, PushTemplateResponse, PlatformEnum } from '../types'
 
 interface PushTemplateFormProps {
@@ -42,7 +42,7 @@ export function PushTemplateForm({
   onCancel,
   isSubmitting = false,
 }: PushTemplateFormProps) {
-  const locale = useLocale()
+  const _locale = useLocale()
   const t = useTranslations('admin.pushTemplates.form')
   const tCommon = useTranslations('common')
 

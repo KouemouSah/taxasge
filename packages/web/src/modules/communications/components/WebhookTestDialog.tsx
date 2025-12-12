@@ -20,7 +20,6 @@ import {
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -74,10 +73,6 @@ export function WebhookTestDialog({ webhook, trigger }: WebhookTestDialogProps) 
   const formatDuration = (ms: number) => {
     if (ms < 1000) return `${ms}ms`
     return `${(ms / 1000).toFixed(2)}s`
-  }
-
-  const getStatusColor = (success: boolean) => {
-    return success ? 'text-green-600' : 'text-red-600'
   }
 
   const getStatusIcon = (success: boolean) => {
@@ -141,7 +136,6 @@ export function WebhookTestDialog({ webhook, trigger }: WebhookTestDialogProps) 
 
           {testResult && (
             <>
-              <Separator />
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between">

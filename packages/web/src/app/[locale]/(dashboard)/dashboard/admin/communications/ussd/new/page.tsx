@@ -4,7 +4,6 @@
 
 'use client'
 
-import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -46,7 +45,7 @@ function MenuBuilder({ value, onChange }: { value: MenuNode[]; onChange: (v: Men
           <p className="text-xs text-muted-foreground">Click Add Menu to create your first menu</p>
         </div>
       )}
-      {value.map((menu, idx) => (
+      {value.map((menu) => (
         <Card key={menu.id}>
           <CardHeader>
             <CardTitle className="text-sm">{menu.titleEs}</CardTitle>

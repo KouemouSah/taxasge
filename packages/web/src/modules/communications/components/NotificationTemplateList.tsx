@@ -39,13 +39,14 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useNotificationTemplates, useDeleteNotificationTemplate } from '../hooks/useNotificationTemplates'
 import type { NotificationType } from '../types/notification-template'
-import { NOTIFICATION_TYPE_COLORS, NOTIFICATION_TYPE_LABELS, NOTIFICATION_PRIORITY_LABELS } from '../types/notification-template'
+import { NOTIFICATION_TYPE_LABELS, NOTIFICATION_PRIORITY_LABELS } from '../types/notification-template'
 
 interface NotificationTemplateListProps {
   locale: string
 }
 
-export function NotificationTemplateList({ locale }: NotificationTemplateListProps) {
+export function NotificationTemplateList(_props: NotificationTemplateListProps) {
+  const { locale } = _props
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [notificationType, setNotificationType] = useState<NotificationType | 'all'>('all')

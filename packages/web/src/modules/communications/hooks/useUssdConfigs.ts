@@ -7,13 +7,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useToast } from '@/hooks/use-toast'
 import { ussdApi } from '../services/api'
 import type {
-  UssdConfigResponse,
   UssdConfigCreate,
   UssdConfigUpdate,
   UssdConfigListParams,
   MenuNode,
   MenuValidationResult,
-  UssdOperatorInfo,
 } from '../types'
 
 // Query keys
