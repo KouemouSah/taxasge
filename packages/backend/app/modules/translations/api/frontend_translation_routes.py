@@ -714,6 +714,20 @@ GITHUB_BRANCH = "develop"
 GITHUB_MESSAGE_FILES_PATH = "packages/web/messages"
 
 
+def deep_merge_dicts(base: dict, updates: dict) -> dict:
+    """
+    Deep merge two dictionaries. Updates values from 'updates' into 'base',
+    preserving keys in 'base' that don't exist in 'updates'.
+    """
+    result = base.copy()
+    for key, value in updates.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = deep_merge_dicts(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+
 @router.post("/publish-to-github")
 async def publish_translations_to_github(
     conn: asyncpg.Connection = Depends(get_db),
@@ -722,8 +736,9 @@ async def publish_translations_to_github(
     """
     Publish frontend translations to GitHub repository.
 
-    Exports translations from database and commits them to the GitHub repo,
-    which triggers the frontend deployment workflow.
+    Exports translations from database and MERGES them with existing file content,
+    preserving keys that exist in the file but not in the database.
+    Then commits to GitHub, which triggers the frontend deployment workflow.
 
     Requires:
         - GitHub PAT configured in Secret Manager (github-pat)
@@ -747,10 +762,18 @@ async def publish_translations_to_github(
     user_id = current_user.id if hasattr(current_user, 'id') else None
     logger.info(f"Publishing translations to GitHub by user: {user_id}")
 
+    # GitHub API setup
+    github_api = "https://api.github.com"
+    headers = {
+        "Authorization": f"Bearer {github_token}",
+        "Accept": "application/vnd.github.v3+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+
     try:
         # Export translations for each language
         languages = ["es", "fr", "en"]
-        exported_files = {}
+        db_translations = {}
 
         for lang in languages:
             query = f"""
@@ -773,35 +796,43 @@ async def publish_translations_to_github(
                 flat_translations[full_key] = r["translation"] or ""
 
             # Unflatten to nested JSON
-            nested = unflatten_json(flat_translations)
-            exported_files[lang] = json.dumps(nested, ensure_ascii=False, indent=2)
+            db_translations[lang] = unflatten_json(flat_translations)
 
-        logger.info(f"Exported translations: es={len(exported_files['es'])} chars, fr={len(exported_files['fr'])} chars, en={len(exported_files['en'])} chars")
-
-        # GitHub API setup
-        github_api = "https://api.github.com"
-        headers = {
-            "Authorization": f"Bearer {github_token}",
-            "Accept": "application/vnd.github.v3+json",
-            "X-GitHub-Api-Version": "2022-11-28",
-        }
+        logger.info(f"Exported DB translations for {len(languages)} languages")
 
         commit_results = []
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             for lang in languages:
                 file_path = f"{GITHUB_MESSAGE_FILES_PATH}/{lang}.json"
-                content = exported_files[lang]
 
-                # Get current file SHA (needed for update)
+                # Get current file content and SHA from GitHub
                 get_url = f"{github_api}/repos/{GITHUB_REPO_OWNER}/{GITHUB_REPO_NAME}/contents/{file_path}?ref={GITHUB_BRANCH}"
                 get_resp = await client.get(get_url, headers=headers)
 
                 sha = None
+                existing_content = {}
+
                 if get_resp.status_code == 200:
-                    sha = get_resp.json().get("sha")
+                    resp_data = get_resp.json()
+                    sha = resp_data.get("sha")
+                    # Decode existing file content
+                    try:
+                        encoded_content = resp_data.get("content", "")
+                        decoded_bytes = base64.b64decode(encoded_content)
+                        existing_content = json.loads(decoded_bytes.decode("utf-8"))
+                        logger.info(f"Fetched existing {lang}.json with {len(existing_content)} top-level keys")
+                    except Exception as e:
+                        logger.warning(f"Could not decode existing {lang}.json: {e}")
+                        existing_content = {}
                 elif get_resp.status_code != 404:
                     logger.error(f"GitHub API error getting {file_path}: {get_resp.text}")
+
+                # Merge existing content with DB translations
+                # This preserves keys in the file that don't exist in the database
+                merged_content = deep_merge_dicts(existing_content, db_translations[lang])
+                content = json.dumps(merged_content, ensure_ascii=False, indent=2)
+                logger.info(f"Merged {lang}.json: {len(existing_content)} existing + DB updates = {len(merged_content)} top-level keys")
 
                 # Update/Create file
                 put_url = f"{github_api}/repos/{GITHUB_REPO_OWNER}/{GITHUB_REPO_NAME}/contents/{file_path}"
