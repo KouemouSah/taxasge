@@ -554,10 +554,16 @@ except Exception as e:
 
 # Try to load communications router (Module - Communications System - Email/SMS/Push)
 try:
-    from app.modules.communications.api import router as communication_router
+    from app.modules.communications.api import router as communication_router, email_templates_router, push_templates_router
     app.include_router(communication_router, prefix="/api/v1", tags=["communications"])
+    app.include_router(email_templates_router, prefix="/api/v1", tags=["email-templates"])
+    app.include_router(push_templates_router, prefix="/api/v1", tags=["push-templates"])
     routers_loaded.append("communications")
+    routers_loaded.append("email_templates")
+    routers_loaded.append("push_templates")
     logger.info("✅ Communications router loaded (Email, SMS, Push notifications)")
+    logger.info("✅ Email Templates router loaded (Template management)")
+    logger.info("✅ Push Templates router loaded (Push notification template management)")
 except Exception as e:
     logger.error(f"❌ Communications router failed: {e}")
     logger.error(traceback.format_exc())

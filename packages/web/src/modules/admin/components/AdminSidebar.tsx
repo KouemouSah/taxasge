@@ -33,6 +33,13 @@ import {
   Layers,
   FolderTree,
   Languages,
+  MessageSquare,
+  Mail,
+  MessageCircle,
+  Webhook,
+  Phone,
+  Bell,
+  Send,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { clearAuthData } from '@/core/auth/storage'
@@ -176,6 +183,43 @@ export default function AdminSidebar() {
           title: t('nav.settings'),
           href: `/${locale}/dashboard/admin/settings`,
           icon: Settings,
+        },
+      ],
+    },
+    {
+      id: 'communications',
+      title: t('nav.communications'),
+      icon: MessageSquare,
+      items: [
+        {
+          title: t('nav.emailTemplates'),
+          href: `/${locale}/dashboard/admin/communications/email-templates`,
+          icon: Mail,
+        },
+        {
+          title: t('nav.smsTemplates'),
+          href: `/${locale}/dashboard/admin/communications/sms-templates`,
+          icon: MessageCircle,
+        },
+        {
+          title: t('nav.webhooks'),
+          href: `/${locale}/dashboard/admin/communications/webhooks`,
+          icon: Webhook,
+        },
+        {
+          title: t('nav.ussdConfig'),
+          href: `/${locale}/dashboard/admin/communications/ussd`,
+          icon: Phone,
+        },
+        {
+          title: t('nav.notificationTemplates'),
+          href: `/${locale}/dashboard/admin/communications/notification-templates`,
+          icon: Bell,
+        },
+        {
+          title: t('nav.pushTemplates'),
+          href: `/${locale}/dashboard/admin/communications/push-templates`,
+          icon: Send,
         },
       ],
     },

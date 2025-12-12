@@ -1,0 +1,113 @@
+"""
+Email Template Models - Pydantic models for email template management
+
+Tables implemented:
+- email_templates: Template definitions with i18n support
+"""
+
+from pydantic import BaseModel, Field, ConfigDict
+from typing import Optional, List, Dict, Any
+from datetime import datetime
+
+
+# =============================================================================
+# TEMPLATE VARIABLE Model
+# =============================================================================
+
+
+class TemplateVariable(BaseModel):
+    """Variable placeholder in email template"""
+    name: str = Field(..., description="Variable name (e.g., 'user_name')")
+    description: str = Field(..., description="Description of the variable")
+    example: Optional[str] = Field(None, description="Example value")
+    required: bool = Field(True, description="Whether variable is required")
+
+
+# =============================================================================
+# EMAIL TEMPLATE Models
+# =============================================================================
+
+
+class EmailTemplateBase(BaseModel):
+    """Base email template model"""
+    model_config = ConfigDict(extra='ignore', from_attributes=True)
+
+    template_code: str = Field(..., max_length=100, description="Unique template code")
+
+    # Multilingual fields
+    name_es: str = Field(..., max_length=255, description="Template name (Spanish)")
+    name_fr: Optional[str] = Field(None, max_length=255, description="Template name (French)")
+    name_en: Optional[str] = Field(None, max_length=255, description="Template name (English)")
+
+    subject_es: str = Field(..., max_length=500, description="Email subject (Spanish)")
+    subject_fr: Optional[str] = Field(None, max_length=500, description="Email subject (French)")
+    subject_en: Optional[str] = Field(None, max_length=500, description="Email subject (English)")
+
+    description_es: Optional[str] = Field(None, description="Template description (Spanish)")
+    description_fr: Optional[str] = Field(None, description="Template description (French)")
+    description_en: Optional[str] = Field(None, description="Template description (English)")
+
+    # Template configuration
+    html_file_path: str = Field(..., max_length=500, description="Path to HTML template file")
+    variables: List[TemplateVariable] = Field(
+        default_factory=list,
+        description="Template variables (JSONB)"
+    )
+    category: Optional[str] = Field(None, max_length=100, description="Template category")
+    is_active: bool = Field(True, description="Whether template is active")
+
+
+class EmailTemplateCreate(EmailTemplateBase):
+    """Create email template request"""
+    html_content: str = Field(..., description="HTML content for template file")
+
+
+class EmailTemplateUpdate(BaseModel):
+    """Update email template request - all fields optional"""
+    model_config = ConfigDict(extra='ignore')
+
+    name_es: Optional[str] = Field(None, max_length=255)
+    name_fr: Optional[str] = Field(None, max_length=255)
+    name_en: Optional[str] = Field(None, max_length=255)
+
+    subject_es: Optional[str] = Field(None, max_length=500)
+    subject_fr: Optional[str] = Field(None, max_length=500)
+    subject_en: Optional[str] = Field(None, max_length=500)
+
+    description_es: Optional[str] = None
+    description_fr: Optional[str] = None
+    description_en: Optional[str] = None
+
+    html_content: Optional[str] = Field(None, description="Updated HTML content")
+    variables: Optional[List[TemplateVariable]] = None
+    category: Optional[str] = Field(None, max_length=100)
+    is_active: Optional[bool] = None
+
+
+class EmailTemplateResponse(EmailTemplateBase):
+    """Email template response model"""
+    id: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    created_by: Optional[int] = None
+    updated_by: Optional[int] = None
+
+    # Computed fields
+    created_by_name: Optional[str] = None
+    updated_by_name: Optional[str] = None
+
+
+class EmailTemplatePreview(BaseModel):
+    """Email template HTML preview"""
+    template_code: str
+    html_content: str
+    variables: List[TemplateVariable]
+
+
+class EmailTemplateListResponse(BaseModel):
+    """Paginated list of email templates"""
+    templates: List[EmailTemplateResponse]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
