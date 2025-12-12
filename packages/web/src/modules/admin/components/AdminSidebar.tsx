@@ -1,6 +1,7 @@
 /**
  * Admin Sidebar Navigation
  * Main navigation for admin dashboard with i18n support
+ * Features collapsible accordion menus for better UX
  *
  * @module modules/admin/components
  * @author Claude Code
@@ -9,7 +10,7 @@
 
 'use client'
 
-import React from 'react'
+import React, { useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
@@ -23,6 +24,7 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   LogOut,
   ClipboardList,
   ListOrdered,
@@ -36,6 +38,33 @@ import { Button } from '@/components/ui/button'
 import { clearAuthData } from '@/core/auth/storage'
 import { useToast } from '@/hooks/use-toast'
 
+// Type definitions for navigation items
+interface NavSubItem {
+  title: string
+  href: string
+  icon: React.ComponentType<{ className?: string }>
+}
+
+interface NavGroup {
+  id: string
+  title: string
+  icon: React.ComponentType<{ className?: string }>
+  items: NavSubItem[]
+}
+
+interface NavSingleItem {
+  title: string
+  href: string
+  icon: React.ComponentType<{ className?: string }>
+}
+
+type NavItem = NavGroup | NavSingleItem
+
+// Type guard to check if item is a group
+function isNavGroup(item: NavItem): item is NavGroup {
+  return 'items' in item && Array.isArray(item.items)
+}
+
 export default function AdminSidebar() {
   const pathname = usePathname()
   const router = useRouter()
@@ -43,16 +72,19 @@ export default function AdminSidebar() {
   const t = useTranslations('admin')
   const { toast } = useToast()
   const [collapsed, setCollapsed] = React.useState(false)
+  const [expandedGroups, setExpandedGroups] = React.useState<Set<string>>(new Set())
 
   // Navigation items with i18n
-  const navigationItems = [
+  const navigationItems: NavItem[] = useMemo(() => [
     {
       title: t('nav.dashboard'),
       href: `/${locale}/dashboard/admin`,
       icon: LayoutDashboard,
     },
     {
+      id: 'management',
       title: t('nav.management'),
+      icon: Users,
       items: [
         {
           title: t('nav.users'),
@@ -82,7 +114,9 @@ export default function AdminSidebar() {
       ],
     },
     {
+      id: 'fiscal',
       title: t('nav.fiscalServices'),
+      icon: FileText,
       items: [
         {
           title: t('nav.fiscalServices'),
@@ -107,7 +141,9 @@ export default function AdminSidebar() {
       ],
     },
     {
+      id: 'templates',
       title: t('nav.templates'),
+      icon: ListOrdered,
       items: [
         {
           title: t('nav.documentTemplates'),
@@ -122,7 +158,9 @@ export default function AdminSidebar() {
       ],
     },
     {
+      id: 'system',
       title: t('nav.system'),
+      icon: Settings,
       items: [
         {
           title: t('nav.auditLogs'),
@@ -141,7 +179,33 @@ export default function AdminSidebar() {
         },
       ],
     },
-  ]
+  ], [t, locale])
+
+  // Find which group contains the active route and expand it on mount
+  React.useEffect(() => {
+    for (const item of navigationItems) {
+      if (isNavGroup(item)) {
+        const hasActiveChild = item.items.some(sub => pathname === sub.href || pathname?.startsWith(sub.href + '/'))
+        if (hasActiveChild) {
+          setExpandedGroups(prev => new Set(prev).add(item.id))
+          break
+        }
+      }
+    }
+  }, [pathname, navigationItems])
+
+  // Toggle group expansion
+  const toggleGroup = useCallback((groupId: string) => {
+    setExpandedGroups(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(groupId)) {
+        newSet.delete(groupId)
+      } else {
+        newSet.add(groupId)
+      }
+      return newSet
+    })
+  }, [])
 
   const handleLogout = () => {
     clearAuthData()
@@ -185,61 +249,94 @@ export default function AdminSidebar() {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4">
         <div className="space-y-1 px-2">
-          {navigationItems.map((item, index) => {
-            // Group header
-            if ('items' in item && item.items) {
-              return (
-                <div key={index} className="pt-4">
-                  {!collapsed && (
-                    <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                      {item.title}
-                    </h3>
-                  )}
-                  <div className="space-y-1">
-                    {item.items.map((subItem) => {
-                      const Icon = subItem.icon
-                      const isActive = pathname === subItem.href
+          {navigationItems.map((item) => {
+            // Group with collapsible sub-items
+            if (isNavGroup(item)) {
+              const GroupIcon = item.icon
+              const isExpanded = expandedGroups.has(item.id)
+              const hasActiveChild = item.items.some(sub => pathname === sub.href || pathname?.startsWith(sub.href + '/'))
 
-                      return (
-                        <Link
-                          key={subItem.href}
-                          href={subItem.href}
+              return (
+                <div key={item.id} className="pt-2">
+                  {/* Group header - clickable */}
+                  <button
+                    onClick={() => toggleGroup(item.id)}
+                    className={cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-2 text-sm w-full transition-all hover:bg-gray-100',
+                      hasActiveChild
+                        ? 'text-primary font-medium'
+                        : 'text-gray-700 hover:text-gray-900'
+                    )}
+                    title={collapsed ? item.title : undefined}
+                  >
+                    <GroupIcon className="h-5 w-5 flex-shrink-0" />
+                    {!collapsed && (
+                      <>
+                        <span className="flex-1 text-left">{item.title}</span>
+                        <ChevronDown
                           className={cn(
-                            'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-gray-100',
-                            isActive
-                              ? 'bg-primary/10 text-primary font-medium'
-                              : 'text-gray-700 hover:text-gray-900'
+                            'h-4 w-4 transition-transform duration-200',
+                            isExpanded ? 'rotate-180' : ''
                           )}
-                          title={collapsed ? subItem.title : undefined}
-                        >
-                          <Icon className="h-5 w-5 flex-shrink-0" />
-                          {!collapsed && <span>{subItem.title}</span>}
-                        </Link>
-                      )
-                    })}
+                        />
+                      </>
+                    )}
+                  </button>
+
+                  {/* Collapsible sub-items */}
+                  <div
+                    className={cn(
+                      'overflow-hidden transition-all duration-200 ease-in-out',
+                      isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                    )}
+                  >
+                    <div className={cn('space-y-1 mt-1', !collapsed && 'ml-4')}>
+                      {item.items.map((subItem) => {
+                        const SubIcon = subItem.icon
+                        const isActive = pathname === subItem.href || pathname?.startsWith(subItem.href + '/')
+
+                        return (
+                          <Link
+                            key={subItem.href}
+                            href={subItem.href}
+                            className={cn(
+                              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-gray-100',
+                              isActive
+                                ? 'bg-primary/10 text-primary font-medium'
+                                : 'text-gray-600 hover:text-gray-900'
+                            )}
+                            title={collapsed ? subItem.title : undefined}
+                          >
+                            <SubIcon className="h-4 w-4 flex-shrink-0" />
+                            {!collapsed && <span>{subItem.title}</span>}
+                          </Link>
+                        )
+                      })}
+                    </div>
                   </div>
                 </div>
               )
             }
 
-            // Single item
-            const Icon = item.icon
-            const isActive = pathname === item.href
+            // Single item (Dashboard link)
+            const singleItem = item as NavSingleItem
+            const Icon = singleItem.icon
+            const isActive = pathname === singleItem.href
 
             return (
               <Link
-                key={item.href}
-                href={item.href}
+                key={singleItem.href}
+                href={singleItem.href}
                 className={cn(
                   'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-gray-100',
                   isActive
                     ? 'bg-primary/10 text-primary font-medium'
                     : 'text-gray-700 hover:text-gray-900'
                 )}
-                title={collapsed ? item.title : undefined}
+                title={collapsed ? singleItem.title : undefined}
               >
                 <Icon className="h-5 w-5 flex-shrink-0" />
-                {!collapsed && <span>{item.title}</span>}
+                {!collapsed && <span>{singleItem.title}</span>}
               </Link>
             )
           })}
