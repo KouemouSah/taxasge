@@ -1316,7 +1316,14 @@
         "tableHeaders": {
           "namespace": "Namespace",
           "key": "Clé"
-        }
+        },
+        "publishToGithub": "Publier sur GitHub",
+        "publishConfirm": "Publier toutes les traductions sur GitHub ? Cela créera un commit et déclenchera un déploiement automatique du frontend.",
+        "publishComplete": "Publié sur GitHub",
+        "publishPartial": "Publication partielle",
+        "publishFailed": "Échec de la publication",
+        "filesUpdated": "fichiers mis à jour",
+        "filesFailed": "fichiers en échec"
       },
       "enums": {
         "title": "Gestion des ENUMs",
