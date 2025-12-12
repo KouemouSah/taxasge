@@ -8,6 +8,16 @@ from app.modules.communications.models.communication import (
     EmailTemplate,
 )
 
+from app.modules.communications.models.email_template import (
+    TemplateVariable,
+    EmailTemplateBase,
+    EmailTemplateCreate,
+    EmailTemplateUpdate,
+    EmailTemplateResponse,
+    EmailTemplatePreview,
+    EmailTemplateListResponse,
+)
+
 from app.modules.communications.models.sms_template import (
     SmsTemplateCategory,
     SmsTemplateCreate,
@@ -24,6 +34,14 @@ __all__ = [
     "CommunicationType",
     "CommunicationStatus",
     "EmailTemplate",
+    # Email Template models
+    "TemplateVariable",
+    "EmailTemplateBase",
+    "EmailTemplateCreate",
+    "EmailTemplateUpdate",
+    "EmailTemplateResponse",
+    "EmailTemplatePreview",
+    "EmailTemplateListResponse",
     # SMS Template models
     "SmsTemplateCategory",
     "SmsTemplateCreate",

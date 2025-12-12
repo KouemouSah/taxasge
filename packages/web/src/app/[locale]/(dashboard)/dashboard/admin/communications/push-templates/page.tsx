@@ -68,7 +68,7 @@ export default function PushTemplatesPage() {
     templates,
     total,
     isLoading,
-    error,
+    error: _error,
     stats,
     fetchTemplates,
     fetchStats,
@@ -82,7 +82,7 @@ export default function PushTemplatesPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
 
   // Pagination
-  const [currentPage, setCurrentPage] = useState(1)
+  const [currentPage, _setCurrentPage] = useState(1)
   const [pageSize] = useState(20)
 
   // Preview dialog

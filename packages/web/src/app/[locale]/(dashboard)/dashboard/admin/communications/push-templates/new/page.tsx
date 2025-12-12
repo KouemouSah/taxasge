@@ -9,7 +9,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { useToast } from '@/hooks/use-toast'
 import { usePushTemplates } from '@/modules/communications/hooks/usePushTemplates'
 import { PushTemplateForm } from '@/modules/communications/components/PushTemplateForm'
-import type { PushTemplateCreate } from '@/modules/communications/types'
+import type { PushTemplateCreate, PushTemplateUpdate } from '@/modules/communications/types'
 
 export default function NewPushTemplatePage() {
   const locale = useLocale()
@@ -18,8 +18,8 @@ export default function NewPushTemplatePage() {
   const { toast } = useToast()
   const { createTemplate } = usePushTemplates()
 
-  const handleSubmit = async (data: PushTemplateCreate) => {
-    const result = await createTemplate(data)
+  const handleSubmit = async (data: PushTemplateCreate | PushTemplateUpdate) => {
+    const result = await createTemplate(data as PushTemplateCreate)
     if (result) {
       toast({
         title: t('successTitle'),
