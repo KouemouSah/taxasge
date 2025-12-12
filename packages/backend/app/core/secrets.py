@@ -124,6 +124,12 @@ def get_supabase_anon_key() -> Optional[str]:
     return get_secret("supabase-anon-key")
 
 
+@lru_cache(maxsize=1)
+def get_github_pat() -> Optional[str]:
+    """Get GitHub Personal Access Token for API operations"""
+    return get_secret("github-pat")
+
+
 # Validation helper
 def validate_secrets_available() -> dict:
     """

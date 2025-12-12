@@ -702,3 +702,166 @@ async def delete_frontend_translation(
         raise HTTPException(status_code=404, detail="Translation not found")
 
     return {"message": "Translation deleted successfully"}
+
+
+# ============================================================================
+# GITHUB PUBLISHING ENDPOINT
+# ============================================================================
+
+GITHUB_REPO_OWNER = "KouemouSah"
+GITHUB_REPO_NAME = "taxasge"
+GITHUB_BRANCH = "develop"
+GITHUB_MESSAGE_FILES_PATH = "packages/web/messages"
+
+
+@router.post("/publish-to-github")
+async def publish_translations_to_github(
+    conn: asyncpg.Connection = Depends(get_db),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """
+    Publish frontend translations to GitHub repository.
+
+    Exports translations from database and commits them to the GitHub repo,
+    which triggers the frontend deployment workflow.
+
+    Requires:
+        - GitHub PAT configured in Secret Manager (github-pat)
+        - User must be authenticated
+
+    Returns:
+        Commit URL and deployment status
+    """
+    import httpx
+    import base64
+    from app.core.secrets import get_github_pat
+
+    # Get GitHub PAT from Secret Manager
+    github_token = get_github_pat()
+    if not github_token:
+        raise HTTPException(
+            status_code=500,
+            detail="GitHub PAT not configured. Please add 'github-pat' secret in Secret Manager."
+        )
+
+    user_id = current_user.id if hasattr(current_user, 'id') else None
+    logger.info(f"Publishing translations to GitHub by user: {user_id}")
+
+    try:
+        # Export translations for each language
+        languages = ["es", "fr", "en"]
+        exported_files = {}
+
+        for lang in languages:
+            query = f"""
+                SELECT
+                    REPLACE(category, 'frontend.', '') as namespace,
+                    key_code,
+                    {lang} as translation
+                FROM translations
+                WHERE category LIKE 'frontend.%'
+                ORDER BY category, key_code
+            """
+            results = await conn.fetch(query)
+
+            # Build flat dict with full path
+            flat_translations = {}
+            for r in results:
+                namespace = r["namespace"]
+                key = r["key_code"]
+                full_key = f"{namespace}.{key}" if key else namespace
+                flat_translations[full_key] = r["translation"] or ""
+
+            # Unflatten to nested JSON
+            nested = unflatten_json(flat_translations)
+            exported_files[lang] = json.dumps(nested, ensure_ascii=False, indent=2)
+
+        logger.info(f"Exported translations: es={len(exported_files['es'])} chars, fr={len(exported_files['fr'])} chars, en={len(exported_files['en'])} chars")
+
+        # GitHub API setup
+        github_api = "https://api.github.com"
+        headers = {
+            "Authorization": f"Bearer {github_token}",
+            "Accept": "application/vnd.github.v3+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        }
+
+        commit_results = []
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            for lang in languages:
+                file_path = f"{GITHUB_MESSAGE_FILES_PATH}/{lang}.json"
+                content = exported_files[lang]
+
+                # Get current file SHA (needed for update)
+                get_url = f"{github_api}/repos/{GITHUB_REPO_OWNER}/{GITHUB_REPO_NAME}/contents/{file_path}?ref={GITHUB_BRANCH}"
+                get_resp = await client.get(get_url, headers=headers)
+
+                sha = None
+                if get_resp.status_code == 200:
+                    sha = get_resp.json().get("sha")
+                elif get_resp.status_code != 404:
+                    logger.error(f"GitHub API error getting {file_path}: {get_resp.text}")
+
+                # Update/Create file
+                put_url = f"{github_api}/repos/{GITHUB_REPO_OWNER}/{GITHUB_REPO_NAME}/contents/{file_path}"
+                put_data = {
+                    "message": f"chore(i18n): Update {lang}.json translations from admin UI",
+                    "content": base64.b64encode(content.encode("utf-8")).decode("ascii"),
+                    "branch": GITHUB_BRANCH,
+                }
+                if sha:
+                    put_data["sha"] = sha
+
+                put_resp = await client.put(put_url, headers=headers, json=put_data)
+
+                if put_resp.status_code in [200, 201]:
+                    result = put_resp.json()
+                    commit_results.append({
+                        "file": f"{lang}.json",
+                        "status": "updated" if sha else "created",
+                        "commit_sha": result.get("commit", {}).get("sha", "")[:7],
+                        "commit_url": result.get("commit", {}).get("html_url", ""),
+                    })
+                    logger.info(f"✅ {lang}.json published to GitHub")
+                else:
+                    error_msg = put_resp.json().get("message", put_resp.text)
+                    logger.error(f"❌ Failed to publish {lang}.json: {error_msg}")
+                    commit_results.append({
+                        "file": f"{lang}.json",
+                        "status": "failed",
+                        "error": error_msg,
+                    })
+
+        # Check if all succeeded
+        success_count = sum(1 for r in commit_results if r["status"] in ["updated", "created"])
+
+        if success_count == 3:
+            return {
+                "message": "Translations published to GitHub successfully!",
+                "status": "success",
+                "files": commit_results,
+                "deployment_note": "Frontend deployment will start automatically via GitHub Actions (~5-10 min)",
+                "branch": GITHUB_BRANCH,
+            }
+        elif success_count > 0:
+            return {
+                "message": f"Partial success: {success_count}/3 files published",
+                "status": "partial",
+                "files": commit_results,
+            }
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "message": "Failed to publish translations",
+                    "files": commit_results,
+                }
+            )
+
+    except httpx.HTTPError as e:
+        logger.error(f"HTTP error publishing to GitHub: {e}")
+        raise HTTPException(status_code=500, detail=f"GitHub API error: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error publishing to GitHub: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -586,6 +586,16 @@ export function useSyncFrontendFromJson() {
   })
 }
 
+/**
+ * Publish frontend translations to GitHub
+ * Exports translations from DB and commits them to the GitHub repository
+ */
+export function usePublishToGithub() {
+  return useMutation({
+    mutationFn: () => frontendTranslationsApi.publishToGithub(),
+  })
+}
+
 // =============================================================================
 // ENUM MANAGEMENT HOOKS
 // =============================================================================

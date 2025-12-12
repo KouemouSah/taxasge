@@ -60,6 +60,8 @@ import {
   Archive,
   RotateCcw,
   AlertTriangle,
+  Github,
+  Upload,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -80,6 +82,7 @@ import {
   useUpdateFrontendTranslation,
   useCreateFrontendTranslation,
   useSyncFrontendFromJson,
+  usePublishToGithub,
   useSourceEntities,
   useSourceContent,
   useEntityGroupedTranslations,
@@ -1507,6 +1510,7 @@ function FrontendTranslationsTab() {
   const updateMutation = useUpdateFrontendTranslation()
   const createMutation = useCreateFrontendTranslation()
   const syncMutation = useSyncFrontendFromJson()
+  const publishMutation = usePublishToGithub()
 
   const handleDelete = async (tr: SystemTranslation) => {
     if (!confirm(t('common.deleteConfirm', { entity: tr.key_code }))) return
@@ -1585,6 +1589,39 @@ function FrontendTranslationsTab() {
     }
   }
 
+  const handlePublishToGithub = async () => {
+    if (!confirm(t('frontend.publishConfirm') || 'Publish all translations to GitHub? This will commit changes and trigger a deployment.')) {
+      return
+    }
+
+    try {
+      const result = await publishMutation.mutateAsync()
+      const successCount = result.files.filter(f => f.status === 'updated' || f.status === 'created').length
+      const failedCount = result.files.filter(f => f.status === 'failed').length
+
+      if (result.status === 'success') {
+        toast({
+          title: t('common.success'),
+          description: `${t('frontend.publishComplete') || 'Published to GitHub'}: ${successCount} ${t('frontend.filesUpdated') || 'files updated'}`,
+        })
+      } else if (result.status === 'partial') {
+        toast({
+          variant: 'destructive',
+          title: t('frontend.publishPartial') || 'Partial publish',
+          description: `${successCount} ${t('frontend.filesUpdated') || 'files updated'}, ${failedCount} ${t('frontend.filesFailed') || 'files failed'}`,
+        })
+      } else {
+        toast({
+          variant: 'destructive',
+          title: t('common.error'),
+          description: result.files[0]?.error || t('frontend.publishFailed') || 'Publish failed',
+        })
+      }
+    } catch (err) {
+      toast({ variant: 'destructive', title: t('common.error'), description: String(err) })
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
@@ -1628,6 +1665,20 @@ function FrontendTranslationsTab() {
               <CardDescription>{t('frontend.description')}</CardDescription>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handlePublishToGithub}
+                disabled={publishMutation.isPending}
+                className="bg-[#24292e] hover:bg-[#1a1e22] text-white"
+              >
+                {publishMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Github className="h-4 w-4 mr-2" />
+                )}
+                {t('frontend.publishToGithub') || 'Publish to GitHub'}
+              </Button>
               <Button
                 variant="outline"
                 size="sm"

@@ -527,6 +527,29 @@ export const frontendTranslationsApi = {
       en: enModule.default,
     })
   },
+
+  /**
+   * Publish translations to GitHub repository
+   * BACKEND: POST /api/v1/translations/frontend/publish-to-github
+   *
+   * Exports translations from database and commits them to GitHub,
+   * which triggers the frontend deployment workflow.
+   */
+  publishToGithub: async (): Promise<{
+    message: string
+    status: 'success' | 'partial' | 'failed'
+    files: Array<{
+      file: string
+      status: 'updated' | 'created' | 'failed'
+      commit_sha?: string
+      commit_url?: string
+      error?: string
+    }>
+    deployment_note?: string
+    branch?: string
+  }> => {
+    return fetchClient.post(`${FRONTEND_BASE}/publish-to-github`, undefined)
+  },
 }
 
 // =============================================================================
