@@ -14,7 +14,7 @@ import type {
   NotificationPreviewResponse,
 } from '../types/notification-template'
 
-const BASE_URL = '/api/v1/notification-templates'
+const BASE_URL = '/api/v1/communications/notification-templates'
 
 export const notificationTemplateApi = {
   /**

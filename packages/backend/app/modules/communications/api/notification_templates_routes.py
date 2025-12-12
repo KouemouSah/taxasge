@@ -24,7 +24,7 @@ from app.modules.communications.services.notification_template_service import (
 from app.modules.auth.middleware.auth_middleware import get_current_user
 
 
-router = APIRouter(prefix="/notification-templates", tags=["Notification Templates"])
+router = APIRouter(prefix="/communications/notification-templates", tags=["Notification Templates"])
 service = NotificationTemplateService()
 
 

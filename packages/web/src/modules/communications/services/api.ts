@@ -45,8 +45,8 @@ import { appConfig } from '@/core/config/app'
 
 const API_BASE_URL = appConfig.api.baseUrl
 const API_VERSION = `/api/${appConfig.api.version}`
-const EMAIL_TEMPLATES_BASE = '/email-templates'
-const WEBHOOKS_BASE = '/webhooks'
+const EMAIL_TEMPLATES_BASE = '/communications/email-templates'
+const WEBHOOKS_BASE = '/communications/webhooks'
 
 // =============================================================================
 // UTILITY FUNCTIONS - snake_case to camelCase transformation
@@ -347,7 +347,7 @@ import type {
   PushTemplateStats,
 } from '@/modules/communications/types'
 
-const PUSH_TEMPLATES_BASE = '/push-templates'
+const PUSH_TEMPLATES_BASE = '/communications/push-templates'
 
 export const pushTemplatesApi = {
   /**

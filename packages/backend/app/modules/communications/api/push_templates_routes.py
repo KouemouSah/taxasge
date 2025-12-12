@@ -32,7 +32,7 @@ from ..models.push_template import (
 from ..services.push_template_service import PushTemplateService
 
 
-router = APIRouter(prefix="/push-templates", tags=["Communications - Push Templates"])
+router = APIRouter(prefix="/communications/push-templates", tags=["Communications - Push Templates"])
 
 
 # ============================================================================

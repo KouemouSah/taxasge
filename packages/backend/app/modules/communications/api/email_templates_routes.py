@@ -27,7 +27,7 @@ from ..models.email_template import (
 )
 from ..services.email_template_service import EmailTemplateService
 
-router = APIRouter(prefix="/email-templates", tags=["Email Templates"])
+router = APIRouter(prefix="/communications/email-templates", tags=["Email Templates"])
 service = EmailTemplateService()
 
 

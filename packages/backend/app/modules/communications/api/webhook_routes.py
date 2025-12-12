@@ -18,7 +18,7 @@ from ..services.webhook_service import WebhookService
 from ....database.connection import get_database
 from ...auth.dependencies import get_current_user, require_permission
 
-router = APIRouter(prefix="/webhooks", tags=["webhooks"])
+router = APIRouter(prefix="/communications/webhooks", tags=["Communications - Webhooks"])
 service = WebhookService()
 
 
