@@ -138,7 +138,7 @@ jobs:
             --set-env-vars="SMTP_FROM_EMAIL=libressai@gmail.com" \
             --set-env-vars="SMTP_FROM_NAME=TaxasGE Platform" \
             --set-env-vars="SMTP_USE_TLS=true" \
-            --set-env-vars="GITHUB_PAT=${{ secrets.GH_PROJECTS_TOKEN }}" \
+            --set-env-vars="GITHUB_PAT=${{ secrets.GH_PAT }}" \
             --set-env-vars="GOOGLE_CLOUD_PROJECT=${{ env.PROJECT_ID }}" \
             --set-env-vars="GOOGLE_CLOUD_LOCATION=${{ env.REGION }}" \
             --set-env-vars="GEMINI_CHAT_MODEL=gemini-2.0-flash" \
