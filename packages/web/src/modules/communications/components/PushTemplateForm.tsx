@@ -1,3 +1,5 @@
+'use client'
+
 /**
  * PushTemplateForm Component
  * Form for creating and editing push notification templates
