@@ -21,8 +21,8 @@ CREATE TABLE IF NOT EXISTS email_templates (
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    created_by INTEGER REFERENCES users(id),
-    updated_by INTEGER REFERENCES users(id)
+    created_by UUID REFERENCES users(id),
+    updated_by UUID REFERENCES users(id)
 );
 
 -- 2. SMS Templates
@@ -41,8 +41,8 @@ CREATE TABLE IF NOT EXISTS sms_templates (
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    created_by INTEGER REFERENCES users(id),
-    updated_by INTEGER REFERENCES users(id)
+    created_by UUID REFERENCES users(id),
+    updated_by UUID REFERENCES users(id)
 );
 
 -- 3. Webhook Configurations
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS webhook_configurations (
     last_status VARCHAR(50),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    created_by INTEGER REFERENCES users(id)
+    created_by UUID REFERENCES users(id)
 );
 
 -- 4. USSD Configurations (Multi-operator: Getesa, Muni, Other API SMS)
@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS ussd_configurations (
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    created_by INTEGER REFERENCES users(id)
+    created_by UUID REFERENCES users(id)
 );
 
 -- 5. Notification Templates (In-app)
@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS notification_templates (
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    created_by INTEGER REFERENCES users(id)
+    created_by UUID REFERENCES users(id)
 );
 
 -- 6. Push Templates (Mobile/Web Push)
@@ -131,7 +131,7 @@ CREATE TABLE IF NOT EXISTS push_templates (
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    created_by INTEGER REFERENCES users(id)
+    created_by UUID REFERENCES users(id)
 );
 
 -- 7. Webhook Logs (audit)
