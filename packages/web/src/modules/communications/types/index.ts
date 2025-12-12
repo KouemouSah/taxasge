@@ -376,3 +376,16 @@ export interface MenuValidationResult {
   optionCount: number
   maxDepth: number
 }
+
+export interface UssdConfigListResponse {
+  configs: UssdConfigResponse[]
+  total: number
+  page: number
+  pageSize: number
+}
+
+export interface UssdOperatorInfo {
+  value: UssdOperator
+  name: string
+  description: string
+}

@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { useCreateUssdConfig, useUssdOperators } from '@/modules/communications/hooks/useUssdConfigs'
-import type { MenuNode } from '@/modules/communications/types'
+import type { MenuNode, MenuActionType } from '@/modules/communications/types'
 
 // Simple inline menu builder for now
 function MenuBuilder({ value, onChange }: { value: MenuNode[]; onChange: (v: MenuNode[]) => void }) {
@@ -60,6 +60,26 @@ function MenuBuilder({ value, onChange }: { value: MenuNode[]; onChange: (v: Men
   )
 }
 
+const menuActionTypes = ['balance', 'payment', 'tax_info', 'service_search', 'declaration_status', 'support', 'custom'] as const
+
+const menuNodeSchema: z.ZodType<MenuNode> = z.object({
+  id: z.string(),
+  titleEs: z.string(),
+  titleFr: z.string().optional(),
+  titleEn: z.string().optional(),
+  options: z.array(z.object({
+    key: z.string(),
+    labelEs: z.string(),
+    labelFr: z.string().optional(),
+    labelEn: z.string().optional(),
+    nextMenu: z.string().optional(),
+    action: z.enum(menuActionTypes).optional(),
+    actionParams: z.record(z.unknown()).optional(),
+  })),
+  isRoot: z.boolean().optional(),
+  parentMenu: z.string().optional(),
+})
+
 const formSchema = z.object({
   operatorName: z.enum(['getesa', 'muni', 'other_api_sms']),
   operatorCode: z.string().min(1, 'Operator code is required'),
@@ -68,8 +88,7 @@ const formSchema = z.object({
   sessionTimeoutSeconds: z.number().min(30).max(600),
   maxInputLength: z.number().min(1).max(500),
   isActive: z.boolean(),
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  menuStructure: z.array(z.record(z.unknown())).min(1, 'At least one menu is required'),
+  menuStructure: z.array(menuNodeSchema).min(1, 'At least one menu is required'),
 })
 
 export default function NewUssdConfigPage() {
@@ -104,8 +123,10 @@ export default function NewUssdConfigPage() {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await createMutation.mutateAsync(values as Parameters<typeof createMutation.mutateAsync>[0])
+      await createMutation.mutateAsync({
+        ...values,
+        menuStructure: values.menuStructure as MenuNode[],
+      })
       router.push('/dashboard/admin/communications/ussd')
     } catch (error) {
       console.error('Failed to create config:', error)

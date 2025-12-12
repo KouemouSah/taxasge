@@ -33,6 +33,7 @@ import {
   useUssdConfigs,
   useDeleteUssdConfig,
 } from '@/modules/communications/hooks/useUssdConfigs'
+import type { UssdConfigResponse } from '@/modules/communications/types'
 
 export default function UssdConfigsPage() {
   const router = useRouter()
@@ -99,7 +100,7 @@ export default function UssdConfigsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.configs.map((config) => (
+                {data.configs.map((config: UssdConfigResponse) => (
                   <TableRow key={config.id}>
                     <TableCell className="font-medium">
                       {getOperatorName(config.operatorName)}
