@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { useCreateUssdConfig, useUssdOperators } from '@/modules/communications/hooks/useUssdConfigs'
-import type { MenuNode, MenuActionType } from '@/modules/communications/types'
+import type { MenuNode } from '@/modules/communications/types'
 
 // Simple inline menu builder for now
 function MenuBuilder({ value, onChange }: { value: MenuNode[]; onChange: (v: MenuNode[]) => void }) {
