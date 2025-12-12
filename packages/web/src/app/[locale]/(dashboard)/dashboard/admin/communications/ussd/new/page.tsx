@@ -68,7 +68,8 @@ const formSchema = z.object({
   sessionTimeoutSeconds: z.number().min(30).max(600),
   maxInputLength: z.number().min(1).max(500),
   isActive: z.boolean(),
-  menuStructure: z.array(z.any()).min(1, 'At least one menu is required'),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  menuStructure: z.array(z.record(z.unknown())).min(1, 'At least one menu is required'),
 })
 
 export default function NewUssdConfigPage() {
@@ -103,7 +104,8 @@ export default function NewUssdConfigPage() {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      await createMutation.mutateAsync(values as any)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await createMutation.mutateAsync(values as Parameters<typeof createMutation.mutateAsync>[0])
       router.push('/dashboard/admin/communications/ussd')
     } catch (error) {
       console.error('Failed to create config:', error)

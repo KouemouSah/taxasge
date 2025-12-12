@@ -100,7 +100,7 @@ export default function PushTemplatesPage() {
       page: currentPage,
       pageSize,
       search: searchQuery || undefined,
-      platform: platformFilter !== 'all' ? platformFilter as any : undefined,
+      platform: platformFilter !== 'all' ? platformFilter as 'ios' | 'android' | 'web' | 'all' : undefined,
       isActive: statusFilter === 'all' ? undefined : statusFilter === 'active',
     })
   }, [currentPage, pageSize, searchQuery, platformFilter, statusFilter, fetchTemplates])
@@ -283,7 +283,7 @@ export default function PushTemplatesPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as 'all' | 'active' | 'inactive')}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder={t('filterByStatus')} />
                 </SelectTrigger>

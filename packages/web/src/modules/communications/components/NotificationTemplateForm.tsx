@@ -154,7 +154,8 @@ export function NotificationTemplateForm({ template, locale, mode }: Notificatio
         router.push(`/${locale}/dashboard/admin/communications/notification-templates`)
       } else if (template) {
         const updateData: NotificationTemplateUpdate = { ...data }
-        delete (updateData as any).templateCode // Cannot update template code
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        delete (updateData as Record<string, unknown>).templateCode // Cannot update template code
         await updateMutation.mutateAsync({ id: template.id, data: updateData })
         router.push(`/${locale}/dashboard/admin/communications/notification-templates`)
       }

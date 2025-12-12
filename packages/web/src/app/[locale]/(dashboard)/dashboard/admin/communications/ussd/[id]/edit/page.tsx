@@ -53,7 +53,8 @@ export default function EditUssdConfigPage() {
   useEffect(() => {
     if (config) {
       form.reset({
-        operatorName: config.operatorName as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        operatorName: config.operatorName as 'getesa' | 'muni' | 'other_api_sms',
         operatorCode: config.operatorCode,
         shortCode: config.shortCode,
         apiEndpoint: config.apiEndpoint || '',
@@ -66,9 +67,10 @@ export default function EditUssdConfigPage() {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await updateMutation.mutateAsync({
         configId,
-        data: values as any,
+        data: values as Parameters<typeof updateMutation.mutateAsync>[0]['data'],
       })
       router.push('/dashboard/admin/communications/ussd')
     } catch (error) {

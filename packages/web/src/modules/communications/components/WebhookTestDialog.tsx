@@ -48,7 +48,7 @@ export function WebhookTestDialog({ webhook, trigger }: WebhookTestDialogProps) 
 
   const handleTest = async () => {
     try {
-      let payload: Record<string, any> | undefined
+      let payload: Record<string, unknown> | undefined
       if (testPayload.trim()) {
         payload = JSON.parse(testPayload)
       }

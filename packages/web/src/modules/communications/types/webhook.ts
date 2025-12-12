@@ -51,7 +51,7 @@ export interface WebhookBase {
   headers: Record<string, string>
   authType: AuthType
   authConfig: AuthConfig
-  payloadTemplate?: Record<string, any>
+  payloadTemplate?: Record<string, unknown>
   retryConfig: RetryConfig
   timeoutSeconds: number
   events: string[]
@@ -68,7 +68,7 @@ export interface WebhookUpdate {
   headers?: Record<string, string>
   authType?: AuthType
   authConfig?: AuthConfig
-  payloadTemplate?: Record<string, any>
+  payloadTemplate?: Record<string, unknown>
   retryConfig?: RetryConfig
   timeoutSeconds?: number
   events?: string[]
@@ -100,7 +100,7 @@ export interface WebhookLog {
   id: number
   webhookId: number
   eventType: string
-  requestPayload: Record<string, any>
+  requestPayload: Record<string, unknown>
   responseStatus?: number
   responseBody?: string
   durationMs?: number
@@ -121,7 +121,7 @@ export interface WebhookLogsResponse {
 // =============================================================================
 
 export interface WebhookTestRequest {
-  testPayload?: Record<string, any>
+  testPayload?: Record<string, unknown>
 }
 
 export interface WebhookTestResponse {
@@ -133,7 +133,7 @@ export interface WebhookTestResponse {
   requestUrl: string
   requestMethod: string
   requestHeaders: Record<string, string>
-  requestPayload: Record<string, any>
+  requestPayload: Record<string, unknown>
 }
 
 // =============================================================================

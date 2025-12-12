@@ -146,7 +146,7 @@ export function WebhookForm({ webhook, locale }: WebhookFormProps) {
       })
 
       // Parse payload template JSON if provided
-      let payloadTemplate: Record<string, any> | undefined
+      let payloadTemplate: Record<string, unknown> | undefined
       if (data.payloadTemplateJson) {
         try {
           payloadTemplate = JSON.parse(data.payloadTemplateJson)
