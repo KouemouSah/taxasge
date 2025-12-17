@@ -209,7 +209,8 @@ class SupportService:
             )
 
         # Permission check: users can only see their own tickets
-        if not is_admin and user_id and ticket['created_by'] != user_id:
+        # Convert both to string for comparison (user_id may be str from UserResponse.id)
+        if not is_admin and user_id and str(ticket['created_by']) != str(user_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You don't have permission to view this ticket"
@@ -233,7 +234,8 @@ class SupportService:
             )
 
         # Permission check
-        if not is_admin and user_id and ticket['created_by'] != user_id:
+        # Convert both to string for comparison (user_id may be str from UserResponse.id)
+        if not is_admin and user_id and str(ticket['created_by']) != str(user_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You don't have permission to view this ticket"
@@ -305,7 +307,8 @@ class SupportService:
         # Only admins can update all fields
         # Users can only update subject (limited)
         if not is_admin:
-            if ticket['created_by'] != user_id:
+            # Convert both to string for comparison (user_id may be str from UserResponse.id)
+            if str(ticket['created_by']) != str(user_id):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="You don't have permission to update this ticket"
@@ -343,7 +346,8 @@ class SupportService:
 
         # Users can close their own resolved tickets
         if not is_admin:
-            if ticket['created_by'] != user_id:
+            # Convert both to string for comparison (user_id may be str from UserResponse.id)
+            if str(ticket['created_by']) != str(user_id):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="You don't have permission to close this ticket"
@@ -380,7 +384,8 @@ class SupportService:
             )
 
         # Permission check
-        if not is_admin and ticket['created_by'] != user_id:
+        # Convert both to string for comparison (user_id may be str from UserResponse.id)
+        if not is_admin and str(ticket['created_by']) != str(user_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You don't have permission to add messages to this ticket"
@@ -433,7 +438,8 @@ class SupportService:
             )
 
         # Permission check
-        if not is_admin and ticket['created_by'] != user_id:
+        # Convert both to string for comparison (user_id may be str from UserResponse.id)
+        if not is_admin and str(ticket['created_by']) != str(user_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You don't have permission to view this ticket's messages"
