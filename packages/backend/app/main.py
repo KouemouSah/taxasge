@@ -365,6 +365,52 @@ async def debug_enum_import():
     }
 
 
+@app.get("/api/v1/debug/support-import")
+async def debug_support_import():
+    """Debug endpoint to diagnose support router import errors"""
+    import_errors = []
+    import_success = []
+
+    # Test each import in the support module chain
+    try:
+        from app.modules.support.models.support import SupportCategoryCreate
+        import_success.append("models.support.SupportCategoryCreate")
+    except Exception as e:
+        import_errors.append({"module": "models.support.SupportCategoryCreate", "error": str(e), "type": type(e).__name__})
+
+    try:
+        from app.modules.support.repositories.support_repository import SupportRepository
+        import_success.append("repositories.support_repository.SupportRepository")
+    except Exception as e:
+        import_errors.append({"module": "repositories.support_repository", "error": str(e), "type": type(e).__name__})
+
+    try:
+        from app.modules.support.services.support_service import SupportService
+        import_success.append("services.support_service.SupportService")
+    except Exception as e:
+        import_errors.append({"module": "services.support_service", "error": str(e), "type": type(e).__name__})
+
+    try:
+        from app.modules.support.api.support_routes import router as support_router
+        import_success.append("api.support_routes.router")
+    except Exception as e:
+        import_errors.append({"module": "api.support_routes.router", "error": str(e), "type": type(e).__name__})
+
+    try:
+        from app.modules.support.api import router
+        import_success.append("api.__init__.router")
+    except Exception as e:
+        import_errors.append({"module": "api.__init__.router", "error": str(e), "type": type(e).__name__})
+
+    return {
+        "status": "diagnostic",
+        "support_router_loaded": "support" in routers_loaded,
+        "import_success": import_success,
+        "import_errors": import_errors,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+
 # API v1 info endpoint
 @app.get("/api/v1/")
 async def api_v1_info():
