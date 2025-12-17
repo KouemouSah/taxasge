@@ -7,6 +7,7 @@ Data access layer for support module (tickets, categories, messages)
 import asyncpg
 from typing import Optional, List, Tuple
 from datetime import datetime
+from uuid import UUID
 from loguru import logger
 
 
@@ -157,7 +158,7 @@ class SupportRepository:
         subject: str,
         description: str,
         priority: str,
-        created_by: int
+        created_by: UUID
     ) -> dict:
         """Create a new support ticket"""
         query = """
@@ -218,8 +219,8 @@ class SupportRepository:
         status: Optional[str] = None,
         priority: Optional[str] = None,
         category_id: Optional[int] = None,
-        created_by: Optional[int] = None,
-        assigned_to: Optional[int] = None,
+        created_by: Optional[UUID] = None,
+        assigned_to: Optional[UUID] = None,
         search: Optional[str] = None
     ) -> Tuple[List[dict], int]:
         """List tickets with pagination and filters"""
@@ -347,7 +348,7 @@ class SupportRepository:
         self,
         db: asyncpg.Connection,
         ticket_id: int,
-        sender_id: int,
+        sender_id: UUID,
         content: str,
         is_internal: bool = False
     ) -> dict:

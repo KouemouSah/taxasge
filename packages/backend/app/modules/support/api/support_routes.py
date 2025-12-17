@@ -27,6 +27,7 @@ Stats:
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import Optional
+from uuid import UUID
 import asyncpg
 from loguru import logger
 
@@ -187,7 +188,7 @@ async def list_all_tickets(
     ticket_status: Optional[str] = Query(None, alias="status", description="Filter by status"),
     priority: Optional[str] = Query(None, description="Filter by priority"),
     category_id: Optional[int] = Query(None, description="Filter by category"),
-    assigned_to: Optional[int] = Query(None, description="Filter by assigned agent"),
+    assigned_to: Optional[UUID] = Query(None, description="Filter by assigned agent"),
     search: Optional[str] = Query(None, description="Search in ticket number, subject, description"),
     db: asyncpg.Connection = Depends(get_database),
     current_user: dict = Depends(get_current_user),

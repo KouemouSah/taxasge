@@ -18,7 +18,7 @@ export default function AdminTicketDetailPage() {
   const ticketId = Number(params.id)
 
   // Get current user ID from localStorage
-  const [currentUserId, setCurrentUserId] = useState<number>(0)
+  const [currentUserId, setCurrentUserId] = useState<string>('')
 
   useEffect(() => {
     // Try to get user ID from stored token payload
@@ -26,9 +26,9 @@ export default function AdminTicketDetailPage() {
     if (accessToken) {
       try {
         const payload = JSON.parse(atob(accessToken.split('.')[1]))
-        setCurrentUserId(payload.sub ? parseInt(payload.sub, 10) : 0)
+        setCurrentUserId(payload.sub || '')
       } catch {
-        setCurrentUserId(0)
+        setCurrentUserId('')
       }
     }
   }, [])
@@ -45,9 +45,9 @@ export default function AdminTicketDetailPage() {
 
   // Mock users for assignment (in a real app, fetch from API)
   const [agents] = useState([
-    { id: 1, name: 'Admin User' },
-    { id: 2, name: 'Support Agent 1' },
-    { id: 3, name: 'Support Agent 2' },
+    { id: '00000000-0000-0000-0000-000000000001', name: 'Admin User' },
+    { id: '00000000-0000-0000-0000-000000000002', name: 'Support Agent 1' },
+    { id: '00000000-0000-0000-0000-000000000003', name: 'Support Agent 2' },
   ])
 
   useEffect(() => {
@@ -104,7 +104,7 @@ export default function AdminTicketDetailPage() {
     }
   }
 
-  const handleAssign = async (userId: number | null) => {
+  const handleAssign = async (userId: string | null) => {
     try {
       await updateTicket(ticketId, { assignedTo: userId })
       loadTicket(ticketId)

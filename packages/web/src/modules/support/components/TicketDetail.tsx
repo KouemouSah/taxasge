@@ -34,8 +34,8 @@ interface TicketDetailProps {
   onClose: () => void
   onStatusChange?: (status: TicketStatus) => void
   onPriorityChange?: (priority: TicketPriority) => void
-  onAssign?: (userId: number | null) => void
-  users?: Array<{ id: number; name: string }>
+  onAssign?: (userId: string | null) => void
+  users?: Array<{ id: string; name: string }>
   locale: string
 }
 
@@ -222,7 +222,7 @@ export function TicketDetail({
                   <Select
                     value={ticket.assignedTo?.toString() || 'unassigned'}
                     onValueChange={(value) =>
-                      onAssign(value === 'unassigned' ? null : parseInt(value))
+                      onAssign(value === 'unassigned' ? null : value)
                     }
                     disabled={isClosed}
                   >

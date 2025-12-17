@@ -98,8 +98,8 @@ export interface SupportTicket {
   description: string
   priority: TicketPriority | string
   status: TicketStatus | string
-  createdBy: number
-  assignedTo: number | null
+  createdBy: string
+  assignedTo: string | null
   resolvedAt: string | null
   closedAt: string | null
   createdAt: string
@@ -126,7 +126,7 @@ export interface SupportTicketUpdate {
   description?: string
   priority?: TicketPriority | string
   status?: TicketStatus | string
-  assignedTo?: number | null
+  assignedTo?: string | null
   categoryId?: number
 }
 
@@ -145,7 +145,7 @@ export interface SupportTicketListResponse {
 export interface SupportMessage {
   id: number
   ticketId: number
-  senderId: number
+  senderId: string
   content: string
   isInternal: boolean
   createdAt: string
@@ -200,7 +200,7 @@ export interface SupportFilters {
   status?: TicketStatus | string
   priority?: TicketPriority | string
   categoryId?: number
-  assignedTo?: number
+  assignedTo?: string
   search?: string
 }
 

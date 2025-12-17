@@ -7,6 +7,7 @@ Pydantic models for support ticket management
 from enum import Enum
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+from uuid import UUID
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -138,7 +139,7 @@ class SupportTicketUpdate(BaseModel):
     subject: Optional[str] = Field(None, max_length=255)
     priority: Optional[TicketPriority] = Field(None)
     status: Optional[TicketStatus] = Field(None)
-    assigned_to: Optional[int] = Field(None, description="User ID to assign ticket to")
+    assigned_to: Optional[UUID] = Field(None, description="User ID to assign ticket to")
 
 
 class SupportTicketResponse(BaseModel):
@@ -151,9 +152,9 @@ class SupportTicketResponse(BaseModel):
     description: str
     priority: TicketPriority
     status: TicketStatus
-    created_by: int
+    created_by: UUID
     created_by_name: Optional[str] = None
-    assigned_to: Optional[int]
+    assigned_to: Optional[UUID]
     assigned_to_name: Optional[str] = None
     resolved_at: Optional[datetime]
     closed_at: Optional[datetime]
@@ -228,7 +229,7 @@ class SupportMessageResponse(BaseModel):
     """Model for support message response"""
     id: int
     ticket_id: int
-    sender_id: int
+    sender_id: UUID
     sender_name: Optional[str] = None
     sender_role: Optional[str] = None
     content: str

@@ -16,7 +16,7 @@ interface MessageThreadProps {
   messages: SupportMessage[]
   isLoading: boolean
   isAdmin?: boolean
-  currentUserId: number
+  currentUserId: string
   onSendMessage: (data: SupportMessageCreate) => Promise<void>
   ticketClosed?: boolean
   locale: string

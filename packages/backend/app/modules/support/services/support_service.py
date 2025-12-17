@@ -6,6 +6,7 @@ Business logic for support module
 
 import asyncpg
 from typing import Optional, List, Tuple
+from uuid import UUID
 from fastapi import HTTPException, status
 from loguru import logger
 
@@ -152,7 +153,7 @@ class SupportService:
         self,
         db: asyncpg.Connection,
         data: SupportTicketCreate,
-        user_id: int
+        user_id: UUID
     ) -> SupportTicketResponse:
         """Create a new support ticket"""
         # Validate category exists
@@ -196,7 +197,7 @@ class SupportService:
         self,
         db: asyncpg.Connection,
         ticket_id: int,
-        user_id: Optional[int] = None,
+        user_id: Optional[UUID] = None,
         is_admin: bool = False
     ) -> SupportTicketResponse:
         """Get ticket by ID with permission check"""
@@ -220,7 +221,7 @@ class SupportService:
         self,
         db: asyncpg.Connection,
         ticket_number: str,
-        user_id: Optional[int] = None,
+        user_id: Optional[UUID] = None,
         is_admin: bool = False
     ) -> SupportTicketResponse:
         """Get ticket by ticket number"""
@@ -248,8 +249,8 @@ class SupportService:
         status: Optional[str] = None,
         priority: Optional[str] = None,
         category_id: Optional[int] = None,
-        created_by: Optional[int] = None,
-        assigned_to: Optional[int] = None,
+        created_by: Optional[UUID] = None,
+        assigned_to: Optional[UUID] = None,
         search: Optional[str] = None
     ) -> Tuple[List[SupportTicketResponse], int, int]:
         """List tickets with pagination and filters"""
@@ -271,7 +272,7 @@ class SupportService:
     async def list_my_tickets(
         self,
         db: asyncpg.Connection,
-        user_id: int,
+        user_id: UUID,
         page: int = 1,
         page_size: int = 20,
         status: Optional[str] = None
@@ -290,7 +291,7 @@ class SupportService:
         db: asyncpg.Connection,
         ticket_id: int,
         data: SupportTicketUpdate,
-        user_id: int,
+        user_id: UUID,
         is_admin: bool = False
     ) -> SupportTicketResponse:
         """Update a ticket"""
@@ -329,7 +330,7 @@ class SupportService:
         self,
         db: asyncpg.Connection,
         ticket_id: int,
-        user_id: int,
+        user_id: UUID,
         is_admin: bool = False
     ) -> SupportTicketResponse:
         """Close a ticket"""
@@ -367,7 +368,7 @@ class SupportService:
         db: asyncpg.Connection,
         ticket_id: int,
         data: SupportMessageCreate,
-        user_id: int,
+        user_id: UUID,
         is_admin: bool = False
     ) -> SupportMessageResponse:
         """Add a message to a ticket"""
@@ -420,7 +421,7 @@ class SupportService:
         self,
         db: asyncpg.Connection,
         ticket_id: int,
-        user_id: int,
+        user_id: UUID,
         is_admin: bool = False
     ) -> List[SupportMessageResponse]:
         """List all messages for a ticket"""

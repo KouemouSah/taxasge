@@ -18,7 +18,7 @@ export default function UserTicketDetailPage() {
   const ticketId = Number(params.id)
 
   // Get current user ID from localStorage
-  const [currentUserId, setCurrentUserId] = useState<number>(0)
+  const [currentUserId, setCurrentUserId] = useState<string>('')
 
   useEffect(() => {
     // Try to get user ID from stored token payload
@@ -26,9 +26,9 @@ export default function UserTicketDetailPage() {
     if (accessToken) {
       try {
         const payload = JSON.parse(atob(accessToken.split('.')[1]))
-        setCurrentUserId(payload.sub ? parseInt(payload.sub, 10) : 0)
+        setCurrentUserId(payload.sub || '')
       } catch {
-        setCurrentUserId(0)
+        setCurrentUserId('')
       }
     }
   }, [])

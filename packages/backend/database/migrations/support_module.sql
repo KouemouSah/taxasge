@@ -41,8 +41,8 @@ CREATE TABLE IF NOT EXISTS support_tickets (
     description TEXT NOT NULL,
     priority VARCHAR(20) DEFAULT 'normal',  -- 'low', 'normal', 'high', 'urgent'
     status VARCHAR(30) DEFAULT 'open',  -- 'open', 'in_progress', 'pending_user', 'resolved', 'closed'
-    created_by INTEGER REFERENCES users(id) NOT NULL,
-    assigned_to INTEGER REFERENCES users(id),
+    created_by UUID REFERENCES users(id) NOT NULL,
+    assigned_to UUID REFERENCES users(id),
     resolved_at TIMESTAMPTZ,
     closed_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -62,7 +62,7 @@ COMMENT ON COLUMN support_tickets.status IS 'Ticket status: open, in_progress, p
 CREATE TABLE IF NOT EXISTS support_messages (
     id SERIAL PRIMARY KEY,
     ticket_id INTEGER REFERENCES support_tickets(id) ON DELETE CASCADE,
-    sender_id INTEGER REFERENCES users(id) NOT NULL,
+    sender_id UUID REFERENCES users(id) NOT NULL,
     content TEXT NOT NULL,
     is_internal BOOLEAN DEFAULT false,  -- Internal notes visible only to admins
     created_at TIMESTAMPTZ DEFAULT NOW()
