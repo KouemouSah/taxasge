@@ -265,6 +265,58 @@ async def debug_routers():
     }
 
 
+@app.get("/api/v1/debug/communications-import")
+async def debug_communications_import():
+    """Debug endpoint to diagnose communications router import errors"""
+    import_errors = []
+    import_success = []
+
+    # Test each import in the communications chain
+    try:
+        from app.modules.communications.models.communication import EmailTemplate
+        import_success.append("models.communication.EmailTemplate")
+    except Exception as e:
+        import_errors.append({"module": "models.communication", "error": str(e), "type": type(e).__name__})
+
+    try:
+        from app.modules.communications.services.template_service import get_template_service
+        import_success.append("services.template_service")
+    except Exception as e:
+        import_errors.append({"module": "services.template_service", "error": str(e), "type": type(e).__name__})
+
+    try:
+        from app.modules.communications.services.email_service import EmailService
+        import_success.append("services.email_service.EmailService")
+    except Exception as e:
+        import_errors.append({"module": "services.email_service", "error": str(e), "type": type(e).__name__})
+
+    try:
+        from app.modules.communications.services.communication_service import CommunicationService
+        import_success.append("services.communication_service.CommunicationService")
+    except Exception as e:
+        import_errors.append({"module": "services.communication_service", "error": str(e), "type": type(e).__name__})
+
+    try:
+        from app.modules.communications.api.communication_routes import router
+        import_success.append("api.communication_routes.router")
+    except Exception as e:
+        import_errors.append({"module": "api.communication_routes", "error": str(e), "type": type(e).__name__})
+
+    try:
+        from app.modules.communications.api import router as main_router
+        import_success.append("api.router (main)")
+    except Exception as e:
+        import_errors.append({"module": "api (main router)", "error": str(e), "type": type(e).__name__})
+
+    return {
+        "status": "diagnostic",
+        "communications_loaded": "communications" in routers_loaded,
+        "import_success": import_success,
+        "import_errors": import_errors,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+
 @app.get("/api/v1/debug/enum-import")
 async def debug_enum_import():
     """Debug endpoint to diagnose enum router import errors"""
@@ -611,6 +663,16 @@ try:
     logger.info("✅ Accountant router loaded (deadline tracking for client companies)")
 except Exception as e:
     logger.error(f"❌ Accountant router failed: {e}")
+    logger.error(traceback.format_exc())
+
+# Try to load support router (Module - Support Ticketing System)
+try:
+    from app.modules.support.api import router as support_router
+    app.include_router(support_router, prefix="/api/v1", tags=["support"])
+    routers_loaded.append("support")
+    logger.info("✅ Support router loaded (ticketing system)")
+except Exception as e:
+    logger.error(f"❌ Support router failed: {e}")
     logger.error(traceback.format_exc())
 
 if routers_loaded:
