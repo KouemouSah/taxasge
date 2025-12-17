@@ -20,6 +20,8 @@ import { useState, useCallback, useEffect } from 'react'
 import { supportApi } from '../services/api'
 import type {
   SupportCategory,
+  SupportCategoryCreate,
+  SupportCategoryUpdate,
   SupportTicket,
   SupportTicketCreate,
   SupportTicketUpdate,
@@ -56,6 +58,12 @@ export interface UseSupportReturn {
 
   // Category actions
   loadCategories: (isActive?: boolean, targetRole?: string) => Promise<void>
+  createCategory: (data: SupportCategoryCreate) => Promise<SupportCategory | null>
+  updateCategory: (
+    categoryId: number,
+    data: SupportCategoryUpdate
+  ) => Promise<SupportCategory | null>
+  deleteCategory: (categoryId: number) => Promise<boolean>
 
   // Ticket actions - User
   loadMyTickets: (page?: number, pageSize?: number, status?: string) => Promise<void>
@@ -148,6 +156,65 @@ export function useSupport(options: UseSupportOptions = {}): UseSupportReturn {
         setCategories(data)
       } catch (err) {
         handleError(err, 'loadCategories')
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [handleError]
+  )
+
+  const createCategory = useCallback(
+    async (data: SupportCategoryCreate): Promise<SupportCategory | null> => {
+      setIsLoading(true)
+      setError(null)
+      try {
+        const category = await supportApi.createCategory(data)
+        setCategories((prev) => [...prev, category])
+        return category
+      } catch (err) {
+        handleError(err, 'createCategory')
+        return null
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [handleError]
+  )
+
+  const updateCategory = useCallback(
+    async (
+      categoryId: number,
+      data: SupportCategoryUpdate
+    ): Promise<SupportCategory | null> => {
+      setIsLoading(true)
+      setError(null)
+      try {
+        const updatedCategory = await supportApi.updateCategory(categoryId, data)
+        setCategories((prev) =>
+          prev.map((c) => (c.id === categoryId ? updatedCategory : c))
+        )
+        return updatedCategory
+      } catch (err) {
+        handleError(err, 'updateCategory')
+        return null
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [handleError]
+  )
+
+  const deleteCategory = useCallback(
+    async (categoryId: number): Promise<boolean> => {
+      setIsLoading(true)
+      setError(null)
+      try {
+        await supportApi.deleteCategory(categoryId)
+        setCategories((prev) => prev.filter((c) => c.id !== categoryId))
+        return true
+      } catch (err) {
+        handleError(err, 'deleteCategory')
+        return false
       } finally {
         setIsLoading(false)
       }
@@ -405,6 +472,9 @@ export function useSupport(options: UseSupportOptions = {}): UseSupportReturn {
 
     // Category actions
     loadCategories,
+    createCategory,
+    updateCategory,
+    deleteCategory,
 
     // Ticket actions - User
     loadMyTickets,
