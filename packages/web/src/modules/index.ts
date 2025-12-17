@@ -21,6 +21,7 @@ export * as Agents from './agents';
 // Support Modules
 export * as Chatbot from './chatbot';
 export * as Communications from './communications';
+export * as Support from './support';
 export * as Translations from './translations';
 export * as Webhooks from './webhooks';
 
