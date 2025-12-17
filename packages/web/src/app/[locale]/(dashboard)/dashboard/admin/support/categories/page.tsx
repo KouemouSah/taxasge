@@ -31,8 +31,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { useToast } from '@/hooks/use-toast'
-import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Loader2, AlertCircle, RefreshCw } from 'lucide-react'
 import { useSupport } from '@/modules/support'
 import type { SupportCategory, SupportCategoryCreate, SupportCategoryUpdate, TargetRole } from '@/modules/support'
 
@@ -43,10 +44,12 @@ export default function AdminSupportCategoriesPage() {
   const {
     categories,
     isLoading,
+    error,
     loadCategories,
     createCategory,
     updateCategory,
     deleteCategory,
+    clearError,
   } = useSupport({ autoLoadCategories: false })
 
   // Form state
@@ -230,11 +233,31 @@ export default function AdminSupportCategoriesPage() {
           <CardDescription>{t('categoryListDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>{t('errorLoadingCategories')}</AlertTitle>
+              <AlertDescription className="flex items-center justify-between">
+                <span>{error}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    clearError()
+                    loadCategories()
+                  }}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  {t('retry')}
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
-          ) : categories.length === 0 ? (
+          ) : categories.length === 0 && !error ? (
             <div className="text-center py-8 text-muted-foreground">
               {t('noCategories')}
             </div>

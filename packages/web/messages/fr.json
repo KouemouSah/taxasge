@@ -2383,6 +2383,8 @@
     "nameEsPlaceholder": "Nom de la catégorie en espagnol",
     "nameFrPlaceholder": "Nom de la catégorie en français",
     "nameEnPlaceholder": "Nom de la catégorie en anglais",
-    "descriptionEsPlaceholder": "Description de la catégorie en espagnol"
+    "descriptionEsPlaceholder": "Description de la catégorie en espagnol",
+    "errorLoadingCategories": "Erreur lors du chargement des catégories",
+    "retry": "Réessayer"
   }
 }

@@ -2385,6 +2385,8 @@
     "deleting": "Eliminando...",
     "codeAndNameRequired": "El código y nombre son obligatorios",
     "ticketClosed": "Ticket cerrado",
-    "ticketClosedMessage": "El ticket ha sido cerrado exitosamente"
+    "ticketClosedMessage": "El ticket ha sido cerrado exitosamente",
+    "errorLoadingCategories": "Error al cargar categorías",
+    "retry": "Reintentar"
   }
 }
