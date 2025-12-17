@@ -2,10 +2,10 @@
 # TaxasGE Backend - Production Dockerfile for Cloud Run
 # =============================================================================
 # Multi-stage build for optimized production image
-# Base: Python 3.9 slim
+# Base: Python 3.11 slim (3.10+ required for importlib.metadata.packages_distributions)
 # =============================================================================
 
-FROM python:3.9-slim as builder
+FROM python:3.11-slim as builder
 
 # Set working directory
 WORKDIR /app
@@ -28,7 +28,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # =============================================================================
 # Production stage
 # =============================================================================
-FROM python:3.9-slim
+FROM python:3.11-slim
 
 # Set working directory
 WORKDIR /app
@@ -50,7 +50,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy installed packages from builder
-COPY --from=builder /usr/local/lib/python3.9/site-packages /usr/local/lib/python3.9/site-packages
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code
