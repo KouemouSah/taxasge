@@ -23,7 +23,6 @@ import {
 } from '@/components/ui/pagination'
 import { Eye, Plus } from 'lucide-react'
 import type { SupportTicket } from '../types'
-import { getPriorityColor, getStatusColor } from '../types'
 
 interface TicketListProps {
   tickets: SupportTicket[]

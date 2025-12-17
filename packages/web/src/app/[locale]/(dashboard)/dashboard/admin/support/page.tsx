@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -17,7 +16,6 @@ import type { TicketStatus, TicketPriority } from '@/modules/support'
 export default function AdminSupportPage() {
   const t = useTranslations('support')
   const locale = useLocale()
-  const router = useRouter()
 
   const [statusFilter, setStatusFilter] = useState<TicketStatus | 'all'>('all')
   const [priorityFilter, setPriorityFilter] = useState<TicketPriority | 'all'>('all')

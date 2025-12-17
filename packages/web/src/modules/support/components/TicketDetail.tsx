@@ -23,7 +23,7 @@ import {
   Clock,
   UserCheck,
 } from 'lucide-react'
-import type { SupportTicket, SupportTicketUpdate, TicketStatus, TicketPriority } from '../types'
+import type { SupportTicket, TicketStatus, TicketPriority } from '../types'
 import { canUserCloseTicket } from '../types'
 
 interface TicketDetailProps {
