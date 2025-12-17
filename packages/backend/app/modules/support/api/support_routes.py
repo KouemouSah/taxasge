@@ -32,7 +32,8 @@ import asyncpg
 from loguru import logger
 
 from app.database.connection import get_database
-from app.modules.auth.dependencies import get_current_user, require_permission
+from app.modules.auth.middleware.auth_middleware import get_current_user
+from app.modules.permissions.middleware.permission_middleware import require_permission
 from ..models.support import (
     SupportCategoryCreate,
     SupportCategoryUpdate,
