@@ -33,6 +33,7 @@ from loguru import logger
 
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
+from app.modules.users.models.user import UserResponse
 from app.modules.permissions.middleware.permission_middleware import require_permission
 from ..models.support import (
     SupportCategoryCreate,
@@ -62,7 +63,7 @@ async def list_categories(
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     target_role: Optional[str] = Query(None, description="Filter by target role (admin, agent, all)"),
     db: asyncpg.Connection = Depends(get_database),
-    current_user: dict = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
     """
     List support categories
@@ -77,7 +78,7 @@ async def list_categories(
 async def get_category(
     category_id: int,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: dict = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
     """
     Get a support category by ID
@@ -95,7 +96,7 @@ async def get_category(
 async def create_category(
     category_data: SupportCategoryCreate,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: dict = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(require_permission("support.manage")),
 ):
     """
@@ -109,7 +110,7 @@ async def create_category(
     """
     try:
         category = await service.create_category(db, category_data)
-        logger.info(f"Support category created: {category.code} by user {current_user['id']}")
+        logger.info(f"Support category created: {category.code} by user {current_user.id}")
         return category
     except HTTPException:
         raise
@@ -126,7 +127,7 @@ async def update_category(
     category_id: int,
     category_data: SupportCategoryUpdate,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: dict = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(require_permission("support.manage")),
 ):
     """
@@ -138,7 +139,7 @@ async def update_category(
     """
     try:
         category = await service.update_category(db, category_id, category_data)
-        logger.info(f"Support category updated: {category_id} by user {current_user['id']}")
+        logger.info(f"Support category updated: {category_id} by user {current_user.id}")
         return category
     except HTTPException:
         raise
@@ -154,7 +155,7 @@ async def update_category(
 async def delete_category(
     category_id: int,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: dict = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(require_permission("support.manage")),
 ):
     """
@@ -166,7 +167,7 @@ async def delete_category(
     """
     try:
         await service.delete_category(db, category_id)
-        logger.info(f"Support category deleted: {category_id} by user {current_user['id']}")
+        logger.info(f"Support category deleted: {category_id} by user {current_user.id}")
     except HTTPException:
         raise
     except Exception as e:
@@ -192,7 +193,7 @@ async def list_all_tickets(
     assigned_to: Optional[UUID] = Query(None, description="Filter by assigned agent"),
     search: Optional[str] = Query(None, description="Search in ticket number, subject, description"),
     db: asyncpg.Connection = Depends(get_database),
-    current_user: dict = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(require_permission("support.view_all")),
 ):
     """
@@ -232,7 +233,7 @@ async def list_my_tickets(
     page_size: int = Query(20, ge=1, le=100, description="Page size"),
     ticket_status: Optional[str] = Query(None, alias="status", description="Filter by status"),
     db: asyncpg.Connection = Depends(get_database),
-    current_user: dict = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
     """
     List current user's support tickets
@@ -241,7 +242,7 @@ async def list_my_tickets(
     """
     tickets, total, total_pages = await service.list_my_tickets(
         db,
-        user_id=current_user["id"],
+        user_id=current_user.id,
         page=page,
         page_size=page_size,
         status=ticket_status,
@@ -260,7 +261,7 @@ async def list_my_tickets(
 async def get_ticket(
     ticket_id: int,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: dict = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
     """
     Get a support ticket by ID
@@ -273,7 +274,7 @@ async def get_ticket(
     return await service.get_ticket(
         db,
         ticket_id,
-        user_id=current_user["id"],
+        user_id=current_user.id,
         is_admin=is_admin,
     )
 
@@ -282,7 +283,7 @@ async def get_ticket(
 async def get_ticket_by_number(
     ticket_number: str,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: dict = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
     """
     Get a support ticket by ticket number
@@ -293,7 +294,7 @@ async def get_ticket_by_number(
     return await service.get_ticket_by_number(
         db,
         ticket_number,
-        user_id=current_user["id"],
+        user_id=current_user.id,
         is_admin=is_admin,
     )
 
@@ -306,7 +307,7 @@ async def get_ticket_by_number(
 async def create_ticket(
     ticket_data: SupportTicketCreate,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: dict = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
     """
     Create a new support ticket
@@ -317,8 +318,8 @@ async def create_ticket(
     - **priority**: Priority level (low, normal, high, urgent)
     """
     try:
-        ticket = await service.create_ticket(db, ticket_data, current_user["id"])
-        logger.info(f"Support ticket created: {ticket.ticket_number} by user {current_user['id']}")
+        ticket = await service.create_ticket(db, ticket_data, current_user.id)
+        logger.info(f"Support ticket created: {ticket.ticket_number} by user {current_user.id}")
         return ticket
     except HTTPException:
         raise
@@ -335,7 +336,7 @@ async def update_ticket(
     ticket_id: int,
     ticket_data: SupportTicketUpdate,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: dict = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
     """
     Update a support ticket
@@ -351,10 +352,10 @@ async def update_ticket(
             db,
             ticket_id,
             ticket_data,
-            current_user["id"],
+            current_user.id,
             is_admin=is_admin,
         )
-        logger.info(f"Support ticket updated: {ticket_id} by user {current_user['id']}")
+        logger.info(f"Support ticket updated: {ticket_id} by user {current_user.id}")
         return ticket
     except HTTPException:
         raise
@@ -370,7 +371,7 @@ async def update_ticket(
 async def close_ticket(
     ticket_id: int,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: dict = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
     """
     Close a support ticket
@@ -385,10 +386,10 @@ async def close_ticket(
         ticket = await service.close_ticket(
             db,
             ticket_id,
-            current_user["id"],
+            current_user.id,
             is_admin=is_admin,
         )
-        logger.info(f"Support ticket closed: {ticket_id} by user {current_user['id']}")
+        logger.info(f"Support ticket closed: {ticket_id} by user {current_user.id}")
         return ticket
     except HTTPException:
         raise
@@ -409,7 +410,7 @@ async def close_ticket(
 async def list_messages(
     ticket_id: int,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: dict = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
     """
     List all messages for a ticket
@@ -423,7 +424,7 @@ async def list_messages(
     return await service.list_messages(
         db,
         ticket_id,
-        current_user["id"],
+        current_user.id,
         is_admin=is_admin,
     )
 
@@ -437,7 +438,7 @@ async def add_message(
     ticket_id: int,
     message_data: SupportMessageCreate,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: dict = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
     """
     Add a message to a ticket
@@ -455,10 +456,10 @@ async def add_message(
             db,
             ticket_id,
             message_data,
-            current_user["id"],
+            current_user.id,
             is_admin=is_admin,
         )
-        logger.info(f"Message added to ticket {ticket_id} by user {current_user['id']}")
+        logger.info(f"Message added to ticket {ticket_id} by user {current_user.id}")
         return message
     except HTTPException:
         raise
@@ -478,7 +479,7 @@ async def add_message(
 @router.get("/stats", response_model=SupportStatsResponse)
 async def get_stats(
     db: asyncpg.Connection = Depends(get_database),
-    current_user: dict = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(require_permission("support.view_all")),
 ):
     """
@@ -496,11 +497,11 @@ async def get_stats(
 # =============================================================================
 
 
-async def _check_support_admin(db: asyncpg.Connection, current_user: dict) -> bool:
+async def _check_support_admin(db: asyncpg.Connection, current_user: UserResponse) -> bool:
     """Check if user has support admin permissions"""
     # Check if user has support.view_all or support.manage permission
     # For simplicity, check if role is admin or if they have the permission
-    user_role = current_user.get("role", "")
+    user_role = current_user.role or ""
     if user_role in ["admin", "superadmin"]:
         return True
 
