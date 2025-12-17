@@ -40,6 +40,9 @@ import {
   Phone,
   Bell,
   Send,
+  Headphones,
+  TicketIcon,
+  ListChecks,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { clearAuthData } from '@/core/auth/storage'
@@ -220,6 +223,23 @@ export default function AdminSidebar() {
           title: t('nav.pushTemplates'),
           href: `/${locale}/dashboard/admin/communications/push-templates`,
           icon: Send,
+        },
+      ],
+    },
+    {
+      id: 'support',
+      title: t('nav.support'),
+      icon: Headphones,
+      items: [
+        {
+          title: t('nav.supportTickets'),
+          href: `/${locale}/dashboard/admin/support`,
+          icon: TicketIcon,
+        },
+        {
+          title: t('nav.supportCategories'),
+          href: `/${locale}/dashboard/admin/support/categories`,
+          icon: ListChecks,
         },
       ],
     },
