@@ -207,24 +207,32 @@ async def list_all_tickets(
     - **assigned_to**: Filter by assigned agent
     - **search**: Search in ticket number, subject, description
     """
-    tickets, total, total_pages = await service.list_tickets(
-        db,
-        page=page,
-        page_size=page_size,
-        status=ticket_status,
-        priority=priority,
-        category_id=category_id,
-        assigned_to=assigned_to,
-        search=search,
-    )
+    logger.info(f"list_all_tickets called by user {current_user.id} (role: {current_user.role})")
 
-    return SupportTicketListResponse(
-        tickets=tickets,
-        total=total,
-        page=page,
-        page_size=page_size,
-        total_pages=total_pages,
-    )
+    try:
+        tickets, total, total_pages = await service.list_tickets(
+            db,
+            page=page,
+            page_size=page_size,
+            status=ticket_status,
+            priority=priority,
+            category_id=category_id,
+            assigned_to=assigned_to,
+            search=search,
+        )
+
+        logger.info(f"Returning {len(tickets)} tickets (total: {total})")
+
+        return SupportTicketListResponse(
+            tickets=tickets,
+            total=total,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
+        )
+    except Exception as e:
+        logger.error(f"Error in list_all_tickets: {e}")
+        raise
 
 
 @router.get("/tickets/my", response_model=SupportTicketListResponse)

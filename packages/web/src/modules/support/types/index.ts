@@ -103,7 +103,7 @@ export interface SupportTicket {
   resolvedAt: string | null
   closedAt: string | null
   createdAt: string
-  updatedAt: string
+  updatedAt: string | null
   // Populated fields
   categoryCode?: string
   categoryName?: string

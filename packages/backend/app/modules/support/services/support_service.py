@@ -256,6 +256,8 @@ class SupportService:
         search: Optional[str] = None
     ) -> Tuple[List[SupportTicketResponse], int, int]:
         """List tickets with pagination and filters"""
+        logger.debug(f"list_tickets called: page={page}, page_size={page_size}, status={status}, priority={priority}")
+
         tickets, total = await self.repository.list_tickets(
             db,
             page=page,
@@ -268,8 +270,20 @@ class SupportService:
             search=search
         )
 
+        logger.debug(f"Repository returned {len(tickets)} tickets, total={total}")
+
         total_pages = (total + page_size - 1) // page_size if total > 0 else 1
-        return [SupportTicketResponse(**t) for t in tickets], total, total_pages
+
+        # Convert to response models with error handling
+        response_tickets = []
+        for t in tickets:
+            try:
+                response_tickets.append(SupportTicketResponse(**t))
+            except Exception as e:
+                logger.error(f"Failed to convert ticket to response: {e}, data: {t}")
+                raise
+
+        return response_tickets, total, total_pages
 
     async def list_my_tickets(
         self,

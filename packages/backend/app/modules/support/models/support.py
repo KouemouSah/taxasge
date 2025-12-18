@@ -146,20 +146,20 @@ class SupportTicketResponse(BaseModel):
     """Model for support ticket response"""
     id: int
     ticket_number: str
-    category_id: int
+    category_id: Optional[int] = None  # Database allows NULL
     category_name: Optional[str] = None
     subject: str
     description: str
-    priority: TicketPriority
-    status: TicketStatus
+    priority: TicketPriority = TicketPriority.NORMAL  # Default to normal
+    status: TicketStatus = TicketStatus.OPEN  # Default to open
     created_by: UUID
     created_by_name: Optional[str] = None
-    assigned_to: Optional[UUID]
+    assigned_to: Optional[UUID] = None
     assigned_to_name: Optional[str] = None
-    resolved_at: Optional[datetime]
-    closed_at: Optional[datetime]
+    resolved_at: Optional[datetime] = None
+    closed_at: Optional[datetime] = None
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None  # Database allows NULL
     message_count: int = 0
 
     class Config:
