@@ -17,7 +17,8 @@ import asyncpg
 from loguru import logger
 
 from app.database.connection import get_database
-from app.modules.auth.dependencies import get_current_user, require_permission
+from app.modules.auth.middleware.auth_middleware import get_current_user
+from app.modules.permissions.middleware.permission_middleware import permission_required
 from ..models.email_template import (
     EmailTemplateCreate,
     EmailTemplateUpdate,
@@ -168,7 +169,7 @@ async def create_email_template(
     template_data: EmailTemplateCreate,
     db: asyncpg.Connection = Depends(get_database),
     current_user: dict = Depends(get_current_user),
-    _: None = Depends(require_permission("communications.manage")),
+    _: None = Depends(permission_required("communications.manage")),
 ):
     """
     Create a new email template
@@ -204,7 +205,7 @@ async def update_email_template(
     template_data: EmailTemplateUpdate,
     db: asyncpg.Connection = Depends(get_database),
     current_user: dict = Depends(get_current_user),
-    _: None = Depends(require_permission("communications.manage")),
+    _: None = Depends(permission_required("communications.manage")),
 ):
     """
     Update an existing email template
@@ -245,7 +246,7 @@ async def delete_email_template(
     template_id: int,
     db: asyncpg.Connection = Depends(get_database),
     current_user: dict = Depends(get_current_user),
-    _: None = Depends(require_permission("communications.manage")),
+    _: None = Depends(permission_required("communications.manage")),
 ):
     """
     Delete an email template

@@ -2,7 +2,7 @@
 API routes for webhook configurations
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from typing import Optional
+from typing import Optional, Dict, Any
 import asyncpg
 
 from ..models.webhook import (
@@ -15,8 +15,9 @@ from ..models.webhook import (
     WebhookLogResponse
 )
 from ..services.webhook_service import WebhookService
-from ....database.connection import get_database
-from ...auth.dependencies import get_current_user, require_permission
+from app.database.connection import get_database
+from app.modules.auth.middleware.auth_middleware import get_current_user
+from app.modules.permissions.middleware.permission_middleware import permission_required
 
 router = APIRouter(prefix="/communications/webhooks", tags=["Communications - Webhooks"])
 service = WebhookService()
@@ -31,8 +32,8 @@ service = WebhookService()
 async def create_webhook(
     webhook_data: WebhookCreate,
     db: asyncpg.Connection = Depends(get_database),
-    current_user = Depends(get_current_user),
-    _: None = Depends(require_permission("manage:communications"))
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    _: None = Depends(permission_required("manage:communications"))
 ):
     """
     Create a new webhook configuration.
@@ -74,7 +75,8 @@ async def create_webhook(
     }
     ```
     """
-    return await service.create_webhook(db, webhook_data, current_user.id)
+    user_id = current_user.get("sub")
+    return await service.create_webhook(db, webhook_data, user_id)
 
 
 @router.get(
@@ -89,7 +91,7 @@ async def list_webhooks(
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     db: asyncpg.Connection = Depends(get_database),
     _: None = Depends(get_current_user),
-    __: None = Depends(require_permission("read:communications"))
+    __: None = Depends(permission_required("read:communications"))
 ):
     """
     List all webhook configurations with pagination and filters.
@@ -120,7 +122,7 @@ async def get_webhook(
     webhook_id: int,
     db: asyncpg.Connection = Depends(get_database),
     _: None = Depends(get_current_user),
-    __: None = Depends(require_permission("read:communications"))
+    __: None = Depends(permission_required("read:communications"))
 ):
     """
     Get webhook configuration by ID.
@@ -140,7 +142,7 @@ async def update_webhook(
     webhook_data: WebhookUpdate,
     db: asyncpg.Connection = Depends(get_database),
     _: None = Depends(get_current_user),
-    __: None = Depends(require_permission("manage:communications"))
+    __: None = Depends(permission_required("manage:communications"))
 ):
     """
     Update webhook configuration.
@@ -161,7 +163,7 @@ async def delete_webhook(
     webhook_id: int,
     db: asyncpg.Connection = Depends(get_database),
     _: None = Depends(get_current_user),
-    __: None = Depends(require_permission("manage:communications"))
+    __: None = Depends(permission_required("manage:communications"))
 ):
     """
     Delete webhook configuration.
@@ -183,7 +185,7 @@ async def test_webhook(
     test_request: WebhookTestRequest,
     db: asyncpg.Connection = Depends(get_database),
     _: None = Depends(get_current_user),
-    __: None = Depends(require_permission("manage:communications"))
+    __: None = Depends(permission_required("manage:communications"))
 ):
     """
     Test webhook by sending a test request.
@@ -231,7 +233,7 @@ async def get_webhook_logs(
     page_size: int = Query(50, ge=1, le=100, description="Items per page"),
     db: asyncpg.Connection = Depends(get_database),
     _: None = Depends(get_current_user),
-    __: None = Depends(require_permission("read:communications"))
+    __: None = Depends(permission_required("read:communications"))
 ):
     """
     Get execution logs for webhook.
