@@ -8,6 +8,7 @@ in Equatorial Guinea (Getesa, Muni, Other API SMS)
 from enum import Enum
 from typing import Optional, Dict, Any, List, Union
 from datetime import datetime
+from uuid import UUID
 from pydantic import BaseModel, Field, validator
 
 
@@ -238,7 +239,7 @@ class UssdConfigResponse(BaseModel):
     is_active: bool
     created_at: datetime
     updated_at: Optional[datetime]
-    created_by: Optional[int]
+    created_by: Optional[UUID] = None
 
     class Config:
         from_attributes = True

@@ -81,7 +81,7 @@ export interface WebhookResponse extends WebhookBase {
   lastStatus?: string
   createdAt: string
   updatedAt?: string
-  createdBy?: number
+  createdBy?: string  // UUID as string
 }
 
 export interface WebhookListResponse {

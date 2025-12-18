@@ -7,6 +7,7 @@ Pydantic models for notification template management
 from enum import Enum
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+from uuid import UUID
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -160,7 +161,7 @@ class NotificationTemplateResponse(BaseModel):
 
     created_at: datetime
     updated_at: Optional[datetime]
-    created_by: Optional[int]
+    created_by: Optional[UUID] = None
 
     class Config:
         from_attributes = True

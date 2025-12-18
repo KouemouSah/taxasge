@@ -8,6 +8,7 @@ Tables implemented:
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+from uuid import UUID
 
 
 # =============================================================================
@@ -89,8 +90,8 @@ class EmailTemplateResponse(EmailTemplateBase):
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
-    created_by: Optional[int] = None
-    updated_by: Optional[int] = None
+    created_by: Optional[UUID] = None
+    updated_by: Optional[UUID] = None
 
     # Computed fields
     created_by_name: Optional[str] = None

@@ -12,6 +12,7 @@ Module: Communications
 
 from enum import Enum
 from typing import Optional, Dict, Any, List
+from uuid import UUID
 from pydantic import BaseModel, Field, HttpUrl, validator
 from datetime import datetime
 
@@ -164,7 +165,7 @@ class PushTemplateResponse(BaseModel):
 
     created_at: datetime
     updated_at: Optional[datetime]
-    created_by: Optional[int]
+    created_by: Optional[UUID] = None
 
     class Config:
         from_attributes = True

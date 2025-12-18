@@ -4,6 +4,7 @@ Pydantic models for webhook configurations
 from pydantic import BaseModel, Field, HttpUrl, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+from uuid import UUID
 from enum import Enum
 
 
@@ -147,7 +148,7 @@ class WebhookResponse(WebhookBase):
     last_status: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
-    created_by: Optional[int] = None
+    created_by: Optional[UUID] = None
 
     class Config:
         from_attributes = True

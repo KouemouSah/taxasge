@@ -59,8 +59,8 @@ export interface EmailTemplateResponse extends EmailTemplateBase {
   id: number
   createdAt: string
   updatedAt?: string
-  createdBy?: number
-  updatedBy?: number
+  createdBy?: string  // UUID as string
+  updatedBy?: string  // UUID as string
   createdByName?: string
   updatedByName?: string
 }
@@ -149,7 +149,7 @@ export interface PushTemplateResponse extends PushTemplateBase {
   id: number
   createdAt: string
   updatedAt?: string
-  createdBy?: number
+  createdBy?: string  // UUID as string
 }
 
 export interface PushTemplateListResponse {
@@ -238,8 +238,8 @@ export interface SmsTemplateResponse extends SmsTemplateBase {
   id: number
   createdAt: string
   updatedAt?: string
-  createdBy?: number
-  updatedBy?: number
+  createdBy?: string  // UUID as string
+  updatedBy?: string  // UUID as string
   contentEsLength?: number
   contentFrLength?: number
   contentEnLength?: number
@@ -359,7 +359,7 @@ export interface UssdConfigResponse extends UssdConfigBase {
   id: number
   createdAt: string
   updatedAt?: string
-  createdBy?: number
+  createdBy?: string  // UUID as string
 }
 
 export interface UssdConfigListParams {

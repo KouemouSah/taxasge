@@ -8,6 +8,7 @@ and character counting for SMS segmentation.
 from enum import Enum
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+from uuid import UUID
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -139,8 +140,8 @@ class SmsTemplateResponse(BaseModel):
 
     created_at: datetime
     updated_at: Optional[datetime]
-    created_by: Optional[int]
-    updated_by: Optional[int]
+    created_by: Optional[UUID] = None
+    updated_by: Optional[UUID] = None
 
     # Computed fields for SMS segmentation
     content_es_length: Optional[int] = None
