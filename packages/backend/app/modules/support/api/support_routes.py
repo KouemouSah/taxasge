@@ -34,7 +34,7 @@ from loguru import logger
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.users.models.user import UserResponse
-from app.modules.permissions.middleware.permission_middleware import require_permission
+from app.modules.permissions.middleware.permission_middleware import permission_required
 from ..models.support import (
     SupportCategoryCreate,
     SupportCategoryUpdate,
@@ -97,7 +97,7 @@ async def create_category(
     category_data: SupportCategoryCreate,
     db: asyncpg.Connection = Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(require_permission("support.manage")),
+    _: None = Depends(permission_required("support.manage")),
 ):
     """
     Create a new support category
@@ -128,7 +128,7 @@ async def update_category(
     category_data: SupportCategoryUpdate,
     db: asyncpg.Connection = Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(require_permission("support.manage")),
+    _: None = Depends(permission_required("support.manage")),
 ):
     """
     Update a support category
@@ -156,7 +156,7 @@ async def delete_category(
     category_id: int,
     db: asyncpg.Connection = Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(require_permission("support.manage")),
+    _: None = Depends(permission_required("support.manage")),
 ):
     """
     Delete a support category
@@ -194,7 +194,7 @@ async def list_all_tickets(
     search: Optional[str] = Query(None, description="Search in ticket number, subject, description"),
     db: asyncpg.Connection = Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(require_permission("support.view_all")),
+    _: None = Depends(permission_required("support.view_all")),
 ):
     """
     List all support tickets (admin view)
@@ -488,7 +488,7 @@ async def add_message(
 async def get_stats(
     db: asyncpg.Connection = Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(require_permission("support.view_all")),
+    _: None = Depends(permission_required("support.view_all")),
 ):
     """
     Get support statistics
