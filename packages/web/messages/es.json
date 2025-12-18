@@ -1264,7 +1264,119 @@
     },
     "version": "Panel Admin v1.0",
     "view": "Ver",
-    "viewDetails": "Ver detalles"
+    "viewDetails": "Ver detalles",
+    "communications": {
+      "email": {
+        "title": "Plantillas de Email",
+        "description": "Gestionar plantillas de correo electrónico para notificaciones",
+        "createButton": "Crear Plantilla",
+        "selectCategory": "Seleccionar categoría",
+        "selectStatus": "Seleccionar estado",
+        "templatesCount": "Plantillas",
+        "templatesDescription": "Gestionar y previsualizar plantillas de email",
+        "noTemplates": "No se encontraron plantillas",
+        "code": "Código",
+        "name": "Nombre",
+        "subject": "Asunto",
+        "category": "Categoría",
+        "variables": "Variables",
+        "page": "Página",
+        "of": "de",
+        "createTitle": "Crear Plantilla de Email",
+        "createDescription": "Crear una nueva plantilla de email",
+        "nameEs": "Nombre (Español)",
+        "subjectEs": "Asunto (Español)",
+        "htmlContent": "Contenido HTML",
+        "addVariable": "Agregar",
+        "variableName": "Nombre",
+        "variableExample": "Ejemplo",
+        "variableDescription": "Descripción",
+        "required": "Requerido",
+        "editTitle": "Editar Plantilla de Email",
+        "editDescription": "Actualizar detalles de la plantilla",
+        "htmlPlaceholder": "Dejar vacío para mantener el HTML actual",
+        "deleteTitle": "Eliminar Plantilla de Email",
+        "deleteConfirmation": "¿Está seguro de eliminar esta plantilla?",
+        "previewTitle": "Vista Previa de Email",
+        "createSuccess": "Plantilla de email creada exitosamente",
+        "updateSuccess": "Plantilla de email actualizada exitosamente",
+        "deleteSuccess": "Plantilla de email eliminada exitosamente"
+      },
+      "sms": {
+        "title": "Plantillas SMS",
+        "description": "Gestionar plantillas de mensajes SMS"
+      },
+      "push": {
+        "title": "Plantillas Push",
+        "description": "Gestionar plantillas de notificaciones push"
+      },
+      "notification": {
+        "title": "Plantillas de Notificación",
+        "description": "Gestionar plantillas de notificaciones in-app"
+      },
+      "ussd": {
+        "title": "Configuraciones USSD",
+        "description": "Gestionar configuraciones de menús USSD"
+      },
+      "webhooks": {
+        "title": "Webhooks",
+        "description": "Gestionar configuraciones de webhooks"
+      }
+    },
+    "emailTemplates": {
+      "title": "Plantillas de Email",
+      "description": "Gestionar plantillas de correo electrónico",
+      "create": "Crear Plantilla",
+      "edit": "Editar Plantilla",
+      "form": {
+        "code": "Código de Plantilla",
+        "codePlaceholder": "ej: PASSWORD_RESET",
+        "nameEs": "Nombre (Español)",
+        "nameFr": "Nombre (Francés)",
+        "nameEn": "Nombre (Inglés)",
+        "subjectEs": "Asunto (Español)",
+        "subjectFr": "Asunto (Francés)",
+        "subjectEn": "Asunto (Inglés)",
+        "category": "Categoría",
+        "htmlContent": "Contenido HTML",
+        "variables": "Variables",
+        "active": "Activo"
+      },
+      "categories": {
+        "auth": "Autenticación",
+        "notifications": "Notificaciones",
+        "declarations": "Declaraciones",
+        "payments": "Pagos"
+      }
+    },
+    "pushTemplates": {
+      "title": "Plantillas Push",
+      "description": "Gestionar plantillas de notificaciones push",
+      "create": "Crear Plantilla",
+      "edit": "Editar Plantilla",
+      "form": {
+        "code": "Código de Plantilla",
+        "codePlaceholder": "ej: PAYMENT_RECEIVED",
+        "nameEs": "Nombre (Español)",
+        "nameFr": "Nombre (Francés)",
+        "nameEn": "Nombre (Inglés)",
+        "titleEs": "Título (Español)",
+        "titleFr": "Título (Francés)",
+        "titleEn": "Título (Inglés)",
+        "bodyEs": "Cuerpo (Español)",
+        "bodyFr": "Cuerpo (Francés)",
+        "bodyEn": "Cuerpo (Inglés)",
+        "platform": "Plataforma",
+        "ttl": "TTL (segundos)",
+        "active": "Activo"
+      },
+      "platforms": {
+        "all": "Todas",
+        "ios": "iOS",
+        "android": "Android",
+        "web": "Web"
+      }
+    }
   },
   "auth": {
     "accountCreated": "¡Cuenta creada!",
@@ -2388,5 +2500,23 @@
     "ticketClosedMessage": "El ticket ha sido cerrado exitosamente",
     "errorLoadingCategories": "Error al cargar categorías",
     "retry": "Reintentar"
+  },
+  "communications": {
+    "smsTemplates": {
+      "title": "Plantillas SMS",
+      "description": "Gestionar plantillas de mensajes SMS",
+      "create": "Crear Plantilla",
+      "edit": "Editar Plantilla",
+      "form": {
+        "code": "Código de Plantilla",
+        "nameEs": "Nombre (Español)",
+        "contentEs": "Contenido (Español)",
+        "contentFr": "Contenido (Francés)",
+        "contentEn": "Contenido (Inglés)",
+        "category": "Categoría",
+        "maxSegments": "Segmentos Máximos",
+        "active": "Activo"
+      }
+    }
   }
 }

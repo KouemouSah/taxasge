@@ -1264,7 +1264,83 @@
     },
     "version": "Admin Panel v1.0",
     "view": "View",
-    "viewDetails": "View details"
+    "viewDetails": "View details",
+    "communications": {
+      "email": {
+        "title": "Email Templates",
+        "description": "Manage email templates for notifications",
+        "createButton": "Create Template",
+        "selectCategory": "Select category",
+        "selectStatus": "Select status",
+        "templatesCount": "Templates",
+        "templatesDescription": "Manage and preview email templates",
+        "noTemplates": "No templates found",
+        "code": "Code",
+        "name": "Name",
+        "subject": "Subject",
+        "category": "Category",
+        "variables": "Variables",
+        "page": "Page",
+        "of": "of",
+        "createTitle": "Create Email Template",
+        "createDescription": "Create a new email template",
+        "nameEs": "Name (Spanish)",
+        "subjectEs": "Subject (Spanish)",
+        "htmlContent": "HTML Content",
+        "addVariable": "Add",
+        "variableName": "Name",
+        "variableExample": "Example",
+        "variableDescription": "Description",
+        "required": "Required",
+        "editTitle": "Edit Email Template",
+        "editDescription": "Update template details",
+        "htmlPlaceholder": "Leave empty to keep current HTML",
+        "deleteTitle": "Delete Email Template",
+        "deleteConfirmation": "Are you sure you want to delete this template?",
+        "previewTitle": "Email Preview",
+        "createSuccess": "Email template created successfully",
+        "updateSuccess": "Email template updated successfully",
+        "deleteSuccess": "Email template deleted successfully"
+      },
+      "sms": {
+        "title": "SMS Templates",
+        "description": "Manage SMS message templates"
+      },
+      "push": {
+        "title": "Push Templates",
+        "description": "Manage push notification templates"
+      },
+      "notification": {
+        "title": "Notification Templates",
+        "description": "Manage in-app notification templates"
+      },
+      "ussd": {
+        "title": "USSD Configurations",
+        "description": "Manage USSD menu configurations"
+      },
+      "webhooks": {
+        "title": "Webhooks",
+        "description": "Manage webhook configurations"
+      }
+    },
+    "emailTemplates": {
+      "title": "Email Templates",
+      "description": "Manage email templates",
+      "create": "Create Template",
+      "edit": "Edit Template"
+    },
+    "pushTemplates": {
+      "title": "Push Templates",
+      "description": "Manage push notification templates",
+      "create": "Create Template",
+      "edit": "Edit Template",
+      "platforms": {
+        "all": "All",
+        "ios": "iOS",
+        "android": "Android",
+        "web": "Web"
+      }
+    }
   },
   "auth": {
     "accountCreated": "Account created!",
@@ -2376,7 +2452,6 @@
     "tableName": "Name",
     "tableTargetRole": "Target Role",
     "tableSortOrder": "Order",
-    "tableStatus": "Status",
     "active": "Active",
     "inactive": "Inactive",
     "codeAndNameRequired": "Code and Spanish name are required",
@@ -2386,5 +2461,13 @@
     "descriptionEsPlaceholder": "Category description in Spanish",
     "errorLoadingCategories": "Error loading categories",
     "retry": "Retry"
+  },
+  "communications": {
+    "smsTemplates": {
+      "title": "SMS Templates",
+      "description": "Manage SMS message templates",
+      "create": "Create Template",
+      "edit": "Edit Template"
+    }
   }
 }

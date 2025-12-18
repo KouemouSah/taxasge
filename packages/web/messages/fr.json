@@ -1264,7 +1264,83 @@
     },
     "version": "Panneau Admin v1.0",
     "view": "Voir",
-    "viewDetails": "Voir détails"
+    "viewDetails": "Voir détails",
+    "communications": {
+      "email": {
+        "title": "Modèles d'Email",
+        "description": "Gérer les modèles de courrier électronique pour les notifications",
+        "createButton": "Créer un Modèle",
+        "selectCategory": "Sélectionner une catégorie",
+        "selectStatus": "Sélectionner un statut",
+        "templatesCount": "Modèles",
+        "templatesDescription": "Gérer et prévisualiser les modèles d'email",
+        "noTemplates": "Aucun modèle trouvé",
+        "code": "Code",
+        "name": "Nom",
+        "subject": "Sujet",
+        "category": "Catégorie",
+        "variables": "Variables",
+        "page": "Page",
+        "of": "de",
+        "createTitle": "Créer un Modèle d'Email",
+        "createDescription": "Créer un nouveau modèle d'email",
+        "nameEs": "Nom (Espagnol)",
+        "subjectEs": "Sujet (Espagnol)",
+        "htmlContent": "Contenu HTML",
+        "addVariable": "Ajouter",
+        "variableName": "Nom",
+        "variableExample": "Exemple",
+        "variableDescription": "Description",
+        "required": "Requis",
+        "editTitle": "Modifier le Modèle d'Email",
+        "editDescription": "Mettre à jour les détails du modèle",
+        "htmlPlaceholder": "Laisser vide pour conserver le HTML actuel",
+        "deleteTitle": "Supprimer le Modèle d'Email",
+        "deleteConfirmation": "Êtes-vous sûr de vouloir supprimer ce modèle?",
+        "previewTitle": "Aperçu de l'Email",
+        "createSuccess": "Modèle d'email créé avec succès",
+        "updateSuccess": "Modèle d'email mis à jour avec succès",
+        "deleteSuccess": "Modèle d'email supprimé avec succès"
+      },
+      "sms": {
+        "title": "Modèles SMS",
+        "description": "Gérer les modèles de messages SMS"
+      },
+      "push": {
+        "title": "Modèles Push",
+        "description": "Gérer les modèles de notifications push"
+      },
+      "notification": {
+        "title": "Modèles de Notification",
+        "description": "Gérer les modèles de notifications in-app"
+      },
+      "ussd": {
+        "title": "Configurations USSD",
+        "description": "Gérer les configurations des menus USSD"
+      },
+      "webhooks": {
+        "title": "Webhooks",
+        "description": "Gérer les configurations de webhooks"
+      }
+    },
+    "emailTemplates": {
+      "title": "Modèles d'Email",
+      "description": "Gérer les modèles de courrier électronique",
+      "create": "Créer un Modèle",
+      "edit": "Modifier le Modèle"
+    },
+    "pushTemplates": {
+      "title": "Modèles Push",
+      "description": "Gérer les modèles de notifications push",
+      "create": "Créer un Modèle",
+      "edit": "Modifier le Modèle",
+      "platforms": {
+        "all": "Toutes",
+        "ios": "iOS",
+        "android": "Android",
+        "web": "Web"
+      }
+    }
   },
   "auth": {
     "accountCreated": "Compte créé !",
@@ -2376,7 +2452,6 @@
     "tableName": "Nom",
     "tableTargetRole": "Rôle Cible",
     "tableSortOrder": "Ordre",
-    "tableStatus": "Statut",
     "active": "Actif",
     "inactive": "Inactif",
     "codeAndNameRequired": "Le code et le nom en espagnol sont obligatoires",
@@ -2386,5 +2461,13 @@
     "descriptionEsPlaceholder": "Description de la catégorie en espagnol",
     "errorLoadingCategories": "Erreur lors du chargement des catégories",
     "retry": "Réessayer"
+  },
+  "communications": {
+    "smsTemplates": {
+      "title": "Modèles SMS",
+      "description": "Gérer les modèles de messages SMS",
+      "create": "Créer un Modèle",
+      "edit": "Modifier le Modèle"
+    }
   }
 }
