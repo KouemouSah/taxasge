@@ -18,6 +18,7 @@ from ..services.webhook_service import WebhookService
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.permissions.middleware.permission_middleware import permission_required
+from app.modules.users.models.user import UserResponse
 
 router = APIRouter(prefix="/communications/webhooks", tags=["Communications - Webhooks"])
 service = WebhookService()
@@ -32,7 +33,7 @@ service = WebhookService()
 async def create_webhook(
     webhook_data: WebhookCreate,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("manage:communications"))
 ):
     """
@@ -75,7 +76,7 @@ async def create_webhook(
     }
     ```
     """
-    user_id = current_user.get("sub")
+    user_id = current_user.id
     return await service.create_webhook(db, webhook_data, user_id)
 
 

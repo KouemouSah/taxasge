@@ -4,7 +4,7 @@ Notification Templates API Routes
 Endpoints for managing notification templates (admin only)
 """
 
-from typing import Optional, Dict, Any
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 import asyncpg
 from loguru import logger
@@ -22,6 +22,7 @@ from app.modules.communications.services.notification_template_service import (
     NotificationTemplateService,
 )
 from app.modules.auth.middleware.auth_middleware import get_current_user
+from app.modules.users.models.user import UserResponse
 
 
 router = APIRouter(prefix="/communications/notification-templates", tags=["Notification Templates"])
@@ -42,7 +43,7 @@ service = NotificationTemplateService()
 async def create_notification_template(
     template_data: NotificationTemplateCreate,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user)
 ):
     """
     Create a new notification template
@@ -58,7 +59,7 @@ async def create_notification_template(
     - **priority**: Priority level (low, normal, high, urgent)
     """
     try:
-        user_id = current_user.get("sub")
+        user_id = current_user.id
         if not user_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -91,7 +92,7 @@ async def create_notification_template(
 async def get_notification_template(
     template_id: int,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user)
 ):
     """
     Get notification template by ID
@@ -118,7 +119,7 @@ async def get_notification_template(
 async def get_notification_template_by_code(
     template_code: str,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user)
 ):
     """
     Get notification template by template code
@@ -149,7 +150,7 @@ async def list_notification_templates(
     notification_type: Optional[str] = Query(None, description="Filter by notification type"),
     search: Optional[str] = Query(None, description="Search in template code and names"),
     db: asyncpg.Connection = Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user)
 ):
     """
     List notification templates with pagination and filters
@@ -196,7 +197,7 @@ async def update_notification_template(
     template_id: int,
     template_data: NotificationTemplateUpdate,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user)
 ):
     """
     Update notification template
@@ -224,7 +225,7 @@ async def update_notification_template(
 async def delete_notification_template(
     template_id: int,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user)
 ):
     """
     Delete notification template
@@ -252,7 +253,7 @@ async def delete_notification_template(
 async def preview_notification(
     preview_request: NotificationPreviewRequest,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user)
 ):
     """
     Preview notification with variable substitution
@@ -279,7 +280,7 @@ async def preview_notification(
 )
 async def get_active_templates(
     db: asyncpg.Connection = Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user)
 ):
     """
     Get all active notification templates

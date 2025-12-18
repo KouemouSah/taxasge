@@ -14,12 +14,13 @@ Endpoints:
 Module: Communications
 """
 
-from typing import Optional, Dict, Any
+from typing import Optional, Dict
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from loguru import logger
 
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
+from app.modules.users.models.user import UserResponse
 
 from ..models.push_template import (
     PushTemplateCreate,
@@ -43,7 +44,7 @@ router = APIRouter(prefix="/communications/push-templates", tags=["Communication
 async def create_push_template(
     template_data: PushTemplateCreate,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user)
 ):
     """
     Create new push notification template
@@ -64,7 +65,7 @@ async def create_push_template(
     service = PushTemplateService()
 
     try:
-        user_id = current_user.get("sub")
+        user_id = current_user.id
         template = await service.create_template(db, template_data, user_id)
 
         logger.info(
@@ -94,7 +95,7 @@ async def list_push_templates(
     platform: Optional[PlatformEnum] = Query(None, description="Filter by platform"),
     search: Optional[str] = Query(None, description="Search in template code and names"),
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user)
 ):
     """
     List push notification templates with pagination and filters
@@ -136,7 +137,7 @@ async def list_push_templates(
 @router.get("/stats")
 async def get_push_template_stats(
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user)
 ):
     """
     Get push template statistics
@@ -164,7 +165,7 @@ async def get_push_template_stats(
 async def get_push_template_by_code(
     template_code: str,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user)
 ):
     """
     Get push template by code
@@ -200,7 +201,7 @@ async def get_push_template_by_code(
 async def get_push_template(
     template_id: int,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user)
 ):
     """
     Get push template by ID
@@ -237,7 +238,7 @@ async def update_push_template(
     template_id: int,
     template_data: PushTemplateUpdate,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user)
 ):
     """
     Update push notification template
@@ -283,7 +284,7 @@ async def update_push_template(
 async def delete_push_template(
     template_id: int,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user)
 ):
     """
     Delete push notification template
@@ -322,7 +323,7 @@ async def preview_push_template(
     language: str = Query("es", pattern="^(es|fr|en)$", description="Language code"),
     variables: Optional[Dict[str, str]] = None,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user)
 ):
     """
     Preview push notification with sample data

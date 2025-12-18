@@ -19,6 +19,7 @@ from loguru import logger
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.permissions.middleware.permission_middleware import permission_required
+from app.modules.users.models.user import UserResponse
 from ..models.email_template import (
     EmailTemplateCreate,
     EmailTemplateUpdate,
@@ -44,7 +45,7 @@ async def list_email_templates(
     category: Optional[str] = Query(None, description="Filter by category"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     db: asyncpg.Connection = Depends(get_database),
-    current_user: dict = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
     """
     List all email templates with pagination and filters
@@ -75,7 +76,7 @@ async def search_email_templates(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=100, description="Page size"),
     db: asyncpg.Connection = Depends(get_database),
-    current_user: dict = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
     """
     Search email templates by name or code
@@ -103,7 +104,7 @@ async def search_email_templates(
 async def get_email_template(
     template_id: int,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: dict = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
     """
     Get a single email template by ID
@@ -125,7 +126,7 @@ async def get_email_template(
 async def get_email_template_preview(
     template_id: int,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: dict = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
     """
     Get HTML content preview for an email template
@@ -168,7 +169,7 @@ async def get_email_template_preview(
 async def create_email_template(
     template_data: EmailTemplateCreate,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: dict = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("communications.manage")),
 ):
     """
@@ -184,7 +185,7 @@ async def create_email_template(
     - **category**: Optional category
     """
     try:
-        template = await service.create_template(db, template_data, current_user["id"])
+        template = await service.create_template(db, template_data, current_user.id)
         logger.info(
             f"Email template created: {template.template_code} by user {current_user['id']}"
         )
@@ -204,7 +205,7 @@ async def update_email_template(
     template_id: int,
     template_data: EmailTemplateUpdate,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: dict = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("communications.manage")),
 ):
     """
@@ -218,7 +219,7 @@ async def update_email_template(
     """
     try:
         template = await service.update_template(
-            db, template_id, template_data, current_user["id"]
+            db, template_id, template_data, current_user.id
         )
 
         if not template:
@@ -245,7 +246,7 @@ async def update_email_template(
 async def delete_email_template(
     template_id: int,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: dict = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("communications.manage")),
 ):
     """

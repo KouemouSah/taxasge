@@ -15,13 +15,14 @@ Endpoints:
 Module: Communications (SMS Templates Management)
 """
 
-from typing import Optional, Dict, Any
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 import asyncpg
 from loguru import logger
 
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
+from app.modules.users.models.user import UserResponse
 from ..models.sms_template import (
     SmsTemplateCreate,
     SmsTemplateUpdate,
@@ -50,7 +51,7 @@ async def list_sms_templates(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     db: asyncpg.Connection = Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
     """
     List SMS templates with pagination and filters
@@ -95,7 +96,7 @@ async def list_sms_templates(
 async def get_sms_template(
     template_id: int,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
     """
     Get SMS template by ID
@@ -127,7 +128,7 @@ async def get_sms_template(
 async def get_sms_template_by_code(
     template_code: str,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
     """
     Get SMS template by unique code
@@ -159,7 +160,7 @@ async def get_sms_template_by_code(
 async def create_sms_template(
     template_data: SmsTemplateCreate,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
     """
     Create a new SMS template
@@ -181,7 +182,7 @@ async def create_sms_template(
     service = SmsTemplateService()
 
     try:
-        user_id = current_user.get("sub")
+        user_id = current_user.id
 
         template = await service.create_template(db, template_data, created_by=user_id)
 
@@ -208,7 +209,7 @@ async def update_sms_template(
     template_id: int,
     template_data: SmsTemplateUpdate,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
     """
     Update an SMS template
@@ -228,7 +229,7 @@ async def update_sms_template(
     service = SmsTemplateService()
 
     try:
-        user_id = current_user.get("sub")
+        user_id = current_user.id
 
         template = await service.update_template(
             db,
@@ -258,7 +259,7 @@ async def update_sms_template(
 async def delete_sms_template(
     template_id: int,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
     """
     Delete an SMS template
@@ -293,7 +294,7 @@ async def delete_sms_template(
 @router.get("/categories/list")
 async def get_sms_template_categories(
     db: asyncpg.Connection = Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
     """
     Get list of template categories with counts
@@ -338,7 +339,7 @@ async def get_sms_template_categories(
 async def render_sms_template(
     request: SmsTemplateRenderRequest,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
     """
     Render SMS template with variable substitution
@@ -375,7 +376,7 @@ async def render_sms_template(
 @router.post("/calculate-chars", response_model=SmsCharacterCount)
 async def calculate_character_count(
     content: str = Query(..., description="SMS content to analyze"),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
     """
     Calculate character count and SMS segmentation for content

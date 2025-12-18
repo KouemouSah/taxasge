@@ -23,6 +23,7 @@ import asyncpg
 
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
+from app.modules.users.models.user import UserResponse
 
 from ..models.ussd import (
     UssdConfigCreate,
@@ -66,7 +67,7 @@ class DeleteResponse(BaseModel):
 async def create_ussd_config(
     config_data: UssdConfigCreate,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user)
 ):
     """
     Create new USSD configuration
@@ -94,7 +95,7 @@ async def create_ussd_config(
     service = UssdService()
 
     # Get user ID from token
-    user_id = current_user.get("sub")
+    user_id = current_user.id
     if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -125,7 +126,7 @@ async def list_ussd_configs(
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     db: asyncpg.Connection = Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user)
 ):
     """
     List USSD configurations
@@ -164,7 +165,7 @@ async def list_ussd_configs(
 async def get_ussd_config(
     config_id: int,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user)
 ):
     """
     Get USSD configuration by ID
@@ -204,7 +205,7 @@ async def get_ussd_config(
 async def get_ussd_config_by_operator(
     operator: UssdOperator,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user)
 ):
     """
     Get USSD configuration by operator
@@ -245,7 +246,7 @@ async def update_ussd_config(
     config_id: int,
     config_data: UssdConfigUpdate,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user)
 ):
     """
     Update USSD configuration
@@ -290,7 +291,7 @@ async def update_ussd_config(
 async def delete_ussd_config(
     config_id: int,
     db: asyncpg.Connection = Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user)
 ):
     """
     Delete USSD configuration
@@ -339,7 +340,7 @@ async def delete_ussd_config(
 @router.post("/validate", response_model=MenuValidationResult)
 async def validate_menu_structure(
     request: ValidateMenuRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user)
 ):
     """
     Validate USSD menu structure
