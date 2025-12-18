@@ -273,7 +273,7 @@ async def update_ussd_config(
     try:
         config = await service.update_config(db, config_id, config_data)
         logger.info(
-            f"User {current_user.get('sub')} updated USSD config {config_id}"
+            f"User {current_user.id} updated USSD config {config_id}"
         )
         return config
 
@@ -316,7 +316,7 @@ async def delete_ussd_config(
     try:
         await service.delete_config(db, config_id)
         logger.info(
-            f"User {current_user.get('sub')} deleted USSD config {config_id}"
+            f"User {current_user.id} deleted USSD config {config_id}"
         )
         return DeleteResponse(
             message="USSD configuration deleted successfully",

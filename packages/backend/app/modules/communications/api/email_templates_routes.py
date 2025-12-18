@@ -187,7 +187,7 @@ async def create_email_template(
     try:
         template = await service.create_template(db, template_data, current_user.id)
         logger.info(
-            f"Email template created: {template.template_code} by user {current_user['id']}"
+            f"Email template created: {template.template_code} by user {current_user.id}"
         )
         return template
     except HTTPException:
@@ -229,7 +229,7 @@ async def update_email_template(
             )
 
         logger.info(
-            f"Email template updated: ID {template_id} by user {current_user['id']}"
+            f"Email template updated: ID {template_id} by user {current_user.id}"
         )
         return template
     except HTTPException:
@@ -267,7 +267,7 @@ async def delete_email_template(
             )
 
         logger.info(
-            f"Email template deleted: ID {template_id} by user {current_user['id']}"
+            f"Email template deleted: ID {template_id} by user {current_user.id}"
         )
     except HTTPException:
         raise

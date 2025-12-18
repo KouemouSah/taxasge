@@ -262,7 +262,7 @@ async def update_push_template(
         template = await service.update_template(db, template_id, template_data)
 
         logger.info(
-            f"Push template updated by user {current_user.get('sub')}",
+            f"Push template updated by user {current_user.id}",
             template_id=template_id,
             template_code=template.template_code
         )
@@ -303,7 +303,7 @@ async def delete_push_template(
         await service.delete_template(db, template_id)
 
         logger.info(
-            f"Push template deleted by user {current_user.get('sub')}",
+            f"Push template deleted by user {current_user.id}",
             template_id=template_id
         )
 

@@ -81,7 +81,7 @@ async def list_sms_templates(
         )
 
         logger.info(
-            f"User {current_user.get('sub')} listed SMS templates "
+            f"User {current_user.id} listed SMS templates "
             f"(page {page}, {len(result.templates)} results)"
         )
 
@@ -119,7 +119,7 @@ async def get_sms_template(
             detail=f"SMS template not found: {template_id}"
         )
 
-    logger.info(f"User {current_user.get('sub')} retrieved SMS template {template_id}")
+    logger.info(f"User {current_user.id} retrieved SMS template {template_id}")
 
     return template
 
@@ -151,7 +151,7 @@ async def get_sms_template_by_code(
             detail=f"SMS template not found: {template_code}"
         )
 
-    logger.info(f"User {current_user.get('sub')} retrieved SMS template {template_code}")
+    logger.info(f"User {current_user.id} retrieved SMS template {template_code}")
 
     return template
 
@@ -282,7 +282,7 @@ async def delete_sms_template(
             detail=f"SMS template not found: {template_id}"
         )
 
-    logger.info(f"User {current_user.get('sub')} deleted SMS template: {template_id}")
+    logger.info(f"User {current_user.id} deleted SMS template: {template_id}")
 
     return None
 
@@ -360,7 +360,7 @@ async def render_sms_template(
         result = await service.render_template(db, request)
 
         logger.info(
-            f"User {current_user.get('sub')} rendered template "
+            f"User {current_user.id} rendered template "
             f"{request.template_code} ({request.language})"
         )
 
