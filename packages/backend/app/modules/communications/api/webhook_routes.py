@@ -25,7 +25,7 @@ service = WebhookService()
 
 
 @router.post(
-    "/",
+    "",
     response_model=WebhookResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create webhook configuration"
@@ -81,7 +81,7 @@ async def create_webhook(
 
 
 @router.get(
-    "/",
+    "",
     response_model=WebhookListResponse,
     summary="List webhook configurations"
 )

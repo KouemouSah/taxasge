@@ -40,7 +40,7 @@ router = APIRouter(prefix="/communications/push-templates", tags=["Communication
 # ENDPOINTS
 # ============================================================================
 
-@router.post("/", response_model=PushTemplateResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=PushTemplateResponse, status_code=status.HTTP_201_CREATED)
 async def create_push_template(
     template_data: PushTemplateCreate,
     db=Depends(get_database),
@@ -87,7 +87,7 @@ async def create_push_template(
         )
 
 
-@router.get("/", response_model=PushTemplateListResponse)
+@router.get("", response_model=PushTemplateListResponse)
 async def list_push_templates(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),

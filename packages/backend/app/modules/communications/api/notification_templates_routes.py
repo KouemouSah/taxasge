@@ -34,7 +34,7 @@ service = NotificationTemplateService()
 # ============================================================================
 
 @router.post(
-    "/",
+    "",
     response_model=NotificationTemplateResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create notification template",
@@ -138,7 +138,7 @@ async def get_notification_template_by_code(
 # ============================================================================
 
 @router.get(
-    "/",
+    "",
     response_model=NotificationTemplateListResponse,
     summary="List notification templates",
     description="List all notification templates with pagination and filters"

@@ -38,7 +38,7 @@ service = EmailTemplateService()
 # =============================================================================
 
 
-@router.get("/", response_model=EmailTemplateListResponse)
+@router.get("", response_model=EmailTemplateListResponse)
 async def list_email_templates(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=100, description="Page size"),
@@ -162,7 +162,7 @@ async def get_email_template_preview(
 
 
 @router.post(
-    "/",
+    "",
     response_model=EmailTemplateResponse,
     status_code=status.HTTP_201_CREATED,
 )
