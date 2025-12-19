@@ -828,6 +828,127 @@ export const ussdApi = {
 }
 
 // =============================================================================
+// PROVIDER SETTINGS API
+// =============================================================================
+
+import type {
+  ProviderSettingsCreate,
+  ProviderSettingsUpdate,
+  ProviderSettingsResponse,
+  ProviderSettingsListResponse,
+  ProviderSettingsListParams,
+  ProviderTestRequest,
+  ProviderTestResponse,
+  CommunicationProviderType,
+} from '@/modules/communications/types'
+
+const PROVIDERS_BASE = '/communications/providers'
+
+export const providerSettingsApi = {
+  /**
+   * GET /api/v1/communications/providers
+   * List all provider configurations
+   */
+  list: async (params?: ProviderSettingsListParams): Promise<ProviderSettingsListResponse> => {
+    const queryParams = new URLSearchParams()
+    if (params?.providerType) queryParams.append('provider_type', params.providerType)
+    if (params?.isActive !== undefined) queryParams.append('is_active', String(params.isActive))
+    if (params?.limit) queryParams.append('limit', String(params.limit))
+    if (params?.offset) queryParams.append('offset', String(params.offset))
+
+    const query = queryParams.toString()
+    const response = await client.get<ProviderSettingsListResponse>(
+      `${PROVIDERS_BASE}${query ? `?${query}` : ''}`
+    )
+    return transformKeys<ProviderSettingsListResponse>(response)
+  },
+
+  /**
+   * GET /api/v1/communications/providers/{provider_id}
+   * Get provider by ID
+   */
+  get: async (providerId: number): Promise<ProviderSettingsResponse> => {
+    const response = await client.get<ProviderSettingsResponse>(
+      `${PROVIDERS_BASE}/${providerId}`
+    )
+    return transformKeys<ProviderSettingsResponse>(response)
+  },
+
+  /**
+   * GET /api/v1/communications/providers/code/{provider_code}
+   * Get provider by code
+   */
+  getByCode: async (providerCode: string): Promise<ProviderSettingsResponse> => {
+    const response = await client.get<ProviderSettingsResponse>(
+      `${PROVIDERS_BASE}/code/${providerCode}`
+    )
+    return transformKeys<ProviderSettingsResponse>(response)
+  },
+
+  /**
+   * GET /api/v1/communications/providers/default/{provider_type}
+   * Get default provider for type
+   */
+  getDefault: async (providerType: CommunicationProviderType): Promise<ProviderSettingsResponse | null> => {
+    try {
+      const response = await client.get<ProviderSettingsResponse>(
+        `${PROVIDERS_BASE}/default/${providerType}`
+      )
+      return transformKeys<ProviderSettingsResponse>(response)
+    } catch {
+      return null
+    }
+  },
+
+  /**
+   * POST /api/v1/communications/providers
+   * Create new provider configuration
+   */
+  create: async (data: ProviderSettingsCreate): Promise<ProviderSettingsResponse> => {
+    const response = await client.post<ProviderSettingsResponse>(
+      PROVIDERS_BASE,
+      toSnakeCase(data)
+    )
+    return transformKeys<ProviderSettingsResponse>(response)
+  },
+
+  /**
+   * PUT /api/v1/communications/providers/{provider_id}
+   * Update provider configuration
+   */
+  update: async (
+    providerId: number,
+    data: ProviderSettingsUpdate
+  ): Promise<ProviderSettingsResponse> => {
+    const response = await client.put<ProviderSettingsResponse>(
+      `${PROVIDERS_BASE}/${providerId}`,
+      toSnakeCase(data)
+    )
+    return transformKeys<ProviderSettingsResponse>(response)
+  },
+
+  /**
+   * DELETE /api/v1/communications/providers/{provider_id}
+   * Delete provider configuration
+   */
+  delete: async (providerId: number): Promise<void> => {
+    await client.delete<void>(`${PROVIDERS_BASE}/${providerId}`)
+  },
+
+  /**
+   * POST /api/v1/communications/providers/test
+   * Test provider connection
+   */
+  test: async (request: ProviderTestRequest): Promise<ProviderTestResponse> => {
+    const response = await client.post<ProviderTestResponse>(
+      `${PROVIDERS_BASE}/test`,
+      toSnakeCase(request)
+    )
+    return transformKeys<ProviderTestResponse>(response)
+  },
+}
+
+// =============================================================================
 // EXPORTS
 // =============================================================================
 
@@ -837,4 +958,5 @@ export default {
   webhooks: webhooksApi,
   smsTemplates: smsTemplatesApi,
   ussd: ussdApi,
+  providers: providerSettingsApi,
 }
