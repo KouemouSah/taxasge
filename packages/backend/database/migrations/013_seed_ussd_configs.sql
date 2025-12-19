@@ -3,10 +3,26 @@
 -- Description: Create default USSD configurations for GETESA and MUNI operators
 
 -- =============================================================================
+-- First, ensure unique constraint exists on operator_code for ON CONFLICT to work
+-- =============================================================================
+
+-- Create unique constraint if not exists
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'ussd_configurations_operator_code_unique'
+    ) THEN
+        ALTER TABLE ussd_configurations
+        ADD CONSTRAINT ussd_configurations_operator_code_unique UNIQUE (operator_code);
+    END IF;
+END $$;
+
+-- =============================================================================
 -- GETESA Configuration
 -- =============================================================================
 
-INSERT INTO ussd_configs (
+INSERT INTO ussd_configurations (
     operator_name,
     operator_code,
     short_code,
@@ -26,40 +42,42 @@ INSERT INTO ussd_configs (
     '[
         {
             "id": "main",
-            "titleEs": "Bienvenido a TaxasGE",
-            "titleFr": "Bienvenue sur TaxasGE",
-            "titleEn": "Welcome to TaxasGE",
-            "isRoot": true,
+            "title_es": "Bienvenido a TaxasGE",
+            "title_fr": "Bienvenue sur TaxasGE",
+            "title_en": "Welcome to TaxasGE",
+            "is_root": true,
             "options": [
-                {"key": "1", "labelEs": "Consultar Saldo Fiscal", "labelFr": "Consulter Solde Fiscal", "labelEn": "Check Tax Balance", "action": "balance"},
-                {"key": "2", "labelEs": "Estado de Declaracion", "labelFr": "Statut Declaration", "labelEn": "Declaration Status", "action": "declaration_status"},
-                {"key": "3", "labelEs": "Pagar Impuesto", "labelFr": "Payer Impot", "labelEn": "Pay Tax", "nextMenu": "payment_menu"},
-                {"key": "4", "labelEs": "Buscar Servicio", "labelFr": "Rechercher Service", "labelEn": "Search Service", "action": "service_search"},
-                {"key": "5", "labelEs": "Soporte", "labelFr": "Support", "labelEn": "Support", "nextMenu": "support_menu"}
+                {"key": "1", "label_es": "Consultar Saldo Fiscal", "label_fr": "Consulter Solde Fiscal", "label_en": "Check Tax Balance", "action": "balance"},
+                {"key": "2", "label_es": "Estado de Declaracion", "label_fr": "Statut Declaration", "label_en": "Declaration Status", "action": "declaration_status"},
+                {"key": "3", "label_es": "Pagar Impuesto", "label_fr": "Payer Impot", "label_en": "Pay Tax", "next_menu": "payment_menu"},
+                {"key": "4", "label_es": "Buscar Servicio", "label_fr": "Rechercher Service", "label_en": "Search Service", "action": "service_search"},
+                {"key": "5", "label_es": "Soporte", "label_fr": "Support", "label_en": "Support", "next_menu": "support_menu"}
             ]
         },
         {
             "id": "payment_menu",
-            "titleEs": "Seleccione tipo de pago",
-            "titleFr": "Selectionnez le type de paiement",
-            "titleEn": "Select payment type",
-            "parentMenu": "main",
+            "title_es": "Seleccione tipo de pago",
+            "title_fr": "Selectionnez le type de paiement",
+            "title_en": "Select payment type",
+            "is_root": false,
+            "parent_menu": "main",
             "options": [
-                {"key": "1", "labelEs": "MTN Mobile Money", "labelFr": "MTN Mobile Money", "labelEn": "MTN Mobile Money", "action": "payment", "actionParams": {"method": "mtn_mobile_money"}},
-                {"key": "2", "labelEs": "BANGE", "labelFr": "BANGE", "labelEn": "BANGE", "action": "payment", "actionParams": {"method": "bange"}},
-                {"key": "0", "labelEs": "Volver", "labelFr": "Retour", "labelEn": "Back", "nextMenu": "main"}
+                {"key": "1", "label_es": "MTN Mobile Money", "label_fr": "MTN Mobile Money", "label_en": "MTN Mobile Money", "action": "payment", "action_params": {"method": "mtn_mobile_money"}},
+                {"key": "2", "label_es": "BANGE", "label_fr": "BANGE", "label_en": "BANGE", "action": "payment", "action_params": {"method": "bange"}},
+                {"key": "0", "label_es": "Volver", "label_fr": "Retour", "label_en": "Back", "next_menu": "main"}
             ]
         },
         {
             "id": "support_menu",
-            "titleEs": "Centro de Soporte",
-            "titleFr": "Centre de Support",
-            "titleEn": "Support Center",
-            "parentMenu": "main",
+            "title_es": "Centro de Soporte",
+            "title_fr": "Centre de Support",
+            "title_en": "Support Center",
+            "is_root": false,
+            "parent_menu": "main",
             "options": [
-                {"key": "1", "labelEs": "Llamar al Soporte", "labelFr": "Appeler le Support", "labelEn": "Call Support", "action": "support", "actionParams": {"type": "call", "number": "+240222123456"}},
-                {"key": "2", "labelEs": "Enviar SMS", "labelFr": "Envoyer SMS", "labelEn": "Send SMS", "action": "support", "actionParams": {"type": "sms"}},
-                {"key": "0", "labelEs": "Volver", "labelFr": "Retour", "labelEn": "Back", "nextMenu": "main"}
+                {"key": "1", "label_es": "Llamar al Soporte", "label_fr": "Appeler le Support", "label_en": "Call Support", "action": "support", "action_params": {"type": "call", "number": "+240222123456"}},
+                {"key": "2", "label_es": "Enviar SMS", "label_fr": "Envoyer SMS", "label_en": "Send SMS", "action": "support", "action_params": {"type": "sms"}},
+                {"key": "0", "label_es": "Volver", "label_fr": "Retour", "label_en": "Back", "next_menu": "main"}
             ]
         }
     ]'::jsonb,
@@ -75,7 +93,7 @@ INSERT INTO ussd_configs (
 -- MUNI Configuration
 -- =============================================================================
 
-INSERT INTO ussd_configs (
+INSERT INTO ussd_configurations (
     operator_name,
     operator_code,
     short_code,
@@ -95,29 +113,30 @@ INSERT INTO ussd_configs (
     '[
         {
             "id": "main",
-            "titleEs": "TaxasGE - Servicios Fiscales",
-            "titleFr": "TaxasGE - Services Fiscaux",
-            "titleEn": "TaxasGE - Tax Services",
-            "isRoot": true,
+            "title_es": "TaxasGE - Servicios Fiscales",
+            "title_fr": "TaxasGE - Services Fiscaux",
+            "title_en": "TaxasGE - Tax Services",
+            "is_root": true,
             "options": [
-                {"key": "1", "labelEs": "Mi Saldo", "labelFr": "Mon Solde", "labelEn": "My Balance", "action": "balance"},
-                {"key": "2", "labelEs": "Mis Declaraciones", "labelFr": "Mes Declarations", "labelEn": "My Declarations", "nextMenu": "declarations_menu"},
-                {"key": "3", "labelEs": "Realizar Pago", "labelFr": "Effectuer Paiement", "labelEn": "Make Payment", "action": "payment"},
-                {"key": "4", "labelEs": "Servicios Disponibles", "labelFr": "Services Disponibles", "labelEn": "Available Services", "action": "service_search"},
-                {"key": "5", "labelEs": "Ayuda", "labelFr": "Aide", "labelEn": "Help", "action": "support"}
+                {"key": "1", "label_es": "Mi Saldo", "label_fr": "Mon Solde", "label_en": "My Balance", "action": "balance"},
+                {"key": "2", "label_es": "Mis Declaraciones", "label_fr": "Mes Declarations", "label_en": "My Declarations", "next_menu": "declarations_menu"},
+                {"key": "3", "label_es": "Realizar Pago", "label_fr": "Effectuer Paiement", "label_en": "Make Payment", "action": "payment"},
+                {"key": "4", "label_es": "Servicios Disponibles", "label_fr": "Services Disponibles", "label_en": "Available Services", "action": "service_search"},
+                {"key": "5", "label_es": "Ayuda", "label_fr": "Aide", "label_en": "Help", "action": "support"}
             ]
         },
         {
             "id": "declarations_menu",
-            "titleEs": "Mis Declaraciones",
-            "titleFr": "Mes Declarations",
-            "titleEn": "My Declarations",
-            "parentMenu": "main",
+            "title_es": "Mis Declaraciones",
+            "title_fr": "Mes Declarations",
+            "title_en": "My Declarations",
+            "is_root": false,
+            "parent_menu": "main",
             "options": [
-                {"key": "1", "labelEs": "Declaraciones Pendientes", "labelFr": "Declarations en Attente", "labelEn": "Pending Declarations", "action": "declaration_status", "actionParams": {"filter": "pending"}},
-                {"key": "2", "labelEs": "Declaraciones Aprobadas", "labelFr": "Declarations Approuvees", "labelEn": "Approved Declarations", "action": "declaration_status", "actionParams": {"filter": "approved"}},
-                {"key": "3", "labelEs": "Todas las Declaraciones", "labelFr": "Toutes les Declarations", "labelEn": "All Declarations", "action": "declaration_status", "actionParams": {"filter": "all"}},
-                {"key": "0", "labelEs": "Volver", "labelFr": "Retour", "labelEn": "Back", "nextMenu": "main"}
+                {"key": "1", "label_es": "Declaraciones Pendientes", "label_fr": "Declarations en Attente", "label_en": "Pending Declarations", "action": "declaration_status", "action_params": {"filter": "pending"}},
+                {"key": "2", "label_es": "Declaraciones Aprobadas", "label_fr": "Declarations Approuvees", "label_en": "Approved Declarations", "action": "declaration_status", "action_params": {"filter": "approved"}},
+                {"key": "3", "label_es": "Todas las Declaraciones", "label_fr": "Toutes les Declarations", "label_en": "All Declarations", "action": "declaration_status", "action_params": {"filter": "all"}},
+                {"key": "0", "label_es": "Volver", "label_fr": "Retour", "label_en": "Back", "next_menu": "main"}
             ]
         }
     ]'::jsonb,
@@ -129,7 +148,6 @@ INSERT INTO ussd_configs (
     menu_structure = EXCLUDED.menu_structure,
     updated_at = NOW();
 
--- Create indexes for faster lookups
-CREATE INDEX IF NOT EXISTS idx_ussd_configs_operator_code ON ussd_configs(operator_code);
-CREATE INDEX IF NOT EXISTS idx_ussd_configs_is_active ON ussd_configs(is_active);
-CREATE INDEX IF NOT EXISTS idx_ussd_configs_short_code ON ussd_configs(short_code);
+-- Note: Indexes already exist on ussd_configurations table:
+-- - idx_ussd_configs_operator (on operator_code)
+-- - idx_ussd_configs_active (on is_active)
