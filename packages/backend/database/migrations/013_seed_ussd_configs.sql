@@ -3,6 +3,22 @@
 -- Description: Create default USSD configurations for GETESA and MUNI operators
 
 -- =============================================================================
+-- First, ensure unique constraint exists on operator_code for ON CONFLICT to work
+-- =============================================================================
+
+-- Create unique constraint if not exists
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'ussd_configurations_operator_code_unique'
+    ) THEN
+        ALTER TABLE ussd_configurations
+        ADD CONSTRAINT ussd_configurations_operator_code_unique UNIQUE (operator_code);
+    END IF;
+END $$;
+
+-- =============================================================================
 -- GETESA Configuration
 -- =============================================================================
 
