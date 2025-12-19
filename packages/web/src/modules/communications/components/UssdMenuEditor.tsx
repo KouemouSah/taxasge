@@ -6,7 +6,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { Plus, Trash2, Edit2, Save, X, ChevronRight, ChevronDown, Menu, Settings } from 'lucide-react'
+import { Plus, Trash2, Edit2, Save, ChevronRight, ChevronDown, Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
