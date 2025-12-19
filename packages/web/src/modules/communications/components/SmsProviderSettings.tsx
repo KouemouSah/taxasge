@@ -7,7 +7,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import {
   Plus,
   Edit,
@@ -17,8 +16,6 @@ import {
   Play,
   Loader2,
   MessageCircle,
-  ArrowLeft,
-  Shield,
   Info,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -295,7 +292,6 @@ const translations = {
 }
 
 export function SmsProviderSettings({ locale }: SmsProviderSettingsProps) {
-  const router = useRouter()
   const t = translations[locale as keyof typeof translations] || translations.es
 
   const [isActiveFilter, setIsActiveFilter] = useState<boolean | undefined>(undefined)
@@ -465,16 +461,10 @@ export function SmsProviderSettings({ locale }: SmsProviderSettingsProps) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Actions */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => router.back()}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">{t.title}</h1>
-            <p className="text-muted-foreground">{t.subtitle}</p>
-          </div>
+        <div>
+          <p className="text-muted-foreground">{t.subtitle}</p>
         </div>
         <Button onClick={() => setIsCreateDialogOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
@@ -666,21 +656,6 @@ export function SmsProviderSettings({ locale }: SmsProviderSettingsProps) {
             <DialogDescription>{t.createDialog.subtitle}</DialogDescription>
           </DialogHeader>
 
-          {/* Quick Infobip Setup Button */}
-          <Alert className="bg-blue-50 border-blue-200">
-            <Shield className="h-4 w-4 text-blue-600" />
-            <AlertTitle className="text-blue-800">Infobip</AlertTitle>
-            <AlertDescription className="text-blue-700">
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-2"
-                onClick={prefillInfobip}
-              >
-                Usar configuracion Infobip
-              </Button>
-            </AlertDescription>
-          </Alert>
 
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
