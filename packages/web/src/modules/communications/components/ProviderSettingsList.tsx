@@ -6,7 +6,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import {
   Plus,
   Edit,
@@ -99,8 +98,7 @@ const PROVIDER_TYPE_COLORS: Record<CommunicationProviderType, string> = {
   whatsapp: 'bg-green-100 text-green-800 border-green-200',
 }
 
-export function ProviderSettingsList({ locale }: ProviderSettingsListProps) {
-  const router = useRouter()
+export function ProviderSettingsList({ locale: _locale }: ProviderSettingsListProps) {
   const [typeFilter, setTypeFilter] = useState<CommunicationProviderType | 'all'>('all')
   const [isActiveFilter, setIsActiveFilter] = useState<boolean | undefined>(undefined)
   const [deleteId, setDeleteId] = useState<number | null>(null)
