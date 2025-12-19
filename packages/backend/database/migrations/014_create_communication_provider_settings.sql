@@ -49,9 +49,8 @@ CREATE TABLE IF NOT EXISTS communication_provider_settings (
     created_by UUID REFERENCES users(id),
     updated_by UUID REFERENCES users(id),
 
-    -- Ensure only one default per provider type
-    CONSTRAINT unique_default_per_type UNIQUE (provider_type, is_default)
-        DEFERRABLE INITIALLY DEFERRED
+    -- No constraint here, we use a partial unique index instead
+    CONSTRAINT check_timeout CHECK (timeout_seconds > 0 AND timeout_seconds <= 300)
 );
 
 -- =============================================================================
@@ -61,6 +60,10 @@ CREATE TABLE IF NOT EXISTS communication_provider_settings (
 CREATE INDEX IF NOT EXISTS idx_comm_provider_type ON communication_provider_settings(provider_type);
 CREATE INDEX IF NOT EXISTS idx_comm_provider_active ON communication_provider_settings(is_active);
 CREATE INDEX IF NOT EXISTS idx_comm_provider_default ON communication_provider_settings(is_default) WHERE is_default = true;
+
+-- Ensure only one default provider per type (partial unique index)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_comm_provider_unique_default_per_type
+    ON communication_provider_settings(provider_type) WHERE is_default = true;
 
 -- =============================================================================
 -- SEED: Infobip SMS Provider Configuration
