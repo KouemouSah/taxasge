@@ -6,7 +6,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { Plus, Edit, Trash2, Power, PowerOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -37,6 +38,9 @@ import type { UssdConfigResponse } from '@/modules/communications/types'
 
 export default function UssdConfigsPage() {
   const router = useRouter()
+  const params = useParams()
+  const locale = params.locale as string
+  const t = useTranslations('admin.ussd')
   const [deleteId, setDeleteId] = useState<number | null>(null)
   const { data, isLoading } = useUssdConfigs()
   const deleteMutation = useDeleteUssdConfig()
@@ -49,54 +53,50 @@ export default function UssdConfigsPage() {
   }
 
   const getOperatorName = (operator: string) => {
-    const names: Record<string, string> = {
-      getesa: 'Getesa',
-      muni: 'Muni',
-      other_api_sms: 'Other API SMS',
-    }
-    return names[operator] || operator
+    const operatorKey = operator as 'getesa' | 'muni' | 'other_api_sms'
+    return t(`operators.${operatorKey}`)
   }
 
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">USSD Configurations</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
           <p className="text-muted-foreground">
-            Manage USSD menu configurations for mobile operators
+            {t('description')}
           </p>
         </div>
-        <Button onClick={() => router.push('/dashboard/admin/communications/ussd/new')}>
+        <Button onClick={() => router.push(`/${locale}/dashboard/admin/communications/ussd/new`)}>
           <Plus className="mr-2 h-4 w-4" />
-          New Configuration
+          {t('newConfig')}
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>USSD Configurations</CardTitle>
+          <CardTitle>{t('cardTitle')}</CardTitle>
           <CardDescription>
-            {data?.total || 0} configuration(s) found
+            {t('configsCount', { count: data?.total || 0 })}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8">Loading...</div>
+            <div className="text-center py-8">{t('loading')}</div>
           ) : !data?.configs.length ? (
             <div className="text-center py-8 text-muted-foreground">
-              No USSD configurations found. Create one to get started.
+              {t('noConfigs')}
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Operator</TableHead>
-                  <TableHead>Short Code</TableHead>
-                  <TableHead>Operator Code</TableHead>
-                  <TableHead>Menus</TableHead>
-                  <TableHead>Timeout</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t('operator')}</TableHead>
+                  <TableHead>{t('shortCode')}</TableHead>
+                  <TableHead>{t('operatorCode')}</TableHead>
+                  <TableHead>{t('menus')}</TableHead>
+                  <TableHead>{t('timeout')}</TableHead>
+                  <TableHead>{t('status')}</TableHead>
+                  <TableHead className="text-right">{t('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -109,18 +109,18 @@ export default function UssdConfigsPage() {
                       <code className="px-2 py-1 bg-muted rounded">{config.shortCode}</code>
                     </TableCell>
                     <TableCell>{config.operatorCode}</TableCell>
-                    <TableCell>{config.menuStructure.length} menus</TableCell>
-                    <TableCell>{config.sessionTimeoutSeconds}s</TableCell>
+                    <TableCell>{t('menusCount', { count: config.menuStructure.length })}</TableCell>
+                    <TableCell>{t('timeoutValue', { seconds: config.sessionTimeoutSeconds })}</TableCell>
                     <TableCell>
                       {config.isActive ? (
                         <Badge variant="default" className="gap-1">
                           <Power className="h-3 w-3" />
-                          Active
+                          {t('active')}
                         </Badge>
                       ) : (
                         <Badge variant="secondary" className="gap-1">
                           <PowerOff className="h-3 w-3" />
-                          Inactive
+                          {t('inactive')}
                         </Badge>
                       )}
                     </TableCell>
@@ -129,7 +129,7 @@ export default function UssdConfigsPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() =>
-                          router.push(`/dashboard/admin/communications/ussd/${config.id}/edit`)
+                          router.push(`/${locale}/dashboard/admin/communications/ussd/${config.id}/edit`)
                         }
                       >
                         <Edit className="h-4 w-4" />
@@ -153,14 +153,14 @@ export default function UssdConfigsPage() {
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
+            <AlertDialogTitle>{t('confirmDelete')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this USSD configuration? This action cannot be undone.
+              {t('deleteWarning')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>{t('delete')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

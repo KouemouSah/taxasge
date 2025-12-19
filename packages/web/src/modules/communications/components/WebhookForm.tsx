@@ -10,6 +10,7 @@ import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { Plus, Trash2, HelpCircle } from 'lucide-react'
 import {
   WebhookType,
@@ -98,6 +99,7 @@ interface WebhookFormProps {
 
 export function WebhookForm({ webhook, locale }: WebhookFormProps) {
   const router = useRouter()
+  const t = useTranslations('admin.webhooks.form')
   const isEditing = !!webhook
   const [eventInput, setEventInput] = useState('')
 
@@ -206,9 +208,9 @@ export function WebhookForm({ webhook, locale }: WebhookFormProps) {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>Basic Information</CardTitle>
+            <CardTitle>{t('basicInfo')}</CardTitle>
             <CardDescription>
-              Configure the basic webhook details
+              {t('basicInfoDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -217,12 +219,12 @@ export function WebhookForm({ webhook, locale }: WebhookFormProps) {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Name *</FormLabel>
+                  <FormLabel>{t('nameLabel')}</FormLabel>
                   <FormControl>
-                    <Input placeholder="WhatsApp Notifications" {...field} />
+                    <Input placeholder={t('namePlaceholder')} {...field} />
                   </FormControl>
                   <FormDescription>
-                    A descriptive name for this webhook
+                    {t('nameDesc')}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -235,14 +237,14 @@ export function WebhookForm({ webhook, locale }: WebhookFormProps) {
                 name="webhookType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Type *</FormLabel>
+                    <FormLabel>{t('typeLabel')}</FormLabel>
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select webhook type" />
+                          <SelectValue placeholder={t('typePlaceholder')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -264,14 +266,14 @@ export function WebhookForm({ webhook, locale }: WebhookFormProps) {
                 name="httpMethod"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>HTTP Method *</FormLabel>
+                    <FormLabel>{t('httpMethodLabel')}</FormLabel>
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select method" />
+                          <SelectValue placeholder={t('httpMethodPlaceholder')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -293,16 +295,16 @@ export function WebhookForm({ webhook, locale }: WebhookFormProps) {
               name="endpointUrl"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Endpoint URL *</FormLabel>
+                  <FormLabel>{t('endpointLabel')}</FormLabel>
                   <FormControl>
                     <Input
                       type="url"
-                      placeholder="https://api.example.com/webhook"
+                      placeholder={t('endpointPlaceholder')}
                       {...field}
                     />
                   </FormControl>
                   <FormDescription>
-                    The URL where webhook requests will be sent
+                    {t('endpointDesc')}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -315,12 +317,12 @@ export function WebhookForm({ webhook, locale }: WebhookFormProps) {
                 name="timeoutSeconds"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Timeout (seconds) *</FormLabel>
+                    <FormLabel>{t('timeoutLabel')}</FormLabel>
                     <FormControl>
                       <Input type="number" min={1} max={300} {...field} />
                     </FormControl>
                     <FormDescription>
-                      Request timeout (1-300 seconds)
+                      {t('timeoutDesc')}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -333,9 +335,9 @@ export function WebhookForm({ webhook, locale }: WebhookFormProps) {
                 render={({ field }) => (
                   <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                     <div className="space-y-0.5">
-                      <FormLabel className="text-base">Active</FormLabel>
+                      <FormLabel className="text-base">{t('activeLabel')}</FormLabel>
                       <FormDescription>
-                        Enable or disable this webhook
+                        {t('activeDesc')}
                       </FormDescription>
                     </div>
                     <FormControl>
@@ -353,9 +355,9 @@ export function WebhookForm({ webhook, locale }: WebhookFormProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle>Authentication</CardTitle>
+            <CardTitle>{t('authentication')}</CardTitle>
             <CardDescription>
-              Configure authentication for the webhook
+              {t('authenticationDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -364,21 +366,21 @@ export function WebhookForm({ webhook, locale }: WebhookFormProps) {
               name="authType"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Authentication Type *</FormLabel>
+                  <FormLabel>{t('authTypeLabel')}</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select auth type" />
+                        <SelectValue placeholder={t('authTypePlaceholder')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value={AuthType.NONE}>None</SelectItem>
-                      <SelectItem value={AuthType.API_KEY}>API Key</SelectItem>
-                      <SelectItem value={AuthType.BEARER}>Bearer Token</SelectItem>
-                      <SelectItem value={AuthType.BASIC}>Basic Auth</SelectItem>
+                      <SelectItem value={AuthType.NONE}>{t('authTypeNone')}</SelectItem>
+                      <SelectItem value={AuthType.API_KEY}>{t('authTypeApiKey')}</SelectItem>
+                      <SelectItem value={AuthType.BEARER}>{t('authTypeBearer')}</SelectItem>
+                      <SelectItem value={AuthType.BASIC}>{t('authTypeBasic')}</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -393,12 +395,12 @@ export function WebhookForm({ webhook, locale }: WebhookFormProps) {
                   name="authConfig.apiKeyHeader"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>API Key Header Name</FormLabel>
+                      <FormLabel>{t('apiKeyHeader')}</FormLabel>
                       <FormControl>
-                        <Input placeholder="X-API-Key" {...field} />
+                        <Input placeholder={t('apiKeyHeaderPlaceholder')} {...field} />
                       </FormControl>
                       <FormDescription>
-                        Header name for the API key (default: X-API-Key)
+                        {t('apiKeyHeaderDesc')}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -409,9 +411,9 @@ export function WebhookForm({ webhook, locale }: WebhookFormProps) {
                   name="authConfig.apiKey"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>API Key *</FormLabel>
+                      <FormLabel>{t('apiKeyLabel')}</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="Your API key" {...field} />
+                        <Input type="password" placeholder={t('apiKeyPlaceholder')} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -426,12 +428,12 @@ export function WebhookForm({ webhook, locale }: WebhookFormProps) {
                 name="authConfig.bearerToken"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Bearer Token *</FormLabel>
+                    <FormLabel>{t('bearerTokenLabel')}</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="Your bearer token" {...field} />
+                      <Input type="password" placeholder={t('bearerTokenPlaceholder')} {...field} />
                     </FormControl>
                     <FormDescription>
-                      Token will be sent in Authorization header
+                      {t('bearerTokenDesc')}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -446,9 +448,9 @@ export function WebhookForm({ webhook, locale }: WebhookFormProps) {
                   name="authConfig.basicUsername"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Username *</FormLabel>
+                      <FormLabel>{t('usernameLabel')}</FormLabel>
                       <FormControl>
-                        <Input placeholder="username" {...field} />
+                        <Input placeholder={t('usernamePlaceholder')} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -459,9 +461,9 @@ export function WebhookForm({ webhook, locale }: WebhookFormProps) {
                   name="authConfig.basicPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Password *</FormLabel>
+                      <FormLabel>{t('passwordLabel')}</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="password" {...field} />
+                        <Input type="password" placeholder={t('passwordPlaceholder')} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -476,9 +478,9 @@ export function WebhookForm({ webhook, locale }: WebhookFormProps) {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Custom Headers</CardTitle>
+                <CardTitle>{t('customHeaders')}</CardTitle>
                 <CardDescription>
-                  Add custom HTTP headers to the webhook request
+                  {t('customHeadersDesc')}
                 </CardDescription>
               </div>
               <Button
@@ -488,7 +490,7 @@ export function WebhookForm({ webhook, locale }: WebhookFormProps) {
                 onClick={() => append({ key: '', value: '' })}
               >
                 <Plus className="mr-2 h-4 w-4" />
-                Add Header
+                {t('addHeader')}
               </Button>
             </div>
           </CardHeader>
@@ -500,7 +502,7 @@ export function WebhookForm({ webhook, locale }: WebhookFormProps) {
                   name={`headers.${index}.key`}
                   render={({ field }) => (
                     <FormItem className="flex-1">
-                      {index === 0 && <FormLabel>Header Name</FormLabel>}
+                      {index === 0 && <FormLabel>{t('headerName')}</FormLabel>}
                       <FormControl>
                         <Input placeholder="Content-Type" {...field} />
                       </FormControl>
@@ -513,7 +515,7 @@ export function WebhookForm({ webhook, locale }: WebhookFormProps) {
                   name={`headers.${index}.value`}
                   render={({ field }) => (
                     <FormItem className="flex-1">
-                      {index === 0 && <FormLabel>Header Value</FormLabel>}
+                      {index === 0 && <FormLabel>{t('headerValue')}</FormLabel>}
                       <FormControl>
                         <Input placeholder="application/json" {...field} />
                       </FormControl>
@@ -538,7 +540,7 @@ export function WebhookForm({ webhook, locale }: WebhookFormProps) {
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
-              <CardTitle>Payload Template</CardTitle>
+              <CardTitle>{t('payloadTemplate')}</CardTitle>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger>
@@ -546,15 +548,14 @@ export function WebhookForm({ webhook, locale }: WebhookFormProps) {
                   </TooltipTrigger>
                   <TooltipContent>
                     <p className="max-w-xs">
-                      Use {'{{'} variable_name {'}'} for dynamic values.
-                      Variables will be replaced with event data.
+                      {t('payloadHint')}
                     </p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             </div>
             <CardDescription>
-              Define the JSON payload structure (optional)
+              {t('payloadTemplateDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -572,7 +573,7 @@ export function WebhookForm({ webhook, locale }: WebhookFormProps) {
                     />
                   </FormControl>
                   <FormDescription>
-                    Valid JSON with optional variable substitution
+                    {t('payloadValid')}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -583,21 +584,21 @@ export function WebhookForm({ webhook, locale }: WebhookFormProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle>Events</CardTitle>
+            <CardTitle>{t('events')}</CardTitle>
             <CardDescription>
-              Specify which events trigger this webhook
+              {t('eventsDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex gap-2">
               <Input
-                placeholder="Enter event name (e.g., payment_received)"
+                placeholder={t('eventPlaceholder')}
                 value={eventInput}
                 onChange={(e) => setEventInput(e.target.value)}
                 onKeyDown={handleKeyDown}
               />
               <Button type="button" onClick={addEvent} variant="outline">
-                Add
+                {t('addEvent')}
               </Button>
             </div>
 
@@ -625,9 +626,9 @@ export function WebhookForm({ webhook, locale }: WebhookFormProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle>Retry Configuration</CardTitle>
+            <CardTitle>{t('retryConfig')}</CardTitle>
             <CardDescription>
-              Configure retry behavior for failed requests
+              {t('retryConfigDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -637,12 +638,12 @@ export function WebhookForm({ webhook, locale }: WebhookFormProps) {
                 name="retryConfig.maxRetries"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Max Retries</FormLabel>
+                    <FormLabel>{t('maxRetriesLabel')}</FormLabel>
                     <FormControl>
                       <Input type="number" min={0} max={10} {...field} />
                     </FormControl>
                     <FormDescription>
-                      Number of retry attempts (0-10)
+                      {t('maxRetriesDesc')}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -654,12 +655,12 @@ export function WebhookForm({ webhook, locale }: WebhookFormProps) {
                 name="retryConfig.retryDelaySeconds"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Retry Delay (seconds)</FormLabel>
+                    <FormLabel>{t('retryDelayLabel')}</FormLabel>
                     <FormControl>
                       <Input type="number" min={1} max={3600} {...field} />
                     </FormControl>
                     <FormDescription>
-                      Delay between retries (1-3600 seconds)
+                      {t('retryDelayDesc')}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -675,17 +676,17 @@ export function WebhookForm({ webhook, locale }: WebhookFormProps) {
             variant="outline"
             onClick={() => router.back()}
           >
-            Cancel
+            {t('cancel')}
           </Button>
           <Button
             type="submit"
             disabled={createMutation.isPending || updateMutation.isPending}
           >
             {createMutation.isPending || updateMutation.isPending
-              ? 'Saving...'
+              ? t('saving')
               : isEditing
-              ? 'Update Webhook'
-              : 'Create Webhook'}
+              ? t('updateWebhook')
+              : t('createWebhook')}
           </Button>
         </div>
       </form>

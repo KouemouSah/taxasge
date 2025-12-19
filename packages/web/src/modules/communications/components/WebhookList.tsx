@@ -8,6 +8,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import {
   MoreHorizontal,
   Plus,
@@ -61,6 +62,7 @@ interface WebhookListProps {
 
 export function WebhookList({ locale }: WebhookListProps) {
   const router = useRouter()
+  const t = useTranslations('admin.webhooks')
   const [page, setPage] = useState(1)
   const [deleteId, setDeleteId] = useState<number | null>(null)
 
@@ -81,18 +83,18 @@ export function WebhookList({ locale }: WebhookListProps) {
 
   const getStatusBadge = (webhook: WebhookResponse) => {
     if (!webhook.isActive) {
-      return <Badge variant="secondary">Inactive</Badge>
+      return <Badge variant="secondary">{t('statusInactive')}</Badge>
     }
 
     if (!webhook.lastTriggeredAt) {
-      return <Badge variant="outline">Never Triggered</Badge>
+      return <Badge variant="outline">{t('statusNeverTriggered')}</Badge>
     }
 
     if (webhook.lastStatus === 'success') {
-      return <Badge variant="default">Active</Badge>
+      return <Badge variant="default">{t('statusActive')}</Badge>
     }
 
-    return <Badge variant="destructive">Error</Badge>
+    return <Badge variant="destructive">{t('statusError')}</Badge>
   }
 
   const getTypeBadge = (type: string) => {
@@ -113,7 +115,7 @@ export function WebhookList({ locale }: WebhookListProps) {
       <Card>
         <CardContent className="pt-6">
           <div className="text-center text-red-600">
-            Error loading webhooks: {error.message}
+            {t('errorLoading', { message: error.message })}
           </div>
         </CardContent>
       </Card>
@@ -124,22 +126,22 @@ export function WebhookList({ locale }: WebhookListProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Webhook Configurations</h2>
+          <h2 className="text-2xl font-bold tracking-tight">{t('title')}</h2>
           <p className="text-muted-foreground">
-            Manage webhook integrations for external systems
+            {t('description')}
           </p>
         </div>
         <Link href={`/${locale}/dashboard/admin/communications/webhooks/new`}>
           <Button>
             <Plus className="mr-2 h-4 w-4" />
-            New Webhook
+            {t('newWebhook')}
           </Button>
         </Link>
       </div>
 
       {data && (
         <div className="text-sm text-muted-foreground">
-          Showing {data.webhooks.length} of {data.total} webhooks
+          {t('showingCount', { shown: data.webhooks.length, total: data.total })}
         </div>
       )}
 
@@ -148,12 +150,12 @@ export function WebhookList({ locale }: WebhookListProps) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Endpoint</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Last Triggered</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t('name')}</TableHead>
+                <TableHead>{t('type')}</TableHead>
+                <TableHead>{t('endpoint')}</TableHead>
+                <TableHead>{t('status')}</TableHead>
+                <TableHead>{t('lastTriggered')}</TableHead>
+                <TableHead className="text-right">{t('actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -183,7 +185,7 @@ export function WebhookList({ locale }: WebhookListProps) {
               ) : data?.webhooks.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="h-24 text-center">
-                    No webhooks found. Create your first webhook to get started.
+                    {t('noWebhooks')}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -217,7 +219,7 @@ export function WebhookList({ locale }: WebhookListProps) {
                             }
                           >
                             <Edit className="mr-2 h-4 w-4" />
-                            Edit
+                            {t('edit')}
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() =>
@@ -227,7 +229,7 @@ export function WebhookList({ locale }: WebhookListProps) {
                             }
                           >
                             <TestTube className="mr-2 h-4 w-4" />
-                            Test Webhook
+                            {t('testWebhook')}
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() =>
@@ -237,7 +239,7 @@ export function WebhookList({ locale }: WebhookListProps) {
                             }
                           >
                             <FileText className="mr-2 h-4 w-4" />
-                            View Logs
+                            {t('viewLogs')}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
@@ -247,12 +249,12 @@ export function WebhookList({ locale }: WebhookListProps) {
                             {webhook.isActive ? (
                               <>
                                 <PowerOff className="mr-2 h-4 w-4" />
-                                Disable
+                                {t('disable')}
                               </>
                             ) : (
                               <>
                                 <Power className="mr-2 h-4 w-4" />
-                                Enable
+                                {t('enable')}
                               </>
                             )}
                           </DropdownMenuItem>
@@ -262,7 +264,7 @@ export function WebhookList({ locale }: WebhookListProps) {
                             className="text-red-600"
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
+                            {t('delete')}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -282,17 +284,17 @@ export function WebhookList({ locale }: WebhookListProps) {
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
           >
-            Previous
+            {t('previous')}
           </Button>
           <span className="text-sm text-muted-foreground">
-            Page {page} of {data.totalPages}
+            {t('pageOf', { current: page, total: data.totalPages })}
           </span>
           <Button
             variant="outline"
             onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}
             disabled={page === data.totalPages}
           >
-            Next
+            {t('next')}
           </Button>
         </div>
       )}
@@ -300,19 +302,18 @@ export function WebhookList({ locale }: WebhookListProps) {
       <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Webhook</AlertDialogTitle>
+            <AlertDialogTitle>{t('deleteTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this webhook? This action cannot be undone
-              and all execution logs will be permanently deleted.
+              {t('deleteWarning')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-red-600 hover:bg-red-700"
             >
-              Delete
+              {t('delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
