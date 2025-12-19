@@ -1,11 +1,13 @@
 'use client'
 
-import { ProviderSettingsList } from '@/modules/communications/components/ProviderSettingsList'
+import { SmsProviderSettings } from '@/modules/communications/components/SmsProviderSettings'
+import { use } from 'react'
 
 interface PageProps {
-  params: { locale: string }
+  params: Promise<{ locale: string }>
 }
 
 export default function ProviderSettingsPage({ params }: PageProps) {
-  return <ProviderSettingsList locale={params.locale} />
+  const resolvedParams = use(params)
+  return <SmsProviderSettings locale={resolvedParams.locale} />
 }

@@ -22,3 +22,6 @@ export { ProviderSettingsList } from './ProviderSettingsList'
 
 // USSD Components
 export { UssdMenuEditor } from './UssdMenuEditor'
+
+// SMS Provider Settings
+export { SmsProviderSettings } from './SmsProviderSettings'
