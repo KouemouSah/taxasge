@@ -16,7 +16,9 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { useUssdConfig, useUpdateUssdConfig, useUssdOperators } from '@/modules/communications/hooks/useUssdConfigs'
-import { useEffect } from 'react'
+import { UssdMenuEditor } from '@/modules/communications/components'
+import type { MenuNode } from '@/modules/communications/types'
+import { useEffect, useState } from 'react'
 
 const formSchema = z.object({
   operatorName: z.enum(['getesa', 'muni', 'other_api_sms']).optional(),
@@ -36,6 +38,10 @@ export default function EditUssdConfigPage() {
   const { data: config, isLoading } = useUssdConfig(configId)
   const { data: operators } = useUssdOperators()
   const updateMutation = useUpdateUssdConfig()
+
+  // State for menu structure (managed separately from form)
+  const [menuStructure, setMenuStructure] = useState<MenuNode[]>([])
+  const [menuChanged, setMenuChanged] = useState(false)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -62,15 +68,26 @@ export default function EditUssdConfigPage() {
         maxInputLength: config.maxInputLength,
         isActive: config.isActive,
       })
+      // Initialize menu structure from config
+      setMenuStructure(config.menuStructure || [])
     }
   }, [config, form])
 
+  const handleMenuChange = (menus: MenuNode[]) => {
+    setMenuStructure(menus)
+    setMenuChanged(true)
+  }
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // Include menu structure if it was changed
+      const updateData = {
+        ...values,
+        ...(menuChanged && { menuStructure }),
+      }
       await updateMutation.mutateAsync({
         configId,
-        data: values as Parameters<typeof updateMutation.mutateAsync>[0]['data'],
+        data: updateData as Parameters<typeof updateMutation.mutateAsync>[0]['data'],
       })
       router.push('/dashboard/admin/communications/ussd')
     } catch (error) {
@@ -241,17 +258,18 @@ export default function EditUssdConfigPage() {
           <Card>
             <CardHeader>
               <CardTitle>Menu Structure</CardTitle>
-              <CardDescription>Current menu configuration</CardDescription>
+              <CardDescription>
+                Configure USSD menu tree with options and navigation
+                {menuChanged && (
+                  <span className="ml-2 text-orange-600 font-medium">(Modified)</span>
+                )}
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  {config.menuStructure.length} menu(s) configured
-                </p>
-                <div className="text-xs text-muted-foreground">
-                  Note: Menu structure editing in UI coming soon. Use API for now.
-                </div>
-              </div>
+              <UssdMenuEditor
+                menuStructure={menuStructure}
+                onChange={handleMenuChange}
+              />
             </CardContent>
           </Card>
 

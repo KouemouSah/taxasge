@@ -19,3 +19,6 @@ export { WebhookTestDialog } from './WebhookTestDialog'
 
 // Provider Settings Components
 export { ProviderSettingsList } from './ProviderSettingsList'
+
+// USSD Components
+export { UssdMenuEditor } from './UssdMenuEditor'
