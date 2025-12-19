@@ -23,5 +23,7 @@ export { ProviderSettingsList } from './ProviderSettingsList'
 // USSD Components
 export { UssdMenuEditor } from './UssdMenuEditor'
 
-// SMS Provider Settings
+// Provider Settings Components
 export { SmsProviderSettings } from './SmsProviderSettings'
+export { EmailProviderSettings } from './EmailProviderSettings'
+export { WhatsAppProviderSettings } from './WhatsAppProviderSettings'

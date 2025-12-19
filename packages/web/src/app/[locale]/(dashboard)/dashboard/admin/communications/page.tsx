@@ -32,20 +32,6 @@ export default function CommunicationsPage() {
       stats: 'Manage templates'
     },
     {
-      title: 'Webhooks',
-      description: 'Configure webhook endpoints and manage integrations',
-      icon: Webhook,
-      href: `/${locale}/dashboard/admin/communications/webhooks`,
-      stats: 'Manage webhooks'
-    },
-    {
-      title: 'USSD Configuration',
-      description: 'Configure USSD menu structures and responses',
-      icon: Phone,
-      href: `/${locale}/dashboard/admin/communications/ussd`,
-      stats: 'Configure USSD'
-    },
-    {
       title: 'Notification Templates',
       description: 'Manage in-app notification templates',
       icon: Bell,
@@ -60,11 +46,25 @@ export default function CommunicationsPage() {
       stats: 'Manage templates'
     },
     {
-      title: 'Provider Settings',
-      description: 'Configure SMS, Email, Push, and WhatsApp provider credentials',
+      title: 'Providers',
+      description: 'Configure SMS (Infobip), Email (SendGrid), and WhatsApp (Meta) providers',
       icon: Settings,
       href: `/${locale}/dashboard/admin/communications/provider-settings`,
       stats: 'Configure providers'
+    },
+    {
+      title: 'USSD Configuration',
+      description: 'Configure USSD menu structures and responses',
+      icon: Phone,
+      href: `/${locale}/dashboard/admin/communications/ussd`,
+      stats: 'Configure USSD'
+    },
+    {
+      title: 'Webhooks',
+      description: 'Configure webhook endpoints and manage integrations',
+      icon: Webhook,
+      href: `/${locale}/dashboard/admin/communications/webhooks`,
+      stats: 'Manage webhooks'
     }
   ]
 
