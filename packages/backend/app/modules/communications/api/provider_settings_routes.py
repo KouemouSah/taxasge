@@ -18,10 +18,10 @@ from ..models.provider_settings import (
     ProviderTestResponse
 )
 from ..services.provider_settings_service import ProviderSettingsService
-from ....database.connection import get_database
-from ...auth.dependencies import get_current_user
-from ...auth.models import UserResponse
-from ...permissions.dependencies import permission_required
+from app.database.connection import get_database
+from app.modules.auth.middleware.auth_middleware import get_current_user
+from app.modules.users.models.user import UserResponse
+from app.modules.permissions.dependencies import permission_required
 
 router = APIRouter(prefix="/communications/providers", tags=["Communication Providers"])
 service = ProviderSettingsService()
