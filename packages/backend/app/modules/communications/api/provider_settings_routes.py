@@ -21,7 +21,7 @@ from ..services.provider_settings_service import ProviderSettingsService
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.users.models.user import UserResponse
-from app.modules.permissions.dependencies import permission_required
+from app.modules.permissions.middleware.permission_middleware import permission_required
 
 router = APIRouter(prefix="/communications/providers", tags=["Communication Providers"])
 service = ProviderSettingsService()
