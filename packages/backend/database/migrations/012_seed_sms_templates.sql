@@ -22,7 +22,7 @@ INSERT INTO sms_templates (
     'TaxasGE: Your verification code is {{code}}. Valid for {{expiry}} minutes. Do not share it.',
     'auth',
     1,
-    '[{"name":"code","description":"Codigo de 6 digitos","example":"123456","required":true},{"name":"expiry","description":"Tiempo de expiracion en minutos","example":"15","required":true}]'::jsonb,
+    '["code", "expiry"]'::jsonb,
     true
 ),
 -- Password Reset
@@ -36,7 +36,7 @@ INSERT INTO sms_templates (
     'TaxasGE: Password reset code: {{code}}. Valid for {{expiry}} minutes.',
     'auth',
     1,
-    '[{"name":"code","description":"Codigo de restablecimiento","example":"ABC123","required":true},{"name":"expiry","description":"Tiempo de expiracion","example":"30","required":true}]'::jsonb,
+    '["code", "expiry"]'::jsonb,
     true
 ),
 -- 2FA Code
@@ -50,7 +50,7 @@ INSERT INTO sms_templates (
     'TaxasGE: Your 2FA security code is {{code}}. Do not share with anyone.',
     'auth',
     1,
-    '[{"name":"code","description":"Codigo 2FA","example":"123456","required":true}]'::jsonb,
+    '["code"]'::jsonb,
     true
 )
 ON CONFLICT (template_code) DO NOTHING;
@@ -75,7 +75,7 @@ INSERT INTO sms_templates (
     'TaxasGE: Payment of {{amount}} XAF received. Ref: {{reference}}. Date: {{date}}. Thank you.',
     'payments',
     1,
-    '[{"name":"amount","description":"Monto del pago","example":"50000","required":true},{"name":"reference","description":"Referencia del pago","example":"PAY-2024-001","required":true},{"name":"date","description":"Fecha del pago","example":"19/12/2024","required":true}]'::jsonb,
+    '["amount", "reference", "date"]'::jsonb,
     true
 ),
 -- Payment Reminder
@@ -89,7 +89,7 @@ INSERT INTO sms_templates (
     'TaxasGE: Reminder - Payment of {{amount}} XAF due on {{due_date}}. Avoid late fees.',
     'payments',
     1,
-    '[{"name":"amount","description":"Monto a pagar","example":"75000","required":true},{"name":"due_date","description":"Fecha de vencimiento","example":"31/12/2024","required":true}]'::jsonb,
+    '["amount", "due_date"]'::jsonb,
     true
 )
 ON CONFLICT (template_code) DO NOTHING;
@@ -114,7 +114,7 @@ INSERT INTO sms_templates (
     'TaxasGE: Your declaration {{reference}} has been {{status}}. Check details at taxasge.gq',
     'declarations',
     1,
-    '[{"name":"reference","description":"Numero de declaracion","example":"DEC-2024-001","required":true},{"name":"status","description":"Estado de la declaracion","example":"aprobada","required":true}]'::jsonb,
+    '["reference", "status"]'::jsonb,
     true
 ),
 -- Declaration Reminder
@@ -128,7 +128,7 @@ INSERT INTO sms_templates (
     'TaxasGE: Reminder - {{type}} declaration due in {{days}} days ({{due_date}}). Complete now.',
     'declarations',
     1,
-    '[{"name":"type","description":"Tipo de declaracion","example":"IVA Mensual","required":true},{"name":"days","description":"Dias restantes","example":"5","required":true},{"name":"due_date","description":"Fecha limite","example":"31/12/2024","required":true}]'::jsonb,
+    '["type", "days", "due_date"]'::jsonb,
     true
 )
 ON CONFLICT (template_code) DO NOTHING;
@@ -153,7 +153,7 @@ INSERT INTO sms_templates (
     'TaxasGE: {{message}}',
     'alerts',
     2,
-    '[{"name":"message","description":"Mensaje de alerta","example":"Sistema en mantenimiento de 10:00 a 12:00","required":true}]'::jsonb,
+    '["message"]'::jsonb,
     true
 ),
 -- Security Alert
@@ -167,7 +167,7 @@ INSERT INTO sms_templates (
     'TaxasGE ALERT: {{message}}. If this wasn''t you, contact support immediately.',
     'alerts',
     2,
-    '[{"name":"message","description":"Mensaje de alerta de seguridad","example":"Inicio de sesion detectado desde nuevo dispositivo","required":true}]'::jsonb,
+    '["message"]'::jsonb,
     true
 ),
 -- Account Locked
@@ -181,7 +181,7 @@ INSERT INTO sms_templates (
     'TaxasGE: Your account has been locked due to {{reason}}. It will be unlocked in {{duration}}.',
     'alerts',
     1,
-    '[{"name":"reason","description":"Motivo del bloqueo","example":"intentos fallidos","required":true},{"name":"duration","description":"Duracion del bloqueo","example":"30 minutos","required":true}]'::jsonb,
+    '["reason", "duration"]'::jsonb,
     true
 )
 ON CONFLICT (template_code) DO NOTHING;
@@ -206,7 +206,7 @@ INSERT INTO sms_templates (
     'TaxasGE: Appointment reminder for {{service}} on {{date}} at {{time}} at {{location}}.',
     'reminders',
     1,
-    '[{"name":"service","description":"Servicio","example":"Declaracion IVA","required":true},{"name":"date","description":"Fecha","example":"20/12/2024","required":true},{"name":"time","description":"Hora","example":"10:00","required":true},{"name":"location","description":"Ubicacion","example":"DGI Malabo","required":true}]'::jsonb,
+    '["service", "date", "time", "location"]'::jsonb,
     true
 )
 ON CONFLICT (template_code) DO NOTHING;
