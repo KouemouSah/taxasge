@@ -362,8 +362,43 @@ class UssdRepository:
         Returns:
             UssdConfigResponse object
         """
-        # Parse JSONB fields
-        menu_structure = [MenuNode(**menu) for menu in row['menu_structure']]
+        # Parse JSONB fields - handle both string and dict/list formats
+        menu_structure_raw = row['menu_structure']
+
+        # Handle string representation of JSONB
+        if isinstance(menu_structure_raw, str):
+            try:
+                menu_structure_raw = json.loads(menu_structure_raw)
+            except json.JSONDecodeError:
+                logger.error(f"Failed to parse menu_structure JSON: {menu_structure_raw[:100]}")
+                menu_structure_raw = []
+
+        # Parse each menu node - handle nested string encoding
+        menu_structure = []
+        for menu in (menu_structure_raw or []):
+            if isinstance(menu, str):
+                try:
+                    menu = json.loads(menu)
+                except json.JSONDecodeError:
+                    logger.error(f"Failed to parse menu node: {menu[:50]}")
+                    continue
+            if isinstance(menu, dict):
+                # Also parse options if they're strings
+                if 'options' in menu and isinstance(menu['options'], str):
+                    try:
+                        menu['options'] = json.loads(menu['options'])
+                    except json.JSONDecodeError:
+                        menu['options'] = []
+                menu_structure.append(MenuNode(**menu))
+
+        auth_config_raw = row['auth_config']
+        if isinstance(auth_config_raw, str):
+            try:
+                auth_config = json.loads(auth_config_raw)
+            except json.JSONDecodeError:
+                auth_config = {}
+        else:
+            auth_config = auth_config_raw or {}
 
         return UssdConfigResponse(
             id=row['id'],
@@ -371,7 +406,7 @@ class UssdRepository:
             operator_code=row['operator_code'],
             short_code=row['short_code'],
             api_endpoint=row['api_endpoint'],
-            auth_config=row['auth_config'],
+            auth_config=auth_config,
             menu_structure=menu_structure,
             session_timeout_seconds=row['session_timeout_seconds'],
             max_input_length=row['max_input_length'],

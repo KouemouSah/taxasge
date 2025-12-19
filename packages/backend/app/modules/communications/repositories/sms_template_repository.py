@@ -5,6 +5,7 @@ Handles all database operations for SMS templates table.
 """
 
 import asyncpg
+import json
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from loguru import logger
@@ -316,6 +317,21 @@ class SmsTemplateRepository:
         Returns:
             SmsTemplateResponse model
         """
+        # Parse variables from JSONB - handle both string and list formats
+        variables_raw = row["variables"]
+        if variables_raw is None:
+            variables = []
+        elif isinstance(variables_raw, str):
+            # JSONB returned as string, parse it
+            try:
+                variables = json.loads(variables_raw)
+            except json.JSONDecodeError:
+                variables = []
+        elif isinstance(variables_raw, list):
+            variables = variables_raw
+        else:
+            variables = []
+
         template = SmsTemplateResponse(
             id=row["id"],
             template_code=row["template_code"],
@@ -325,7 +341,7 @@ class SmsTemplateRepository:
             content_es=row["content_es"],
             content_fr=row["content_fr"],
             content_en=row["content_en"],
-            variables=row["variables"] or [],
+            variables=variables,
             category=row["category"],
             max_segments=row["max_segments"],
             is_active=row["is_active"],
