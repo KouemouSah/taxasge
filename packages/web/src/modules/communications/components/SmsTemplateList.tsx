@@ -7,7 +7,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Edit, Trash2, MessageCircle, Filter, CheckCircle, XCircle } from 'lucide-react'
+import { Plus, Edit, Trash2, MessageCircle, Filter, CheckCircle, XCircle, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -107,10 +107,19 @@ export function SmsTemplateList({ locale }: SmsTemplateListProps) {
             Manage SMS templates for notifications and alerts
           </p>
         </div>
-        <Button onClick={() => router.push(`/${locale}/dashboard/admin/communications/sms-templates/new`)}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Template
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => router.push(`/${locale}/dashboard/admin/communications/provider-settings`)}
+          >
+            <Settings className="mr-2 h-4 w-4" />
+            SMS Provider
+          </Button>
+          <Button onClick={() => router.push(`/${locale}/dashboard/admin/communications/sms-templates/new`)}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Template
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
