@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useLocale } from 'next-intl'
-import { Mail, MessageCircle, Webhook, Phone, Bell, Send } from 'lucide-react'
+import { Mail, MessageCircle, Webhook, Phone, Bell, Send, Settings } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface CommunicationCard {
@@ -58,6 +58,13 @@ export default function CommunicationsPage() {
       icon: Send,
       href: `/${locale}/dashboard/admin/communications/push-templates`,
       stats: 'Manage templates'
+    },
+    {
+      title: 'Provider Settings',
+      description: 'Configure SMS, Email, Push, and WhatsApp provider credentials',
+      icon: Settings,
+      href: `/${locale}/dashboard/admin/communications/provider-settings`,
+      stats: 'Configure providers'
     }
   ]
 

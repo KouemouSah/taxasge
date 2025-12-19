@@ -389,3 +389,109 @@ export interface UssdOperatorInfo {
   name: string
   description: string
 }
+
+// =============================================================================
+// COMMUNICATION PROVIDER SETTINGS
+// =============================================================================
+
+export type CommunicationProviderType = 'sms' | 'email' | 'push' | 'whatsapp'
+
+export interface ProviderSettingsBase {
+  providerType: CommunicationProviderType
+  providerName: string
+  providerCode: string
+  apiBaseUrl?: string
+  config: Record<string, unknown>
+  isActive: boolean
+  isDefault: boolean
+  rateLimitPerMinute: number
+  retryAttempts: number
+  timeoutSeconds: number
+}
+
+export interface ProviderSettingsCreate extends ProviderSettingsBase {
+  apiKey?: string
+  apiSecret?: string
+}
+
+export interface ProviderSettingsUpdate {
+  providerName?: string
+  apiBaseUrl?: string
+  apiKey?: string
+  apiSecret?: string
+  config?: Record<string, unknown>
+  isActive?: boolean
+  isDefault?: boolean
+  rateLimitPerMinute?: number
+  retryAttempts?: number
+  timeoutSeconds?: number
+}
+
+export interface ProviderSettingsResponse extends ProviderSettingsBase {
+  id: number
+  hasApiKey: boolean
+  hasApiSecret: boolean
+  createdAt: string
+  updatedAt?: string
+  createdBy?: string
+  updatedBy?: string
+}
+
+export interface ProviderSettingsListResponse {
+  providers: ProviderSettingsResponse[]
+  total: number
+}
+
+export interface ProviderTestRequest {
+  providerCode: string
+  testRecipient?: string
+}
+
+export interface ProviderTestResponse {
+  success: boolean
+  providerCode: string
+  message: string
+  details?: Record<string, unknown>
+  testedAt: string
+}
+
+export interface ProviderSettingsListParams {
+  providerType?: CommunicationProviderType
+  isActive?: boolean
+  limit?: number
+  offset?: number
+}
+
+// Provider-specific configurations
+export interface SmsProviderConfig {
+  senderId: string
+  smsEndpoint: string
+  deliveryReportEndpoint: string
+  balanceEndpoint: string
+  supportsUnicode: boolean
+  maxSegments: number
+  countryCode: string
+}
+
+export interface EmailProviderConfig {
+  fromEmail: string
+  fromName: string
+  sendEndpoint: string
+  templatesEnabled: boolean
+  trackingEnabled: boolean
+}
+
+export interface PushProviderConfig {
+  projectId: string
+  sendEndpoint: string
+  platforms: string[]
+  priority: string
+}
+
+export interface WhatsAppProviderConfig {
+  phoneNumberId: string
+  businessAccountId: string
+  sendEndpoint: string
+  templatesEndpoint: string
+  webhookVerifyToken: string
+}
