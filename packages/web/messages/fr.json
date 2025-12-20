@@ -1303,7 +1303,9 @@
         "updateSuccess": "Modèle d'email mis à jour avec succès",
         "deleteSuccess": "Modèle d'email supprimé avec succès",
         "starterTemplates": "Modèles Prédéfinis",
-        "starterTemplatesDescription": "Modèles pré-construits pour démarrer rapidement"
+        "starterTemplatesDescription": "Modèles pré-construits pour démarrer rapidement",
+        "noStarterTemplatesForCategory": "Aucun modèle prédéfini pour cette catégorie",
+        "useTemplate": "Utiliser le Modèle"
       },
       "sms": {
         "title": "Modèles SMS",
@@ -1378,6 +1380,13 @@
       "variablesList": "Variables configurées",
       "required": "Requis",
       "example": "Exemple",
+      "selectContext": "Sélectionner le Contexte",
+      "selectContextPlaceholder": "Choisir une catégorie de variable...",
+      "selected": "sélectionnées",
+      "variableName": "Nom",
+      "variablePlaceholder": "Placeholder",
+      "variableDescription": "Description",
+      "variablesSummary": "Variables Sélectionnées",
       "settingsTitle": "Configuration",
       "settingsDescription": "État du modèle",
       "fieldActive": "Modèle Actif",

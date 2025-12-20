@@ -1303,7 +1303,9 @@
         "updateSuccess": "Email template updated successfully",
         "deleteSuccess": "Email template deleted successfully",
         "starterTemplates": "Starter Templates",
-        "starterTemplatesDescription": "Pre-built templates to help you get started quickly"
+        "starterTemplatesDescription": "Pre-built templates to help you get started quickly",
+        "noStarterTemplatesForCategory": "No starter templates for this category",
+        "useTemplate": "Use Template"
       },
       "sms": {
         "title": "SMS Templates",
@@ -1378,6 +1380,13 @@
       "variablesList": "Configured variables",
       "required": "Required",
       "example": "Example",
+      "selectContext": "Select Context",
+      "selectContextPlaceholder": "Choose a variable category...",
+      "selected": "selected",
+      "variableName": "Name",
+      "variablePlaceholder": "Placeholder",
+      "variableDescription": "Description",
+      "variablesSummary": "Selected Variables",
       "settingsTitle": "Settings",
       "settingsDescription": "Template status",
       "fieldActive": "Active Template",

@@ -1303,7 +1303,9 @@
         "updateSuccess": "Plantilla de email actualizada exitosamente",
         "deleteSuccess": "Plantilla de email eliminada exitosamente",
         "starterTemplates": "Plantillas Prediseñadas",
-        "starterTemplatesDescription": "Plantillas pre-construidas para comenzar rápidamente"
+        "starterTemplatesDescription": "Plantillas pre-construidas para comenzar rápidamente",
+        "noStarterTemplatesForCategory": "No hay plantillas prediseñadas para esta categoría",
+        "useTemplate": "Usar Plantilla"
       },
       "sms": {
         "title": "Plantillas SMS",
@@ -1378,6 +1380,13 @@
       "variablesList": "Variables configuradas",
       "required": "Requerido",
       "example": "Ejemplo",
+      "selectContext": "Seleccionar Contexto",
+      "selectContextPlaceholder": "Elegir una categoría de variable...",
+      "selected": "seleccionadas",
+      "variableName": "Nombre",
+      "variablePlaceholder": "Placeholder",
+      "variableDescription": "Descripción",
+      "variablesSummary": "Variables Seleccionadas",
       "settingsTitle": "Configuración",
       "settingsDescription": "Estado de la plantilla",
       "fieldActive": "Plantilla Activa",

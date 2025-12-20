@@ -8,7 +8,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
-import { ArrowLeft, RefreshCw, X, FileText, Check } from 'lucide-react'
+import { ArrowLeft, RefreshCw, X, FileText, Check, ChevronRight } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,17 +24,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
 import { useCreateEmailTemplate } from '@/modules/communications/hooks/useEmailTemplates'
 import { STARTER_TEMPLATES, type StarterTemplate } from '@/modules/communications/components/EmailTemplateStarters'
-import { VARIABLE_GROUPS } from '@/modules/communications/components/EmailTemplateVariables'
+import { VARIABLE_GROUPS, type VariableContext } from '@/modules/communications/components/EmailTemplateVariables'
 import type { EmailTemplateCreate, TemplateVariable } from '@/modules/communications/types'
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/core/utils'
 
@@ -67,6 +69,29 @@ export default function NewEmailTemplatePage() {
   })
 
   const [selectedStarterTemplate, setSelectedStarterTemplate] = useState<string | null>(null)
+  const [selectedVariableContext, setSelectedVariableContext] = useState<VariableContext | ''>('')
+
+  // Get variables for the selected context
+  const currentContextVariables = useMemo(() => {
+    if (!selectedVariableContext) return []
+    const group = VARIABLE_GROUPS.find(g => g.context === selectedVariableContext)
+    return group?.variables || []
+  }, [selectedVariableContext])
+
+  // Group selected variables by context for the summary
+  const groupedSelectedVariables = useMemo(() => {
+    const groups: Record<string, TemplateVariable[]> = {}
+    formData.variables.forEach(variable => {
+      const group = VARIABLE_GROUPS.find(g => g.variables.some(v => v.name === variable.name))
+      if (group) {
+        if (!groups[group.context]) {
+          groups[group.context] = []
+        }
+        groups[group.context].push(variable)
+      }
+    })
+    return groups
+  }, [formData.variables])
 
   // Filter starter templates by selected category
   const filteredStarterTemplates = useMemo(() => {
@@ -402,93 +427,131 @@ export default function NewEmailTemplatePage() {
             <CardTitle>{t('variablesTitle')}</CardTitle>
             <CardDescription>{t('variablesDescription')}</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Predefined Variables Accordion */}
+          <CardContent className="space-y-6">
+            {/* Context Selector */}
             <div className="space-y-2">
-              <Label>{t('selectVariables')}</Label>
-              <Accordion type="multiple" className="w-full">
-                {VARIABLE_GROUPS.map((group) => (
-                  <AccordionItem key={group.context} value={group.context}>
-                    <AccordionTrigger className="hover:no-underline">
-                      <div className="flex items-center gap-2">
+              <Label>{t('selectContext') || 'Select Context'}</Label>
+              <Select
+                value={selectedVariableContext}
+                onValueChange={(v) => setSelectedVariableContext(v as VariableContext)}
+              >
+                <SelectTrigger className="w-full md:w-[300px]">
+                  <SelectValue placeholder={t('selectContextPlaceholder') || 'Choose a variable category...'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {VARIABLE_GROUPS.map((group) => (
+                    <SelectItem key={group.context} value={group.context}>
+                      <div className="flex items-center justify-between w-full">
                         <span>{t(`variableGroups.${group.context}`)}</span>
-                        <Badge variant="outline" className="ml-2">
+                        <Badge variant="outline" className="ml-2 text-xs">
                           {group.variables.filter(v => isVariableSelected(v.name)).length}/{group.variables.length}
                         </Badge>
                       </div>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-2">
-                        {group.variables.map((variable) => (
-                          <div
-                            key={variable.name}
-                            onClick={() => toggleVariable(variable)}
-                            className={cn(
-                              "flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
-                              isVariableSelected(variable.name)
-                                ? "border-primary bg-primary/5"
-                                : "border-muted hover:border-primary/50"
-                            )}
-                          >
-                            <Checkbox
-                              checked={isVariableSelected(variable.name)}
-                              onCheckedChange={() => toggleVariable(variable)}
-                              className="mt-0.5"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <code className="text-sm font-mono bg-muted px-1.5 py-0.5 rounded">
-                                  {`{{${variable.name}}}`}
-                                </code>
-                                {variable.required && (
-                                  <Badge variant="destructive" className="text-xs">
-                                    {t('required')}
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {variable.description}
-                              </p>
-                              {variable.example && (
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  {t('example')}: <span className="font-medium">{variable.example}</span>
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                ))}
-              </Accordion>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Selected Variables Summary */}
-            {formData.variables.length > 0 && (
+            {/* Variables Table for Selected Context */}
+            {selectedVariableContext && (
               <div className="space-y-2">
-                <Label>{t('variablesList')} ({formData.variables.length})</Label>
-                <div className="border rounded-md p-4">
-                  <div className="flex flex-wrap gap-2">
-                    {formData.variables.map((variable) => (
-                      <Badge
-                        key={variable.name}
-                        variant="secondary"
-                        className="flex items-center gap-1 py-1.5 pl-3 pr-1"
-                      >
-                        <code className="text-xs">{`{{${variable.name}}}`}</code>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-4 w-4 p-0 hover:bg-transparent"
-                          onClick={() => removeVariable(variable.name)}
+                <div className="flex items-center justify-between">
+                  <Label className="flex items-center gap-2">
+                    <ChevronRight className="h-4 w-4" />
+                    {t(`variableGroups.${selectedVariableContext}`)}
+                  </Label>
+                  <span className="text-sm text-muted-foreground">
+                    {currentContextVariables.filter(v => isVariableSelected(v.name)).length} {t('selected') || 'selected'}
+                  </span>
+                </div>
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="w-[50px]"></TableHead>
+                        <TableHead>{t('variableName') || 'Name'}</TableHead>
+                        <TableHead>{t('variablePlaceholder') || 'Placeholder'}</TableHead>
+                        <TableHead>{t('variableDescription') || 'Description'}</TableHead>
+                        <TableHead className="w-[100px] text-center">{t('required') || 'Required'}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {currentContextVariables.map((variable) => (
+                        <TableRow
+                          key={variable.name}
+                          className={cn(
+                            "cursor-pointer transition-colors",
+                            isVariableSelected(variable.name) && "bg-primary/5"
+                          )}
+                          onClick={() => toggleVariable(variable)}
                         >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </Badge>
-                    ))}
-                  </div>
+                          <TableCell>
+                            <Checkbox
+                              checked={isVariableSelected(variable.name)}
+                              onClick={(e) => e.stopPropagation()}
+                              onCheckedChange={() => toggleVariable(variable)}
+                            />
+                          </TableCell>
+                          <TableCell className="font-medium">{variable.name.replace(/_/g, ' ')}</TableCell>
+                          <TableCell>
+                            <code className="text-sm font-mono bg-muted px-1.5 py-0.5 rounded">
+                              {`{{${variable.name}}}`}
+                            </code>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-sm">
+                            {variable.description}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {variable.required ? (
+                              <Badge variant="destructive" className="text-xs">
+                                {tCommon('yes') || 'Yes'}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">{tCommon('no') || 'No'}</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
+
+            {/* Selected Variables Summary - Grouped by Context */}
+            {formData.variables.length > 0 && (
+              <div className="space-y-3">
+                <Label>{t('variablesSummary') || 'Selected Variables'} ({formData.variables.length})</Label>
+                <div className="border rounded-lg divide-y">
+                  {Object.entries(groupedSelectedVariables).map(([context, variables]) => (
+                    <div key={context} className="p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Badge variant="outline">{t(`variableGroups.${context}`)}</Badge>
+                        <span className="text-sm text-muted-foreground">({variables.length})</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {variables.map((variable) => (
+                          <Badge
+                            key={variable.name}
+                            variant="secondary"
+                            className="flex items-center gap-1 py-1.5 pl-3 pr-1"
+                          >
+                            <code className="text-xs">{`{{${variable.name}}}`}</code>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-4 w-4 p-0 hover:bg-transparent"
+                              onClick={() => removeVariable(variable.name)}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

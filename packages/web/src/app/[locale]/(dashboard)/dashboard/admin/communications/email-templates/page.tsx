@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -39,7 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Mail, Plus, Search, Pencil, Trash2, Loader2, Eye, FileText, Sparkles } from 'lucide-react'
+import { Mail, Plus, Search, Pencil, Trash2, Loader2, Eye, FileText, Sparkles, LayoutGrid, List } from 'lucide-react'
 import {
   useEmailTemplates,
   useDeleteEmailTemplate,
@@ -64,6 +64,26 @@ export default function EmailTemplatesPage() {
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplateResponse | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
+  const [starterViewMode, setStarterViewMode] = useState<'grid' | 'list'>('grid')
+
+  // Filter starter templates by category and search
+  const filteredStarterTemplates = useMemo(() => {
+    return STARTER_TEMPLATES.filter((template) => {
+      // Category filter
+      if (categoryFilter !== 'all' && template.category !== categoryFilter) {
+        return false
+      }
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase()
+        return (
+          template.name.toLowerCase().includes(query) ||
+          template.description.toLowerCase().includes(query)
+        )
+      }
+      return true
+    })
+  }, [categoryFilter, searchQuery])
 
   // Queries and mutations
   const { data: templatesData, isLoading, error } = useEmailTemplates({
@@ -198,39 +218,103 @@ export default function EmailTemplatesPage() {
       {/* Starter Templates */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-primary" />
-            <CardTitle>{t('starterTemplates') || 'Starter Templates'}</CardTitle>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-primary" />
+              <div>
+                <CardTitle>{t('starterTemplates') || 'Starter Templates'}</CardTitle>
+                <CardDescription className="mt-1">
+                  {t('starterTemplatesDescription') || 'Pre-built templates to help you get started quickly'}
+                </CardDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 border rounded-lg p-1">
+              <Button
+                variant={starterViewMode === 'grid' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => setStarterViewMode('grid')}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={starterViewMode === 'list' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => setStarterViewMode('list')}
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-          <CardDescription>
-            {t('starterTemplatesDescription') || 'Pre-built templates to help you get started quickly'}
-          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {STARTER_TEMPLATES.map((template) => (
-              <div
-                key={template.id}
-                onClick={() => router.push(`/${locale}/dashboard/admin/communications/email-templates/new?starter=${template.id}`)}
-                className="relative cursor-pointer rounded-lg border-2 border-muted p-4 transition-all hover:border-primary hover:shadow-md group"
-              >
-                <div className="flex flex-col items-center text-center space-y-2">
-                  <div className="rounded-full bg-muted p-3 group-hover:bg-primary/10 transition-colors">
-                    <FileText className="h-6 w-6 text-muted-foreground group-hover:text-primary" />
+          {filteredStarterTemplates.length === 0 ? (
+            <div className="text-center py-8">
+              <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">{t('noStarterTemplatesForCategory') || 'No starter templates for this category'}</p>
+            </div>
+          ) : starterViewMode === 'grid' ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {filteredStarterTemplates.map((template) => (
+                <div
+                  key={template.id}
+                  onClick={() => router.push(`/${locale}/dashboard/admin/communications/email-templates/new?starter=${template.id}`)}
+                  className="relative cursor-pointer rounded-lg border-2 border-muted p-4 transition-all hover:border-primary hover:shadow-md group"
+                >
+                  <div className="flex flex-col items-center text-center space-y-2">
+                    <div className="rounded-full bg-muted p-3 group-hover:bg-primary/10 transition-colors">
+                      <FileText className="h-6 w-6 text-muted-foreground group-hover:text-primary" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-sm">{template.name}</h4>
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                        {template.description}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      {tCategories(template.category)}
+                    </Badge>
                   </div>
-                  <div>
-                    <h4 className="font-medium text-sm">{template.name}</h4>
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                      {template.description}
-                    </p>
-                  </div>
-                  <Badge variant="outline" className="text-xs">
-                    {tCategories(template.category)}
-                  </Badge>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t('name') || 'Name'}</TableHead>
+                  <TableHead>{t('description') || 'Description'}</TableHead>
+                  <TableHead>{t('category') || 'Category'}</TableHead>
+                  <TableHead className="text-right">{tCommon('actions')}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredStarterTemplates.map((template) => (
+                  <TableRow key={template.id} className="cursor-pointer hover:bg-muted/50">
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        {template.name}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{template.description}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{tCategories(template.category)}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        size="sm"
+                        onClick={() => router.push(`/${locale}/dashboard/admin/communications/email-templates/new?starter=${template.id}`)}
+                      >
+                        {t('useTemplate') || 'Use Template'}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 

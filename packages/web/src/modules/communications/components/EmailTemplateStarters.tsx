@@ -208,6 +208,169 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
       <p>Saludos cordiales,<br><strong>Equipo TaxasGE</strong></p>
     `),
   },
+  {
+    id: 'email_verification',
+    name: 'Verificación de Email',
+    description: 'Código de verificación para confirmar email',
+    category: 'auth',
+    preview: 'Verificación de correo electrónico',
+    htmlContent: baseEmailWrapper(`
+      <h2>Verifica tu correo electrónico</h2>
+      <p>Hola {{user_name}},</p>
+      <p>Para completar tu registro en TaxasGE, utiliza el siguiente código de verificación:</p>
+      <div style="background-color: #f8fafc; border: 2px dashed #e2e8f0; border-radius: 8px; padding: 30px; text-align: center; margin: 30px 0;">
+        <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1e40af;">{{verification_code}}</span>
+      </div>
+      <p>Este código expira en <strong>15 minutos</strong>.</p>
+      <p>Si no solicitaste este código, puedes ignorar este mensaje.</p>
+      <p>Saludos cordiales,<br><strong>Equipo TaxasGE</strong></p>
+    `),
+  },
+  {
+    id: 'password_reset',
+    name: 'Restablecer Contraseña',
+    description: 'Enlace para restablecer la contraseña',
+    category: 'auth',
+    preview: 'Recuperación de contraseña',
+    htmlContent: baseEmailWrapper(`
+      <h2>Restablecer Contraseña</h2>
+      <p>Hola {{user_name}},</p>
+      <p>Hemos recibido una solicitud para restablecer la contraseña de tu cuenta.</p>
+      <p style="text-align: center; margin: 30px 0;">
+        <a href="{{verification_url}}" class="button">Restablecer Contraseña</a>
+      </p>
+      <p>Este enlace expira en <strong>1 hora</strong>.</p>
+      <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0;">
+        <strong>⚠️ Importante:</strong> Si no solicitaste restablecer tu contraseña, ignora este mensaje. Tu contraseña actual seguirá siendo válida.
+      </div>
+      <p>Saludos cordiales,<br><strong>Equipo TaxasGE</strong></p>
+    `),
+  },
+  {
+    id: 'declaration_rejected',
+    name: 'Declaración Rechazada',
+    description: 'Notificar rechazo de declaración con motivos',
+    category: 'declarations',
+    preview: 'Notificación de rechazo',
+    htmlContent: baseEmailWrapper(`
+      <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 20px; margin-bottom: 20px; text-align: center;">
+        <span style="font-size: 48px;">❌</span>
+        <h2 style="color: #dc2626; margin: 10px 0;">Declaración Rechazada</h2>
+      </div>
+      <p>Estimado/a {{user_name}},</p>
+      <p>Lamentamos informarle que su declaración ha sido rechazada:</p>
+      <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+        <tr style="background-color: #f8fafc;">
+          <td style="padding: 10px; border: 1px solid #e2e8f0;"><strong>Tipo:</strong></td>
+          <td style="padding: 10px; border: 1px solid #e2e8f0;">{{declaration_type}}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; border: 1px solid #e2e8f0;"><strong>Referencia:</strong></td>
+          <td style="padding: 10px; border: 1px solid #e2e8f0;">{{declaration_reference}}</td>
+        </tr>
+      </table>
+      <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 15px; margin: 20px 0;">
+        <strong>Motivo del rechazo:</strong><br>
+        {{alert_details}}
+      </div>
+      <p>Por favor, corrija los errores indicados y vuelva a enviar su declaración.</p>
+      <p style="text-align: center; margin-top: 30px;">
+        <a href="{{declaration_url}}" class="button">Corregir Declaración</a>
+      </p>
+      <p>Si tiene preguntas, contacte con nuestro equipo de soporte.</p>
+      <p>Saludos cordiales,<br><strong>Equipo TaxasGE</strong></p>
+    `),
+  },
+  {
+    id: 'two_factor_enabled',
+    name: '2FA Activado',
+    description: 'Confirmación de activación de autenticación de dos factores',
+    category: 'auth',
+    preview: 'Confirmación de seguridad 2FA',
+    htmlContent: baseEmailWrapper(`
+      <div style="background-color: #dcfce7; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin-bottom: 20px; text-align: center;">
+        <span style="font-size: 48px;">🔐</span>
+        <h2 style="color: #16a34a; margin: 10px 0;">2FA Activado Correctamente</h2>
+      </div>
+      <p>Hola {{user_name}},</p>
+      <p>La autenticación de dos factores (2FA) ha sido activada en tu cuenta de TaxasGE.</p>
+      <p>A partir de ahora, necesitarás tu aplicación de autenticación para iniciar sesión.</p>
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin: 20px 0;">
+        <strong>Consejos de seguridad:</strong>
+        <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+          <li>Guarda tus códigos de respaldo en un lugar seguro</li>
+          <li>No compartas tu código de verificación con nadie</li>
+          <li>Si pierdes acceso a tu aplicación, usa los códigos de respaldo</li>
+        </ul>
+      </div>
+      <p>Si no realizaste este cambio, contacta inmediatamente con soporte.</p>
+      <p>Saludos cordiales,<br><strong>Equipo TaxasGE</strong></p>
+    `),
+  },
+  {
+    id: 'payment_failed',
+    name: 'Pago Fallido',
+    description: 'Notificar fallo en el procesamiento del pago',
+    category: 'payments',
+    preview: 'Notificación de pago fallido',
+    htmlContent: baseEmailWrapper(`
+      <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 20px; margin-bottom: 20px; text-align: center;">
+        <span style="font-size: 48px;">💳</span>
+        <h2 style="color: #dc2626; margin: 10px 0;">Pago No Procesado</h2>
+      </div>
+      <p>Estimado/a {{user_name}},</p>
+      <p>No pudimos procesar su pago. Detalles del intento:</p>
+      <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+        <tr style="background-color: #f8fafc;">
+          <td style="padding: 10px; border: 1px solid #e2e8f0;"><strong>Referencia:</strong></td>
+          <td style="padding: 10px; border: 1px solid #e2e8f0;">{{payment_reference}}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; border: 1px solid #e2e8f0;"><strong>Monto:</strong></td>
+          <td style="padding: 10px; border: 1px solid #e2e8f0;">{{payment_amount}} XAF</td>
+        </tr>
+        <tr style="background-color: #f8fafc;">
+          <td style="padding: 10px; border: 1px solid #e2e8f0;"><strong>Fecha:</strong></td>
+          <td style="padding: 10px; border: 1px solid #e2e8f0;">{{payment_date}}</td>
+        </tr>
+      </table>
+      <p>Posibles causas:</p>
+      <ul>
+        <li>Saldo insuficiente</li>
+        <li>Datos de pago incorrectos</li>
+        <li>Límite de transacciones alcanzado</li>
+      </ul>
+      <p style="text-align: center; margin-top: 30px;">
+        <a href="{{action_url}}" class="button">Reintentar Pago</a>
+      </p>
+      <p>Si necesita ayuda, contacte con soporte.</p>
+      <p>Saludos cordiales,<br><strong>Equipo TaxasGE</strong></p>
+    `),
+  },
+  {
+    id: 'account_suspended',
+    name: 'Cuenta Suspendida',
+    description: 'Notificar suspensión de cuenta',
+    category: 'system',
+    preview: 'Notificación de suspensión',
+    htmlContent: baseEmailWrapper(`
+      <div style="background-color: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 20px; margin-bottom: 20px; text-align: center;">
+        <span style="font-size: 48px;">⚠️</span>
+        <h2 style="color: #b45309; margin: 10px 0;">Cuenta Suspendida</h2>
+      </div>
+      <p>Estimado/a {{user_name}},</p>
+      <p>Le informamos que su cuenta de TaxasGE ha sido suspendida temporalmente.</p>
+      <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0;">
+        <strong>Motivo:</strong><br>
+        {{alert_details}}
+      </div>
+      <p>Para reactivar su cuenta, por favor contacte con nuestro equipo de soporte proporcionando la documentación necesaria.</p>
+      <p style="text-align: center; margin-top: 30px;">
+        <a href="mailto:{{support_email}}" class="button">Contactar Soporte</a>
+      </p>
+      <p>Saludos cordiales,<br><strong>Equipo TaxasGE</strong></p>
+    `),
+  },
 ]
 
 export default STARTER_TEMPLATES
