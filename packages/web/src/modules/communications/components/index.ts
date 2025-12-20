@@ -30,3 +30,7 @@ export { WhatsAppProviderSettings } from './WhatsAppProviderSettings'
 
 // Rich Text Editor
 export { RichTextEditor } from './RichTextEditor'
+
+// Email Template Starters
+export { STARTER_TEMPLATES } from './EmailTemplateStarters'
+export type { StarterTemplate } from './EmailTemplateStarters'

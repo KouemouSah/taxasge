@@ -8,7 +8,7 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
-import { ArrowLeft, RefreshCw, Plus, X } from 'lucide-react'
+import { ArrowLeft, RefreshCw, Plus, X, FileText, Check } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -26,7 +26,9 @@ import {
 } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { useCreateEmailTemplate } from '@/modules/communications/hooks/useEmailTemplates'
+import { STARTER_TEMPLATES, type StarterTemplate } from '@/modules/communications/components/EmailTemplateStarters'
 import type { EmailTemplateCreate, TemplateVariable } from '@/modules/communications/types'
+import { cn } from '@/core/utils'
 
 const EMAIL_CATEGORY_KEYS = ['auth', 'notifications', 'payments', 'declarations', 'reminders', 'alerts', 'system'] as const
 
@@ -61,6 +63,17 @@ export default function NewEmailTemplatePage() {
     example: '',
     required: false,
   })
+
+  const [selectedStarterTemplate, setSelectedStarterTemplate] = useState<string | null>(null)
+
+  const handleSelectStarterTemplate = (template: StarterTemplate) => {
+    setSelectedStarterTemplate(template.id)
+    setFormData({
+      ...formData,
+      htmlContent: template.htmlContent,
+      category: template.category,
+    })
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -273,6 +286,50 @@ export default function NewEmailTemplatePage() {
                   rows={3}
                 />
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Starter Templates */}
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('starterTemplates.title')}</CardTitle>
+            <CardDescription>{t('starterTemplates.description')}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {STARTER_TEMPLATES.map((template) => (
+                <div
+                  key={template.id}
+                  onClick={() => handleSelectStarterTemplate(template)}
+                  className={cn(
+                    "relative cursor-pointer rounded-lg border-2 p-4 transition-all hover:border-primary hover:shadow-md",
+                    selectedStarterTemplate === template.id
+                      ? "border-primary bg-primary/5"
+                      : "border-muted"
+                  )}
+                >
+                  {selectedStarterTemplate === template.id && (
+                    <div className="absolute right-2 top-2">
+                      <Check className="h-5 w-5 text-primary" />
+                    </div>
+                  )}
+                  <div className="flex flex-col items-center text-center space-y-2">
+                    <div className="rounded-full bg-muted p-3">
+                      <FileText className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-sm">{template.name}</h4>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {template.description}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      {t(`categories.${template.category}`)}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
