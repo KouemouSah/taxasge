@@ -19,7 +19,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -33,8 +32,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -45,17 +42,10 @@ import {
 import { Mail, Plus, Search, Pencil, Trash2, Loader2, Eye, FileText } from 'lucide-react'
 import {
   useEmailTemplates,
-  useCreateEmailTemplate,
-  useUpdateEmailTemplate,
   useDeleteEmailTemplate,
   useEmailTemplatePreview,
 } from '@/modules/communications/hooks/useEmailTemplates'
-import type {
-  EmailTemplateResponse,
-  EmailTemplateCreate,
-  EmailTemplateUpdate,
-  TemplateVariable,
-} from '@/modules/communications/types'
+import type { EmailTemplateResponse } from '@/modules/communications/types'
 import { toast } from 'sonner'
 
 export default function EmailTemplatesPage() {
@@ -69,22 +59,10 @@ export default function EmailTemplatesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [isActiveFilter, setIsActiveFilter] = useState<string>('all')
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplateResponse | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
-
-  // Form state
-  const [formData, setFormData] = useState<EmailTemplateCreate>({
-    templateCode: '',
-    nameEs: '',
-    subjectEs: '',
-    htmlContent: '',
-    variables: [],
-    category: '',
-    isActive: true,
-  })
 
   // Queries and mutations
   const { data: templatesData, isLoading, error } = useEmailTemplates({
@@ -99,8 +77,6 @@ export default function EmailTemplatesPage() {
     isPreviewDialogOpen && !!selectedTemplate
   )
 
-  const createMutation = useCreateEmailTemplate()
-  const updateMutation = useUpdateEmailTemplate()
   const deleteMutation = useDeleteEmailTemplate()
 
   // Filter templates by search query
@@ -113,40 +89,6 @@ export default function EmailTemplatesPage() {
       template.subjectEs.toLowerCase().includes(query)
     )
   }) || []
-
-  // Handlers
-  const handleCreateTemplate = async () => {
-    try {
-      await createMutation.mutateAsync(formData)
-      toast.success(t('createSuccess') || 'Email template created successfully')
-      setIsCreateDialogOpen(false)
-      resetForm()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to create email template')
-    }
-  }
-
-  const handleUpdateTemplate = async () => {
-    if (!selectedTemplate) return
-
-    try {
-      const updateData: EmailTemplateUpdate = {
-        nameEs: formData.nameEs,
-        subjectEs: formData.subjectEs,
-        descriptionEs: formData.descriptionEs,
-        htmlContent: formData.htmlContent,
-        variables: formData.variables,
-        category: formData.category,
-        isActive: formData.isActive,
-      }
-      await updateMutation.mutateAsync({ templateId: selectedTemplate.id, data: updateData })
-      toast.success(t('updateSuccess') || 'Email template updated successfully')
-      setIsEditDialogOpen(false)
-      resetForm()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to update email template')
-    }
-  }
 
   const handleDeleteTemplate = async () => {
     if (!selectedTemplate) return
@@ -169,42 +111,6 @@ export default function EmailTemplatesPage() {
   const openPreviewDialog = (template: EmailTemplateResponse) => {
     setSelectedTemplate(template)
     setIsPreviewDialogOpen(true)
-  }
-
-  const resetForm = () => {
-    setFormData({
-      templateCode: '',
-      nameEs: '',
-      subjectEs: '',
-      htmlContent: '',
-      variables: [],
-      category: '',
-      isActive: true,
-    })
-    setSelectedTemplate(null)
-  }
-
-  const addVariable = () => {
-    setFormData({
-      ...formData,
-      variables: [
-        ...formData.variables,
-        { name: '', description: '', example: '', required: true },
-      ],
-    })
-  }
-
-  const updateVariable = (index: number, field: keyof TemplateVariable, value: string | boolean) => {
-    const newVariables = [...formData.variables]
-    newVariables[index] = { ...newVariables[index], [field]: value }
-    setFormData({ ...formData, variables: newVariables })
-  }
-
-  const removeVariable = (index: number) => {
-    setFormData({
-      ...formData,
-      variables: formData.variables.filter((_, i) => i !== index),
-    })
   }
 
   if (error) {
@@ -397,183 +303,6 @@ export default function EmailTemplatesPage() {
           )}
         </CardContent>
       </Card>
-
-      {/* Create Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{t('createTitle') || 'Create Email Template'}</DialogTitle>
-            <DialogDescription>
-              {t('createDescription') || 'Create a new email template'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="templateCode">{t('code') || 'Template Code'}</Label>
-              <Input
-                id="templateCode"
-                value={formData.templateCode}
-                onChange={(e) => setFormData({ ...formData, templateCode: e.target.value })}
-                placeholder="password_reset"
-              />
-            </div>
-            <div>
-              <Label htmlFor="nameEs">{t('nameEs') || 'Name (Spanish)'}</Label>
-              <Input
-                id="nameEs"
-                value={formData.nameEs}
-                onChange={(e) => setFormData({ ...formData, nameEs: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="subjectEs">{t('subjectEs') || 'Subject (Spanish)'}</Label>
-              <Input
-                id="subjectEs"
-                value={formData.subjectEs}
-                onChange={(e) => setFormData({ ...formData, subjectEs: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="category">{t('category') || 'Category'}</Label>
-              <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
-                <SelectTrigger id="category">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="auth">{tCategories('auth')}</SelectItem>
-                  <SelectItem value="notifications">{tCategories('notifications')}</SelectItem>
-                  <SelectItem value="declarations">{tCategories('declarations')}</SelectItem>
-                  <SelectItem value="payments">{tCategories('payments')}</SelectItem>
-                  <SelectItem value="reminders">{tCategories('reminders')}</SelectItem>
-                  <SelectItem value="alerts">{tCategories('alerts')}</SelectItem>
-                  <SelectItem value="system">{tCategories('system')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="htmlContent">{t('htmlContent') || 'HTML Content'}</Label>
-              <Textarea
-                id="htmlContent"
-                value={formData.htmlContent}
-                onChange={(e) => setFormData({ ...formData, htmlContent: e.target.value })}
-                rows={10}
-                className="font-mono text-sm"
-              />
-            </div>
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <Label>{t('variables') || 'Variables'}</Label>
-                <Button type="button" variant="outline" size="sm" onClick={addVariable}>
-                  <Plus className="w-4 h-4 mr-1" />
-                  {t('addVariable') || 'Add'}
-                </Button>
-              </div>
-              {formData.variables.map((variable, index) => (
-                <div key={index} className="border rounded-lg p-3 space-y-2 mb-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input
-                      placeholder={t('variableName') || 'Name'}
-                      value={variable.name}
-                      onChange={(e) => updateVariable(index, 'name', e.target.value)}
-                    />
-                    <Input
-                      placeholder={t('variableExample') || 'Example'}
-                      value={variable.example || ''}
-                      onChange={(e) => updateVariable(index, 'example', e.target.value)}
-                    />
-                  </div>
-                  <Input
-                    placeholder={t('variableDescription') || 'Description'}
-                    value={variable.description}
-                    onChange={(e) => updateVariable(index, 'description', e.target.value)}
-                  />
-                  <div className="flex items-center justify-between">
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={variable.required}
-                        onChange={(e) => updateVariable(index, 'required', e.target.checked)}
-                      />
-                      {t('required') || 'Required'}
-                    </label>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeVariable(index)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-              {tCommon('cancel')}
-            </Button>
-            <Button onClick={handleCreateTemplate} disabled={createMutation.isPending}>
-              {createMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {tCommon('create')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Dialog - Similar to Create */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{t('editTitle') || 'Edit Email Template'}</DialogTitle>
-            <DialogDescription>
-              {t('editDescription') || 'Update email template details'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>{t('code') || 'Template Code'}</Label>
-              <Input value={formData.templateCode} disabled />
-            </div>
-            <div>
-              <Label htmlFor="edit-nameEs">{t('nameEs') || 'Name (Spanish)'}</Label>
-              <Input
-                id="edit-nameEs"
-                value={formData.nameEs}
-                onChange={(e) => setFormData({ ...formData, nameEs: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-subjectEs">{t('subjectEs') || 'Subject (Spanish)'}</Label>
-              <Input
-                id="edit-subjectEs"
-                value={formData.subjectEs}
-                onChange={(e) => setFormData({ ...formData, subjectEs: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-htmlContent">{t('htmlContent') || 'HTML Content (optional)'}</Label>
-              <Textarea
-                id="edit-htmlContent"
-                value={formData.htmlContent}
-                onChange={(e) => setFormData({ ...formData, htmlContent: e.target.value })}
-                rows={10}
-                className="font-mono text-sm"
-                placeholder={t('htmlPlaceholder') || 'Leave empty to keep current HTML'}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              {tCommon('cancel')}
-            </Button>
-            <Button onClick={handleUpdateTemplate} disabled={updateMutation.isPending}>
-              {updateMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {tCommon('save')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
