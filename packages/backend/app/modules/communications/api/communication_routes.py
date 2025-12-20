@@ -161,17 +161,30 @@ class SendSmsWithTemplateRequest(BaseModel):
     )
     language: str = Field("es", pattern="^(es|fr|en)$", description="Language (es/fr/en)")
 
+
+class NotifyUserSmsRequest(BaseModel):
+    """
+    Request model for sending SMS notification to a user.
+
+    Retrieves user's phone number from their profile automatically.
+    """
+    user_email: str = Field(..., description="User email to notify")
+    template_code: str = Field(..., min_length=1, max_length=100, description="SMS template code")
+    variables: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Variables to replace in template (e.g., amount, reference)"
+    )
+
     class Config:
         json_schema_extra = {
             "example": {
+                "user_email": "libressay@gmail.com",
                 "template_code": "PAYMENT_RECEIVED",
-                "to_phone": "+240222123456",
                 "variables": {
                     "user_name": "John Doe",
                     "amount": "50,000 XAF",
                     "reference": "PAY-2025-001"
-                },
-                "language": "es"
+                }
             }
         }
 
@@ -522,6 +535,145 @@ async def send_sms_with_template(
         raise
     except Exception as e:
         logger.error(f"Error sending SMS with template: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/sms/notify-user")
+async def notify_user_via_sms(
+    request: NotifyUserSmsRequest,
+    db: asyncpg.Connection = Depends(get_database),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """
+    Send SMS notification to a user using their profile phone number.
+
+    **Workflow:**
+    1. Fetch user by email from users table
+    2. Get user's phone_number and preferred_language
+    3. Fetch SMS template by code
+    4. Render template with provided variables + user_name
+    5. Send SMS via configured provider (Infobip)
+
+    **Required:**
+    - Authentication
+    - User must have a phone_number configured in their profile
+    - Active SMS provider configured in provider settings
+
+    **Auto-injected variables:**
+    - user_name: User's full name (first_name + last_name)
+
+    Returns:
+    - Success status with message ID
+    """
+    from app.modules.users.repositories.user_repository import UserRepository
+
+    try:
+        # 1. Get user by email
+        user_repo = UserRepository()
+        user = await user_repo.find_by_email(request.user_email)
+
+        if not user:
+            raise HTTPException(
+                status_code=404,
+                detail=f"User not found: {request.user_email}"
+            )
+
+        # 2. Check if user has phone number
+        if not user.phone_number:
+            raise HTTPException(
+                status_code=400,
+                detail=f"User {request.user_email} has no phone number configured"
+            )
+
+        # 3. Get the SMS template
+        sms_template_service = SmsTemplateService()
+        template = await sms_template_service.get_template_by_code(db, request.template_code)
+
+        if not template:
+            raise HTTPException(
+                status_code=404,
+                detail=f"SMS template not found: {request.template_code}"
+            )
+
+        if not template.is_active:
+            raise HTTPException(
+                status_code=400,
+                detail=f"SMS template is inactive: {request.template_code}"
+            )
+
+        # 4. Prepare variables (inject user_name automatically)
+        variables = request.variables or {}
+        variables["user_name"] = f"{user.first_name} {user.last_name}"
+
+        # Use user's preferred language
+        language = user.preferred_language or "es"
+
+        # 5. Render the template
+        render_request = SmsTemplateRenderRequest(
+            template_code=request.template_code,
+            language=language,
+            variables=variables
+        )
+        rendered = await sms_template_service.render_template(db, render_request)
+
+        # 6. Get SMS provider credentials
+        provider_service = ProviderSettingsService()
+        credentials = await provider_service.get_active_sms_credentials(db)
+
+        if not credentials:
+            raise HTTPException(
+                status_code=400,
+                detail="No active SMS provider configured. Please configure a provider in Communications > Providers."
+            )
+
+        api_key = credentials.get("api_key")
+        if not api_key:
+            raise HTTPException(
+                status_code=500,
+                detail="SMS provider API key not configured"
+            )
+
+        # 7. Send SMS
+        sms_service = SmsService(
+            provider="infobip",
+            api_key=api_key,
+            base_url="y45e8g.api.infobip.com",
+            sender_id="TaxasGE"
+        )
+
+        result = sms_service.send_sms(
+            to=user.phone_number,
+            message=rendered.rendered_content
+        )
+
+        if result.success:
+            logger.info(
+                f"SMS notification sent to user {request.user_email} ({user.phone_number}) "
+                f"with template '{request.template_code}' by {current_user.get('sub')}, "
+                f"message_id={result.message_id}"
+            )
+            return {
+                "success": True,
+                "message": "SMS notification sent successfully",
+                "user_email": request.user_email,
+                "to_phone": user.phone_number,
+                "template_code": request.template_code,
+                "language": language,
+                "message_id": result.message_id,
+                "character_count": rendered.character_count,
+                "segment_count": rendered.segment_count
+            }
+        else:
+            logger.error(f"Failed to send SMS notification: {result.error}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to send SMS: {result.error}"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error sending SMS notification to user: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
