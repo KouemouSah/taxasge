@@ -15,7 +15,7 @@ from app.modules.users.models import (
 from app.modules.users.repositories import UserRepository
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.auth.services.password_service import PasswordService
-from app.database.connection import get_database
+from app.database.connection import get_database, db_manager
 
 # Create router
 router = APIRouter(tags=["Users - Profile"])
@@ -148,143 +148,143 @@ async def change_password(
                 detail="User not found"
             )
 
-        # Get hashed password from database
-        db = await get_database()
-        query = "SELECT password_hash FROM users WHERE id = $1"
-        result = await db.fetchrow(query, current_user.id)
+        # Use database connection manager for all DB operations
+        async with db_manager.get_connection() as db:
+            # Get hashed password from database
+            query = "SELECT password_hash FROM users WHERE id = $1"
+            result = await db.fetchrow(query, current_user.id)
 
-        if not result:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+            if not result:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found"
+                )
+
+            # Verify old password
+            password_service = PasswordService()
+            if not password_service.verify_password(
+                password_change.old_password,
+                result["password_hash"]
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Current password is incorrect"
+                )
+
+            # Hash new password
+            new_password_hash = password_service.hash_password(password_change.new_password)
+
+            # Update password in database
+            update_query = """
+                UPDATE users
+                SET password_hash = $1, updated_at = NOW()
+                WHERE id = $2
+            """
+            await db.execute(update_query, new_password_hash, current_user.id)
+
+            # Log activity
+            activity = UserActivity(
+                user_id=current_user.id,
+                action="change_password",
+                resource="user_password",
+                timestamp=datetime.utcnow()
             )
+            await user_repository.log_user_activity(activity)
 
-        # Verify old password
-        password_service = PasswordService()
-        if not password_service.verify_password(
-            password_change.old_password,
-            result["password_hash"]
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Current password is incorrect"
-            )
+            # =================================================================
+            # SEND SECURITY NOTIFICATIONS (SMS + Email)
+            # Uses database templates for consistency with communications module
+            # =================================================================
+            now = datetime.utcnow()
+            change_date = now.strftime("%d/%m/%Y")
+            change_time = now.strftime("%H:%M")
 
-        # Hash new password
-        new_password_hash = password_service.hash_password(password_change.new_password)
+            # Common variables for both SMS and Email templates
+            notification_variables = {
+                "user_name": f"{current_user.first_name} {current_user.last_name}",
+                "date": change_date,
+                "time": change_time
+            }
 
-        # Update password in database
-        update_query = """
-            UPDATE users
-            SET password_hash = $1, updated_at = NOW()
-            WHERE id = $2
-        """
-        await db.execute(update_query, new_password_hash, current_user.id)
-
-        # Log activity
-        activity = UserActivity(
-            user_id=current_user.id,
-            action="change_password",
-            resource="user_password",
-            timestamp=datetime.utcnow()
-        )
-        await user_repository.log_user_activity(activity)
-
-        # =====================================================================
-        # SEND SECURITY NOTIFICATIONS (SMS + Email)
-        # Uses database templates for consistency with the communications module
-        # =====================================================================
-        now = datetime.utcnow()
-        change_date = now.strftime("%d/%m/%Y")
-        change_time = now.strftime("%H:%M")
-
-        # Common variables for both SMS and Email templates
-        notification_variables = {
-            "user_name": f"{current_user.first_name} {current_user.last_name}",
-            "date": change_date,
-            "time": change_time
-        }
-
-        # 1. Send Email notification using database template
-        try:
-            from app.modules.communications.services.email_service import get_email_service
-
-            email_service = get_email_service()
-
-            # Use send_with_template for database template
-            email_sent = await email_service.send_with_template(
-                db=db,
-                template_code="SECURITY_PASSWORD_CHANGED",
-                to_email=current_user.email,
-                variables=notification_variables,
-                language=current_user.preferred_language or "es"
-            )
-
-            if email_sent:
-                logger.info(f"Password change email notification sent to {current_user.email}")
-            else:
-                logger.warning(f"Failed to send password change email to {current_user.email}")
-
-        except Exception as email_error:
-            logger.error(f"Error sending password change email: {email_error}")
-
-        # 2. Send SMS notification (if user has phone number)
-        if current_user.phone_number:
+            # 1. Send Email notification using database template
             try:
-                from app.modules.communications.services.sms_template_service import SmsTemplateService
-                from app.modules.communications.models.sms_template import SmsTemplateRenderRequest
-                from app.modules.communications.services.provider_settings_service import ProviderSettingsService
-                from app.modules.communications.services.sms_provider_service import SmsService
+                from app.modules.communications.services.email_service import get_email_service
 
-                sms_template_service = SmsTemplateService()
+                email_service = get_email_service()
 
-                # Get the SMS template
-                template = await sms_template_service.get_template_by_code(db, "SECURITY_PASSWORD_CHANGED")
+                # Use send_with_template for database template
+                email_sent = await email_service.send_with_template(
+                    db=db,
+                    template_code="SECURITY_PASSWORD_CHANGED",
+                    to_email=current_user.email,
+                    variables=notification_variables,
+                    language=current_user.preferred_language or "es"
+                )
 
-                if template and template.is_active:
-                    # SMS template uses same variables as email: user_name, date, time
-                    # Render template
-                    render_request = SmsTemplateRenderRequest(
-                        template_code="SECURITY_PASSWORD_CHANGED",
-                        language=current_user.preferred_language or "es",
-                        variables=notification_variables  # Same as email for consistency
-                    )
-                    rendered = await sms_template_service.render_template(db, render_request)
-
-                    # Get SMS provider credentials
-                    provider_service = ProviderSettingsService()
-                    credentials = await provider_service.get_active_sms_credentials(db)
-
-                    if credentials and credentials.get("api_key"):
-                        sms_service = SmsService(
-                            provider="infobip",
-                            api_key=credentials["api_key"],
-                            base_url="y45e8g.api.infobip.com",
-                            sender_id="TaxasGE"
-                        )
-
-                        sms_result = sms_service.send_sms(
-                            to=current_user.phone_number,
-                            message=rendered.rendered_content
-                        )
-
-                        if sms_result.success:
-                            logger.info(
-                                f"Password change SMS sent to {current_user.phone_number}, "
-                                f"message_id={sms_result.message_id}"
-                            )
-                        else:
-                            logger.warning(
-                                f"Failed to send password change SMS to {current_user.phone_number}: "
-                                f"{sms_result.error}"
-                            )
-                    else:
-                        logger.warning("No active SMS provider configured, skipping SMS notification")
+                if email_sent:
+                    logger.info(f"Password change email notification sent to {current_user.email}")
                 else:
-                    logger.warning("SMS template SECURITY_PASSWORD_CHANGED not found or inactive")
+                    logger.warning(f"Failed to send password change email to {current_user.email}")
 
-            except Exception as sms_error:
-                logger.error(f"Error sending password change SMS: {sms_error}")
+            except Exception as email_error:
+                logger.error(f"Error sending password change email: {email_error}")
+
+            # 2. Send SMS notification (if user has phone number)
+            if current_user.phone_number:
+                try:
+                    from app.modules.communications.services.sms_template_service import SmsTemplateService
+                    from app.modules.communications.models.sms_template import SmsTemplateRenderRequest
+                    from app.modules.communications.services.provider_settings_service import ProviderSettingsService
+                    from app.modules.communications.services.sms_provider_service import SmsService
+
+                    sms_template_service = SmsTemplateService()
+
+                    # Get the SMS template
+                    template = await sms_template_service.get_template_by_code(db, "SECURITY_PASSWORD_CHANGED")
+
+                    if template and template.is_active:
+                        # SMS template uses same variables as email: user_name, date, time
+                        render_request = SmsTemplateRenderRequest(
+                            template_code="SECURITY_PASSWORD_CHANGED",
+                            language=current_user.preferred_language or "es",
+                            variables=notification_variables
+                        )
+                        rendered = await sms_template_service.render_template(db, render_request)
+
+                        # Get SMS provider credentials
+                        provider_service = ProviderSettingsService()
+                        credentials = await provider_service.get_active_sms_credentials(db)
+
+                        if credentials and credentials.get("api_key"):
+                            sms_service = SmsService(
+                                provider="infobip",
+                                api_key=credentials["api_key"],
+                                base_url="y45e8g.api.infobip.com",
+                                sender_id="TaxasGE"
+                            )
+
+                            sms_result = sms_service.send_sms(
+                                to=current_user.phone_number,
+                                message=rendered.rendered_content
+                            )
+
+                            if sms_result.success:
+                                logger.info(
+                                    f"Password change SMS sent to {current_user.phone_number}, "
+                                    f"message_id={sms_result.message_id}"
+                                )
+                            else:
+                                logger.warning(
+                                    f"Failed to send password change SMS to {current_user.phone_number}: "
+                                    f"{sms_result.error}"
+                                )
+                        else:
+                            logger.warning("No active SMS provider configured, skipping SMS notification")
+                    else:
+                        logger.warning("SMS template SECURITY_PASSWORD_CHANGED not found or inactive")
+
+                except Exception as sms_error:
+                    logger.error(f"Error sending password change SMS: {sms_error}")
 
         return {
             "message": "Password changed successfully"
