@@ -29,7 +29,8 @@ export interface EmailTemplateBase {
   descriptionEs?: string
   descriptionFr?: string
   descriptionEn?: string
-  htmlFilePath: string
+  htmlContent?: string  // HTML content stored directly in DB
+  htmlFilePath?: string  // DEPRECATED
   variables: TemplateVariable[]
   category?: string
   isActive: boolean

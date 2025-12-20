@@ -57,7 +57,7 @@ export default function EditEmailTemplatePage() {
         descriptionEs: template.descriptionEs,
         descriptionFr: template.descriptionFr,
         descriptionEn: template.descriptionEn,
-        htmlContent: template.htmlFilePath, // Will need to fetch actual content
+        htmlContent: template.htmlContent || '', // HTML content from database
         variables: template.variables,
         category: template.category,
         isActive: template.isActive,
