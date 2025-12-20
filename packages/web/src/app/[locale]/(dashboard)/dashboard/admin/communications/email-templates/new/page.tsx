@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
+import { RichTextEditor } from '@/modules/communications/components/RichTextEditor'
 import { Badge } from '@/components/ui/badge'
 import {
   Select,
@@ -284,15 +285,11 @@ export default function NewEmailTemplatePage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="htmlContent">{t('fieldHtmlContent')} *</Label>
-              <Textarea
-                id="htmlContent"
-                value={formData.htmlContent}
-                onChange={(e) => setFormData({ ...formData, htmlContent: e.target.value })}
-                placeholder="<!DOCTYPE html>&#10;<html>&#10;<head>&#10;  <meta charset='utf-8'>&#10;  <title>{{subject}}</title>&#10;</head>&#10;<body>&#10;  <h1>Hello {{user_name}}!</h1>&#10;</body>&#10;</html>"
-                rows={12}
-                className="font-mono text-sm"
-                required
+              <Label>{t('fieldHtmlContent')} *</Label>
+              <RichTextEditor
+                content={formData.htmlContent}
+                onChange={(html) => setFormData({ ...formData, htmlContent: html })}
+                placeholder={t('htmlContentPlaceholder') || 'Start writing your email content...'}
               />
               <p className="text-xs text-muted-foreground">{t('htmlContentHint')}</p>
             </div>

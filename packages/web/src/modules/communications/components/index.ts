@@ -27,3 +27,6 @@ export { UssdMenuEditor } from './UssdMenuEditor'
 export { SmsProviderSettings } from './SmsProviderSettings'
 export { EmailProviderSettings } from './EmailProviderSettings'
 export { WhatsAppProviderSettings } from './WhatsAppProviderSettings'
+
+// Rich Text Editor
+export { RichTextEditor } from './RichTextEditor'
