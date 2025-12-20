@@ -161,27 +161,6 @@ export default function EmailTemplatesPage() {
     }
   }
 
-  const openEditDialog = (template: EmailTemplateResponse) => {
-    setSelectedTemplate(template)
-    setFormData({
-      templateCode: template.templateCode,
-      nameEs: template.nameEs,
-      nameFr: template.nameFr,
-      nameEn: template.nameEn,
-      subjectEs: template.subjectEs,
-      subjectFr: template.subjectFr,
-      subjectEn: template.subjectEn,
-      descriptionEs: template.descriptionEs,
-      descriptionFr: template.descriptionFr,
-      descriptionEn: template.descriptionEn,
-      htmlContent: '',
-      variables: template.variables,
-      category: template.category,
-      isActive: template.isActive,
-    })
-    setIsEditDialogOpen(true)
-  }
-
   const openDeleteDialog = (template: EmailTemplateResponse) => {
     setSelectedTemplate(template)
     setIsDeleteDialogOpen(true)
