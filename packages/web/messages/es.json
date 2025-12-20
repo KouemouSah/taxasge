@@ -1991,7 +1991,9 @@
     "inactive": "Inactivo",
     "status": "Estado",
     "actions": "Acciones",
-    "create": "Crear"
+    "create": "Crear",
+    "yes": "Sí",
+    "no": "No"
   },
   "dashboard": {
     "actions": "Acciones",

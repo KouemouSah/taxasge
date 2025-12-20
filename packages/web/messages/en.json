@@ -1977,7 +1977,9 @@
     "inactive": "Inactive",
     "status": "Status",
     "actions": "Actions",
-    "create": "Create"
+    "create": "Create",
+    "yes": "Yes",
+    "no": "No"
   },
   "dashboard": {
     "actions": "Actions",
