@@ -242,14 +242,12 @@ async def change_password(
                 template = await sms_template_service.get_template_by_code(db, "SECURITY_PASSWORD_CHANGED")
 
                 if template and template.is_active:
-                    # SMS template uses date and time variables
-                    sms_variables = {"date": change_date, "time": change_time}
-
+                    # SMS template uses same variables as email: user_name, date, time
                     # Render template
                     render_request = SmsTemplateRenderRequest(
                         template_code="SECURITY_PASSWORD_CHANGED",
                         language=current_user.preferred_language or "es",
-                        variables=sms_variables
+                        variables=notification_variables  # Same as email for consistency
                     )
                     rendered = await sms_template_service.render_template(db, render_request)
 
