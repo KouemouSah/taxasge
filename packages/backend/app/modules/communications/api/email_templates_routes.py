@@ -9,10 +9,12 @@ Endpoints:
 - POST   /email-templates - Create template
 - PUT    /email-templates/{id} - Update template
 - DELETE /email-templates/{id} - Delete template
+- POST   /email-templates/{id}/send-test - Send test email with template
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
+from typing import Optional, Dict, Any
+from pydantic import BaseModel, EmailStr, Field
 import asyncpg
 from loguru import logger
 
@@ -28,6 +30,38 @@ from ..models.email_template import (
     EmailTemplatePreview,
 )
 from ..services.email_template_service import EmailTemplateService
+from ..services.email_service import EmailService
+
+
+class SendTestEmailRequest(BaseModel):
+    """Request model for sending a test email with a template"""
+    to_email: EmailStr = Field(..., description="Recipient email address")
+    test_variables: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Test values for template variables"
+    )
+    language: str = Field("es", pattern="^(es|fr|en)$", description="Language for subject/name")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "to_email": "test@example.com",
+                "test_variables": {
+                    "user_name": "John Doe",
+                    "amount": "10,000 XAF",
+                    "date": "20/12/2025"
+                },
+                "language": "es"
+            }
+        }
+
+
+class SendTestEmailResponse(BaseModel):
+    """Response for test email sending"""
+    success: bool
+    message: str
+    to_email: str
+    template_code: str
 
 router = APIRouter(prefix="/communications/email-templates", tags=["Email Templates"])
 service = EmailTemplateService()
@@ -276,4 +310,92 @@ async def delete_email_template(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to delete email template",
+        )
+
+
+@router.post(
+    "/{template_id}/send-test",
+    response_model=SendTestEmailResponse,
+    summary="Send Test Email",
+)
+async def send_test_email(
+    template_id: int,
+    request: SendTestEmailRequest,
+    background_tasks: BackgroundTasks,
+    db: asyncpg.Connection = Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(permission_required("communications.manage")),
+):
+    """
+    Send a test email using a specific template.
+
+    Requires permission: communications.manage
+
+    - **template_id**: Template ID to use
+    - **to_email**: Recipient email address
+    - **test_variables**: Values to replace template variables (optional)
+    - **language**: Language for subject (es, fr, en)
+    """
+    # Get the template
+    template = await service.get_template(db, template_id)
+    if not template:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Template with ID {template_id} not found",
+        )
+
+    # Get HTML content
+    html_content = await service.get_template_html(db, template_id)
+    if not html_content:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"HTML file for template {template_id} not found",
+        )
+
+    # Replace variables in HTML content
+    if request.test_variables:
+        for var_name, var_value in request.test_variables.items():
+            placeholder = "{{" + var_name + "}}"
+            html_content = html_content.replace(placeholder, str(var_value))
+
+    # Get subject based on language
+    if request.language == "fr":
+        subject = template.subject_fr or template.subject_es
+    elif request.language == "en":
+        subject = template.subject_en or template.subject_es
+    else:
+        subject = template.subject_es
+
+    # Add [TEST] prefix to subject
+    subject = f"[TEST] {subject}"
+
+    try:
+        email_service = EmailService()
+
+        # Send email in background
+        background_tasks.add_task(
+            email_service.send_email,
+            request.to_email,
+            subject,
+            html_content,
+            None  # No plain text version for test
+        )
+
+        logger.info(
+            f"Test email queued: template={template.template_code}, "
+            f"to={request.to_email}, by user={current_user.id}"
+        )
+
+        return SendTestEmailResponse(
+            success=True,
+            message="Test email queued for sending",
+            to_email=request.to_email,
+            template_code=template.template_code,
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to queue test email: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to send test email: {str(e)}",
         )
