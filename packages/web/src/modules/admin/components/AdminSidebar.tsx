@@ -224,6 +224,11 @@ export default function AdminSidebar() {
           href: `/${locale}/dashboard/admin/communications/push-templates`,
           icon: Send,
         },
+        {
+          title: t('nav.providerSettings'),
+          href: `/${locale}/dashboard/admin/communications/provider-settings`,
+          icon: Settings,
+        },
       ],
     },
     {
