@@ -1328,7 +1328,30 @@
       "title": "Modèles d'Email",
       "description": "Gérer les modèles de courrier électronique",
       "create": "Créer un Modèle",
-      "edit": "Modifier le Modèle"
+      "edit": "Modifier le Modèle",
+      "form": {
+        "code": "Code du Modèle",
+        "codePlaceholder": "ex: PASSWORD_RESET",
+        "nameEs": "Nom (Espagnol)",
+        "nameFr": "Nom (Français)",
+        "nameEn": "Nom (Anglais)",
+        "subjectEs": "Objet (Espagnol)",
+        "subjectFr": "Objet (Français)",
+        "subjectEn": "Objet (Anglais)",
+        "category": "Catégorie",
+        "htmlContent": "Contenu HTML",
+        "variables": "Variables",
+        "active": "Actif"
+      },
+      "categories": {
+        "auth": "Authentification",
+        "notifications": "Notifications",
+        "declarations": "Déclarations",
+        "payments": "Paiements",
+        "reminders": "Rappels",
+        "alerts": "Alertes",
+        "system": "Système"
+      }
     },
     "pushTemplates": {
       "title": "Modèles Push",
@@ -2701,7 +2724,9 @@
       "edit": "Modifier le Modèle",
       "backToList": "Retour à la liste",
       "newTemplate": "Nouveau Modèle SMS",
-      "newTemplateDescription": "Créer un nouveau modèle de message SMS"
+      "newTemplateDescription": "Créer un nouveau modèle de message SMS",
+      "editTemplate": "Modifier Modèle SMS",
+      "editTemplateDescription": "Modifier un modèle de message SMS existant"
     }
   }
 }

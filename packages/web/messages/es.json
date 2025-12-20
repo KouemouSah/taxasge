@@ -1347,7 +1347,10 @@
         "auth": "Autenticación",
         "notifications": "Notificaciones",
         "declarations": "Declaraciones",
-        "payments": "Pagos"
+        "payments": "Pagos",
+        "reminders": "Recordatorios",
+        "alerts": "Alertas",
+        "system": "Sistema"
       }
     },
     "pushTemplates": {
@@ -2748,7 +2751,9 @@
       },
       "backToList": "Volver a la lista",
       "newTemplate": "Nueva Plantilla SMS",
-      "newTemplateDescription": "Crear una nueva plantilla de mensaje SMS"
+      "newTemplateDescription": "Crear una nueva plantilla de mensaje SMS",
+      "editTemplate": "Editar Plantilla SMS",
+      "editTemplateDescription": "Modificar una plantilla de mensaje SMS existente"
     }
   }
 }

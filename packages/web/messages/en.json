@@ -1328,7 +1328,30 @@
       "title": "Email Templates",
       "description": "Manage email templates",
       "create": "Create Template",
-      "edit": "Edit Template"
+      "edit": "Edit Template",
+      "form": {
+        "code": "Template Code",
+        "codePlaceholder": "e.g., PASSWORD_RESET",
+        "nameEs": "Name (Spanish)",
+        "nameFr": "Name (French)",
+        "nameEn": "Name (English)",
+        "subjectEs": "Subject (Spanish)",
+        "subjectFr": "Subject (French)",
+        "subjectEn": "Subject (English)",
+        "category": "Category",
+        "htmlContent": "HTML Content",
+        "variables": "Variables",
+        "active": "Active"
+      },
+      "categories": {
+        "auth": "Authentication",
+        "notifications": "Notifications",
+        "declarations": "Declarations",
+        "payments": "Payments",
+        "reminders": "Reminders",
+        "alerts": "Alerts",
+        "system": "System"
+      }
     },
     "pushTemplates": {
       "title": "Push Templates",
@@ -2701,7 +2724,9 @@
       "edit": "Edit Template",
       "backToList": "Back to list",
       "newTemplate": "New SMS Template",
-      "newTemplateDescription": "Create a new SMS message template"
+      "newTemplateDescription": "Create a new SMS message template",
+      "editTemplate": "Edit SMS Template",
+      "editTemplateDescription": "Modify an existing SMS message template"
     }
   }
 }

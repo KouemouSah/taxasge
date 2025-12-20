@@ -27,15 +27,7 @@ import { useToast } from '@/hooks/use-toast'
 import { useCreateEmailTemplate } from '@/modules/communications/hooks/useEmailTemplates'
 import type { EmailTemplateCreate, TemplateVariable } from '@/modules/communications/types'
 
-const EMAIL_CATEGORIES = [
-  { value: 'auth', label: 'Authentication' },
-  { value: 'notifications', label: 'Notifications' },
-  { value: 'payments', label: 'Payments' },
-  { value: 'declarations', label: 'Declarations' },
-  { value: 'reminders', label: 'Reminders' },
-  { value: 'alerts', label: 'Alerts' },
-  { value: 'system', label: 'System' },
-]
+const EMAIL_CATEGORY_KEYS = ['auth', 'notifications', 'payments', 'declarations', 'reminders', 'alerts', 'system'] as const
 
 export default function NewEmailTemplatePage() {
   const locale = useLocale()
@@ -153,9 +145,9 @@ export default function NewEmailTemplatePage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {EMAIL_CATEGORIES.map((category) => (
-                      <SelectItem key={category.value} value={category.value}>
-                        {category.label}
+                    {EMAIL_CATEGORY_KEYS.map((categoryKey) => (
+                      <SelectItem key={categoryKey} value={categoryKey}>
+                        {t(`categories.${categoryKey}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
