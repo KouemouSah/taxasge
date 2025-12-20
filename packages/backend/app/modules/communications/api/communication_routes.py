@@ -7,6 +7,7 @@ Endpoints:
 - POST /communications/email/verification - Send verification email
 - POST /communications/email/password-reset - Send password reset email
 - POST /communications/email/2fa - Send 2FA code email
+- POST /communications/sms/send-with-template - Send SMS with template
 - GET /communications/templates - List available templates
 - GET /communications/test - Test email configuration
 
@@ -22,6 +23,10 @@ import asyncpg
 from app.modules.communications.services.email_service import EmailService, get_email_service, LEGACY_TEMPLATE_CODES
 from app.modules.communications.services.communication_service import CommunicationService
 from app.modules.communications.models.communication import EmailTemplate
+from app.modules.communications.services.provider_settings_service import ProviderSettingsService
+from app.modules.communications.services.sms_provider_service import SmsService
+from app.modules.communications.services.sms_template_service import SmsTemplateService
+from app.modules.communications.models.sms_template import SmsTemplateRenderRequest
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.database.connection import get_database
 
@@ -131,6 +136,40 @@ class SendWithTemplateRequest(BaseModel):
                     "payment_amount": "50,000 XAF",
                     "payment_reference": "PAY-2025-001",
                     "error_message": "Insufficient funds"
+                },
+                "language": "es"
+            }
+        }
+
+
+class SendSmsWithTemplateRequest(BaseModel):
+    """
+    Request model for sending SMS with a database template.
+
+    Uses the SMS template system (sms_templates table) with variable substitution.
+    """
+    template_code: str = Field(..., min_length=1, max_length=100, description="SMS template code")
+    to_phone: str = Field(
+        ...,
+        min_length=9,
+        max_length=20,
+        description="Recipient phone number (E.164 format or local)"
+    )
+    variables: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Variables to replace in template (e.g., user_name, code)"
+    )
+    language: str = Field("es", pattern="^(es|fr|en)$", description="Language (es/fr/en)")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "template_code": "PAYMENT_RECEIVED",
+                "to_phone": "+240222123456",
+                "variables": {
+                    "user_name": "John Doe",
+                    "amount": "50,000 XAF",
+                    "reference": "PAY-2025-001"
                 },
                 "language": "es"
             }
@@ -371,6 +410,118 @@ async def send_2fa_code_email(
 
     except Exception as e:
         logger.error(f"Error queuing 2FA code email: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# SMS ENDPOINTS
+# ============================================================================
+
+@router.post("/sms/send-with-template")
+async def send_sms_with_template(
+    request: SendSmsWithTemplateRequest,
+    db: asyncpg.Connection = Depends(get_database),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """
+    Send SMS using a database template with variable substitution.
+
+    **Workflow:**
+    1. Fetch template from sms_templates table by code
+    2. Render template with provided variables
+    3. Send SMS via configured provider (Infobip)
+
+    **Required:**
+    - Authentication
+    - Active SMS provider configured in provider settings
+
+    **Example template codes:**
+    - PAYMENT_RECEIVED, PAYMENT_FAILED, AUTH_VERIFICATION_CODE, etc.
+
+    Returns:
+    - Success status with message ID
+    """
+    try:
+        # 1. Get the SMS template
+        sms_template_service = SmsTemplateService()
+        template = await sms_template_service.get_template_by_code(db, request.template_code)
+
+        if not template:
+            raise HTTPException(
+                status_code=404,
+                detail=f"SMS template not found: {request.template_code}"
+            )
+
+        if not template.is_active:
+            raise HTTPException(
+                status_code=400,
+                detail=f"SMS template is inactive: {request.template_code}"
+            )
+
+        # 2. Render the template
+        render_request = SmsTemplateRenderRequest(
+            template_code=request.template_code,
+            language=request.language,
+            variables=request.variables or {}
+        )
+        rendered = await sms_template_service.render_template(db, render_request)
+
+        # 3. Get SMS provider credentials
+        provider_service = ProviderSettingsService()
+        credentials = await provider_service.get_active_sms_credentials(db)
+
+        if not credentials:
+            raise HTTPException(
+                status_code=400,
+                detail="No active SMS provider configured. Please configure a provider in Communications > Providers."
+            )
+
+        api_key = credentials.get("api_key")
+        if not api_key:
+            raise HTTPException(
+                status_code=500,
+                detail="SMS provider API key not configured"
+            )
+
+        # 4. Send SMS
+        sms_service = SmsService(
+            provider="infobip",
+            api_key=api_key,
+            base_url="y45e8g.api.infobip.com",
+            sender_id="TaxasGE"
+        )
+
+        result = sms_service.send_sms(
+            to=request.to_phone,
+            message=rendered.rendered_content
+        )
+
+        if result.success:
+            logger.info(
+                f"SMS sent with template '{request.template_code}' to {request.to_phone} "
+                f"by user {current_user.get('sub')}, message_id={result.message_id}"
+            )
+            return {
+                "success": True,
+                "message": "SMS sent successfully",
+                "to": request.to_phone,
+                "template_code": request.template_code,
+                "language": request.language,
+                "message_id": result.message_id,
+                "character_count": rendered.character_count,
+                "segment_count": rendered.segment_count
+            }
+        else:
+            logger.error(f"Failed to send SMS: {result.error}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to send SMS: {result.error}"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error sending SMS with template: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
