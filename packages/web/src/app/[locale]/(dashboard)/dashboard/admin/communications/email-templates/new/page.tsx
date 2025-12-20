@@ -42,7 +42,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useToast } from '@/hooks/use-toast'
 import { useCreateEmailTemplate } from '@/modules/communications/hooks/useEmailTemplates'
 import { STARTER_TEMPLATES, type StarterTemplate } from '@/modules/communications/components/EmailTemplateStarters'
-import { VARIABLE_GROUPS, type VariableContext, getAllPredefinedVariables } from '@/modules/communications/components/EmailTemplateVariables'
+import { VARIABLE_GROUPS, getAllPredefinedVariables } from '@/modules/communications/components/EmailTemplateVariables'
 import type { EmailTemplateCreate, TemplateVariable } from '@/modules/communications/types'
 import { cn } from '@/core/utils'
 
