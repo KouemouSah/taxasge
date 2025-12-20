@@ -449,14 +449,17 @@ class EmailService:
                 logger.warning(f"Template is inactive: {template_code}")
                 return False
 
-            # Get HTML content from file
-            html_file_path = template_service._get_template_file_path(template_code)
-            if not html_file_path.exists():
-                logger.error(f"Template HTML file not found: {html_file_path}")
-                return False
-
-            with open(html_file_path, "r", encoding="utf-8") as f:
-                html_content = f.read()
+            # Get HTML content (priority: DB > legacy file)
+            html_content = template.html_content
+            if not html_content:
+                # Legacy fallback: read from file
+                html_file_path = template_service._get_template_file_path(template_code)
+                if html_file_path.exists():
+                    with open(html_file_path, "r", encoding="utf-8") as f:
+                        html_content = f.read()
+                else:
+                    logger.error(f"No HTML content for template: {template_code}")
+                    return False
 
             # Replace variables in HTML content
             for var_name, var_value in variables.items():

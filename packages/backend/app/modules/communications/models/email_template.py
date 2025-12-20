@@ -49,7 +49,8 @@ class EmailTemplateBase(BaseModel):
     description_en: Optional[str] = Field(None, description="Template description (English)")
 
     # Template configuration
-    html_file_path: str = Field(..., max_length=500, description="Path to HTML template file")
+    html_content: Optional[str] = Field(None, description="HTML content stored directly")
+    html_file_path: Optional[str] = Field(None, max_length=500, description="DEPRECATED: Path to HTML file")
     variables: List[TemplateVariable] = Field(
         default_factory=list,
         description="Template variables (JSONB)"

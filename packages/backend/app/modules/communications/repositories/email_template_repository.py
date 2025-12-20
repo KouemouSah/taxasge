@@ -18,10 +18,10 @@ class EmailTemplateRepository:
                 template_code, name_es, name_fr, name_en,
                 subject_es, subject_fr, subject_en,
                 description_es, description_fr, description_en,
-                html_file_path, variables, category, is_active,
+                html_content, html_file_path, variables, category, is_active,
                 created_by, updated_by
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $15)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $16)
             RETURNING *
         """
 
@@ -40,6 +40,7 @@ class EmailTemplateRepository:
             data.get("description_es"),
             data.get("description_fr"),
             data.get("description_en"),
+            data.get("html_content"),
             data.get("html_file_path"),
             variables_json,
             data.get("category"),
@@ -193,7 +194,7 @@ class EmailTemplateRepository:
                     updates.append(f"variables = ${param_idx}")
                     params.append(variables_to_update)
                     param_idx += 1
-                elif field != "html_content":  # html_content handled separately
+                else:
                     updates.append(f"{field} = ${param_idx}")
                     params.append(value)
                     param_idx += 1
