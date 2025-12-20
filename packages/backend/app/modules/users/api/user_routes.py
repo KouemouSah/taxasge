@@ -134,6 +134,10 @@ async def change_password(
     - Old password must match current password
     - New password must be different from old password
     - New password must meet strength requirements (8+ chars)
+
+    **NOTIFICATIONS:**
+    - Sends email notification to user
+    - Sends SMS notification if user has phone number configured
     """
     try:
         # Verify old password
@@ -185,6 +189,122 @@ async def change_password(
             timestamp=datetime.utcnow()
         )
         await user_repository.log_user_activity(activity)
+
+        # =====================================================================
+        # SEND SECURITY NOTIFICATIONS (SMS + Email)
+        # =====================================================================
+        now = datetime.utcnow()
+        change_date = now.strftime("%d/%m/%Y")
+        change_time = now.strftime("%H:%M")
+
+        # 1. Send Email notification
+        try:
+            from app.modules.communications.services.email_service import get_email_service
+            from app.config import get_settings
+
+            settings = get_settings()
+            email_service = get_email_service()
+
+            # Simple security email
+            email_subject = "TaxasGE - Contraseña modificada / Mot de passe modifié"
+            email_html = f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; padding: 20px;">
+                <h2 style="color: #dc2626;">🔐 Alerta de Seguridad / Security Alert</h2>
+                <p>Hola <strong>{current_user.first_name}</strong>,</p>
+                <p>Tu contraseña de TaxasGE fue cambiada el <strong>{change_date}</strong> a las <strong>{change_time} UTC</strong>.</p>
+                <p>Si no realizaste este cambio, contacta soporte inmediatamente.</p>
+                <hr/>
+                <p><em>Bonjour <strong>{current_user.first_name}</strong>,</em></p>
+                <p><em>Votre mot de passe TaxasGE a été modifié le <strong>{change_date}</strong> à <strong>{change_time} UTC</strong>.</em></p>
+                <p><em>Si vous n'avez pas effectué ce changement, contactez le support immédiatement.</em></p>
+                <hr/>
+                <p style="color: #666; font-size: 12px;">TaxasGE Platform - Equatorial Guinea</p>
+            </body>
+            </html>
+            """
+
+            email_sent = email_service.send_email(
+                to_email=current_user.email,
+                subject=email_subject,
+                body_html=email_html
+            )
+            if email_sent:
+                logger.info(f"Password change email notification sent to {current_user.email}")
+            else:
+                logger.warning(f"Failed to send password change email to {current_user.email}")
+
+        except Exception as email_error:
+            logger.error(f"Error sending password change email: {email_error}")
+
+        # 2. Send SMS notification (if user has phone number)
+        if current_user.phone_number:
+            try:
+                from app.modules.communications.services.sms_template_service import SmsTemplateService
+                from app.modules.communications.models.sms_template import SmsTemplateRenderRequest
+                from app.modules.communications.services.provider_settings_service import ProviderSettingsService
+                from app.modules.communications.services.sms_provider_service import SmsService
+
+                sms_template_service = SmsTemplateService()
+
+                # Try to get the specific template, fallback to SECURITY_ALERT
+                template = await sms_template_service.get_template_by_code(db, "SECURITY_PASSWORD_CHANGED")
+                template_code = "SECURITY_PASSWORD_CHANGED"
+
+                if not template:
+                    template = await sms_template_service.get_template_by_code(db, "SECURITY_ALERT")
+                    template_code = "SECURITY_ALERT"
+
+                if template and template.is_active:
+                    # Prepare variables based on template
+                    if template_code == "SECURITY_PASSWORD_CHANGED":
+                        variables = {"date": change_date, "time": change_time}
+                    else:
+                        # SECURITY_ALERT uses {{message}}
+                        variables = {"message": f"Tu contraseña fue cambiada el {change_date} a las {change_time}"}
+
+                    # Render template
+                    render_request = SmsTemplateRenderRequest(
+                        template_code=template_code,
+                        language=current_user.preferred_language or "es",
+                        variables=variables
+                    )
+                    rendered = await sms_template_service.render_template(db, render_request)
+
+                    # Get SMS provider credentials
+                    provider_service = ProviderSettingsService()
+                    credentials = await provider_service.get_active_sms_credentials(db)
+
+                    if credentials and credentials.get("api_key"):
+                        sms_service = SmsService(
+                            provider="infobip",
+                            api_key=credentials["api_key"],
+                            base_url="y45e8g.api.infobip.com",
+                            sender_id="TaxasGE"
+                        )
+
+                        sms_result = sms_service.send_sms(
+                            to=current_user.phone_number,
+                            message=rendered.rendered_content
+                        )
+
+                        if sms_result.success:
+                            logger.info(
+                                f"Password change SMS notification sent to {current_user.phone_number}, "
+                                f"message_id={sms_result.message_id}"
+                            )
+                        else:
+                            logger.warning(
+                                f"Failed to send password change SMS to {current_user.phone_number}: "
+                                f"{sms_result.error}"
+                            )
+                    else:
+                        logger.warning("No active SMS provider configured, skipping SMS notification")
+                else:
+                    logger.warning(f"SMS template {template_code} not found or inactive")
+
+            except Exception as sms_error:
+                logger.error(f"Error sending password change SMS: {sms_error}")
 
         return {
             "message": "Password changed successfully"
