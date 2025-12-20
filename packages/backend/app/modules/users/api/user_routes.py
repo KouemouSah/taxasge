@@ -136,23 +136,26 @@ async def change_password(
     - New password must meet strength requirements (8+ chars)
 
     **NOTIFICATIONS:**
-    - Sends email notification to user
+    - Sends email notification to user (ONLY if password change succeeds)
     - Sends SMS notification if user has phone number configured
     """
+    import uuid
+
     try:
-        # Verify old password
-        user_data = await user_repository.find_by_id(current_user.id)
-        if not user_data:
+        # Convert user_id to UUID for database operations
+        try:
+            user_uuid = uuid.UUID(str(current_user.id))
+        except ValueError:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid user ID format"
             )
 
         # Use database connection manager for all DB operations
         async with db_manager.get_connection() as db:
             # Get hashed password from database
             query = "SELECT password_hash FROM users WHERE id = $1"
-            result = await db.fetchrow(query, current_user.id)
+            result = await db.fetchrow(query, user_uuid)
 
             if not result:
                 raise HTTPException(
@@ -174,38 +177,55 @@ async def change_password(
             # Hash new password
             new_password_hash = password_service.hash_password(password_change.new_password)
 
-            # Update password in database
+            # Update password in database with RETURNING to confirm update
             update_query = """
                 UPDATE users
                 SET password_hash = $1, updated_at = NOW()
                 WHERE id = $2
+                RETURNING id
             """
-            await db.execute(update_query, new_password_hash, current_user.id)
+            update_result = await db.fetchrow(update_query, new_password_hash, user_uuid)
 
-            # Log activity
-            activity = UserActivity(
-                user_id=current_user.id,
-                action="change_password",
-                resource="user_password",
-                timestamp=datetime.utcnow()
-            )
-            await user_repository.log_user_activity(activity)
+            # Verify the update was successful
+            if not update_result:
+                logger.error(f"Password update failed for user {current_user.id} - no rows affected")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to update password"
+                )
 
-            # =================================================================
-            # SEND SECURITY NOTIFICATIONS (SMS + Email)
-            # Uses database templates for consistency with communications module
-            # =================================================================
-            now = datetime.utcnow()
-            change_date = now.strftime("%d/%m/%Y")
-            change_time = now.strftime("%H:%M")
+            logger.info(f"Password successfully updated for user {current_user.id}")
 
-            # Common variables for both SMS and Email templates
-            notification_variables = {
-                "user_name": f"{current_user.first_name} {current_user.last_name}",
-                "date": change_date,
-                "time": change_time
-            }
+            # Log activity (non-blocking - errors won't affect response)
+            try:
+                activity = UserActivity(
+                    user_id=current_user.id,
+                    action="change_password",
+                    resource="user_password",
+                    timestamp=datetime.utcnow()
+                )
+                await user_repository.log_user_activity(activity)
+            except Exception as log_error:
+                logger.warning(f"Failed to log password change activity: {log_error}")
 
+        # =================================================================
+        # SEND SECURITY NOTIFICATIONS (SMS + Email)
+        # IMPORTANT: Only send AFTER password change is confirmed
+        # Uses a new connection to avoid transaction issues
+        # =================================================================
+        now = datetime.utcnow()
+        change_date = now.strftime("%d/%m/%Y")
+        change_time = now.strftime("%H:%M")
+
+        # Common variables for both SMS and Email templates
+        notification_variables = {
+            "user_name": f"{current_user.first_name} {current_user.last_name}",
+            "date": change_date,
+            "time": change_time
+        }
+
+        # Send notifications in a separate connection (non-blocking)
+        async with db_manager.get_connection() as notification_db:
             # 1. Send Email notification using database template
             try:
                 from app.modules.communications.services.email_service import get_email_service
@@ -214,7 +234,7 @@ async def change_password(
 
                 # Use send_with_template for database template
                 email_sent = await email_service.send_with_template(
-                    db=db,
+                    db=notification_db,
                     template_code="SECURITY_PASSWORD_CHANGED",
                     to_email=current_user.email,
                     variables=notification_variables,
@@ -240,7 +260,9 @@ async def change_password(
                     sms_template_service = SmsTemplateService()
 
                     # Get the SMS template
-                    template = await sms_template_service.get_template_by_code(db, "SECURITY_PASSWORD_CHANGED")
+                    template = await sms_template_service.get_template_by_code(
+                        notification_db, "SECURITY_PASSWORD_CHANGED"
+                    )
 
                     if template and template.is_active:
                         # SMS template uses same variables as email: user_name, date, time
@@ -249,11 +271,13 @@ async def change_password(
                             language=current_user.preferred_language or "es",
                             variables=notification_variables
                         )
-                        rendered = await sms_template_service.render_template(db, render_request)
+                        rendered = await sms_template_service.render_template(
+                            notification_db, render_request
+                        )
 
                         # Get SMS provider credentials
                         provider_service = ProviderSettingsService()
-                        credentials = await provider_service.get_active_sms_credentials(db)
+                        credentials = await provider_service.get_active_sms_credentials(notification_db)
 
                         if credentials and credentials.get("api_key"):
                             sms_service = SmsService(
