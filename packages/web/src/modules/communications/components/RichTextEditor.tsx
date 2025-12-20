@@ -12,7 +12,7 @@ import Image from '@tiptap/extension-image'
 import Link from '@tiptap/extension-link'
 import TextAlign from '@tiptap/extension-text-align'
 import Underline from '@tiptap/extension-underline'
-import TextStyle from '@tiptap/extension-text-style'
+import { TextStyle } from '@tiptap/extension-text-style'
 import Color from '@tiptap/extension-color'
 import Placeholder from '@tiptap/extension-placeholder'
 import { useCallback, useRef, useEffect } from 'react'
@@ -40,7 +40,6 @@ import {
   Palette,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Toggle } from '@/components/ui/toggle'
 import { Separator } from '@/components/ui/separator'
 import {
   Popover,
@@ -79,16 +78,20 @@ function ToolbarButton({
   title?: string
 }) {
   return (
-    <Toggle
+    <Button
+      type="button"
+      variant="ghost"
       size="sm"
-      pressed={isActive}
-      onPressedChange={onClick}
+      onClick={onClick}
       disabled={disabled}
-      className="h-8 w-8 p-0"
+      className={cn(
+        "h-8 w-8 p-0",
+        isActive && "bg-accent text-accent-foreground"
+      )}
       title={title}
     >
       {children}
-    </Toggle>
+    </Button>
   )
 }
 
