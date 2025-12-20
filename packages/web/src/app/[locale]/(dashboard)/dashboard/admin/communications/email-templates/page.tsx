@@ -59,6 +59,7 @@ import { toast } from 'sonner'
 
 export default function EmailTemplatesPage() {
   const t = useTranslations('admin.communications.email')
+  const tCategories = useTranslations('admin.emailTemplates.categories')
   const tCommon = useTranslations('common')
 
   // State
@@ -281,10 +282,13 @@ export default function EmailTemplatesPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{tCommon('all')}</SelectItem>
-                <SelectItem value="auth">Authentication</SelectItem>
-                <SelectItem value="notifications">Notifications</SelectItem>
-                <SelectItem value="declarations">Declarations</SelectItem>
-                <SelectItem value="payments">Payments</SelectItem>
+                <SelectItem value="auth">{tCategories('auth')}</SelectItem>
+                <SelectItem value="notifications">{tCategories('notifications')}</SelectItem>
+                <SelectItem value="declarations">{tCategories('declarations')}</SelectItem>
+                <SelectItem value="payments">{tCategories('payments')}</SelectItem>
+                <SelectItem value="reminders">{tCategories('reminders')}</SelectItem>
+                <SelectItem value="alerts">{tCategories('alerts')}</SelectItem>
+                <SelectItem value="system">{tCategories('system')}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -344,7 +348,7 @@ export default function EmailTemplatesPage() {
                     <TableCell className="max-w-xs truncate">{template.subjectEs}</TableCell>
                     <TableCell>
                       {template.category && (
-                        <Badge variant="outline">{template.category}</Badge>
+                        <Badge variant="outline">{tCategories(template.category)}</Badge>
                       )}
                     </TableCell>
                     <TableCell>
@@ -455,10 +459,13 @@ export default function EmailTemplatesPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="auth">Authentication</SelectItem>
-                  <SelectItem value="notifications">Notifications</SelectItem>
-                  <SelectItem value="declarations">Declarations</SelectItem>
-                  <SelectItem value="payments">Payments</SelectItem>
+                  <SelectItem value="auth">{tCategories('auth')}</SelectItem>
+                  <SelectItem value="notifications">{tCategories('notifications')}</SelectItem>
+                  <SelectItem value="declarations">{tCategories('declarations')}</SelectItem>
+                  <SelectItem value="payments">{tCategories('payments')}</SelectItem>
+                  <SelectItem value="reminders">{tCategories('reminders')}</SelectItem>
+                  <SelectItem value="alerts">{tCategories('alerts')}</SelectItem>
+                  <SelectItem value="system">{tCategories('system')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
