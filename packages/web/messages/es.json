@@ -1373,6 +1373,7 @@
       "variablesTitle": "Variables",
       "variablesDescription": "Variables dinámicas disponibles en la plantilla",
       "variablesDescriptionNew": "Copie las variables y péguelas en el contenido del email. Se detectarán automáticamente.",
+      "selectVariableCategory": "Seleccionar Categoría",
       "inUse": "En Uso",
       "detectedVariables": "Variables Detectadas",
       "missingRequiredVariables": "Faltan variables requeridas:",

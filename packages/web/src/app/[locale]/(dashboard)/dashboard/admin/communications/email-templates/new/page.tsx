@@ -8,7 +8,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
-import { ArrowLeft, RefreshCw, FileText, Check, Copy, AlertCircle } from 'lucide-react'
+import { ArrowLeft, RefreshCw, FileText, Check, Copy, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,12 +32,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useToast } from '@/hooks/use-toast'
 import { useCreateEmailTemplate } from '@/modules/communications/hooks/useEmailTemplates'
@@ -106,12 +100,20 @@ export default function NewEmailTemplatePage() {
 
   const [selectedStarterTemplate, setSelectedStarterTemplate] = useState<string | null>(null)
   const [copiedVariable, setCopiedVariable] = useState<string | null>(null)
+  const [starterTemplatesExpanded, setStarterTemplatesExpanded] = useState(false)
+  const [variablesExpanded, setVariablesExpanded] = useState(false)
+  const [selectedVariableContext, setSelectedVariableContext] = useState<string>(VARIABLE_GROUPS[0]?.context || 'user')
 
   // Auto-detect variables from HTML content
   const detectedVariables = useMemo(() => {
     const variableNames = extractVariablesFromHtml(formData.htmlContent)
     return getVariablesFromNames(variableNames)
   }, [formData.htmlContent])
+
+  // Get the selected variable group
+  const selectedVariableGroup = useMemo(() => {
+    return VARIABLE_GROUPS.find(g => g.context === selectedVariableContext) || VARIABLE_GROUPS[0]
+  }, [selectedVariableContext])
 
   // Check for missing required variables
   const missingRequiredVariables = useMemo(() => {
@@ -392,13 +394,25 @@ export default function NewEmailTemplatePage() {
           </CardContent>
         </Card>
 
-        {/* Starter Templates */}
+        {/* Starter Templates - Collapsible */}
         <Card>
-          <CardHeader>
-            <CardTitle>{t('starterTemplates.title')}</CardTitle>
-            <CardDescription>{t('starterTemplates.description')}</CardDescription>
+          <CardHeader
+            className="cursor-pointer select-none"
+            onClick={() => setStarterTemplatesExpanded(!starterTemplatesExpanded)}
+          >
+            <div className="flex items-center gap-2">
+              {starterTemplatesExpanded ? (
+                <ChevronDown className="w-5 h-5 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              )}
+              <div>
+                <CardTitle>{t('starterTemplates.title')}</CardTitle>
+                <CardDescription className="mt-1">{t('starterTemplates.description')}</CardDescription>
+              </div>
+            </div>
           </CardHeader>
-          <CardContent>
+          {starterTemplatesExpanded && <CardContent>
             {filteredStarterTemplates.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
@@ -440,7 +454,7 @@ export default function NewEmailTemplatePage() {
                 ))}
               </div>
             )}
-          </CardContent>
+          </CardContent>}
         </Card>
 
         {/* HTML Content */}
@@ -462,95 +476,121 @@ export default function NewEmailTemplatePage() {
           </CardContent>
         </Card>
 
-        {/* Variables - Reference with Copy Buttons */}
+        {/* Variables - Collapsible with Category Filter */}
         <Card>
-          <CardHeader>
-            <CardTitle>{t('variablesTitle')}</CardTitle>
-            <CardDescription>
-              {t('variablesDescriptionNew') || 'Copy variables and paste them in your email content. They will be automatically detected.'}
-            </CardDescription>
+          <CardHeader
+            className="cursor-pointer select-none"
+            onClick={() => setVariablesExpanded(!variablesExpanded)}
+          >
+            <div className="flex items-center gap-2">
+              {variablesExpanded ? (
+                <ChevronDown className="w-5 h-5 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              )}
+              <div className="flex-1">
+                <CardTitle>{t('variablesTitle')}</CardTitle>
+                <CardDescription className="mt-1">
+                  {t('variablesDescriptionNew') || 'Copy variables and paste them in your email content. They will be automatically detected.'}
+                </CardDescription>
+              </div>
+              {detectedVariables.length > 0 && (
+                <Badge variant="secondary" className="ml-2">
+                  {detectedVariables.length} {t('inUse') || 'In Use'}
+                </Badge>
+              )}
+            </div>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Available Variables - Accordion by Context */}
-            <Accordion type="multiple" className="w-full">
-              {VARIABLE_GROUPS.map((group) => (
-                <AccordionItem key={group.context} value={group.context}>
-                  <AccordionTrigger className="hover:no-underline">
-                    <div className="flex items-center gap-2">
-                      <span>{t(`variableGroups.${group.context}`)}</span>
-                      <Badge variant="outline" className="ml-2">
-                        {group.variables.filter(v => isVariableUsed(v.name)).length}/{group.variables.length}
-                      </Badge>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <div className="border rounded-lg overflow-hidden">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-muted/50">
-                            <TableHead>{t('variablePlaceholder') || 'Placeholder'}</TableHead>
-                            <TableHead>{t('variableDescription') || 'Description'}</TableHead>
-                            <TableHead className="w-[80px] text-center">{t('required') || 'Required'}</TableHead>
-                            <TableHead className="w-[80px] text-center">{t('inUse') || 'In Use'}</TableHead>
-                            <TableHead className="w-[80px]"></TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {group.variables.map((variable) => (
-                            <TableRow
-                              key={variable.name}
-                              className={cn(
-                                isVariableUsed(variable.name) && "bg-green-50 dark:bg-green-950/20"
-                              )}
-                            >
-                              <TableCell>
-                                <code className="text-sm font-mono bg-muted px-2 py-1 rounded">
-                                  {`{{${variable.name}}}`}
-                                </code>
-                              </TableCell>
-                              <TableCell className="text-muted-foreground text-sm">
-                                {variable.description}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                {variable.required ? (
-                                  <Badge variant="destructive" className="text-xs">
-                                    {tCommon('yes') || 'Yes'}
-                                  </Badge>
-                                ) : (
-                                  <span className="text-muted-foreground text-sm">-</span>
-                                )}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                {isVariableUsed(variable.name) ? (
-                                  <Check className="h-4 w-4 text-green-600 mx-auto" />
-                                ) : (
-                                  <span className="text-muted-foreground text-sm">-</span>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0"
-                                  onClick={() => copyToClipboard(variable.name)}
-                                >
-                                  {copiedVariable === variable.name ? (
-                                    <Check className="h-4 w-4 text-green-600" />
-                                  ) : (
-                                    <Copy className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
+          {variablesExpanded && <CardContent className="space-y-4">
+            {/* Category Selector */}
+            <div className="space-y-2">
+              <Label>{t('selectVariableCategory') || 'Select Category'}</Label>
+              <Select
+                value={selectedVariableContext}
+                onValueChange={setSelectedVariableContext}
+              >
+                <SelectTrigger className="w-full md:w-[300px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {VARIABLE_GROUPS.map((group) => (
+                    <SelectItem key={group.context} value={group.context}>
+                      <div className="flex items-center gap-2">
+                        <span>{t(`variableGroups.${group.context}`)}</span>
+                        <Badge variant="outline" className="ml-2 text-xs">
+                          {group.variables.filter(v => isVariableUsed(v.name)).length}/{group.variables.length}
+                        </Badge>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Selected Category Variables Table */}
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead>{t('variablePlaceholder') || 'Placeholder'}</TableHead>
+                    <TableHead>{t('variableDescription') || 'Description'}</TableHead>
+                    <TableHead className="w-[80px] text-center">{t('required') || 'Required'}</TableHead>
+                    <TableHead className="w-[80px] text-center">{t('inUse') || 'In Use'}</TableHead>
+                    <TableHead className="w-[80px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {selectedVariableGroup.variables.map((variable) => (
+                    <TableRow
+                      key={variable.name}
+                      className={cn(
+                        isVariableUsed(variable.name) && "bg-green-50 dark:bg-green-950/20"
+                      )}
+                    >
+                      <TableCell>
+                        <code className="text-sm font-mono bg-muted px-2 py-1 rounded">
+                          {`{{${variable.name}}}`}
+                        </code>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {variable.description}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {variable.required ? (
+                          <Badge variant="destructive" className="text-xs">
+                            {tCommon('yes') || 'Yes'}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {isVariableUsed(variable.name) ? (
+                          <Check className="h-4 w-4 text-green-600 mx-auto" />
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => copyToClipboard(variable.name)}
+                        >
+                          {copiedVariable === variable.name ? (
+                            <Check className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <Copy className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
 
             {/* Missing Required Variables Warning */}
             {missingRequiredVariables.length > 0 && (
@@ -583,7 +623,7 @@ export default function NewEmailTemplatePage() {
                 </div>
               </div>
             )}
-          </CardContent>
+          </CardContent>}
         </Card>
 
         {/* Settings */}

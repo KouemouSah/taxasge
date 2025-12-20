@@ -39,7 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Mail, Plus, Search, Pencil, Trash2, Loader2, Eye, FileText, Sparkles, LayoutGrid, List } from 'lucide-react'
+import { Mail, Plus, Search, Pencil, Trash2, Loader2, Eye, FileText, Sparkles, LayoutGrid, List, ChevronDown, ChevronRight } from 'lucide-react'
 import {
   useEmailTemplates,
   useDeleteEmailTemplate,
@@ -65,6 +65,7 @@ export default function EmailTemplatesPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplateResponse | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [starterViewMode, setStarterViewMode] = useState<'grid' | 'list'>('grid')
+  const [starterTemplatesExpanded, setStarterTemplatesExpanded] = useState(false)
 
   // Filter starter templates by category and search
   const filteredStarterTemplates = useMemo(() => {
@@ -215,11 +216,19 @@ export default function EmailTemplatesPage() {
         </CardContent>
       </Card>
 
-      {/* Starter Templates */}
+      {/* Starter Templates - Collapsible */}
       <Card>
-        <CardHeader>
+        <CardHeader
+          className="cursor-pointer select-none"
+          onClick={() => setStarterTemplatesExpanded(!starterTemplatesExpanded)}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
+              {starterTemplatesExpanded ? (
+                <ChevronDown className="w-5 h-5 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              )}
               <Sparkles className="w-5 h-5 text-primary" />
               <div>
                 <CardTitle>{t('starterTemplates') || 'Starter Templates'}</CardTitle>
@@ -228,27 +237,29 @@ export default function EmailTemplatesPage() {
                 </CardDescription>
               </div>
             </div>
-            <div className="flex items-center gap-1 border rounded-lg p-1">
-              <Button
-                variant={starterViewMode === 'grid' ? 'secondary' : 'ghost'}
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={() => setStarterViewMode('grid')}
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={starterViewMode === 'list' ? 'secondary' : 'ghost'}
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={() => setStarterViewMode('list')}
-              >
-                <List className="h-4 w-4" />
-              </Button>
-            </div>
+            {starterTemplatesExpanded && (
+              <div className="flex items-center gap-1 border rounded-lg p-1" onClick={(e) => e.stopPropagation()}>
+                <Button
+                  variant={starterViewMode === 'grid' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => setStarterViewMode('grid')}
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={starterViewMode === 'list' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => setStarterViewMode('list')}
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </div>
         </CardHeader>
-        <CardContent>
+        {starterTemplatesExpanded && <CardContent>
           {filteredStarterTemplates.length === 0 ? (
             <div className="text-center py-8">
               <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
@@ -315,7 +326,7 @@ export default function EmailTemplatesPage() {
               </TableBody>
             </Table>
           )}
-        </CardContent>
+        </CardContent>}
       </Card>
 
       {/* Templates Table */}

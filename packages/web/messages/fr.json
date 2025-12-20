@@ -1373,6 +1373,7 @@
       "variablesTitle": "Variables",
       "variablesDescription": "Variables dynamiques disponibles dans le modèle",
       "variablesDescriptionNew": "Copiez les variables et collez-les dans le contenu de l'email. Elles seront détectées automatiquement.",
+      "selectVariableCategory": "Sélectionner une Catégorie",
       "inUse": "Utilisée",
       "detectedVariables": "Variables Détectées",
       "missingRequiredVariables": "Variables requises manquantes:",

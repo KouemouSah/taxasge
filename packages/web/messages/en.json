@@ -1373,6 +1373,7 @@
       "variablesTitle": "Variables",
       "variablesDescription": "Dynamic variables available in the template",
       "variablesDescriptionNew": "Copy variables and paste them in your email content. They will be automatically detected.",
+      "selectVariableCategory": "Select Category",
       "inUse": "In Use",
       "detectedVariables": "Detected Variables",
       "missingRequiredVariables": "Missing required variables:",
