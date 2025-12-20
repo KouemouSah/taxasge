@@ -1405,6 +1405,15 @@
         "reminders": "Recordatorios",
         "alerts": "Alertas",
         "system": "Sistema"
+      },
+      "selectVariables": "Seleccionar Variables",
+      "variableGroups": {
+        "user": "Usuario",
+        "payment": "Pago",
+        "declaration": "Declaración",
+        "system": "Sistema",
+        "notification": "Notificación",
+        "alert": "Alerta"
       }
     },
     "pushTemplates": {

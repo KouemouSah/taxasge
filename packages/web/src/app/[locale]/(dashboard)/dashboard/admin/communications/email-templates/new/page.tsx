@@ -8,7 +8,7 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
-import { ArrowLeft, RefreshCw, Plus, X, FileText, Check } from 'lucide-react'
+import { ArrowLeft, RefreshCw, X, FileText, Check } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,7 +27,15 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { useCreateEmailTemplate } from '@/modules/communications/hooks/useEmailTemplates'
 import { STARTER_TEMPLATES, type StarterTemplate } from '@/modules/communications/components/EmailTemplateStarters'
+import { VARIABLE_GROUPS } from '@/modules/communications/components/EmailTemplateVariables'
 import type { EmailTemplateCreate, TemplateVariable } from '@/modules/communications/types'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion'
+import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/core/utils'
 
 const EMAIL_CATEGORY_KEYS = ['auth', 'notifications', 'payments', 'declarations', 'reminders', 'alerts', 'system'] as const
@@ -55,13 +63,6 @@ export default function NewEmailTemplatePage() {
     variables: [],
     category: 'notifications',
     isActive: true,
-  })
-
-  const [newVariable, setNewVariable] = useState<TemplateVariable>({
-    name: '',
-    description: '',
-    example: '',
-    required: false,
   })
 
   const [selectedStarterTemplate, setSelectedStarterTemplate] = useState<string | null>(null)
@@ -98,14 +99,23 @@ export default function NewEmailTemplatePage() {
     router.back()
   }
 
-  const addVariable = () => {
-    if (newVariable.name && !formData.variables.some(v => v.name === newVariable.name)) {
+  const toggleVariable = (variable: TemplateVariable) => {
+    const exists = formData.variables.some(v => v.name === variable.name)
+    if (exists) {
       setFormData({
         ...formData,
-        variables: [...formData.variables, newVariable],
+        variables: formData.variables.filter(v => v.name !== variable.name),
       })
-      setNewVariable({ name: '', description: '', example: '', required: false })
+    } else {
+      setFormData({
+        ...formData,
+        variables: [...formData.variables, variable],
+      })
     }
+  }
+
+  const isVariableSelected = (name: string) => {
+    return formData.variables.some(v => v.name === name)
   }
 
   const removeVariable = (variableName: string) => {
@@ -360,89 +370,92 @@ export default function NewEmailTemplatePage() {
             <CardDescription>{t('variablesDescription')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-5 gap-2">
-              <div className="space-y-2">
-                <Label htmlFor="varName">{t('varName')}</Label>
-                <Input
-                  id="varName"
-                  value={newVariable.name}
-                  onChange={(e) => setNewVariable({ ...newVariable, name: e.target.value })}
-                  placeholder="user_name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="varDescription">{t('varDescription')}</Label>
-                <Input
-                  id="varDescription"
-                  value={newVariable.description}
-                  onChange={(e) => setNewVariable({ ...newVariable, description: e.target.value })}
-                  placeholder="User's full name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="varExample">{t('varExample')}</Label>
-                <Input
-                  id="varExample"
-                  value={newVariable.example}
-                  onChange={(e) => setNewVariable({ ...newVariable, example: e.target.value })}
-                  placeholder="John Doe"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="varRequired">{t('varRequired')}</Label>
-                <div className="flex items-center h-10">
-                  <Switch
-                    id="varRequired"
-                    checked={newVariable.required}
-                    onCheckedChange={(checked) => setNewVariable({ ...newVariable, required: checked })}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>&nbsp;</Label>
-                <Button type="button" onClick={addVariable} className="w-full">
-                  <Plus className="h-4 w-4 mr-1" />
-                  {t('addVariable')}
-                </Button>
-              </div>
+            {/* Predefined Variables Accordion */}
+            <div className="space-y-2">
+              <Label>{t('selectVariables')}</Label>
+              <Accordion type="multiple" className="w-full">
+                {VARIABLE_GROUPS.map((group) => (
+                  <AccordionItem key={group.context} value={group.context}>
+                    <AccordionTrigger className="hover:no-underline">
+                      <div className="flex items-center gap-2">
+                        <span>{t(`variableGroups.${group.context}`)}</span>
+                        <Badge variant="outline" className="ml-2">
+                          {group.variables.filter(v => isVariableSelected(v.name)).length}/{group.variables.length}
+                        </Badge>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-2">
+                        {group.variables.map((variable) => (
+                          <div
+                            key={variable.name}
+                            onClick={() => toggleVariable(variable)}
+                            className={cn(
+                              "flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
+                              isVariableSelected(variable.name)
+                                ? "border-primary bg-primary/5"
+                                : "border-muted hover:border-primary/50"
+                            )}
+                          >
+                            <Checkbox
+                              checked={isVariableSelected(variable.name)}
+                              onCheckedChange={() => toggleVariable(variable)}
+                              className="mt-0.5"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <code className="text-sm font-mono bg-muted px-1.5 py-0.5 rounded">
+                                  {`{{${variable.name}}}`}
+                                </code>
+                                {variable.required && (
+                                  <Badge variant="destructive" className="text-xs">
+                                    {t('required')}
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {variable.description}
+                              </p>
+                              {variable.example && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {t('example')}: <span className="font-medium">{variable.example}</span>
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
             </div>
 
+            {/* Selected Variables Summary */}
             {formData.variables.length > 0 && (
               <div className="space-y-2">
-                <Label>{t('variablesList')}</Label>
-                <div className="border rounded-md p-4 space-y-2">
-                  {formData.variables.map((variable) => (
-                    <div key={variable.name} className="flex items-center justify-between p-2 bg-muted rounded">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary">
-                            {'{{'}
-                            {variable.name}
-                            {'}}'}
-                          </Badge>
-                          {variable.required && (
-                            <Badge variant="destructive" className="text-xs">
-                              {t('required')}
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-1">{variable.description}</p>
-                        {variable.example && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {t('example')}: {variable.example}
-                          </p>
-                        )}
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeVariable(variable.name)}
+                <Label>{t('variablesList')} ({formData.variables.length})</Label>
+                <div className="border rounded-md p-4">
+                  <div className="flex flex-wrap gap-2">
+                    {formData.variables.map((variable) => (
+                      <Badge
+                        key={variable.name}
+                        variant="secondary"
+                        className="flex items-center gap-1 py-1.5 pl-3 pr-1"
                       >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
+                        <code className="text-xs">{`{{${variable.name}}}`}</code>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-4 w-4 p-0 hover:bg-transparent"
+                          onClick={() => removeVariable(variable.name)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}

@@ -34,3 +34,7 @@ export { RichTextEditor } from './RichTextEditor'
 // Email Template Starters
 export { STARTER_TEMPLATES } from './EmailTemplateStarters'
 export type { StarterTemplate } from './EmailTemplateStarters'
+
+// Email Template Variables
+export { VARIABLE_GROUPS, getAllPredefinedVariables, getPredefinedVariable, isPredefinedVariable } from './EmailTemplateVariables'
+export type { VariableContext, VariableGroup } from './EmailTemplateVariables'

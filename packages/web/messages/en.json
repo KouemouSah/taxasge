@@ -1405,6 +1405,15 @@
         "reminders": "Reminders",
         "alerts": "Alerts",
         "system": "System"
+      },
+      "selectVariables": "Select Variables",
+      "variableGroups": {
+        "user": "User",
+        "payment": "Payment",
+        "declaration": "Declaration",
+        "system": "System",
+        "notification": "Notification",
+        "alert": "Alert"
       }
     },
     "pushTemplates": {
