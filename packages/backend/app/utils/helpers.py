@@ -518,7 +518,7 @@ def format_currency(
     if currency == "XAF":
         return f"{amount:,.0f} FCFA"
     elif currency == "EUR":
-        return f"{amount:,.2f} ¬"
+        return f"{amount:,.2f} EUR"
     elif currency == "USD":
         return f"${amount:,.2f}"
     else:
