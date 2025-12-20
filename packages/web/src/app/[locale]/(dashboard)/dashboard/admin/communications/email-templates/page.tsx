@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useRouter } from 'next/navigation'
+import { useLocale, useTranslations } from 'next-intl'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -58,6 +59,8 @@ import type {
 import { toast } from 'sonner'
 
 export default function EmailTemplatesPage() {
+  const router = useRouter()
+  const locale = useLocale()
   const t = useTranslations('admin.communications.email')
   const tCategories = useTranslations('admin.emailTemplates.categories')
   const tCommon = useTranslations('common')
@@ -66,7 +69,6 @@ export default function EmailTemplatesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [isActiveFilter, setIsActiveFilter] = useState<string>('all')
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false)
@@ -251,7 +253,7 @@ export default function EmailTemplatesPage() {
             {t('description') || 'Manage email templates for notifications'}
           </p>
         </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
+        <Button onClick={() => router.push(`/${locale}/dashboard/admin/communications/email-templates/new`)}>
           <Plus className="w-4 h-4 mr-2" />
           {t('createButton') || 'Create Template'}
         </Button>
@@ -371,7 +373,7 @@ export default function EmailTemplatesPage() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => openEditDialog(template)}
+                          onClick={() => router.push(`/${locale}/dashboard/admin/communications/email-templates/${template.id}/edit`)}
                         >
                           <Pencil className="w-4 h-4" />
                         </Button>
