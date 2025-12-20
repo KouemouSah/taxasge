@@ -3,16 +3,37 @@ Email Service for TaxasGE Backend
 Handles email sending via SMTP with templating support
 
 Module: Communications
+
+Template Routing Strategy:
+- LEGACY templates (Jinja2 files): verification_email, password_reset, etc.
+- DATABASE templates: All other templates created via Admin UI
 """
 
 import smtplib
+import re
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from typing import Optional
+from typing import Optional, Dict, Any, Set
 from datetime import datetime
+from pathlib import Path
+import asyncpg
 from loguru import logger
 
 from app.modules.communications.services.template_service import get_template_service
+
+
+# =============================================================================
+# LEGACY TEMPLATE CODES
+# These templates use the Jinja2 file-based system (templates/*.html)
+# Any template NOT in this list will be fetched from the database
+# =============================================================================
+LEGACY_TEMPLATE_CODES: Set[str] = {
+    "verification_email",
+    "password_reset",
+    "password_reset_confirmation",
+    "2fa_code",
+    "account_lockout",
+}
 
 
 class EmailService:
@@ -303,6 +324,189 @@ class EmailService:
         )
 
         return self.send_email(to_email, subject, html, plain_text)
+
+    # =========================================================================
+    # UNIFIED TEMPLATE SENDING (Legacy + Database routing)
+    # =========================================================================
+
+    async def send_with_template(
+        self,
+        db: asyncpg.Connection,
+        template_code: str,
+        to_email: str,
+        variables: Optional[Dict[str, Any]] = None,
+        language: str = "es",
+    ) -> bool:
+        """
+        Send email using template with automatic routing.
+
+        Routing Logic:
+        - If template_code is in LEGACY_TEMPLATE_CODES → use Jinja2 file system
+        - Otherwise → fetch from database (email_templates table)
+
+        Args:
+            db: Database connection (required for DB templates)
+            template_code: Template code (e.g., "verification_email", "payment_failed")
+            to_email: Recipient email address
+            variables: Dict of variables to replace in template
+            language: Language code (es/fr/en, default: es)
+
+        Returns:
+            bool: True if email sent successfully, False otherwise
+        """
+        variables = variables or {}
+
+        # Check if this is a legacy template
+        if template_code in LEGACY_TEMPLATE_CODES:
+            return self._send_legacy_template(template_code, to_email, variables, language)
+        else:
+            return await self._send_database_template(db, template_code, to_email, variables, language)
+
+    def _send_legacy_template(
+        self,
+        template_code: str,
+        to_email: str,
+        variables: Dict[str, Any],
+        language: str,
+    ) -> bool:
+        """
+        Send email using legacy Jinja2 file-based template.
+
+        Maps template_code to the appropriate existing method.
+        """
+        try:
+            if template_code == "verification_email":
+                return self.send_verification_code(
+                    to_email=to_email,
+                    verification_code=variables.get("verification_code", "000000"),
+                    user_name=variables.get("user_name"),
+                    language=language,
+                )
+            elif template_code == "password_reset":
+                return self.send_password_reset_email(
+                    to_email=to_email,
+                    reset_token=variables.get("reset_token", ""),
+                    user_name=variables.get("user_name"),
+                    language=language,
+                )
+            elif template_code == "password_reset_confirmation":
+                return self.send_password_reset_confirmation(
+                    to_email=to_email,
+                    user_name=variables.get("user_name"),
+                    language=language,
+                )
+            elif template_code == "2fa_code":
+                return self.send_2fa_code(
+                    to_email=to_email,
+                    code=variables.get("code", "000000"),
+                    user_name=variables.get("user_name"),
+                    language=language,
+                )
+            elif template_code == "account_lockout":
+                locked_until = variables.get("locked_until")
+                if isinstance(locked_until, str):
+                    locked_until = datetime.fromisoformat(locked_until)
+                return self.send_account_lockout_notification(
+                    to_email=to_email,
+                    user_name=variables.get("user_name"),
+                    locked_until=locked_until,
+                    language=language,
+                )
+            else:
+                logger.error(f"Unknown legacy template code: {template_code}")
+                return False
+
+        except Exception as e:
+            logger.error(f"Error sending legacy template {template_code}: {e}")
+            return False
+
+    async def _send_database_template(
+        self,
+        db: asyncpg.Connection,
+        template_code: str,
+        to_email: str,
+        variables: Dict[str, Any],
+        language: str,
+    ) -> bool:
+        """
+        Send email using database-stored template.
+
+        Fetches template from email_templates table and replaces variables.
+        """
+        from app.modules.communications.services.email_template_service import EmailTemplateService
+
+        try:
+            template_service = EmailTemplateService()
+
+            # Fetch template from database
+            template = await template_service.get_template_by_code(db, template_code)
+            if not template:
+                logger.error(f"Template not found in database: {template_code}")
+                return False
+
+            # Check if template is active
+            if not template.is_active:
+                logger.warning(f"Template is inactive: {template_code}")
+                return False
+
+            # Get HTML content from file
+            html_file_path = template_service._get_template_file_path(template_code)
+            if not html_file_path.exists():
+                logger.error(f"Template HTML file not found: {html_file_path}")
+                return False
+
+            with open(html_file_path, "r", encoding="utf-8") as f:
+                html_content = f.read()
+
+            # Replace variables in HTML content
+            for var_name, var_value in variables.items():
+                placeholder = "{{" + var_name + "}}"
+                html_content = html_content.replace(placeholder, str(var_value))
+
+            # Get subject based on language
+            if language == "fr":
+                subject = template.subject_fr or template.subject_es
+            elif language == "en":
+                subject = template.subject_en or template.subject_es
+            else:
+                subject = template.subject_es
+
+            # Replace variables in subject too
+            for var_name, var_value in variables.items():
+                placeholder = "{{" + var_name + "}}"
+                subject = subject.replace(placeholder, str(var_value))
+
+            # Generate plain text from HTML
+            plain_text = self._html_to_plain_text(html_content)
+
+            # Send the email
+            return self.send_email(to_email, subject, html_content, plain_text)
+
+        except Exception as e:
+            logger.error(f"Error sending database template {template_code}: {e}")
+            return False
+
+    def _html_to_plain_text(self, html: str) -> str:
+        """
+        Convert HTML content to plain text.
+
+        Simple conversion that removes HTML tags and normalizes whitespace.
+        """
+        # Remove HTML tags
+        text = re.sub(r'<[^>]+>', '', html)
+        # Replace multiple whitespace with single space
+        text = re.sub(r'\s+', ' ', text)
+        # Replace common HTML entities
+        text = text.replace('&nbsp;', ' ')
+        text = text.replace('&amp;', '&')
+        text = text.replace('&lt;', '<')
+        text = text.replace('&gt;', '>')
+        text = text.replace('&quot;', '"')
+        return text.strip()
+
+    def is_legacy_template(self, template_code: str) -> bool:
+        """Check if a template code uses the legacy Jinja2 system."""
+        return template_code in LEGACY_TEMPLATE_CODES
 
 
 # ============================================================================

@@ -3,6 +3,7 @@ Communication API Routes - Email, SMS, Push notification endpoints
 
 Endpoints:
 - POST /communications/email/send - Send email
+- POST /communications/email/send-with-template - Send email with template (Legacy or DB)
 - POST /communications/email/verification - Send verification email
 - POST /communications/email/password-reset - Send password reset email
 - POST /communications/email/2fa - Send 2FA code email
@@ -16,11 +17,13 @@ from typing import Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from pydantic import BaseModel, EmailStr, Field
 from loguru import logger
+import asyncpg
 
-from app.modules.communications.services.email_service import EmailService
+from app.modules.communications.services.email_service import EmailService, get_email_service, LEGACY_TEMPLATE_CODES
 from app.modules.communications.services.communication_service import CommunicationService
 from app.modules.communications.models.communication import EmailTemplate
 from app.modules.auth.middleware.auth_middleware import get_current_user
+from app.database.connection import get_database
 
 
 router = APIRouter(prefix="/communications", tags=["Communications"])
@@ -102,6 +105,38 @@ class Send2FACodeRequest(BaseModel):
         }
 
 
+class SendWithTemplateRequest(BaseModel):
+    """
+    Request model for sending email with any template.
+
+    Uses automatic routing:
+    - Legacy templates (verification_email, password_reset, etc.) → Jinja2 system
+    - Other templates → Database (email_templates table)
+    """
+    template_code: str = Field(..., min_length=1, max_length=100, description="Template code")
+    to_email: EmailStr = Field(..., description="Recipient email address")
+    variables: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Variables to replace in template (e.g., user_name, amount)"
+    )
+    language: str = Field("es", pattern="^(es|fr|en)$", description="Language (es/fr/en)")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "template_code": "payment_failed",
+                "to_email": "user@example.com",
+                "variables": {
+                    "user_name": "John Doe",
+                    "payment_amount": "50,000 XAF",
+                    "payment_reference": "PAY-2025-001",
+                    "error_message": "Insufficient funds"
+                },
+                "language": "es"
+            }
+        }
+
+
 # ============================================================================
 # EMAIL ENDPOINTS
 # ============================================================================
@@ -145,6 +180,74 @@ async def send_email(
 
     except Exception as e:
         logger.error(f"Error queuing email: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/email/send-with-template")
+async def send_email_with_template(
+    request: SendWithTemplateRequest,
+    db: asyncpg.Connection = Depends(get_database),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """
+    Send email using a template with automatic routing.
+
+    **Routing Logic:**
+    - Legacy templates (verification_email, password_reset, etc.) → Jinja2 file system
+    - Other templates → Database (email_templates table)
+
+    **Legacy Templates:**
+    - verification_email
+    - password_reset
+    - password_reset_confirmation
+    - 2fa_code
+    - account_lockout
+
+    **Database Templates:**
+    - payment_failed, payment_success, declaration_submitted, etc.
+    - Any template created via Admin UI
+
+    Requires authentication.
+    """
+    email_service = get_email_service()
+
+    try:
+        # Determine template source for response info
+        is_legacy = request.template_code in LEGACY_TEMPLATE_CODES
+        template_source = "legacy" if is_legacy else "database"
+
+        # Send email using unified method
+        success = await email_service.send_with_template(
+            db=db,
+            template_code=request.template_code,
+            to_email=request.to_email,
+            variables=request.variables,
+            language=request.language,
+        )
+
+        if success:
+            logger.info(
+                f"Email sent with template '{request.template_code}' ({template_source}) "
+                f"to {request.to_email} by user {current_user.get('sub')}"
+            )
+            return {
+                "success": True,
+                "message": "Email sent successfully",
+                "to": request.to_email,
+                "template_code": request.template_code,
+                "template_source": template_source,
+                "language": request.language,
+            }
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to send email with template '{request.template_code}'"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error sending email with template: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
