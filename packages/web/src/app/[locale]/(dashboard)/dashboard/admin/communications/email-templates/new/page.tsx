@@ -5,8 +5,8 @@
  * Page for creating new email templates with inline form
  */
 
-import React, { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import React, { useState, useEffect, useMemo } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { ArrowLeft, RefreshCw, X, FileText, Check } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -43,6 +43,7 @@ const EMAIL_CATEGORY_KEYS = ['auth', 'notifications', 'payments', 'declarations'
 export default function NewEmailTemplatePage() {
   const locale = useLocale()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const t = useTranslations('admin.emailTemplates')
   const tCommon = useTranslations('common')
   const { toast } = useToast()
@@ -66,6 +67,31 @@ export default function NewEmailTemplatePage() {
   })
 
   const [selectedStarterTemplate, setSelectedStarterTemplate] = useState<string | null>(null)
+
+  // Filter starter templates by selected category
+  const filteredStarterTemplates = useMemo(() => {
+    if (formData.category === 'notifications') {
+      // Show all templates when default category is selected
+      return STARTER_TEMPLATES
+    }
+    return STARTER_TEMPLATES.filter(t => t.category === formData.category)
+  }, [formData.category])
+
+  // Handle starter template from URL parameter
+  useEffect(() => {
+    const starterId = searchParams.get('starter')
+    if (starterId) {
+      const template = STARTER_TEMPLATES.find(t => t.id === starterId)
+      if (template) {
+        setSelectedStarterTemplate(template.id)
+        setFormData(prev => ({
+          ...prev,
+          htmlContent: template.htmlContent,
+          category: template.category,
+        }))
+      }
+    }
+  }, [searchParams])
 
   const handleSelectStarterTemplate = (template: StarterTemplate) => {
     setSelectedStarterTemplate(template.id)
@@ -307,40 +333,47 @@ export default function NewEmailTemplatePage() {
             <CardDescription>{t('starterTemplates.description')}</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {STARTER_TEMPLATES.map((template) => (
-                <div
-                  key={template.id}
-                  onClick={() => handleSelectStarterTemplate(template)}
-                  className={cn(
-                    "relative cursor-pointer rounded-lg border-2 p-4 transition-all hover:border-primary hover:shadow-md",
-                    selectedStarterTemplate === template.id
-                      ? "border-primary bg-primary/5"
-                      : "border-muted"
-                  )}
-                >
-                  {selectedStarterTemplate === template.id && (
-                    <div className="absolute right-2 top-2">
-                      <Check className="h-5 w-5 text-primary" />
+            {filteredStarterTemplates.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p>{t('noStarterTemplatesForCategory') || 'No starter templates for this category'}</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {filteredStarterTemplates.map((template) => (
+                  <div
+                    key={template.id}
+                    onClick={() => handleSelectStarterTemplate(template)}
+                    className={cn(
+                      "relative cursor-pointer rounded-lg border-2 p-4 transition-all hover:border-primary hover:shadow-md",
+                      selectedStarterTemplate === template.id
+                        ? "border-primary bg-primary/5"
+                        : "border-muted"
+                    )}
+                  >
+                    {selectedStarterTemplate === template.id && (
+                      <div className="absolute right-2 top-2">
+                        <Check className="h-5 w-5 text-primary" />
+                      </div>
+                    )}
+                    <div className="flex flex-col items-center text-center space-y-2">
+                      <div className="rounded-full bg-muted p-3">
+                        <FileText className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-sm">{template.name}</h4>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {template.description}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        {t(`categories.${template.category}`)}
+                      </Badge>
                     </div>
-                  )}
-                  <div className="flex flex-col items-center text-center space-y-2">
-                    <div className="rounded-full bg-muted p-3">
-                      <FileText className="h-6 w-6 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-sm">{template.name}</h4>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {template.description}
-                      </p>
-                    </div>
-                    <Badge variant="outline" className="text-xs">
-                      {t(`categories.${template.category}`)}
-                    </Badge>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 

@@ -1301,7 +1301,9 @@
         "previewTitle": "Email Preview",
         "createSuccess": "Email template created successfully",
         "updateSuccess": "Email template updated successfully",
-        "deleteSuccess": "Email template deleted successfully"
+        "deleteSuccess": "Email template deleted successfully",
+        "starterTemplates": "Starter Templates",
+        "starterTemplatesDescription": "Pre-built templates to help you get started quickly"
       },
       "sms": {
         "title": "SMS Templates",
@@ -1383,6 +1385,7 @@
         "title": "Starter Templates",
         "description": "Select a pre-designed template to get started quickly"
       },
+      "noStarterTemplatesForCategory": "No starter templates for this category",
       "form": {
         "code": "Template Code",
         "codePlaceholder": "e.g., PASSWORD_RESET",

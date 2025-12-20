@@ -1301,7 +1301,9 @@
         "previewTitle": "Vista Previa de Email",
         "createSuccess": "Plantilla de email creada exitosamente",
         "updateSuccess": "Plantilla de email actualizada exitosamente",
-        "deleteSuccess": "Plantilla de email eliminada exitosamente"
+        "deleteSuccess": "Plantilla de email eliminada exitosamente",
+        "starterTemplates": "Plantillas Prediseñadas",
+        "starterTemplatesDescription": "Plantillas pre-construidas para comenzar rápidamente"
       },
       "sms": {
         "title": "Plantillas SMS",
@@ -1383,6 +1385,7 @@
         "title": "Plantillas Prediseñadas",
         "description": "Selecciona una plantilla prediseñada para comenzar rápidamente"
       },
+      "noStarterTemplatesForCategory": "No hay plantillas prediseñadas para esta categoría",
       "form": {
         "code": "Código de Plantilla",
         "codePlaceholder": "ej: PASSWORD_RESET",

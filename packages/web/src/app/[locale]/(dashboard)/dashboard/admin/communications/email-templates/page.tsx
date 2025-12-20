@@ -39,13 +39,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Mail, Plus, Search, Pencil, Trash2, Loader2, Eye, FileText } from 'lucide-react'
+import { Mail, Plus, Search, Pencil, Trash2, Loader2, Eye, FileText, Sparkles } from 'lucide-react'
 import {
   useEmailTemplates,
   useDeleteEmailTemplate,
   useEmailTemplatePreview,
 } from '@/modules/communications/hooks/useEmailTemplates'
 import type { EmailTemplateResponse } from '@/modules/communications/types'
+import { STARTER_TEMPLATES } from '@/modules/communications/components/EmailTemplateStarters'
 import { toast } from 'sonner'
 
 export default function EmailTemplatesPage() {
@@ -190,6 +191,45 @@ export default function EmailTemplatesPage() {
                 <SelectItem value="false">{tCommon('inactive')}</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Starter Templates */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-primary" />
+            <CardTitle>{t('starterTemplates') || 'Starter Templates'}</CardTitle>
+          </div>
+          <CardDescription>
+            {t('starterTemplatesDescription') || 'Pre-built templates to help you get started quickly'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {STARTER_TEMPLATES.map((template) => (
+              <div
+                key={template.id}
+                onClick={() => router.push(`/${locale}/dashboard/admin/communications/email-templates/new?starter=${template.id}`)}
+                className="relative cursor-pointer rounded-lg border-2 border-muted p-4 transition-all hover:border-primary hover:shadow-md group"
+              >
+                <div className="flex flex-col items-center text-center space-y-2">
+                  <div className="rounded-full bg-muted p-3 group-hover:bg-primary/10 transition-colors">
+                    <FileText className="h-6 w-6 text-muted-foreground group-hover:text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-sm">{template.name}</h4>
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                      {template.description}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    {tCategories(template.category)}
+                  </Badge>
+                </div>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>

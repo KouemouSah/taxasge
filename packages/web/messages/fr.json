@@ -1301,7 +1301,9 @@
         "previewTitle": "Aperçu de l'Email",
         "createSuccess": "Modèle d'email créé avec succès",
         "updateSuccess": "Modèle d'email mis à jour avec succès",
-        "deleteSuccess": "Modèle d'email supprimé avec succès"
+        "deleteSuccess": "Modèle d'email supprimé avec succès",
+        "starterTemplates": "Modèles Prédéfinis",
+        "starterTemplatesDescription": "Modèles pré-construits pour démarrer rapidement"
       },
       "sms": {
         "title": "Modèles SMS",
@@ -1383,6 +1385,7 @@
         "title": "Modèles Prédéfinis",
         "description": "Sélectionnez un modèle prédéfini pour commencer rapidement"
       },
+      "noStarterTemplatesForCategory": "Aucun modèle prédéfini pour cette catégorie",
       "form": {
         "code": "Code du Modèle",
         "codePlaceholder": "ex: PASSWORD_RESET",
