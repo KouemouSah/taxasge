@@ -4,6 +4,7 @@
  */
 
 import { appConfig } from '@/core/config/app';
+import { getAuthData } from '@/core/auth/storage';
 
 const AUTH_API_URL = `${appConfig.api.baseUrl}/api/${appConfig.api.version}/auth`;
 
@@ -420,10 +421,12 @@ async function requestVerificationCode(
 async function requestPasswordChange(data: {
   current_password: string;
 }): Promise<{ message: string; email: string }> {
-  const accessToken = localStorage.getItem('access_token');
-  if (!accessToken) {
+  // Get token from proper storage (taxasge_auth object)
+  const authData = getAuthData();
+  if (!authData?.access_token) {
     throw new Error('Not authenticated');
   }
+  const accessToken = authData.access_token;
 
   const response = await fetch(`${AUTH_API_URL}/password/change`, {
     method: 'POST',
