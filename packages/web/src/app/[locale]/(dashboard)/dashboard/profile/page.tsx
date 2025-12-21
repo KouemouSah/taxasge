@@ -115,9 +115,32 @@ export default function ProfilePage() {
 
   const handleSavePersonal = async () => {
     try {
-      // TODO: Implement API call to update user profile
-      // const { userApi } = await import('@/lib/api/user')
-      // await userApi.updateProfile(personalForm)
+      // Import API client
+      const { fetchClient } = await import('@/core/api/fetchClient')
+
+      // Call API to update user profile
+      const response = await fetchClient.put('/users/profile', {
+        first_name: personalForm.first_name,
+        last_name: personalForm.last_name,
+        phone_number: personalForm.phone_number,
+        document_type: personalForm.document_type || null,
+        document_number: personalForm.document_number || null,
+        address: personalForm.address || null,
+        city: personalForm.city || null,
+      })
+
+      // Update local storage with new user data to persist across sessions
+      const authData = getAuthData()
+      if (authData) {
+        const { setAuthData } = await import('@/core/auth/storage')
+        setAuthData({
+          ...authData,
+          user: {
+            ...authData.user,
+            ...personalForm,
+          },
+        })
+      }
 
       toast({
         title: t('profileUpdated'),
@@ -126,7 +149,7 @@ export default function ProfilePage() {
 
       setIsEditingPersonal(false)
 
-      // Update local user state
+      // Update local user state with server response or form data
       if (user) {
         setUser({
           ...user,
