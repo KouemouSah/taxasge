@@ -247,8 +247,9 @@ function ChatWidgetEmbedded({ locale }: { locale: string }) {
           {suggestions.slice(0, 3).map((suggestion: string, i: number) => (
             <button
               key={i}
-              onClick={() => setMessage(suggestion)}
-              className="text-xs px-2 py-1 rounded-full bg-secondary hover:bg-secondary/80"
+              onClick={() => sendMessage(suggestion)}
+              disabled={isLoading}
+              className="text-xs px-2 py-1 rounded-full bg-secondary hover:bg-secondary/80 disabled:opacity-50"
             >
               {suggestion}
             </button>
