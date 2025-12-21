@@ -61,6 +61,7 @@ export default function ProfilePage() {
   const [notificationPrefs, setNotificationPrefs] = useState({
     email_notifications: true,
     push_notifications: true,
+    sms_notifications: false,
     preferred_language: 'es',
   })
 
@@ -107,6 +108,7 @@ export default function ProfilePage() {
     setNotificationPrefs({
       email_notifications: userData.email_notifications ?? true,
       push_notifications: userData.push_notifications ?? true,
+      sms_notifications: userData.sms_notifications ?? false,
       preferred_language: userData.preferred_language || 'es',
     })
 
@@ -207,6 +209,7 @@ export default function ProfilePage() {
         preferred_language: notificationPrefs.preferred_language,
         email_notifications: notificationPrefs.email_notifications,
         push_notifications: notificationPrefs.push_notifications,
+        sms_notifications: notificationPrefs.sms_notifications,
       })
 
       // Update local storage with new user data
@@ -925,6 +928,24 @@ export default function ProfilePage() {
                   checked={notificationPrefs.push_notifications}
                   onCheckedChange={(checked) =>
                     setNotificationPrefs({ ...notificationPrefs, push_notifications: checked })
+                  }
+                />
+              </div>
+
+              <div className="flex items-center justify-between space-x-4">
+                <div className="flex-1">
+                  <Label htmlFor="sms_notifications" className="text-base font-medium">
+                    {t('smsNotifications')}
+                  </Label>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {t('smsNotificationsDesc')}
+                  </p>
+                </div>
+                <Switch
+                  id="sms_notifications"
+                  checked={notificationPrefs.sms_notifications}
+                  onCheckedChange={(checked) =>
+                    setNotificationPrefs({ ...notificationPrefs, sms_notifications: checked })
                   }
                 />
               </div>

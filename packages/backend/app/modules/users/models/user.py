@@ -144,6 +144,11 @@ class UserUpdate(BaseModel):
     )
     avatar_url: Optional[str] = None
 
+    # Notification preferences (from users table)
+    email_notifications: Optional[bool] = Field(None, description="Enable email notifications")
+    push_notifications: Optional[bool] = Field(None, description="Enable push notifications")
+    sms_notifications: Optional[bool] = Field(None, description="Enable SMS notifications")
+
     # Allow status updates for admins
     status: Optional[UserStatus] = None
 
@@ -196,6 +201,11 @@ class UserResponse(BaseModel):
     updated_at: datetime = Field(..., description="Last update date")
     last_login: Optional[datetime] = Field(None, description="Last login date")
     email_verified: Optional[bool] = Field(default=False, description="Email verification status")
+
+    # Notification preferences
+    email_notifications: Optional[bool] = Field(default=True, description="Email notifications enabled")
+    push_notifications: Optional[bool] = Field(default=True, description="Push notifications enabled")
+    sms_notifications: Optional[bool] = Field(default=False, description="SMS notifications enabled")
 
     # Two-Factor Authentication fields (TASK-M01-011)
     two_factor_enabled: Optional[bool] = Field(default=False, description="Whether 2FA is enabled")

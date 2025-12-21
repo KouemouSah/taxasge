@@ -2408,6 +2408,8 @@
     "profileUpdatedMessage": "Your personal information has been successfully updated",
     "pushNotifications": "Push Notifications",
     "pushNotificationsDesc": "Receive push notifications on your devices",
+    "smsNotifications": "SMS Notifications",
+    "smsNotificationsDesc": "Receive notifications via SMS text message",
     "role": "Role",
     "roleBusiness": "Business",
     "roleCitizen": "Citizen",
