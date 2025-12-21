@@ -137,10 +137,13 @@ export default function EditUssdConfigPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Mobile Operator</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value ?? config?.operatorName ?? ''}
+                    >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue placeholder="Select a mobile operator" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
