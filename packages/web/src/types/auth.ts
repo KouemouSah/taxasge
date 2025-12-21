@@ -84,6 +84,7 @@ export interface User {
   preferred_language?: string;
   email_notifications?: boolean;
   push_notifications?: boolean;
+  sms_notifications?: boolean;
   email_verified?: boolean;
   phone_verified?: boolean;
   address?: string;
