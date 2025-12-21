@@ -5,7 +5,7 @@ Pydantic v2 models for user management and authentication
 
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field, EmailStr, validator
+from pydantic import BaseModel, Field, EmailStr, validator, ConfigDict
 from enum import Enum
 import phonenumbers
 
@@ -123,6 +123,8 @@ class UserUpdate(BaseModel):
 
     Uses phone_number as primary field name (matches DB) with alias for compatibility
     """
+    model_config = ConfigDict(populate_by_name=True)
+
     first_name: Optional[str] = Field(None, min_length=2, max_length=50)
     last_name: Optional[str] = Field(None, min_length=2, max_length=50)
     email: Optional[EmailStr] = Field(None, description="User email address")
