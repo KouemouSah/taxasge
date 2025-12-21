@@ -119,7 +119,7 @@ export default function ProfilePage() {
       const { fetchClient } = await import('@/core/api/fetchClient')
 
       // Call API to update user profile
-      const response = await fetchClient.put('/users/profile', {
+      await fetchClient.put('/users/profile', {
         first_name: personalForm.first_name,
         last_name: personalForm.last_name,
         phone_number: personalForm.phone_number,
