@@ -129,7 +129,7 @@ class DeclarationRepository:
                 FROM tax_declarations d
                 LEFT JOIN users u ON d.user_id = u.id
                 LEFT JOIN companies c ON d.company_id = c.id
-                LEFT JOIN payments p ON p.declaration_id = d.id
+                LEFT JOIN payments p ON p.tax_declaration_id = d.id
                 WHERE d.id = $1
             """
 
@@ -193,7 +193,7 @@ class DeclarationRepository:
                 FROM tax_declarations d
                 LEFT JOIN users u ON d.user_id = u.id
                 LEFT JOIN companies c ON d.company_id = c.id
-                LEFT JOIN payments p ON p.declaration_id = d.id
+                LEFT JOIN payments p ON p.tax_declaration_id = d.id
                 WHERE {where_clause}
                 ORDER BY d.created_at DESC
                 LIMIT ${len(params) - 1} OFFSET ${len(params)}
