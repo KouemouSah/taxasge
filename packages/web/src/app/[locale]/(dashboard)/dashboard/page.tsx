@@ -3,6 +3,7 @@
 /**
  * Dashboard Page
  * Main user dashboard with quick actions, statistics, and activity tables
+ * Uses real API data instead of mocks
  */
 
 import { useEffect, useState } from 'react'
@@ -12,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
   TableBody,
@@ -28,17 +30,25 @@ import {
   Clock,
   DollarSign,
   FileCheck,
-  FilePlus
+  FilePlus,
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react'
 import { getAuthData } from '@/core/auth/storage'
 import type { User } from '@/types/auth'
 import { useLocale, useTranslations } from 'next-intl'
+import { useDashboardData } from '@/modules/dashboard'
+import { DeclarationStatus } from '@/types/declaration'
+import { PaymentStatus, getPaymentMethodLabel, getPaymentStatusLabel } from '@/types/payment'
 
 export default function DashboardPage() {
   const router = useRouter()
   const locale = useLocale()
   const t = useTranslations('dashboard')
   const [user, setUser] = useState<User | null>(null)
+
+  // Fetch real dashboard data
+  const { stats, recentDeclarations, recentPayments, isLoading, error, refetch } = useDashboardData()
 
   useEffect(() => {
     const authData = getAuthData()
@@ -59,98 +69,68 @@ export default function DashboardPage() {
 
   if (!user) return null
 
-  // Mock data - À remplacer par de vraies données API
-  const stats = {
-    declarationsEnCours: 3,
-    declarationsCompletes: 12,
-    totalPaiements: 4500000,
-    notificationsNonLues: 5,
+  // Helper to get status badge
+  const getDeclarationStatusBadge = (status: DeclarationStatus | string) => {
+    switch (status) {
+      case DeclarationStatus.ACCEPTED:
+        return <Badge className="bg-green-500">Validée</Badge>
+      case DeclarationStatus.SUBMITTED:
+      case DeclarationStatus.PROCESSING:
+        return <Badge className="bg-blue-500">En cours</Badge>
+      case DeclarationStatus.DRAFT:
+        return <Badge className="bg-yellow-500">Brouillon</Badge>
+      case DeclarationStatus.REJECTED:
+        return <Badge className="bg-red-500">Rejetée</Badge>
+      default:
+        return <Badge variant="outline">{status}</Badge>
+    }
   }
 
-  const declarationsEnCours = [
-    {
-      id: 'DECL-2025-001',
-      type: 'Impôt sur le Revenu',
-      dateCreation: '2025-01-08',
-      statut: 'En cours',
-      progression: 60,
-    },
-    {
-      id: 'DECL-2025-002',
-      type: 'TVA Trimestrielle',
-      dateCreation: '2025-01-10',
-      statut: 'En attente',
-      progression: 30,
-    },
-    {
-      id: 'DECL-2024-089',
-      type: 'Taxe Foncière',
-      dateCreation: '2024-12-28',
-      statut: 'Validation',
-      progression: 85,
-    },
-  ]
-
-  const paiementsRecents = [
-    {
-      id: 'PAY-2025-045',
-      montant: 1250000,
-      date: '2025-01-11',
-      statut: 'Complété',
-      methode: 'Virement',
-    },
-    {
-      id: 'PAY-2025-044',
-      montant: 890000,
-      date: '2025-01-09',
-      statut: 'En attente',
-      methode: 'Mobile Money',
-    },
-    {
-      id: 'PAY-2025-043',
-      montant: 2360000,
-      date: '2025-01-05',
-      statut: 'Complété',
-      methode: 'Carte bancaire',
-    },
-  ]
-
-  const notifications = [
-    {
-      id: 1,
-      titre: 'Déclaration validée',
-      message: 'Votre déclaration DECL-2024-088 a été validée',
-      date: '2025-01-11',
-      lu: false,
-    },
-    {
-      id: 2,
-      titre: 'Paiement en attente',
-      message: 'Le paiement PAY-2025-044 nécessite une confirmation',
-      date: '2025-01-10',
-      lu: false,
-    },
-    {
-      id: 3,
-      titre: 'Nouvelle notification',
-      message: 'Des mises à jour sont disponibles pour votre profil',
-      date: '2025-01-09',
-      lu: true,
-    },
-  ]
-
-  const getStatutBadge = (statut: string) => {
-    switch (statut.toLowerCase()) {
-      case 'complété':
-      case 'validation':
-        return <Badge className="bg-green-500">{statut}</Badge>
-      case 'en cours':
-        return <Badge className="bg-blue-500">{statut}</Badge>
-      case 'en attente':
-        return <Badge className="bg-yellow-500">{statut}</Badge>
+  const getPaymentStatusBadge = (status: PaymentStatus | string) => {
+    switch (status) {
+      case PaymentStatus.COMPLETED:
+        return <Badge className="bg-green-500">{getPaymentStatusLabel(PaymentStatus.COMPLETED)}</Badge>
+      case PaymentStatus.PENDING:
+        return <Badge className="bg-yellow-500">{getPaymentStatusLabel(PaymentStatus.PENDING)}</Badge>
+      case PaymentStatus.PROCESSING:
+        return <Badge className="bg-blue-500">{getPaymentStatusLabel(PaymentStatus.PROCESSING)}</Badge>
+      case PaymentStatus.FAILED:
+      case PaymentStatus.CANCELLED:
+        return <Badge className="bg-red-500">{getPaymentStatusLabel(status as PaymentStatus)}</Badge>
       default:
-        return <Badge variant="outline">{statut}</Badge>
+        return <Badge variant="outline">{status}</Badge>
     }
+  }
+
+  // Calculate progress for declarations (based on status)
+  const getDeclarationProgress = (status: DeclarationStatus | string): number => {
+    switch (status) {
+      case DeclarationStatus.DRAFT:
+        return 25
+      case DeclarationStatus.SUBMITTED:
+        return 50
+      case DeclarationStatus.PROCESSING:
+        return 75
+      case DeclarationStatus.ACCEPTED:
+        return 100
+      case DeclarationStatus.REJECTED:
+        return 100
+      default:
+        return 0
+    }
+  }
+
+  // Get declaration type label in Spanish
+  const getDeclarationTypeLabel = (type: string): string => {
+    const labels: Record<string, string> = {
+      'iva_destajo': 'IVA Destajo',
+      'iva_real': 'IVA Régimen Real',
+      'income_tax': 'Impôt sur le Revenu',
+      'corporate_tax': 'Impôt sur les Sociétés',
+      'property_tax': 'Taxe Foncière',
+      'vat_declaration': 'TVA',
+    }
+    return labels[type] || type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
   }
 
   return (
@@ -230,9 +210,9 @@ export default function DashboardPage() {
                   <p className="text-xs text-muted-foreground">
                     {t('viewAllAlerts')}
                   </p>
-                  {stats.notificationsNonLues > 0 && (
+                  {stats.unreadNotifications > 0 && (
                     <Badge variant="destructive" className="text-xs">
-                      {stats.notificationsNonLues}
+                      {stats.unreadNotifications}
                     </Badge>
                   )}
                 </div>
@@ -244,69 +224,109 @@ export default function DashboardPage() {
 
       {/* Statistiques */}
       <div>
-        <h2 className="text-xl font-semibold mb-4">{t('statistics')}</h2>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  {t('declarationsInProgress')}
-                </CardTitle>
-                <Clock className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.declarationsEnCours}</div>
-                <p className="text-xs text-muted-foreground">
-                  À compléter
-                </p>
-              </CardContent>
-            </Card>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold">{t('statistics')}</h2>
+          {error && (
+            <Button variant="outline" size="sm" onClick={refetch} disabled={isLoading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              Réessayer
+            </Button>
+          )}
+        </div>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Déclarations complètes
-                </CardTitle>
-                <FileCheck className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.declarationsCompletes}</div>
-                <p className="text-xs text-muted-foreground">
-                  Validées cette année
-                </p>
-              </CardContent>
-            </Card>
+        {error && (
+          <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-2">
+            <AlertCircle className="h-5 w-5 text-destructive" />
+            <p className="text-sm text-destructive">{error}</p>
+          </div>
+        )}
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total Paiements
-                </CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {stats.totalPaiements.toLocaleString('fr-FR')} FCFA
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Cette année
-                </p>
-              </CardContent>
-            </Card>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                {t('declarationsInProgress')}
+              </CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <Skeleton className="h-8 w-16" />
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">{stats.declarationsInProgress}</div>
+                  <p className="text-xs text-muted-foreground">
+                    À compléter
+                  </p>
+                </>
+              )}
+            </CardContent>
+          </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Notifications
-                </CardTitle>
-                <Bell className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.notificationsNonLues}</div>
-                <p className="text-xs text-muted-foreground">
-                  Non lues
-                </p>
-              </CardContent>
-            </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Déclarations complètes
+              </CardTitle>
+              <FileCheck className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <Skeleton className="h-8 w-16" />
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">{stats.declarationsCompleted}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Validées
+                  </p>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Total Paiements
+              </CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <Skeleton className="h-8 w-24" />
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">
+                    {stats.totalPayments.toLocaleString('fr-FR')} FCFA
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Paiements complétés
+                  </p>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Notifications
+              </CardTitle>
+              <Bell className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <Skeleton className="h-8 w-12" />
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">{stats.unreadNotifications}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Non lues
+                  </p>
+                </>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
 
@@ -316,7 +336,7 @@ export default function DashboardPage() {
           <TabsList>
             <TabsTrigger value="declarations">
               <FileText className="h-4 w-4 mr-2" />
-              Déclarations en cours
+              Déclarations récentes
             </TabsTrigger>
             <TabsTrigger value="paiements">
               <CreditCard className="h-4 w-4 mr-2" />
@@ -334,48 +354,69 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle>Suivi des déclarations</CardTitle>
                 <CardDescription>
-                  Vos déclarations fiscales en cours de traitement
+                  Vos déclarations fiscales récentes
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Référence</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Date création</TableHead>
-                      <TableHead>Statut</TableHead>
-                      <TableHead>Progression</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {declarationsEnCours.map((decl) => (
-                      <TableRow key={decl.id}>
-                        <TableCell className="font-medium">{decl.id}</TableCell>
-                        <TableCell>{decl.type}</TableCell>
-                        <TableCell>{new Date(decl.dateCreation).toLocaleDateString('fr-FR')}</TableCell>
-                        <TableCell>{getStatutBadge(decl.statut)}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div className="w-full bg-secondary rounded-full h-2 max-w-[100px]">
-                              <div
-                                className="bg-primary h-2 rounded-full"
-                                style={{ width: `${decl.progression}%` }}
-                              />
-                            </div>
-                            <span className="text-xs text-muted-foreground">{decl.progression}%</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="outline" size="sm">
-                            Voir
-                          </Button>
-                        </TableCell>
-                      </TableRow>
+                {isLoading ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <Skeleton key={i} className="h-12 w-full" />
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+                ) : recentDeclarations.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Aucune déclaration trouvée</p>
+                    <Link href={`/${locale}/dashboard/declarations/new`}>
+                      <Button variant="outline" className="mt-4">
+                        <FilePlus className="h-4 w-4 mr-2" />
+                        Créer une déclaration
+                      </Button>
+                    </Link>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Référence</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Date création</TableHead>
+                        <TableHead>Statut</TableHead>
+                        <TableHead>Progression</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {recentDeclarations.map((decl) => (
+                        <TableRow key={decl.id}>
+                          <TableCell className="font-medium">{decl.declarationNumber || decl.id.slice(0, 8)}</TableCell>
+                          <TableCell>{getDeclarationTypeLabel(decl.declarationType)}</TableCell>
+                          <TableCell>{new Date(decl.createdAt).toLocaleDateString('fr-FR')}</TableCell>
+                          <TableCell>{getDeclarationStatusBadge(decl.status)}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div className="w-full bg-secondary rounded-full h-2 max-w-[100px]">
+                                <div
+                                  className="bg-primary h-2 rounded-full"
+                                  style={{ width: `${getDeclarationProgress(decl.status)}%` }}
+                                />
+                              </div>
+                              <span className="text-xs text-muted-foreground">{getDeclarationProgress(decl.status)}%</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Link href={`/${locale}/dashboard/declarations/${decl.id}`}>
+                              <Button variant="outline" size="sm">
+                                Voir
+                              </Button>
+                            </Link>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -390,36 +431,51 @@ export default function DashboardPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Référence</TableHead>
-                      <TableHead>Montant</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Méthode</TableHead>
-                      <TableHead>Statut</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paiementsRecents.map((payment) => (
-                      <TableRow key={payment.id}>
-                        <TableCell className="font-medium">{payment.id}</TableCell>
-                        <TableCell className="font-semibold">
-                          {payment.montant.toLocaleString('fr-FR')} FCFA
-                        </TableCell>
-                        <TableCell>{new Date(payment.date).toLocaleDateString('fr-FR')}</TableCell>
-                        <TableCell>{payment.methode}</TableCell>
-                        <TableCell>{getStatutBadge(payment.statut)}</TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="outline" size="sm">
-                            Détails
-                          </Button>
-                        </TableCell>
-                      </TableRow>
+                {isLoading ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <Skeleton key={i} className="h-12 w-full" />
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+                ) : recentPayments.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Aucun paiement trouvé</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Référence</TableHead>
+                        <TableHead>Montant</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Méthode</TableHead>
+                        <TableHead>Statut</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {recentPayments.map((payment) => (
+                        <TableRow key={payment.id}>
+                          <TableCell className="font-medium">{payment.bankReference || payment.id.slice(0, 8)}</TableCell>
+                          <TableCell className="font-semibold">
+                            {payment.amount.toLocaleString('fr-FR')} {payment.currency}
+                          </TableCell>
+                          <TableCell>{new Date(payment.createdAt).toLocaleDateString('fr-FR')}</TableCell>
+                          <TableCell>{getPaymentMethodLabel(payment.paymentMethod)}</TableCell>
+                          <TableCell>{getPaymentStatusBadge(payment.status)}</TableCell>
+                          <TableCell className="text-right">
+                            <Link href={`/${locale}/dashboard/payments/${payment.id}`}>
+                              <Button variant="outline" size="sm">
+                                Détails
+                              </Button>
+                            </Link>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -434,26 +490,19 @@ export default function DashboardPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                {notifications.map((notif) => (
-                  <div
-                    key={notif.id}
-                    className={`flex items-start gap-4 p-4 rounded-lg border ${
-                      notif.lu ? 'bg-card' : 'bg-primary/5 border-primary/20'
-                    }`}
-                  >
-                    <Bell className={`h-5 w-5 mt-0.5 ${notif.lu ? 'text-muted-foreground' : 'text-primary'}`} />
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <p className="font-medium">{notif.titre}</p>
-                        {!notif.lu && <Badge variant="default" className="text-xs">Nouveau</Badge>}
-                      </div>
-                      <p className="text-sm text-muted-foreground">{notif.message}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(notif.date).toLocaleDateString('fr-FR')}
-                      </p>
-                    </div>
+                {isLoading ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <Skeleton key={i} className="h-20 w-full" />
+                    ))}
                   </div>
-                ))}
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Aucune notification</p>
+                    <p className="text-sm mt-2">Les notifications seront disponibles prochainement</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
