@@ -123,7 +123,7 @@ class DeclarationRepository:
                 SELECT
                     d.*,
                     u.email as user_email,
-                    c.name as company_name,
+                    c.legal_name as company_name,
                     p.id as payment_id,
                     p.status as payment_status
                 FROM tax_declarations d
@@ -187,7 +187,7 @@ class DeclarationRepository:
                 SELECT
                     d.*,
                     u.email as user_email,
-                    c.name as company_name,
+                    c.legal_name as company_name,
                     p.id as payment_id,
                     p.status as payment_status
                 FROM tax_declarations d
