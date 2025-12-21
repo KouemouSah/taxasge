@@ -106,23 +106,25 @@ export default function SecuritySettingsPage() {
     setPasswordChangeLoading(true)
 
     try {
-      // Step 1: Request password change (sends verification code)
-      const { authApi } = await import('@/core/api/auth')
-      const response = await authApi.requestPasswordChange({
-        current_password: currentPassword,
+      // Direct password change (no verification code step)
+      // Calls POST /api/v1/users/profile/change-password
+      // Backend sends email + SMS notifications after successful change
+      const { profileApi } = await import('@/modules/users')
+      await profileApi.changePassword({
+        old_password: currentPassword,
+        new_password: newPassword,
       })
 
-      // Step 2: Store new password and email in sessionStorage for verification step
-      sessionStorage.setItem('password_change_email', response.email)
-      sessionStorage.setItem('password_change_new_password', newPassword)
-
+      // Success - password changed directly
       toast({
-        title: t('verificationCodeSent'),
-        description: t('verificationCodeSentMessage', { email: response.email }),
+        title: t('passwordChangedSuccess'),
+        description: t('passwordChangedMessage'),
       })
 
-      // Step 3: Redirect to verify-email page with password_change context
-      router.push(`/${locale}/auth/verify-email?context=password_change`)
+      // Reset form fields
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
 
     } catch (error: unknown) {
       toast({
@@ -130,6 +132,7 @@ export default function SecuritySettingsPage() {
         title: t('passwordError'),
         description: error instanceof Error ? error.message : t('passwordChangeFailed'),
       })
+    } finally {
       setPasswordChangeLoading(false)
     }
   }
