@@ -68,7 +68,7 @@ class PaymentRepository:
             SELECT
                 p.*,
                 td.declaration_type,
-                fs.name_fr as fiscal_service_name,
+                fs.name_es as fiscal_service_name,
                 u.email as user_email
             FROM payments p
             LEFT JOIN tax_declarations td ON p.tax_declaration_id = td.id
@@ -95,7 +95,7 @@ class PaymentRepository:
             SELECT
                 p.*,
                 td.declaration_type,
-                fs.name_fr as fiscal_service_name,
+                fs.name_es as fiscal_service_name,
                 u.email as user_email
             FROM payments p
             LEFT JOIN tax_declarations td ON p.tax_declaration_id = td.id
