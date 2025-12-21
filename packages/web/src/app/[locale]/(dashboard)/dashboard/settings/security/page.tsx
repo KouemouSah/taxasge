@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { Shield, Lock } from 'lucide-react'
-import { getAuthData } from '@/core/auth/storage'
+import { getAuthData, clearAuthData } from '@/core/auth/storage'
 import TwoFactorToggle from '@/components/security/TwoFactorToggle'
 import type { User as UserType } from '@/types/auth'
 import { useLocale, useTranslations } from 'next-intl'
@@ -125,6 +125,13 @@ export default function SecuritySettingsPage() {
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
+
+      // For security: logout user and redirect to login page
+      // Wait 2 seconds for user to read the success message
+      setTimeout(() => {
+        clearAuthData()
+        router.push(`/${locale}/auth`)
+      }, 2000)
 
     } catch (error: unknown) {
       toast({
