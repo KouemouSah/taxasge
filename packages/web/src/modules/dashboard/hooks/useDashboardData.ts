@@ -8,8 +8,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { declarationsApi } from '@/modules/declarations/services/api'
 import { paymentsApi } from '@/modules/payments/services/api'
-import type { DeclarationResponse, DeclarationStatus } from '@/types/declaration'
-import type { PaymentResponse, PaymentStatus } from '@/types/payment'
+import type { DeclarationResponse } from '@/types/declaration'
+import type { PaymentResponse } from '@/types/payment'
 
 // =============================================================================
 // TYPES
