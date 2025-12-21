@@ -170,13 +170,13 @@ class UserRepository(BaseRepository[UserResponse]):
                 "first_name": user_data.profile.first_name,
                 "last_name": user_data.profile.last_name,
                 # full_name is a GENERATED column in Supabase, don't insert
-                "phone_number": user_data.profile.phone,  # Note: phone -> phone_number
+                "phone_number": user_data.profile.phone_number,  # Use actual field name, not alias
                 "address": user_data.profile.address,  # Profile field
                 "city": user_data.profile.city,  # Profile field
                 "avatar_url": user_data.profile.avatar_url,  # Profile field
                 "role": user_data.role.value,
                 "status": UserStatus.active.value,
-                "preferred_language": user_data.profile.language if user_data.profile.language else "es",  # Note: language -> preferred_language
+                "preferred_language": user_data.profile.preferred_language if user_data.profile.preferred_language else "es",  # Use actual field name
                 "email_verified": getattr(user_data, 'email_verified', False),  # CRITICAL: Email verification status
                 # created_at, updated_at have DB defaults, no need to insert
             }
