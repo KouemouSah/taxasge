@@ -250,6 +250,8 @@ async def change_password(
                 logger.error(f"Error sending password change email: {email_error}")
 
             # 2. Send SMS notification (if user has phone number)
+            logger.info(f"[SMS] Starting SMS notification for user {current_user.id}, phone={current_user.phone_number}")
+
             if current_user.phone_number:
                 try:
                     from app.modules.communications.services.sms_template_service import SmsTemplateService
@@ -260,26 +262,44 @@ async def change_password(
                     sms_template_service = SmsTemplateService()
 
                     # Get the SMS template
+                    logger.info("[SMS] Step 1: Fetching SMS template SECURITY_PASSWORD_CHANGED")
                     template = await sms_template_service.get_template_by_code(
                         notification_db, "SECURITY_PASSWORD_CHANGED"
                     )
 
-                    if template and template.is_active:
+                    if not template:
+                        logger.error("[SMS] FAILED: Template SECURITY_PASSWORD_CHANGED not found in database")
+                    elif not template.is_active:
+                        logger.error(f"[SMS] FAILED: Template exists but is_active=False")
+                    else:
+                        logger.info(f"[SMS] Step 2: Template found, is_active={template.is_active}")
+
                         # SMS template uses same variables as email: user_name, date, time
+                        user_language = current_user.preferred_language or "es"
+                        logger.info(f"[SMS] Step 3: Rendering template with language={user_language}, vars={list(notification_variables.keys())}")
+
                         render_request = SmsTemplateRenderRequest(
                             template_code="SECURITY_PASSWORD_CHANGED",
-                            language=current_user.preferred_language or "es",
+                            language=user_language,
                             variables=notification_variables
                         )
                         rendered = await sms_template_service.render_template(
                             notification_db, render_request
                         )
+                        logger.info(f"[SMS] Step 4: Template rendered, content_length={len(rendered.rendered_content)}")
 
                         # Get SMS provider credentials
+                        logger.info("[SMS] Step 5: Fetching SMS provider credentials")
                         provider_service = ProviderSettingsService()
                         credentials = await provider_service.get_active_sms_credentials(notification_db)
 
-                        if credentials and credentials.get("api_key"):
+                        if not credentials:
+                            logger.error("[SMS] FAILED: No SMS credentials returned (check communication_provider_settings table)")
+                        elif not credentials.get("api_key"):
+                            logger.error("[SMS] FAILED: Credentials found but api_key is empty/null")
+                        else:
+                            logger.info(f"[SMS] Step 6: Credentials found, api_key_length={len(credentials.get('api_key', ''))}")
+
                             sms_service = SmsService(
                                 provider="infobip",
                                 api_key=credentials["api_key"],
@@ -287,6 +307,7 @@ async def change_password(
                                 sender_id="TaxasGE"
                             )
 
+                            logger.info(f"[SMS] Step 7: Sending SMS to {current_user.phone_number}")
                             sms_result = sms_service.send_sms(
                                 to=current_user.phone_number,
                                 message=rendered.rendered_content
@@ -294,21 +315,21 @@ async def change_password(
 
                             if sms_result.success:
                                 logger.info(
-                                    f"Password change SMS sent to {current_user.phone_number}, "
-                                    f"message_id={sms_result.message_id}"
+                                    f"[SMS] SUCCESS: Password change SMS sent to {current_user.phone_number}, "
+                                    f"message_id={sms_result.message_id}, status={sms_result.status}"
                                 )
                             else:
-                                logger.warning(
-                                    f"Failed to send password change SMS to {current_user.phone_number}: "
-                                    f"{sms_result.error}"
+                                logger.error(
+                                    f"[SMS] FAILED: Infobip API error for {current_user.phone_number}: "
+                                    f"error={sms_result.error}, status={sms_result.status}"
                                 )
-                        else:
-                            logger.warning("No active SMS provider configured, skipping SMS notification")
-                    else:
-                        logger.warning("SMS template SECURITY_PASSWORD_CHANGED not found or inactive")
 
                 except Exception as sms_error:
-                    logger.error(f"Error sending password change SMS: {sms_error}")
+                    logger.error(f"[SMS] EXCEPTION: {type(sms_error).__name__}: {sms_error}")
+                    import traceback
+                    logger.error(f"[SMS] TRACEBACK: {traceback.format_exc()}")
+            else:
+                logger.warning(f"[SMS] SKIPPED: User {current_user.id} has no phone number configured")
 
         return {
             "message": "Password changed successfully"
