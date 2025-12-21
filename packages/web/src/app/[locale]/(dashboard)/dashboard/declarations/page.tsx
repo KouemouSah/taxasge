@@ -10,7 +10,7 @@
  * - DeclarationType enum (28 types)
  */
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -33,7 +33,8 @@ import {
   Calendar,
   CheckCircle,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import {
@@ -44,8 +45,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useLocale, useTranslations } from 'next-intl'
-import { DeclarationStatus, DeclarationType } from '@/types/declaration'
+import { DeclarationStatus } from '@/types/declaration'
 import { useDeclarationLabels } from '@/hooks/use-declaration-labels'
+import { useUserDeclarations } from '@/modules/declarations/hooks'
 
 export default function DeclarationsPage() {
   const locale = useLocale()
@@ -55,62 +57,27 @@ export default function DeclarationsPage() {
   const [filterStatut, setFilterStatut] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
 
-  // Mock data - ALIGNED WITH DeclarationResponse backend model
-  // TODO: Replace with real API call
-  const declarations = [
-    {
-      id: 'DECL-2025-001',
-      declarationType: DeclarationType.INCOME_TAX,
-      fiscalYear: 2024,
-      declarationDeadline: '2025-03-31',
-      createdAt: '2025-01-08T10:00:00Z',
-      status: DeclarationStatus.DRAFT,
-      netTaxDue: 1250000,
-      // Progress calculated from status
-    },
-    {
-      id: 'DECL-2025-002',
-      declarationType: DeclarationType.IVA_DESTAJO,
-      fiscalYear: 2025,
-      fiscalPeriod: 'Q1',
-      declarationDeadline: '2025-02-15',
-      createdAt: '2025-01-10T14:30:00Z',
-      status: DeclarationStatus.SUBMITTED,
-      netTaxDue: 890000,
-    },
-    {
-      id: 'DECL-2024-089',
-      declarationType: DeclarationType.PROPERTY_TAX,
-      fiscalYear: 2024,
-      declarationDeadline: '2025-01-31',
-      createdAt: '2024-12-28T09:15:00Z',
-      status: DeclarationStatus.PROCESSING,
-      netTaxDue: 2360000,
-    },
-    {
-      id: 'DECL-2024-088',
-      declarationType: DeclarationType.CORPORATE_TAX,
-      fiscalYear: 2024,
-      declarationDeadline: '2025-01-15',
-      createdAt: '2024-12-15T16:45:00Z',
-      submittedAt: '2024-12-20T10:00:00Z',
-      processedAt: '2024-12-22T14:30:00Z',
-      status: DeclarationStatus.ACCEPTED,
-      netTaxDue: 5600000,
-    },
-    {
-      id: 'DECL-2024-087',
-      declarationType: DeclarationType.PAYROLL_TAX,
-      fiscalYear: 2024,
-      declarationDeadline: '2024-12-31',
-      createdAt: '2024-12-10T11:20:00Z',
-      submittedAt: '2024-12-15T09:00:00Z',
-      processedAt: '2024-12-18T15:45:00Z',
-      status: DeclarationStatus.REJECTED,
-      rejectionReason: 'Documents manquants',
-      netTaxDue: 450000,
-    },
-  ]
+  // Fetch declarations from API
+  const statusFilter = filterStatut === 'all' ? undefined : filterStatut as DeclarationStatus
+  const { declarations, isLoading, error, refetch } = useUserDeclarations({
+    status: statusFilter,
+    pageSize: 50,
+  })
+
+  // Filter declarations by search query (client-side)
+  const filteredDeclarations = useMemo(() => {
+    if (!searchQuery.trim()) return declarations
+
+    const query = searchQuery.toLowerCase()
+    return declarations.filter((decl) => {
+      const typeLabel = getTypeLabel(decl.declarationType)
+      const id = decl.declarationNumber || decl.id || ''
+      return (
+        id.toLowerCase().includes(query) ||
+        typeLabel.toLowerCase().includes(query)
+      )
+    })
+  }, [declarations, searchQuery, getTypeLabel])
 
   /**
    * Get status badge with icon and color
@@ -176,17 +143,6 @@ export default function DeclarationsPage() {
     return progressMap[status] || 0
   }
 
-  /**
-   * Filter declarations by status and search query
-   */
-  const filteredDeclarations = declarations.filter((decl) => {
-    const matchesStatut = filterStatut === 'all' || decl.status === filterStatut
-    const typeLabel = getTypeLabel(decl.declarationType)
-    const matchesSearch =
-      decl.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      typeLabel.toLowerCase().includes(searchQuery.toLowerCase())
-    return matchesStatut && matchesSearch
-  })
 
   return (
     <div className="space-y-6">
@@ -294,12 +250,34 @@ export default function DeclarationsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredDeclarations.length > 0 ? (
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8">
+                      <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        {t('loading')}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : error ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8">
+                      <div className="text-destructive">
+                        <AlertCircle className="h-5 w-5 mx-auto mb-2" />
+                        <p>{error}</p>
+                        <Button variant="outline" size="sm" onClick={() => refetch()} className="mt-2">
+                          {t('retry') || 'Retry'}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : filteredDeclarations.length > 0 ? (
                   filteredDeclarations.map((decl) => {
                     const progress = getProgress(decl.status)
+                    const displayId = decl.declarationNumber || decl.id
                     return (
                       <TableRow key={decl.id}>
-                        <TableCell className="font-medium">{decl.id}</TableCell>
+                        <TableCell className="font-medium">{displayId}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <FileText className="h-4 w-4 text-muted-foreground" />
