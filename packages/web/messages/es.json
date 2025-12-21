@@ -2422,6 +2422,8 @@
     "profileUpdatedMessage": "Sus informaciones personales han sido actualizadas con éxito",
     "pushNotifications": "Notificaciones Push",
     "pushNotificationsDesc": "Recibir notificaciones push en sus dispositivos",
+    "smsNotifications": "Notificaciones SMS",
+    "smsNotificationsDesc": "Recibir notificaciones por mensaje de texto SMS",
     "role": "Rol",
     "roleBusiness": "Empresa",
     "roleCitizen": "Ciudadano",
