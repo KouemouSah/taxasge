@@ -1068,8 +1068,10 @@ class ServiceRequestService:
         return ServiceRequestResponse(
             id=request["id"],
             reference=request["reference"],
+            user_id=request["user_id"],
             workflow_code=request["workflow_code"],
             solicitud_type=request["solicitud_type"],
+            fiscal_service_id=request.get("fiscal_service_id"),
             status=request["status"],
             priority=request["priority"],
             required_documents=required_docs,
@@ -1087,7 +1089,12 @@ class ServiceRequestService:
                     extraction_status=d.get("extraction_status", "pending"),
                     is_valid=d.get("is_valid"),
                     validation_errors=d.get("validation_errors", []),
-                    created_at=d["created_at"]
+                    validated_by=d.get("validated_by"),
+                    validated_at=d.get("validated_at"),
+                    source=d.get("source", "user_upload"),
+                    uploaded_by=d.get("uploaded_by"),
+                    created_at=d["created_at"],
+                    updated_at=d.get("updated_at")
                 )
                 for d in provided
             ],
@@ -1096,9 +1103,14 @@ class ServiceRequestService:
             form_data=request.get("form_data", {}),
             extracted_data=request.get("extracted_data", {}),
             extraction_confidence=request.get("extraction_confidence"),
+            validations=request.get("validations", {}),
             tariff=tariff,
             assigned_to=request.get("assigned_to"),
+            assigned_at=request.get("assigned_at"),
             entity_code=request.get("entity_code"),
+            payment_id=request.get("payment_id"),
+            payment_status=request.get("payment_status"),
+            paid_at=request.get("paid_at"),
             cita_date=request.get("cita_date"),
             cita_time=request.get("cita_time"),
             cita_location=request.get("cita_location"),
@@ -1107,7 +1119,10 @@ class ServiceRequestService:
             submitted_at=request.get("submitted_at"),
             validated_at=request.get("validated_at"),
             completed_at=request.get("completed_at"),
-            rejection_reason=request.get("rejection_reason")
+            expires_at=request.get("expires_at"),
+            notes=request.get("notes"),
+            rejection_reason=request.get("rejection_reason"),
+            created_by=request.get("created_by")
         )
 
 

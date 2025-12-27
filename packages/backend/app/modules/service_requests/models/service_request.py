@@ -112,31 +112,43 @@ class TariffBreakdown(BaseModel):
 # === Response Models ===
 
 class ServiceRequestResponse(BaseModel):
-    """Complete response for a service request"""
+    """
+    Complete response for a service request.
+    Maps to service_requests table (migration 020).
+    """
     id: UUID
     reference: str
+    user_id: UUID
     workflow_code: str
     solicitud_type: SolicitudType
+    fiscal_service_id: Optional[int] = None
     status: ServiceRequestStatus
     priority: ServiceRequestPriority
 
-    # Documents
+    # Documents (computed, not in DB)
     required_documents: List[RequiredDocument] = Field(default_factory=list)
     provided_documents: List[ProvidedDocument] = Field(default_factory=list)
     missing_documents: List[RequiredDocument] = Field(default_factory=list)
     documents_progress: str = "0/0"
 
-    # Form data
+    # Form data & extraction
     form_data: Dict[str, Any] = Field(default_factory=dict)
     extracted_data: Dict[str, Any] = Field(default_factory=dict)
     extraction_confidence: Optional[float] = None
+    validations: Dict[str, Any] = Field(default_factory=dict)
 
-    # Tariff
+    # Tariff (computed from base_amount, supplements_amount, etc.)
     tariff: Optional[TariffBreakdown] = None
 
     # Assignment
     assigned_to: Optional[UUID] = None
+    assigned_at: Optional[datetime] = None
     entity_code: Optional[str] = None
+
+    # Payment
+    payment_id: Optional[UUID] = None
+    payment_status: Optional[str] = None
+    paid_at: Optional[datetime] = None
 
     # Cita (appointment)
     cita_date: Optional[date] = None
@@ -149,9 +161,14 @@ class ServiceRequestResponse(BaseModel):
     submitted_at: Optional[datetime] = None
     validated_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
+    expires_at: Optional[datetime] = None
 
-    # Rejection
+    # Notes & Rejection
+    notes: Optional[str] = None
     rejection_reason: Optional[str] = None
+
+    # Audit
+    created_by: Optional[UUID] = None
 
     class Config:
         from_attributes = True
