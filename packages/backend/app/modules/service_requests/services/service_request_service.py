@@ -177,12 +177,14 @@ class ServiceRequestService:
             logger.warning("storage_service not available, using placeholder path")
             file_path = f"service-requests/{request_id}/{file.filename}"
 
-        # Get document name from requirements
+        # Get document name and extraction_schema_key from requirements
         required_docs = await self._get_required_documents(db, request["workflow_code"])
         doc_name = document_code
+        extraction_schema_key = None
         for req_doc in required_docs:
             if req_doc.document_code == document_code:
                 doc_name = req_doc.document_name
+                extraction_schema_key = req_doc.extraction_schema_key
                 break
 
         # Save document record
@@ -198,11 +200,12 @@ class ServiceRequestService:
             uploaded_by=user_id
         )
 
-        # Process document (extraction)
+        # Process document (extraction) with schema key
         processing_result = await self._process_document(
             content=content,
             mime_type=file.content_type,
-            document_code=document_code
+            document_code=document_code,
+            extraction_schema_key=extraction_schema_key
         )
 
         # Update extraction results
@@ -305,12 +308,14 @@ class ServiceRequestService:
                 detail=f"File too large. Maximum size: {MAX_FILE_SIZE // (1024*1024)}MB"
             )
 
-        # Get document name from requirements
+        # Get document name and extraction_schema_key from requirements
         required_docs = await self._get_required_documents(db, request["workflow_code"])
         doc_name = document_code
+        extraction_schema_key = None
         for req_doc in required_docs:
             if req_doc.document_code == document_code:
                 doc_name = req_doc.document_name
+                extraction_schema_key = req_doc.extraction_schema_key
                 break
 
         # Get existing documents for identity consistency checks
@@ -327,6 +332,7 @@ class ServiceRequestService:
         form_data = request.get("form_data", {})
 
         # Process document with Gemini/Tesseract + Risk Analysis (NO Firebase upload yet)
+        # Pass extraction_schema_key for proper schema lookup
         processing_result = await self._process_document(
             content=content,
             mime_type=file.content_type,
@@ -334,7 +340,8 @@ class ServiceRequestService:
             request_id=str(request_id),
             user_id=str(user_id),
             existing_documents=existing_documents if existing_documents else None,
-            form_data=form_data if form_data else None
+            form_data=form_data if form_data else None,
+            extraction_schema_key=extraction_schema_key
         )
 
         # Generate preview ID (unique for this extraction session)
@@ -351,7 +358,8 @@ class ServiceRequestService:
             extraction=processing_result["extraction"],
             confidence=processing_result["confidence"],
             risk_analysis=risk_analysis,
-            document_code=document_code
+            document_code=document_code,
+            extraction_schema_key=extraction_schema_key
         )
 
         # Store in temporary cache (content as base64 for serialization)
@@ -369,14 +377,15 @@ class ServiceRequestService:
             "processor": processing_result["processor"],
             "risk_analysis": risk_analysis,
             "detected_type": processing_result.get("document_type", document_code),
-            "expires_at": expires_at.isoformat()
+            "expires_at": expires_at.isoformat(),
+            "extraction_schema_key": extraction_schema_key  # Store for later use
         }
 
         # Clean up expired previews
         self._cleanup_expired_previews()
 
         # Get expected fields from schema for frontend form
-        expected_fields = self._get_expected_fields(document_code)
+        expected_fields = self._get_expected_fields(document_code, extraction_schema_key)
 
         # Determine status and if user needs to review
         extraction_status = processing_result.get("status", "pending_validation")
@@ -595,22 +604,32 @@ class ServiceRequestService:
             del _pending_previews[pid]
             logger.debug(f"Cleaned up expired preview: {pid}")
 
-    def _get_expected_fields(self, document_code: str) -> List[Dict]:
+    def _get_expected_fields(
+        self,
+        document_code: str,
+        extraction_schema_key: Optional[str] = None
+    ) -> List[Dict]:
         """Get expected fields from schema for frontend form generation"""
-        schema = schema_loader.get_schema_for_document(document_code)
+        schema = schema_loader.get_schema_for_document(document_code, extraction_schema_key)
         if not schema:
             return []
 
         fields = []
-        for bloc_name, bloc in schema.get("blocs", {}).items():
+        # Use "extraction" key (not "blocs")
+        extraction = schema.get("extraction", {})
+        for bloc_name, bloc in extraction.items():
+            if not isinstance(bloc, dict) or "fields" not in bloc:
+                continue
             for field_name, config in bloc.get("fields", {}).items():
                 fields.append({
                     "field_name": field_name,
-                    "label": config.get("label", field_name),
+                    "label": config.get("field_label", config.get("label", field_name)),
                     "type": config.get("type", "text"),
                     "required": config.get("required", False),
                     "bloc": bloc_name,
-                    "hint": config.get("gemini_hint", "")
+                    "hint": config.get("description", ""),
+                    "pattern": config.get("pattern"),
+                    "pii": config.get("pii", False)
                 })
         return fields
 
@@ -684,8 +703,14 @@ class ServiceRequestService:
     ) -> List[RequiredDocument]:
         """Get required documents from workflow_document_requirements table"""
         query = """
-            SELECT document_code, document_name, is_required, display_order,
-                   accepted_formats, max_size_mb
+            SELECT document_code,
+                   COALESCE(document_name_es, document_name) as document_name,
+                   is_required,
+                   display_order,
+                   accepted_formats,
+                   max_size_mb,
+                   extraction_schema_key,
+                   instructions_es as instructions
             FROM workflow_document_requirements
             WHERE workflow_code = $1 AND is_active = TRUE
             ORDER BY display_order
@@ -699,10 +724,23 @@ class ServiceRequestService:
                 is_required=row["is_required"],
                 display_order=row["display_order"],
                 accepted_formats=row["accepted_formats"] or ["pdf", "jpg", "png"],
-                max_size_mb=row["max_size_mb"] or 10
+                max_size_mb=row["max_size_mb"] or 10,
+                extraction_schema_key=row["extraction_schema_key"],
+                instructions=row["instructions"]
             )
             for row in rows
         ]
+
+    def _get_extraction_schema_key(
+        self,
+        document_code: str,
+        required_docs: List[RequiredDocument]
+    ) -> Optional[str]:
+        """Get extraction_schema_key for a document from required documents list"""
+        for doc in required_docs:
+            if doc.document_code == document_code:
+                return doc.extraction_schema_key
+        return None
 
     async def _process_document(
         self,
@@ -712,7 +750,8 @@ class ServiceRequestService:
         request_id: str = "",
         user_id: str = "",
         existing_documents: Optional[Dict[str, Dict]] = None,
-        form_data: Optional[Dict] = None
+        form_data: Optional[Dict] = None,
+        extraction_schema_key: Optional[str] = None
     ) -> Dict:
         """
         Process document for extraction + risk analysis using Gemini + Tesseract fallback.
@@ -731,6 +770,7 @@ class ServiceRequestService:
             user_id: User ID for duplication tracking
             existing_documents: Previously uploaded documents for consistency checks
             form_data: User form data for consistency checks
+            extraction_schema_key: Database key for schema lookup (e.g., 'DIP_GQ_V1')
 
         Returns:
             Dict with extraction, confidence, processor, status, risk_analysis
@@ -744,7 +784,8 @@ class ServiceRequestService:
                 request_id=request_id,
                 user_id=user_id,
                 existing_documents=existing_documents,
-                form_data=form_data
+                form_data=form_data,
+                extraction_schema_key=extraction_schema_key
             )
 
             # Log summary
@@ -790,7 +831,8 @@ class ServiceRequestService:
         extraction: Dict,
         confidence: float,
         risk_analysis: Dict,
-        document_code: str
+        document_code: str,
+        extraction_schema_key: Optional[str] = None
     ) -> List[FieldIndicator]:
         """
         Build per-field indicators for UI display.
@@ -800,23 +842,28 @@ class ServiceRequestService:
             confidence: Overall confidence
             risk_analysis: Risk analysis result
             document_code: Document type code
+            extraction_schema_key: Database key for schema lookup
 
         Returns:
             List of FieldIndicator with status and risk info
         """
         indicators = []
 
-        # Get schema for field metadata
-        schema = schema_loader.get_schema_for_document(document_code)
+        # Get schema for field metadata (use extraction_schema_key if available)
+        schema = schema_loader.get_schema_for_document(document_code, extraction_schema_key)
         expected_fields = set()
         field_metadata = {}
 
         if schema:
-            for bloc_name, bloc in schema.get("blocs", {}).items():
+            # Use "extraction" key (not "blocs")
+            extraction_section = schema.get("extraction", {})
+            for bloc_name, bloc in extraction_section.items():
+                if not isinstance(bloc, dict) or "fields" not in bloc:
+                    continue
                 for field_name, config in bloc.get("fields", {}).items():
                     expected_fields.add(field_name)
                     field_metadata[field_name] = {
-                        "label": config.get("label", field_name),
+                        "label": config.get("field_label", config.get("label", field_name)),
                         "required": config.get("required", False)
                     }
 

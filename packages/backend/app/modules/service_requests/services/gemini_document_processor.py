@@ -1096,7 +1096,8 @@ class GeminiDocumentProcessor:
         request_id: str = "",
         user_id: str = "",
         existing_documents: Optional[Dict[str, Dict[str, Any]]] = None,
-        form_data: Optional[Dict[str, Any]] = None
+        form_data: Optional[Dict[str, Any]] = None,
+        extraction_schema_key: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Process document for classification, extraction, and RISK ANALYSIS.
@@ -1109,6 +1110,7 @@ class GeminiDocumentProcessor:
             user_id: User ID for duplication tracking
             existing_documents: Previously uploaded documents for identity consistency
             form_data: User form data for consistency checks
+            extraction_schema_key: Database key for schema lookup (e.g., 'DIP_GQ_V1')
 
         Returns:
             Dict with:
@@ -1124,8 +1126,8 @@ class GeminiDocumentProcessor:
         """
         start_time = time.time()
 
-        # Get schema for document type
-        schema = schema_loader.get_schema_for_document(document_code)
+        # Get schema for document type (prefer extraction_schema_key if provided)
+        schema = schema_loader.get_schema_for_document(document_code, extraction_schema_key)
         if not schema:
             logger.warning(f"No schema found for document_code: {document_code}")
 

@@ -53,6 +53,14 @@ class RequiredDocument(BaseModel):
     display_order: int = 0
     accepted_formats: List[str] = Field(default_factory=lambda: ["pdf", "jpg", "png"])
     max_size_mb: int = 10
+    extraction_schema_key: Optional[str] = Field(
+        None,
+        description="Key to the JSON schema for Gemini extraction (e.g., 'DIP_GQ_V1')"
+    )
+    instructions: Optional[str] = Field(
+        None,
+        description="Instructions for the user uploading this document"
+    )
 
 
 class ProvidedDocument(BaseModel):
