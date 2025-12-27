@@ -701,16 +701,26 @@ class ServiceRequestService:
         db: asyncpg.Connection,
         workflow_code: str
     ) -> List[RequiredDocument]:
-        """Get required documents from workflow_document_requirements table"""
+        """
+        Get required documents from workflow_document_requirements table.
+
+        Table schema (migration 021):
+        - document_code: VARCHAR(100)
+        - document_name_es: VARCHAR(255)
+        - is_required: BOOLEAN
+        - display_order: INTEGER
+        - extraction_schema_key: VARCHAR(100)
+        - instructions_es: TEXT
+
+        Note: accepted_formats and max_size_mb are NOT in DB - use defaults.
+        """
         query = """
             SELECT document_code,
-                   COALESCE(document_name_es, document_name) as document_name,
+                   document_name_es,
                    is_required,
                    display_order,
-                   accepted_formats,
-                   max_size_mb,
                    extraction_schema_key,
-                   instructions_es as instructions
+                   instructions_es
             FROM workflow_document_requirements
             WHERE workflow_code = $1 AND is_active = TRUE
             ORDER BY display_order
@@ -720,13 +730,12 @@ class ServiceRequestService:
         return [
             RequiredDocument(
                 document_code=row["document_code"],
-                document_name=row["document_name"],
-                is_required=row["is_required"],
-                display_order=row["display_order"],
-                accepted_formats=row["accepted_formats"] or ["pdf", "jpg", "png"],
-                max_size_mb=row["max_size_mb"] or 10,
+                document_name=row["document_name_es"],
+                is_required=row["is_required"] if row["is_required"] is not None else True,
+                display_order=row["display_order"] or 0,
+                # accepted_formats and max_size_mb use model defaults (not in DB)
                 extraction_schema_key=row["extraction_schema_key"],
-                instructions=row["instructions"]
+                instructions=row["instructions_es"]
             )
             for row in rows
         ]
