@@ -26,7 +26,9 @@ from ..models.service_request import (
     DocumentUploadResponse,
     DocumentExtractionPreview,
     DocumentValidationRequest,
-    DocumentValidationResponse
+    DocumentValidationResponse,
+    FieldIndicator,
+    RiskAnalysisResult
 )
 from ..models.enums import ServiceRequestStatus
 from .tariff_service import tariff_service
@@ -311,11 +313,28 @@ class ServiceRequestService:
                 doc_name = req_doc.document_name
                 break
 
-        # Process document with Gemini/Tesseract (NO Firebase upload yet)
+        # Get existing documents for identity consistency checks
+        existing_docs_raw = await document_repository.find_by_request(db, request_id)
+        existing_documents = {
+            d["document_code"]: {
+                "extraction": d.get("extraction_data", {}),
+                "confidence": d.get("extraction_confidence", 0)
+            }
+            for d in existing_docs_raw
+        }
+
+        # Get form data from request
+        form_data = request.get("form_data", {})
+
+        # Process document with Gemini/Tesseract + Risk Analysis (NO Firebase upload yet)
         processing_result = await self._process_document(
             content=content,
             mime_type=file.content_type,
-            document_code=document_code
+            document_code=document_code,
+            request_id=str(request_id),
+            user_id=str(user_id),
+            existing_documents=existing_documents if existing_documents else None,
+            form_data=form_data if form_data else None
         )
 
         # Generate preview ID (unique for this extraction session)
@@ -323,6 +342,17 @@ class ServiceRequestService:
 
         # Calculate expiry time
         expires_at = datetime.utcnow() + timedelta(minutes=PREVIEW_EXPIRY_MINUTES)
+
+        # Get risk analysis
+        risk_analysis = processing_result.get("risk_analysis", {})
+
+        # Build field-level indicators for UI
+        field_indicators = self._build_field_indicators(
+            extraction=processing_result["extraction"],
+            confidence=processing_result["confidence"],
+            risk_analysis=risk_analysis,
+            document_code=document_code
+        )
 
         # Store in temporary cache (content as base64 for serialization)
         _pending_previews[preview_id] = {
@@ -337,6 +367,8 @@ class ServiceRequestService:
             "extraction": processing_result["extraction"],
             "confidence": processing_result["confidence"],
             "processor": processing_result["processor"],
+            "risk_analysis": risk_analysis,
+            "detected_type": processing_result.get("document_type", document_code),
             "expires_at": expires_at.isoformat()
         }
 
@@ -346,12 +378,37 @@ class ServiceRequestService:
         # Get expected fields from schema for frontend form
         expected_fields = self._get_expected_fields(document_code)
 
-        # Determine if user needs to review
-        needs_correction = processing_result["confidence"] < 0.7
+        # Determine status and if user needs to review
+        extraction_status = processing_result.get("status", "pending_validation")
+        needs_correction = (
+            processing_result["confidence"] < 0.7 or
+            risk_analysis.get("requires_review", False)
+        )
+
+        # Check document type match
+        detected_type = processing_result.get("document_type", document_code)
+        doc_type_match = not any(
+            f["code"] == "DOC_TYPE_MISMATCH"
+            for f in risk_analysis.get("risk_factors", [])
+        )
+
+        # Build risk analysis response model
+        risk_result = None
+        if risk_analysis:
+            risk_result = RiskAnalysisResult(
+                risk_level=risk_analysis.get("risk_level", "low"),
+                risk_score=risk_analysis.get("risk_score", 0),
+                risk_factors=risk_analysis.get("risk_factors", []),
+                recommendations=risk_analysis.get("recommendations", []),
+                requires_rejection=risk_analysis.get("requires_rejection", False),
+                requires_review=risk_analysis.get("requires_review", False),
+                factors_count=risk_analysis.get("factors_count", {})
+            )
 
         logger.info(
             f"Document preview created: {document_code} for request {request['reference']} "
-            f"(preview_id: {preview_id}, confidence: {processing_result['confidence']:.2%})"
+            f"(preview_id: {preview_id}, confidence: {processing_result['confidence']:.2%}, "
+            f"risk: {risk_analysis.get('risk_level', 'unknown')})"
         )
 
         return DocumentExtractionPreview(
@@ -364,10 +421,15 @@ class ServiceRequestService:
             extraction=processing_result["extraction"],
             confidence=processing_result["confidence"],
             processor=processing_result["processor"],
-            extraction_status="pending_validation",
+            field_indicators=field_indicators,
+            risk_analysis=risk_result,
+            extraction_status=extraction_status,
             needs_correction=needs_correction,
+            detected_document_type=detected_type,
+            document_type_match=doc_type_match,
             expected_fields=expected_fields,
-            expires_at=expires_at
+            expires_at=expires_at,
+            processing_time_ms=processing_result.get("processing_time_ms")
         )
 
     async def validate_document(
@@ -646,37 +708,53 @@ class ServiceRequestService:
         self,
         content: bytes,
         mime_type: str,
-        document_code: str
+        document_code: str,
+        request_id: str = "",
+        user_id: str = "",
+        existing_documents: Optional[Dict[str, Dict]] = None,
+        form_data: Optional[Dict] = None
     ) -> Dict:
         """
-        Process document for extraction using Gemini + Tesseract fallback.
+        Process document for extraction + risk analysis using Gemini + Tesseract fallback.
 
         Pipeline:
-        1. Gemini AI (primary) - 70% confidence threshold
+        1. Gemini AI (primary) - 70% confidence threshold + fraud detection
         2. Tesseract OCR (fallback) - 60% confidence threshold
         3. Manual review if both fail
+        4. Comprehensive risk analysis
 
         Args:
             content: Document file bytes
             mime_type: MIME type (image/*, application/pdf)
             document_code: Expected document type code
+            request_id: Service request ID for duplication tracking
+            user_id: User ID for duplication tracking
+            existing_documents: Previously uploaded documents for consistency checks
+            form_data: User form data for consistency checks
 
         Returns:
-            Dict with extraction, confidence, processor, status
+            Dict with extraction, confidence, processor, status, risk_analysis
         """
         try:
-            # Use the production Gemini document processor
+            # Use the production Gemini document processor with full risk analysis
             result = await gemini_document_processor.process(
                 content=content,
                 mime_type=mime_type,
-                document_code=document_code
+                document_code=document_code,
+                request_id=request_id,
+                user_id=user_id,
+                existing_documents=existing_documents,
+                form_data=form_data
             )
 
+            # Log summary
+            risk = result.get("risk_analysis", {})
             logger.info(
                 f"Document processed: {document_code} | "
                 f"Processor: {result['processor']} | "
                 f"Confidence: {result['confidence']:.2%} | "
-                f"Status: {result['status']}"
+                f"Status: {result['status']} | "
+                f"Risk: {risk.get('risk_level', 'unknown')} ({risk.get('risk_score', 0)})"
             )
 
             return result
@@ -690,8 +768,151 @@ class ServiceRequestService:
                 "status": "error",
                 "document_type": document_code,
                 "has_error": True,
-                "error_message": str(e)
+                "error_message": str(e),
+                "risk_analysis": {
+                    "risk_level": "critical",
+                    "risk_score": 100,
+                    "risk_factors": [{
+                        "code": "PROCESSING_ERROR",
+                        "severity": "critical",
+                        "message": f"Processing error: {str(e)}",
+                        "action": "review"
+                    }],
+                    "recommendations": ["Manual review required due to processing error"],
+                    "requires_rejection": False,
+                    "requires_review": True,
+                    "factors_count": {"critical": 1, "high": 0, "medium": 0, "low": 0}
+                }
             }
+
+    def _build_field_indicators(
+        self,
+        extraction: Dict,
+        confidence: float,
+        risk_analysis: Dict,
+        document_code: str
+    ) -> List[FieldIndicator]:
+        """
+        Build per-field indicators for UI display.
+
+        Args:
+            extraction: Extracted data
+            confidence: Overall confidence
+            risk_analysis: Risk analysis result
+            document_code: Document type code
+
+        Returns:
+            List of FieldIndicator with status and risk info
+        """
+        indicators = []
+
+        # Get schema for field metadata
+        schema = schema_loader.get_schema_for_document(document_code)
+        expected_fields = set()
+        field_metadata = {}
+
+        if schema:
+            for bloc_name, bloc in schema.get("blocs", {}).items():
+                for field_name, config in bloc.get("fields", {}).items():
+                    expected_fields.add(field_name)
+                    field_metadata[field_name] = {
+                        "label": config.get("label", field_name),
+                        "required": config.get("required", False)
+                    }
+
+        # Build risk factors by field
+        field_risks = {}
+        for factor in risk_analysis.get("risk_factors", []):
+            detail = factor.get("detail", {})
+            related_field = detail.get("field")
+            if related_field:
+                if related_field not in field_risks:
+                    field_risks[related_field] = []
+                field_risks[related_field].append(factor)
+
+        # Create indicators for each extracted field
+        for field_name, value in extraction.items():
+            if field_name.startswith("_"):
+                continue
+
+            # Base confidence (use overall if no per-field data)
+            field_confidence = confidence
+
+            # Determine status
+            if value is None or value == "":
+                status = "missing" if field_metadata.get(field_name, {}).get("required") else "ok"
+            elif field_name in field_risks:
+                # Has risk factors
+                highest_severity = max(
+                    (r["severity"] for r in field_risks[field_name]),
+                    key=lambda s: {"critical": 4, "high": 3, "medium": 2, "low": 1}.get(s, 0)
+                )
+                status = "error" if highest_severity in ["critical", "high"] else "warning"
+            elif field_confidence < 0.5:
+                status = "warning"
+            else:
+                status = "ok"
+
+            # Get risk info if exists
+            risk_level = None
+            risk_message = None
+            suggestion = None
+            requires_attention = False
+
+            if field_name in field_risks:
+                factors = field_risks[field_name]
+                highest_factor = max(
+                    factors,
+                    key=lambda f: {"critical": 4, "high": 3, "medium": 2, "low": 1}.get(f["severity"], 0)
+                )
+                risk_level = highest_factor["severity"]
+                risk_message = highest_factor["message"]
+                requires_attention = True
+
+                # Build suggestion
+                action = highest_factor.get("action")
+                if action == "reject":
+                    suggestion = "This field has critical issues - document may be rejected"
+                elif action == "review":
+                    suggestion = "Please verify this field carefully"
+                elif action == "warn":
+                    suggestion = "Consider reviewing this value"
+
+            # Low confidence warning
+            if field_confidence < 0.6 and not requires_attention:
+                requires_attention = True
+                risk_level = risk_level or "low"
+                risk_message = risk_message or "Low extraction confidence - please verify"
+                suggestion = suggestion or "Double-check this value against the document"
+
+            indicators.append(FieldIndicator(
+                field_name=field_name,
+                value=value,
+                confidence=field_confidence,
+                status=status,
+                risk_level=risk_level,
+                risk_message=risk_message,
+                requires_attention=requires_attention,
+                suggestion=suggestion
+            ))
+
+        # Add indicators for missing required fields
+        for field_name in expected_fields:
+            if field_name not in extraction:
+                meta = field_metadata.get(field_name, {})
+                if meta.get("required"):
+                    indicators.append(FieldIndicator(
+                        field_name=field_name,
+                        value=None,
+                        confidence=0.0,
+                        status="missing",
+                        risk_level="medium",
+                        risk_message="Required field not found in document",
+                        requires_attention=True,
+                        suggestion=f"Please enter {meta.get('label', field_name)} manually"
+                    ))
+
+        return indicators
 
     async def _log_processing(
         self,
