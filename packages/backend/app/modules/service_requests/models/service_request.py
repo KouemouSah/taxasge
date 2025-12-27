@@ -64,7 +64,10 @@ class RequiredDocument(BaseModel):
 
 
 class ProvidedDocument(BaseModel):
-    """Document provided by user"""
+    """
+    Document provided by user.
+    Maps to service_request_documents table (migration 020).
+    """
     id: UUID
     document_code: str
     document_name: str
@@ -72,12 +75,23 @@ class ProvidedDocument(BaseModel):
     file_name: str
     file_size: Optional[int] = None
     mime_type: Optional[str] = None
+
+    # Extraction results (Gemini/Tesseract)
     extraction_data: Dict[str, Any] = Field(default_factory=dict)
     extraction_confidence: Optional[float] = None
     extraction_status: str = "pending"
+
+    # Validation by agent
     is_valid: Optional[bool] = None
     validation_errors: List[str] = Field(default_factory=list)
+    validated_by: Optional[UUID] = None
+    validated_at: Optional[datetime] = None
+
+    # Audit
+    source: str = "user_upload"
+    uploaded_by: Optional[UUID] = None
     created_at: datetime
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
