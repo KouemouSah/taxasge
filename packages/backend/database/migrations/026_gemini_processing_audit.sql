@@ -222,9 +222,12 @@ SELECT
     COUNT(*) FILTER (WHERE risk_level = 'critical') AS critical_risk,
     COUNT(*) FILTER (WHERE coherence_valid = TRUE) AS coherent_documents,
     COUNT(*) FILTER (WHERE coherence_valid = FALSE) AS incoherent_documents,
-    ARRAY_AGG(DISTINCT unnest) AS common_risk_factors
-FROM gemini_processing_logs,
-     LATERAL (SELECT unnest(risk_factors::text[])) AS t(unnest)
+    ARRAY_AGG(DISTINCT rf.factor) FILTER (WHERE rf.factor IS NOT NULL) AS common_risk_factors
+FROM gemini_processing_logs
+LEFT JOIN LATERAL (
+    SELECT jsonb_array_elements_text(risk_factors) AS factor
+    WHERE risk_factors IS NOT NULL AND risk_factors != '[]'::jsonb
+) rf ON TRUE
 WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
   AND risk_score IS NOT NULL
 GROUP BY DATE(created_at), workflow_code

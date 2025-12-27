@@ -3,7 +3,7 @@
 TAXASGE DATABASE SCHEMA - COMPLETE REFERENCE
 ====================================================================================================
 
-Extracted on: 2025-12-02 19:24:39
+Extracted on: 2025-12-27 19:57:13
 Database: Supabase PostgreSQL
 Project: taxasge-dev
 
@@ -22,6 +22,7 @@ Project: taxasge-dev
   - bank_transactions                        Transactions bancaires reçues des banques (webhooks ou réconciliation manuelle)
   - calculation_history                      No description
   - categories                               No description
+  - communication_provider_settings          Configuration settings for communication providers (SMS, Email, Push, WhatsApp)
   - companies                                No description
   - declaration_amount_adjustments           Audit trail de tous les ajustements de montants (historique complet)
   - declaration_corrections                  Audit trail des corrections apportées aux déclarations (rectificatives)
@@ -33,7 +34,9 @@ Project: taxasge-dev
   - document_processing_queue                Async processing queue for OCR with retry logic, exponential backoff, and Cloud Vision→Tesseract fallback
   - document_templates                       Templates documents - Avec validity_duration_months (v4.1 fix)
   - document_templates_backup_20251017       No description
+  - email_templates                          Email templates with multilingual support. HTML content stored in separate files.
   - entity_translations                      Traductions optimisées - ENUM strict + codes courts (-40%% storage)
+  - extraction_schemas                       Mapping entre catégories de documents et schemas JSON d'extraction
   - fiscal_service_data                      NIVEAU 3 - Données fiscal services avec support OCR Tesseract (ex: Nota de Ingreso)
   - fiscal_services                          Services fiscaux - NO instructions_es denormalization (v4.1 user feedback)
   - form_templates                           Templates de formulaires pour extraction OCR Tesseract (coordonnées des champs) - 14 types total
@@ -42,6 +45,8 @@ Project: taxasge-dev
   - ministries                               Ministères - Espagnol en DB, FR/EN via entity_translations optimisée
   - ministry_agents                          Agents ministériels - Workflow complet validation
   - ministry_validation_config               No description
+  - notification_log                         Historique de toutes les notifications envoyées (audit et traçabilité)
+  - notification_templates                   In-app notification templates with multilingual support.
   - ocr_extraction_results                   Résultats bruts de l'extraction OCR Tesseract (JSONB temporaire avant validation)
   - payment_installments                     Acomptes individuels d'un plan de paiement
   - payment_lock_history                     No description
@@ -55,6 +60,7 @@ Project: taxasge-dev
   - procedure_template_steps                 No description
   - procedure_template_steps_backup_20251017 No description
   - procedure_templates                      Templates procédures - Architecture radicale 58.7%% économie
+  - push_templates                           Push notification templates for mobile and web platforms.
   - refresh_tokens                           Refresh tokens for JWT authentication with revocation support
   - role_permissions                         Permissions associées à chaque rôle
   - roles                                    Rôles personnalisables pour attribution de permissions groupées
@@ -64,9 +70,18 @@ Project: taxasge-dev
   - service_payments                         Paiements avec workflow agents - Verrouillage pessimiste
   - service_procedure_assignments            No description
   - service_procedure_assignments_backup_20251017 No description
+  - service_request_documents                Documents uploadés pour une demande de service
+  - service_request_history                  Historique des changements (audit trail)
+  - service_requests                         Demandes de service (passeport, résidence, carnet, etc.)
   - sessions                                 User authentication sessions with JWT tokens
+  - sms_templates                            SMS templates with multilingual support. Content limited to 160 chars per segment.
   - steps_count                              No description
+  - support_attachments                      File attachments for support messages
+  - support_categories                       Support ticket categories with multilingual support
+  - support_messages                         Messages within support tickets
+  - support_tickets                          Support tickets for user help requests and agent technical support
   - system_rules                             Configuration dynamique des règles métier (sans redéploiement)
+  - tariff_supplements                       Suppléments (cédulas, pólizas, timbres)
   - tax_declarations                         Déclarations fiscales - 20 types GE-specific
   - translations                             Table unifiée pour toutes les traductions du système (ENUMs, UI, Forms, Messages système)
   - uploaded_files                           Métadonnées des fichiers uploadés (stockés dans Supabase Storage)
@@ -75,6 +90,16 @@ Project: taxasge-dev
   - user_ministry_assignments                No description
   - user_permissions                         Permissions spécifiques par utilisateur (override du rôle)
   - users                                    No description
+  - ussd_configurations                      USSD menu configurations for operators: Getesa, Muni, Other API SMS.
+  - verificacion_fraud_log                   Log des tentatives suspectes de verification funcionario
+  - verificacion_funcionario                 Demandes de verification du statut funcionario
+  - verified_identifiers                     Cache securise d'identifiants verifies par des systemes externes
+  - verified_identifiers_audit               Log de toutes les operations sur verified_identifiers
+  - webhook_configurations                   Webhook configurations for WhatsApp Business API and custom integrations.
+  - webhook_logs                             Audit log for webhook executions.
+  - workflow_document_requirements           Documents requis par workflow avec logique conditionnelle
+  - workflow_supplement_config               Configuration: quels suppléments s'appliquent à quels workflows
+  - workflow_tariffs                         Tarifs de base des workflows (administrables via interface)
   - workflow_transitions                     No description
 
 ====================================================================================================
@@ -133,6 +158,12 @@ calculation_method_enum:
   - formula_based
   - fixed_plus_unit
 
+communication_provider_type:
+  - sms
+  - email
+  - push
+  - whatsapp
+
 company_role_enum:
   - company_owner
   - company_admin
@@ -183,11 +214,40 @@ declaration_type_enum:
   - impreso_comun
   - impreso_liquidacion
 
+document_condition_type_enum:
+  - always
+  - age_less_than
+  - age_greater_than
+  - is_renewal
+  - is_new
+  - is_duplicate
+  - has_previous
+  - is_minor
+  - is_adult
+  - is_foreign
+  - is_national
+  - custom
+
 escalation_level:
   - low
   - medium
   - high
   - critical
+
+identifier_type_enum:
+  - dni
+  - pasaporte
+  - permiso_residencia
+  - certificado_conducir
+  - matricula_vehiculo
+  - nif
+  - contrato_ornc
+  - registro_civil
+  - cuve
+  - permiso_circulacion
+  - matricula_funcionario
+  - numero_nombramiento
+  - carnet_funcionario
 
 ocr_engine_enum:
   - tesseract
@@ -248,6 +308,33 @@ rule_status_enum:
   - draft
   - archived
 
+service_request_priority_enum:
+  - LOW
+  - NORMAL
+  - HIGH
+  - URGENT
+
+service_request_status_enum:
+  - DRAFT
+  - TIMBRES_PENDING
+  - TIMBRES_PAID
+  - SUBMITTED
+  - DOCUMENTS_REQUIRED
+  - UNDER_REVIEW
+  - DOSSIER_VALIDE
+  - REJECTED
+  - PENDING_NOTA_INGRESO
+  - NOTA_UPLOADED
+  - PAYMENT_PENDING
+  - PAYMENT_PROCESSING
+  - PAID
+  - PAYMENT_FAILED
+  - CITA_SCHEDULED
+  - IN_PROGRESS
+  - COMPLETED
+  - CANCELLED
+  - EXPIRED
+
 service_status_enum:
   - active
   - inactive
@@ -285,12 +372,24 @@ user_role_enum:
   - supervisor
   - dgi_agent
   - ministry_agent
+  - funcionario
 
 user_status_enum:
   - active
   - suspended
   - pending_verification
   - deactivated
+
+verification_source_enum:
+  - cnedoge
+  - trafico
+  - hacienda
+  - ornc
+  - registro_civil
+  - registro_vehiculos
+  - ministerio_funcion_publica
+  - agent_manual
+  - api_integration
 
 workload_status_enum:
   - available
@@ -749,6 +848,54 @@ Indexes:
     CREATE INDEX idx_categories_sector ON public.categories USING btree (sector_id) WHERE (sector_id IS NOT NULL)
   - idx_categories_ministry_direct
     CREATE INDEX idx_categories_ministry_direct ON public.categories USING btree (ministry_id) WHERE (ministry_id IS NOT NULL)
+
+----------------------------------------------------------------------------------------------------
+Table: COMMUNICATION_PROVIDER_SETTINGS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  integer                   NO         nextval('communication_provide
+provider_type                       communication_provider_type NO                                       
+provider_name                       varchar(100)              NO                                       
+provider_code                       varchar(50)               NO                                       
+api_base_url                        varchar(500)              YES                                      
+api_key_encrypted                   varchar(500)              YES                                      
+  └─ Description: Encrypted API key - decrypt at runtime using app secret
+api_secret_encrypted                varchar(500)              YES                                      
+config                              jsonb                     YES        '{}'::jsonb                   
+  └─ Description: Provider-specific configuration in JSONB format
+is_active                           boolean                   YES        true                          
+is_default                          boolean                   YES        false                         
+rate_limit_per_minute               integer                   YES        100                           
+retry_attempts                      integer                   YES        3                             
+timeout_seconds                     integer                   YES        30                            
+created_at                          timestamp with time zone  YES        now()                         
+updated_at                          timestamp with time zone  YES        now()                         
+created_by                          uuid                      YES                                      
+updated_by                          uuid                      YES                                      
+
+Primary Key: id
+
+Foreign Keys:
+  - created_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - updated_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+
+Unique Constraints:
+  - communication_provider_settings_provider_code_key: (provider_code)
+
+Indexes:
+  - communication_provider_settings_provider_code_key
+    CREATE UNIQUE INDEX communication_provider_settings_provider_code_key ON public.communication_provider_settings USING btree (provider_code)
+  - idx_comm_provider_type
+    CREATE INDEX idx_comm_provider_type ON public.communication_provider_settings USING btree (provider_type)
+  - idx_comm_provider_active
+    CREATE INDEX idx_comm_provider_active ON public.communication_provider_settings USING btree (is_active)
+  - idx_comm_provider_default
+    CREATE INDEX idx_comm_provider_default ON public.communication_provider_settings USING btree (is_default) WHERE (is_default = true)
+  - idx_comm_provider_unique_default_per_type
+    CREATE UNIQUE INDEX idx_comm_provider_unique_default_per_type ON public.communication_provider_settings USING btree (provider_type) WHERE (is_default = true)
 
 ----------------------------------------------------------------------------------------------------
 Table: COMPANIES
@@ -1249,6 +1396,55 @@ updated_at                          timestamp with time zone  YES
 created_by                          integer                   YES                                      
 
 ----------------------------------------------------------------------------------------------------
+Table: EMAIL_TEMPLATES
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  integer                   NO         nextval('email_templates_id_se
+template_code                       varchar(100)              NO                                       
+name_es                             varchar(255)              NO                                       
+name_fr                             varchar(255)              YES                                      
+name_en                             varchar(255)              YES                                      
+subject_es                          varchar(500)              NO                                       
+subject_fr                          varchar(500)              YES                                      
+subject_en                          varchar(500)              YES                                      
+description_es                      text                      YES                                      
+description_fr                      text                      YES                                      
+description_en                      text                      YES                                      
+html_file_path                      varchar(500)              YES                                      
+  └─ Description: DEPRECATED: Path to HTML file. Use html_content instead.
+variables                           jsonb                     YES        '[]'::jsonb                   
+category                            varchar(100)              YES                                      
+is_active                           boolean                   YES        true                          
+created_at                          timestamp with time zone  YES        now()                         
+updated_at                          timestamp with time zone  YES        now()                         
+created_by                          uuid                      YES                                      
+updated_by                          uuid                      YES                                      
+html_content                        text                      YES                                      
+  └─ Description: HTML content stored directly (preferred). Contains multilingual sections.
+
+Primary Key: id
+
+Foreign Keys:
+  - created_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - updated_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+
+Unique Constraints:
+  - email_templates_template_code_key: (template_code)
+
+Indexes:
+  - email_templates_template_code_key
+    CREATE UNIQUE INDEX email_templates_template_code_key ON public.email_templates USING btree (template_code)
+  - idx_email_templates_code
+    CREATE INDEX idx_email_templates_code ON public.email_templates USING btree (template_code)
+  - idx_email_templates_category
+    CREATE INDEX idx_email_templates_category ON public.email_templates USING btree (category)
+  - idx_email_templates_active
+    CREATE INDEX idx_email_templates_active ON public.email_templates USING btree (is_active)
+
+----------------------------------------------------------------------------------------------------
 Table: ENTITY_TRANSLATIONS
 ----------------------------------------------------------------------------------------------------
 
@@ -1266,6 +1462,35 @@ created_at                          timestamp with time zone  YES        now()
 updated_at                          timestamp with time zone  YES        now()                         
 
 Primary Key: entity_type, entity_code, language_code, field_name
+
+----------------------------------------------------------------------------------------------------
+Table: EXTRACTION_SCHEMAS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  integer                   NO         nextval('extraction_schemas_id
+category                            varchar(50)               NO                                       
+  └─ Description: Catégorie du schema (identity, medical, contract, etc.)
+schema_filename                     varchar(100)              NO                                       
+description                         text                      YES                                      
+document_types                      ARRAY                     YES        '{}'::text[]                  
+workflow_codes                      ARRAY                     YES        '{}'::text[]                  
+default_tarification                jsonb                     YES                                      
+  └─ Description: Règles de tarification par défaut définies dans le schema
+is_active                           boolean                   YES        true                          
+created_at                          timestamp with time zone  YES        now()                         
+updated_at                          timestamp with time zone  YES        now()                         
+
+Primary Key: id
+
+Unique Constraints:
+  - extraction_schemas_category_key: (category)
+
+Indexes:
+  - extraction_schemas_category_key
+    CREATE UNIQUE INDEX extraction_schemas_category_key ON public.extraction_schemas USING btree (category)
 
 ----------------------------------------------------------------------------------------------------
 Table: FISCAL_SERVICE_DATA
@@ -1318,6 +1543,8 @@ code_reference                      text                      YES
   └─ Description: Code de référence manuscrit (ex: AA0516 visible sur l'image)
 tampon_officiel                     boolean                   YES        false                         
   └─ Description: Indicateur de présence du tampon officiel (détecté par OCR image analysis)
+dias_validez                        integer                   YES        15                            
+  └─ Description: Jours de validité de la nota de ingreso (extrait de "se caduca a los X días"). Default: 15 jours.
 
 Primary Key: id
 
@@ -1346,6 +1573,8 @@ Indexes:
     CREATE INDEX idx_fiscal_service_data_type_compte ON public.fiscal_service_data USING btree (type_compte) WHERE (type_compte IS NOT NULL)
   - idx_fiscal_service_data_organisme
     CREATE INDEX idx_fiscal_service_data_organisme ON public.fiscal_service_data USING btree (organisme_emetteur) WHERE (organisme_emetteur IS NOT NULL)
+  - idx_fiscal_service_data_date_expiration
+    CREATE INDEX idx_fiscal_service_data_date_expiration ON public.fiscal_service_data USING btree (date_expiration) WHERE (date_expiration IS NOT NULL)
 
 ----------------------------------------------------------------------------------------------------
 Table: FISCAL_SERVICES
@@ -1412,6 +1641,8 @@ embedding_version                   integer                   YES        1
   └─ Description: Version of the embedding (incremented on regeneration)
 needs_embedding_update              boolean                   YES        true                          
   └─ Description: Flag indicating if service needs embedding regeneration after content update
+workflow_code                       varchar(100)              YES                                      
+  └─ Description: Code du workflow associé (ex: pasaporte_nuevo, residencia)
 
 Primary Key: id
 
@@ -1435,6 +1666,8 @@ Indexes:
     CREATE INDEX idx_fiscal_services_search_vector ON public.fiscal_services USING gin (search_vector)
   - idx_fiscal_services_embedding_hnsw
     CREATE INDEX idx_fiscal_services_embedding_hnsw ON public.fiscal_services USING hnsw (embedding vector_cosine_ops) WITH (m='16', ef_construction='64')
+  - idx_fiscal_services_workflow_code
+    CREATE INDEX idx_fiscal_services_workflow_code ON public.fiscal_services USING btree (workflow_code) WHERE (workflow_code IS NOT NULL)
 
 ----------------------------------------------------------------------------------------------------
 Table: FORM_TEMPLATES
@@ -1686,6 +1919,117 @@ Unique Constraints:
 Indexes:
   - ministry_validation_config_ministry_id_service_type_key
     CREATE UNIQUE INDEX ministry_validation_config_ministry_id_service_type_key ON public.ministry_validation_config USING btree (ministry_id, service_type)
+
+----------------------------------------------------------------------------------------------------
+Table: NOTIFICATION_LOG
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+service_request_id                  uuid                      YES                                      
+user_id                             uuid                      NO                                       
+channel                             varchar(20)               NO                                       
+  └─ Description: Canal: email, sms, push, in_app, whatsapp
+template_code                       varchar(100)              NO                                       
+  └─ Description: Code du template utilisé (ex: cita_scheduled)
+recipient_email                     varchar(255)              YES                                      
+recipient_phone                     varchar(50)               YES                                      
+recipient_device_token              text                      YES                                      
+subject                             varchar(500)              YES                                      
+content_preview                     varchar(500)              YES                                      
+template_variables                  jsonb                     YES        '{}'::jsonb                   
+status                              varchar(30)               NO         'queued'::character varying   
+  └─ Description: Status: queued, sending, sent, delivered, failed, bounced, opened, clicked
+external_id                         varchar(255)              YES                                      
+  └─ Description: ID du provider externe (SendGrid, Twilio, Firebase)
+external_provider                   varchar(50)               YES                                      
+queued_at                           timestamp with time zone  NO         now()                         
+sent_at                             timestamp with time zone  YES                                      
+delivered_at                        timestamp with time zone  YES                                      
+opened_at                           timestamp with time zone  YES                                      
+clicked_at                          timestamp with time zone  YES                                      
+failed_at                           timestamp with time zone  YES                                      
+error_code                          varchar(50)               YES                                      
+error_message                       text                      YES                                      
+retry_count                         integer                   YES        0                             
+next_retry_at                       timestamp with time zone  YES                                      
+trigger_event                       varchar(100)              YES                                      
+  └─ Description: Événement déclencheur (status_change, reminder_3d, etc.)
+triggered_by                        varchar(50)               YES        'system'::character varying   
+metadata                            jsonb                     YES        '{}'::jsonb                   
+created_at                          timestamp with time zone  NO         now()                         
+
+Primary Key: id
+
+Foreign Keys:
+  - service_request_id → service_requests.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - user_id → users.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+Indexes:
+  - idx_nl_status
+    CREATE INDEX idx_nl_status ON public.notification_log USING btree (status) WHERE ((status)::text = ANY ((ARRAY['queued'::character varying, 'failed'::character varying])::text[]))
+  - idx_nl_channel
+    CREATE INDEX idx_nl_channel ON public.notification_log USING btree (channel)
+  - idx_nl_created_at
+    CREATE INDEX idx_nl_created_at ON public.notification_log USING btree (created_at DESC)
+  - idx_nl_external_id
+    CREATE INDEX idx_nl_external_id ON public.notification_log USING btree (external_id) WHERE (external_id IS NOT NULL)
+  - idx_nl_retry
+    CREATE INDEX idx_nl_retry ON public.notification_log USING btree (next_retry_at) WHERE (((status)::text = 'failed'::text) AND (next_retry_at IS NOT NULL) AND (retry_count < 3))
+  - idx_nl_analytics
+    CREATE INDEX idx_nl_analytics ON public.notification_log USING btree (created_at DESC, channel, status)
+  - idx_nl_service_request
+    CREATE INDEX idx_nl_service_request ON public.notification_log USING btree (service_request_id) WHERE (service_request_id IS NOT NULL)
+  - idx_nl_user_id
+    CREATE INDEX idx_nl_user_id ON public.notification_log USING btree (user_id)
+
+----------------------------------------------------------------------------------------------------
+Table: NOTIFICATION_TEMPLATES
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  integer                   NO         nextval('notification_template
+template_code                       varchar(100)              NO                                       
+name_es                             varchar(255)              NO                                       
+name_fr                             varchar(255)              YES                                      
+name_en                             varchar(255)              YES                                      
+title_es                            varchar(255)              NO                                       
+title_fr                            varchar(255)              YES                                      
+title_en                            varchar(255)              YES                                      
+body_es                             text                      NO                                       
+body_fr                             text                      YES                                      
+body_en                             text                      YES                                      
+icon                                varchar(100)              YES                                      
+action_url                          varchar(500)              YES                                      
+variables                           jsonb                     YES        '[]'::jsonb                   
+notification_type                   varchar(50)               YES                                      
+priority                            varchar(20)               YES        'normal'::character varying   
+is_active                           boolean                   YES        true                          
+created_at                          timestamp with time zone  YES        now()                         
+updated_at                          timestamp with time zone  YES        now()                         
+created_by                          uuid                      YES                                      
+
+Primary Key: id
+
+Foreign Keys:
+  - created_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+
+Unique Constraints:
+  - notification_templates_template_code_key: (template_code)
+
+Indexes:
+  - idx_notification_templates_code
+    CREATE INDEX idx_notification_templates_code ON public.notification_templates USING btree (template_code)
+  - idx_notification_templates_type
+    CREATE INDEX idx_notification_templates_type ON public.notification_templates USING btree (notification_type)
+  - idx_notification_templates_active
+    CREATE INDEX idx_notification_templates_active ON public.notification_templates USING btree (is_active)
+  - notification_templates_template_code_key
+    CREATE UNIQUE INDEX notification_templates_template_code_key ON public.notification_templates USING btree (template_code)
 
 ----------------------------------------------------------------------------------------------------
 Table: OCR_EXTRACTION_RESULTS
@@ -2172,6 +2516,54 @@ Indexes:
     CREATE INDEX idx_procedure_templates_category ON public.procedure_templates USING btree (category)
 
 ----------------------------------------------------------------------------------------------------
+Table: PUSH_TEMPLATES
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  integer                   NO         nextval('push_templates_id_seq
+template_code                       varchar(100)              NO                                       
+name_es                             varchar(255)              NO                                       
+name_fr                             varchar(255)              YES                                      
+name_en                             varchar(255)              YES                                      
+title_es                            varchar(100)              NO                                       
+title_fr                            varchar(100)              YES                                      
+title_en                            varchar(100)              YES                                      
+body_es                             varchar(240)              NO                                       
+body_fr                             varchar(240)              YES                                      
+body_en                             varchar(240)              YES                                      
+image_url                           varchar(500)              YES                                      
+icon_url                            varchar(500)              YES                                      
+click_action                        varchar(500)              YES                                      
+data_payload                        jsonb                     YES        '{}'::jsonb                   
+variables                           jsonb                     YES        '[]'::jsonb                   
+platform                            varchar(20)               YES        'all'::character varying      
+ttl_seconds                         integer                   YES        86400                         
+is_active                           boolean                   YES        true                          
+created_at                          timestamp with time zone  YES        now()                         
+updated_at                          timestamp with time zone  YES        now()                         
+created_by                          uuid                      YES                                      
+
+Primary Key: id
+
+Foreign Keys:
+  - created_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+
+Unique Constraints:
+  - push_templates_template_code_key: (template_code)
+
+Indexes:
+  - idx_push_templates_code
+    CREATE INDEX idx_push_templates_code ON public.push_templates USING btree (template_code)
+  - idx_push_templates_platform
+    CREATE INDEX idx_push_templates_platform ON public.push_templates USING btree (platform)
+  - idx_push_templates_active
+    CREATE INDEX idx_push_templates_active ON public.push_templates USING btree (is_active)
+  - push_templates_template_code_key
+    CREATE UNIQUE INDEX push_templates_template_code_key ON public.push_templates USING btree (template_code)
+
+----------------------------------------------------------------------------------------------------
 Table: REFRESH_TOKENS
 ----------------------------------------------------------------------------------------------------
 
@@ -2536,6 +2928,163 @@ assigned_at                         timestamp with time zone  YES
 assigned_by                         integer                   YES                                      
 
 ----------------------------------------------------------------------------------------------------
+Table: SERVICE_REQUEST_DOCUMENTS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+service_request_id                  uuid                      NO                                       
+document_code                       varchar(100)              NO                                       
+document_name                       varchar(255)              NO                                       
+file_path                           text                      NO                                       
+file_name                           varchar(255)              NO                                       
+file_size                           integer                   YES                                      
+mime_type                           varchar(100)              YES                                      
+extraction_data                     jsonb                     YES        '{}'::jsonb                   
+extraction_confidence               numeric                   YES                                      
+extraction_status                   varchar(50)               YES        'pending'::character varying  
+is_valid                            boolean                   YES                                      
+validation_errors                   jsonb                     YES        '[]'::jsonb                   
+validated_by                        uuid                      YES                                      
+validated_at                        timestamp with time zone  YES                                      
+source                              varchar(50)               YES        'user_upload'::character varyi
+uploaded_by                         uuid                      YES                                      
+created_at                          timestamp with time zone  NO         now()                         
+updated_at                          timestamp with time zone  NO         now()                         
+
+Primary Key: id
+
+Foreign Keys:
+  - service_request_id → service_requests.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+  - uploaded_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - validated_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+
+Unique Constraints:
+  - unique_document_per_request: (service_request_id, document_code)
+
+Indexes:
+  - unique_document_per_request
+    CREATE UNIQUE INDEX unique_document_per_request ON public.service_request_documents USING btree (service_request_id, document_code)
+  - idx_srd_request_id
+    CREATE INDEX idx_srd_request_id ON public.service_request_documents USING btree (service_request_id)
+  - idx_srd_document_code
+    CREATE INDEX idx_srd_document_code ON public.service_request_documents USING btree (document_code)
+
+----------------------------------------------------------------------------------------------------
+Table: SERVICE_REQUEST_HISTORY
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+service_request_id                  uuid                      NO                                       
+action                              varchar(100)              NO                                       
+previous_status                     service_request_status_enum YES                                      
+new_status                          service_request_status_enum YES                                      
+details                             jsonb                     YES        '{}'::jsonb                   
+comment                             text                      YES                                      
+performed_by                        uuid                      YES                                      
+performed_at                        timestamp with time zone  NO         now()                         
+ip_address                          inet                      YES                                      
+user_agent                          text                      YES                                      
+
+Primary Key: id
+
+Foreign Keys:
+  - performed_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - service_request_id → service_requests.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+Indexes:
+  - idx_srh_request_id
+    CREATE INDEX idx_srh_request_id ON public.service_request_history USING btree (service_request_id)
+  - idx_srh_performed_at
+    CREATE INDEX idx_srh_performed_at ON public.service_request_history USING btree (performed_at DESC)
+
+----------------------------------------------------------------------------------------------------
+Table: SERVICE_REQUESTS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+reference                           varchar(50)               NO                                       
+  └─ Description: Référence unique lisible (ex: RES-2025-00001)
+user_id                             uuid                      NO                                       
+workflow_code                       varchar(100)              NO                                       
+  └─ Description: Code du workflow (residencia, pasaporte_nuevo, etc.)
+solicitud_type                      varchar(50)               NO         'expedicion'::character varyin
+  └─ Description: Type de sollicitation (expedicion, renovacion, duplicado)
+fiscal_service_id                   integer                   YES                                      
+status                              service_request_status_enum NO         'DRAFT'::service_request_statu
+priority                            service_request_priority_enum NO         'NORMAL'::service_request_prio
+form_data                           jsonb                     NO         '{}'::jsonb                   
+  └─ Description: Données du formulaire (extraction + saisie utilisateur)
+extracted_data                      jsonb                     YES        '{}'::jsonb                   
+  └─ Description: Données extraites par Gemini (pour traçabilité)
+extraction_confidence               numeric                   YES                                      
+validations                         jsonb                     YES        '{}'::jsonb                   
+assigned_to                         uuid                      YES                                      
+assigned_at                         timestamp with time zone  YES                                      
+entity_code                         varchar(50)               YES                                      
+base_amount                         numeric                   YES                                      
+supplements_amount                  numeric                   YES        0                             
+penalties_amount                    numeric                   YES        0                             
+total_amount                        numeric                   YES                                      
+currency                            varchar(3)                YES        'XAF'::character varying      
+payment_id                          uuid                      YES                                      
+payment_status                      varchar(50)               YES                                      
+paid_at                             timestamp with time zone  YES                                      
+cita_date                           date                      YES                                      
+cita_time                           time without time zone    YES                                      
+cita_location                       varchar(255)              YES                                      
+submitted_at                        timestamp with time zone  YES                                      
+validated_at                        timestamp with time zone  YES                                      
+completed_at                        timestamp with time zone  YES                                      
+expires_at                          timestamp with time zone  YES                                      
+notes                               text                      YES                                      
+rejection_reason                    text                      YES                                      
+created_at                          timestamp with time zone  NO         now()                         
+updated_at                          timestamp with time zone  NO         now()                         
+created_by                          uuid                      YES                                      
+
+Primary Key: id
+
+Foreign Keys:
+  - assigned_to → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - created_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - fiscal_service_id → fiscal_services.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - user_id → users.id (ON UPDATE NO ACTION, ON DELETE RESTRICT)
+
+Unique Constraints:
+  - service_requests_reference_key: (reference)
+
+Indexes:
+  - service_requests_reference_key
+    CREATE UNIQUE INDEX service_requests_reference_key ON public.service_requests USING btree (reference)
+  - idx_sr_user_id
+    CREATE INDEX idx_sr_user_id ON public.service_requests USING btree (user_id)
+  - idx_sr_workflow_code
+    CREATE INDEX idx_sr_workflow_code ON public.service_requests USING btree (workflow_code)
+  - idx_sr_status
+    CREATE INDEX idx_sr_status ON public.service_requests USING btree (status)
+  - idx_sr_assigned_to
+    CREATE INDEX idx_sr_assigned_to ON public.service_requests USING btree (assigned_to) WHERE (assigned_to IS NOT NULL)
+  - idx_sr_entity_code
+    CREATE INDEX idx_sr_entity_code ON public.service_requests USING btree (entity_code) WHERE (entity_code IS NOT NULL)
+  - idx_sr_reference
+    CREATE INDEX idx_sr_reference ON public.service_requests USING btree (reference)
+  - idx_sr_created_at
+    CREATE INDEX idx_sr_created_at ON public.service_requests USING btree (created_at DESC)
+  - idx_sr_fiscal_service
+    CREATE INDEX idx_sr_fiscal_service ON public.service_requests USING btree (fiscal_service_id) WHERE (fiscal_service_id IS NOT NULL)
+  - idx_sr_workflow_status
+    CREATE INDEX idx_sr_workflow_status ON public.service_requests USING btree (workflow_code, status)
+
+----------------------------------------------------------------------------------------------------
 Table: SESSIONS
 ----------------------------------------------------------------------------------------------------
 
@@ -2599,6 +3148,51 @@ Indexes:
     CREATE INDEX idx_sessions_context_data ON public.sessions USING gin (context_data)
 
 ----------------------------------------------------------------------------------------------------
+Table: SMS_TEMPLATES
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  integer                   NO         nextval('sms_templates_id_seq'
+template_code                       varchar(100)              NO                                       
+name_es                             varchar(255)              NO                                       
+name_fr                             varchar(255)              YES                                      
+name_en                             varchar(255)              YES                                      
+content_es                          text                      NO                                       
+content_fr                          text                      YES                                      
+content_en                          text                      YES                                      
+variables                           jsonb                     YES        '[]'::jsonb                   
+category                            varchar(100)              YES                                      
+max_segments                        integer                   YES        1                             
+is_active                           boolean                   YES        true                          
+created_at                          timestamp with time zone  YES        now()                         
+updated_at                          timestamp with time zone  YES        now()                         
+created_by                          uuid                      YES                                      
+updated_by                          uuid                      YES                                      
+
+Primary Key: id
+
+Foreign Keys:
+  - created_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - updated_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+
+Unique Constraints:
+  - sms_templates_template_code_key: (template_code)
+
+Indexes:
+  - idx_sms_templates_code
+    CREATE INDEX idx_sms_templates_code ON public.sms_templates USING btree (template_code)
+  - idx_sms_templates_category
+    CREATE INDEX idx_sms_templates_category ON public.sms_templates USING btree (category)
+  - idx_sms_templates_active
+    CREATE INDEX idx_sms_templates_active ON public.sms_templates USING btree (is_active)
+  - idx_sms_templates_is_active
+    CREATE INDEX idx_sms_templates_is_active ON public.sms_templates USING btree (is_active)
+  - sms_templates_template_code_key
+    CREATE UNIQUE INDEX sms_templates_template_code_key ON public.sms_templates USING btree (template_code)
+
+----------------------------------------------------------------------------------------------------
 Table: STEPS_COUNT
 ----------------------------------------------------------------------------------------------------
 
@@ -2606,6 +3200,140 @@ Table: STEPS_COUNT
 Column                              Type                      Nullable   Default                       
 ----------------------------------------------------------------------------------------------------
 count                               bigint                    YES                                      
+
+----------------------------------------------------------------------------------------------------
+Table: SUPPORT_ATTACHMENTS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  integer                   NO         nextval('support_attachments_i
+message_id                          integer                   YES                                      
+file_name                           varchar(255)              NO                                       
+file_path                           varchar(500)              NO                                       
+file_size                           integer                   YES                                      
+mime_type                           varchar(100)              YES                                      
+created_at                          timestamp with time zone  YES        now()                         
+
+Primary Key: id
+
+Foreign Keys:
+  - message_id → support_messages.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+Indexes:
+  - idx_support_attachments_message
+    CREATE INDEX idx_support_attachments_message ON public.support_attachments USING btree (message_id)
+
+----------------------------------------------------------------------------------------------------
+Table: SUPPORT_CATEGORIES
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  integer                   NO         nextval('support_categories_id
+code                                varchar(50)               NO                                       
+name_es                             varchar(255)              NO                                       
+name_fr                             varchar(255)              YES                                      
+name_en                             varchar(255)              YES                                      
+description_es                      text                      YES                                      
+description_fr                      text                      YES                                      
+description_en                      text                      YES                                      
+target_role                         varchar(50)               YES        'all'::character varying      
+  └─ Description: Target role for this category: admin, agent, or all
+icon                                varchar(100)              YES                                      
+is_active                           boolean                   YES        true                          
+sort_order                          integer                   YES        0                             
+created_at                          timestamp with time zone  YES        now()                         
+
+Primary Key: id
+
+Unique Constraints:
+  - support_categories_code_key: (code)
+
+Indexes:
+  - support_categories_code_key
+    CREATE UNIQUE INDEX support_categories_code_key ON public.support_categories USING btree (code)
+
+----------------------------------------------------------------------------------------------------
+Table: SUPPORT_MESSAGES
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  integer                   NO         nextval('support_messages_id_s
+ticket_id                           integer                   YES                                      
+sender_id                           uuid                      NO                                       
+content                             text                      NO                                       
+is_internal                         boolean                   YES        false                         
+  └─ Description: If true, message is an internal note visible only to admins
+created_at                          timestamp with time zone  YES        now()                         
+
+Primary Key: id
+
+Foreign Keys:
+  - sender_id → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - ticket_id → support_tickets.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+Indexes:
+  - idx_support_messages_ticket
+    CREATE INDEX idx_support_messages_ticket ON public.support_messages USING btree (ticket_id)
+  - idx_support_messages_sender
+    CREATE INDEX idx_support_messages_sender ON public.support_messages USING btree (sender_id)
+
+----------------------------------------------------------------------------------------------------
+Table: SUPPORT_TICKETS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  integer                   NO         nextval('support_tickets_id_se
+ticket_number                       varchar(20)               NO                                       
+  └─ Description: Human-readable ticket number: SUP-YYYYMMDD-XXXX
+category_id                         integer                   YES                                      
+subject                             varchar(255)              NO                                       
+description                         text                      NO                                       
+priority                            varchar(20)               YES        'normal'::character varying   
+  └─ Description: Ticket priority: low, normal, high, urgent
+status                              varchar(30)               YES        'open'::character varying     
+  └─ Description: Ticket status: open, in_progress, pending_user, resolved, closed
+created_by                          uuid                      NO                                       
+assigned_to                         uuid                      YES                                      
+resolved_at                         timestamp with time zone  YES                                      
+closed_at                           timestamp with time zone  YES                                      
+created_at                          timestamp with time zone  YES        now()                         
+updated_at                          timestamp with time zone  YES        now()                         
+
+Primary Key: id
+
+Foreign Keys:
+  - assigned_to → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - category_id → support_categories.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - created_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+
+Unique Constraints:
+  - support_tickets_ticket_number_key: (ticket_number)
+
+Indexes:
+  - support_tickets_ticket_number_key
+    CREATE UNIQUE INDEX support_tickets_ticket_number_key ON public.support_tickets USING btree (ticket_number)
+  - idx_support_tickets_user
+    CREATE INDEX idx_support_tickets_user ON public.support_tickets USING btree (created_by)
+  - idx_support_tickets_assigned
+    CREATE INDEX idx_support_tickets_assigned ON public.support_tickets USING btree (assigned_to)
+  - idx_support_tickets_status
+    CREATE INDEX idx_support_tickets_status ON public.support_tickets USING btree (status)
+  - idx_support_tickets_priority
+    CREATE INDEX idx_support_tickets_priority ON public.support_tickets USING btree (priority)
+  - idx_support_tickets_number
+    CREATE INDEX idx_support_tickets_number ON public.support_tickets USING btree (ticket_number)
+  - idx_support_tickets_category
+    CREATE INDEX idx_support_tickets_category ON public.support_tickets USING btree (category_id)
+  - idx_support_tickets_created_at
+    CREATE INDEX idx_support_tickets_created_at ON public.support_tickets USING btree (created_at DESC)
 
 ----------------------------------------------------------------------------------------------------
 Table: SYSTEM_RULES
@@ -2650,6 +3378,45 @@ Indexes:
     CREATE INDEX idx_system_rules_rule_code ON public.system_rules USING btree (rule_code) WHERE (is_active = true)
   - idx_system_rules_category
     CREATE INDEX idx_system_rules_category ON public.system_rules USING btree (rule_category)
+
+----------------------------------------------------------------------------------------------------
+Table: TARIFF_SUPPLEMENTS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  integer                   NO         nextval('tariff_supplements_id
+code                                varchar(50)               NO                                       
+  └─ Description: Code unique (CEDULA_PERSONAL, POLIZA, etc.)
+name_es                             varchar(255)              NO                                       
+amount                              numeric                   NO                                       
+currency                            varchar(3)                YES        'XAF'::character varying      
+legal_reference                     varchar(255)              YES                                      
+effective_from                      date                      NO         CURRENT_DATE                  
+effective_to                        date                      YES                                      
+is_active                           boolean                   YES        true                          
+created_by                          uuid                      YES                                      
+created_at                          timestamp with time zone  YES        now()                         
+updated_by                          uuid                      YES                                      
+updated_at                          timestamp with time zone  YES        now()                         
+
+Primary Key: id
+
+Foreign Keys:
+  - created_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - updated_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+
+Unique Constraints:
+  - tariff_supplements_code_key: (code)
+
+Indexes:
+  - tariff_supplements_code_key
+    CREATE UNIQUE INDEX tariff_supplements_code_key ON public.tariff_supplements USING btree (code)
+  - idx_ts_code
+    CREATE INDEX idx_ts_code ON public.tariff_supplements USING btree (code)
+  - idx_ts_active
+    CREATE INDEX idx_ts_active ON public.tariff_supplements USING btree (code, is_active) WHERE (is_active = true)
 
 ----------------------------------------------------------------------------------------------------
 Table: TAX_DECLARATIONS
@@ -3025,15 +3792,25 @@ max_concurrent_assignments          integer                   YES        20
   └─ Description: Nombre maximum d'assignations simultanées pour cet agent
 role_id                             uuid                      YES                                      
   └─ Description: Référence vers table roles (nouvelle logique granulaire). Si NULL, utilise role VARCHAR.
+sms_notifications                   boolean                   YES        false                         
+  └─ Description: User preference for receiving SMS notifications
+matricula_funcionario               varchar(50)               YES                                      
+  └─ Description: Matricula del funcionario verificada por el Ministerio de la Funcion Publica
+funcionario_verified_at             timestamp with time zone  YES                                      
+  └─ Description: Fecha y hora de verificacion del funcionario
+funcionario_verified_by             uuid                      YES                                      
+  └─ Description: ID del agente que verifico al funcionario
 
 Primary Key: id
 
 Foreign Keys:
+  - funcionario_verified_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
   - role_id → roles.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
   - supervisor_id → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
 
 Unique Constraints:
   - users_email_key: (email)
+  - users_matricula_funcionario_key: (matricula_funcionario)
   - users_matricule_key: (matricule)
 
 Indexes:
@@ -3069,6 +3846,401 @@ Indexes:
     CREATE INDEX idx_users_department_id ON public.users USING btree (department_id) WHERE (department_id IS NOT NULL)
   - idx_users_specializations
     CREATE INDEX idx_users_specializations ON public.users USING gin (specializations)
+  - users_matricula_funcionario_key
+    CREATE UNIQUE INDEX users_matricula_funcionario_key ON public.users USING btree (matricula_funcionario)
+
+----------------------------------------------------------------------------------------------------
+Table: USSD_CONFIGURATIONS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  integer                   NO         nextval('ussd_configurations_i
+operator_name                       varchar(100)              NO                                       
+operator_code                       varchar(50)               NO                                       
+short_code                          varchar(20)               NO                                       
+api_endpoint                        varchar(500)              YES                                      
+auth_config                         jsonb                     YES        '{}'::jsonb                   
+menu_structure                      jsonb                     NO                                       
+session_timeout_seconds             integer                   YES        180                           
+max_input_length                    integer                   YES        160                           
+is_active                           boolean                   YES        true                          
+created_at                          timestamp with time zone  YES        now()                         
+updated_at                          timestamp with time zone  YES        now()                         
+created_by                          uuid                      YES                                      
+
+Primary Key: id
+
+Foreign Keys:
+  - created_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+
+Unique Constraints:
+  - ussd_configurations_operator_code_unique: (operator_code)
+
+Indexes:
+  - idx_ussd_configs_operator
+    CREATE INDEX idx_ussd_configs_operator ON public.ussd_configurations USING btree (operator_code)
+  - idx_ussd_configs_active
+    CREATE INDEX idx_ussd_configs_active ON public.ussd_configurations USING btree (is_active)
+  - ussd_configurations_operator_code_unique
+    CREATE UNIQUE INDEX ussd_configurations_operator_code_unique ON public.ussd_configurations USING btree (operator_code)
+
+----------------------------------------------------------------------------------------------------
+Table: VERIFICACION_FRAUD_LOG
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+user_id                             uuid                      YES                                      
+matricula                           varchar(50)               YES                                      
+reason                              varchar(100)              NO                                       
+ip_address                          inet                      YES                                      
+user_agent                          text                      YES                                      
+created_at                          timestamp with time zone  NO         now()                         
+
+Primary Key: id
+
+Foreign Keys:
+  - user_id → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+
+Indexes:
+  - idx_fraud_log_user
+    CREATE INDEX idx_fraud_log_user ON public.verificacion_fraud_log USING btree (user_id)
+  - idx_fraud_log_created
+    CREATE INDEX idx_fraud_log_created ON public.verificacion_fraud_log USING btree (created_at DESC)
+  - idx_fraud_log_reason
+    CREATE INDEX idx_fraud_log_reason ON public.verificacion_fraud_log USING btree (reason)
+
+----------------------------------------------------------------------------------------------------
+Table: VERIFICACION_FUNCIONARIO
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+user_id                             uuid                      NO                                       
+matricula                           varchar(50)               NO                                       
+documento_id                        uuid                      YES                                      
+datos_extraidos_dip                 jsonb                     YES                                      
+  └─ Description: Donnees extraites du DIP par Gemini (nom, numero, etc.)
+status                              varchar(20)               NO         'pendiente'::character varying
+processed_by                        uuid                      YES                                      
+processed_at                        timestamp with time zone  YES                                      
+verificacion_matricula_existe       boolean                   YES        false                         
+  └─ Description: Agent a verifie que la matricula existe dans SIGEF
+verificacion_nombre_coincide        boolean                   YES        false                         
+  └─ Description: Agent a verifie que le nom correspond
+verificacion_dip_coincide           boolean                   YES        false                         
+rejection_reason                    text                      YES                                      
+notes                               text                      YES                                      
+ip_address                          inet                      YES                                      
+user_agent                          text                      YES                                      
+created_at                          timestamp with time zone  NO         now()                         
+updated_at                          timestamp with time zone  NO         now()                         
+
+Primary Key: id
+
+Foreign Keys:
+  - documento_id → uploaded_files.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - processed_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - user_id → users.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+Indexes:
+  - idx_verificacion_func_status
+    CREATE INDEX idx_verificacion_func_status ON public.verificacion_funcionario USING btree (status)
+  - idx_verificacion_func_user
+    CREATE INDEX idx_verificacion_func_user ON public.verificacion_funcionario USING btree (user_id)
+  - idx_verificacion_func_matricula
+    CREATE INDEX idx_verificacion_func_matricula ON public.verificacion_funcionario USING btree (matricula)
+  - idx_verificacion_func_created
+    CREATE INDEX idx_verificacion_func_created ON public.verificacion_funcionario USING btree (created_at DESC)
+  - idx_verificacion_func_pending
+    CREATE INDEX idx_verificacion_func_pending ON public.verificacion_funcionario USING btree (user_id) WHERE ((status)::text = 'pendiente'::text)
+
+----------------------------------------------------------------------------------------------------
+Table: VERIFIED_IDENTIFIERS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+blind_index                         bytea                     NO                                       
+  └─ Description: HMAC-SHA256 de la valeur, permet recherche sans exposer la valeur
+encrypted_value                     bytea                     NO                                       
+  └─ Description: Valeur chiffree AES-256-GCM, seule l'application peut dechiffrer
+identifier_type                     identifier_type_enum      NO                                       
+  └─ Description: Type d'identifiant (dni, pasaporte, matricula, etc.)
+source                              verification_source_enum  NO                                       
+  └─ Description: Organisme source de la verification
+user_id                             uuid                      YES                                      
+verified_at                         timestamp with time zone  NO         now()                         
+expires_at                          timestamp with time zone  YES                                      
+is_active                           boolean                   YES        true                          
+verified_by                         uuid                      YES                                      
+verification_request_id             uuid                      YES                                      
+encrypted_metadata                  bytea                     YES                                      
+  └─ Description: Donnees additionnelles chiffrees (JSON)
+created_at                          timestamp with time zone  NO         now()                         
+updated_at                          timestamp with time zone  NO         now()                         
+
+Primary Key: id
+
+Foreign Keys:
+  - user_id → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - verified_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+
+Unique Constraints:
+  - unique_identifier_per_type: (blind_index, identifier_type)
+
+Indexes:
+  - unique_identifier_per_type
+    CREATE UNIQUE INDEX unique_identifier_per_type ON public.verified_identifiers USING btree (blind_index, identifier_type)
+  - idx_vi_blind_index
+    CREATE INDEX idx_vi_blind_index ON public.verified_identifiers USING btree (blind_index)
+  - idx_vi_type
+    CREATE INDEX idx_vi_type ON public.verified_identifiers USING btree (identifier_type)
+  - idx_vi_blind_type_active
+    CREATE INDEX idx_vi_blind_type_active ON public.verified_identifiers USING btree (blind_index, identifier_type) WHERE (is_active = true)
+  - idx_vi_user
+    CREATE INDEX idx_vi_user ON public.verified_identifiers USING btree (user_id) WHERE (user_id IS NOT NULL)
+  - idx_vi_expires
+    CREATE INDEX idx_vi_expires ON public.verified_identifiers USING btree (expires_at) WHERE ((expires_at IS NOT NULL) AND (is_active = true))
+  - idx_vi_source
+    CREATE INDEX idx_vi_source ON public.verified_identifiers USING btree (source)
+  - idx_vi_verified_at
+    CREATE INDEX idx_vi_verified_at ON public.verified_identifiers USING btree (verified_at DESC)
+  - idx_vi_request
+    CREATE INDEX idx_vi_request ON public.verified_identifiers USING btree (verification_request_id) WHERE (verification_request_id IS NOT NULL)
+
+----------------------------------------------------------------------------------------------------
+Table: VERIFIED_IDENTIFIERS_AUDIT
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+identifier_id                       uuid                      YES                                      
+blind_index                         bytea                     NO                                       
+identifier_type                     identifier_type_enum      NO                                       
+operation                           varchar(20)               NO                                       
+  └─ Description: Type d'operation: INSERT, UPDATE, DELETE, SEARCH, DEACTIVATE
+performed_by                        uuid                      YES                                      
+ip_address                          inet                      YES                                      
+user_agent                          text                      YES                                      
+request_id                          uuid                      YES                                      
+search_found                        boolean                   YES                                      
+  └─ Description: Resultat de la recherche (TRUE si trouve, FALSE sinon)
+created_at                          timestamp with time zone  NO         now()                         
+
+Primary Key: id
+
+Foreign Keys:
+  - performed_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+
+Indexes:
+  - idx_via_blind_index
+    CREATE INDEX idx_via_blind_index ON public.verified_identifiers_audit USING btree (blind_index)
+  - idx_via_created
+    CREATE INDEX idx_via_created ON public.verified_identifiers_audit USING btree (created_at DESC)
+  - idx_via_operation
+    CREATE INDEX idx_via_operation ON public.verified_identifiers_audit USING btree (operation)
+  - idx_via_performed_by
+    CREATE INDEX idx_via_performed_by ON public.verified_identifiers_audit USING btree (performed_by) WHERE (performed_by IS NOT NULL)
+  - idx_via_identifier_id
+    CREATE INDEX idx_via_identifier_id ON public.verified_identifiers_audit USING btree (identifier_id) WHERE (identifier_id IS NOT NULL)
+
+----------------------------------------------------------------------------------------------------
+Table: WEBHOOK_CONFIGURATIONS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  integer                   NO         nextval('webhook_configuration
+name                                varchar(255)              NO                                       
+webhook_type                        varchar(50)               NO                                       
+endpoint_url                        varchar(1000)             NO                                       
+http_method                         varchar(10)               YES        'POST'::character varying     
+headers                             jsonb                     YES        '{}'::jsonb                   
+auth_type                           varchar(50)               YES                                      
+auth_config                         jsonb                     YES        '{}'::jsonb                   
+payload_template                    jsonb                     YES                                      
+retry_config                        jsonb                     YES        '{"max_retries": 3, "retry_del
+timeout_seconds                     integer                   YES        30                            
+events                              ARRAY                     YES        '{}'::text[]                  
+is_active                           boolean                   YES        true                          
+last_triggered_at                   timestamp with time zone  YES                                      
+last_status                         varchar(50)               YES                                      
+created_at                          timestamp with time zone  YES        now()                         
+updated_at                          timestamp with time zone  YES        now()                         
+created_by                          uuid                      YES                                      
+
+Primary Key: id
+
+Foreign Keys:
+  - created_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+
+Indexes:
+  - idx_webhook_configs_type
+    CREATE INDEX idx_webhook_configs_type ON public.webhook_configurations USING btree (webhook_type)
+  - idx_webhook_configs_active
+    CREATE INDEX idx_webhook_configs_active ON public.webhook_configurations USING btree (is_active)
+
+----------------------------------------------------------------------------------------------------
+Table: WEBHOOK_LOGS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  integer                   NO         nextval('webhook_logs_id_seq':
+webhook_id                          integer                   YES                                      
+event_type                          varchar(100)              YES                                      
+request_payload                     jsonb                     YES                                      
+response_status                     integer                   YES                                      
+response_body                       text                      YES                                      
+duration_ms                         integer                   YES                                      
+error_message                       text                      YES                                      
+created_at                          timestamp with time zone  YES        now()                         
+
+Primary Key: id
+
+Foreign Keys:
+  - webhook_id → webhook_configurations.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+Indexes:
+  - idx_webhook_logs_webhook_id
+    CREATE INDEX idx_webhook_logs_webhook_id ON public.webhook_logs USING btree (webhook_id)
+  - idx_webhook_logs_created_at
+    CREATE INDEX idx_webhook_logs_created_at ON public.webhook_logs USING btree (created_at)
+
+----------------------------------------------------------------------------------------------------
+Table: WORKFLOW_DOCUMENT_REQUIREMENTS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+workflow_code                       varchar(100)              NO                                       
+  └─ Description: Code du workflow (ex: pasaporte_nuevo)
+document_template_id                integer                   YES                                      
+document_code                       varchar(100)              NO                                       
+  └─ Description: Code unique du document (ex: dip)
+document_name_es                    varchar(255)              NO                                       
+condition_type                      document_condition_type_enum NO         'always'::document_condition_t
+  └─ Description: Type de condition pour ce document
+condition_value                     jsonb                     YES        '{}'::jsonb                   
+is_required                         boolean                   YES        true                          
+display_order                       integer                   YES        0                             
+instructions_es                     text                      YES                                      
+extraction_schema_key               varchar(100)              YES                                      
+  └─ Description: Clé du schéma JSON pour extraction Gemini
+is_active                           boolean                   YES        true                          
+created_at                          timestamp with time zone  YES        now()                         
+updated_at                          timestamp with time zone  YES        now()                         
+created_by                          uuid                      YES                                      
+
+Primary Key: id
+
+Foreign Keys:
+  - created_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - document_template_id → document_templates.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+
+Unique Constraints:
+  - unique_workflow_document: (workflow_code, document_code)
+
+Indexes:
+  - unique_workflow_document
+    CREATE UNIQUE INDEX unique_workflow_document ON public.workflow_document_requirements USING btree (workflow_code, document_code)
+  - idx_wdr_workflow_code
+    CREATE INDEX idx_wdr_workflow_code ON public.workflow_document_requirements USING btree (workflow_code)
+  - idx_wdr_document_code
+    CREATE INDEX idx_wdr_document_code ON public.workflow_document_requirements USING btree (document_code)
+  - idx_wdr_condition_type
+    CREATE INDEX idx_wdr_condition_type ON public.workflow_document_requirements USING btree (condition_type)
+  - idx_wdr_display_order
+    CREATE INDEX idx_wdr_display_order ON public.workflow_document_requirements USING btree (workflow_code, display_order)
+  - idx_wdr_active
+    CREATE INDEX idx_wdr_active ON public.workflow_document_requirements USING btree (workflow_code, is_active) WHERE (is_active = true)
+
+----------------------------------------------------------------------------------------------------
+Table: WORKFLOW_SUPPLEMENT_CONFIG
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  integer                   NO         nextval('workflow_supplement_c
+workflow_code                       varchar(100)              NO                                       
+supplement_code                     varchar(50)               NO                                       
+quantity_per_request                integer                   NO         1                             
+  └─ Description: Nombre de suppléments par demande
+is_required                         boolean                   YES        true                          
+is_active                           boolean                   YES        true                          
+created_at                          timestamp with time zone  YES        now()                         
+updated_at                          timestamp with time zone  YES        now()                         
+
+Primary Key: id
+
+Foreign Keys:
+  - supplement_code → tariff_supplements.code (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+Unique Constraints:
+  - unique_workflow_supplement: (workflow_code, supplement_code)
+
+Indexes:
+  - unique_workflow_supplement
+    CREATE UNIQUE INDEX unique_workflow_supplement ON public.workflow_supplement_config USING btree (workflow_code, supplement_code)
+  - idx_wsc_workflow
+    CREATE INDEX idx_wsc_workflow ON public.workflow_supplement_config USING btree (workflow_code)
+  - idx_wsc_active
+    CREATE INDEX idx_wsc_active ON public.workflow_supplement_config USING btree (workflow_code, is_active) WHERE (is_active = true)
+
+----------------------------------------------------------------------------------------------------
+Table: WORKFLOW_TARIFFS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  integer                   NO         nextval('workflow_tariffs_id_s
+workflow_code                       varchar(100)              NO                                       
+  └─ Description: Code du workflow (residencia, pasaporte_nuevo, etc.)
+solicitud_type                      varchar(50)               NO         'expedicion'::character varyin
+  └─ Description: Type de sollicitation (expedicion, renovacion, duplicado)
+amount                              numeric                   NO                                       
+currency                            varchar(3)                YES        'XAF'::character varying      
+legal_reference                     varchar(255)              YES                                      
+effective_from                      date                      NO         CURRENT_DATE                  
+  └─ Description: Date de début d'application du tarif
+effective_to                        date                      YES                                      
+  └─ Description: Date de fin d'application (NULL = toujours actif)
+is_active                           boolean                   YES        true                          
+created_by                          uuid                      YES                                      
+created_at                          timestamp with time zone  YES        now()                         
+updated_by                          uuid                      YES                                      
+updated_at                          timestamp with time zone  YES        now()                         
+
+Primary Key: id
+
+Foreign Keys:
+  - created_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - updated_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+
+Indexes:
+  - idx_wt_unique_active
+    CREATE UNIQUE INDEX idx_wt_unique_active ON public.workflow_tariffs USING btree (workflow_code, solicitud_type) WHERE ((is_active = true) AND (effective_to IS NULL))
+  - idx_wt_workflow_code
+    CREATE INDEX idx_wt_workflow_code ON public.workflow_tariffs USING btree (workflow_code)
+  - idx_wt_lookup
+    CREATE INDEX idx_wt_lookup ON public.workflow_tariffs USING btree (workflow_code, solicitud_type, is_active)
 
 ----------------------------------------------------------------------------------------------------
 Table: WORKFLOW_TRANSITIONS
@@ -3240,6 +4412,13 @@ Definition:  SELECT p.id AS payment_id,
     d.declaration_type,
     d.fiscal_yea...
 
+View: v_notification_statistics
+Definition:  SELECT date(created_at) AS date,
+    channel,
+    count(*) AS total_sent,
+    count(*) FILTER (WHERE ((status)::text = 'delivered'::text)) AS delivered,
+    count(*) FILTER (WHERE ((status)::text = '...
+
 View: v_overprivileged_users_detection
 Definition:  WITH user_permission_stats AS (
          SELECT u.id AS user_id,
@@ -3291,6 +4470,17 @@ Definition:  SELECT p.id AS permission_id,
     count(up.user_id) AS total_grants,
     ...
 
+View: v_recent_verification_audit
+Definition:  SELECT a.id,
+    a.identifier_type,
+    a.operation,
+    a.performed_by,
+    u.email AS performed_by_email,
+    a.search_found,
+    a.ip_address,
+    a.created_at
+   FROM (verified_identifiers_audit ...
+
 View: v_reconciliation_health_metrics
 Definition:  SELECT now() AS snapshot_time,
     ( SELECT count(*) AS count
@@ -3313,6 +4503,17 @@ Definition:  SELECT u.role,
             ELSE NULL::uuid
         END) AS ...
 
+View: v_service_request_notifications
+Definition:  SELECT nl.id,
+    nl.service_request_id,
+    sr.reference AS request_reference,
+    nl.user_id,
+    u.full_name AS user_name,
+    nl.channel,
+    nl.template_code,
+    nl.subject,
+    nl.content_prev...
+
 View: v_user_effective_permissions
 Definition:  SELECT u.id AS user_id,
     u.email,
@@ -3321,6 +4522,56 @@ Definition:  SELECT u.id AS user_id,
     (u.status = 'active'::user_status_enum) AS user_active,
     ((u.role)::text = 'admin'::text) AS is_admin,
     COALESCE(json_agg(D...
+
+View: v_verificacion_stats
+Definition:  SELECT count(*) FILTER (WHERE ((status)::text = 'pendiente'::text)) AS pendientes,
+    count(*) FILTER (WHERE ((status)::text = 'aprobado'::text)) AS aprobadas,
+    count(*) FILTER (WHERE ((status)::...
+
+View: v_verificaciones_pendientes
+Definition:  SELECT vf.id,
+    vf.matricula,
+    vf.created_at,
+    (vf.datos_extraidos_dip ->> 'nombre'::text) AS nombre_dip,
+    (vf.datos_extraidos_dip ->> 'numero_dip'::text) AS numero_dip,
+    u.id AS user_i...
+
+View: v_verified_identifiers_admin
+Definition:  SELECT id,
+    identifier_type,
+    source,
+    user_id,
+    verified_at,
+    expires_at,
+    is_active,
+    verified_by,
+    verification_request_id,
+    created_at,
+    updated_at,
+    length(encry...
+
+View: v_verified_identifiers_stats
+Definition:  SELECT identifier_type,
+    source,
+    count(*) AS total,
+    count(*) FILTER (WHERE is_active) AS active,
+    count(*) FILTER (WHERE (NOT is_active)) AS inactive,
+    count(*) FILTER (WHERE ((expir...
+
+View: v_workflow_supplements
+Definition:  SELECT wsc.workflow_code,
+    ts.code AS supplement_code,
+    ts.name_es AS supplement_name,
+    ts.amount AS unit_price,
+    wsc.quantity_per_request,
+    (ts.amount * (wsc.quantity_per_request)::nu...
+
+View: v_workflow_tariffs_summary
+Definition:  SELECT wt.workflow_code,
+    wt.solicitud_type,
+    wt.amount AS base_amount,
+    COALESCE(supp.supplements_total, (0)::numeric) AS supplements_total,
+    (wt.amount + COALESCE(supp.supplements_total...
 
 ====================================================================================================
 5. FUNCTIONS
@@ -3378,6 +4629,9 @@ Returns: trigger
 Function: audit_user_permissions
 Returns: trigger
 
+Function: auto_generate_sr_reference
+Returns: trigger
+
 Function: avg
 Returns: USER-DEFINED
 
@@ -3402,6 +4656,15 @@ Returns: trigger
 Function: calculate_queue_priority
 Returns: trigger
 
+Function: check_duplicate_identifier_usage
+Returns: uuid
+
+Function: check_verified_identifier
+Returns: record
+
+Function: cleanup_expired_identifiers
+Returns: integer
+
 Function: cleanup_expired_locks
 Returns: integer
 
@@ -3417,6 +4680,12 @@ Returns: double precision
 Function: cosine_distance
 Returns: double precision
 
+Function: deactivate_verified_identifier
+Returns: uuid
+
+Function: evaluate_document_condition
+Returns: boolean
+
 Function: fiscal_services_search_vector_update
 Returns: trigger
 
@@ -3429,8 +4698,14 @@ Returns: character varying
 Function: generate_payment_installments
 Returns: void
 
+Function: generate_service_request_reference
+Returns: character varying
+
 Function: get_entity_translation
 Returns: text
+
+Function: get_pending_notification_retries
+Returns: record
 
 Function: get_rule_value
 Returns: jsonb
@@ -3443,6 +4718,12 @@ Returns: text
 
 Function: get_translations
 Returns: jsonb
+
+Function: get_workflow_required_documents
+Returns: record
+
+Function: get_workflow_tariff_total
+Returns: record
 
 Function: gin_btree_consistent
 Returns: boolean
@@ -3903,8 +5184,14 @@ Returns: USER-DEFINED
 Function: lock_payment_for_agent
 Returns: jsonb
 
+Function: log_notification
+Returns: uuid
+
 Function: prepare_service_text_for_embedding
 Returns: text
+
+Function: process_verificacion_funcionario
+Returns: jsonb
 
 Function: search_fiscal_services_semantic
 Returns: record
@@ -4035,7 +5322,13 @@ Returns: trigger
 Function: update_fiscal_service_data_updated_at
 Returns: trigger
 
+Function: update_notification_status
+Returns: boolean
+
 Function: update_refresh_tokens_updated_at
+Returns: trigger
+
+Function: update_service_request_updated_at
 Returns: trigger
 
 Function: update_sessions_updated_at
@@ -4044,14 +5337,35 @@ Returns: trigger
 Function: update_sla_status
 Returns: trigger
 
+Function: update_support_ticket_updated_at
+Returns: trigger
+
+Function: update_tariff_updated_at
+Returns: trigger
+
 Function: update_translations_updated_at
 Returns: trigger
 
 Function: update_updated_at_column
 Returns: trigger
 
+Function: update_verificacion_funcionario_updated_at
+Returns: trigger
+
+Function: update_verified_identifiers_updated_at
+Returns: trigger
+
+Function: update_wdr_updated_at
+Returns: trigger
+
+Function: upsert_verified_identifier
+Returns: record
+
 Function: validate_fiscal_service_montants
 Returns: trigger
+
+Function: validate_workflow_documents
+Returns: jsonb
 
 Function: vector
 Returns: USER-DEFINED
@@ -4178,6 +5492,8 @@ calculation_history.fiscal_service_code → fiscal_services.service_code
 calculation_history.user_id → users.id
 categories.ministry_id → ministries.id
 categories.sector_id → sectors.id
+communication_provider_settings.created_by → users.id
+communication_provider_settings.updated_by → users.id
 companies.primary_sector_id → sectors.id
 declaration_amount_adjustments.adjusted_by → users.id
 declaration_amount_adjustments.adjustment_reason_id → adjustment_reasons.id
@@ -4202,6 +5518,8 @@ declaration_petroliferos_details.tax_declaration_id → tax_declarations.id
 declaration_retencion_details.tax_declaration_id → tax_declarations.id
 document_processing_queue.form_template_id → form_templates.id
 document_processing_queue.uploaded_file_id → uploaded_files.id
+email_templates.created_by → users.id
+email_templates.updated_by → users.id
 fiscal_service_data.fiscal_service_id → fiscal_services.id
 fiscal_service_data.ocr_extraction_id → ocr_extraction_results.id
 fiscal_service_data.payment_id → payments.id
@@ -4221,6 +5539,9 @@ ministry_agents.user_id → users.id
 ministry_validation_config.created_by → users.id
 ministry_validation_config.ministry_id → ministries.id
 ministry_validation_config.updated_by → users.id
+notification_log.service_request_id → service_requests.id
+notification_log.user_id → users.id
+notification_templates.created_by → users.id
 ocr_extraction_results.uploaded_file_id → uploaded_files.id
 ocr_extraction_results.validated_by → users.id
 payment_installments.payment_plan_id → payment_plans.id
@@ -4243,6 +5564,7 @@ permission_audit_log.changed_by → users.id
 permission_audit_log.permission_id → permissions.id
 permission_audit_log.user_id → users.id
 procedure_template_steps.template_id → procedure_templates.id
+push_templates.created_by → users.id
 refresh_tokens.session_id → sessions.id
 refresh_tokens.user_id → users.id
 role_permissions.created_by → users.id
@@ -4262,8 +5584,27 @@ service_payments.user_id → users.id
 service_payments.validated_by_agent_id → ministry_agents.id
 service_procedure_assignments.fiscal_service_id → fiscal_services.id
 service_procedure_assignments.template_id → procedure_templates.id
+service_request_documents.service_request_id → service_requests.id
+service_request_documents.uploaded_by → users.id
+service_request_documents.validated_by → users.id
+service_request_history.performed_by → users.id
+service_request_history.service_request_id → service_requests.id
+service_requests.assigned_to → users.id
+service_requests.created_by → users.id
+service_requests.fiscal_service_id → fiscal_services.id
+service_requests.user_id → users.id
 sessions.user_id → users.id
+sms_templates.created_by → users.id
+sms_templates.updated_by → users.id
+support_attachments.message_id → support_messages.id
+support_messages.sender_id → users.id
+support_messages.ticket_id → support_tickets.id
+support_tickets.assigned_to → users.id
+support_tickets.category_id → support_categories.id
+support_tickets.created_by → users.id
 system_rules.created_by → users.id
+tariff_supplements.created_by → users.id
+tariff_supplements.updated_by → users.id
 tax_declarations.company_id → companies.id
 tax_declarations.original_declaration_id → tax_declarations.id
 tax_declarations.processed_by → users.id
@@ -4285,5 +5626,21 @@ user_ministry_assignments.user_id → users.id
 user_permissions.granted_by → users.id
 user_permissions.permission_id → permissions.id
 user_permissions.user_id → users.id
+users.funcionario_verified_by → users.id
 users.role_id → roles.id
 users.supervisor_id → users.id
+ussd_configurations.created_by → users.id
+verificacion_fraud_log.user_id → users.id
+verificacion_funcionario.documento_id → uploaded_files.id
+verificacion_funcionario.processed_by → users.id
+verificacion_funcionario.user_id → users.id
+verified_identifiers.user_id → users.id
+verified_identifiers.verified_by → users.id
+verified_identifiers_audit.performed_by → users.id
+webhook_configurations.created_by → users.id
+webhook_logs.webhook_id → webhook_configurations.id
+workflow_document_requirements.created_by → users.id
+workflow_document_requirements.document_template_id → document_templates.id
+workflow_supplement_config.supplement_code → tariff_supplements.code
+workflow_tariffs.created_by → users.id
+workflow_tariffs.updated_by → users.id
