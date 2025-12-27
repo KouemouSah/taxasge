@@ -136,7 +136,7 @@ class ServiceRequestResponse(BaseModel):
 
 
 class DocumentUploadResponse(BaseModel):
-    """Response after uploading a document"""
+    """Response after uploading a document (legacy - kept for compatibility)"""
     document_id: UUID
     document_code: str
     extraction: Dict[str, Any]
@@ -144,6 +144,119 @@ class DocumentUploadResponse(BaseModel):
     processor: str  # "gemini", "tesseract", "manual"
     status: str  # "success", "failed", "manual_review"
     needs_review: bool = False
+
+
+# === NEW FLOW: Preview + Validate ===
+
+class DocumentExtractionPreview(BaseModel):
+    """
+    Response after extraction preview (BEFORE user validation).
+    Document is NOT yet uploaded to Firebase Storage.
+    """
+    preview_id: str = Field(..., description="Temporary ID for this preview session")
+    document_code: str
+    document_name: str
+    file_name: str
+    file_size: int
+    mime_type: str
+
+    # Extraction results for user review
+    extraction: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Extracted data from Gemini/Tesseract"
+    )
+    confidence: float = Field(
+        ..., ge=0, le=1,
+        description="Confidence score (0.0 - 1.0)"
+    )
+    processor: str = Field(..., description="gemini, tesseract, or hybrid")
+
+    # Status
+    extraction_status: str = Field(
+        ...,
+        description="pending_validation, low_confidence, needs_review"
+    )
+    needs_correction: bool = Field(
+        default=False,
+        description="True if confidence < 70% and user should review"
+    )
+
+    # Schema info for frontend form generation
+    expected_fields: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="List of expected fields with labels and types"
+    )
+
+    # Expiry (preview is temporary)
+    expires_at: datetime = Field(..., description="Preview expires after 30 minutes")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "preview_id": "prev_abc123",
+                "document_code": "dip_gq",
+                "document_name": "Documento de Identidad Personal",
+                "file_name": "mi_dip.pdf",
+                "file_size": 1024000,
+                "mime_type": "application/pdf",
+                "extraction": {
+                    "numero_documento": "A12345678",
+                    "nombres": "JUAN CARLOS",
+                    "apellidos": "NGUEMA OBIANG",
+                    "fecha_nacimiento": "1985-03-15"
+                },
+                "confidence": 0.85,
+                "processor": "gemini",
+                "extraction_status": "pending_validation",
+                "needs_correction": False,
+                "expires_at": "2025-12-27T19:30:00Z"
+            }
+        }
+
+
+class DocumentValidationRequest(BaseModel):
+    """
+    Request to validate (confirm or correct) extracted data.
+    After validation, document is uploaded to Firebase Storage.
+    """
+    preview_id: str = Field(..., description="Preview ID from extraction preview")
+
+    # User can confirm or provide corrected data
+    confirmed_data: Dict[str, Any] = Field(
+        ...,
+        description="User-confirmed or corrected extraction data"
+    )
+
+    # Optional user notes
+    user_notes: Optional[str] = Field(
+        None, max_length=500,
+        description="Optional notes from user about this document"
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "preview_id": "prev_abc123",
+                "confirmed_data": {
+                    "numero_documento": "A12345678",
+                    "nombres": "JUAN CARLOS",
+                    "apellidos": "NGUEMA OBIANG",
+                    "fecha_nacimiento": "1985-03-15"
+                }
+            }
+        }
+
+
+class DocumentValidationResponse(BaseModel):
+    """Response after user validates extraction and document is saved"""
+    document_id: UUID
+    document_code: str
+    document_name: str
+    file_path: str = Field(..., description="Firebase Storage path")
+    extraction_data: Dict[str, Any]
+    extraction_confidence: float
+    is_validated: bool = True
+    validated_at: datetime
 
 
 class ServiceRequestListResponse(BaseModel):

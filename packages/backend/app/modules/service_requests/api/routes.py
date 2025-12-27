@@ -2,7 +2,7 @@
 API Routes for Service Requests.
 RESTful endpoints following FastAPI conventions.
 """
-from fastapi import APIRouter, Depends, File, UploadFile, Query, Form, Path
+from fastapi import APIRouter, Depends, File, UploadFile, Query, Form, Path, Body
 from typing import List, Optional
 from uuid import UUID
 import asyncpg
@@ -11,7 +11,10 @@ from ..models.service_request import (
     ServiceRequestCreate,
     ServiceRequestResponse,
     DocumentUploadResponse,
-    ServiceRequestListResponse
+    ServiceRequestListResponse,
+    DocumentExtractionPreview,
+    DocumentValidationRequest,
+    DocumentValidationResponse
 )
 from ..services.service_request_service import service_request_service
 from app.database.connection import get_database
@@ -61,17 +64,15 @@ async def create_service_request(
 @router.post(
     "/{request_id}/documents",
     response_model=DocumentUploadResponse,
-    summary="Upload a document",
+    summary="Upload a document (legacy - direct upload)",
     description="""
-    Upload a document for a service request.
+    **LEGACY ENDPOINT** - Direct upload without user validation.
 
-    The document will be processed using AI extraction:
-    1. **Gemini** (primary) - Classification + extraction with 70% threshold
-    2. **Tesseract** (fallback) - OCR + regex extraction with 60% threshold
-    3. **Manual review** - If confidence is too low
+    For the recommended flow with user validation, use:
+    1. `POST /{request_id}/documents/preview` - Extract and preview
+    2. `POST /{request_id}/documents/validate` - Validate and finalize
 
-    When all required documents are uploaded, the request status will
-    automatically change to SUBMITTED.
+    This endpoint uploads directly to Firebase without user review.
     """
 )
 async def upload_document(
@@ -87,6 +88,89 @@ async def upload_document(
         user_id=current_user.id,
         document_code=document_code,
         file=file
+    )
+
+
+# ═══════════════════════════════════════════════════════════════
+# NEW FLOW: PREVIEW + VALIDATE (Recommended)
+# ═══════════════════════════════════════════════════════════════
+
+@router.post(
+    "/{request_id}/documents/preview",
+    response_model=DocumentExtractionPreview,
+    summary="Preview document extraction (Step 1)",
+    description="""
+    **STEP 1 of 2**: Upload document and extract data for user validation.
+
+    This endpoint:
+    1. Reads the document file
+    2. Processes it with Gemini AI (or Tesseract fallback)
+    3. Returns extracted data for user review
+    4. Does **NOT** upload to Firebase Storage yet
+
+    The user must review the extracted data and call the `/validate` endpoint
+    to confirm and finalize the upload.
+
+    **Preview expires after 30 minutes.**
+
+    **Response includes:**
+    - `preview_id` - Required for validation step
+    - `extraction` - Extracted data fields
+    - `confidence` - AI confidence score (0.0 - 1.0)
+    - `needs_correction` - True if confidence < 70%
+    - `expected_fields` - Schema fields for form generation
+    """
+)
+async def preview_document_extraction(
+    request_id: UUID = Path(..., description="The service request ID"),
+    document_code: str = Form(..., description="The document type code (e.g., dip_gq, pasaporte_gq)"),
+    file: UploadFile = File(..., description="The document file (PDF, JPG, PNG)"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user)
+):
+    """Extract document data and return preview for user validation"""
+    return await service_request_service.preview_document_extraction(
+        db=db,
+        request_id=request_id,
+        user_id=current_user.id,
+        document_code=document_code,
+        file=file
+    )
+
+
+@router.post(
+    "/{request_id}/documents/validate",
+    response_model=DocumentValidationResponse,
+    summary="Validate extraction and upload (Step 2)",
+    description="""
+    **STEP 2 of 2**: User validates extracted data and document is uploaded.
+
+    This endpoint:
+    1. Receives user-confirmed (or corrected) extraction data
+    2. Uploads the document to Firebase Storage
+    3. Saves the document record with validated data
+    4. Checks if all required documents are now provided
+
+    **Required fields:**
+    - `preview_id` - From the preview step response
+    - `confirmed_data` - User-validated extraction data
+
+    **Note:** Preview expires after 30 minutes. If expired, user must
+    upload and preview again.
+    """
+)
+async def validate_document(
+    request_id: UUID = Path(..., description="The service request ID"),
+    validation: DocumentValidationRequest = Body(...),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user)
+):
+    """Validate user-confirmed extraction and upload to Firebase"""
+    return await service_request_service.validate_document(
+        db=db,
+        request_id=request_id,
+        user_id=current_user.id,
+        validation=validation
     )
 
 

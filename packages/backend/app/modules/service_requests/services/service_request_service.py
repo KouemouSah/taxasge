@@ -1,12 +1,19 @@
 """
 Main Service Request Service.
 Orchestrates the complete workflow for service requests.
+
+NEW FLOW (User validation before Firebase upload):
+1. preview_document_extraction() - Extract data, return to user for validation
+2. validate_document() - User confirms, then upload to Firebase
 """
 import asyncpg
 from typing import Dict, List, Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 from fastapi import HTTPException, UploadFile, status
+from datetime import datetime, timedelta
 import logging
+import base64
+import hashlib
 
 from ..repositories.service_request_repository import service_request_repository
 from ..repositories.document_repository import document_repository
@@ -16,7 +23,10 @@ from ..models.service_request import (
     RequiredDocument,
     ProvidedDocument,
     TariffBreakdown,
-    DocumentUploadResponse
+    DocumentUploadResponse,
+    DocumentExtractionPreview,
+    DocumentValidationRequest,
+    DocumentValidationResponse
 )
 from ..models.enums import ServiceRequestStatus
 from .tariff_service import tariff_service
@@ -30,6 +40,13 @@ ALLOWED_MIME_TYPES = {
     "image/webp", "application/pdf"
 }
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+
+# Preview expiry time (30 minutes)
+PREVIEW_EXPIRY_MINUTES = 30
+
+# In-memory cache for pending previews (in production, use Redis)
+# Key: preview_id, Value: {content, metadata, extraction, expires_at}
+_pending_previews: Dict[str, Dict] = {}
 
 
 class ServiceRequestService:
@@ -220,6 +237,319 @@ class ServiceRequestService:
             status=processing_result["status"],
             needs_review=processing_result["status"] == "manual_review"
         )
+
+    # ═══════════════════════════════════════════════════════════════
+    # NEW FLOW: PREVIEW + VALIDATE
+    # ═══════════════════════════════════════════════════════════════
+
+    async def preview_document_extraction(
+        self,
+        db: asyncpg.Connection,
+        request_id: UUID,
+        user_id: UUID,
+        document_code: str,
+        file: UploadFile
+    ) -> DocumentExtractionPreview:
+        """
+        STEP 1: Extract document data WITHOUT uploading to Firebase.
+
+        The file content is stored temporarily in memory.
+        User must call validate_document() to confirm and finalize upload.
+
+        Args:
+            db: Database connection
+            request_id: The service request ID
+            user_id: The user ID
+            document_code: Document type code
+            file: The uploaded file
+
+        Returns:
+            DocumentExtractionPreview with extracted data for user validation
+        """
+        # Verify request exists and belongs to user
+        request = await service_request_repository.find_by_id(db, request_id)
+        if not request:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Service request not found"
+            )
+
+        if request["user_id"] != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied"
+            )
+
+        # Check status allows document upload
+        allowed_statuses = [
+            ServiceRequestStatus.DRAFT.value,
+            ServiceRequestStatus.DOCUMENTS_REQUIRED.value
+        ]
+        if request["status"] not in allowed_statuses:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot upload documents in status: {request['status']}"
+            )
+
+        # Validate file
+        self._validate_file(file)
+
+        # Read file content
+        content = await file.read()
+        if len(content) > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"File too large. Maximum size: {MAX_FILE_SIZE // (1024*1024)}MB"
+            )
+
+        # Get document name from requirements
+        required_docs = await self._get_required_documents(db, request["workflow_code"])
+        doc_name = document_code
+        for req_doc in required_docs:
+            if req_doc.document_code == document_code:
+                doc_name = req_doc.document_name
+                break
+
+        # Process document with Gemini/Tesseract (NO Firebase upload yet)
+        processing_result = await self._process_document(
+            content=content,
+            mime_type=file.content_type,
+            document_code=document_code
+        )
+
+        # Generate preview ID (unique for this extraction session)
+        preview_id = f"prev_{hashlib.sha256(f'{request_id}{document_code}{datetime.utcnow().isoformat()}'.encode()).hexdigest()[:16]}"
+
+        # Calculate expiry time
+        expires_at = datetime.utcnow() + timedelta(minutes=PREVIEW_EXPIRY_MINUTES)
+
+        # Store in temporary cache (content as base64 for serialization)
+        _pending_previews[preview_id] = {
+            "request_id": str(request_id),
+            "user_id": str(user_id),
+            "document_code": document_code,
+            "document_name": doc_name,
+            "file_name": file.filename,
+            "file_size": len(content),
+            "mime_type": file.content_type,
+            "content_b64": base64.b64encode(content).decode("utf-8"),
+            "extraction": processing_result["extraction"],
+            "confidence": processing_result["confidence"],
+            "processor": processing_result["processor"],
+            "expires_at": expires_at.isoformat()
+        }
+
+        # Clean up expired previews
+        self._cleanup_expired_previews()
+
+        # Get expected fields from schema for frontend form
+        expected_fields = self._get_expected_fields(document_code)
+
+        # Determine if user needs to review
+        needs_correction = processing_result["confidence"] < 0.7
+
+        logger.info(
+            f"Document preview created: {document_code} for request {request['reference']} "
+            f"(preview_id: {preview_id}, confidence: {processing_result['confidence']:.2%})"
+        )
+
+        return DocumentExtractionPreview(
+            preview_id=preview_id,
+            document_code=document_code,
+            document_name=doc_name,
+            file_name=file.filename,
+            file_size=len(content),
+            mime_type=file.content_type,
+            extraction=processing_result["extraction"],
+            confidence=processing_result["confidence"],
+            processor=processing_result["processor"],
+            extraction_status="pending_validation",
+            needs_correction=needs_correction,
+            expected_fields=expected_fields,
+            expires_at=expires_at
+        )
+
+    async def validate_document(
+        self,
+        db: asyncpg.Connection,
+        request_id: UUID,
+        user_id: UUID,
+        validation: DocumentValidationRequest
+    ) -> DocumentValidationResponse:
+        """
+        STEP 2: User validates extraction and document is uploaded to Firebase.
+
+        Args:
+            db: Database connection
+            request_id: The service request ID
+            user_id: The user ID
+            validation: User's validation with confirmed/corrected data
+
+        Returns:
+            DocumentValidationResponse with final document info
+        """
+        # Get preview from cache
+        preview = _pending_previews.get(validation.preview_id)
+        if not preview:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Preview not found or expired. Please upload the document again."
+            )
+
+        # Verify preview belongs to this request and user
+        if preview["request_id"] != str(request_id):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Preview does not match this request"
+            )
+        if preview["user_id"] != str(user_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied"
+            )
+
+        # Check if preview has expired
+        expires_at = datetime.fromisoformat(preview["expires_at"])
+        if datetime.utcnow() > expires_at:
+            del _pending_previews[validation.preview_id]
+            raise HTTPException(
+                status_code=status.HTTP_410_GONE,
+                detail="Preview has expired. Please upload the document again."
+            )
+
+        # Verify request still exists and is in valid state
+        request = await service_request_repository.find_by_id(db, request_id)
+        if not request:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Service request not found"
+            )
+
+        allowed_statuses = [
+            ServiceRequestStatus.DRAFT.value,
+            ServiceRequestStatus.DOCUMENTS_REQUIRED.value
+        ]
+        if request["status"] not in allowed_statuses:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot upload documents in status: {request['status']}"
+            )
+
+        # Decode file content
+        content = base64.b64decode(preview["content_b64"])
+
+        # NOW upload to Firebase Storage
+        try:
+            from app.modules.documents.services.storage_service import storage_service
+            file_path = await storage_service.upload_user_document(
+                file_content=content,
+                filename=preview["file_name"],
+                content_type=preview["mime_type"],
+                user_id=str(user_id),
+                folder=f"service-requests/{request_id}"
+            )
+        except ImportError:
+            logger.warning("storage_service not available, using placeholder path")
+            file_path = f"service-requests/{request_id}/{preview['file_name']}"
+
+        # Save document record with USER-VALIDATED extraction data
+        doc = await document_repository.add_document(
+            db=db,
+            service_request_id=request_id,
+            document_code=preview["document_code"],
+            document_name=preview["document_name"],
+            file_path=file_path,
+            file_name=preview["file_name"],
+            file_size=preview["file_size"],
+            mime_type=preview["mime_type"],
+            uploaded_by=user_id
+        )
+
+        # Update with user-validated extraction data
+        validated_at = datetime.utcnow()
+        await document_repository.update_extraction(
+            db=db,
+            document_id=doc["id"],
+            extraction_data=validation.confirmed_data,  # User's confirmed data!
+            extraction_confidence=preview["confidence"],
+            extraction_status="validated"
+        )
+
+        # Mark document as validated by user
+        await document_repository.validate_document(
+            db=db,
+            document_id=doc["id"],
+            is_valid=True,
+            validation_errors=[],
+            validated_by=user_id
+        )
+
+        # Log to gemini_processing_logs
+        await self._log_processing(
+            db=db,
+            service_request_id=request_id,
+            document_id=doc["id"],
+            user_id=user_id,
+            result={
+                "processor": preview["processor"],
+                "confidence": preview["confidence"],
+                "extraction": validation.confirmed_data,
+                "document_type": preview["document_code"],
+                "user_validated": True
+            }
+        )
+
+        # Remove preview from cache
+        del _pending_previews[validation.preview_id]
+
+        # Check if all documents are now provided
+        await self._check_completion(db, request_id, user_id)
+
+        logger.info(
+            f"Document validated and uploaded: {preview['document_code']} "
+            f"for request {request['reference']}"
+        )
+
+        return DocumentValidationResponse(
+            document_id=doc["id"],
+            document_code=preview["document_code"],
+            document_name=preview["document_name"],
+            file_path=file_path,
+            extraction_data=validation.confirmed_data,
+            extraction_confidence=preview["confidence"],
+            is_validated=True,
+            validated_at=validated_at
+        )
+
+    def _cleanup_expired_previews(self) -> None:
+        """Remove expired previews from cache"""
+        now = datetime.utcnow()
+        expired_ids = [
+            pid for pid, data in _pending_previews.items()
+            if datetime.fromisoformat(data["expires_at"]) < now
+        ]
+        for pid in expired_ids:
+            del _pending_previews[pid]
+            logger.debug(f"Cleaned up expired preview: {pid}")
+
+    def _get_expected_fields(self, document_code: str) -> List[Dict]:
+        """Get expected fields from schema for frontend form generation"""
+        schema = schema_loader.get_schema_for_document(document_code)
+        if not schema:
+            return []
+
+        fields = []
+        for bloc_name, bloc in schema.get("blocs", {}).items():
+            for field_name, config in bloc.get("fields", {}).items():
+                fields.append({
+                    "field_name": field_name,
+                    "label": config.get("label", field_name),
+                    "type": config.get("type", "text"),
+                    "required": config.get("required", False),
+                    "bloc": bloc_name,
+                    "hint": config.get("gemini_hint", "")
+                })
+        return fields
 
     # ═══════════════════════════════════════════════════════════════
     # GET / LIST
