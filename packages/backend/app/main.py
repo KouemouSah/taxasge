@@ -241,7 +241,7 @@ async def root():
             "api": "/api/v1/"
         },
         "features": {
-            "fiscal_services": "547 services available",
+            "fiscal_services": "850+ services available",
             "multi_language": "Spanish, French, English",
             "ai_assistant": "Conversational AI support",
             "mobile_payments": "BANGE integration",
@@ -421,7 +421,7 @@ async def api_v1_info():
         "environment": settings.environment,
         "available_endpoints": {
             "auth": "/api/v1/auth/ - Authentication and authorization",
-            "fiscal_services": "/api/v1/fiscal-services/ - 547 fiscal services catalog",
+            "fiscal_services": "/api/v1/fiscal-services/ - 850+ fiscal services catalog",
             "users": "/api/v1/users/ - User profile management (self-service)",
             "admin": "/api/v1/admin/ - Admin diagnostics and migrations (RESTRICTED)",
             "admin_users": "/api/v1/admin/users/ - Admin user management (CRUD, RESTRICTED)",
@@ -555,6 +555,16 @@ try:
     logger.info("✅ Documents router loaded (OCR, extraction, validation)")
 except Exception as e:
     logger.error(f"❌ Documents router failed: {e}")
+    logger.error(traceback.format_exc())
+
+# Try to load service requests router (Module - Service Requests Workflow)
+try:
+    from app.modules.service_requests.api import router as service_requests_router
+    app.include_router(service_requests_router, prefix="/api/v1", tags=["service-requests"])
+    routers_loaded.append("service_requests")
+    logger.info("✅ Service Requests router loaded (workflow, documents, tariffs)")
+except Exception as e:
+    logger.error(f"❌ Service Requests router failed: {e}")
     logger.error(traceback.format_exc())
 
 # Try to load declarations router (Module - Declarations System - Phase 3)
