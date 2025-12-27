@@ -31,6 +31,7 @@ from ..models.service_request import (
 from ..models.enums import ServiceRequestStatus
 from .tariff_service import tariff_service
 from .schema_loader import schema_loader
+from .gemini_document_processor import gemini_document_processor
 
 logger = logging.getLogger(__name__)
 
@@ -648,21 +649,49 @@ class ServiceRequestService:
         document_code: str
     ) -> Dict:
         """
-        Process document for extraction.
-        TODO: Implement Gemini + Tesseract pipeline.
-        """
-        # For now, return a placeholder result
-        # This will be replaced with actual Gemini/Tesseract processing
-        schema = schema_loader.get_schema_for_document(document_code)
+        Process document for extraction using Gemini + Tesseract fallback.
 
-        return {
-            "extraction": {},
-            "confidence": 0.0,
-            "processor": "pending",
-            "status": "pending",
-            "schema_found": schema is not None,
-            "document_type": document_code
-        }
+        Pipeline:
+        1. Gemini AI (primary) - 70% confidence threshold
+        2. Tesseract OCR (fallback) - 60% confidence threshold
+        3. Manual review if both fail
+
+        Args:
+            content: Document file bytes
+            mime_type: MIME type (image/*, application/pdf)
+            document_code: Expected document type code
+
+        Returns:
+            Dict with extraction, confidence, processor, status
+        """
+        try:
+            # Use the production Gemini document processor
+            result = await gemini_document_processor.process(
+                content=content,
+                mime_type=mime_type,
+                document_code=document_code
+            )
+
+            logger.info(
+                f"Document processed: {document_code} | "
+                f"Processor: {result['processor']} | "
+                f"Confidence: {result['confidence']:.2%} | "
+                f"Status: {result['status']}"
+            )
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Document processing failed: {e}")
+            return {
+                "extraction": {},
+                "confidence": 0.0,
+                "processor": "error",
+                "status": "error",
+                "document_type": document_code,
+                "has_error": True,
+                "error_message": str(e)
+            }
 
     async def _log_processing(
         self,
