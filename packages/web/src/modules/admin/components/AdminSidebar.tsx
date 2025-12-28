@@ -43,6 +43,12 @@ import {
   Headphones,
   TicketIcon,
   ListChecks,
+  GitBranch,
+  FileCheck,
+  DollarSign,
+  CalendarClock,
+  CalendarX,
+  Clock,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { clearAuthData } from '@/core/auth/storage'
@@ -245,6 +251,43 @@ export default function AdminSidebar() {
           title: t('nav.supportCategories'),
           href: `/${locale}/dashboard/admin/support/categories`,
           icon: ListChecks,
+        },
+      ],
+    },
+    {
+      id: 'serviceRequests',
+      title: t('nav.serviceRequests'),
+      icon: GitBranch,
+      items: [
+        {
+          title: t('nav.workflows'),
+          href: `/${locale}/dashboard/admin/service-requests/workflows`,
+          icon: GitBranch,
+        },
+        {
+          title: t('nav.documentRequirements'),
+          href: `/${locale}/dashboard/admin/service-requests/documents`,
+          icon: FileCheck,
+        },
+        {
+          title: t('nav.tariffs'),
+          href: `/${locale}/dashboard/admin/service-requests/tariffs`,
+          icon: DollarSign,
+        },
+        {
+          title: t('nav.slotConfigs'),
+          href: `/${locale}/dashboard/admin/service-requests/appointments/slots`,
+          icon: CalendarClock,
+        },
+        {
+          title: t('nav.blockedDates'),
+          href: `/${locale}/dashboard/admin/service-requests/appointments/blocked`,
+          icon: CalendarX,
+        },
+        {
+          title: t('nav.delayRules'),
+          href: `/${locale}/dashboard/admin/service-requests/appointments/delays`,
+          icon: Clock,
         },
       ],
     },
