@@ -289,10 +289,10 @@ export function RequestDetail({
     return null
   }
 
-  const canApprove = ['agent_review', 'submitted'].includes(currentRequest.status)
-  const canReject = ['agent_review', 'submitted'].includes(currentRequest.status)
-  const canRequestInfo = ['agent_review', 'submitted'].includes(currentRequest.status)
-  const canSchedule = currentRequest.status === 'approved'
+  const canApprove = [ServiceRequestStatus.UNDER_REVIEW, ServiceRequestStatus.SUBMITTED].includes(currentRequest.status as ServiceRequestStatus)
+  const canReject = [ServiceRequestStatus.UNDER_REVIEW, ServiceRequestStatus.SUBMITTED].includes(currentRequest.status as ServiceRequestStatus)
+  const canRequestInfo = [ServiceRequestStatus.UNDER_REVIEW, ServiceRequestStatus.SUBMITTED].includes(currentRequest.status as ServiceRequestStatus)
+  const canSchedule = currentRequest.status === ServiceRequestStatus.DOSSIER_VALIDE
 
   return (
     <div className="space-y-6">

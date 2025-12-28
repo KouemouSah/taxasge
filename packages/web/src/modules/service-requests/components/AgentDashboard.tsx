@@ -55,13 +55,16 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 
 import { useServiceRequests } from '../hooks/useServiceRequests'
+import {
+  ServiceRequestStatus,
+  getStatusColor,
+  getStatusLabel,
+} from '../types'
 import type {
   ServiceRequest,
-  ServiceRequestStatus,
   WorkflowCategory,
   ServiceRequestFilters,
 } from '../types'
-import { getStatusColor, getStatusLabel } from '../types'
 
 // ============================================================================
 // TYPES
@@ -133,10 +136,10 @@ function RequestRow({
 }: RequestRowProps) {
   const t = useTranslations('service_requests')
 
-  const canApprove = ['agent_review', 'submitted'].includes(request.status)
-  const canReject = ['agent_review', 'submitted'].includes(request.status)
-  const canRequestInfo = ['agent_review', 'submitted'].includes(request.status)
-  const canSchedule = request.status === 'approved'
+  const canApprove = [ServiceRequestStatus.UNDER_REVIEW, ServiceRequestStatus.SUBMITTED].includes(request.status as ServiceRequestStatus)
+  const canReject = [ServiceRequestStatus.UNDER_REVIEW, ServiceRequestStatus.SUBMITTED].includes(request.status as ServiceRequestStatus)
+  const canRequestInfo = [ServiceRequestStatus.UNDER_REVIEW, ServiceRequestStatus.SUBMITTED].includes(request.status as ServiceRequestStatus)
+  const canSchedule = request.status === ServiceRequestStatus.DOSSIER_VALIDE
 
   return (
     <TableRow className="cursor-pointer hover:bg-muted/50">
@@ -275,10 +278,10 @@ export function AgentDashboard({
   // Calculate stats
   const stats = useMemo(() => {
     const pending = requests.filter(r =>
-      ['submitted', 'agent_review'].includes(r.status)
+      [ServiceRequestStatus.SUBMITTED, ServiceRequestStatus.UNDER_REVIEW].includes(r.status as ServiceRequestStatus)
     ).length
-    const approved = requests.filter(r => r.status === 'approved').length
-    const rejected = requests.filter(r => r.status === 'rejected').length
+    const approved = requests.filter(r => r.status === ServiceRequestStatus.DOSSIER_VALIDE || r.status === ServiceRequestStatus.COMPLETED).length
+    const rejected = requests.filter(r => r.status === ServiceRequestStatus.REJECTED).length
     const total = requests.length
 
     return { pending, approved, rejected, total }
