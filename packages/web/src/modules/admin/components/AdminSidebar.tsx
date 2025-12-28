@@ -275,17 +275,17 @@ export default function AdminSidebar() {
           icon: DollarSign,
         },
         {
-          title: t('nav.slotConfigs'),
+          title: t('nav.slots'),
           href: `/${locale}/dashboard/admin/service-requests/appointments/slots`,
           icon: CalendarClock,
         },
         {
-          title: t('nav.blockedDates'),
+          title: t('nav.blocked'),
           href: `/${locale}/dashboard/admin/service-requests/appointments/blocked`,
           icon: CalendarX,
         },
         {
-          title: t('nav.delayRules'),
+          title: t('nav.delays'),
           href: `/${locale}/dashboard/admin/service-requests/appointments/delays`,
           icon: Clock,
         },
