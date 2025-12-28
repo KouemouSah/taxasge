@@ -30,10 +30,11 @@ from ..models.service_request import (
     FieldIndicator,
     RiskAnalysisResult
 )
-from ..models.enums import ServiceRequestStatus
+from ..models.enums import ServiceRequestStatus, SolicitudType
 from .tariff_service import tariff_service
 from .schema_loader import schema_loader
 from .gemini_document_processor import gemini_document_processor
+from .workflow_engine import workflow_engine
 
 logger = logging.getLogger(__name__)
 
@@ -699,10 +700,19 @@ class ServiceRequestService:
     async def _get_required_documents(
         self,
         db: asyncpg.Connection,
-        workflow_code: str
+        workflow_code: str,
+        solicitud_type: str = "expedicion",
+        sub_type: Optional[str] = None
     ) -> List[RequiredDocument]:
         """
-        Get required documents from workflow_document_requirements table.
+        Get required documents for a workflow.
+
+        Strategy:
+        1. First, query workflow_document_requirements table (DB config)
+        2. If no DB config, fallback to workflow class definition (code config)
+
+        This allows admin to override document requirements via DB while
+        maintaining code-defined defaults for new workflows.
 
         Table schema (migration 021):
         - document_code: VARCHAR(100)
@@ -714,6 +724,7 @@ class ServiceRequestService:
 
         Note: accepted_formats and max_size_mb are NOT in DB - use defaults.
         """
+        # 1. Try database configuration first
         query = """
             SELECT document_code,
                    document_name_es,
@@ -727,18 +738,40 @@ class ServiceRequestService:
         """
         rows = await db.fetch(query, workflow_code)
 
-        return [
-            RequiredDocument(
-                document_code=row["document_code"],
-                document_name=row["document_name_es"],
-                is_required=row["is_required"] if row["is_required"] is not None else True,
-                display_order=row["display_order"] or 0,
-                # accepted_formats and max_size_mb use model defaults (not in DB)
-                extraction_schema_key=row["extraction_schema_key"],
-                instructions=row["instructions_es"]
-            )
-            for row in rows
-        ]
+        if rows:
+            return [
+                RequiredDocument(
+                    document_code=row["document_code"],
+                    document_name=row["document_name_es"],
+                    is_required=row["is_required"] if row["is_required"] is not None else True,
+                    display_order=row["display_order"] or 0,
+                    extraction_schema_key=row["extraction_schema_key"],
+                    instructions=row["instructions_es"]
+                )
+                for row in rows
+            ]
+
+        # 2. Fallback to workflow class definition
+        workflow = workflow_engine.get_workflow_by_string(workflow_code)
+        if workflow:
+            logger.info(f"Using workflow class for document requirements: {workflow_code}")
+            doc_requirements = workflow.get_document_requirements(sub_type or "")
+            return [
+                RequiredDocument(
+                    document_code=doc.document_code,
+                    document_name=doc.document_name_es,
+                    is_required=doc.is_required,
+                    display_order=doc.display_order,
+                    extraction_schema_key=doc.schema_key,
+                    instructions=doc.instructions_es,
+                    accepted_formats=doc.accepted_formats,
+                    max_size_mb=doc.max_size_mb
+                )
+                for doc in doc_requirements
+            ]
+
+        logger.warning(f"No document requirements found for workflow: {workflow_code}")
+        return []
 
     def _get_extraction_schema_key(
         self,

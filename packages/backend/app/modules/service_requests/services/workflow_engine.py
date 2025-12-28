@@ -720,3 +720,51 @@ class WorkflowEngine:
 
 # Singleton instance
 workflow_engine = WorkflowEngine()
+
+
+def register_all_workflows() -> None:
+    """
+    Register all available workflows at application startup.
+
+    This function is called automatically when the module is imported.
+    It registers all workflow classes so they can be retrieved via
+    workflow_engine.get_workflow() or workflow_engine.get_workflow_by_string().
+    """
+    from ..workflows import (
+        PasaporteWorkflow,
+        ResidenciaWorkflow,
+        VehiculoWorkflow,
+        ContratoWorkflow,
+        ConducirWorkflow,
+        VerificacionFuncionarioWorkflow,
+        CarnetFuncionarioWorkflow,
+        PromocionAdministrativaWorkflow,
+        PermisoExtraordinarioWorkflow,
+        CertificadoAdministrativoWorkflow
+    )
+
+    workflows_to_register = [
+        # Identidad
+        PasaporteWorkflow,
+        # Extranjeria
+        ResidenciaWorkflow,
+        # Vehiculos
+        VehiculoWorkflow,
+        # Contratos
+        ContratoWorkflow,
+        # Conduccion
+        ConducirWorkflow,
+        # Funcion Publica
+        VerificacionFuncionarioWorkflow,
+        CarnetFuncionarioWorkflow,
+        PromocionAdministrativaWorkflow,
+        PermisoExtraordinarioWorkflow,
+        CertificadoAdministrativoWorkflow
+    ]
+
+    workflow_engine.register_many(workflows_to_register)
+    logger.info(f"Registered {len(workflows_to_register)} workflows")
+
+
+# Auto-register workflows on module import
+register_all_workflows()

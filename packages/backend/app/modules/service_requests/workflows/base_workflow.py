@@ -268,6 +268,7 @@ class TariffConfig:
     percentage: Optional[float] = None  # For percentage-based
     rbc_params: Dict[str, Any] = field(default_factory=dict)  # For RBC calculation
     currency: str = "XAF"
+    extra: Dict[str, Any] = field(default_factory=dict)  # Additional config (stamps, etc.)
 
     def get_amount(self, sub_type: str, value: Optional[float] = None) -> int:
         """Calculate tariff amount based on type and configuration."""
@@ -313,9 +314,10 @@ class BaseWorkflow(ABC):
     # Allowed sub-types for this workflow
     allowed_sub_types: List[str] = []
 
-    def __init__(self):
+    def __init__(self, sub_type: Optional[str] = None):
         self._steps: List[WorkflowStep] = []
         self._tariff_config: Optional[TariffConfig] = None
+        self._default_sub_type = sub_type
         self._setup_common_steps()
         self._setup_specific_steps()
         self._setup_tariffs()
