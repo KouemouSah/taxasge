@@ -98,7 +98,6 @@ export function WorkflowWizard({
     previousStep,
     uploadDocument,
     deleteDocument,
-    calculateTariff,
     clearError,
   } = useServiceRequests()
 

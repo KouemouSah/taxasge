@@ -13,7 +13,6 @@ import type {
   ServiceRequestFilters,
   WorkflowConfig,
   WorkflowStep,
-  WizardState,
   StepSubmitRequest,
   ValidationResult,
   TariffCalculation,

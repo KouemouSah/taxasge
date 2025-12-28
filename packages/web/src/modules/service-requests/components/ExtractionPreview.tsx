@@ -129,7 +129,7 @@ interface FieldRowProps {
 
 function FieldRow({
   field,
-  locale,
+  locale: _locale,
   isEditing,
   editValue,
   onEditValueChange,

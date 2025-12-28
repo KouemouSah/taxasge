@@ -9,9 +9,7 @@ import { useState, useCallback, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import {
   Upload,
-  X,
   FileText,
-  Image,
   AlertCircle,
   CheckCircle,
   Loader2,

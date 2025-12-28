@@ -15,21 +15,17 @@ import {
   Calendar,
   User,
   FileText,
-  Clock,
   AlertCircle,
-  Download,
   Eye,
-  Edit2,
   Loader2,
   Send,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
-import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
@@ -76,7 +72,7 @@ interface DocumentCardProps {
   onView: () => void
 }
 
-function DocumentCard({ document, locale, onView }: DocumentCardProps) {
+function DocumentCard({ document, locale: _locale, onView }: DocumentCardProps) {
   const isImage = document.mimeType.startsWith('image/')
 
   return (
@@ -212,7 +208,6 @@ export function RequestDetail({
     rejectRequest,
     requestAdditionalInfo,
     scheduleAppointment,
-    addAgentNote,
   } = useServiceRequests()
 
   // Load request on mount
