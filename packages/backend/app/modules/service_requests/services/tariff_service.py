@@ -62,7 +62,7 @@ class TariffService:
         """
         try:
             # Determine tariff type from workflow or override
-            effective_tariff_type = tariff_type or await self._get_tariff_type(db, workflow_code)
+            effective_tariff_type = tariff_type or await self._get_tariff_type(db, workflow_code, solicitud_type)
 
             # Calculate based on type
             if effective_tariff_type == TariffType.PERCENTAGE.value:
@@ -90,19 +90,26 @@ class TariffService:
     async def _get_tariff_type(
         self,
         db: asyncpg.Connection,
-        workflow_code: str
+        workflow_code: str,
+        solicitud_type: str = "expedicion"
     ) -> str:
         """
         Determine tariff type for a workflow from database configuration.
 
+        Args:
+            db: Database connection
+            workflow_code: The workflow code
+            solicitud_type: Type of request (expedicion, renovacion, duplicado)
+
         Priority:
-        1. Read from workflow_tariffs.tariff_type (admin configurable)
+        1. Read from workflow_tariffs.tariff_type for specific solicitud_type
         2. Default to FIXED if not found
         """
         query = """
             SELECT tariff_type
             FROM workflow_tariffs
             WHERE workflow_code = $1
+              AND solicitud_type = $2
               AND is_active = TRUE
               AND effective_from <= CURRENT_DATE
               AND (effective_to IS NULL OR effective_to > CURRENT_DATE)
@@ -110,7 +117,7 @@ class TariffService:
             LIMIT 1
         """
         try:
-            row = await db.fetchrow(query, workflow_code)
+            row = await db.fetchrow(query, workflow_code, solicitud_type)
             if row and row["tariff_type"]:
                 return row["tariff_type"]
         except Exception as e:
