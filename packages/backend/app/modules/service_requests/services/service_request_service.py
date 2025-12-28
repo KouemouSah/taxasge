@@ -46,10 +46,10 @@ MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
 # Preview expiry time (30 minutes)
 PREVIEW_EXPIRY_MINUTES = 30
+PREVIEW_EXPIRY_SECONDS = PREVIEW_EXPIRY_MINUTES * 60
 
-# In-memory cache for pending previews (in production, use Redis)
-# Key: preview_id, Value: {content, metadata, extraction, expires_at}
-_pending_previews: Dict[str, Dict] = {}
+# Import preview cache (supports Redis or in-memory)
+from .preview_cache import preview_cache
 
 
 class ServiceRequestService:
@@ -155,11 +155,18 @@ class ServiceRequestService:
                 detail=f"Cannot upload documents in status: {request['status']}"
             )
 
-        # Validate file
+        # Validate file type
         self._validate_file(file)
 
         # Read file content
         content = await file.read()
+
+        # Validate file size
+        if len(content) > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"File too large. Maximum size: {MAX_FILE_SIZE // (1024*1024)}MB"
+            )
 
         # Import storage service (avoid circular import)
         try:
@@ -362,8 +369,8 @@ class ServiceRequestService:
             extraction_schema_key=extraction_schema_key
         )
 
-        # Store in temporary cache (content as base64 for serialization)
-        _pending_previews[preview_id] = {
+        # Store in cache (supports Redis or in-memory)
+        cache_data = {
             "request_id": str(request_id),
             "user_id": str(user_id),
             "document_code": document_code,
@@ -378,11 +385,9 @@ class ServiceRequestService:
             "risk_analysis": risk_analysis,
             "detected_type": processing_result.get("document_type", document_code),
             "expires_at": expires_at.isoformat(),
-            "extraction_schema_key": extraction_schema_key  # Store for later use
+            "extraction_schema_key": extraction_schema_key
         }
-
-        # Clean up expired previews
-        self._cleanup_expired_previews()
+        await preview_cache.set(preview_id, cache_data, PREVIEW_EXPIRY_SECONDS)
 
         # Get expected fields from schema for frontend form
         expected_fields = self._get_expected_fields(document_code, extraction_schema_key)
@@ -461,7 +466,7 @@ class ServiceRequestService:
             DocumentValidationResponse with final document info
         """
         # Get preview from cache
-        preview = _pending_previews.get(validation.preview_id)
+        preview = await preview_cache.get(validation.preview_id)
         if not preview:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -480,10 +485,10 @@ class ServiceRequestService:
                 detail="Access denied"
             )
 
-        # Check if preview has expired
+        # Check if preview has expired (cache handles TTL but double-check)
         expires_at = datetime.fromisoformat(preview["expires_at"])
         if datetime.utcnow() > expires_at:
-            del _pending_previews[validation.preview_id]
+            await preview_cache.delete(validation.preview_id)
             raise HTTPException(
                 status_code=status.HTTP_410_GONE,
                 detail="Preview has expired. Please upload the document again."
@@ -572,7 +577,7 @@ class ServiceRequestService:
         )
 
         # Remove preview from cache
-        del _pending_previews[validation.preview_id]
+        await preview_cache.delete(validation.preview_id)
 
         # Check if all documents are now provided
         await self._check_completion(db, request_id, user_id)
@@ -593,16 +598,17 @@ class ServiceRequestService:
             validated_at=validated_at
         )
 
-    def _cleanup_expired_previews(self) -> None:
-        """Remove expired previews from cache"""
-        now = datetime.utcnow()
-        expired_ids = [
-            pid for pid, data in _pending_previews.items()
-            if datetime.fromisoformat(data["expires_at"]) < now
-        ]
-        for pid in expired_ids:
-            del _pending_previews[pid]
-            logger.debug(f"Cleaned up expired preview: {pid}")
+    async def cleanup_expired_previews(self) -> int:
+        """
+        Manually trigger cleanup of expired previews.
+
+        Note: Redis handles TTL automatically. This is mainly for in-memory cache
+        or when you need to force cleanup.
+
+        Returns:
+            Number of expired entries removed
+        """
+        return await preview_cache.cleanup_expired()
 
     def _get_expected_fields(
         self,
@@ -683,6 +689,292 @@ class ServiceRequestService:
             results.append(await self._build_response(db, req, required_docs))
 
         return results
+
+    # ═══════════════════════════════════════════════════════════════
+    # UPDATE / DELETE / SUBMIT / CANCEL
+    # ═══════════════════════════════════════════════════════════════
+
+    async def update_request(
+        self,
+        db: asyncpg.Connection,
+        request_id: UUID,
+        user_id: UUID,
+        form_data: Optional[Dict] = None,
+        notes: Optional[str] = None
+    ) -> ServiceRequestResponse:
+        """
+        Update a service request (only allowed in DRAFT status).
+
+        Args:
+            db: Database connection
+            request_id: The service request ID
+            user_id: The requesting user's ID
+            form_data: Updated form data
+            notes: Optional notes
+
+        Returns:
+            Updated service request response
+        """
+        request = await service_request_repository.find_by_id(db, request_id)
+        if not request:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Service request not found"
+            )
+
+        if request["user_id"] != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied"
+            )
+
+        # Only allow updates in DRAFT status
+        if request["status"] != ServiceRequestStatus.DRAFT.value:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot update request in status: {request['status']}"
+            )
+
+        # Build update data
+        update_fields = []
+        update_values = []
+
+        if form_data is not None:
+            update_fields.append("form_data = $1")
+            update_values.append(form_data)
+
+        if notes is not None:
+            update_fields.append(f"notes = ${len(update_values) + 1}")
+            update_values.append(notes)
+
+        if not update_fields:
+            # Nothing to update
+            required_docs = await self._get_required_documents(db, request["workflow_code"])
+            return await self._build_response(db, request, required_docs)
+
+        # Add updated_at
+        update_fields.append(f"updated_at = ${len(update_values) + 1}")
+        update_values.append(datetime.utcnow())
+
+        # Add request_id as last parameter
+        update_values.append(request_id)
+
+        query = f"""
+            UPDATE service_requests
+            SET {', '.join(update_fields)}
+            WHERE id = ${len(update_values)}
+            RETURNING *
+        """
+        updated = await db.fetchrow(query, *update_values)
+
+        logger.info(f"Updated service request: {request['reference']}")
+
+        required_docs = await self._get_required_documents(db, updated["workflow_code"])
+        return await self._build_response(db, dict(updated), required_docs)
+
+    async def delete_request(
+        self,
+        db: asyncpg.Connection,
+        request_id: UUID,
+        user_id: UUID
+    ) -> bool:
+        """
+        Delete a service request (only allowed in DRAFT status).
+
+        Args:
+            db: Database connection
+            request_id: The service request ID
+            user_id: The requesting user's ID
+
+        Returns:
+            True if deleted successfully
+        """
+        request = await service_request_repository.find_by_id(db, request_id)
+        if not request:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Service request not found"
+            )
+
+        if request["user_id"] != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied"
+            )
+
+        # Only allow deletion in DRAFT status
+        if request["status"] != ServiceRequestStatus.DRAFT.value:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot delete request in status: {request['status']}. Only DRAFT requests can be deleted."
+            )
+
+        # Delete associated documents first
+        await db.execute(
+            "DELETE FROM service_request_documents WHERE service_request_id = $1",
+            request_id
+        )
+
+        # Delete the request
+        await db.execute(
+            "DELETE FROM service_requests WHERE id = $1",
+            request_id
+        )
+
+        logger.info(f"Deleted service request: {request['reference']}")
+        return True
+
+    async def submit_request(
+        self,
+        db: asyncpg.Connection,
+        request_id: UUID,
+        user_id: UUID
+    ) -> ServiceRequestResponse:
+        """
+        Submit a service request for processing.
+
+        Validates that all required documents are provided before submission.
+
+        Args:
+            db: Database connection
+            request_id: The service request ID
+            user_id: The requesting user's ID
+
+        Returns:
+            Updated service request response
+        """
+        request = await service_request_repository.find_by_id(db, request_id)
+        if not request:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Service request not found"
+            )
+
+        if request["user_id"] != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied"
+            )
+
+        # Only allow submission from DRAFT or DOCUMENTS_REQUIRED status
+        allowed_statuses = [
+            ServiceRequestStatus.DRAFT.value,
+            ServiceRequestStatus.DOCUMENTS_REQUIRED.value
+        ]
+        if request["status"] not in allowed_statuses:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot submit request in status: {request['status']}"
+            )
+
+        # Check all required documents are provided
+        required_docs = await self._get_required_documents(db, request["workflow_code"])
+        provided_docs = await document_repository.find_by_request(db, request_id)
+
+        required_codes = {d.document_code for d in required_docs if d.is_required}
+        provided_codes = {d["document_code"] for d in provided_docs}
+
+        missing = required_codes - provided_codes
+        if missing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Missing required documents: {', '.join(missing)}"
+            )
+
+        # Calculate tariff
+        tariff = await tariff_service.calculate(
+            db=db,
+            workflow_code=request["workflow_code"],
+            solicitud_type=request["solicitud_type"]
+        )
+
+        await service_request_repository.update_amounts(
+            db=db,
+            request_id=request_id,
+            base_amount=tariff["base_amount"],
+            supplements_amount=tariff["supplements_total"],
+            penalties_amount=tariff["penalties_amount"],
+            total_amount=tariff["total_amount"]
+        )
+
+        # Update status to SUBMITTED
+        await service_request_repository.update_status(
+            db=db,
+            request_id=request_id,
+            new_status=ServiceRequestStatus.SUBMITTED.value,
+            performed_by=user_id,
+            comment="User submitted request"
+        )
+
+        # Refresh request data
+        updated = await service_request_repository.find_by_id(db, request_id)
+        logger.info(f"Service request submitted: {request['reference']}")
+
+        return await self._build_response(db, updated, required_docs)
+
+    async def cancel_request(
+        self,
+        db: asyncpg.Connection,
+        request_id: UUID,
+        user_id: UUID,
+        reason: Optional[str] = None
+    ) -> ServiceRequestResponse:
+        """
+        Cancel a service request.
+
+        Allowed from DRAFT, SUBMITTED, or DOCUMENTS_REQUIRED status.
+
+        Args:
+            db: Database connection
+            request_id: The service request ID
+            user_id: The requesting user's ID
+            reason: Optional cancellation reason
+
+        Returns:
+            Updated service request response
+        """
+        request = await service_request_repository.find_by_id(db, request_id)
+        if not request:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Service request not found"
+            )
+
+        if request["user_id"] != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied"
+            )
+
+        # Only allow cancellation from certain statuses
+        cancellable_statuses = [
+            ServiceRequestStatus.DRAFT.value,
+            ServiceRequestStatus.SUBMITTED.value,
+            ServiceRequestStatus.DOCUMENTS_REQUIRED.value,
+            ServiceRequestStatus.PAYMENT_PENDING.value
+        ]
+        if request["status"] not in cancellable_statuses:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot cancel request in status: {request['status']}"
+            )
+
+        # Update status to CANCELLED
+        await service_request_repository.update_status(
+            db=db,
+            request_id=request_id,
+            new_status=ServiceRequestStatus.CANCELLED.value,
+            performed_by=user_id,
+            comment=reason or "User cancelled request"
+        )
+
+        # Refresh request data
+        updated = await service_request_repository.find_by_id(db, request_id)
+        required_docs = await self._get_required_documents(db, updated["workflow_code"])
+
+        logger.info(f"Service request cancelled: {request['reference']}")
+
+        return await self._build_response(db, updated, required_docs)
 
     # ═══════════════════════════════════════════════════════════════
     # PRIVATE HELPERS
