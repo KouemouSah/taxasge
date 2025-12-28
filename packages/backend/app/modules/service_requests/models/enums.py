@@ -150,6 +150,8 @@ class WorkflowCategory(str, Enum):
     CONTRATOS = "CONTRATOS"
     CONDUCCION = "CONDUCCION"
     FUNCION_PUBLICA = "FUNCION_PUBLICA"
+    GENERAL = "GENERAL"  # Fallback for generic workflows
+    OTROS = "OTROS"      # Other uncategorized services
 
 
 class EntityCode(str, Enum):
@@ -164,6 +166,7 @@ class EntityCode(str, Enum):
     ITVE = "ITVE"                # Inspección Técnica de Vehículos
     ONRC = "ONRC"                # Oficina Nacional de Registro de Contratos
     MINFP = "MINFP"              # Ministerio de Función Pública
+    GENERAL = "GENERAL"          # Generic/unassigned entity for generic workflows
 
 
 class TariffType(str, Enum):
