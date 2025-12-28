@@ -411,6 +411,72 @@ async def debug_support_import():
     }
 
 
+@app.get("/api/v1/debug/service-requests-import")
+async def debug_service_requests_import():
+    """Debug endpoint to diagnose service_requests router import errors"""
+    import_errors = []
+    import_success = []
+
+    # Test each import in the service_requests module chain
+    try:
+        from app.modules.service_requests.models.enums import WorkflowCode, WorkflowCategory, EntityCode
+        import_success.append("models.enums (WorkflowCode, WorkflowCategory, EntityCode)")
+    except Exception as e:
+        import traceback
+        import_errors.append({"module": "models.enums", "error": str(e), "type": type(e).__name__, "traceback": traceback.format_exc()})
+
+    try:
+        from app.modules.service_requests.workflows.base_workflow import BaseWorkflow
+        import_success.append("workflows.base_workflow.BaseWorkflow")
+    except Exception as e:
+        import traceback
+        import_errors.append({"module": "workflows.base_workflow", "error": str(e), "type": type(e).__name__, "traceback": traceback.format_exc()})
+
+    try:
+        from app.modules.service_requests.workflows.generic_workflow import GenericWorkflowStandard
+        import_success.append("workflows.generic_workflow.GenericWorkflowStandard")
+    except Exception as e:
+        import traceback
+        import_errors.append({"module": "workflows.generic_workflow", "error": str(e), "type": type(e).__name__, "traceback": traceback.format_exc()})
+
+    try:
+        from app.modules.service_requests.services.workflow_engine import WorkflowEngine
+        import_success.append("services.workflow_engine.WorkflowEngine")
+    except Exception as e:
+        import traceback
+        import_errors.append({"module": "services.workflow_engine", "error": str(e), "type": type(e).__name__, "traceback": traceback.format_exc()})
+
+    try:
+        from app.modules.service_requests.services.service_request_service import service_request_service
+        import_success.append("services.service_request_service")
+    except Exception as e:
+        import traceback
+        import_errors.append({"module": "services.service_request_service", "error": str(e), "type": type(e).__name__, "traceback": traceback.format_exc()})
+
+    try:
+        from app.modules.service_requests.api.admin_routes import router as admin_router
+        import_success.append("api.admin_routes.router")
+    except Exception as e:
+        import traceback
+        import_errors.append({"module": "api.admin_routes", "error": str(e), "type": type(e).__name__, "traceback": traceback.format_exc()})
+
+    try:
+        from app.modules.service_requests.api import router, agent_router, admin_router
+        import_success.append("api.__init__ (router, agent_router, admin_router)")
+    except Exception as e:
+        import traceback
+        import_errors.append({"module": "api.__init__", "error": str(e), "type": type(e).__name__, "traceback": traceback.format_exc()})
+
+    return {
+        "status": "diagnostic",
+        "service_requests_loaded": "service_requests" in routers_loaded,
+        "documents_loaded": "documents" in routers_loaded,
+        "import_success": import_success,
+        "import_errors": import_errors,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+
 # API v1 info endpoint
 @app.get("/api/v1/")
 async def api_v1_info():
