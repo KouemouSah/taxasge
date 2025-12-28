@@ -3,10 +3,21 @@ from .schema_loader import schema_loader
 from .tariff_service import tariff_service
 from .gemini_document_processor import gemini_document_processor
 from .service_request_service import service_request_service
+from .workflow_engine import workflow_engine, WorkflowEngine
+from .notification_service import workflow_notification_service, WorkflowNotificationService
+
+# Validations (re-export for convenience)
+from ..validations import cross_document_validator, CrossDocumentValidator
 
 __all__ = [
     "schema_loader",
     "tariff_service",
     "gemini_document_processor",
-    "service_request_service"
+    "service_request_service",
+    "workflow_engine",
+    "WorkflowEngine",
+    "workflow_notification_service",
+    "WorkflowNotificationService",
+    "cross_document_validator",
+    "CrossDocumentValidator"
 ]

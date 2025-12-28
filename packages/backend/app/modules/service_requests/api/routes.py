@@ -18,7 +18,7 @@ from ..models.service_request import (
 )
 from ..services.service_request_service import service_request_service
 from app.database.connection import get_database
-from app.modules.auth.dependencies import get_current_user
+from app.modules.auth.middleware.auth_middleware import get_current_user
 
 router = APIRouter(prefix="/service-requests", tags=["Service Requests"])
 

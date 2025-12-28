@@ -63,3 +63,115 @@ class ExtractionStatus(str, Enum):
     SUCCESS = "success"
     FAILED = "failed"
     MANUAL_REVIEW = "manual_review"
+
+
+class WorkflowCode(str, Enum):
+    """
+    Workflow codes for all service request types.
+    APPLICATION-LEVEL: DB stores as varchar(100), enum for type safety and validation.
+    Values must match entries in workflow_tariffs.workflow_code.
+    """
+    # === PASAPORTE (5 types) - Entité: CNEDOGE ===
+    PASAPORTE_NUEVO = "PASAPORTE_NUEVO"
+    PASAPORTE_RENOVACION = "PASAPORTE_RENOVACION"
+    PASAPORTE_PERDIDA = "PASAPORTE_PERDIDA"
+    PASAPORTE_ROBO = "PASAPORTE_ROBO"
+    PASAPORTE_DETERIORO = "PASAPORTE_DETERIORO"
+
+    # === RESIDENCIA (5 types) - Entités: EXTRANJERIA + CNEDOGE ===
+    RESIDENCIA_PRIMERA_VEZ = "RESIDENCIA_PRIMERA_VEZ"
+    RESIDENCIA_RENOVACION = "RESIDENCIA_RENOVACION"
+    RESIDENCIA_DUPLICADO = "RESIDENCIA_DUPLICADO"
+    RESIDENCIA_CAMBIO_DATOS = "RESIDENCIA_CAMBIO_DATOS"
+    RESIDENCIA_REAGRUPACION = "RESIDENCIA_REAGRUPACION"
+
+    # === VEHICULO (7 types) - Entités: DGT + OFIVE + ITVE ===
+    VEHICULO_PRIMERA_MATRICULACION = "VEHICULO_PRIMERA_MATRICULACION"
+    VEHICULO_TRANSFERENCIA = "VEHICULO_TRANSFERENCIA"
+    VEHICULO_RENOVACION_CUVE = "VEHICULO_RENOVACION_CUVE"
+    VEHICULO_RENOVACION_ITV = "VEHICULO_RENOVACION_ITV"
+    VEHICULO_DUPLICADO_PERMISO = "VEHICULO_DUPLICADO_PERMISO"
+    VEHICULO_DUPLICADO_CUVE = "VEHICULO_DUPLICADO_CUVE"
+    VEHICULO_CAMBIO_CARACTERISTICAS = "VEHICULO_CAMBIO_CARACTERISTICAS"
+
+    # === CONTRATO (7 types) - Entité: ONRC ===
+    CONTRATO_OBRA = "CONTRATO_OBRA"
+    CONTRATO_SERVICIO = "CONTRATO_SERVICIO"
+    CONTRATO_SUMINISTRO = "CONTRATO_SUMINISTRO"
+    CONTRATO_CONCESION = "CONTRATO_CONCESION"
+    CONTRATO_JOINT_VENTURE = "CONTRATO_JOINT_VENTURE"
+    CONTRATO_ARRENDAMIENTO = "CONTRATO_ARRENDAMIENTO"
+    CONTRATO_OTRO = "CONTRATO_OTRO"
+
+    # === CONDUCIR (5 types) - Entité: DGT ===
+    CONDUCIR_NUEVO = "CONDUCIR_NUEVO"
+    CONDUCIR_CANJE = "CONDUCIR_CANJE"
+    CONDUCIR_RENOVACION = "CONDUCIR_RENOVACION"
+    CONDUCIR_DUPLICADO = "CONDUCIR_DUPLICADO"
+    CONDUCIR_EXTENSION = "CONDUCIR_EXTENSION"
+
+    # === FUNCION PUBLICA (5 workflows) - Entité: MINFP ===
+    FP_VERIFICACION_FUNCIONARIO = "FP_VERIFICACION_FUNCIONARIO"
+    FP_CARNET_FUNCIONARIO = "FP_CARNET_FUNCIONARIO"
+    FP_PROMOCION_ADMINISTRATIVA = "FP_PROMOCION_ADMINISTRATIVA"
+    FP_PERMISO_EXTRAORDINARIO = "FP_PERMISO_EXTRAORDINARIO"
+    FP_CERTIFICADO_ADMINISTRATIVO = "FP_CERTIFICADO_ADMINISTRATIVO"
+
+
+class DocumentConditionType(str, Enum):
+    """
+    Document requirement condition types.
+    MAPS TO DATABASE: document_condition_type_enum
+    """
+    ALWAYS = "always"
+    AGE_LESS_THAN = "age_less_than"
+    AGE_GREATER_THAN = "age_greater_than"
+    IS_RENEWAL = "is_renewal"
+    IS_NEW = "is_new"
+    IS_DUPLICATE = "is_duplicate"
+    HAS_PREVIOUS = "has_previous"
+    IS_MINOR = "is_minor"
+    IS_ADULT = "is_adult"
+    IS_FOREIGN = "is_foreign"
+    IS_NATIONAL = "is_national"
+    CUSTOM = "custom"
+
+
+# === APPLICATION-LEVEL ENUMS (not in DB, for validation only) ===
+
+class WorkflowCategory(str, Enum):
+    """
+    Categories for grouping workflows.
+    APPLICATION-LEVEL: Not stored as DB enum, for UI grouping and filtering.
+    """
+    IDENTIDAD = "IDENTIDAD"
+    EXTRANJERIA = "EXTRANJERIA"
+    VEHICULOS = "VEHICULOS"
+    CONTRATOS = "CONTRATOS"
+    CONDUCCION = "CONDUCCION"
+    FUNCION_PUBLICA = "FUNCION_PUBLICA"
+
+
+class EntityCode(str, Enum):
+    """
+    Entity codes responsible for processing workflows.
+    APPLICATION-LEVEL: DB stores as varchar(50), enum for validation.
+    """
+    CNEDOGE = "CNEDOGE"          # Centro Nacional de Expedición de Documentos
+    EXTRANJERIA = "EXTRANJERIA"  # Dirección General de Extranjería
+    DGT = "DGT"                  # Dirección General de Tráfico
+    OFIVE = "OFIVE"              # Oficina de Vehículos
+    ITVE = "ITVE"                # Inspección Técnica de Vehículos
+    ONRC = "ONRC"                # Oficina Nacional de Registro de Contratos
+    MINFP = "MINFP"              # Ministerio de Función Pública
+
+
+class TariffType(str, Enum):
+    """
+    Types of tariff calculation.
+    APPLICATION-LEVEL: Not a DB column, used for service layer logic.
+    """
+    FIXED = "FIXED"              # Montant fixe (amount in workflow_tariffs)
+    RBC = "RBC"                  # Risk-Based Calculator (véhicules)
+    PERCENTAGE = "PERCENTAGE"    # Pourcentage de la valeur
+    NOTA_INGRESO = "NOTA_INGRESO"  # Basé sur Nota de Ingreso (Trésor)

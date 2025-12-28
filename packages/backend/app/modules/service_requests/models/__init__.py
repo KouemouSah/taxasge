@@ -3,7 +3,13 @@ from .enums import (
     ServiceRequestStatus,
     ServiceRequestPriority,
     SolicitudType,
-    ExtractionStatus
+    ExtractionStatus,
+    # V2 Workflow enums
+    WorkflowCode,
+    DocumentConditionType,
+    WorkflowCategory,
+    EntityCode,
+    TariffType
 )
 from .service_request import (
     ServiceRequestCreate,
@@ -15,10 +21,18 @@ from .service_request import (
 )
 
 __all__ = [
+    # DB-mapped enums
     "ServiceRequestStatus",
     "ServiceRequestPriority",
     "SolicitudType",
     "ExtractionStatus",
+    "DocumentConditionType",
+    # Application-level enums
+    "WorkflowCode",
+    "WorkflowCategory",
+    "EntityCode",
+    "TariffType",
+    # Pydantic models
     "ServiceRequestCreate",
     "ServiceRequestUpdate",
     "ServiceRequestResponse",
