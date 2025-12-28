@@ -96,7 +96,7 @@ export default function BlockedDatesPage() {
   const removeMutation = useRemoveBlockedDate()
 
   // Get unique entity codes
-  const entities = [...new Set(slotConfigs?.map((s) => s.entity_code) || [])]
+  const entities = Array.from(new Set(slotConfigs?.map((s) => s.entity_code) || []))
 
   // Sort blocked dates by date
   const sortedDates = [...(blockedDates || [])].sort(

@@ -108,7 +108,7 @@ export default function SlotConfigsPage() {
   const deleteMutation = useDeleteSlotConfig()
 
   // Get unique entity codes for filter
-  const entities = [...new Set(slotConfigs?.map((s) => s.entity_code) || [])]
+  const entities = Array.from(new Set(slotConfigs?.map((s) => s.entity_code) || []))
 
   // Filter slots
   const filteredSlots = slotConfigs?.filter((s) => {

@@ -94,6 +94,7 @@ export interface WorkflowFilters {
   entity_code?: string
   is_active?: boolean
   is_generic?: boolean
+  [key: string]: string | number | boolean | undefined
 }
 
 // ============================================================================
@@ -190,6 +191,7 @@ export interface WorkflowTariffUpdate {
 export interface TariffFilters {
   workflow_code?: string
   is_active?: boolean
+  [key: string]: string | number | boolean | undefined
 }
 
 // ============================================================================
@@ -234,6 +236,7 @@ export interface AppointmentSlotConfigUpdate {
 export interface SlotConfigFilters {
   entity_code?: string
   is_active?: boolean
+  [key: string]: string | number | boolean | undefined
 }
 
 export interface AppointmentBlockedDate {
@@ -255,6 +258,7 @@ export interface BlockedDateFilters {
   entity_code?: string
   from_date?: string
   to_date?: string
+  [key: string]: string | number | boolean | undefined
 }
 
 export interface AppointmentDelayRule {
