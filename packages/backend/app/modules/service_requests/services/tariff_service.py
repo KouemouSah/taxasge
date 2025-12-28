@@ -92,18 +92,29 @@ class TariffService:
         db: asyncpg.Connection,
         workflow_code: str
     ) -> str:
-        """Determine tariff type for a workflow."""
-        # Check if workflow is percentage-based (CONTRATO_*)
-        if workflow_code.startswith("CONTRATO_"):
-            return TariffType.PERCENTAGE.value
+        """
+        Determine tariff type for a workflow from database configuration.
 
-        # Check if workflow is RBC-based (VEHICULO_*)
-        if workflow_code.startswith("VEHICULO_"):
-            return TariffType.RBC.value
-
-        # Check if workflow requires Nota de Ingreso (RESIDENCIA_*)
-        if workflow_code.startswith("RESIDENCIA_"):
-            return TariffType.NOTA_INGRESO.value
+        Priority:
+        1. Read from workflow_tariffs.tariff_type (admin configurable)
+        2. Default to FIXED if not found
+        """
+        query = """
+            SELECT tariff_type
+            FROM workflow_tariffs
+            WHERE workflow_code = $1
+              AND is_active = TRUE
+              AND effective_from <= CURRENT_DATE
+              AND (effective_to IS NULL OR effective_to > CURRENT_DATE)
+            ORDER BY effective_from DESC
+            LIMIT 1
+        """
+        try:
+            row = await db.fetchrow(query, workflow_code)
+            if row and row["tariff_type"]:
+                return row["tariff_type"]
+        except Exception as e:
+            logger.warning(f"Could not get tariff_type from DB: {e}")
 
         # Default to FIXED
         return TariffType.FIXED.value
@@ -124,7 +135,7 @@ class TariffService:
                 return self._empty_tariff()
 
             return {
-                "tariff_type": TariffType.FIXED.value,
+                "tariff_type": row.get("tariff_type", TariffType.FIXED.value),
                 "base_amount": float(row["base_amount"]),
                 "supplements": row["supplements"] or [],
                 "supplements_total": float(row["supplements_total"]),
@@ -147,10 +158,11 @@ class TariffService:
         """
         Calculate percentage-based tariff (e.g., ONRC contracts).
 
-        ONRC: 0.5% of contract value.
+        Reads percentage_rate from workflow_tariffs table (admin configurable).
+        Default: 0.5% for ONRC if not configured.
         """
-        # Get percentage configuration
-        percentage = await self._get_percentage_rate(db, workflow_code)
+        # Get percentage configuration from database
+        percentage = await self._get_percentage_rate(db, workflow_code, solicitud_type)
         if percentage is None:
             percentage = 0.5  # Default ONRC rate
 
@@ -336,22 +348,28 @@ class TariffService:
     async def _get_percentage_rate(
         self,
         db: asyncpg.Connection,
-        workflow_code: str
+        workflow_code: str,
+        solicitud_type: str = "expedicion"
     ) -> Optional[float]:
         """Get percentage rate from database configuration."""
         query = """
             SELECT percentage_rate
             FROM workflow_tariffs
             WHERE workflow_code = $1
+              AND solicitud_type = $2
+              AND tariff_type = 'PERCENTAGE'
               AND is_active = TRUE
+              AND effective_from <= CURRENT_DATE
+              AND (effective_to IS NULL OR effective_to > CURRENT_DATE)
+            ORDER BY effective_from DESC
             LIMIT 1
         """
         try:
-            row = await db.fetchrow(query, workflow_code)
+            row = await db.fetchrow(query, workflow_code, solicitud_type)
             if row and row["percentage_rate"]:
                 return float(row["percentage_rate"])
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Could not get percentage_rate from DB: {e}")
         return None
 
     async def get_base_tariff(
