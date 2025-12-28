@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
-from app.modules.permissions.middleware.permission_middleware import require_permission
+from app.modules.permissions.middleware.permission_middleware import permission_required
 
 
 router = APIRouter(
@@ -317,7 +317,7 @@ async def list_workflows(
     is_generic: Optional[bool] = Query(None, description="Filter generic workflows only"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("admin:manage_workflows"))
+    _=Depends(permission_required("admin:manage_workflows"))
 ):
     query = """
         SELECT
@@ -388,7 +388,7 @@ async def get_workflow(
     code: str = Path(..., description="Workflow code"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("admin:manage_workflows"))
+    _=Depends(permission_required("admin:manage_workflows"))
 ):
     row = await db.fetchrow("""
         SELECT
@@ -447,7 +447,7 @@ async def create_workflow(
     workflow: WorkflowCreate = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("admin:manage_workflows"))
+    _=Depends(permission_required("admin:manage_workflows"))
 ):
     # Check if code already exists
     existing = await db.fetchval(
@@ -515,7 +515,7 @@ async def update_workflow(
     workflow: WorkflowUpdate = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("admin:manage_workflows"))
+    _=Depends(permission_required("admin:manage_workflows"))
 ):
     import json
 
@@ -591,7 +591,7 @@ async def toggle_workflow_status(
     is_active: bool = Body(..., embed=True),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("admin:manage_workflows"))
+    _=Depends(permission_required("admin:manage_workflows"))
 ):
     result = await db.execute("""
         UPDATE workflows
@@ -627,7 +627,7 @@ async def delete_workflow(
     code: str = Path(..., description="Workflow code"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("admin:manage_workflows"))
+    _=Depends(permission_required("admin:manage_workflows"))
 ):
     # Check if it's a generic workflow
     workflow = await db.fetchrow(
@@ -683,7 +683,7 @@ async def list_document_requirements(
     code: str = Path(..., description="Workflow code"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("admin:manage_workflows"))
+    _=Depends(permission_required("admin:manage_workflows"))
 ):
     rows = await db.fetch("""
         SELECT * FROM workflow_document_requirements
@@ -722,7 +722,7 @@ async def add_document_requirement(
     doc: DocumentRequirementCreate = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("admin:manage_workflows"))
+    _=Depends(permission_required("admin:manage_workflows"))
 ):
     import json
 
@@ -791,7 +791,7 @@ async def update_document_requirement(
     doc: DocumentRequirementUpdate = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("admin:manage_workflows"))
+    _=Depends(permission_required("admin:manage_workflows"))
 ):
     import json
 
@@ -884,7 +884,7 @@ async def remove_document_requirement(
     doc_code: str = Path(..., description="Document code"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("admin:manage_workflows"))
+    _=Depends(permission_required("admin:manage_workflows"))
 ):
     result = await db.execute("""
         DELETE FROM workflow_document_requirements
@@ -913,7 +913,7 @@ async def reorder_documents(
     ),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("admin:manage_workflows"))
+    _=Depends(permission_required("admin:manage_workflows"))
 ):
     for item in order:
         doc_code = item.get('document_code')
@@ -943,7 +943,7 @@ async def list_tariffs(
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("admin:manage_tariffs"))
+    _=Depends(permission_required("admin:manage_tariffs"))
 ):
     query = "SELECT * FROM workflow_tariffs WHERE 1=1"
     params = []
@@ -989,7 +989,7 @@ async def create_tariff(
     tariff: WorkflowTariffCreate = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("admin:manage_tariffs"))
+    _=Depends(permission_required("admin:manage_tariffs"))
 ):
     # Check workflow exists
     workflow_exists = await db.fetchval(
@@ -1039,7 +1039,7 @@ async def update_tariff(
     tariff: WorkflowTariffUpdate = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("admin:manage_tariffs"))
+    _=Depends(permission_required("admin:manage_tariffs"))
 ):
     updates = []
     params = [tariff_id]
@@ -1119,7 +1119,7 @@ async def delete_tariff(
     tariff_id: int = Path(..., description="Tariff ID"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("admin:manage_tariffs"))
+    _=Depends(permission_required("admin:manage_tariffs"))
 ):
     result = await db.execute(
         "DELETE FROM workflow_tariffs WHERE id = $1", tariff_id
@@ -1149,7 +1149,7 @@ async def list_slot_configs(
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("admin:manage_appointments"))
+    _=Depends(permission_required("admin:manage_appointments"))
 ):
     query = "SELECT * FROM appointment_slot_configs WHERE 1=1"
     params = []
@@ -1194,7 +1194,7 @@ async def create_slot_config(
     slot: AppointmentSlotConfigCreate = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("admin:manage_appointments"))
+    _=Depends(permission_required("admin:manage_appointments"))
 ):
     row = await db.fetchrow("""
         INSERT INTO appointment_slot_configs (
@@ -1232,7 +1232,7 @@ async def update_slot_config(
     slot: AppointmentSlotConfigUpdate = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("admin:manage_appointments"))
+    _=Depends(permission_required("admin:manage_appointments"))
 ):
     updates = []
     params = [slot_id]
@@ -1307,7 +1307,7 @@ async def delete_slot_config(
     slot_id: str = Path(..., description="Slot config ID (UUID)"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("admin:manage_appointments"))
+    _=Depends(permission_required("admin:manage_appointments"))
 ):
     result = await db.execute(
         "DELETE FROM appointment_slot_configs WHERE id = $1::uuid", slot_id
@@ -1334,7 +1334,7 @@ async def list_blocked_dates(
     to_date: Optional[date] = Query(None, description="To date"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("admin:manage_appointments"))
+    _=Depends(permission_required("admin:manage_appointments"))
 ):
     query = "SELECT * FROM appointment_blocked_dates WHERE 1=1"
     params = []
@@ -1378,7 +1378,7 @@ async def add_blocked_date(
     blocked: AppointmentBlockedDateCreate = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("admin:manage_appointments"))
+    _=Depends(permission_required("admin:manage_appointments"))
 ):
     row = await db.fetchrow("""
         INSERT INTO appointment_blocked_dates (entity_code, blocked_date, reason, is_recurring)
@@ -1406,7 +1406,7 @@ async def remove_blocked_date(
     blocked_date_id: str = Path(..., description="Blocked date ID (UUID)"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("admin:manage_appointments"))
+    _=Depends(permission_required("admin:manage_appointments"))
 ):
     result = await db.execute(
         "DELETE FROM appointment_blocked_dates WHERE id = $1::uuid", blocked_date_id
@@ -1435,7 +1435,7 @@ async def list_delay_rules(
     workflow_code: Optional[str] = Query(None, description="Filter by workflow"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("admin:manage_appointments"))
+    _=Depends(permission_required("admin:manage_appointments"))
 ):
     query = "SELECT * FROM appointment_delay_rules WHERE 1=1"
     params = []
@@ -1471,7 +1471,7 @@ async def create_delay_rule(
     rule: AppointmentDelayRuleCreate = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("admin:manage_appointments"))
+    _=Depends(permission_required("admin:manage_appointments"))
 ):
     row = await db.fetchrow("""
         INSERT INTO appointment_delay_rules (
@@ -1502,7 +1502,7 @@ async def delete_delay_rule(
     rule_id: str = Path(..., description="Delay rule ID (UUID)"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("admin:manage_appointments"))
+    _=Depends(permission_required("admin:manage_appointments"))
 ):
     result = await db.execute(
         "DELETE FROM appointment_delay_rules WHERE id = $1::uuid", rule_id

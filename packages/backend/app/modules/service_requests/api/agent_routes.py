@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
-from app.modules.permissions.middleware.permission_middleware import require_permission
+from app.modules.permissions.middleware.permission_middleware import permission_required
 from ..services.agent_queue_service import agent_queue_service
 from ..services.appointment_scheduler import appointment_scheduler
 from ..services.service_request_service import service_request_service
@@ -107,7 +107,7 @@ async def get_queue(
     limit: int = Query(20, ge=1, le=100),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("agent:view_queue"))
+    _=Depends(permission_required("agent:view_queue"))
 ):
     items = await agent_queue_service.get_pending_items(
         db=db,
@@ -155,7 +155,7 @@ async def get_queue_stats(
     entity_code: Optional[str] = Query(None, description="Filter by entity code"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("agent:view_queue"))
+    _=Depends(permission_required("agent:view_queue"))
 ):
     stats = await agent_queue_service.get_queue_stats(
         db=db,
@@ -175,7 +175,7 @@ async def get_my_queue(
     limit: int = Query(50, ge=1, le=100),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("agent:process_requests"))
+    _=Depends(permission_required("agent:process_requests"))
 ):
     items = await agent_queue_service.get_agent_queue(
         db=db,
@@ -232,7 +232,7 @@ async def assign_to_self(
     queue_id: str = Path(..., description="Queue item ID"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("agent:process_requests"))
+    _=Depends(permission_required("agent:process_requests"))
 ):
     try:
         item = await agent_queue_service.assign_to_agent(
@@ -262,7 +262,7 @@ async def release_item(
     reason: Optional[str] = Body(None, embed=True),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("agent:process_requests"))
+    _=Depends(permission_required("agent:process_requests"))
 ):
     await db.execute("""
         UPDATE agent_work_queue
@@ -295,7 +295,7 @@ async def get_request_for_review(
     request_id: UUID = Path(..., description="Service request ID"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("agent:view_requests"))
+    _=Depends(permission_required("agent:view_requests"))
 ):
     # Agents can view any request assigned to their ministry
     request = await db.fetchrow("""
@@ -333,7 +333,7 @@ async def make_decision(
     decision: AgentDecision = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("agent:process_requests"))
+    _=Depends(permission_required("agent:process_requests"))
 ):
     # Verify agent is assigned to this request
     queue_item = await db.fetchrow("""
@@ -493,7 +493,7 @@ async def escalate_request(
     escalation: EscalationRequest = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("agent:escalate"))
+    _=Depends(permission_required("agent:escalate"))
 ):
     # Find queue item
     queue_item = await db.fetchrow("""
@@ -541,7 +541,7 @@ async def schedule_appointment(
     schedule: AppointmentSchedule = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("agent:schedule_appointments"))
+    _=Depends(permission_required("agent:schedule_appointments"))
 ):
     # Check if appointment exists
     existing = await db.fetchrow("""
@@ -617,7 +617,7 @@ async def cancel_appointment(
     reason: Optional[str] = Body(None, embed=True),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("agent:schedule_appointments"))
+    _=Depends(permission_required("agent:schedule_appointments"))
 ):
     cancelled = await appointment_scheduler.cancel_appointment(
         db=db,
@@ -645,7 +645,7 @@ async def get_available_slots(
     limit: int = Query(10, ge=1, le=50),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("agent:view_requests"))
+    _=Depends(permission_required("agent:view_requests"))
 ):
     if not from_date:
         from_date = date.today()
