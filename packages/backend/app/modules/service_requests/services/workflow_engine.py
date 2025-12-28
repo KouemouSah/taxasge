@@ -31,6 +31,7 @@ from ..workflows.base_workflow import (
 )
 from .schema_loader import schema_loader
 from .gemini_document_processor import gemini_document_processor
+from .tariff_service import tariff_service
 
 logger = logging.getLogger(__name__)
 
@@ -301,7 +302,7 @@ class WorkflowEngine:
                 result.update(await self._execute_validation_step(workflow, context, step))
 
             elif step.step_type == StepType.PAYMENT:
-                result.update(await self._execute_payment_step(workflow, context, step, step_data))
+                result.update(await self._execute_payment_step(db, workflow, context, step, step_data))
 
             elif step.step_type == StepType.CONFIRMATION:
                 result.update(await self._execute_confirmation_step(db, workflow, context, step))
@@ -484,20 +485,59 @@ class WorkflowEngine:
 
     async def _execute_payment_step(
         self,
+        db: asyncpg.Connection,
         workflow: BaseWorkflow,
         context: WorkflowContext,
         step: WorkflowStep,
         step_data: Optional[Dict[str, Any]]
     ) -> Dict[str, Any]:
-        """Execute payment step."""
-        tariff = workflow.calculate_tariff(context)
+        """Execute payment step.
+
+        Uses TariffService for unified tariff calculation.
+        Checks if payment is blocked (requires agent validation first).
+        """
+        # Check if payment is blocked until agent validation
+        requires_status = step.config.get("requires_status")
+        if requires_status:
+            if context.status.value != requires_status:
+                blocked_message = step.config.get(
+                    "blocked_message_es",
+                    "El pago está bloqueado hasta que se valide su solicitud."
+                )
+                return {
+                    "success": False,
+                    "payment_blocked": True,
+                    "error": blocked_message,
+                    "current_status": context.status.value,
+                    "required_status": requires_status
+                }
+
+        # Use TariffService for unified calculation
+        try:
+            tariff_result = await tariff_service.calculate(
+                db=db,
+                workflow_code=context.workflow_code.value,
+                solicitud_type=context.solicitud_type.value if context.solicitud_type else "expedicion",
+                extracted_data=context.form_data
+            )
+        except Exception as e:
+            logger.warning(f"TariffService calculation failed: {e}, falling back to workflow")
+            # Fallback to workflow calculation
+            tariff_result = {
+                "total_amount": workflow.calculate_tariff(context),
+                "currency": "XAF"
+            }
 
         if not step_data:
             # Return payment info
             return {
-                "amount": tariff,
-                "currency": "XAF",
-                "payment_methods": ["MTN_MOBILE_MONEY", "ORANGE_MONEY", "BANGE_WALLET"],
+                "amount": tariff_result.get("total_amount", 0),
+                "tariff_breakdown": tariff_result,
+                "currency": tariff_result.get("currency", "XAF"),
+                "payment_methods": step.config.get(
+                    "payment_methods",
+                    ["MTN_MOBILE_MONEY", "ORANGE_MONEY", "BANGE_WALLET"]
+                ),
                 "requires_payment": True
             }
 
@@ -671,7 +711,6 @@ class WorkflowEngine:
             result[category].append({
                 "code": workflow.workflow_code.value,
                 "name_es": workflow.service_name_es,
-                "name_fr": workflow.service_name_fr,
                 "entity_code": workflow.entity_code.value,
                 "sub_types": workflow.allowed_sub_types
             })

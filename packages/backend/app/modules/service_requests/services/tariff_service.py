@@ -1,19 +1,42 @@
 """
 Tariff Service for calculating workflow costs.
 Uses workflow_tariffs and tariff_supplements tables from migration 022.
+
+Supports:
+- FIXED: Fixed amounts from workflow_tariffs table
+- PERCENTAGE: Percentage of value (e.g., ONRC 0.5% of contract value)
+- RBC: Risk-Based Calculator for vehicles (based on age, type, value)
+- NOTA_INGRESO: Treasury-generated amounts
 """
 import asyncpg
 from typing import Dict, Optional, List
 from decimal import Decimal
+from enum import Enum
 import logging
 
 logger = logging.getLogger(__name__)
 
 
+class TariffType(str, Enum):
+    """Types of tariff calculation."""
+    FIXED = "FIXED"
+    PERCENTAGE = "PERCENTAGE"
+    RBC = "RBC"
+    NOTA_INGRESO = "NOTA_INGRESO"
+
+
+# Currency conversion rates (XAF is base currency)
+CONVERSION_RATES = {
+    "XAF": 1.0,
+    "EUR": 655.957,  # Official CFA/EUR peg
+    "USD": 600.0     # Approximate
+}
+
+
 class TariffService:
     """
     Calculate tariffs using workflow_tariffs and tariff_supplements.
-    Leverages the get_workflow_tariff_total() database function.
+    Supports FIXED, PERCENTAGE, RBC, and NOTA_INGRESO tariff types.
     """
 
     async def calculate(
@@ -21,22 +44,78 @@ class TariffService:
         db: asyncpg.Connection,
         workflow_code: str,
         solicitud_type: str = "expedicion",
-        extracted_data: Optional[Dict] = None
+        extracted_data: Optional[Dict] = None,
+        tariff_type: Optional[str] = None
     ) -> Dict:
         """
         Calculate total tariff for a workflow.
 
         Args:
             db: Database connection
-            workflow_code: The workflow code (e.g., "residencia", "pasaporte_nuevo")
+            workflow_code: The workflow code (e.g., "PASAPORTE_NUEVO", "CONTRATO_OBRA")
             solicitud_type: Type of request (expedicion, renovacion, duplicado)
             extracted_data: Optional extracted data for dynamic calculations
+            tariff_type: Override tariff type (FIXED, PERCENTAGE, RBC, NOTA_INGRESO)
 
         Returns:
             Tariff breakdown with base, supplements, and total
         """
         try:
-            # Use the database function created in migration 022
+            # Determine tariff type from workflow or override
+            effective_tariff_type = tariff_type or await self._get_tariff_type(db, workflow_code)
+
+            # Calculate based on type
+            if effective_tariff_type == TariffType.PERCENTAGE.value:
+                return await self._calculate_percentage_tariff(
+                    db, workflow_code, solicitud_type, extracted_data
+                )
+            elif effective_tariff_type == TariffType.RBC.value:
+                return await self._calculate_rbc_tariff(
+                    db, workflow_code, solicitud_type, extracted_data
+                )
+            elif effective_tariff_type == TariffType.NOTA_INGRESO.value:
+                return await self._calculate_nota_ingreso_tariff(
+                    db, workflow_code, extracted_data
+                )
+            else:
+                # Default: FIXED tariff from database
+                return await self._calculate_fixed_tariff(
+                    db, workflow_code, solicitud_type
+                )
+
+        except Exception as e:
+            logger.error(f"Error calculating tariff: {e}")
+            return self._empty_tariff()
+
+    async def _get_tariff_type(
+        self,
+        db: asyncpg.Connection,
+        workflow_code: str
+    ) -> str:
+        """Determine tariff type for a workflow."""
+        # Check if workflow is percentage-based (CONTRATO_*)
+        if workflow_code.startswith("CONTRATO_"):
+            return TariffType.PERCENTAGE.value
+
+        # Check if workflow is RBC-based (VEHICULO_*)
+        if workflow_code.startswith("VEHICULO_"):
+            return TariffType.RBC.value
+
+        # Check if workflow requires Nota de Ingreso (RESIDENCIA_*)
+        if workflow_code.startswith("RESIDENCIA_"):
+            return TariffType.NOTA_INGRESO.value
+
+        # Default to FIXED
+        return TariffType.FIXED.value
+
+    async def _calculate_fixed_tariff(
+        self,
+        db: asyncpg.Connection,
+        workflow_code: str,
+        solicitud_type: str
+    ) -> Dict:
+        """Calculate fixed tariff from database."""
+        try:
             query = "SELECT * FROM get_workflow_tariff_total($1, $2)"
             row = await db.fetchrow(query, workflow_code, solicitud_type)
 
@@ -45,17 +124,235 @@ class TariffService:
                 return self._empty_tariff()
 
             return {
+                "tariff_type": TariffType.FIXED.value,
                 "base_amount": float(row["base_amount"]),
                 "supplements": row["supplements"] or [],
                 "supplements_total": float(row["supplements_total"]),
-                "penalties_amount": 0.0,  # Calculated separately if needed
+                "penalties_amount": 0.0,
                 "total_amount": float(row["total_amount"]),
                 "currency": row["currency"] or "XAF"
             }
 
         except Exception as e:
-            logger.error(f"Error calculating tariff: {e}")
+            logger.error(f"Error calculating fixed tariff: {e}")
             return self._empty_tariff()
+
+    async def _calculate_percentage_tariff(
+        self,
+        db: asyncpg.Connection,
+        workflow_code: str,
+        solicitud_type: str,
+        extracted_data: Optional[Dict]
+    ) -> Dict:
+        """
+        Calculate percentage-based tariff (e.g., ONRC contracts).
+
+        ONRC: 0.5% of contract value.
+        """
+        # Get percentage configuration
+        percentage = await self._get_percentage_rate(db, workflow_code)
+        if percentage is None:
+            percentage = 0.5  # Default ONRC rate
+
+        # Get value from extracted data
+        base_value = 0.0
+        currency = "XAF"
+
+        if extracted_data:
+            # For CONTRATO workflows
+            if "contrato" in extracted_data:
+                contrato = extracted_data["contrato"]
+                if "valor_contrato" in contrato:
+                    base_value = float(contrato["valor_contrato"].get("monto_total", 0))
+                    currency = contrato["valor_contrato"].get("moneda", "XAF")
+            # Direct form_data
+            elif "monto_total" in extracted_data:
+                base_value = float(extracted_data.get("monto_total", 0))
+                currency = extracted_data.get("moneda", "XAF")
+
+        # Convert to XAF if needed
+        conversion_rate = CONVERSION_RATES.get(currency, 1.0)
+        base_value_xaf = base_value * conversion_rate
+
+        # Calculate percentage (e.g., 0.5% = 0.005)
+        tariff_amount = int(base_value_xaf * (percentage / 100))
+
+        # Get supplements
+        supplements = await self.get_supplements(db, workflow_code)
+        supplements_total = sum(s.get("subtotal", 0) for s in supplements)
+
+        total = tariff_amount + supplements_total
+
+        return {
+            "tariff_type": TariffType.PERCENTAGE.value,
+            "percentage_rate": percentage,
+            "base_value": base_value,
+            "base_currency": currency,
+            "base_value_xaf": base_value_xaf,
+            "base_amount": float(tariff_amount),
+            "supplements": supplements,
+            "supplements_total": float(supplements_total),
+            "penalties_amount": 0.0,
+            "total_amount": float(total),
+            "currency": "XAF",
+            "calculation_formula": f"{base_value:,.0f} {currency} × {percentage}% = {tariff_amount:,} XAF"
+        }
+
+    async def _calculate_rbc_tariff(
+        self,
+        db: asyncpg.Connection,
+        workflow_code: str,
+        solicitud_type: str,
+        extracted_data: Optional[Dict]
+    ) -> Dict:
+        """
+        Calculate Risk-Based Calculator tariff for vehicles.
+
+        Factors considered:
+        - Vehicle type (car, motorcycle, truck, etc.)
+        - Vehicle age
+        - Engine capacity (cylindrée)
+        - Vehicle value
+        - First registration vs transfer
+        """
+        if not extracted_data:
+            return self._empty_tariff()
+
+        # Extract vehicle data
+        vehicle_type = extracted_data.get("tipo_vehiculo", "TURISMO")
+        vehicle_age = extracted_data.get("antiguedad_anos", 0)
+        engine_cc = extracted_data.get("cilindrada", 0)
+        vehicle_value = float(extracted_data.get("valor_vehiculo", 0))
+        is_first_registration = "PRIMERA" in workflow_code
+
+        # Base rate by vehicle type (XAF)
+        base_rates = {
+            "TURISMO": 50000,      # Car
+            "MOTOCICLETA": 15000,  # Motorcycle
+            "CAMION": 100000,      # Truck
+            "AUTOBUS": 80000,      # Bus
+            "REMOLQUE": 30000,     # Trailer
+            "AGRICOLA": 25000,     # Agricultural
+            "ESPECIAL": 75000,     # Special vehicle
+        }
+
+        base_tariff = base_rates.get(vehicle_type, 50000)
+
+        # Age factor (older = lower)
+        if vehicle_age > 10:
+            age_factor = 0.7
+        elif vehicle_age > 5:
+            age_factor = 0.85
+        else:
+            age_factor = 1.0
+
+        # Engine capacity factor
+        if engine_cc > 3000:
+            cc_factor = 1.5
+        elif engine_cc > 2000:
+            cc_factor = 1.2
+        else:
+            cc_factor = 1.0
+
+        # Value-based component (1% of value, capped)
+        value_component = min(vehicle_value * 0.01, 500000)
+
+        # First registration premium
+        if is_first_registration:
+            registration_premium = 25000
+        else:
+            registration_premium = 0
+
+        # Calculate total
+        calculated_tariff = int(
+            (base_tariff * age_factor * cc_factor) +
+            value_component +
+            registration_premium
+        )
+
+        # Get supplements
+        supplements = await self.get_supplements(db, workflow_code)
+        supplements_total = sum(s.get("subtotal", 0) for s in supplements)
+
+        total = calculated_tariff + supplements_total
+
+        return {
+            "tariff_type": TariffType.RBC.value,
+            "rbc_factors": {
+                "vehicle_type": vehicle_type,
+                "vehicle_age": vehicle_age,
+                "engine_cc": engine_cc,
+                "vehicle_value": vehicle_value,
+                "is_first_registration": is_first_registration,
+                "age_factor": age_factor,
+                "cc_factor": cc_factor
+            },
+            "base_amount": float(calculated_tariff),
+            "supplements": supplements,
+            "supplements_total": float(supplements_total),
+            "penalties_amount": 0.0,
+            "total_amount": float(total),
+            "currency": "XAF"
+        }
+
+    async def _calculate_nota_ingreso_tariff(
+        self,
+        db: asyncpg.Connection,
+        workflow_code: str,
+        extracted_data: Optional[Dict]
+    ) -> Dict:
+        """
+        Calculate tariff from Nota de Ingreso (Treasury document).
+
+        The amount is extracted from the uploaded Nota de Ingreso document.
+        """
+        nota_amount = 0.0
+
+        if extracted_data:
+            # From nota_ingreso document
+            if "nota_ingreso" in extracted_data:
+                nota = extracted_data["nota_ingreso"]
+                nota_amount = float(nota.get("monto_total", 0))
+            elif "monto_nota_ingreso" in extracted_data:
+                nota_amount = float(extracted_data["monto_nota_ingreso"])
+
+        # Get supplements (timbres for RESIDENCIA)
+        supplements = await self.get_supplements(db, workflow_code)
+        supplements_total = sum(s.get("subtotal", 0) for s in supplements)
+
+        total = nota_amount + supplements_total
+
+        return {
+            "tariff_type": TariffType.NOTA_INGRESO.value,
+            "nota_ingreso_amount": nota_amount,
+            "base_amount": float(nota_amount),
+            "supplements": supplements,
+            "supplements_total": float(supplements_total),
+            "penalties_amount": 0.0,
+            "total_amount": float(total),
+            "currency": "XAF"
+        }
+
+    async def _get_percentage_rate(
+        self,
+        db: asyncpg.Connection,
+        workflow_code: str
+    ) -> Optional[float]:
+        """Get percentage rate from database configuration."""
+        query = """
+            SELECT percentage_rate
+            FROM workflow_tariffs
+            WHERE workflow_code = $1
+              AND is_active = TRUE
+            LIMIT 1
+        """
+        try:
+            row = await db.fetchrow(query, workflow_code)
+            if row and row["percentage_rate"]:
+                return float(row["percentage_rate"])
+        except Exception:
+            pass
+        return None
 
     async def get_base_tariff(
         self,

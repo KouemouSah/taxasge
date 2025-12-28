@@ -70,9 +70,13 @@ class ContratoWorkflow(BaseWorkflow):
     ]
 
     def _setup_specific_steps(self) -> None:
-        """Setup contract-specific workflow steps."""
+        """Setup contract-specific workflow steps.
 
-        # Step 5: Contract Value Declaration
+        IMPORTANT: Le paiement est BLOQUÉ jusqu'à l'approbation par l'agent ONRC.
+        Flux: Submit → Agent valide → Payment → Certificat
+        """
+
+        # Step 5: Contract Value Declaration + Tariff Preview
         self.add_step(WorkflowStep(
             step_number=5,
             step_id="contract_value",
@@ -84,36 +88,48 @@ class ContratoWorkflow(BaseWorkflow):
                 "requires_value_confirmation": True,
                 "currency_options": ["XAF", "EUR", "USD"],
                 "exchange_rates": {
-                    "EUR": 656,  # 1 EUR = 656 XAF
-                    "USD": 600   # 1 USD = ~600 XAF (approximate)
-                }
+                    "EUR": 655.957,  # 1 EUR = 655.957 XAF (official rate)
+                    "USD": 600       # 1 USD = ~600 XAF (approximate)
+                },
+                "show_tariff_preview": True,
+                "tariff_note": "0.5% del valor del contrato"
             }
         ))
 
-        # Step 6: Payment (percentage-based)
+        # Step 6: Confirmation and Submit for Validation
+        # NOTE: Citizen submits, then waits for ONRC agent approval
         self.add_step(WorkflowStep(
             step_number=6,
+            step_id="confirmation",
+            step_type=StepType.CONFIRMATION,
+            title_es="Confirmación y Envío para Validación",
+            description_es="Verifique todos los datos y envíe su solicitud para validación por ONRC",
+            is_inherited=False,
+            config={
+                "show_summary": True,
+                "show_tariff_calculation": True,
+                "submit_for_validation": True,
+                "info_message_es": "Su dossier será examinado por un agente de la ONRC. El pago será posible ÚNICAMENTE después de la aprobación.",
+                "next_status": "SUBMITTED"
+            }
+        ))
+
+        # Step 7: Payment (BLOCKED until ONRC agent approval)
+        # This step is only accessible after agent sets status to DOSSIER_VALIDE
+        self.add_step(WorkflowStep(
+            step_number=7,
             step_id="payment",
             step_type=StepType.PAYMENT,
             title_es="Pago de Tasas de Registro",
-            description_es="Tasa de registro: 0.5% del valor del contrato",
+            description_es="Tasa de registro: 0.5% del valor del contrato (validado por ONRC)",
             is_inherited=False,
             config={
                 "payment_methods": ["MTN_MOBILE_MONEY", "ORANGE_MONEY", "BANGE_WALLET", "BANK_TRANSFER"],
                 "currency": "XAF",
-                "calculation_note": "0.5% del valor del contrato"
+                "calculation_note": "0.5% del valor del contrato",
+                "requires_status": "DOSSIER_VALIDE",  # CRITICAL: Payment blocked until validated
+                "blocked_message_es": "El pago está bloqueado hasta que un agente ONRC valide su dossier."
             }
-        ))
-
-        # Step 7: Confirmation
-        self.add_step(WorkflowStep(
-            step_number=7,
-            step_id="confirmation",
-            step_type=StepType.CONFIRMATION,
-            title_es="Confirmación y Envío",
-            description_es="Verifique todos los datos y envíe su solicitud de registro",
-            is_inherited=False,
-            config={"show_summary": True}
         ))
 
     def _setup_tariffs(self) -> None:
@@ -129,7 +145,7 @@ class ContratoWorkflow(BaseWorkflow):
         Calculate tariff based on contract value.
 
         Tariff = 0.5% of contract value in XAF
-        Minimum: 25,000 XAF
+        No minimum - pure percentage calculation.
         """
         if not value:
             # Try to get from form_data
@@ -138,15 +154,12 @@ class ContratoWorkflow(BaseWorkflow):
 
             # Convert to XAF if needed
             if currency == "EUR":
-                value = value * 656  # EUR to XAF
+                value = value * 655.957  # EUR to XAF (official rate)
             elif currency == "USD":
                 value = value * 600  # USD to XAF (approximate)
 
-        # Calculate 0.5%
-        tariff = int(value * 0.005)
-
-        # Minimum tariff
-        return max(tariff, 25000)
+        # Calculate 0.5% - no minimum, pure percentage
+        return int(value * 0.005)
 
     def get_document_requirements(self, sub_type: str) -> List[DocumentRequirement]:
         """Get document requirements for contract registration."""
