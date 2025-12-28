@@ -27,25 +27,32 @@ router = APIRouter(
 
 
 # ═══════════════════════════════════════════════════════════════
-# PYDANTIC MODELS
+# PYDANTIC MODELS - Aligned with DATABASE_SCHEMA_REFERENCE.md
 # ═══════════════════════════════════════════════════════════════
 
+# ─────────────────────────────────────────────────────────────────
+# WORKFLOWS (table: workflows - migration 028)
+# ─────────────────────────────────────────────────────────────────
+
 class WorkflowCreate(BaseModel):
-    """Create a new workflow configuration"""
+    """Create a new workflow configuration - matches DB schema"""
     code: str = Field(..., pattern=r'^[A-Z][A-Z0-9_]+$', max_length=100)
     name_es: str = Field(..., max_length=255)
     description_es: Optional[str] = None
     category: str = Field(..., max_length=50)
     entity_code: str = Field(..., max_length=50)
-    workflow_type: str = Field(default="standard", pattern="^(standard|direct_payment)$")
+    workflow_type: str = Field(default="standard", pattern="^(standard|direct_payment|multi_phase)$")
     requires_agent_validation: bool = True
     requires_appointment: bool = False
     is_generic: bool = True
     appointment_delay_days: Optional[int] = Field(None, ge=0, le=90)
-    appointment_entity_code: Optional[str] = None
+    appointment_entity_code: Optional[str] = Field(None, max_length=50)
     sla_hours: int = Field(default=48, ge=1, le=720)
     max_processing_days: Optional[int] = Field(None, ge=1, le=365)
-    priority_weight: Decimal = Field(default=Decimal("1.0"), ge=0, le=10)
+    display_order: int = Field(default=0, ge=0)
+    icon: Optional[str] = Field(None, max_length=50)
+    color: Optional[str] = Field(None, max_length=20)
+    config: Optional[Dict[str, Any]] = Field(default_factory=dict)
     is_active: bool = True
 
 
@@ -53,19 +60,22 @@ class WorkflowUpdate(BaseModel):
     """Update workflow configuration"""
     name_es: Optional[str] = Field(None, max_length=255)
     description_es: Optional[str] = None
-    workflow_type: Optional[str] = Field(None, pattern="^(standard|direct_payment)$")
+    workflow_type: Optional[str] = Field(None, pattern="^(standard|direct_payment|multi_phase)$")
     requires_agent_validation: Optional[bool] = None
     requires_appointment: Optional[bool] = None
     appointment_delay_days: Optional[int] = Field(None, ge=0, le=90)
-    appointment_entity_code: Optional[str] = None
+    appointment_entity_code: Optional[str] = Field(None, max_length=50)
     sla_hours: Optional[int] = Field(None, ge=1, le=720)
     max_processing_days: Optional[int] = Field(None, ge=1, le=365)
-    priority_weight: Optional[Decimal] = Field(None, ge=0, le=10)
+    display_order: Optional[int] = Field(None, ge=0)
+    icon: Optional[str] = Field(None, max_length=50)
+    color: Optional[str] = Field(None, max_length=20)
+    config: Optional[Dict[str, Any]] = None
     is_active: Optional[bool] = None
 
 
 class WorkflowResponse(BaseModel):
-    """Workflow response"""
+    """Workflow response - all DB fields"""
     code: str
     name_es: str
     description_es: Optional[str]
@@ -79,85 +89,215 @@ class WorkflowResponse(BaseModel):
     appointment_entity_code: Optional[str]
     sla_hours: int
     max_processing_days: Optional[int]
-    priority_weight: float
+    display_order: int
+    icon: Optional[str]
+    color: Optional[str]
+    config: Optional[Dict[str, Any]]
     is_active: bool
+    # Computed fields (not in DB)
     documents_count: Optional[int] = None
     tariffs_count: Optional[int] = None
 
 
+# ─────────────────────────────────────────────────────────────────
+# WORKFLOW_DOCUMENT_REQUIREMENTS (table: workflow_document_requirements)
+# ─────────────────────────────────────────────────────────────────
+
+from enum import Enum
+
+class DocumentConditionType(str, Enum):
+    """Document condition type enum - matches DB enum"""
+    ALWAYS = "always"
+    IF_SOLICITUD_TYPE = "if_solicitud_type"
+    IF_FORM_FIELD = "if_form_field"
+    IF_DOCUMENT_EXISTS = "if_document_exists"
+
+
 class DocumentRequirementCreate(BaseModel):
-    """Create document requirement for workflow"""
-    document_code: str = Field(..., max_length=50)
+    """Create document requirement - matches DB schema"""
+    document_code: str = Field(..., max_length=100)
     document_name_es: str = Field(..., max_length=255)
+    document_template_id: Optional[int] = None
+    condition_type: DocumentConditionType = DocumentConditionType.ALWAYS
+    condition_value: Optional[Dict[str, Any]] = Field(default_factory=dict)
     is_required: bool = True
     display_order: int = Field(default=0, ge=0)
-    extraction_schema_key: Optional[str] = None
     instructions_es: Optional[str] = None
-    conditions: Optional[Dict[str, Any]] = None
+    extraction_schema_key: Optional[str] = Field(None, max_length=100)
+    is_active: bool = True
 
 
 class DocumentRequirementUpdate(BaseModel):
     """Update document requirement"""
     document_name_es: Optional[str] = Field(None, max_length=255)
+    document_template_id: Optional[int] = None
+    condition_type: Optional[DocumentConditionType] = None
+    condition_value: Optional[Dict[str, Any]] = None
     is_required: Optional[bool] = None
     display_order: Optional[int] = Field(None, ge=0)
-    extraction_schema_key: Optional[str] = None
     instructions_es: Optional[str] = None
-    conditions: Optional[Dict[str, Any]] = None
-
-
-class DocumentRequirementResponse(BaseModel):
-    """Document requirement response"""
-    id: int
-    workflow_code: str
-    document_code: str
-    document_name_es: str
-    is_required: bool
-    display_order: int
-    extraction_schema_key: Optional[str]
-    instructions_es: Optional[str]
-    conditions: Optional[Dict[str, Any]]
-
-
-class TariffConfigCreate(BaseModel):
-    """Create tariff configuration"""
-    workflow_code: str = Field(..., max_length=100)
-    tariff_type: str = Field(..., pattern="^(fixed|percentage|rbc|nota_ingreso)$")
-    fixed_amount: Optional[int] = Field(None, ge=0)
-    percentage: Optional[Decimal] = Field(None, ge=0, le=100)
-    rbc_formula: Optional[str] = None
-    rbc_params: Optional[Dict[str, Any]] = None
-    description_es: Optional[str] = None
-    valid_from: date
-    valid_to: Optional[date] = None
-    is_active: bool = True
-
-
-class TariffConfigUpdate(BaseModel):
-    """Update tariff configuration"""
-    tariff_type: Optional[str] = Field(None, pattern="^(fixed|percentage|rbc|nota_ingreso)$")
-    fixed_amount: Optional[int] = Field(None, ge=0)
-    percentage: Optional[Decimal] = Field(None, ge=0, le=100)
-    rbc_formula: Optional[str] = None
-    rbc_params: Optional[Dict[str, Any]] = None
-    description_es: Optional[str] = None
-    valid_to: Optional[date] = None
+    extraction_schema_key: Optional[str] = Field(None, max_length=100)
     is_active: Optional[bool] = None
 
 
-class TariffConfigResponse(BaseModel):
-    """Tariff configuration response"""
+class DocumentRequirementResponse(BaseModel):
+    """Document requirement response - matches DB schema"""
+    id: str  # UUID in DB
+    workflow_code: str
+    document_code: str
+    document_name_es: str
+    document_template_id: Optional[int]
+    condition_type: str
+    condition_value: Optional[Dict[str, Any]]
+    is_required: bool
+    display_order: int
+    instructions_es: Optional[str]
+    extraction_schema_key: Optional[str]
+    is_active: bool
+
+
+# ─────────────────────────────────────────────────────────────────
+# WORKFLOW_TARIFFS (table: workflow_tariffs - NOT tariff_configurations)
+# ─────────────────────────────────────────────────────────────────
+
+class TariffType(str, Enum):
+    """Tariff type enum - matches DB constraint"""
+    FIXED = "FIXED"
+    PERCENTAGE = "PERCENTAGE"
+    NOTA_INGRESO = "NOTA_INGRESO"
+
+
+class WorkflowTariffCreate(BaseModel):
+    """Create workflow tariff - matches workflow_tariffs table"""
+    workflow_code: str = Field(..., max_length=100)
+    solicitud_type: str = Field(default="expedicion", max_length=50)
+    tariff_type: TariffType = TariffType.FIXED
+    amount: Decimal = Field(..., ge=0)
+    percentage_rate: Optional[Decimal] = Field(None, ge=0, le=100)
+    currency: str = Field(default="XAF", max_length=3)
+    legal_reference: Optional[str] = Field(None, max_length=255)
+    effective_from: date
+    effective_to: Optional[date] = None
+    is_active: bool = True
+
+
+class WorkflowTariffUpdate(BaseModel):
+    """Update workflow tariff"""
+    solicitud_type: Optional[str] = Field(None, max_length=50)
+    tariff_type: Optional[TariffType] = None
+    amount: Optional[Decimal] = Field(None, ge=0)
+    percentage_rate: Optional[Decimal] = Field(None, ge=0, le=100)
+    currency: Optional[str] = Field(None, max_length=3)
+    legal_reference: Optional[str] = Field(None, max_length=255)
+    effective_to: Optional[date] = None
+    is_active: Optional[bool] = None
+
+
+class WorkflowTariffResponse(BaseModel):
+    """Workflow tariff response - matches DB schema"""
     id: int
     workflow_code: str
+    solicitud_type: str
     tariff_type: str
-    fixed_amount: Optional[int]
-    percentage: Optional[float]
-    rbc_formula: Optional[str]
-    rbc_params: Optional[Dict[str, Any]]
-    description_es: Optional[str]
-    valid_from: str
-    valid_to: Optional[str]
+    amount: float
+    percentage_rate: Optional[float]
+    currency: str
+    legal_reference: Optional[str]
+    effective_from: str
+    effective_to: Optional[str]
     is_active: bool
+
+
+# ─────────────────────────────────────────────────────────────────
+# APPOINTMENT_SLOT_CONFIGS (table: appointment_slot_configs)
+# ─────────────────────────────────────────────────────────────────
+
+from datetime import time as Time
+
+class AppointmentSlotConfigCreate(BaseModel):
+    """Create appointment slot config - matches DB schema"""
+    entity_code: str = Field(..., max_length=50)
+    day_of_week: int = Field(..., ge=0, le=6, description="0=Monday, 6=Sunday")
+    start_time: Time
+    end_time: Time
+    slot_duration_minutes: int = Field(default=30, ge=5, le=120)
+    max_appointments_per_slot: int = Field(default=10, ge=1, le=100)
+    location_name: Optional[str] = Field(None, max_length=255)
+    location_address: Optional[str] = None
+    is_active: bool = True
+
+
+class AppointmentSlotConfigUpdate(BaseModel):
+    """Update appointment slot config"""
+    start_time: Optional[Time] = None
+    end_time: Optional[Time] = None
+    slot_duration_minutes: Optional[int] = Field(None, ge=5, le=120)
+    max_appointments_per_slot: Optional[int] = Field(None, ge=1, le=100)
+    location_name: Optional[str] = Field(None, max_length=255)
+    location_address: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class AppointmentSlotConfigResponse(BaseModel):
+    """Appointment slot config response"""
+    id: str  # UUID
+    entity_code: str
+    day_of_week: int
+    start_time: str
+    end_time: str
+    slot_duration_minutes: int
+    max_appointments_per_slot: int
+    location_name: Optional[str]
+    location_address: Optional[str]
+    is_active: bool
+
+
+# ─────────────────────────────────────────────────────────────────
+# APPOINTMENT_BLOCKED_DATES (table: appointment_blocked_dates)
+# ─────────────────────────────────────────────────────────────────
+
+class AppointmentBlockedDateCreate(BaseModel):
+    """Create blocked date - matches DB schema"""
+    entity_code: Optional[str] = Field(None, max_length=50, description="NULL = applies to all entities")
+    blocked_date: date
+    reason: Optional[str] = Field(None, max_length=255)
+    is_recurring: bool = Field(default=False, description="True = same date every year")
+
+
+class AppointmentBlockedDateResponse(BaseModel):
+    """Blocked date response"""
+    id: str  # UUID
+    entity_code: Optional[str]
+    blocked_date: str
+    reason: Optional[str]
+    is_recurring: bool
+
+
+# ─────────────────────────────────────────────────────────────────
+# APPOINTMENT_DELAY_RULES (table: appointment_delay_rules)
+# ─────────────────────────────────────────────────────────────────
+
+class AppointmentDelayRuleCreate(BaseModel):
+    """Create delay rule - matches DB schema"""
+    workflow_code: Optional[str] = Field(None, max_length=100, description="NULL = default for all workflows")
+    priority: str = Field(..., description="URGENT, HIGH, NORMAL, LOW")
+    delay_business_days: int = Field(default=3, ge=0, le=30)
+    is_active: bool = True
+
+
+class AppointmentDelayRuleResponse(BaseModel):
+    """Delay rule response"""
+    id: str  # UUID
+    workflow_code: Optional[str]
+    priority: str
+    delay_business_days: int
+    is_active: bool
+
+
+# Legacy aliases for backward compatibility
+TariffConfigCreate = WorkflowTariffCreate
+TariffConfigUpdate = WorkflowTariffUpdate
+TariffConfigResponse = WorkflowTariffResponse
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -184,7 +324,7 @@ async def list_workflows(
             w.*,
             (SELECT COUNT(*) FROM workflow_document_requirements
              WHERE workflow_code = w.code) as documents_count,
-            (SELECT COUNT(*) FROM tariff_configurations
+            (SELECT COUNT(*) FROM workflow_tariffs
              WHERE workflow_code = w.code AND is_active = true) as tariffs_count
         FROM workflows w
         WHERE 1=1
@@ -207,7 +347,7 @@ async def list_workflows(
         params.append(is_generic)
         query += f" AND w.is_generic = ${len(params)}"
 
-    query += " ORDER BY w.category, w.name_es"
+    query += " ORDER BY w.display_order, w.category, w.name_es"
 
     rows = await db.fetch(query, *params)
 
@@ -226,7 +366,10 @@ async def list_workflows(
             appointment_entity_code=row['appointment_entity_code'],
             sla_hours=row['sla_hours'],
             max_processing_days=row['max_processing_days'],
-            priority_weight=float(row['priority_weight'] or 1.0),
+            display_order=row['display_order'] or 0,
+            icon=row['icon'],
+            color=row['color'],
+            config=row['config'],
             is_active=row['is_active'],
             documents_count=row['documents_count'],
             tariffs_count=row['tariffs_count']
@@ -252,7 +395,7 @@ async def get_workflow(
             w.*,
             (SELECT COUNT(*) FROM workflow_document_requirements
              WHERE workflow_code = w.code) as documents_count,
-            (SELECT COUNT(*) FROM tariff_configurations
+            (SELECT COUNT(*) FROM workflow_tariffs
              WHERE workflow_code = w.code AND is_active = true) as tariffs_count
         FROM workflows w
         WHERE w.code = $1
@@ -278,7 +421,10 @@ async def get_workflow(
         appointment_entity_code=row['appointment_entity_code'],
         sla_hours=row['sla_hours'],
         max_processing_days=row['max_processing_days'],
-        priority_weight=float(row['priority_weight'] or 1.0),
+        display_order=row['display_order'] or 0,
+        icon=row['icon'],
+        color=row['color'],
+        config=row['config'],
         is_active=row['is_active'],
         documents_count=row['documents_count'],
         tariffs_count=row['tariffs_count']
@@ -313,16 +459,19 @@ async def create_workflow(
             detail=f"Workflow already exists: {workflow.code}"
         )
 
+    import json
+    config_json = json.dumps(workflow.config) if workflow.config else '{}'
+
     row = await db.fetchrow("""
         INSERT INTO workflows (
             code, name_es, description_es, category, entity_code,
             workflow_type, requires_agent_validation, requires_appointment,
             is_generic, appointment_delay_days, appointment_entity_code,
-            sla_hours, max_processing_days, priority_weight, is_active,
-            created_at, updated_at
+            sla_hours, max_processing_days, display_order, icon, color,
+            config, is_active, created_at, updated_at
         ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-            NOW(), NOW()
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
+            $17::jsonb, $18, NOW(), NOW()
         )
         RETURNING *
     """, workflow.code, workflow.name_es, workflow.description_es,
@@ -330,8 +479,8 @@ async def create_workflow(
         workflow.requires_agent_validation, workflow.requires_appointment,
         workflow.is_generic, workflow.appointment_delay_days,
         workflow.appointment_entity_code, workflow.sla_hours,
-        workflow.max_processing_days, workflow.priority_weight,
-        workflow.is_active)
+        workflow.max_processing_days, workflow.display_order,
+        workflow.icon, workflow.color, config_json, workflow.is_active)
 
     return WorkflowResponse(
         code=row['code'],
@@ -347,7 +496,10 @@ async def create_workflow(
         appointment_entity_code=row['appointment_entity_code'],
         sla_hours=row['sla_hours'],
         max_processing_days=row['max_processing_days'],
-        priority_weight=float(row['priority_weight'] or 1.0),
+        display_order=row['display_order'] or 0,
+        icon=row['icon'],
+        color=row['color'],
+        config=row['config'],
         is_active=row['is_active']
     )
 
@@ -365,6 +517,8 @@ async def update_workflow(
     current_user=Depends(get_current_user),
     _=Depends(require_permission("admin:manage_workflows"))
 ):
+    import json
+
     # Check if workflow exists
     existing = await db.fetchrow(
         "SELECT * FROM workflows WHERE code = $1", code
@@ -382,8 +536,13 @@ async def update_workflow(
 
     for field, value in workflow.model_dump(exclude_unset=True).items():
         if value is not None:
-            updates.append(f"{field} = ${param_idx}")
-            params.append(value)
+            # Handle JSONB config field
+            if field == 'config':
+                updates.append(f"{field} = ${param_idx}::jsonb")
+                params.append(json.dumps(value))
+            else:
+                updates.append(f"{field} = ${param_idx}")
+                params.append(value)
             param_idx += 1
 
     if not updates:
@@ -414,7 +573,10 @@ async def update_workflow(
         appointment_entity_code=row['appointment_entity_code'],
         sla_hours=row['sla_hours'],
         max_processing_days=row['max_processing_days'],
-        priority_weight=float(row['priority_weight'] or 1.0),
+        display_order=row['display_order'] or 0,
+        icon=row['icon'],
+        color=row['color'],
+        config=row['config'],
         is_active=row['is_active']
     )
 
@@ -497,7 +659,7 @@ async def delete_workflow(
 
     # Delete in order (foreign key constraints)
     await db.execute(
-        "DELETE FROM tariff_configurations WHERE workflow_code = $1", code
+        "DELETE FROM workflow_tariffs WHERE workflow_code = $1", code
     )
     await db.execute(
         "DELETE FROM workflow_document_requirements WHERE workflow_code = $1", code
@@ -531,15 +693,18 @@ async def list_document_requirements(
 
     return [
         DocumentRequirementResponse(
-            id=row['id'],
+            id=str(row['id']),
             workflow_code=row['workflow_code'],
             document_code=row['document_code'],
             document_name_es=row['document_name_es'],
+            document_template_id=row.get('document_template_id'),
+            condition_type=row.get('condition_type', 'always'),
+            condition_value=row.get('condition_value'),
             is_required=row['is_required'],
             display_order=row['display_order'],
-            extraction_schema_key=row['extraction_schema_key'],
             instructions_es=row['instructions_es'],
-            conditions=row['conditions']
+            extraction_schema_key=row['extraction_schema_key'],
+            is_active=row.get('is_active', True)
         )
         for row in rows
     ]
@@ -559,6 +724,8 @@ async def add_document_requirement(
     current_user=Depends(get_current_user),
     _=Depends(require_permission("admin:manage_workflows"))
 ):
+    import json
+
     # Check workflow exists
     workflow_exists = await db.fetchval(
         "SELECT 1 FROM workflows WHERE code = $1", code
@@ -581,27 +748,34 @@ async def add_document_requirement(
             detail=f"Document {doc.document_code} already exists for workflow {code}"
         )
 
+    condition_value_json = json.dumps(doc.condition_value) if doc.condition_value else None
+
     row = await db.fetchrow("""
         INSERT INTO workflow_document_requirements (
             workflow_code, document_code, document_name_es,
-            is_required, display_order, extraction_schema_key,
-            instructions_es, conditions
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            document_template_id, condition_type, condition_value,
+            is_required, display_order, instructions_es,
+            extraction_schema_key, is_active
+        ) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, $11)
         RETURNING *
     """, code, doc.document_code, doc.document_name_es,
-        doc.is_required, doc.display_order, doc.extraction_schema_key,
-        doc.instructions_es, doc.conditions)
+        doc.document_template_id, doc.condition_type.value,
+        condition_value_json, doc.is_required, doc.display_order,
+        doc.instructions_es, doc.extraction_schema_key, doc.is_active)
 
     return DocumentRequirementResponse(
-        id=row['id'],
+        id=str(row['id']),
         workflow_code=row['workflow_code'],
         document_code=row['document_code'],
         document_name_es=row['document_name_es'],
+        document_template_id=row.get('document_template_id'),
+        condition_type=row.get('condition_type', 'always'),
+        condition_value=row.get('condition_value'),
         is_required=row['is_required'],
         display_order=row['display_order'],
-        extraction_schema_key=row['extraction_schema_key'],
         instructions_es=row['instructions_es'],
-        conditions=row['conditions']
+        extraction_schema_key=row['extraction_schema_key'],
+        is_active=row.get('is_active', True)
     )
 
 
@@ -619,6 +793,8 @@ async def update_document_requirement(
     current_user=Depends(get_current_user),
     _=Depends(require_permission("admin:manage_workflows"))
 ):
+    import json
+
     # Build update query
     updates = []
     params = [code, doc_code]
@@ -626,8 +802,16 @@ async def update_document_requirement(
 
     for field, value in doc.model_dump(exclude_unset=True).items():
         if value is not None:
-            updates.append(f"{field} = ${param_idx}")
-            params.append(value)
+            # Handle enum and JSONB fields
+            if field == 'condition_type':
+                updates.append(f"{field} = ${param_idx}")
+                params.append(value.value if hasattr(value, 'value') else value)
+            elif field == 'condition_value':
+                updates.append(f"{field} = ${param_idx}::jsonb")
+                params.append(json.dumps(value))
+            else:
+                updates.append(f"{field} = ${param_idx}")
+                params.append(value)
             param_idx += 1
 
     if not updates:
@@ -643,7 +827,20 @@ async def update_document_requirement(
                 detail=f"Document requirement not found"
             )
 
-        return DocumentRequirementResponse(**dict(row))
+        return DocumentRequirementResponse(
+            id=str(row['id']),
+            workflow_code=row['workflow_code'],
+            document_code=row['document_code'],
+            document_name_es=row['document_name_es'],
+            document_template_id=row.get('document_template_id'),
+            condition_type=row.get('condition_type', 'always'),
+            condition_value=row.get('condition_value'),
+            is_required=row['is_required'],
+            display_order=row['display_order'],
+            instructions_es=row['instructions_es'],
+            extraction_schema_key=row['extraction_schema_key'],
+            is_active=row.get('is_active', True)
+        )
 
     query = f"""
         UPDATE workflow_document_requirements
@@ -661,15 +858,18 @@ async def update_document_requirement(
         )
 
     return DocumentRequirementResponse(
-        id=row['id'],
+        id=str(row['id']),
         workflow_code=row['workflow_code'],
         document_code=row['document_code'],
         document_name_es=row['document_name_es'],
+        document_template_id=row.get('document_template_id'),
+        condition_type=row.get('condition_type', 'always'),
+        condition_value=row.get('condition_value'),
         is_required=row['is_required'],
         display_order=row['display_order'],
-        extraction_schema_key=row['extraction_schema_key'],
         instructions_es=row['instructions_es'],
-        conditions=row['conditions']
+        extraction_schema_key=row['extraction_schema_key'],
+        is_active=row.get('is_active', True)
     )
 
 
@@ -729,14 +929,14 @@ async def reorder_documents(
 
 
 # ═══════════════════════════════════════════════════════════════
-# TARIFF CONFIGURATIONS
+# WORKFLOW TARIFFS (table: workflow_tariffs)
 # ═══════════════════════════════════════════════════════════════
 
 @router.get(
     "/tariffs",
-    response_model=List[TariffConfigResponse],
-    summary="List all tariff configurations",
-    description="Get all tariff configurations with optional filtering."
+    response_model=List[WorkflowTariffResponse],
+    summary="List all workflow tariffs",
+    description="Get all workflow tariff configurations with optional filtering."
 )
 async def list_tariffs(
     workflow_code: Optional[str] = Query(None, description="Filter by workflow"),
@@ -745,7 +945,7 @@ async def list_tariffs(
     current_user=Depends(get_current_user),
     _=Depends(require_permission("admin:manage_tariffs"))
 ):
-    query = "SELECT * FROM tariff_configurations WHERE 1=1"
+    query = "SELECT * FROM workflow_tariffs WHERE 1=1"
     params = []
 
     if workflow_code:
@@ -756,22 +956,22 @@ async def list_tariffs(
         params.append(is_active)
         query += f" AND is_active = ${len(params)}"
 
-    query += " ORDER BY workflow_code, valid_from DESC"
+    query += " ORDER BY workflow_code, effective_from DESC"
 
     rows = await db.fetch(query, *params)
 
     return [
-        TariffConfigResponse(
+        WorkflowTariffResponse(
             id=row['id'],
             workflow_code=row['workflow_code'],
+            solicitud_type=row['solicitud_type'],
             tariff_type=row['tariff_type'],
-            fixed_amount=row['fixed_amount'],
-            percentage=float(row['percentage']) if row['percentage'] else None,
-            rbc_formula=row['rbc_formula'],
-            rbc_params=row['rbc_params'],
-            description_es=row['description_es'],
-            valid_from=row['valid_from'].isoformat(),
-            valid_to=row['valid_to'].isoformat() if row['valid_to'] else None,
+            amount=float(row['amount']) if row['amount'] else 0,
+            percentage_rate=float(row['percentage_rate']) if row['percentage_rate'] else None,
+            currency=row['currency'],
+            legal_reference=row['legal_reference'],
+            effective_from=row['effective_from'].isoformat() if row['effective_from'] else None,
+            effective_to=row['effective_to'].isoformat() if row['effective_to'] else None,
             is_active=row['is_active']
         )
         for row in rows
@@ -780,13 +980,13 @@ async def list_tariffs(
 
 @router.post(
     "/tariffs",
-    response_model=TariffConfigResponse,
+    response_model=WorkflowTariffResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Create tariff configuration",
-    description="Create a new tariff configuration."
+    summary="Create workflow tariff",
+    description="Create a new workflow tariff configuration."
 )
 async def create_tariff(
-    tariff: TariffConfigCreate = Body(...),
+    tariff: WorkflowTariffCreate = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
     _=Depends(require_permission("admin:manage_tariffs"))
@@ -802,41 +1002,41 @@ async def create_tariff(
         )
 
     row = await db.fetchrow("""
-        INSERT INTO tariff_configurations (
-            workflow_code, tariff_type, fixed_amount, percentage,
-            rbc_formula, rbc_params, description_es, valid_from,
-            valid_to, is_active, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+        INSERT INTO workflow_tariffs (
+            workflow_code, solicitud_type, tariff_type, amount,
+            percentage_rate, currency, legal_reference,
+            effective_from, effective_to, is_active
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING *
-    """, tariff.workflow_code, tariff.tariff_type, tariff.fixed_amount,
-        tariff.percentage, tariff.rbc_formula, tariff.rbc_params,
-        tariff.description_es, tariff.valid_from, tariff.valid_to,
+    """, tariff.workflow_code, tariff.solicitud_type, tariff.tariff_type.value,
+        tariff.amount, tariff.percentage_rate, tariff.currency,
+        tariff.legal_reference, tariff.effective_from, tariff.effective_to,
         tariff.is_active)
 
-    return TariffConfigResponse(
+    return WorkflowTariffResponse(
         id=row['id'],
         workflow_code=row['workflow_code'],
+        solicitud_type=row['solicitud_type'],
         tariff_type=row['tariff_type'],
-        fixed_amount=row['fixed_amount'],
-        percentage=float(row['percentage']) if row['percentage'] else None,
-        rbc_formula=row['rbc_formula'],
-        rbc_params=row['rbc_params'],
-        description_es=row['description_es'],
-        valid_from=row['valid_from'].isoformat(),
-        valid_to=row['valid_to'].isoformat() if row['valid_to'] else None,
+        amount=float(row['amount']) if row['amount'] else 0,
+        percentage_rate=float(row['percentage_rate']) if row['percentage_rate'] else None,
+        currency=row['currency'],
+        legal_reference=row['legal_reference'],
+        effective_from=row['effective_from'].isoformat() if row['effective_from'] else None,
+        effective_to=row['effective_to'].isoformat() if row['effective_to'] else None,
         is_active=row['is_active']
     )
 
 
 @router.put(
     "/tariffs/{tariff_id}",
-    response_model=TariffConfigResponse,
-    summary="Update tariff configuration",
-    description="Update an existing tariff configuration."
+    response_model=WorkflowTariffResponse,
+    summary="Update workflow tariff",
+    description="Update an existing workflow tariff configuration."
 )
 async def update_tariff(
-    tariff_id: int = Path(..., description="Tariff configuration ID"),
-    tariff: TariffConfigUpdate = Body(...),
+    tariff_id: int = Path(..., description="Tariff ID"),
+    tariff: WorkflowTariffUpdate = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
     _=Depends(require_permission("admin:manage_tariffs"))
@@ -847,37 +1047,40 @@ async def update_tariff(
 
     for field, value in tariff.model_dump(exclude_unset=True).items():
         if value is not None:
-            updates.append(f"{field} = ${param_idx}")
-            params.append(value)
+            # Handle enum fields
+            if field == 'tariff_type':
+                updates.append(f"{field} = ${param_idx}")
+                params.append(value.value if hasattr(value, 'value') else value)
+            else:
+                updates.append(f"{field} = ${param_idx}")
+                params.append(value)
             param_idx += 1
 
     if not updates:
         row = await db.fetchrow(
-            "SELECT * FROM tariff_configurations WHERE id = $1", tariff_id
+            "SELECT * FROM workflow_tariffs WHERE id = $1", tariff_id
         )
         if not row:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Tariff configuration not found"
+                detail="Workflow tariff not found"
             )
-        return TariffConfigResponse(
+        return WorkflowTariffResponse(
             id=row['id'],
             workflow_code=row['workflow_code'],
+            solicitud_type=row['solicitud_type'],
             tariff_type=row['tariff_type'],
-            fixed_amount=row['fixed_amount'],
-            percentage=float(row['percentage']) if row['percentage'] else None,
-            rbc_formula=row['rbc_formula'],
-            rbc_params=row['rbc_params'],
-            description_es=row['description_es'],
-            valid_from=row['valid_from'].isoformat(),
-            valid_to=row['valid_to'].isoformat() if row['valid_to'] else None,
+            amount=float(row['amount']) if row['amount'] else 0,
+            percentage_rate=float(row['percentage_rate']) if row['percentage_rate'] else None,
+            currency=row['currency'],
+            legal_reference=row['legal_reference'],
+            effective_from=row['effective_from'].isoformat() if row['effective_from'] else None,
+            effective_to=row['effective_to'].isoformat() if row['effective_to'] else None,
             is_active=row['is_active']
         )
 
-    updates.append("updated_at = NOW()")
-
     query = f"""
-        UPDATE tariff_configurations
+        UPDATE workflow_tariffs
         SET {', '.join(updates)}
         WHERE id = $1
         RETURNING *
@@ -888,20 +1091,20 @@ async def update_tariff(
     if not row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Tariff configuration not found"
+            detail="Workflow tariff not found"
         )
 
-    return TariffConfigResponse(
+    return WorkflowTariffResponse(
         id=row['id'],
         workflow_code=row['workflow_code'],
+        solicitud_type=row['solicitud_type'],
         tariff_type=row['tariff_type'],
-        fixed_amount=row['fixed_amount'],
-        percentage=float(row['percentage']) if row['percentage'] else None,
-        rbc_formula=row['rbc_formula'],
-        rbc_params=row['rbc_params'],
-        description_es=row['description_es'],
-        valid_from=row['valid_from'].isoformat(),
-        valid_to=row['valid_to'].isoformat() if row['valid_to'] else None,
+        amount=float(row['amount']) if row['amount'] else 0,
+        percentage_rate=float(row['percentage_rate']) if row['percentage_rate'] else None,
+        currency=row['currency'],
+        legal_reference=row['legal_reference'],
+        effective_from=row['effective_from'].isoformat() if row['effective_from'] else None,
+        effective_to=row['effective_to'].isoformat() if row['effective_to'] else None,
         is_active=row['is_active']
     )
 
@@ -909,23 +1112,23 @@ async def update_tariff(
 @router.delete(
     "/tariffs/{tariff_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Delete tariff configuration",
-    description="Delete a tariff configuration."
+    summary="Delete workflow tariff",
+    description="Delete a workflow tariff configuration."
 )
 async def delete_tariff(
-    tariff_id: int = Path(..., description="Tariff configuration ID"),
+    tariff_id: int = Path(..., description="Tariff ID"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
     _=Depends(require_permission("admin:manage_tariffs"))
 ):
     result = await db.execute(
-        "DELETE FROM tariff_configurations WHERE id = $1", tariff_id
+        "DELETE FROM workflow_tariffs WHERE id = $1", tariff_id
     )
 
     if 'DELETE 0' in result:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Tariff configuration not found"
+            detail="Workflow tariff not found"
         )
 
     return None
@@ -937,11 +1140,13 @@ async def delete_tariff(
 
 @router.get(
     "/appointments/slot-configs",
+    response_model=List[AppointmentSlotConfigResponse],
     summary="List appointment slot configurations",
     description="Get all appointment slot configurations by entity."
 )
 async def list_slot_configs(
     entity_code: Optional[str] = Query(None, description="Filter by entity"),
+    is_active: Optional[bool] = Query(None, description="Filter by active status"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
     _=Depends(require_permission("admin:manage_appointments"))
@@ -953,15 +1158,173 @@ async def list_slot_configs(
         params.append(entity_code)
         query += f" AND entity_code = ${len(params)}"
 
-    query += " ORDER BY entity_code, day_of_week"
+    if is_active is not None:
+        params.append(is_active)
+        query += f" AND is_active = ${len(params)}"
+
+    query += " ORDER BY entity_code, day_of_week, start_time"
 
     rows = await db.fetch(query, *params)
 
-    return [dict(row) for row in rows]
+    return [
+        AppointmentSlotConfigResponse(
+            id=str(row['id']),
+            entity_code=row['entity_code'],
+            day_of_week=row['day_of_week'],
+            start_time=str(row['start_time']),
+            end_time=str(row['end_time']),
+            slot_duration_minutes=row['slot_duration_minutes'],
+            max_appointments_per_slot=row['max_appointments_per_slot'],
+            location_name=row['location_name'],
+            location_address=row['location_address'],
+            is_active=row['is_active']
+        )
+        for row in rows
+    ]
+
+
+@router.post(
+    "/appointments/slot-configs",
+    response_model=AppointmentSlotConfigResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create appointment slot configuration",
+    description="Create a new appointment slot configuration."
+)
+async def create_slot_config(
+    slot: AppointmentSlotConfigCreate = Body(...),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(require_permission("admin:manage_appointments"))
+):
+    row = await db.fetchrow("""
+        INSERT INTO appointment_slot_configs (
+            entity_code, day_of_week, start_time, end_time,
+            slot_duration_minutes, max_appointments_per_slot,
+            location_name, location_address, is_active
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING *
+    """, slot.entity_code, slot.day_of_week, slot.start_time, slot.end_time,
+        slot.slot_duration_minutes, slot.max_appointments_per_slot,
+        slot.location_name, slot.location_address, slot.is_active)
+
+    return AppointmentSlotConfigResponse(
+        id=str(row['id']),
+        entity_code=row['entity_code'],
+        day_of_week=row['day_of_week'],
+        start_time=str(row['start_time']),
+        end_time=str(row['end_time']),
+        slot_duration_minutes=row['slot_duration_minutes'],
+        max_appointments_per_slot=row['max_appointments_per_slot'],
+        location_name=row['location_name'],
+        location_address=row['location_address'],
+        is_active=row['is_active']
+    )
+
+
+@router.put(
+    "/appointments/slot-configs/{slot_id}",
+    response_model=AppointmentSlotConfigResponse,
+    summary="Update appointment slot configuration",
+    description="Update an existing appointment slot configuration."
+)
+async def update_slot_config(
+    slot_id: str = Path(..., description="Slot config ID (UUID)"),
+    slot: AppointmentSlotConfigUpdate = Body(...),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(require_permission("admin:manage_appointments"))
+):
+    updates = []
+    params = [slot_id]
+    param_idx = 2
+
+    for field, value in slot.model_dump(exclude_unset=True).items():
+        if value is not None:
+            updates.append(f"{field} = ${param_idx}")
+            params.append(value)
+            param_idx += 1
+
+    if not updates:
+        row = await db.fetchrow(
+            "SELECT * FROM appointment_slot_configs WHERE id = $1::uuid", slot_id
+        )
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Slot configuration not found"
+            )
+        return AppointmentSlotConfigResponse(
+            id=str(row['id']),
+            entity_code=row['entity_code'],
+            day_of_week=row['day_of_week'],
+            start_time=str(row['start_time']),
+            end_time=str(row['end_time']),
+            slot_duration_minutes=row['slot_duration_minutes'],
+            max_appointments_per_slot=row['max_appointments_per_slot'],
+            location_name=row['location_name'],
+            location_address=row['location_address'],
+            is_active=row['is_active']
+        )
+
+    updates.append("updated_at = NOW()")
+
+    query = f"""
+        UPDATE appointment_slot_configs
+        SET {', '.join(updates)}
+        WHERE id = $1::uuid
+        RETURNING *
+    """
+
+    row = await db.fetchrow(query, *params)
+
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Slot configuration not found"
+        )
+
+    return AppointmentSlotConfigResponse(
+        id=str(row['id']),
+        entity_code=row['entity_code'],
+        day_of_week=row['day_of_week'],
+        start_time=str(row['start_time']),
+        end_time=str(row['end_time']),
+        slot_duration_minutes=row['slot_duration_minutes'],
+        max_appointments_per_slot=row['max_appointments_per_slot'],
+        location_name=row['location_name'],
+        location_address=row['location_address'],
+        is_active=row['is_active']
+    )
+
+
+@router.delete(
+    "/appointments/slot-configs/{slot_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete appointment slot configuration",
+    description="Delete an appointment slot configuration."
+)
+async def delete_slot_config(
+    slot_id: str = Path(..., description="Slot config ID (UUID)"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(require_permission("admin:manage_appointments"))
+):
+    result = await db.execute(
+        "DELETE FROM appointment_slot_configs WHERE id = $1::uuid", slot_id
+    )
+
+    if 'DELETE 0' in result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Slot configuration not found"
+        )
+
+    return None
 
 
 @router.get(
     "/appointments/blocked-dates",
+    response_model=List[AppointmentBlockedDateResponse],
     summary="List blocked dates",
     description="Get all blocked appointment dates."
 )
@@ -978,7 +1341,7 @@ async def list_blocked_dates(
 
     if entity_code:
         params.append(entity_code)
-        query += f" AND entity_code = ${len(params)}"
+        query += f" AND (entity_code = ${len(params)} OR entity_code IS NULL)"
 
     if from_date:
         params.append(from_date)
@@ -993,43 +1356,44 @@ async def list_blocked_dates(
     rows = await db.fetch(query, *params)
 
     return [
-        {
-            "id": row['id'],
-            "entity_code": row['entity_code'],
-            "blocked_date": row['blocked_date'].isoformat(),
-            "reason": row['reason']
-        }
+        AppointmentBlockedDateResponse(
+            id=str(row['id']),
+            entity_code=row['entity_code'],
+            blocked_date=row['blocked_date'].isoformat(),
+            reason=row['reason'],
+            is_recurring=row['is_recurring']
+        )
         for row in rows
     ]
 
 
 @router.post(
     "/appointments/blocked-dates",
+    response_model=AppointmentBlockedDateResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Add blocked date",
     description="Block a date for appointments."
 )
 async def add_blocked_date(
-    entity_code: str = Body(..., embed=True),
-    blocked_date: date = Body(..., embed=True),
-    reason: Optional[str] = Body(None, embed=True),
+    blocked: AppointmentBlockedDateCreate = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
     _=Depends(require_permission("admin:manage_appointments"))
 ):
     row = await db.fetchrow("""
-        INSERT INTO appointment_blocked_dates (entity_code, blocked_date, reason)
-        VALUES ($1, $2, $3)
-        ON CONFLICT (entity_code, blocked_date) DO UPDATE SET reason = $3
+        INSERT INTO appointment_blocked_dates (entity_code, blocked_date, reason, is_recurring)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (entity_code, blocked_date) DO UPDATE SET reason = $3, is_recurring = $4
         RETURNING *
-    """, entity_code, blocked_date, reason)
+    """, blocked.entity_code, blocked.blocked_date, blocked.reason, blocked.is_recurring)
 
-    return {
-        "id": row['id'],
-        "entity_code": row['entity_code'],
-        "blocked_date": row['blocked_date'].isoformat(),
-        "reason": row['reason']
-    }
+    return AppointmentBlockedDateResponse(
+        id=str(row['id']),
+        entity_code=row['entity_code'],
+        blocked_date=row['blocked_date'].isoformat(),
+        reason=row['reason'],
+        is_recurring=row['is_recurring']
+    )
 
 
 @router.delete(
@@ -1039,19 +1403,115 @@ async def add_blocked_date(
     description="Unblock an appointment date."
 )
 async def remove_blocked_date(
-    blocked_date_id: int = Path(..., description="Blocked date ID"),
+    blocked_date_id: str = Path(..., description="Blocked date ID (UUID)"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
     _=Depends(require_permission("admin:manage_appointments"))
 ):
     result = await db.execute(
-        "DELETE FROM appointment_blocked_dates WHERE id = $1", blocked_date_id
+        "DELETE FROM appointment_blocked_dates WHERE id = $1::uuid", blocked_date_id
     )
 
     if 'DELETE 0' in result:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Blocked date not found"
+        )
+
+    return None
+
+
+# ═══════════════════════════════════════════════════════════════
+# APPOINTMENT DELAY RULES
+# ═══════════════════════════════════════════════════════════════
+
+@router.get(
+    "/appointments/delay-rules",
+    response_model=List[AppointmentDelayRuleResponse],
+    summary="List delay rules",
+    description="Get all appointment delay rules."
+)
+async def list_delay_rules(
+    workflow_code: Optional[str] = Query(None, description="Filter by workflow"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(require_permission("admin:manage_appointments"))
+):
+    query = "SELECT * FROM appointment_delay_rules WHERE 1=1"
+    params = []
+
+    if workflow_code:
+        params.append(workflow_code)
+        query += f" AND workflow_code = ${len(params)}"
+
+    query += " ORDER BY workflow_code NULLS FIRST, priority"
+
+    rows = await db.fetch(query, *params)
+
+    return [
+        AppointmentDelayRuleResponse(
+            id=str(row['id']),
+            workflow_code=row['workflow_code'],
+            priority=row['priority'],
+            delay_business_days=row['delay_business_days'],
+            is_active=row['is_active']
+        )
+        for row in rows
+    ]
+
+
+@router.post(
+    "/appointments/delay-rules",
+    response_model=AppointmentDelayRuleResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create delay rule",
+    description="Create a new appointment delay rule."
+)
+async def create_delay_rule(
+    rule: AppointmentDelayRuleCreate = Body(...),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(require_permission("admin:manage_appointments"))
+):
+    row = await db.fetchrow("""
+        INSERT INTO appointment_delay_rules (
+            workflow_code, priority, delay_business_days, is_active
+        ) VALUES ($1, $2::service_request_priority_enum, $3, $4)
+        ON CONFLICT (workflow_code, priority) DO UPDATE SET
+            delay_business_days = EXCLUDED.delay_business_days,
+            is_active = EXCLUDED.is_active
+        RETURNING *
+    """, rule.workflow_code, rule.priority, rule.delay_business_days, rule.is_active)
+
+    return AppointmentDelayRuleResponse(
+        id=str(row['id']),
+        workflow_code=row['workflow_code'],
+        priority=row['priority'],
+        delay_business_days=row['delay_business_days'],
+        is_active=row['is_active']
+    )
+
+
+@router.delete(
+    "/appointments/delay-rules/{rule_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete delay rule",
+    description="Delete an appointment delay rule."
+)
+async def delete_delay_rule(
+    rule_id: str = Path(..., description="Delay rule ID (UUID)"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(require_permission("admin:manage_appointments"))
+):
+    result = await db.execute(
+        "DELETE FROM appointment_delay_rules WHERE id = $1::uuid", rule_id
+    )
+
+    if 'DELETE 0' in result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Delay rule not found"
         )
 
     return None
