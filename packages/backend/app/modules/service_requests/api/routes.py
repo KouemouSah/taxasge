@@ -9,6 +9,7 @@ import asyncpg
 
 from ..models.service_request import (
     ServiceRequestCreate,
+    ServiceRequestUpdate,
     ServiceRequestResponse,
     DocumentUploadResponse,
     ServiceRequestListResponse,
@@ -16,6 +17,7 @@ from ..models.service_request import (
     DocumentValidationRequest,
     DocumentValidationResponse
 )
+from fastapi import HTTPException, status
 from ..services.service_request_service import service_request_service
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
@@ -270,4 +272,122 @@ async def get_by_reference(
         db=db,
         request_id=request["id"],
         user_id=current_user.id
+    )
+
+
+# ═══════════════════════════════════════════════════════════════
+# UPDATE / DELETE / SUBMIT / CANCEL
+# ═══════════════════════════════════════════════════════════════
+
+@router.put(
+    "/{request_id}",
+    response_model=ServiceRequestResponse,
+    summary="Update a service request",
+    description="""
+    Update a service request (only allowed in DRAFT status).
+
+    **Updatable fields:**
+    - `form_data` - User-submitted form data
+    - `notes` - Additional notes
+    """
+)
+async def update_service_request(
+    request_id: UUID = Path(..., description="The service request ID"),
+    data: ServiceRequestUpdate = Body(...),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user)
+):
+    return await service_request_service.update_request(
+        db=db,
+        request_id=request_id,
+        user_id=current_user.id,
+        form_data=data.form_data,
+        notes=data.notes
+    )
+
+
+@router.delete(
+    "/{request_id}",
+    status_code=204,
+    summary="Delete a service request",
+    description="""
+    Delete a service request (only allowed in DRAFT status).
+
+    This action is permanent and cannot be undone.
+    All associated documents will also be deleted.
+    """
+)
+async def delete_service_request(
+    request_id: UUID = Path(..., description="The service request ID"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user)
+):
+    await service_request_service.delete_request(
+        db=db,
+        request_id=request_id,
+        user_id=current_user.id
+    )
+    return None
+
+
+@router.post(
+    "/{request_id}/submit",
+    response_model=ServiceRequestResponse,
+    summary="Submit a service request",
+    description="""
+    Submit a service request for processing.
+
+    **Requirements:**
+    - All required documents must be uploaded
+    - Request must be in DRAFT or DOCUMENTS_REQUIRED status
+
+    **Effects:**
+    - Calculates tariff based on workflow
+    - Changes status to SUBMITTED
+    - Request enters the processing queue
+    """
+)
+async def submit_service_request(
+    request_id: UUID = Path(..., description="The service request ID"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user)
+):
+    return await service_request_service.submit_request(
+        db=db,
+        request_id=request_id,
+        user_id=current_user.id
+    )
+
+
+@router.post(
+    "/{request_id}/cancel",
+    response_model=ServiceRequestResponse,
+    summary="Cancel a service request",
+    description="""
+    Cancel a service request.
+
+    **Allowed from:**
+    - DRAFT
+    - SUBMITTED
+    - DOCUMENTS_REQUIRED
+    - PAYMENT_PENDING
+
+    **Not allowed from:**
+    - UNDER_REVIEW (contact support)
+    - COMPLETED
+    - REJECTED
+    - CANCELLED
+    """
+)
+async def cancel_service_request(
+    request_id: UUID = Path(..., description="The service request ID"),
+    reason: Optional[str] = Body(None, embed=True, description="Cancellation reason"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user)
+):
+    return await service_request_service.cancel_request(
+        db=db,
+        request_id=request_id,
+        user_id=current_user.id,
+        reason=reason
     )
