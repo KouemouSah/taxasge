@@ -36,6 +36,13 @@ from .funcion_publica import (
 from .funcion_publica.permiso_workflow import PermisoMotivo
 from .funcion_publica.certificado_workflow import CertificadoTipo
 
+# Generic workflows (data-driven from database)
+from .generic_workflow import (
+    GenericWorkflowStandard,
+    GenericWorkflowDirectPayment,
+    load_generic_workflow
+)
+
 __all__ = [
     # Base classes
     "BaseWorkflow",
@@ -68,5 +75,9 @@ __all__ = [
     "PermisoExtraordinarioWorkflow",
     "CertificadoAdministrativoWorkflow",
     "PermisoMotivo",
-    "CertificadoTipo"
+    "CertificadoTipo",
+    # Generic workflows (data-driven)
+    "GenericWorkflowStandard",
+    "GenericWorkflowDirectPayment",
+    "load_generic_workflow"
 ]

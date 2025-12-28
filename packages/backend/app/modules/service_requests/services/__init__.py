@@ -5,6 +5,8 @@ from .gemini_document_processor import gemini_document_processor
 from .service_request_service import service_request_service
 from .workflow_engine import workflow_engine, WorkflowEngine
 from .notification_service import workflow_notification_service, WorkflowNotificationService
+from .appointment_scheduler import appointment_scheduler, AppointmentSchedulerService
+from .agent_queue_service import agent_queue_service, AgentQueueService
 
 # Validations (re-export for convenience)
 from ..validations import cross_document_validator, CrossDocumentValidator
@@ -18,6 +20,10 @@ __all__ = [
     "WorkflowEngine",
     "workflow_notification_service",
     "WorkflowNotificationService",
+    "appointment_scheduler",
+    "AppointmentSchedulerService",
+    "agent_queue_service",
+    "AgentQueueService",
     "cross_document_validator",
     "CrossDocumentValidator"
 ]

@@ -560,9 +560,15 @@ except Exception as e:
 # Try to load service requests router (Module - Service Requests Workflow)
 try:
     from app.modules.service_requests.api import router as service_requests_router
+    from app.modules.service_requests.api import agent_router as service_requests_agent_router
+    from app.modules.service_requests.api import admin_router as service_requests_admin_router
     app.include_router(service_requests_router, prefix="/api/v1", tags=["service-requests"])
+    app.include_router(service_requests_agent_router, prefix="/api/v1", tags=["service-requests-agent"])
+    app.include_router(service_requests_admin_router, prefix="/api/v1", tags=["service-requests-admin"])
     routers_loaded.append("service_requests")
-    logger.info("✅ Service Requests router loaded (workflow, documents, tariffs)")
+    routers_loaded.append("service_requests_agent")
+    routers_loaded.append("service_requests_admin")
+    logger.info("✅ Service Requests router loaded (citizen, agent, admin)")
 except Exception as e:
     logger.error(f"❌ Service Requests router failed: {e}")
     logger.error(traceback.format_exc())
