@@ -55,8 +55,6 @@ import {
   Eye,
   Power,
   FileText,
-  DollarSign,
-  Calendar,
   CheckCircle,
   XCircle,
 } from 'lucide-react'

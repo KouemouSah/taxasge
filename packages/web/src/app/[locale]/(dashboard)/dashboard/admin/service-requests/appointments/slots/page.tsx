@@ -121,8 +121,8 @@ export default function SlotConfigsPage() {
     )
   }) || []
 
-  // Group slots by entity and day
-  const groupedSlots = filteredSlots.reduce((acc, slot) => {
+  // Group slots by entity and day (used for potential future grouping display)
+  const _groupedSlots = filteredSlots.reduce((acc, slot) => {
     const key = `${slot.entity_code}-${slot.day_of_week}`
     if (!acc[key]) {
       acc[key] = []
