@@ -3,7 +3,7 @@
 TAXASGE DATABASE SCHEMA - COMPLETE REFERENCE
 ====================================================================================================
 
-Extracted on: 2025-12-27 19:57:13
+Extracted on: 2025-12-28 17:10:12
 Database: Supabase PostgreSQL
 Project: taxasge-dev
 
@@ -40,6 +40,7 @@ Project: taxasge-dev
   - fiscal_service_data                      NIVEAU 3 - Données fiscal services avec support OCR Tesseract (ex: Nota de Ingreso)
   - fiscal_services                          Services fiscaux - NO instructions_es denormalization (v4.1 user feedback)
   - form_templates                           Templates de formulaires pour extraction OCR Tesseract (coordonnées des champs) - 14 types total
+  - gemini_processing_logs                   Audit trail de tous les traitements Gemini (classification, extraction, risk)
   - import_batch_items                       Lignes individuelles d'un import Excel (une ligne = une ligne du fichier)
   - import_batches                           Métadonnées des imports Excel en masse (un fichier = un batch)
   - ministries                               Ministères - Espagnol en DB, FR/EN via entity_translations optimisée
@@ -1713,6 +1714,101 @@ Indexes:
     CREATE INDEX idx_form_templates_template_code ON public.form_templates USING btree (template_code) WHERE (is_active = true)
   - idx_form_templates_category
     CREATE INDEX idx_form_templates_category ON public.form_templates USING btree (template_category)
+
+----------------------------------------------------------------------------------------------------
+Table: GEMINI_PROCESSING_LOGS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+service_request_id                  uuid                      YES                                      
+document_id                         uuid                      YES                                      
+user_id                             uuid                      YES                                      
+document_code                       varchar(100)              YES                                      
+document_name                       varchar(255)              YES                                      
+mime_type                           varchar(100)              YES                                      
+file_size_bytes                     integer                   YES                                      
+processor                           varchar(20)               NO         'gemini'::character varying   
+  └─ Description: Processeur utilise: gemini, tesseract, hybrid
+gemini_model                        varchar(100)              YES                                      
+document_type_detected              varchar(100)              YES                                      
+document_category                   varchar(50)               YES                                      
+  └─ Description: Categorie schema: identity, medical, contract, etc.
+classification_confidence           numeric                   YES                                      
+extraction_result                   jsonb                     YES        '{}'::jsonb                   
+  └─ Description: Resultat extraction structure par blocs JSON
+extraction_confidence               numeric                   YES                                      
+fields_extracted                    integer                   YES        0                             
+fields_missing                      integer                   YES        0                             
+required_fields_present             boolean                   YES                                      
+risk_score                          numeric                   YES                                      
+risk_level                          varchar(20)               YES                                      
+risk_factors                        jsonb                     YES        '[]'::jsonb                   
+  └─ Description: Liste des facteurs de risque detectes
+coherence_valid                     boolean                   YES                                      
+  └─ Description: Resultat des verifications de coherence
+coherence_checks_passed             ARRAY                     YES                                      
+coherence_checks_failed             ARRAY                     YES                                      
+recommendation                      varchar(30)               YES                                      
+  └─ Description: Recommendation: auto_approve, manual_review, request_documents, reject
+is_match                            boolean                   YES                                      
+match_confidence                    numeric                   YES                                      
+matched_document_code               varchar(100)              YES                                      
+processing_time_ms                  integer                   YES                                      
+gemini_latency_ms                   integer                   YES                                      
+tesseract_latency_ms                integer                   YES                                      
+used_fallback                       boolean                   YES        false                         
+  └─ Description: TRUE si Tesseract fallback a ete utilise
+fallback_reason                     varchar(255)              YES                                      
+has_error                           boolean                   YES        false                         
+error_type                          varchar(100)              YES                                      
+error_message                       text                      YES                                      
+error_details                       jsonb                     YES                                      
+prompt_template_id                  varchar(100)              YES                                      
+prompt_version                      varchar(20)               YES                                      
+input_tokens                        integer                   YES                                      
+output_tokens                       integer                   YES                                      
+total_tokens                        integer                   YES                                      
+  └─ Description: Total tokens Gemini utilises (pour monitoring couts)
+schema_category                     varchar(50)               YES                                      
+schema_filename                     varchar(100)              YES                                      
+workflow_code                       varchar(100)              YES                                      
+solicitud_type                      varchar(50)               YES                                      
+request_metadata                    jsonb                     YES        '{}'::jsonb                   
+created_at                          timestamp with time zone  NO         now()                         
+
+Primary Key: id
+
+Foreign Keys:
+  - document_id → service_request_documents.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - service_request_id → service_requests.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - user_id → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+
+Indexes:
+  - idx_gpl_service_request
+    CREATE INDEX idx_gpl_service_request ON public.gemini_processing_logs USING btree (service_request_id)
+  - idx_gpl_document_id
+    CREATE INDEX idx_gpl_document_id ON public.gemini_processing_logs USING btree (document_id)
+  - idx_gpl_user_id
+    CREATE INDEX idx_gpl_user_id ON public.gemini_processing_logs USING btree (user_id)
+  - idx_gpl_created_at
+    CREATE INDEX idx_gpl_created_at ON public.gemini_processing_logs USING btree (created_at DESC)
+  - idx_gpl_document_type
+    CREATE INDEX idx_gpl_document_type ON public.gemini_processing_logs USING btree (document_type_detected)
+  - idx_gpl_category
+    CREATE INDEX idx_gpl_category ON public.gemini_processing_logs USING btree (document_category)
+  - idx_gpl_workflow
+    CREATE INDEX idx_gpl_workflow ON public.gemini_processing_logs USING btree (workflow_code)
+  - idx_gpl_processor
+    CREATE INDEX idx_gpl_processor ON public.gemini_processing_logs USING btree (processor)
+  - idx_gpl_errors
+    CREATE INDEX idx_gpl_errors ON public.gemini_processing_logs USING btree (has_error) WHERE (has_error = true)
+  - idx_gpl_recommendation
+    CREATE INDEX idx_gpl_recommendation ON public.gemini_processing_logs USING btree (recommendation)
+  - idx_gpl_analytics
+    CREATE INDEX idx_gpl_analytics ON public.gemini_processing_logs USING btree (created_at DESC, document_category, recommendation)
 
 ----------------------------------------------------------------------------------------------------
 Table: IMPORT_BATCH_ITEMS
@@ -4227,6 +4323,10 @@ created_by                          uuid                      YES
 created_at                          timestamp with time zone  YES        now()                         
 updated_by                          uuid                      YES                                      
 updated_at                          timestamp with time zone  YES        now()                         
+tariff_type                         varchar(20)               NO         'FIXED'::character varying    
+  └─ Description: Type de tarification: FIXED, PERCENTAGE, NOTA_INGRESO
+percentage_rate                     numeric                   YES                                      
+  └─ Description: Taux en % (ex: 0.5 = 0.5%) - utilisé si tariff_type = PERCENTAGE
 
 Primary Key: id
 
@@ -4235,6 +4335,8 @@ Foreign Keys:
   - updated_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
 
 Indexes:
+  - idx_wt_tariff_type
+    CREATE INDEX idx_wt_tariff_type ON public.workflow_tariffs USING btree (tariff_type)
   - idx_wt_unique_active
     CREATE UNIQUE INDEX idx_wt_unique_active ON public.workflow_tariffs USING btree (workflow_code, solicitud_type) WHERE ((is_active = true) AND (effective_to IS NULL))
   - idx_wt_workflow_code
@@ -4412,6 +4514,27 @@ Definition:  SELECT p.id AS payment_id,
     d.declaration_type,
     d.fiscal_yea...
 
+View: v_gemini_errors
+Definition:  SELECT id,
+    created_at,
+    document_category,
+    document_type_detected,
+    workflow_code,
+    processor,
+    error_type,
+    error_message,
+    error_details,
+    processing_time_ms,
+    used_...
+
+View: v_gemini_processing_stats
+Definition:  SELECT date(created_at) AS date,
+    document_category,
+    processor,
+    count(*) AS total_processings,
+    count(*) FILTER (WHERE (is_match = true)) AS successful_matches,
+    count(*) FILTER (WHE...
+
 View: v_notification_statistics
 Definition:  SELECT date(created_at) AS date,
     channel,
@@ -4494,6 +4617,13 @@ Definition:  SELECT date_trunc('day'::text, p.paid_at) AS payment_date,
     date_trunc('month'::text, p.paid_at) AS payment_month,
     date_trunc('quarter'...
 
+View: v_risk_analysis_trends
+Definition:  SELECT date(gemini_processing_logs.created_at) AS date,
+    gemini_processing_logs.workflow_code,
+    count(*) AS total_analyses,
+    avg(gemini_processing_logs.risk_score) AS avg_risk_score,
+    cou...
+
 View: v_role_capabilities_summary
 Definition:  SELECT u.role,
     count(DISTINCT u.id) AS total_users,
@@ -4569,9 +4699,11 @@ Definition:  SELECT wsc.workflow_code,
 View: v_workflow_tariffs_summary
 Definition:  SELECT wt.workflow_code,
     wt.solicitud_type,
+    wt.tariff_type,
     wt.amount AS base_amount,
+    wt.percentage_rate,
     COALESCE(supp.supplements_total, (0)::numeric) AS supplements_total,
-    (wt.amount + COALESCE(supp.supplements_total...
+    ...
 
 ====================================================================================================
 5. FUNCTIONS
@@ -4669,6 +4801,9 @@ Function: cleanup_expired_locks
 Returns: integer
 
 Function: cleanup_expired_permissions
+Returns: integer
+
+Function: cleanup_old_gemini_logs
 Returns: integer
 
 Function: cosine_distance
@@ -5184,6 +5319,9 @@ Returns: USER-DEFINED
 Function: lock_payment_for_agent
 Returns: jsonb
 
+Function: log_gemini_processing
+Returns: uuid
+
 Function: log_notification
 Returns: uuid
 
@@ -5529,6 +5667,9 @@ fiscal_service_data.user_id → users.id
 fiscal_services.category_id → categories.id
 fiscal_services.parent_service_id → fiscal_services.id
 form_templates.fiscal_service_id → fiscal_services.id
+gemini_processing_logs.document_id → service_request_documents.id
+gemini_processing_logs.service_request_id → service_requests.id
+gemini_processing_logs.user_id → users.id
 import_batch_items.batch_id → import_batches.id
 import_batches.uploaded_by → users.id
 ministry_agents.assigned_by → users.id
