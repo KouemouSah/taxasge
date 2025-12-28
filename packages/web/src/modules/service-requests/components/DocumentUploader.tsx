@@ -81,7 +81,7 @@ function isImageFile(mimeType: string): boolean {
 export function DocumentUploader({
   requirement,
   uploadedDocument,
-  locale = 'es',
+  locale: _locale = 'es',  // TODO: Use for translations via translations module
   onUpload,
   onDelete,
   onRetryExtraction,

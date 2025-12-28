@@ -405,7 +405,7 @@ interface DefaultStepContentProps {
 function DefaultStepContent({
   step,
   documents,
-  locale,
+  locale: _locale,  // TODO: Use for translations via translations module
   onUploadDocument,
   isSaving,
 }: DefaultStepContentProps) {

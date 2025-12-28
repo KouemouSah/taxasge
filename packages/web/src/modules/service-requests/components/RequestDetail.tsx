@@ -140,7 +140,7 @@ interface ValidationItemProps {
   locale: 'es' | 'fr' | 'en'
 }
 
-function ValidationItem({ result, locale }: ValidationItemProps) {
+function ValidationItem({ result, locale: _locale }: ValidationItemProps) {
   const Icon = result.isValid
     ? CheckCircle
     : result.severity === 'error'
