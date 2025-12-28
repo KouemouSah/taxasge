@@ -1,0 +1,758 @@
+/**
+ * useServiceRequests Hook
+ * State management for service requests following useSupport pattern
+ */
+
+import { useState, useCallback } from 'react'
+import { serviceRequestsApi } from '../services/api'
+import type {
+  ServiceRequest,
+  ServiceRequestCreate,
+  ServiceRequestUpdate,
+  ServiceRequestDocument,
+  ServiceRequestFilters,
+  WorkflowConfig,
+  WorkflowStep,
+  WizardState,
+  StepSubmitRequest,
+  ValidationResult,
+  TariffCalculation,
+} from '../types'
+
+// ============================================================================
+// RETURN TYPE INTERFACE
+// ============================================================================
+
+export interface UseServiceRequestsReturn {
+  // State
+  requests: ServiceRequest[]
+  currentRequest: ServiceRequest | null
+  workflow: WorkflowConfig | null
+  currentStep: WorkflowStep | null
+  documents: ServiceRequestDocument[]
+  validationResults: ValidationResult[]
+  tariff: TariffCalculation | null
+  isLoading: boolean
+  isSaving: boolean
+  error: string | null
+  pagination: {
+    page: number
+    pageSize: number
+    total: number
+    totalPages: number
+  }
+  filters: ServiceRequestFilters
+
+  // Workflow actions
+  loadWorkflows: (category?: string) => Promise<WorkflowConfig[]>
+  startWorkflow: (data: ServiceRequestCreate) => Promise<ServiceRequest | null>
+  loadRequest: (requestId: string) => Promise<void>
+
+  // Step actions
+  submitStep: (stepData: StepSubmitRequest) => Promise<boolean>
+  previousStep: () => Promise<boolean>
+  saveStepData: (stepId: string, data: Record<string, unknown>) => Promise<boolean>
+  validateStep: (stepId: string, data: Record<string, unknown>) => Promise<ValidationResult[]>
+
+  // Document actions
+  uploadDocument: (documentCode: string, file: File, face?: string) => Promise<ServiceRequestDocument | null>
+  deleteDocument: (documentId: string) => Promise<boolean>
+  retryExtraction: (documentId: string) => Promise<boolean>
+  updateExtractedData: (documentId: string, data: Record<string, unknown>) => Promise<boolean>
+  loadDocuments: () => Promise<void>
+
+  // Validation & Tariff
+  validateDocuments: () => Promise<ValidationResult[]>
+  calculateTariff: (formData?: Record<string, unknown>) => Promise<TariffCalculation | null>
+
+  // Submission
+  submitRequest: () => Promise<boolean>
+  initiatePayment: (method: string, phone?: string) => Promise<{ paymentId: string; redirectUrl?: string } | null>
+  checkPaymentStatus: () => Promise<{ status: string; paid: boolean } | null>
+
+  // List actions
+  loadMyRequests: (page?: number, pageSize?: number) => Promise<void>
+  loadAllRequests: (page?: number, pageSize?: number) => Promise<void>
+  updateRequest: (data: ServiceRequestUpdate) => Promise<ServiceRequest | null>
+  deleteRequest: () => Promise<boolean>
+
+  // Agent actions
+  assignToAgent: (agentId: string) => Promise<boolean>
+  approveRequest: (notes?: string) => Promise<boolean>
+  rejectRequest: (reason: string, notes?: string) => Promise<boolean>
+  requestAdditionalInfo: (message: string, requiredDocs?: string[]) => Promise<boolean>
+  scheduleAppointment: (date: string, time: string, location: string) => Promise<boolean>
+  addAgentNote: (note: string) => Promise<boolean>
+
+  // Utility
+  clearError: () => void
+  setFilters: (filters: ServiceRequestFilters) => void
+  setPage: (page: number) => void
+  reset: () => void
+}
+
+// ============================================================================
+// HOOK IMPLEMENTATION
+// ============================================================================
+
+export function useServiceRequests(): UseServiceRequestsReturn {
+  // State
+  const [requests, setRequests] = useState<ServiceRequest[]>([])
+  const [currentRequest, setCurrentRequest] = useState<ServiceRequest | null>(null)
+  const [workflow, setWorkflow] = useState<WorkflowConfig | null>(null)
+  const [currentStep, setCurrentStep] = useState<WorkflowStep | null>(null)
+  const [documents, setDocuments] = useState<ServiceRequestDocument[]>([])
+  const [validationResults, setValidationResults] = useState<ValidationResult[]>([])
+  const [tariff, setTariff] = useState<TariffCalculation | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [filters, setFilters] = useState<ServiceRequestFilters>({})
+  const [pagination, setPagination] = useState({
+    page: 1,
+    pageSize: 10,
+    total: 0,
+    totalPages: 0,
+  })
+
+  // =========================================================================
+  // HELPER FUNCTIONS
+  // =========================================================================
+
+  const handleError = useCallback((err: unknown) => {
+    const message = err instanceof Error ? err.message : 'An error occurred'
+    setError(message)
+    console.error('[ServiceRequests]', message)
+  }, [])
+
+  const updateCurrentStep = useCallback((request: ServiceRequest, wf: WorkflowConfig) => {
+    const step = wf.steps.find(s => s.stepNumber === request.currentStep)
+    setCurrentStep(step || null)
+  }, [])
+
+  // =========================================================================
+  // WORKFLOW ACTIONS
+  // =========================================================================
+
+  const loadWorkflows = useCallback(async (category?: string): Promise<WorkflowConfig[]> => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      return await serviceRequestsApi.getWorkflows(category)
+    } catch (err) {
+      handleError(err)
+      return []
+    } finally {
+      setIsLoading(false)
+    }
+  }, [handleError])
+
+  const startWorkflow = useCallback(async (data: ServiceRequestCreate): Promise<ServiceRequest | null> => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      const response = await serviceRequestsApi.startWorkflow(data)
+      setCurrentRequest(response.request)
+      setWorkflow(response.workflow)
+      setCurrentStep(response.currentStepConfig)
+      setDocuments([])
+      setValidationResults([])
+      setTariff(null)
+      return response.request
+    } catch (err) {
+      handleError(err)
+      return null
+    } finally {
+      setIsLoading(false)
+    }
+  }, [handleError])
+
+  const loadRequest = useCallback(async (requestId: string): Promise<void> => {
+    try {
+      setIsLoading(true)
+      setError(null)
+
+      const [request, docs] = await Promise.all([
+        serviceRequestsApi.getRequest(requestId),
+        serviceRequestsApi.getDocuments(requestId),
+      ])
+
+      setCurrentRequest(request)
+      setDocuments(docs)
+
+      // Load workflow config
+      const wf = await serviceRequestsApi.getWorkflowSteps(request.workflowCode, request.subType)
+      setWorkflow(wf)
+      updateCurrentStep(request, wf)
+    } catch (err) {
+      handleError(err)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [handleError, updateCurrentStep])
+
+  // =========================================================================
+  // STEP ACTIONS
+  // =========================================================================
+
+  const submitStep = useCallback(async (stepData: StepSubmitRequest): Promise<boolean> => {
+    if (!currentRequest) return false
+
+    try {
+      setIsSaving(true)
+      setError(null)
+      const response = await serviceRequestsApi.submitStep(currentRequest.id, stepData)
+      setCurrentRequest(response.request)
+      setValidationResults(response.validationResults || [])
+
+      if (response.nextStep) {
+        setCurrentStep(response.nextStep)
+      }
+
+      return true
+    } catch (err) {
+      handleError(err)
+      return false
+    } finally {
+      setIsSaving(false)
+    }
+  }, [currentRequest, handleError])
+
+  const previousStep = useCallback(async (): Promise<boolean> => {
+    if (!currentRequest) return false
+
+    try {
+      setIsSaving(true)
+      setError(null)
+      const response = await serviceRequestsApi.previousStep(currentRequest.id)
+      setCurrentRequest(response.request)
+
+      if (response.nextStep) {
+        setCurrentStep(response.nextStep)
+      }
+
+      return true
+    } catch (err) {
+      handleError(err)
+      return false
+    } finally {
+      setIsSaving(false)
+    }
+  }, [currentRequest, handleError])
+
+  const saveStepData = useCallback(async (
+    stepId: string,
+    data: Record<string, unknown>
+  ): Promise<boolean> => {
+    if (!currentRequest) return false
+
+    try {
+      setIsSaving(true)
+      setError(null)
+      const request = await serviceRequestsApi.saveStepData(currentRequest.id, stepId, data)
+      setCurrentRequest(request)
+      return true
+    } catch (err) {
+      handleError(err)
+      return false
+    } finally {
+      setIsSaving(false)
+    }
+  }, [currentRequest, handleError])
+
+  const validateStep = useCallback(async (
+    stepId: string,
+    data: Record<string, unknown>
+  ): Promise<ValidationResult[]> => {
+    if (!currentRequest) return []
+
+    try {
+      const results = await serviceRequestsApi.validateStep(currentRequest.id, stepId, data)
+      setValidationResults(results)
+      return results
+    } catch (err) {
+      handleError(err)
+      return []
+    }
+  }, [currentRequest, handleError])
+
+  // =========================================================================
+  // DOCUMENT ACTIONS
+  // =========================================================================
+
+  const uploadDocument = useCallback(async (
+    documentCode: string,
+    file: File,
+    face?: string
+  ): Promise<ServiceRequestDocument | null> => {
+    if (!currentRequest) return null
+
+    try {
+      setIsSaving(true)
+      setError(null)
+      const response = await serviceRequestsApi.uploadDocument(
+        currentRequest.id,
+        documentCode,
+        file,
+        face
+      )
+      setDocuments(prev => [...prev, response.document])
+      return response.document
+    } catch (err) {
+      handleError(err)
+      return null
+    } finally {
+      setIsSaving(false)
+    }
+  }, [currentRequest, handleError])
+
+  const deleteDocument = useCallback(async (documentId: string): Promise<boolean> => {
+    if (!currentRequest) return false
+
+    try {
+      setIsSaving(true)
+      setError(null)
+      await serviceRequestsApi.deleteDocument(currentRequest.id, documentId)
+      setDocuments(prev => prev.filter(d => d.id !== documentId))
+      return true
+    } catch (err) {
+      handleError(err)
+      return false
+    } finally {
+      setIsSaving(false)
+    }
+  }, [currentRequest, handleError])
+
+  const retryExtraction = useCallback(async (documentId: string): Promise<boolean> => {
+    if (!currentRequest) return false
+
+    try {
+      setIsSaving(true)
+      setError(null)
+      const doc = await serviceRequestsApi.retryExtraction(currentRequest.id, documentId)
+      setDocuments(prev => prev.map(d => d.id === documentId ? doc : d))
+      return true
+    } catch (err) {
+      handleError(err)
+      return false
+    } finally {
+      setIsSaving(false)
+    }
+  }, [currentRequest, handleError])
+
+  const updateExtractedData = useCallback(async (
+    documentId: string,
+    data: Record<string, unknown>
+  ): Promise<boolean> => {
+    if (!currentRequest) return false
+
+    try {
+      setIsSaving(true)
+      setError(null)
+      const doc = await serviceRequestsApi.updateExtractedData(
+        currentRequest.id,
+        documentId,
+        data
+      )
+      setDocuments(prev => prev.map(d => d.id === documentId ? doc : d))
+      return true
+    } catch (err) {
+      handleError(err)
+      return false
+    } finally {
+      setIsSaving(false)
+    }
+  }, [currentRequest, handleError])
+
+  const loadDocuments = useCallback(async (): Promise<void> => {
+    if (!currentRequest) return
+
+    try {
+      setIsLoading(true)
+      const docs = await serviceRequestsApi.getDocuments(currentRequest.id)
+      setDocuments(docs)
+    } catch (err) {
+      handleError(err)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [currentRequest, handleError])
+
+  // =========================================================================
+  // VALIDATION & TARIFF
+  // =========================================================================
+
+  const validateDocuments = useCallback(async (): Promise<ValidationResult[]> => {
+    if (!currentRequest) return []
+
+    try {
+      const results = await serviceRequestsApi.validateDocuments(currentRequest.id)
+      setValidationResults(results)
+      return results
+    } catch (err) {
+      handleError(err)
+      return []
+    }
+  }, [currentRequest, handleError])
+
+  const calculateTariff = useCallback(async (
+    formData?: Record<string, unknown>
+  ): Promise<TariffCalculation | null> => {
+    if (!currentRequest) return null
+
+    try {
+      const calc = await serviceRequestsApi.calculateTariff(currentRequest.id, formData)
+      setTariff(calc)
+      return calc
+    } catch (err) {
+      handleError(err)
+      return null
+    }
+  }, [currentRequest, handleError])
+
+  // =========================================================================
+  // SUBMISSION & PAYMENT
+  // =========================================================================
+
+  const submitRequest = useCallback(async (): Promise<boolean> => {
+    if (!currentRequest) return false
+
+    try {
+      setIsSaving(true)
+      setError(null)
+      const request = await serviceRequestsApi.submitRequest(currentRequest.id)
+      setCurrentRequest(request)
+      return true
+    } catch (err) {
+      handleError(err)
+      return false
+    } finally {
+      setIsSaving(false)
+    }
+  }, [currentRequest, handleError])
+
+  const initiatePayment = useCallback(async (
+    method: string,
+    phone?: string
+  ): Promise<{ paymentId: string; redirectUrl?: string } | null> => {
+    if (!currentRequest) return null
+
+    try {
+      setIsSaving(true)
+      setError(null)
+      return await serviceRequestsApi.initiatePayment(currentRequest.id, method, phone)
+    } catch (err) {
+      handleError(err)
+      return null
+    } finally {
+      setIsSaving(false)
+    }
+  }, [currentRequest, handleError])
+
+  const checkPaymentStatus = useCallback(async (): Promise<{ status: string; paid: boolean } | null> => {
+    if (!currentRequest) return null
+
+    try {
+      return await serviceRequestsApi.checkPaymentStatus(currentRequest.id)
+    } catch (err) {
+      handleError(err)
+      return null
+    }
+  }, [currentRequest, handleError])
+
+  // =========================================================================
+  // LIST ACTIONS
+  // =========================================================================
+
+  const loadMyRequests = useCallback(async (
+    page: number = 1,
+    pageSize: number = 10
+  ): Promise<void> => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      const response = await serviceRequestsApi.listMyRequests(page, pageSize, filters)
+      setRequests(response.requests)
+      setPagination({
+        page: response.page,
+        pageSize: response.pageSize,
+        total: response.total,
+        totalPages: response.totalPages,
+      })
+    } catch (err) {
+      handleError(err)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [filters, handleError])
+
+  const loadAllRequests = useCallback(async (
+    page: number = 1,
+    pageSize: number = 10
+  ): Promise<void> => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      const response = await serviceRequestsApi.listAllRequests(page, pageSize, filters)
+      setRequests(response.requests)
+      setPagination({
+        page: response.page,
+        pageSize: response.pageSize,
+        total: response.total,
+        totalPages: response.totalPages,
+      })
+    } catch (err) {
+      handleError(err)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [filters, handleError])
+
+  const updateRequest = useCallback(async (
+    data: ServiceRequestUpdate
+  ): Promise<ServiceRequest | null> => {
+    if (!currentRequest) return null
+
+    try {
+      setIsSaving(true)
+      setError(null)
+      const request = await serviceRequestsApi.updateRequest(currentRequest.id, data)
+      setCurrentRequest(request)
+      return request
+    } catch (err) {
+      handleError(err)
+      return null
+    } finally {
+      setIsSaving(false)
+    }
+  }, [currentRequest, handleError])
+
+  const deleteRequest = useCallback(async (): Promise<boolean> => {
+    if (!currentRequest) return false
+
+    try {
+      setIsSaving(true)
+      setError(null)
+      await serviceRequestsApi.deleteRequest(currentRequest.id)
+      setCurrentRequest(null)
+      setWorkflow(null)
+      setCurrentStep(null)
+      setDocuments([])
+      return true
+    } catch (err) {
+      handleError(err)
+      return false
+    } finally {
+      setIsSaving(false)
+    }
+  }, [currentRequest, handleError])
+
+  // =========================================================================
+  // AGENT ACTIONS
+  // =========================================================================
+
+  const assignToAgent = useCallback(async (agentId: string): Promise<boolean> => {
+    if (!currentRequest) return false
+
+    try {
+      setIsSaving(true)
+      setError(null)
+      const request = await serviceRequestsApi.assignToAgent(currentRequest.id, agentId)
+      setCurrentRequest(request)
+      return true
+    } catch (err) {
+      handleError(err)
+      return false
+    } finally {
+      setIsSaving(false)
+    }
+  }, [currentRequest, handleError])
+
+  const approveRequest = useCallback(async (notes?: string): Promise<boolean> => {
+    if (!currentRequest) return false
+
+    try {
+      setIsSaving(true)
+      setError(null)
+      const request = await serviceRequestsApi.approveRequest(currentRequest.id, notes)
+      setCurrentRequest(request)
+      return true
+    } catch (err) {
+      handleError(err)
+      return false
+    } finally {
+      setIsSaving(false)
+    }
+  }, [currentRequest, handleError])
+
+  const rejectRequest = useCallback(async (reason: string, notes?: string): Promise<boolean> => {
+    if (!currentRequest) return false
+
+    try {
+      setIsSaving(true)
+      setError(null)
+      const request = await serviceRequestsApi.rejectRequest(currentRequest.id, reason, notes)
+      setCurrentRequest(request)
+      return true
+    } catch (err) {
+      handleError(err)
+      return false
+    } finally {
+      setIsSaving(false)
+    }
+  }, [currentRequest, handleError])
+
+  const requestAdditionalInfo = useCallback(async (
+    message: string,
+    requiredDocs?: string[]
+  ): Promise<boolean> => {
+    if (!currentRequest) return false
+
+    try {
+      setIsSaving(true)
+      setError(null)
+      const request = await serviceRequestsApi.requestAdditionalInfo(
+        currentRequest.id,
+        message,
+        requiredDocs
+      )
+      setCurrentRequest(request)
+      return true
+    } catch (err) {
+      handleError(err)
+      return false
+    } finally {
+      setIsSaving(false)
+    }
+  }, [currentRequest, handleError])
+
+  const scheduleAppointment = useCallback(async (
+    date: string,
+    time: string,
+    location: string
+  ): Promise<boolean> => {
+    if (!currentRequest) return false
+
+    try {
+      setIsSaving(true)
+      setError(null)
+      const request = await serviceRequestsApi.scheduleAppointment(
+        currentRequest.id,
+        date,
+        time,
+        location
+      )
+      setCurrentRequest(request)
+      return true
+    } catch (err) {
+      handleError(err)
+      return false
+    } finally {
+      setIsSaving(false)
+    }
+  }, [currentRequest, handleError])
+
+  const addAgentNote = useCallback(async (note: string): Promise<boolean> => {
+    if (!currentRequest) return false
+
+    try {
+      setIsSaving(true)
+      setError(null)
+      const request = await serviceRequestsApi.addAgentNote(currentRequest.id, note)
+      setCurrentRequest(request)
+      return true
+    } catch (err) {
+      handleError(err)
+      return false
+    } finally {
+      setIsSaving(false)
+    }
+  }, [currentRequest, handleError])
+
+  // =========================================================================
+  // UTILITY
+  // =========================================================================
+
+  const clearError = useCallback(() => setError(null), [])
+
+  const setPage = useCallback((page: number) => {
+    setPagination(prev => ({ ...prev, page }))
+  }, [])
+
+  const reset = useCallback(() => {
+    setCurrentRequest(null)
+    setWorkflow(null)
+    setCurrentStep(null)
+    setDocuments([])
+    setValidationResults([])
+    setTariff(null)
+    setError(null)
+  }, [])
+
+  // =========================================================================
+  // RETURN
+  // =========================================================================
+
+  return {
+    // State
+    requests,
+    currentRequest,
+    workflow,
+    currentStep,
+    documents,
+    validationResults,
+    tariff,
+    isLoading,
+    isSaving,
+    error,
+    pagination,
+    filters,
+
+    // Workflow actions
+    loadWorkflows,
+    startWorkflow,
+    loadRequest,
+
+    // Step actions
+    submitStep,
+    previousStep,
+    saveStepData,
+    validateStep,
+
+    // Document actions
+    uploadDocument,
+    deleteDocument,
+    retryExtraction,
+    updateExtractedData,
+    loadDocuments,
+
+    // Validation & Tariff
+    validateDocuments,
+    calculateTariff,
+
+    // Submission
+    submitRequest,
+    initiatePayment,
+    checkPaymentStatus,
+
+    // List actions
+    loadMyRequests,
+    loadAllRequests,
+    updateRequest,
+    deleteRequest,
+
+    // Agent actions
+    assignToAgent,
+    approveRequest,
+    rejectRequest,
+    requestAdditionalInfo,
+    scheduleAppointment,
+    addAgentNote,
+
+    // Utility
+    clearError,
+    setFilters,
+    setPage,
+    reset,
+  }
+}
