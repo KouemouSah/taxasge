@@ -96,20 +96,16 @@ export function DocumentUploader({
   const [error, setError] = useState<string | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
-  // Get localized text
+  // Get localized text - uses Spanish as base, translations via translations module
   const getDocumentName = useCallback(() => {
-    if (locale === 'fr' && requirement.documentNameFr) {
-      return requirement.documentNameFr
-    }
+    // TODO: Integrate with translations module for fr/en
     return requirement.documentNameEs
-  }, [locale, requirement])
+  }, [requirement])
 
   const getInstructions = useCallback(() => {
-    if (locale === 'fr' && requirement.instructionsFr) {
-      return requirement.instructionsFr
-    }
+    // TODO: Integrate with translations module for fr/en
     return requirement.instructionsEs
-  }, [locale, requirement])
+  }, [requirement])
 
   // Validate file
   const validateFile = useCallback((file: File): string | null => {

@@ -21,9 +21,9 @@ test.describe('Document Uploader', () => {
   });
 
   test('shows required documents list', async ({ page }) => {
-    // Verify required documents are listed
+    // Verify required documents are listed (at least one)
     const requiredDocs = page.locator('[data-testid="required-document"]');
-    await expect(requiredDocs).toHaveCount({ minimum: 1 });
+    await expect(requiredDocs.first()).toBeVisible();
 
     // Each should have a "required" badge
     await expect(page.getByText(/obligatorio|required/i).first()).toBeVisible();

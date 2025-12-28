@@ -42,9 +42,10 @@ test.describe('Workflow Wizard', () => {
     await page.getByRole('button', { name: /nueva solicitud/i }).click();
     await page.getByRole('button', { name: /pasaporte nuevo/i }).click();
 
-    // Verify step icons are present
+    // Verify step icons are present (at least 3 steps)
     const stepIndicators = page.locator('[data-testid^="step-indicator-"]');
-    await expect(stepIndicators).toHaveCount({ minimum: 3 });
+    const count = await stepIndicators.count();
+    expect(count).toBeGreaterThanOrEqual(3);
   });
 
   test('can save draft and continue later', async ({ page }) => {

@@ -158,7 +158,7 @@ function ValidationItem({ result, locale }: ValidationItemProps) {
       <Icon className="h-5 w-5 flex-shrink-0 mt-0.5" />
       <div>
         <p className="text-sm font-medium">
-          {locale === 'fr' && result.messageFr ? result.messageFr : result.messageEs}
+          {result.messageEs}
         </p>
         {result.field && (
           <p className="text-xs opacity-75 mt-1">Campo: {result.field}</p>

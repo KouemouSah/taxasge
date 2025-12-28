@@ -7,23 +7,41 @@
 // ENUMS
 // ============================================================================
 
+/**
+ * ServiceRequestStatus - Matches database service_request_status_enum
+ * See DATABASE_SCHEMA_REFERENCE.md and migration 020
+ */
 export enum ServiceRequestStatus {
-  DRAFT = 'draft',
-  DOCUMENTS_PENDING = 'documents_pending',
-  DOCUMENTS_UPLOADED = 'documents_uploaded',
-  EXTRACTION_PENDING = 'extraction_pending',
-  EXTRACTION_COMPLETE = 'extraction_complete',
-  VALIDATION_PENDING = 'validation_pending',
-  PAYMENT_PENDING = 'payment_pending',
-  PAYMENT_COMPLETED = 'payment_completed',
-  SUBMITTED = 'submitted',
-  AGENT_REVIEW = 'agent_review',
-  ADDITIONAL_INFO_REQUIRED = 'additional_info_required',
-  APPOINTMENT_SCHEDULED = 'appointment_scheduled',
-  APPROVED = 'approved',
-  REJECTED = 'rejected',
-  COMPLETED = 'completed',
-  CANCELLED = 'cancelled',
+  // Phase initiale
+  DRAFT = 'DRAFT',
+  TIMBRES_PENDING = 'TIMBRES_PENDING',
+  TIMBRES_PAID = 'TIMBRES_PAID',
+
+  // Phase soumission
+  SUBMITTED = 'SUBMITTED',
+  DOCUMENTS_REQUIRED = 'DOCUMENTS_REQUIRED',
+
+  // Phase validation
+  UNDER_REVIEW = 'UNDER_REVIEW',
+  DOSSIER_VALIDE = 'DOSSIER_VALIDE',
+  REJECTED = 'REJECTED',
+
+  // Phase Nota de Ingreso
+  PENDING_NOTA_INGRESO = 'PENDING_NOTA_INGRESO',
+  NOTA_UPLOADED = 'NOTA_UPLOADED',
+
+  // Phase paiement principal
+  PAYMENT_PENDING = 'PAYMENT_PENDING',
+  PAYMENT_PROCESSING = 'PAYMENT_PROCESSING',
+  PAID = 'PAID',
+  PAYMENT_FAILED = 'PAYMENT_FAILED',
+
+  // Phase finale
+  CITA_SCHEDULED = 'CITA_SCHEDULED',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED',
+  EXPIRED = 'EXPIRED',
 }
 
 export enum WorkflowCategory {
@@ -65,31 +83,36 @@ export enum ExtractionStatus {
 // WORKFLOW TYPES
 // ============================================================================
 
+/**
+ * WorkflowStep - Configuration d'une étape de workflow
+ * Les traductions (fr, en) sont gérées via le module translations
+ */
 export interface WorkflowStep {
   stepNumber: number
   stepId: string
   stepType: StepType
   titleEs: string
-  titleFr?: string
   descriptionEs?: string
-  descriptionFr?: string
   isInherited: boolean
   isOptional?: boolean
   config?: Record<string, unknown>
   documents?: DocumentRequirement[]
 }
 
+/**
+ * DocumentRequirement - Document requis pour un workflow
+ * Matches workflow_document_requirements table schema
+ * Les traductions (fr, en) sont gérées via le module translations
+ */
 export interface DocumentRequirement {
   documentCode: string
-  documentNameEs: string
-  documentNameFr?: string
-  schemaKey?: string
+  documentNameEs: string  // Seul champ dans la DB, traductions via module translations
+  schemaKey?: string      // extraction_schema_key
   isRequired: boolean
   displayOrder: number
   conditionType: DocumentConditionType
   conditionValue?: Record<string, unknown>
-  instructionsEs?: string
-  instructionsFr?: string
+  instructionsEs?: string  // Seul champ dans la DB
   acceptedFormats?: string[]
   facesRequired?: string[]
 }
@@ -98,8 +121,7 @@ export interface WorkflowConfig {
   workflowCode: string
   category: WorkflowCategory
   entityCode: string
-  serviceNameEs: string
-  serviceNameFr?: string
+  serviceNameEs: string  // Traductions fr/en via module translations
   requiresNotaIngreso: boolean
   requiresAppointment: boolean
   requiresAgentReview: boolean
@@ -161,8 +183,7 @@ export interface ValidationResult {
   ruleId: string
   isValid: boolean
   severity: 'error' | 'warning' | 'info'
-  messageEs: string
-  messageFr?: string
+  messageEs: string  // Traductions fr/en via module translations
   field?: string
 }
 
@@ -282,44 +303,62 @@ export interface ServiceRequestsState {
 
 export function getStatusColor(status: ServiceRequestStatus | string): string {
   const colors: Record<string, string> = {
+    // Phase initiale
     [ServiceRequestStatus.DRAFT]: 'bg-gray-100 text-gray-800',
-    [ServiceRequestStatus.DOCUMENTS_PENDING]: 'bg-yellow-100 text-yellow-800',
-    [ServiceRequestStatus.DOCUMENTS_UPLOADED]: 'bg-blue-100 text-blue-800',
-    [ServiceRequestStatus.EXTRACTION_PENDING]: 'bg-purple-100 text-purple-800',
-    [ServiceRequestStatus.EXTRACTION_COMPLETE]: 'bg-indigo-100 text-indigo-800',
-    [ServiceRequestStatus.VALIDATION_PENDING]: 'bg-orange-100 text-orange-800',
-    [ServiceRequestStatus.PAYMENT_PENDING]: 'bg-amber-100 text-amber-800',
-    [ServiceRequestStatus.PAYMENT_COMPLETED]: 'bg-emerald-100 text-emerald-800',
+    [ServiceRequestStatus.TIMBRES_PENDING]: 'bg-yellow-100 text-yellow-800',
+    [ServiceRequestStatus.TIMBRES_PAID]: 'bg-blue-100 text-blue-800',
+    // Phase soumission
     [ServiceRequestStatus.SUBMITTED]: 'bg-cyan-100 text-cyan-800',
-    [ServiceRequestStatus.AGENT_REVIEW]: 'bg-teal-100 text-teal-800',
-    [ServiceRequestStatus.ADDITIONAL_INFO_REQUIRED]: 'bg-rose-100 text-rose-800',
-    [ServiceRequestStatus.APPOINTMENT_SCHEDULED]: 'bg-sky-100 text-sky-800',
-    [ServiceRequestStatus.APPROVED]: 'bg-green-100 text-green-800',
+    [ServiceRequestStatus.DOCUMENTS_REQUIRED]: 'bg-orange-100 text-orange-800',
+    // Phase validation
+    [ServiceRequestStatus.UNDER_REVIEW]: 'bg-teal-100 text-teal-800',
+    [ServiceRequestStatus.DOSSIER_VALIDE]: 'bg-indigo-100 text-indigo-800',
     [ServiceRequestStatus.REJECTED]: 'bg-red-100 text-red-800',
+    // Phase Nota de Ingreso
+    [ServiceRequestStatus.PENDING_NOTA_INGRESO]: 'bg-purple-100 text-purple-800',
+    [ServiceRequestStatus.NOTA_UPLOADED]: 'bg-violet-100 text-violet-800',
+    // Phase paiement
+    [ServiceRequestStatus.PAYMENT_PENDING]: 'bg-amber-100 text-amber-800',
+    [ServiceRequestStatus.PAYMENT_PROCESSING]: 'bg-yellow-100 text-yellow-800',
+    [ServiceRequestStatus.PAID]: 'bg-emerald-100 text-emerald-800',
+    [ServiceRequestStatus.PAYMENT_FAILED]: 'bg-red-100 text-red-800',
+    // Phase finale
+    [ServiceRequestStatus.CITA_SCHEDULED]: 'bg-sky-100 text-sky-800',
+    [ServiceRequestStatus.IN_PROGRESS]: 'bg-blue-100 text-blue-800',
     [ServiceRequestStatus.COMPLETED]: 'bg-green-200 text-green-900',
     [ServiceRequestStatus.CANCELLED]: 'bg-gray-200 text-gray-600',
+    [ServiceRequestStatus.EXPIRED]: 'bg-gray-300 text-gray-700',
   }
   return colors[status] || 'bg-gray-100 text-gray-800'
 }
 
 export function getStatusLabel(status: ServiceRequestStatus | string, locale: 'es' | 'fr' | 'en' = 'es'): string {
   const labels: Record<string, Record<string, string>> = {
+    // Phase initiale
     [ServiceRequestStatus.DRAFT]: { es: 'Borrador', fr: 'Brouillon', en: 'Draft' },
-    [ServiceRequestStatus.DOCUMENTS_PENDING]: { es: 'Documentos Pendientes', fr: 'Documents en attente', en: 'Documents Pending' },
-    [ServiceRequestStatus.DOCUMENTS_UPLOADED]: { es: 'Documentos Cargados', fr: 'Documents chargés', en: 'Documents Uploaded' },
-    [ServiceRequestStatus.EXTRACTION_PENDING]: { es: 'Extracción Pendiente', fr: 'Extraction en attente', en: 'Extraction Pending' },
-    [ServiceRequestStatus.EXTRACTION_COMPLETE]: { es: 'Extracción Completa', fr: 'Extraction terminée', en: 'Extraction Complete' },
-    [ServiceRequestStatus.VALIDATION_PENDING]: { es: 'Validación Pendiente', fr: 'Validation en attente', en: 'Validation Pending' },
-    [ServiceRequestStatus.PAYMENT_PENDING]: { es: 'Pago Pendiente', fr: 'Paiement en attente', en: 'Payment Pending' },
-    [ServiceRequestStatus.PAYMENT_COMPLETED]: { es: 'Pago Completado', fr: 'Paiement effectué', en: 'Payment Completed' },
+    [ServiceRequestStatus.TIMBRES_PENDING]: { es: 'Timbres Pendientes', fr: 'Timbres en attente', en: 'Stamps Pending' },
+    [ServiceRequestStatus.TIMBRES_PAID]: { es: 'Timbres Pagados', fr: 'Timbres payés', en: 'Stamps Paid' },
+    // Phase soumission
     [ServiceRequestStatus.SUBMITTED]: { es: 'Enviada', fr: 'Soumise', en: 'Submitted' },
-    [ServiceRequestStatus.AGENT_REVIEW]: { es: 'En Revisión', fr: 'En révision', en: 'Under Review' },
-    [ServiceRequestStatus.ADDITIONAL_INFO_REQUIRED]: { es: 'Info. Adicional Requerida', fr: 'Info. supplémentaire requise', en: 'Additional Info Required' },
-    [ServiceRequestStatus.APPOINTMENT_SCHEDULED]: { es: 'Cita Programada', fr: 'Rendez-vous programmé', en: 'Appointment Scheduled' },
-    [ServiceRequestStatus.APPROVED]: { es: 'Aprobada', fr: 'Approuvée', en: 'Approved' },
+    [ServiceRequestStatus.DOCUMENTS_REQUIRED]: { es: 'Documentos Requeridos', fr: 'Documents requis', en: 'Documents Required' },
+    // Phase validation
+    [ServiceRequestStatus.UNDER_REVIEW]: { es: 'En Revisión', fr: 'En révision', en: 'Under Review' },
+    [ServiceRequestStatus.DOSSIER_VALIDE]: { es: 'Dossier Validado', fr: 'Dossier validé', en: 'Dossier Validated' },
     [ServiceRequestStatus.REJECTED]: { es: 'Rechazada', fr: 'Rejetée', en: 'Rejected' },
+    // Phase Nota de Ingreso
+    [ServiceRequestStatus.PENDING_NOTA_INGRESO]: { es: 'Nota de Ingreso Pendiente', fr: 'Note d\'entrée en attente', en: 'Entry Note Pending' },
+    [ServiceRequestStatus.NOTA_UPLOADED]: { es: 'Nota Cargada', fr: 'Note téléchargée', en: 'Note Uploaded' },
+    // Phase paiement
+    [ServiceRequestStatus.PAYMENT_PENDING]: { es: 'Pago Pendiente', fr: 'Paiement en attente', en: 'Payment Pending' },
+    [ServiceRequestStatus.PAYMENT_PROCESSING]: { es: 'Procesando Pago', fr: 'Traitement du paiement', en: 'Payment Processing' },
+    [ServiceRequestStatus.PAID]: { es: 'Pagada', fr: 'Payée', en: 'Paid' },
+    [ServiceRequestStatus.PAYMENT_FAILED]: { es: 'Pago Fallido', fr: 'Paiement échoué', en: 'Payment Failed' },
+    // Phase finale
+    [ServiceRequestStatus.CITA_SCHEDULED]: { es: 'Cita Programada', fr: 'Rendez-vous programmé', en: 'Appointment Scheduled' },
+    [ServiceRequestStatus.IN_PROGRESS]: { es: 'En Proceso', fr: 'En cours', en: 'In Progress' },
     [ServiceRequestStatus.COMPLETED]: { es: 'Completada', fr: 'Terminée', en: 'Completed' },
     [ServiceRequestStatus.CANCELLED]: { es: 'Cancelada', fr: 'Annulée', en: 'Cancelled' },
+    [ServiceRequestStatus.EXPIRED]: { es: 'Expirada', fr: 'Expirée', en: 'Expired' },
   }
   return labels[status]?.[locale] || status
 }
@@ -327,9 +366,8 @@ export function getStatusLabel(status: ServiceRequestStatus | string, locale: 'e
 export function isRequestEditable(request: ServiceRequest): boolean {
   const editableStatuses = [
     ServiceRequestStatus.DRAFT,
-    ServiceRequestStatus.DOCUMENTS_PENDING,
-    ServiceRequestStatus.DOCUMENTS_UPLOADED,
-    ServiceRequestStatus.ADDITIONAL_INFO_REQUIRED,
+    ServiceRequestStatus.TIMBRES_PENDING,
+    ServiceRequestStatus.DOCUMENTS_REQUIRED,
   ]
   return editableStatuses.includes(request.status as ServiceRequestStatus)
 }
@@ -337,9 +375,9 @@ export function isRequestEditable(request: ServiceRequest): boolean {
 export function canUploadDocuments(request: ServiceRequest): boolean {
   const uploadStatuses = [
     ServiceRequestStatus.DRAFT,
-    ServiceRequestStatus.DOCUMENTS_PENDING,
-    ServiceRequestStatus.DOCUMENTS_UPLOADED,
-    ServiceRequestStatus.ADDITIONAL_INFO_REQUIRED,
+    ServiceRequestStatus.TIMBRES_PAID,
+    ServiceRequestStatus.DOCUMENTS_REQUIRED,
+    ServiceRequestStatus.SUBMITTED,
   ]
   return uploadStatuses.includes(request.status as ServiceRequestStatus)
 }

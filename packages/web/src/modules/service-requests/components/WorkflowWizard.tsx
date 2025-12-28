@@ -124,17 +124,17 @@ export function WorkflowWizard({
     return Math.round((currentStepNum / totalSteps) * 100)
   }, [workflow, currentRequest])
 
-  // Get step title based on locale
+  // Get step title - uses Spanish as base, translations via next-intl
   const getStepTitle = useCallback((step: WorkflowStep): string => {
-    if (locale === 'fr' && step.titleFr) return step.titleFr
+    // TODO: Integrate with translations module for fr/en
     return step.titleEs
-  }, [locale])
+  }, [])
 
-  // Get step description based on locale
+  // Get step description - uses Spanish as base, translations via next-intl
   const getStepDescription = useCallback((step: WorkflowStep): string => {
-    if (locale === 'fr' && step.descriptionFr) return step.descriptionFr
+    // TODO: Integrate with translations module for fr/en
     return step.descriptionEs || ''
-  }, [locale])
+  }, [])
 
   // Handle step submission
   const handleSubmit = useCallback(async (data: Record<string, unknown>) => {
@@ -226,9 +226,7 @@ export function WorkflowWizard({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-lg">
-                {locale === 'fr' && workflow.serviceNameFr
-                  ? workflow.serviceNameFr
-                  : workflow.serviceNameEs}
+                {workflow.serviceNameEs}
               </CardTitle>
               <CardDescription>
                 {t('step_of', {
@@ -322,7 +320,7 @@ export function WorkflowWizard({
                     .filter(v => !v.isValid && v.severity === 'error')
                     .map((v, i) => (
                       <li key={i}>
-                        {locale === 'fr' && v.messageFr ? v.messageFr : v.messageEs}
+                        {v.messageEs}
                       </li>
                     ))}
                 </ul>
@@ -431,18 +429,14 @@ function DefaultStepContent({
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="font-medium">
-                    {locale === 'fr' && doc.documentNameFr
-                      ? doc.documentNameFr
-                      : doc.documentNameEs}
+                    {doc.documentNameEs}
                     {doc.isRequired && (
                       <span className="text-red-500 ml-1">*</span>
                     )}
                   </h4>
                   {doc.instructionsEs && (
                     <p className="text-sm text-muted-foreground">
-                      {locale === 'fr' && doc.instructionsFr
-                        ? doc.instructionsFr
-                        : doc.instructionsEs}
+                      {doc.instructionsEs}
                     </p>
                   )}
                 </div>
