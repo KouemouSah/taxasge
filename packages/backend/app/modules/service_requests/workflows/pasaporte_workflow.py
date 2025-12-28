@@ -50,7 +50,6 @@ class PasaporteWorkflow(BaseWorkflow):
     entity_code = EntityCode.CNEDOGE
 
     service_name_es = "Solicitud de Pasaporte"
-    service_name_fr = "Demande de Passeport"
 
     requires_nota_ingreso = False
     requires_appointment = True
@@ -67,7 +66,6 @@ class PasaporteWorkflow(BaseWorkflow):
             step_id="upload_photos",
             step_type=StepType.DOCUMENT_UPLOAD,
             title_es="Fotografías",
-            title_fr="Photos",
             description_es="Cargue 2 fotografías tipo pasaporte",
             is_inherited=False,
             documents=[
@@ -90,7 +88,6 @@ class PasaporteWorkflow(BaseWorkflow):
             step_id="payment",
             step_type=StepType.PAYMENT,
             title_es="Pago de Tasas",
-            title_fr="Paiement des Frais",
             description_es="Realice el pago mediante Mobile Money",
             is_inherited=False,
             config={
@@ -105,7 +102,6 @@ class PasaporteWorkflow(BaseWorkflow):
             step_id="confirmation",
             step_type=StepType.CONFIRMATION,
             title_es="Confirmación",
-            title_fr="Confirmation",
             description_es="Verifique sus datos y envíe su solicitud",
             is_inherited=False,
             config={"show_summary": True}
@@ -207,7 +203,6 @@ class PasaporteWorkflow(BaseWorkflow):
                 "document": "dip",
                 "rule": "documento.fecha_expiracion > TODAY",
                 "error_es": "El DIP está expirado. Debe renovarlo antes de solicitar el pasaporte.",
-                "error_fr": "Le DIP est expiré. Vous devez le renouveler avant de demander le passeport.",
                 "severity": "error"
             },
             # DIP number format
@@ -216,7 +211,6 @@ class PasaporteWorkflow(BaseWorkflow):
                 "document": "dip",
                 "rule": "documento.numero_dip MATCHES '^[0-9]{9}$'",
                 "error_es": "El número de DIP debe tener 9 dígitos.",
-                "error_fr": "Le numéro de DIP doit avoir 9 chiffres.",
                 "severity": "error"
             },
             # Passport expiry for renewal
@@ -226,7 +220,6 @@ class PasaporteWorkflow(BaseWorkflow):
                 "condition": "tipo IN ['RENOVACION']",
                 "rule": "documento.fecha_expiracion < TODAY + 12 MONTHS",
                 "error_es": "Solo puede renovar si el pasaporte expira en menos de 12 meses.",
-                "error_fr": "Vous ne pouvez renouveler que si le passeport expire dans moins de 12 mois.",
                 "severity": "warning"
             },
             # Names must match between DIP and old passport
@@ -235,7 +228,6 @@ class PasaporteWorkflow(BaseWorkflow):
                 "condition": "tipo IN ['RENOVACION', 'DETERIORO']",
                 "rule": "normalize(DIP.titular.apellidos) == normalize(PASAPORTE.titular.apellidos)",
                 "error_es": "El nombre en el DIP no coincide con el pasaporte antiguo.",
-                "error_fr": "Le nom sur le DIP ne correspond pas à l'ancien passeport.",
                 "severity": "error"
             },
             # Birthdate coherence for new passport
@@ -244,7 +236,6 @@ class PasaporteWorkflow(BaseWorkflow):
                 "condition": "tipo == 'NUEVO'",
                 "rule": "DIP.titular.fecha_nacimiento == CERTIFICADO_NACIMIENTO.inscrito.fecha_nacimiento",
                 "error_es": "La fecha de nacimiento del DIP no coincide con el certificado.",
-                "error_fr": "La date de naissance du DIP ne correspond pas au certificat.",
                 "severity": "warning"
             }
         ]

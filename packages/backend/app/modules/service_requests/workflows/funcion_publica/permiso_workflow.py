@@ -66,7 +66,6 @@ class PermisoExtraordinarioWorkflow(BaseWorkflow):
     entity_code = EntityCode.MINFP
 
     service_name_es = "Permiso Extraordinario"
-    service_name_fr = "Congé Extraordinaire"
 
     requires_nota_ingreso = False
     requires_appointment = False
@@ -101,7 +100,6 @@ class PermisoExtraordinarioWorkflow(BaseWorkflow):
             step_id="leave_details",
             step_type=StepType.CUSTOM,
             title_es="Detalles del Permiso",
-            title_fr="Détails du Congé",
             description_es="Indique el motivo y las fechas del permiso",
             is_inherited=False,
             config={
@@ -148,7 +146,6 @@ class PermisoExtraordinarioWorkflow(BaseWorkflow):
             step_id="documents",
             step_type=StepType.DOCUMENT_UPLOAD,
             title_es="Documentos Justificativos",
-            title_fr="Documents Justificatifs",
             description_es="Cargue los documentos que justifican el permiso",
             is_inherited=False,
             config={"conditional": True}
@@ -160,7 +157,6 @@ class PermisoExtraordinarioWorkflow(BaseWorkflow):
             step_id="supervisor_approval",
             step_type=StepType.CUSTOM,
             title_es="Aprobación del Supervisor",
-            title_fr="Approbation du Superviseur",
             description_es="Su solicitud será enviada a su supervisor directo para pre-aprobación",
             is_inherited=False,
             config={
@@ -175,7 +171,6 @@ class PermisoExtraordinarioWorkflow(BaseWorkflow):
             step_id="payment",
             step_type=StepType.PAYMENT,
             title_es="Pago de Tasas",
-            title_fr="Paiement des Frais",
             description_es=f"Tasa de tramitación: {self.TARIFF} XAF",
             is_inherited=False,
             config={
@@ -191,7 +186,6 @@ class PermisoExtraordinarioWorkflow(BaseWorkflow):
             step_id="confirmation",
             step_type=StepType.CONFIRMATION,
             title_es="Confirmación y Envío",
-            title_fr="Confirmation et Envoi",
             description_es="Verifique todos los datos y envíe su solicitud",
             is_inherited=False,
             config={"show_summary": True}
@@ -288,7 +282,6 @@ class PermisoExtraordinarioWorkflow(BaseWorkflow):
                 "document": "carnet_funcionario",
                 "rule": "documento.fecha_caducidad > TODAY",
                 "error_es": "El carnet de funcionario debe estar vigente.",
-                "error_fr": "La carte de fonctionnaire doit être valide.",
                 "severity": "error"
             },
             # Start date must be in the future
@@ -296,7 +289,6 @@ class PermisoExtraordinarioWorkflow(BaseWorkflow):
                 "id": "fecha_inicio_futura",
                 "rule": "fecha_inicio >= TODAY",
                 "error_es": "La fecha de inicio debe ser hoy o posterior.",
-                "error_fr": "La date de début doit être aujourd'hui ou ultérieure.",
                 "severity": "error"
             },
             # End date must be after start date
@@ -304,7 +296,6 @@ class PermisoExtraordinarioWorkflow(BaseWorkflow):
                 "id": "fechas_coherentes",
                 "rule": "fecha_fin >= fecha_inicio",
                 "error_es": "La fecha de fin debe ser igual o posterior a la fecha de inicio.",
-                "error_fr": "La date de fin doit être égale ou postérieure à la date de début.",
                 "severity": "error"
             },
             # Duration within allowed limits
@@ -312,7 +303,6 @@ class PermisoExtraordinarioWorkflow(BaseWorkflow):
                 "id": "duracion_permitida",
                 "rule": "(fecha_fin - fecha_inicio).days + 1 <= MAX_DAYS[motivo]",
                 "error_es": "La duración del permiso excede el máximo permitido para este motivo.",
-                "error_fr": "La durée du congé dépasse le maximum autorisé pour ce motif.",
                 "severity": "error"
             },
             # Request must be made at least 3 days in advance (except MEDICO)
@@ -321,7 +311,6 @@ class PermisoExtraordinarioWorkflow(BaseWorkflow):
                 "condition": "motivo != 'MEDICO'",
                 "rule": "fecha_inicio >= TODAY + 3 DAYS",
                 "error_es": "Debe solicitar el permiso con al menos 3 días de antelación.",
-                "error_fr": "Vous devez demander le congé au moins 3 jours à l'avance.",
                 "severity": "warning"
             }
         ]

@@ -62,7 +62,6 @@ class CarnetFuncionarioWorkflow(BaseWorkflow):
     entity_code = EntityCode.MINFP
 
     service_name_es = "Carnet de Funcionario"
-    service_name_fr = "Carte de Fonctionnaire"
 
     requires_nota_ingreso = False
     requires_appointment = True  # Biometric capture at CNEDOGE
@@ -82,7 +81,6 @@ class CarnetFuncionarioWorkflow(BaseWorkflow):
             step_id="additional_documents",
             step_type=StepType.DOCUMENT_UPLOAD,
             title_es="Documentos Adicionales",
-            title_fr="Documents Supplémentaires",
             description_es="Documentos según el tipo de solicitud",
             is_inherited=False,
             config={
@@ -101,7 +99,6 @@ class CarnetFuncionarioWorkflow(BaseWorkflow):
             step_id="additional_data",
             step_type=StepType.CUSTOM,
             title_es="Datos Adicionales",
-            title_fr="Données Supplémentaires",
             description_es="Complete los datos que no se pueden extraer automáticamente",
             is_inherited=False,
             config={
@@ -121,7 +118,6 @@ class CarnetFuncionarioWorkflow(BaseWorkflow):
             step_id="payment",
             step_type=StepType.PAYMENT,
             title_es="Pago de Tasas",
-            title_fr="Paiement des Frais",
             description_es="Tasa de emisión de Carnet de Funcionario: 3,500 XAF",
             is_inherited=False,
             config={
@@ -137,7 +133,6 @@ class CarnetFuncionarioWorkflow(BaseWorkflow):
             step_id="confirmation",
             step_type=StepType.CONFIRMATION,
             title_es="Confirmación y Envío",
-            title_fr="Confirmation et Envoi",
             description_es="Verifique todos los datos y envíe su solicitud",
             is_inherited=False,
             config={
@@ -237,7 +232,6 @@ class CarnetFuncionarioWorkflow(BaseWorkflow):
                 "id": "coherencia_identidad",
                 "rule": "normalize(DIP.titular.apellidos + ' ' + DIP.titular.nombres) SIMILAR_TO normalize(NOMBRAMIENTO.funcionario.nombre_completo)",
                 "error_es": "El nombre en el DIP no coincide con el del Nombramiento.",
-                "error_fr": "Le nom sur le DIP ne correspond pas à celui de la Nomination.",
                 "severity": "blocking"
             },
             # Appointment date in the past
@@ -246,7 +240,6 @@ class CarnetFuncionarioWorkflow(BaseWorkflow):
                 "document": "nombramiento",
                 "rule": "documento.fecha_nombramiento < TODAY",
                 "error_es": "La fecha del nombramiento debe ser anterior a hoy.",
-                "error_fr": "La date de nomination doit être antérieure à aujourd'hui.",
                 "severity": "blocking"
             },
             # Identity document not expired
@@ -255,7 +248,6 @@ class CarnetFuncionarioWorkflow(BaseWorkflow):
                 "document": "documento_identidad",
                 "rule": "documento.fecha_expiracion > TODAY",
                 "error_es": "El documento de identidad está expirado.",
-                "error_fr": "Le document d'identité est expiré.",
                 "severity": "blocking"
             },
             # Category is valid
@@ -264,7 +256,6 @@ class CarnetFuncionarioWorkflow(BaseWorkflow):
                 "document": "nombramiento",
                 "rule": "datos_administrativos.categoria IN ['A', 'B', 'C']",
                 "error_es": "La categoría debe ser A, B o C.",
-                "error_fr": "La catégorie doit être A, B ou C.",
                 "severity": "warning"
             },
             # For expedicion: Toma de posesion after nombramiento
@@ -273,7 +264,6 @@ class CarnetFuncionarioWorkflow(BaseWorkflow):
                 "condition": "tipo == 'expedicion'",
                 "rule": "TOMA_POSESION.fecha >= NOMBRAMIENTO.fecha_nombramiento",
                 "error_es": "La toma de posesión debe ser posterior al nombramiento.",
-                "error_fr": "La prise de fonction doit être postérieure à la nomination.",
                 "severity": "blocking"
             },
             # For renovacion: Carnet expired or expiring
@@ -283,7 +273,6 @@ class CarnetFuncionarioWorkflow(BaseWorkflow):
                 "document": "carnet_expirado",
                 "rule": "documento.fecha_caducidad < TODAY + 90 DAYS",
                 "error_es": "Solo puede renovar si el carnet expira en menos de 3 meses o ya ha expirado.",
-                "error_fr": "Vous ne pouvez renouveler que si la carte expire dans moins de 3 mois.",
                 "severity": "warning"
             },
             # For duplicado: Loss certificate is recent
@@ -293,7 +282,6 @@ class CarnetFuncionarioWorkflow(BaseWorkflow):
                 "document": "certificado_perdida",
                 "rule": "documento.fecha_emision > TODAY - 30 DAYS",
                 "error_es": "El certificado de pérdida debe tener menos de 30 días.",
-                "error_fr": "Le certificat de perte doit dater de moins de 30 jours.",
                 "severity": "blocking"
             }
         ]

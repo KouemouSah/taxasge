@@ -82,7 +82,6 @@ class VehiculoWorkflow(BaseWorkflow):
     entity_code = EntityCode.DGT
 
     service_name_es = "Trámites de Vehículos"
-    service_name_fr = "Démarches Véhicules"
 
     requires_nota_ingreso = False  # Direct payment
     requires_appointment = False   # Depends on request type
@@ -125,7 +124,6 @@ class VehiculoWorkflow(BaseWorkflow):
             step_id="vehicle_documents",
             step_type=StepType.DOCUMENT_UPLOAD,
             title_es="Documentos del Vehículo",
-            title_fr="Documents du Véhicule",
             description_es="Cargue los documentos del vehículo según el tipo de trámite",
             is_inherited=False,
             config={
@@ -140,7 +138,6 @@ class VehiculoWorkflow(BaseWorkflow):
             step_id="specific_documents",
             step_type=StepType.DOCUMENT_UPLOAD,
             title_es="Documentos Específicos",
-            title_fr="Documents Spécifiques",
             description_es="Documentos adicionales según su trámite",
             is_inherited=False,
             config={
@@ -161,7 +158,6 @@ class VehiculoWorkflow(BaseWorkflow):
             step_id="payment",
             step_type=StepType.PAYMENT,
             title_es="Pago de Tasas",
-            title_fr="Paiement des Frais",
             description_es="El monto se calcula automáticamente según el vehículo y tipo de trámite",
             is_inherited=False,
             config={
@@ -178,7 +174,6 @@ class VehiculoWorkflow(BaseWorkflow):
             step_id="confirmation",
             step_type=StepType.CONFIRMATION,
             title_es="Confirmación y Envío",
-            title_fr="Confirmation et Envoi",
             description_es="Verifique todos los datos y envíe su solicitud",
             is_inherited=False,
             config={"show_summary": True}
@@ -381,7 +376,6 @@ class VehiculoWorkflow(BaseWorkflow):
                 "condition": "documents_present: [PERMISO, CUVE]",
                 "rule": "PERMISO.vehiculo.matricula == CUVE.vehiculo.matricula",
                 "error_es": "La matrícula del Permiso no coincide con la CUVE.",
-                "error_fr": "L'immatriculation du Permis ne correspond pas au CUVE.",
                 "severity": "error"
             },
             {
@@ -389,7 +383,6 @@ class VehiculoWorkflow(BaseWorkflow):
                 "condition": "documents_present: [PERMISO, ITV]",
                 "rule": "PERMISO.vehiculo.matricula == ITV.vehiculo.matricula",
                 "error_es": "La matrícula del Permiso no coincide con la ITV.",
-                "error_fr": "L'immatriculation du Permis ne correspond pas à l'ITV.",
                 "severity": "error"
             },
             {
@@ -397,7 +390,6 @@ class VehiculoWorkflow(BaseWorkflow):
                 "condition": "documents_present: [CUVE, ITV]",
                 "rule": "CUVE.vehiculo.matricula == ITV.vehiculo.matricula",
                 "error_es": "La matrícula de la CUVE no coincide con la ITV.",
-                "error_fr": "L'immatriculation du CUVE ne correspond pas à l'ITV.",
                 "severity": "error"
             },
             # VIN/Bastidor coherence
@@ -406,7 +398,6 @@ class VehiculoWorkflow(BaseWorkflow):
                 "condition": "documents_present: [PERMISO, CUVE]",
                 "rule": "PERMISO.vehiculo.numero_bastidor == CUVE.vehiculo.numero_bastidor",
                 "error_es": "El número de bastidor no coincide entre Permiso y CUVE.",
-                "error_fr": "Le numéro de châssis ne correspond pas entre le Permis et le CUVE.",
                 "severity": "error"
             },
             # Matricula format validation
@@ -415,7 +406,6 @@ class VehiculoWorkflow(BaseWorkflow):
                 "document": "permiso_circulacion",
                 "rule": "vehiculo.matricula MATCHES '^[A-Z]{2}-[0-9]{3}-[A-Z0-9]{1,2}$'",
                 "error_es": "El formato de la matrícula es incorrecto. Debe ser: XX-NNN-Y",
-                "error_fr": "Le format de l'immatriculation est incorrect. Doit être: XX-NNN-Y",
                 "severity": "error"
             },
             # VIN format validation
@@ -424,7 +414,6 @@ class VehiculoWorkflow(BaseWorkflow):
                 "document": "permiso_circulacion",
                 "rule": "vehiculo.numero_bastidor MATCHES '^[A-HJ-NPR-Z0-9]{17}$'",
                 "error_es": "El número de bastidor debe tener 17 caracteres alfanuméricos.",
-                "error_fr": "Le numéro de châssis doit avoir 17 caractères alphanumériques.",
                 "severity": "error"
             },
             # CUVE not expired (except for renewal)
@@ -434,7 +423,6 @@ class VehiculoWorkflow(BaseWorkflow):
                 "document": "cuve",
                 "rule": "validez.fecha_validez > TODAY",
                 "error_es": "La CUVE está expirada.",
-                "error_fr": "Le CUVE est expiré.",
                 "severity": "error"
             },
             # CUVE expiring soon warning
@@ -443,7 +431,6 @@ class VehiculoWorkflow(BaseWorkflow):
                 "document": "cuve",
                 "rule": "validez.fecha_validez > TODAY + 30 DAYS",
                 "error_es": "La CUVE expira en menos de 30 días.",
-                "error_fr": "Le CUVE expire dans moins de 30 jours.",
                 "severity": "warning"
             },
             # ITV not expired
@@ -453,7 +440,6 @@ class VehiculoWorkflow(BaseWorkflow):
                 "document": "itv",
                 "rule": "inspeccion_actual.valedero_hasta > TODAY",
                 "error_es": "La ITV está expirada.",
-                "error_fr": "L'ITV est expiré.",
                 "severity": "error"
             },
             # ITV result must be FAVORABLE
@@ -462,7 +448,6 @@ class VehiculoWorkflow(BaseWorkflow):
                 "document": "itv",
                 "rule": "inspeccion_actual.resultado == 'FAVORABLE'",
                 "error_es": "El resultado de la ITV debe ser FAVORABLE.",
-                "error_fr": "Le résultat de l'ITV doit être FAVORABLE.",
                 "severity": "warning"
             },
             # Owner coherence for TRANSFERENCIA
@@ -474,7 +459,6 @@ class VehiculoWorkflow(BaseWorkflow):
                     AND normalize(PERMISO.propietario.nombre) == normalize(DIP_VENDEDOR.titular.nombres)
                 """,
                 "error_es": "El propietario en el Permiso no coincide con el vendedor.",
-                "error_fr": "Le propriétaire sur le Permis ne correspond pas au vendeur.",
                 "severity": "error"
             },
             # Transfer deadline (10 days)
@@ -483,7 +467,6 @@ class VehiculoWorkflow(BaseWorkflow):
                 "condition": "tipo == 'TRANSFERENCIA' AND PERMISO.clasificacion_documento.es_documento_transferido == true",
                 "rule": "PERMISO.transferencia.fecha_transferencia + 10 DAYS > TODAY",
                 "error_es": "El plazo de 10 días para la transferencia ha expirado.",
-                "error_fr": "Le délai de 10 jours pour le transfert a expiré.",
                 "severity": "error"
             },
             # Renewal conditions
@@ -493,7 +476,6 @@ class VehiculoWorkflow(BaseWorkflow):
                 "document": "cuve",
                 "rule": "validez.fecha_validez < TODAY + 60 DAYS OR validez.fecha_validez < TODAY",
                 "error_es": "Solo puede renovar la CUVE si expira en menos de 60 días.",
-                "error_fr": "Vous ne pouvez renouveler le CUVE que s'il expire dans moins de 60 jours.",
                 "severity": "info"
             },
             {
@@ -502,7 +484,6 @@ class VehiculoWorkflow(BaseWorkflow):
                 "document": "itv",
                 "rule": "inspeccion_actual.valedero_hasta < TODAY + 60 DAYS OR inspeccion_actual.valedero_hasta < TODAY",
                 "error_es": "Solo puede renovar la ITV si expira en menos de 60 días.",
-                "error_fr": "Vous ne pouvez renouveler l'ITV que s'elle expire dans moins de 60 jours.",
                 "severity": "info"
             },
             # Official seals/stamps required
@@ -511,7 +492,6 @@ class VehiculoWorkflow(BaseWorkflow):
                 "document": "permiso_circulacion",
                 "rule": "autenticacion.tiene_sello_oficial == true AND autenticacion.tiene_firma == true",
                 "error_es": "El Permiso de Circulación debe tener sello y firma oficiales.",
-                "error_fr": "Le Permis de Circulation doit avoir le sceau et la signature officiels.",
                 "severity": "error"
             },
             {
@@ -519,7 +499,6 @@ class VehiculoWorkflow(BaseWorkflow):
                 "document": "cuve",
                 "rule": "autenticacion.tiene_sello_ofive == true AND autenticacion.tiene_qr_code == true",
                 "error_es": "La CUVE debe tener sello OFIVE y código QR.",
-                "error_fr": "Le CUVE doit avoir le sceau OFIVE et le code QR.",
                 "severity": "error"
             }
         ]

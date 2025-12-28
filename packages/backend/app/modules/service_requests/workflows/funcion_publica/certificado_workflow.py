@@ -68,7 +68,6 @@ class CertificadoAdministrativoWorkflow(BaseWorkflow):
     entity_code = EntityCode.MINFP
 
     service_name_es = "Certificado Administrativo"
-    service_name_fr = "Certificat Administratif"
 
     requires_nota_ingreso = False
     requires_appointment = False
@@ -109,7 +108,6 @@ class CertificadoAdministrativoWorkflow(BaseWorkflow):
             step_id="select_certificate_type",
             step_type=StepType.CUSTOM,
             title_es="Tipo de Certificado",
-            title_fr="Type de Certificat",
             description_es="Seleccione el tipo de certificado que necesita",
             is_inherited=False,
             config={
@@ -150,7 +148,6 @@ class CertificadoAdministrativoWorkflow(BaseWorkflow):
             step_id="certificate_purpose",
             step_type=StepType.CUSTOM,
             title_es="Finalidad del Certificado",
-            title_fr="Finalité du Certificat",
             description_es="Indique para qué necesita este certificado",
             is_inherited=False,
             config={
@@ -203,7 +200,6 @@ class CertificadoAdministrativoWorkflow(BaseWorkflow):
             step_id="documents",
             step_type=StepType.DOCUMENT_UPLOAD,
             title_es="Documentos",
-            title_fr="Documents",
             description_es="Cargue los documentos requeridos",
             is_inherited=False,
             config={"conditional": True}
@@ -215,7 +211,6 @@ class CertificadoAdministrativoWorkflow(BaseWorkflow):
             step_id="payment",
             step_type=StepType.PAYMENT,
             title_es="Pago de Tasas",
-            title_fr="Paiement des Frais",
             description_es="Tasa de emisión del certificado",
             is_inherited=False,
             config={
@@ -231,7 +226,6 @@ class CertificadoAdministrativoWorkflow(BaseWorkflow):
             step_id="confirmation",
             step_type=StepType.CONFIRMATION,
             title_es="Confirmación y Envío",
-            title_fr="Confirmation et Envoi",
             description_es="Verifique todos los datos y envíe su solicitud",
             is_inherited=False,
             config={
@@ -348,7 +342,6 @@ class CertificadoAdministrativoWorkflow(BaseWorkflow):
                 "document": "carnet_funcionario",
                 "rule": "documento.fecha_caducidad > TODAY",
                 "error_es": "El carnet de funcionario debe estar vigente.",
-                "error_fr": "La carte de fonctionnaire doit être valide.",
                 "severity": "error"
             },
             # Identity document must match carnet
@@ -356,7 +349,6 @@ class CertificadoAdministrativoWorkflow(BaseWorkflow):
                 "id": "identidad_coherente",
                 "rule": "normalize(documento_identidad.titular.apellidos) SIMILAR_TO normalize(carnet_funcionario.datos_carnet.apellidos)",
                 "error_es": "El nombre en el DIP no coincide con el del carnet de funcionario.",
-                "error_fr": "Le nom sur le DIP ne correspond pas à celui de la carte de fonctionnaire.",
                 "severity": "error"
             },
             # Number of copies within limit
@@ -364,7 +356,6 @@ class CertificadoAdministrativoWorkflow(BaseWorkflow):
                 "id": "copias_limite",
                 "rule": "num_copias >= 1 AND num_copias <= 5",
                 "error_es": "El número de copias debe estar entre 1 y 5.",
-                "error_fr": "Le nombre de copies doit être entre 1 et 5.",
                 "severity": "error"
             }
         ]

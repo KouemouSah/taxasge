@@ -83,7 +83,6 @@ class ResidenciaWorkflow(BaseWorkflow):
     entity_code = EntityCode.EXTRANJERIA
 
     service_name_es = "Solicitud de Permiso de Residencia"
-    service_name_fr = "Demande de Permis de Résidence"
 
     requires_nota_ingreso = True  # Key difference from other workflows
     requires_appointment = True
@@ -122,7 +121,6 @@ class ResidenciaWorkflow(BaseWorkflow):
             step_id="stamp_payment",
             step_type=StepType.PAYMENT,
             title_es="Pago de Timbres (Cédula y Póliza)",
-            title_fr="Paiement des Timbres (Cedula et Police)",
             description_es="Pago obligatorio de timbres antes de la presentación: Cédula Personal (1,500 XAF) + Póliza (1,000 XAF) por instancia",
             is_inherited=False,
             config={
@@ -144,7 +142,6 @@ class ResidenciaWorkflow(BaseWorkflow):
             step_id="additional_documents",
             step_type=StepType.DOCUMENT_UPLOAD,
             title_es="Documentos Adicionales",
-            title_fr="Documents Supplémentaires",
             description_es="Cargue los documentos requeridos según su tipo de solicitud",
             is_inherited=False,
             config={
@@ -165,7 +162,6 @@ class ResidenciaWorkflow(BaseWorkflow):
             step_id="phase1_confirmation",
             step_type=StepType.CONFIRMATION,
             title_es="Confirmación Fase 1",
-            title_fr="Confirmation Phase 1",
             description_es="Verifique sus datos y envíe su solicitud a Extranjería",
             is_inherited=False,
             config={
@@ -181,7 +177,6 @@ class ResidenciaWorkflow(BaseWorkflow):
             step_id="nota_ingreso_upload",
             step_type=StepType.DOCUMENT_UPLOAD,
             title_es="Cargar Nota de Ingreso",
-            title_fr="Télécharger la Note d'Entrée",
             description_es="Después de obtener su Nota de Ingreso en el mostrador, súbala aquí",
             is_inherited=False,
             documents=[
@@ -207,7 +202,6 @@ class ResidenciaWorkflow(BaseWorkflow):
             step_id="nota_payment",
             step_type=StepType.PAYMENT,
             title_es="Pago de la Nota de Ingreso",
-            title_fr="Paiement de la Note d'Entrée",
             description_es="El monto a pagar se extrae automáticamente de su Nota de Ingreso",
             is_inherited=False,
             config={
@@ -224,7 +218,6 @@ class ResidenciaWorkflow(BaseWorkflow):
             step_id="final_confirmation",
             step_type=StepType.CONFIRMATION,
             title_es="Confirmación Final",
-            title_fr="Confirmation Finale",
             description_es="Después del pago, se programará automáticamente una cita (20-30 días)",
             is_inherited=False,
             config={
@@ -457,7 +450,6 @@ class ResidenciaWorkflow(BaseWorkflow):
                 "document": "pasaporte_entrada_legal",
                 "rule": "documento.fecha_expiracion > TODAY",
                 "error_es": "El pasaporte está expirado. Debe renovarlo antes de solicitar el permiso de residencia.",
-                "error_fr": "Le passeport est expiré. Vous devez le renouveler avant de demander le permis de résidence.",
                 "severity": "error"
             },
             # Must have legal entry stamp
@@ -466,7 +458,6 @@ class ResidenciaWorkflow(BaseWorkflow):
                 "document": "pasaporte_entrada_legal",
                 "rule": "documento.tiene_sello_entrada == true",
                 "error_es": "El pasaporte debe tener sello de entrada legal a Guinea Ecuatorial.",
-                "error_fr": "Le passeport doit avoir le cachet d'entrée légale en Guinée Équatoriale.",
                 "severity": "error"
             },
             # Nationality must NOT be Equatorial Guinean
@@ -475,7 +466,6 @@ class ResidenciaWorkflow(BaseWorkflow):
                 "document": "pasaporte_entrada_legal",
                 "rule": "titular.nacionalidad != 'GNQ' AND titular.nacionalidad != 'GUINEA ECUATORIAL'",
                 "error_es": "Solo los extranjeros pueden solicitar permiso de residencia. Los ciudadanos de Guinea Ecuatorial deben usar su DIP.",
-                "error_fr": "Seuls les étrangers peuvent demander un permis de résidence. Les citoyens de Guinée Équatoriale doivent utiliser leur DIP.",
                 "severity": "error"
             },
             # Medical certificate from approved clinic
@@ -484,7 +474,6 @@ class ResidenciaWorkflow(BaseWorkflow):
                 "document": "certificado_medico",
                 "rule": "clinica_nombre IN ['Clínica Virgen de Guadalupe', 'Centro Médico La Paz']",
                 "error_es": "El certificado médico debe ser de la Clínica Virgen de Guadalupe o Centro Médico La Paz.",
-                "error_fr": "Le certificat médical doit provenir de la Clinique Virgen de Guadalupe ou du Centre Médical La Paz.",
                 "severity": "error"
             },
             # Medical tests must be negative
@@ -493,7 +482,6 @@ class ResidenciaWorkflow(BaseWorkflow):
                 "document": "certificado_medico",
                 "rule": "resultado_vih == 'NEGATIVO' AND resultado_hepatitis_c == 'NEGATIVO' AND resultado_tuberculosis == 'NEGATIVO'",
                 "error_es": "Todos los resultados médicos deben ser negativos (VIH, Hepatitis C, Tuberculosis).",
-                "error_fr": "Tous les résultats médicaux doivent être négatifs (VIH, Hépatite C, Tuberculose).",
                 "severity": "error"
             },
             # NIF must have definitive authorization
@@ -502,7 +490,6 @@ class ResidenciaWorkflow(BaseWorkflow):
                 "document": "nif_autorizacion",
                 "rule": "empresa.autorizacion == 'DEFINITIVA'",
                 "error_es": "El NIF debe tener autorización DEFINITIVA, no provisional.",
-                "error_fr": "Le NIF doit avoir une autorisation DÉFINITIVE, non provisoire.",
                 "severity": "error"
             },
             # For RENOVACION: Previous permit must be near expiry
@@ -512,7 +499,6 @@ class ResidenciaWorkflow(BaseWorkflow):
                 "document": "residencia_anterior",
                 "rule": "documento.fecha_expiracion < TODAY + 90 DAYS OR documento.fecha_expiracion < TODAY",
                 "error_es": "Solo puede renovar si el permiso expira en menos de 90 días o ya ha expirado.",
-                "error_fr": "Vous ne pouvez renouveler que si le permis expire dans moins de 90 jours ou est déjà expiré.",
                 "severity": "warning"
             },
             # Names must match between passport and previous permit
@@ -521,7 +507,6 @@ class ResidenciaWorkflow(BaseWorkflow):
                 "condition": "tipo IN ['RENOVACION', 'DUPLICADO', 'CAMBIO_DATOS']",
                 "rule": "normalize(pasaporte_entrada_legal.titular.apellidos) == normalize(residencia_anterior.titular.apellidos)",
                 "error_es": "El nombre en el pasaporte no coincide con el permiso de residencia anterior.",
-                "error_fr": "Le nom sur le passeport ne correspond pas au permis de résidence précédent.",
                 "severity": "error"
             },
             # Nota de Ingreso must match request
@@ -531,7 +516,6 @@ class ResidenciaWorkflow(BaseWorkflow):
                 "document": "nota_ingreso",
                 "rule": "nota.numero_expediente == solicitud.numero_expediente",
                 "error_es": "La Nota de Ingreso no corresponde a esta solicitud.",
-                "error_fr": "La Note d'Entrée ne correspond pas à cette demande.",
                 "severity": "error"
             }
         ]

@@ -58,7 +58,6 @@ class VerificacionFuncionarioWorkflow(BaseWorkflow):
     entity_code = EntityCode.MINFP
 
     service_name_es = "Verificación de Funcionario"
-    service_name_fr = "Vérification de Fonctionnaire"
 
     requires_nota_ingreso = False
     requires_appointment = False
@@ -78,7 +77,6 @@ class VerificacionFuncionarioWorkflow(BaseWorkflow):
             step_id="enter_matricula",
             step_type=StepType.CUSTOM,
             title_es="Matrícula de Funcionario",
-            title_fr="Matricule de Fonctionnaire",
             description_es="Introduzca su matrícula de funcionario",
             is_inherited=False,
             config={
@@ -95,7 +93,6 @@ class VerificacionFuncionarioWorkflow(BaseWorkflow):
             step_id="upload_identity",
             step_type=StepType.DOCUMENT_UPLOAD,
             title_es="Documento de Identidad",
-            title_fr="Document d'Identité",
             description_es="Suba su DIP, Pasaporte o Permiso de Residencia en vigor",
             is_inherited=False,
             documents=[
@@ -123,7 +120,6 @@ class VerificacionFuncionarioWorkflow(BaseWorkflow):
             step_id="confirmation",
             step_type=StepType.CONFIRMATION,
             title_es="Confirmación",
-            title_fr="Confirmation",
             description_es="Su solicitud será revisada por un agente del Ministerio de la Función Pública",
             is_inherited=False,
             config={
@@ -170,7 +166,6 @@ class VerificacionFuncionarioWorkflow(BaseWorkflow):
                 "id": "matricula_formato",
                 "rule": "matricula MATCHES '^[A-Z]{1,3}-?[0-9]{4,10}$'",
                 "error_es": "El formato de la matrícula es inválido. Ejemplo: FP-12345",
-                "error_fr": "Le format du matricule est invalide. Exemple: FP-12345",
                 "severity": "error"
             },
             # Identity document not expired
@@ -179,7 +174,6 @@ class VerificacionFuncionarioWorkflow(BaseWorkflow):
                 "document": "documento_identidad",
                 "rule": "documento.fecha_expiracion > TODAY",
                 "error_es": "El documento de identidad está expirado.",
-                "error_fr": "Le document d'identité est expiré.",
                 "severity": "error"
             },
             # Extraction confidence
@@ -187,7 +181,6 @@ class VerificacionFuncionarioWorkflow(BaseWorkflow):
                 "id": "extraccion_confiable",
                 "rule": "extraction_confidence >= 0.70",
                 "error_es": "El documento no es legible. Por favor, suba una imagen más clara.",
-                "error_fr": "Le document n'est pas lisible. Veuillez télécharger une image plus claire.",
                 "severity": "error"
             }
         ]

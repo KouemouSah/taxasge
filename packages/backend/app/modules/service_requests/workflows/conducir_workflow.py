@@ -82,7 +82,6 @@ class ConducirWorkflow(BaseWorkflow):
     entity_code = EntityCode.DGT
 
     service_name_es = "Solicitud de Certificado para Conducir"
-    service_name_fr = "Demande de Certificat de Conduite"
 
     requires_nota_ingreso = False
     requires_appointment = True  # For exam (NUEVO)
@@ -125,7 +124,6 @@ class ConducirWorkflow(BaseWorkflow):
             step_id="select_classes",
             step_type=StepType.CUSTOM,
             title_es="Clase(s) de Permiso",
-            title_fr="Classe(s) de Permis",
             description_es="Seleccione las clases de permiso que desea obtener",
             is_inherited=False,
             config={
@@ -149,7 +147,6 @@ class ConducirWorkflow(BaseWorkflow):
             step_id="specific_documents",
             step_type=StepType.DOCUMENT_UPLOAD,
             title_es="Documentos Específicos",
-            title_fr="Documents Spécifiques",
             description_es="Documentos adicionales según su tipo de solicitud",
             is_inherited=False,
             config={
@@ -169,7 +166,6 @@ class ConducirWorkflow(BaseWorkflow):
             step_id="certificado_medico",
             step_type=StepType.DOCUMENT_UPLOAD,
             title_es="Certificado Médico",
-            title_fr="Certificat Médical",
             description_es="Certificado médico de aptitud para conducir (menos de 3 meses)",
             is_inherited=False,
             documents=[
@@ -195,7 +191,6 @@ class ConducirWorkflow(BaseWorkflow):
             step_id="photos",
             step_type=StepType.DOCUMENT_UPLOAD,
             title_es="Fotografías tipo carnet",
-            title_fr="Photos d'identité",
             description_es="2 fotografías tipo carnet con fondo blanco",
             is_inherited=False,
             documents=[
@@ -218,7 +213,6 @@ class ConducirWorkflow(BaseWorkflow):
             step_id="payment",
             step_type=StepType.PAYMENT,
             title_es="Pago de Tasas",
-            title_fr="Paiement des Frais",
             description_es="Realice el pago mediante Mobile Money",
             is_inherited=False,
             config={
@@ -233,7 +227,6 @@ class ConducirWorkflow(BaseWorkflow):
             step_id="confirmation",
             step_type=StepType.CONFIRMATION,
             title_es="Confirmación",
-            title_fr="Confirmation",
             description_es="Verifique sus datos y envíe su solicitud",
             is_inherited=False,
             config={
@@ -375,7 +368,6 @@ class ConducirWorkflow(BaseWorkflow):
                 "document": "dip | permiso_residencia",
                 "rule": "documento.fecha_expiracion > TODAY",
                 "error_es": "Su documento de identidad está expirado.",
-                "error_fr": "Votre document d'identité est expiré.",
                 "severity": "error"
             },
             # Certificate expiring for RENOVACION
@@ -385,7 +377,6 @@ class ConducirWorkflow(BaseWorkflow):
                 "document": "certificado_actual",
                 "rule": "documento.valido_hasta < TODAY + 90 DAYS",
                 "error_es": "Solo puede renovar si el certificado vence en menos de 90 días o ya ha vencido.",
-                "error_fr": "Vous ne pouvez renouveler que si le certificat expire dans moins de 90 jours.",
                 "severity": "warning"
             },
             # Certificate must be authentic
@@ -398,7 +389,6 @@ class ConducirWorkflow(BaseWorkflow):
                     autenticacion.tiene_firma == true
                 """,
                 "error_es": "El certificado actual no parece auténtico (falta QR, sello o firma).",
-                "error_fr": "Le certificat actuel ne semble pas authentique (QR, sceau ou signature manquant).",
                 "severity": "error"
             },
             # Identity matches between documents
@@ -410,7 +400,6 @@ class ConducirWorkflow(BaseWorkflow):
                     AND normalize(DIP.titular.nombres) == normalize(CERTIFICADO.titular.nombre)
                 """,
                 "error_es": "El nombre en su DIP no coincide con el certificado actual.",
-                "error_fr": "Le nom sur votre DIP ne correspond pas au certificat actuel.",
                 "severity": "error"
             },
             # DIP number matches certificate
@@ -419,7 +408,6 @@ class ConducirWorkflow(BaseWorkflow):
                 "condition": "tipo IN ['RENOVACION', 'EXTENSION']",
                 "rule": "DIP.documento.numero_dip == CERTIFICADO.titular.numero_identificacion",
                 "error_es": "El número de DIP no coincide con el del certificado actual.",
-                "error_fr": "Le numéro de DIP ne correspond pas à celui du certificat actuel.",
                 "severity": "error"
             },
             # Age requirement for classes C, D, E (21+)
@@ -430,7 +418,6 @@ class ConducirWorkflow(BaseWorkflow):
                     THEN calculate_age(titular.fecha_nacimiento) >= 21
                 """,
                 "error_es": "Debe tener al menos 21 años para las clases C, D o E.",
-                "error_fr": "Vous devez avoir au moins 21 ans pour les classes C, D ou E.",
                 "severity": "error"
             },
             # Age requirement for classes A, B, F (18+)
@@ -441,7 +428,6 @@ class ConducirWorkflow(BaseWorkflow):
                     THEN calculate_age(titular.fecha_nacimiento) >= 18
                 """,
                 "error_es": "Debe tener al menos 18 años para obtener un certificado de conducir.",
-                "error_fr": "Vous devez avoir au moins 18 ans pour obtenir un certificat de conduite.",
                 "severity": "error"
             },
             # Extension: new class must not already exist
@@ -450,7 +436,6 @@ class ConducirWorkflow(BaseWorkflow):
                 "condition": "tipo == 'EXTENSION'",
                 "rule": "clases_solicitadas NOT IN CERTIFICADO.permiso.clases_permiso",
                 "error_es": "Ya tiene esta(s) clase(s) en su certificado actual.",
-                "error_fr": "Vous avez déjà cette(ces) classe(s) sur votre certificat actuel.",
                 "severity": "error"
             },
             # Medical certificate is recent
@@ -460,7 +445,6 @@ class ConducirWorkflow(BaseWorkflow):
                 "document": "certificado_medico",
                 "rule": "documento.fecha_emision > TODAY - 90 DAYS",
                 "error_es": "El certificado médico debe tener menos de 3 meses.",
-                "error_fr": "Le certificat médical doit dater de moins de 3 mois.",
                 "severity": "error"
             }
         ]
@@ -561,8 +545,7 @@ class ConducirWorkflow(BaseWorkflow):
                     "class": cls,
                     "min_age": min_age,
                     "current_age": age,
-                    "error_es": f"Debe tener al menos {min_age} años para la clase {cls}.",
-                    "error_fr": f"Vous devez avoir au moins {min_age} ans pour la classe {cls}."
+                    "error_es": f"Debe tener al menos {min_age} años para la clase {cls}."
                 })
 
         return errors

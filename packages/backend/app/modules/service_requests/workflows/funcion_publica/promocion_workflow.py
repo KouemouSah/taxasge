@@ -52,7 +52,6 @@ class PromocionAdministrativaWorkflow(BaseWorkflow):
     entity_code = EntityCode.MINFP
 
     service_name_es = "Promoción Administrativa"
-    service_name_fr = "Promotion Administrative"
 
     requires_nota_ingreso = False
     requires_appointment = False
@@ -76,7 +75,6 @@ class PromocionAdministrativaWorkflow(BaseWorkflow):
             step_id="select_promotion_type",
             step_type=StepType.CUSTOM,
             title_es="Tipo de Promoción",
-            title_fr="Type de Promotion",
             description_es="Seleccione el tipo de promoción que solicita",
             is_inherited=False,
             config={
@@ -107,7 +105,6 @@ class PromocionAdministrativaWorkflow(BaseWorkflow):
             step_id="documents",
             step_type=StepType.DOCUMENT_UPLOAD,
             title_es="Documentos Justificativos",
-            title_fr="Documents Justificatifs",
             description_es="Cargue los documentos que acreditan su derecho a la promoción",
             is_inherited=False,
             config={"conditional": True}
@@ -119,7 +116,6 @@ class PromocionAdministrativaWorkflow(BaseWorkflow):
             step_id="payment",
             step_type=StepType.PAYMENT,
             title_es="Pago de Tasas",
-            title_fr="Paiement des Frais",
             description_es="Tasa de tramitación de la promoción",
             is_inherited=False,
             config={
@@ -134,7 +130,6 @@ class PromocionAdministrativaWorkflow(BaseWorkflow):
             step_id="confirmation",
             step_type=StepType.CONFIRMATION,
             title_es="Confirmación y Envío",
-            title_fr="Confirmation et Envoi",
             description_es="Verifique todos los datos y envíe su solicitud",
             is_inherited=False,
             config={"show_summary": True}
@@ -229,7 +224,6 @@ class PromocionAdministrativaWorkflow(BaseWorkflow):
                 "document": "carnet_funcionario",
                 "rule": "documento.fecha_caducidad > TODAY",
                 "error_es": "El carnet de funcionario debe estar vigente.",
-                "error_fr": "La carte de fonctionnaire doit être valide.",
                 "severity": "error"
             },
             # For TRIENIOS: minimum 3 years since last trienio
@@ -238,7 +232,6 @@ class PromocionAdministrativaWorkflow(BaseWorkflow):
                 "condition": "tipo == 'TRIENIOS'",
                 "rule": "ultima_fecha_trienio IS NULL OR ultima_fecha_trienio + 3 YEARS <= TODAY",
                 "error_es": "Debe haber transcurrido al menos 3 años desde el último trienio reconocido.",
-                "error_fr": "Au moins 3 ans doivent s'être écoulés depuis la dernière triennale.",
                 "severity": "error"
             },
             # For ESCALA: new title must be higher category
@@ -247,7 +240,6 @@ class PromocionAdministrativaWorkflow(BaseWorkflow):
                 "condition": "tipo == 'ESCALA'",
                 "rule": "titulo_academico.nivel > carnet_funcionario.categoria",
                 "error_es": "El nuevo título debe corresponder a una categoría superior.",
-                "error_fr": "Le nouveau titre doit correspondre à une catégorie supérieure.",
                 "severity": "warning"
             }
         ]

@@ -45,12 +45,11 @@ class StepType(str, Enum):
 
 @dataclass
 class ValidationResult:
-    """Result of a validation check"""
+    """Result of a validation check. Translations managed via translations module."""
     is_valid: bool
     rule_id: str
     severity: str = "error"  # error, warning, info
-    message_es: Optional[str] = None
-    message_fr: Optional[str] = None
+    message_es: Optional[str] = None  # Base message in Spanish
     field_name: Optional[str] = None
     document_code: Optional[str] = None
 
@@ -143,14 +142,13 @@ class WorkflowStep:
     """
     A step in the workflow.
     Can be common (inherited from Flux_demande) or specific to workflow.
+    Translations (fr, en) managed via translations module.
     """
     step_number: int
     step_id: str
     step_type: StepType
-    title_es: str
-    title_fr: Optional[str] = None
-    description_es: Optional[str] = None
-    description_fr: Optional[str] = None
+    title_es: str  # Base title in Spanish
+    description_es: Optional[str] = None  # Base description in Spanish
     is_inherited: bool = False  # True if from Flux_demande.md base
     documents: List[DocumentRequirement] = field(default_factory=list)
     is_optional: bool = False
@@ -304,9 +302,8 @@ class BaseWorkflow(ABC):
     category: WorkflowCategory
     entity_code: EntityCode
 
-    # Service configuration
+    # Service configuration (translations fr/en via translations module)
     service_name_es: str = ""
-    service_name_fr: str = ""
 
     # Workflow flags
     requires_nota_ingreso: bool = False
@@ -356,7 +353,6 @@ class BaseWorkflow(ABC):
             step_id="select_type",
             step_type=StepType.SELECTION,
             title_es="Tipo de Solicitud",
-            title_fr="Type de Demande",
             description_es="Seleccione el tipo de trámite que desea realizar",
             is_inherited=True,
             requires_previous=False
@@ -368,7 +364,6 @@ class BaseWorkflow(ABC):
             step_id="upload_documents",
             step_type=StepType.DOCUMENT_UPLOAD,
             title_es="Documentos Requeridos",
-            title_fr="Documents Requis",
             description_es="Cargue los documentos necesarios para su solicitud",
             is_inherited=True
         ))
@@ -379,7 +374,6 @@ class BaseWorkflow(ABC):
             step_id="review_form",
             step_type=StepType.FORM_REVIEW,
             title_es="Verificar Datos",
-            title_fr="Vérifier les Données",
             description_es="Verifique y corrija los datos extraídos de sus documentos",
             is_inherited=True
         ))
@@ -390,7 +384,6 @@ class BaseWorkflow(ABC):
             step_id="validation",
             step_type=StepType.VALIDATION,
             title_es="Validaciones",
-            title_fr="Validations",
             description_es="El sistema verifica la coherencia de sus documentos",
             is_inherited=True
         ))
@@ -467,7 +460,6 @@ class BaseWorkflow(ABC):
                     rule_id=f"doc_required_{doc.document_code}",
                     severity="error",
                     message_es=f"El documento {doc.document_name_es} es obligatorio",
-                    message_fr=f"Le document {doc.document_name_es} est obligatoire",
                     document_code=doc.document_code
                 ))
 
@@ -507,7 +499,6 @@ class BaseWorkflow(ABC):
                 rule_id=rule_id,
                 severity=rule.get("severity", "error"),
                 message_es=rule.get("error_es"),
-                message_fr=rule.get("error_fr"),
                 document_code=rule.get("document")
             )
 
@@ -608,13 +599,12 @@ class BaseWorkflow(ABC):
     # === Workflow Info ===
 
     def get_info(self) -> Dict[str, Any]:
-        """Get workflow information for API responses."""
+        """Get workflow information for API responses. Translations via translations module."""
         return {
             "code": self.workflow_code.value,
             "category": self.category.value,
             "entity_code": self.entity_code.value,
             "service_name_es": self.service_name_es,
-            "service_name_fr": self.service_name_fr,
             "requires_nota_ingreso": self.requires_nota_ingreso,
             "requires_appointment": self.requires_appointment,
             "requires_agent_review": self.requires_agent_review,
@@ -626,7 +616,7 @@ class BaseWorkflow(ABC):
                     "id": s.step_id,
                     "type": s.step_type.value,
                     "title_es": s.title_es,
-                    "title_fr": s.title_fr,
+                    "description_es": s.description_es,
                     "is_inherited": s.is_inherited
                 }
                 for s in self.get_steps()
