@@ -323,12 +323,18 @@ export default function TariffsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="solicitud_type">{t('solicitudType')}</Label>
-                  <Input
-                    id="solicitud_type"
+                  <Select
                     value={formData.solicitud_type}
-                    onChange={(e) => setFormData({ ...formData, solicitud_type: e.target.value })}
-                    placeholder="expedicion"
-                  />
+                    onValueChange={(value) => setFormData({ ...formData, solicitud_type: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={t('selectSolicitudType')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="expedicion">{t('solicitudTypeExpedicion')}</SelectItem>
+                      <SelectItem value="renovacion">{t('solicitudTypeRenovacion')}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="tariff_type">{t('tariffType')}</Label>
@@ -574,11 +580,18 @@ export default function TariffsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="edit-solicitud">{t('solicitudType')}</Label>
-                <Input
-                  id="edit-solicitud"
+                <Select
                   value={formData.solicitud_type}
-                  onChange={(e) => setFormData({ ...formData, solicitud_type: e.target.value })}
-                />
+                  onValueChange={(value) => setFormData({ ...formData, solicitud_type: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="expedicion">{t('solicitudTypeExpedicion')}</SelectItem>
+                    <SelectItem value="renovacion">{t('solicitudTypeRenovacion')}</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="edit-type">{t('tariffType')}</Label>
