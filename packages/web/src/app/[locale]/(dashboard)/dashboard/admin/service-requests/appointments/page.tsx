@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { CalendarClock, CalendarX, Clock } from 'lucide-react'
 
 // Import tab content components
