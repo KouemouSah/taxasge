@@ -103,8 +103,25 @@ class WorkflowResponse(BaseModel):
 # WORKFLOW_DOCUMENT_REQUIREMENTS (table: workflow_document_requirements)
 # ─────────────────────────────────────────────────────────────────
 
-# Import from centralized enums module (matches DB enum document_condition_type_enum)
-from app.modules.service_requests.models.enums import DocumentConditionType
+from enum import Enum
+
+class DocumentConditionType(str, Enum):
+    """
+    Document condition type enum - matches DB enum document_condition_type_enum.
+    See DATABASE_SCHEMA_REFERENCE.md for full list.
+    """
+    ALWAYS = "always"
+    AGE_LESS_THAN = "age_less_than"
+    AGE_GREATER_THAN = "age_greater_than"
+    IS_RENEWAL = "is_renewal"
+    IS_NEW = "is_new"
+    IS_DUPLICATE = "is_duplicate"
+    HAS_PREVIOUS = "has_previous"
+    IS_MINOR = "is_minor"
+    IS_ADULT = "is_adult"
+    IS_FOREIGN = "is_foreign"
+    IS_NATIONAL = "is_national"
+    CUSTOM = "custom"
 
 
 class DocumentRequirementCreate(BaseModel):
