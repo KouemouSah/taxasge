@@ -746,6 +746,11 @@
       "appointments": {
         "title": "Gestión de Citas",
         "subtitle": "Configurar horarios y fechas disponibles",
+        "tabs": {
+          "slots": "Horarios",
+          "blocked": "Bloqueadas",
+          "delays": "Esperas"
+        },
         "slots": {
           "title": "Configuración de Horarios",
           "subtitle": "Definir slots de cita por entidad",

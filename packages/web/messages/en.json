@@ -746,6 +746,11 @@
       "appointments": {
         "title": "Appointment Management",
         "subtitle": "Configure schedules and available dates",
+        "tabs": {
+          "slots": "Slots",
+          "blocked": "Blocked",
+          "delays": "Delays"
+        },
         "slots": {
           "title": "Slot Configuration",
           "subtitle": "Define appointment slots by entity",

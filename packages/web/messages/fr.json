@@ -746,6 +746,11 @@
       "appointments": {
         "title": "Gestion des Rendez-vous",
         "subtitle": "Configurer les horaires et dates disponibles",
+        "tabs": {
+          "slots": "Horaires",
+          "blocked": "Bloquées",
+          "delays": "Délais"
+        },
         "slots": {
           "title": "Configuration des Créneaux",
           "subtitle": "Définir les créneaux de RDV par entité",

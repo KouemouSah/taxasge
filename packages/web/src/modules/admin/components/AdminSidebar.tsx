@@ -47,8 +47,6 @@ import {
   FileCheck,
   DollarSign,
   CalendarClock,
-  CalendarX,
-  Clock,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { clearAuthData } from '@/core/auth/storage'
@@ -275,19 +273,9 @@ export default function AdminSidebar() {
           icon: DollarSign,
         },
         {
-          title: t('nav.slots'),
-          href: `/${locale}/dashboard/admin/service-requests/appointments/slots`,
+          title: t('nav.appointments'),
+          href: `/${locale}/dashboard/admin/service-requests/appointments`,
           icon: CalendarClock,
-        },
-        {
-          title: t('nav.blocked'),
-          href: `/${locale}/dashboard/admin/service-requests/appointments/blocked`,
-          icon: CalendarX,
-        },
-        {
-          title: t('nav.delays'),
-          href: `/${locale}/dashboard/admin/service-requests/appointments/delays`,
-          icon: Clock,
         },
       ],
     },
