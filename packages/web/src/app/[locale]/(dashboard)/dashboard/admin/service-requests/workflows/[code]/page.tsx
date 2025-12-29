@@ -28,6 +28,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import Link from 'next/link'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -61,16 +62,12 @@ import {
   ArrowUp,
   ArrowDown,
   GripVertical,
-  Calculator,
   Save,
 } from 'lucide-react'
 import {
   useWorkflow,
   useUpdateWorkflow,
   useTariffs,
-  useCreateTariff,
-  useUpdateTariff,
-  useDeleteTariff,
   useDocumentRequirements,
   useAddDocumentRequirement,
   useUpdateDocumentRequirement,
@@ -79,16 +76,10 @@ import {
   useSlotConfigs,
   useBlockedDates,
   useDelayRules,
-  TARIFF_TYPES,
   DOCUMENT_CONDITION_TYPES,
-  WORKFLOW_CATEGORIES,
 } from '@/modules/service-requests-admin'
 import type {
   WorkflowUpdate,
-  WorkflowTariff,
-  WorkflowTariffCreate,
-  WorkflowTariffUpdate,
-  TariffType,
   DocumentRequirement,
   DocumentRequirementCreate,
   DocumentRequirementUpdate,
@@ -120,27 +111,6 @@ export default function WorkflowDetailPage() {
 
   // Tariffs data
   const { data: allTariffs, isLoading: loadingTariffs } = useTariffs({ workflow_code: workflowCode })
-  const createTariffMutation = useCreateTariff()
-  const updateTariffMutation = useUpdateTariff()
-  const deleteTariffMutation = useDeleteTariff()
-
-  // Tariff dialogs state
-  const [isTariffDialogOpen, setIsTariffDialogOpen] = useState(false)
-  const [isEditTariffDialogOpen, setIsEditTariffDialogOpen] = useState(false)
-  const [isDeleteTariffDialogOpen, setIsDeleteTariffDialogOpen] = useState(false)
-  const [selectedTariff, setSelectedTariff] = useState<WorkflowTariff | null>(null)
-  const [tariffForm, setTariffForm] = useState<WorkflowTariffCreate>({
-    workflow_code: workflowCode,
-    solicitud_type: 'expedicion',
-    tariff_type: 'FIXED',
-    amount: 0,
-    percentage_rate: null,
-    currency: 'XAF',
-    legal_reference: '',
-    effective_from: new Date().toISOString().split('T')[0],
-    effective_to: null,
-    is_active: true,
-  })
 
   // Documents data
   const { data: documents, isLoading: loadingDocuments } = useDocumentRequirements(workflowCode)
@@ -197,82 +167,6 @@ export default function WorkflowDetailPage() {
     } catch {
       // Error handled by mutation
     }
-  }
-
-  // Handlers - Tariffs
-  const handleCreateTariff = async () => {
-    try {
-      await createTariffMutation.mutateAsync({ ...tariffForm, workflow_code: workflowCode })
-      setIsTariffDialogOpen(false)
-      resetTariffForm()
-    } catch {
-      // Error handled by mutation
-    }
-  }
-
-  const handleUpdateTariff = async () => {
-    if (!selectedTariff) return
-    try {
-      const updateData: WorkflowTariffUpdate = {
-        solicitud_type: tariffForm.solicitud_type,
-        tariff_type: tariffForm.tariff_type as TariffType,
-        amount: tariffForm.amount,
-        percentage_rate: tariffForm.percentage_rate,
-        currency: tariffForm.currency,
-        legal_reference: tariffForm.legal_reference,
-        effective_to: tariffForm.effective_to,
-        is_active: tariffForm.is_active,
-      }
-      await updateTariffMutation.mutateAsync({ tariffId: selectedTariff.id, data: updateData })
-      setIsEditTariffDialogOpen(false)
-      resetTariffForm()
-    } catch {
-      // Error handled by mutation
-    }
-  }
-
-  const handleDeleteTariff = async () => {
-    if (!selectedTariff) return
-    try {
-      await deleteTariffMutation.mutateAsync(selectedTariff.id)
-      setIsDeleteTariffDialogOpen(false)
-      setSelectedTariff(null)
-    } catch {
-      // Error handled by mutation
-    }
-  }
-
-  const openEditTariffDialog = (tariff: WorkflowTariff) => {
-    setSelectedTariff(tariff)
-    setTariffForm({
-      workflow_code: tariff.workflow_code,
-      solicitud_type: tariff.solicitud_type,
-      tariff_type: tariff.tariff_type as TariffType,
-      amount: tariff.amount,
-      percentage_rate: tariff.percentage_rate,
-      currency: tariff.currency,
-      legal_reference: tariff.legal_reference || '',
-      effective_from: tariff.effective_from,
-      effective_to: tariff.effective_to,
-      is_active: tariff.is_active,
-    })
-    setIsEditTariffDialogOpen(true)
-  }
-
-  const resetTariffForm = () => {
-    setTariffForm({
-      workflow_code: workflowCode,
-      solicitud_type: 'expedicion',
-      tariff_type: 'FIXED',
-      amount: 0,
-      percentage_rate: null,
-      currency: 'XAF',
-      legal_reference: '',
-      effective_from: new Date().toISOString().split('T')[0],
-      effective_to: null,
-      is_active: true,
-    })
-    setSelectedTariff(null)
   }
 
   // Handlers - Documents
@@ -579,117 +473,12 @@ export default function WorkflowDetailPage() {
                   {tTariffs('total', { count: allTariffs?.length || 0 })}
                 </CardDescription>
               </div>
-              <Dialog open={isTariffDialogOpen} onOpenChange={setIsTariffDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button onClick={resetTariffForm}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    {tTariffs('create')}
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-lg">
-                  <DialogHeader>
-                    <DialogTitle>{tTariffs('create')}</DialogTitle>
-                    <DialogDescription>{tTariffs('createDescription')}</DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>{tTariffs('solicitudType')}</Label>
-                        <Select
-                          value={tariffForm.solicitud_type}
-                          onValueChange={(v) => setTariffForm({ ...tariffForm, solicitud_type: v })}
-                        >
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="expedicion">Expedicion</SelectItem>
-                            <SelectItem value="renovacion">Renovacion</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>{tTariffs('tariffType')}</Label>
-                        <Select
-                          value={tariffForm.tariff_type}
-                          onValueChange={(v) => setTariffForm({ ...tariffForm, tariff_type: v as TariffType })}
-                        >
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {TARIFF_TYPES.map((t) => (
-                              <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>{tTariffs('amount')} (XAF)</Label>
-                        <Input
-                          type="number"
-                          value={tariffForm.amount}
-                          onChange={(e) => setTariffForm({ ...tariffForm, amount: parseFloat(e.target.value) || 0 })}
-                          min={0}
-                        />
-                      </div>
-                      {tariffForm.tariff_type === 'PERCENTAGE' && (
-                        <div className="space-y-2">
-                          <Label>{tTariffs('percentage')} (%)</Label>
-                          <Input
-                            type="number"
-                            value={tariffForm.percentage_rate || ''}
-                            onChange={(e) => setTariffForm({ ...tariffForm, percentage_rate: parseFloat(e.target.value) || null })}
-                            min={0}
-                            max={100}
-                            step={0.01}
-                          />
-                        </div>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>{tTariffs('effectiveFrom')}</Label>
-                        <Input
-                          type="date"
-                          value={tariffForm.effective_from}
-                          onChange={(e) => setTariffForm({ ...tariffForm, effective_from: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>{tTariffs('effectiveTo')}</Label>
-                        <Input
-                          type="date"
-                          value={tariffForm.effective_to || ''}
-                          onChange={(e) => setTariffForm({ ...tariffForm, effective_to: e.target.value || null })}
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>{tTariffs('legalReference')}</Label>
-                      <Input
-                        value={tariffForm.legal_reference || ''}
-                        onChange={(e) => setTariffForm({ ...tariffForm, legal_reference: e.target.value })}
-                        placeholder="Ley XX/2024, Art. YY"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Label>{tTariffs('isActive')}</Label>
-                      <Switch
-                        checked={tariffForm.is_active}
-                        onCheckedChange={(checked) => setTariffForm({ ...tariffForm, is_active: checked })}
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsTariffDialogOpen(false)}>
-                      {tCommon('cancel')}
-                    </Button>
-                    <Button onClick={handleCreateTariff} disabled={!tariffForm.amount || createTariffMutation.isPending}>
-                      {createTariffMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      {tCommon('create')}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+              <Button asChild>
+                <Link href={`/${locale}/dashboard/admin/service-requests/workflows/${workflowCode}/tariffs`}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Gestionar Tarifas
+                </Link>
+              </Button>
             </CardHeader>
             <CardContent>
               {loadingTariffs ? (
@@ -698,7 +487,9 @@ export default function WorkflowDetailPage() {
                 </div>
               ) : (allTariffs?.length || 0) === 0 ? (
                 <div className="text-center text-muted-foreground py-8">
-                  {tTariffs('noTariffsFound')}
+                  <DollarSign className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg font-medium">{tTariffs('noTariffsFound')}</p>
+                  <p className="text-sm mt-1">Haga clic en &quot;Gestionar Tarifas&quot; para agregar tarifas</p>
                 </div>
               ) : (
                 <div className="border rounded-md">
@@ -710,13 +501,12 @@ export default function WorkflowDetailPage() {
                         <TableHead className="text-right">{tTariffs('amount')}</TableHead>
                         <TableHead>{tTariffs('validity')}</TableHead>
                         <TableHead className="text-center">{tTariffs('status')}</TableHead>
-                        <TableHead className="text-right">{tTariffs('actions')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {allTariffs?.map((tariff) => (
                         <TableRow key={tariff.id}>
-                          <TableCell><Badge variant="outline">{tariff.solicitud_type}</Badge></TableCell>
+                          <TableCell><Badge variant="outline" className="capitalize">{tariff.solicitud_type}</Badge></TableCell>
                           <TableCell>{getTariffTypeBadge(tariff.tariff_type)}</TableCell>
                           <TableCell className="text-right font-mono">
                             {tariff.tariff_type === 'PERCENTAGE' && tariff.percentage_rate
@@ -736,21 +526,6 @@ export default function WorkflowDetailPage() {
                               <XCircle className="h-5 w-5 text-red-500 mx-auto" />
                             )}
                           </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <Button variant="ghost" size="icon" onClick={() => openEditTariffDialog(tariff)}>
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => { setSelectedTariff(tariff); setIsDeleteTariffDialogOpen(true) }}
-                                className="text-destructive hover:text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -759,116 +534,6 @@ export default function WorkflowDetailPage() {
               )}
             </CardContent>
           </Card>
-
-          {/* Edit Tariff Dialog */}
-          <Dialog open={isEditTariffDialogOpen} onOpenChange={setIsEditTariffDialogOpen}>
-            <DialogContent className="max-w-lg">
-              <DialogHeader>
-                <DialogTitle>{tTariffs('edit')}</DialogTitle>
-                <DialogDescription>{tTariffs('editDescription')}</DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>{tTariffs('solicitudType')}</Label>
-                    <Select
-                      value={tariffForm.solicitud_type}
-                      onValueChange={(v) => setTariffForm({ ...tariffForm, solicitud_type: v })}
-                    >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="expedicion">Expedicion</SelectItem>
-                        <SelectItem value="renovacion">Renovacion</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>{tTariffs('tariffType')}</Label>
-                    <Select
-                      value={tariffForm.tariff_type}
-                      onValueChange={(v) => setTariffForm({ ...tariffForm, tariff_type: v as TariffType })}
-                    >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {TARIFF_TYPES.map((t) => (
-                          <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>{tTariffs('amount')} (XAF)</Label>
-                    <Input
-                      type="number"
-                      value={tariffForm.amount}
-                      onChange={(e) => setTariffForm({ ...tariffForm, amount: parseFloat(e.target.value) || 0 })}
-                      min={0}
-                    />
-                  </div>
-                  {tariffForm.tariff_type === 'PERCENTAGE' && (
-                    <div className="space-y-2">
-                      <Label>{tTariffs('percentage')} (%)</Label>
-                      <Input
-                        type="number"
-                        value={tariffForm.percentage_rate || ''}
-                        onChange={(e) => setTariffForm({ ...tariffForm, percentage_rate: parseFloat(e.target.value) || null })}
-                        min={0}
-                        max={100}
-                        step={0.01}
-                      />
-                    </div>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label>{tTariffs('legalReference')}</Label>
-                  <Input
-                    value={tariffForm.legal_reference || ''}
-                    onChange={(e) => setTariffForm({ ...tariffForm, legal_reference: e.target.value })}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label>{tTariffs('isActive')}</Label>
-                  <Switch
-                    checked={tariffForm.is_active}
-                    onCheckedChange={(checked) => setTariffForm({ ...tariffForm, is_active: checked })}
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsEditTariffDialogOpen(false)}>
-                  {tCommon('cancel')}
-                </Button>
-                <Button onClick={handleUpdateTariff} disabled={updateTariffMutation.isPending}>
-                  {updateTariffMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {tCommon('save')}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          {/* Delete Tariff Dialog */}
-          <AlertDialog open={isDeleteTariffDialogOpen} onOpenChange={setIsDeleteTariffDialogOpen}>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>{tTariffs('deleteConfirmTitle')}</AlertDialogTitle>
-                <AlertDialogDescription>
-                  {tTariffs('deleteConfirmDescription', { workflow: selectedTariff?.workflow_code })}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleDeleteTariff}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  {deleteTariffMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {tCommon('delete')}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
         </TabsContent>
 
         {/* Documents Tab */}
