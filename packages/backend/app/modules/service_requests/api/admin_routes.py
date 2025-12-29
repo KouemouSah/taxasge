@@ -103,14 +103,8 @@ class WorkflowResponse(BaseModel):
 # WORKFLOW_DOCUMENT_REQUIREMENTS (table: workflow_document_requirements)
 # ─────────────────────────────────────────────────────────────────
 
-from enum import Enum
-
-class DocumentConditionType(str, Enum):
-    """Document condition type enum - matches DB enum"""
-    ALWAYS = "always"
-    IF_SOLICITUD_TYPE = "if_solicitud_type"
-    IF_FORM_FIELD = "if_form_field"
-    IF_DOCUMENT_EXISTS = "if_document_exists"
+# Import from centralized enums module (matches DB enum document_condition_type_enum)
+from app.modules.service_requests.models.enums import DocumentConditionType
 
 
 class DocumentRequirementCreate(BaseModel):

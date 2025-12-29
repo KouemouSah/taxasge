@@ -3,7 +3,7 @@
 TAXASGE DATABASE SCHEMA - COMPLETE REFERENCE
 ====================================================================================================
 
-Extracted on: 2025-12-28 17:10:12
+Extracted on: 2025-12-29 21:00:50
 Database: Supabase PostgreSQL
 Project: taxasge-dev
 
@@ -15,6 +15,10 @@ Project: taxasge-dev
   - agent_performance_stats                  No description
   - agent_work_queue                         Work queue for agent load balancing with dynamic priority calculation based on SLA, amount, and complexity
   - agent_workloads                          Suivi en temps réel de la charge de travail des agents
+  - appointment_blocked_dates                Holidays and blocked dates when appointments cannot be scheduled
+  - appointment_delay_rules                  Configurable delay (in business days) between validation and appointment
+  - appointment_reservations                 Booked appointments for service requests
+  - appointment_slot_configs                 Available appointment time slots by entity and day of week
   - assignment_rules                         Règles configurables pour l'auto-assignation intelligente
   - assignments                              Historique complet des assignations de déclarations aux agents
   - audit_logs                               No description
@@ -102,6 +106,7 @@ Project: taxasge-dev
   - workflow_supplement_config               Configuration: quels suppléments s'appliquent à quels workflows
   - workflow_tariffs                         Tarifs de base des workflows (administrables via interface)
   - workflow_transitions                     No description
+  - workflows                                Workflow definitions - determines how service requests are processed
 
 ====================================================================================================
 2. ENUM TYPES
@@ -577,6 +582,167 @@ Indexes:
     CREATE INDEX idx_agent_workloads_specializations ON public.agent_workloads USING gin (active_specializations)
   - idx_agent_workloads_last_assignment
     CREATE INDEX idx_agent_workloads_last_assignment ON public.agent_workloads USING btree (last_assignment_at) WHERE (last_assignment_at IS NOT NULL)
+
+----------------------------------------------------------------------------------------------------
+Table: APPOINTMENT_BLOCKED_DATES
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+entity_code                         varchar(50)               YES                                      
+  └─ Description: NULL = applies to all entities
+blocked_date                        date                      NO                                       
+reason                              varchar(255)              YES                                      
+is_recurring                        boolean                   NO         false                         
+  └─ Description: TRUE = same date every year (annual holidays)
+created_at                          timestamp with time zone  NO         now()                         
+created_by                          uuid                      YES                                      
+
+Primary Key: id
+
+Foreign Keys:
+  - created_by → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+
+Unique Constraints:
+  - unique_blocked_date: (entity_code, blocked_date)
+
+Indexes:
+  - unique_blocked_date
+    CREATE UNIQUE INDEX unique_blocked_date ON public.appointment_blocked_dates USING btree (entity_code, blocked_date)
+  - idx_abd_entity
+    CREATE INDEX idx_abd_entity ON public.appointment_blocked_dates USING btree (entity_code)
+  - idx_abd_date
+    CREATE INDEX idx_abd_date ON public.appointment_blocked_dates USING btree (blocked_date)
+  - idx_abd_lookup
+    CREATE INDEX idx_abd_lookup ON public.appointment_blocked_dates USING btree (entity_code, blocked_date)
+
+----------------------------------------------------------------------------------------------------
+Table: APPOINTMENT_DELAY_RULES
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+workflow_code                       varchar(100)              YES                                      
+  └─ Description: NULL = default rule for all workflows without specific rule
+priority                            service_request_priority_enum NO                                       
+delay_business_days                 integer                   NO         3                             
+  └─ Description: Number of business days to wait after validation
+is_active                           boolean                   NO         true                          
+created_at                          timestamp with time zone  NO         now()                         
+updated_at                          timestamp with time zone  NO         now()                         
+created_by                          uuid                      YES                                      
+
+Primary Key: id
+
+Foreign Keys:
+  - created_by → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - workflow_code → workflows.code (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+Unique Constraints:
+  - unique_delay_rule: (workflow_code, priority)
+
+Indexes:
+  - unique_delay_rule
+    CREATE UNIQUE INDEX unique_delay_rule ON public.appointment_delay_rules USING btree (workflow_code, priority)
+  - idx_adr_workflow
+    CREATE INDEX idx_adr_workflow ON public.appointment_delay_rules USING btree (workflow_code)
+  - idx_adr_priority
+    CREATE INDEX idx_adr_priority ON public.appointment_delay_rules USING btree (priority)
+  - idx_adr_lookup
+    CREATE INDEX idx_adr_lookup ON public.appointment_delay_rules USING btree (workflow_code, priority, is_active) WHERE (is_active = true)
+
+----------------------------------------------------------------------------------------------------
+Table: APPOINTMENT_RESERVATIONS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+service_request_id                  uuid                      NO                                       
+entity_code                         varchar(50)               NO                                       
+appointment_date                    date                      NO                                       
+appointment_time                    time without time zone    NO                                       
+location_name                       varchar(255)              YES                                      
+location_address                    text                      YES                                      
+status                              varchar(20)               NO         'scheduled'::character varying
+  └─ Description: scheduled, confirmed, completed, cancelled, no_show, rescheduled
+reminder_sent_at                    timestamp with time zone  YES                                      
+confirmation_sent_at                timestamp with time zone  YES                                      
+rescheduled_from                    uuid                      YES                                      
+rescheduled_reason                  text                      YES                                      
+completed_at                        timestamp with time zone  YES                                      
+completed_by                        uuid                      YES                                      
+completion_notes                    text                      YES                                      
+created_at                          timestamp with time zone  NO         now()                         
+updated_at                          timestamp with time zone  NO         now()                         
+cancelled_at                        timestamp with time zone  YES                                      
+cancelled_by                        uuid                      YES                                      
+cancellation_reason                 text                      YES                                      
+
+Primary Key: id
+
+Foreign Keys:
+  - cancelled_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - completed_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - rescheduled_from → appointment_reservations.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - service_request_id → service_requests.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+Indexes:
+  - idx_ar_service_request
+    CREATE INDEX idx_ar_service_request ON public.appointment_reservations USING btree (service_request_id)
+  - idx_ar_entity_date
+    CREATE INDEX idx_ar_entity_date ON public.appointment_reservations USING btree (entity_code, appointment_date)
+  - idx_ar_status
+    CREATE INDEX idx_ar_status ON public.appointment_reservations USING btree (status)
+  - idx_ar_scheduled
+    CREATE INDEX idx_ar_scheduled ON public.appointment_reservations USING btree (entity_code, appointment_date, appointment_time) WHERE ((status)::text = ANY ((ARRAY['scheduled'::character varying, 'confirmed'::character varying])::text[]))
+  - idx_ar_pending_reminders
+    CREATE INDEX idx_ar_pending_reminders ON public.appointment_reservations USING btree (appointment_date) WHERE (((status)::text = 'scheduled'::text) AND (reminder_sent_at IS NULL))
+
+----------------------------------------------------------------------------------------------------
+Table: APPOINTMENT_SLOT_CONFIGS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+entity_code                         varchar(50)               NO                                       
+day_of_week                         integer                   NO                                       
+  └─ Description: 0=Monday, 1=Tuesday, ..., 6=Sunday
+start_time                          time without time zone    NO                                       
+end_time                            time without time zone    NO                                       
+slot_duration_minutes               integer                   NO         30                            
+max_appointments_per_slot           integer                   NO         10                            
+location_name                       varchar(255)              YES                                      
+location_address                    text                      YES                                      
+is_active                           boolean                   NO         true                          
+created_at                          timestamp with time zone  NO         now()                         
+updated_at                          timestamp with time zone  NO         now()                         
+created_by                          uuid                      YES                                      
+
+Primary Key: id
+
+Foreign Keys:
+  - created_by → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+
+Unique Constraints:
+  - unique_slot: (entity_code, day_of_week, start_time)
+
+Indexes:
+  - unique_slot
+    CREATE UNIQUE INDEX unique_slot ON public.appointment_slot_configs USING btree (entity_code, day_of_week, start_time)
+  - idx_asc_entity
+    CREATE INDEX idx_asc_entity ON public.appointment_slot_configs USING btree (entity_code)
+  - idx_asc_day
+    CREATE INDEX idx_asc_day ON public.appointment_slot_configs USING btree (day_of_week)
+  - idx_asc_active
+    CREATE INDEX idx_asc_active ON public.appointment_slot_configs USING btree (entity_code, is_active) WHERE (is_active = true)
 
 ----------------------------------------------------------------------------------------------------
 Table: ASSIGNMENT_RULES
@@ -4369,6 +4535,55 @@ Indexes:
   - workflow_transitions_from_status_to_status_key
     CREATE UNIQUE INDEX workflow_transitions_from_status_to_status_key ON public.workflow_transitions USING btree (from_status, to_status)
 
+----------------------------------------------------------------------------------------------------
+Table: WORKFLOWS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+code                                varchar(100)              NO                                       
+name_es                             varchar(255)              NO                                       
+description_es                      text                      YES                                      
+category                            varchar(50)               NO                                       
+entity_code                         varchar(50)               NO                                       
+workflow_type                       varchar(30)               NO         'standard'::character varying 
+  └─ Description: standard=agent validation before payment, direct_payment=no validation, multi_phase=complex Python logic
+requires_agent_validation           boolean                   NO         true                          
+requires_appointment                boolean                   NO         false                         
+is_generic                          boolean                   NO         false                         
+  └─ Description: TRUE=uses GenericWorkflow class, FALSE=has dedicated Python class
+appointment_delay_days              integer                   YES                                      
+  └─ Description: If set, overrides appointment_delay_rules table
+appointment_entity_code             varchar(50)               YES                                      
+sla_hours                           integer                   NO         48                            
+max_processing_days                 integer                   YES        30                            
+display_order                       integer                   YES        0                             
+icon                                varchar(50)               YES                                      
+color                               varchar(20)               YES                                      
+is_active                           boolean                   NO         true                          
+config                              jsonb                     NO         '{}'::jsonb                   
+created_at                          timestamp with time zone  NO         now()                         
+updated_at                          timestamp with time zone  NO         now()                         
+created_by                          uuid                      YES                                      
+updated_by                          uuid                      YES                                      
+
+Primary Key: code
+
+Foreign Keys:
+  - created_by → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - updated_by → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+
+Indexes:
+  - idx_workflows_category
+    CREATE INDEX idx_workflows_category ON public.workflows USING btree (category)
+  - idx_workflows_entity
+    CREATE INDEX idx_workflows_entity ON public.workflows USING btree (entity_code)
+  - idx_workflows_type
+    CREATE INDEX idx_workflows_type ON public.workflows USING btree (workflow_type)
+  - idx_workflows_active
+    CREATE INDEX idx_workflows_active ON public.workflows USING btree (is_active) WHERE (is_active = true)
+
 ====================================================================================================
 4. VIEWS
 ====================================================================================================
@@ -4443,6 +4658,15 @@ Definition:  SELECT m.id AS ministry_id,
         CASE
             WHEN (ma.is_active = true) THEN 1
             EL...
+
+View: v_available_appointment_slots
+Definition:  SELECT asc_config.entity_code,
+    asc_config.day_of_week,
+    asc_config.start_time,
+    asc_config.end_time,
+    asc_config.slot_duration_minutes,
+    asc_config.max_appointments_per_slot,
+    asc_...
 
 View: v_bank_reconciliation_matching
 Definition:  SELECT id AS bank_transaction_id,
@@ -4838,6 +5062,9 @@ Returns: character varying
 
 Function: get_entity_translation
 Returns: text
+
+Function: get_next_available_slot
+Returns: record
 
 Function: get_pending_notification_retries
 Returns: record
@@ -5271,6 +5498,9 @@ Returns: double precision
 Function: inner_product
 Returns: double precision
 
+Function: is_appointment_date_blocked
+Returns: boolean
+
 Function: ivfflat_bit_support
 Returns: internal
 
@@ -5454,6 +5684,9 @@ Returns: trigger
 Function: unlock_payment_by_agent
 Returns: jsonb
 
+Function: update_appointment_reservations_updated_at
+Returns: trigger
+
 Function: update_capacity_percentage
 Returns: trigger
 
@@ -5494,6 +5727,9 @@ Function: update_verified_identifiers_updated_at
 Returns: trigger
 
 Function: update_wdr_updated_at
+Returns: trigger
+
+Function: update_workflows_updated_at
 Returns: trigger
 
 Function: upsert_verified_identifier
@@ -5617,6 +5853,14 @@ agent_work_queue.completed_by → users.id
 agent_work_queue.escalated_by → users.id
 agent_work_queue.ministry_id → ministries.id
 agent_workloads.agent_id → users.id
+appointment_blocked_dates.created_by → users.id
+appointment_delay_rules.created_by → users.id
+appointment_delay_rules.workflow_code → workflows.code
+appointment_reservations.cancelled_by → users.id
+appointment_reservations.completed_by → users.id
+appointment_reservations.rescheduled_from → appointment_reservations.id
+appointment_reservations.service_request_id → service_requests.id
+appointment_slot_configs.created_by → users.id
 assignment_rules.created_by → users.id
 assignment_rules.updated_by → users.id
 assignments.agent_id → users.id
@@ -5785,3 +6029,5 @@ workflow_document_requirements.document_template_id → document_templates.id
 workflow_supplement_config.supplement_code → tariff_supplements.code
 workflow_tariffs.created_by → users.id
 workflow_tariffs.updated_by → users.id
+workflows.created_by → users.id
+workflows.updated_by → users.id
