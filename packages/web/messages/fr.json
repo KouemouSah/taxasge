@@ -741,7 +741,42 @@
         "created": "Tarif créé avec succès",
         "updated": "Tarif mis à jour avec succès",
         "deleted": "Tarif supprimé avec succès",
-        "errorLoading": "Erreur lors du chargement des tarifs"
+        "errorLoading": "Erreur lors du chargement des tarifs",
+        "supplements": {
+          "title": "Suppléments",
+          "subtitle": "Cédules, polices et timbres fiscaux",
+          "total": "{count} suppléments configurés",
+          "create": "Créer Supplément",
+          "createDescription": "Configurer un nouveau supplément tarifaire",
+          "edit": "Modifier Supplément",
+          "editDescription": "Modifier la configuration du supplément",
+          "code": "Code",
+          "codeHint": "Exemple: CEDULA_PERSONAL, POLIZA_SEGURO, TIMBRE_FISCAL",
+          "codeReadOnly": "Le code ne peut pas être modifié après la création",
+          "name": "Nom",
+          "amount": "Montant",
+          "currency": "Devise",
+          "legalReference": "Référence Légale",
+          "effectiveFrom": "Valide à partir de",
+          "effectiveTo": "Valide jusqu'au",
+          "isActive": "Actif",
+          "status": "Statut",
+          "actions": "Actions",
+          "searchPlaceholder": "Rechercher par code ou nom...",
+          "showActiveOnly": "Actifs uniquement",
+          "noSupplementsFound": "Aucun supplément trouvé",
+          "deleteConfirmTitle": "Supprimer le supplément ?",
+          "deleteConfirmDescription": "Le supplément {code} sera supprimé. Cette action est irréversible.",
+          "created": "Supplément créé avec succès",
+          "updated": "Supplément mis à jour avec succès",
+          "deleted": "Supplément supprimé avec succès",
+          "errorLoading": "Erreur lors du chargement des suppléments",
+          "cannotDelete": "Impossible de supprimer le supplément car il est utilisé dans un ou plusieurs flux de travail"
+        },
+        "tabs": {
+          "tariffs": "Tarifs",
+          "supplements": "Suppléments"
+        }
       },
       "appointments": {
         "title": "Gestion des Rendez-vous",

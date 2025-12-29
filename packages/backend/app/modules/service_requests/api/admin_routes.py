@@ -1637,3 +1637,468 @@ async def delete_delay_rule(
         )
 
     return None
+
+
+# =============================================================================
+# TARIFF SUPPLEMENTS MANAGEMENT
+# =============================================================================
+
+class TariffSupplementCreate(BaseModel):
+    """Create a new tariff supplement"""
+    code: str = Field(..., min_length=1, max_length=50, pattern=r'^[A-Z][A-Z0-9_]*$')
+    name_es: str = Field(..., min_length=1, max_length=255)
+    amount: float = Field(..., gt=0)
+    currency: str = Field(default="XAF", max_length=3)
+    legal_reference: Optional[str] = Field(None, max_length=255)
+    effective_from: Optional[str] = Field(None, description="Date in YYYY-MM-DD format")
+    effective_to: Optional[str] = Field(None, description="Date in YYYY-MM-DD format")
+    is_active: bool = Field(default=True)
+
+
+class TariffSupplementUpdate(BaseModel):
+    """Update an existing tariff supplement"""
+    name_es: Optional[str] = Field(None, min_length=1, max_length=255)
+    amount: Optional[float] = Field(None, gt=0)
+    currency: Optional[str] = Field(None, max_length=3)
+    legal_reference: Optional[str] = Field(None, max_length=255)
+    effective_from: Optional[str] = Field(None, description="Date in YYYY-MM-DD format")
+    effective_to: Optional[str] = Field(None, description="Date in YYYY-MM-DD format")
+    is_active: Optional[bool] = None
+
+
+class TariffSupplementResponse(BaseModel):
+    """Response model for tariff supplement"""
+    id: int
+    code: str
+    name_es: str
+    amount: float
+    currency: str
+    legal_reference: Optional[str]
+    effective_from: str
+    effective_to: Optional[str]
+    is_active: bool
+    created_at: Optional[str]
+    updated_at: Optional[str]
+
+
+class WorkflowSupplementConfigCreate(BaseModel):
+    """Add supplement to a workflow"""
+    supplement_code: str = Field(..., min_length=1, max_length=50)
+    quantity_per_request: int = Field(default=1, ge=1, le=100)
+    is_required: bool = Field(default=True)
+    is_active: bool = Field(default=True)
+
+
+class WorkflowSupplementConfigUpdate(BaseModel):
+    """Update workflow supplement configuration"""
+    quantity_per_request: Optional[int] = Field(None, ge=1, le=100)
+    is_required: Optional[bool] = None
+    is_active: Optional[bool] = None
+
+
+class WorkflowSupplementConfigResponse(BaseModel):
+    """Response model for workflow supplement configuration"""
+    id: int
+    workflow_code: str
+    supplement_code: str
+    supplement_name: Optional[str] = None
+    supplement_amount: Optional[float] = None
+    quantity_per_request: int
+    is_required: bool
+    is_active: bool
+    created_at: Optional[str]
+    updated_at: Optional[str]
+
+
+@router.get(
+    "/supplements",
+    response_model=List[TariffSupplementResponse],
+    summary="List all tariff supplements",
+    description="Get all configured tariff supplements (cédulas, pólizas, timbres, etc.)"
+)
+async def list_supplements(
+    active_only: bool = Query(False, description="Filter active supplements only"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("admin:manage_tariffs"))
+):
+    where_clause = "WHERE is_active = true" if active_only else ""
+    query = f"""
+        SELECT id, code, name_es, amount, currency, legal_reference,
+               effective_from::text, effective_to::text, is_active,
+               created_at::text, updated_at::text
+        FROM tariff_supplements
+        {where_clause}
+        ORDER BY code
+    """
+    rows = await db.fetch(query)
+    return [TariffSupplementResponse(**dict(row)) for row in rows]
+
+
+@router.get(
+    "/supplements/{code}",
+    response_model=TariffSupplementResponse,
+    summary="Get a single tariff supplement",
+    description="Get details of a specific tariff supplement by code."
+)
+async def get_supplement(
+    code: str = Path(..., description="Supplement code"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("admin:manage_tariffs"))
+):
+    query = """
+        SELECT id, code, name_es, amount, currency, legal_reference,
+               effective_from::text, effective_to::text, is_active,
+               created_at::text, updated_at::text
+        FROM tariff_supplements
+        WHERE code = $1
+    """
+    row = await db.fetchrow(query, code)
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Supplement with code '{code}' not found"
+        )
+    return TariffSupplementResponse(**dict(row))
+
+
+@router.post(
+    "/supplements",
+    response_model=TariffSupplementResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a tariff supplement",
+    description="Create a new tariff supplement configuration."
+)
+async def create_supplement(
+    data: TariffSupplementCreate,
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("admin:manage_tariffs"))
+):
+    # Check if code already exists
+    existing = await db.fetchrow(
+        "SELECT code FROM tariff_supplements WHERE code = $1", data.code
+    )
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Supplement with code '{data.code}' already exists"
+        )
+
+    query = """
+        INSERT INTO tariff_supplements (
+            code, name_es, amount, currency, legal_reference,
+            effective_from, effective_to, is_active, created_by
+        )
+        VALUES ($1, $2, $3, $4, $5, COALESCE($6::date, CURRENT_DATE), $7::date, $8, $9)
+        RETURNING id, code, name_es, amount, currency, legal_reference,
+                  effective_from::text, effective_to::text, is_active,
+                  created_at::text, updated_at::text
+    """
+    row = await db.fetchrow(
+        query,
+        data.code,
+        data.name_es,
+        data.amount,
+        data.currency,
+        data.legal_reference,
+        data.effective_from,
+        data.effective_to,
+        data.is_active,
+        current_user.get("id")
+    )
+    return TariffSupplementResponse(**dict(row))
+
+
+@router.put(
+    "/supplements/{code}",
+    response_model=TariffSupplementResponse,
+    summary="Update a tariff supplement",
+    description="Update an existing tariff supplement."
+)
+async def update_supplement(
+    code: str = Path(..., description="Supplement code"),
+    data: TariffSupplementUpdate = None,
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("admin:manage_tariffs"))
+):
+    # Build dynamic update query
+    params = [code]
+    updates = []
+
+    if data.name_es is not None:
+        params.append(data.name_es)
+        updates.append(f"name_es = ${len(params)}")
+
+    if data.amount is not None:
+        params.append(data.amount)
+        updates.append(f"amount = ${len(params)}")
+
+    if data.currency is not None:
+        params.append(data.currency)
+        updates.append(f"currency = ${len(params)}")
+
+    if data.legal_reference is not None:
+        params.append(data.legal_reference if data.legal_reference else None)
+        updates.append(f"legal_reference = ${len(params)}")
+
+    if data.effective_from is not None:
+        params.append(data.effective_from)
+        updates.append(f"effective_from = ${len(params)}::date")
+
+    if data.effective_to is not None:
+        params.append(data.effective_to if data.effective_to else None)
+        updates.append(f"effective_to = ${len(params)}::date")
+
+    if data.is_active is not None:
+        params.append(data.is_active)
+        updates.append(f"is_active = ${len(params)}")
+
+    if not updates:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No fields to update"
+        )
+
+    # Add updated_by and updated_at
+    params.append(current_user.get("id"))
+    updates.append(f"updated_by = ${len(params)}")
+    updates.append("updated_at = now()")
+
+    query = f"""
+        UPDATE tariff_supplements
+        SET {', '.join(updates)}
+        WHERE code = $1
+        RETURNING id, code, name_es, amount, currency, legal_reference,
+                  effective_from::text, effective_to::text, is_active,
+                  created_at::text, updated_at::text
+    """
+    row = await db.fetchrow(query, *params)
+
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Supplement with code '{code}' not found"
+        )
+
+    return TariffSupplementResponse(**dict(row))
+
+
+@router.delete(
+    "/supplements/{code}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a tariff supplement",
+    description="Delete a tariff supplement. Will fail if supplement is used in workflows."
+)
+async def delete_supplement(
+    code: str = Path(..., description="Supplement code"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("admin:manage_tariffs"))
+):
+    # Check if supplement is used in any workflow config
+    usage = await db.fetchrow(
+        "SELECT COUNT(*) as count FROM workflow_supplement_config WHERE supplement_code = $1",
+        code
+    )
+    if usage and usage['count'] > 0:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Cannot delete supplement '{code}': it is used in {usage['count']} workflow(s). Remove from workflows first."
+        )
+
+    result = await db.execute(
+        "DELETE FROM tariff_supplements WHERE code = $1", code
+    )
+
+    if 'DELETE 0' in result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Supplement with code '{code}' not found"
+        )
+
+    return None
+
+
+# =============================================================================
+# WORKFLOW SUPPLEMENT CONFIG MANAGEMENT
+# =============================================================================
+
+@router.get(
+    "/workflows/{workflow_code}/supplements",
+    response_model=List[WorkflowSupplementConfigResponse],
+    summary="List workflow supplements",
+    description="Get all supplements configured for a specific workflow."
+)
+async def list_workflow_supplements(
+    workflow_code: str = Path(..., description="Workflow code"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("admin:manage_tariffs"))
+):
+    query = """
+        SELECT wsc.id, wsc.workflow_code, wsc.supplement_code,
+               ts.name_es as supplement_name, ts.amount as supplement_amount,
+               wsc.quantity_per_request, wsc.is_required, wsc.is_active,
+               wsc.created_at::text, wsc.updated_at::text
+        FROM workflow_supplement_config wsc
+        LEFT JOIN tariff_supplements ts ON ts.code = wsc.supplement_code
+        WHERE wsc.workflow_code = $1
+        ORDER BY wsc.supplement_code
+    """
+    rows = await db.fetch(query, workflow_code)
+    return [WorkflowSupplementConfigResponse(**dict(row)) for row in rows]
+
+
+@router.post(
+    "/workflows/{workflow_code}/supplements",
+    response_model=WorkflowSupplementConfigResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Add supplement to workflow",
+    description="Add a tariff supplement to a workflow configuration."
+)
+async def add_workflow_supplement(
+    workflow_code: str = Path(..., description="Workflow code"),
+    data: WorkflowSupplementConfigCreate = None,
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("admin:manage_tariffs"))
+):
+    # Check if supplement exists
+    supplement = await db.fetchrow(
+        "SELECT code, name_es, amount FROM tariff_supplements WHERE code = $1",
+        data.supplement_code
+    )
+    if not supplement:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Supplement with code '{data.supplement_code}' not found"
+        )
+
+    # Check if already configured for this workflow
+    existing = await db.fetchrow(
+        """SELECT id FROM workflow_supplement_config
+           WHERE workflow_code = $1 AND supplement_code = $2""",
+        workflow_code, data.supplement_code
+    )
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Supplement '{data.supplement_code}' is already configured for workflow '{workflow_code}'"
+        )
+
+    query = """
+        INSERT INTO workflow_supplement_config (
+            workflow_code, supplement_code, quantity_per_request, is_required, is_active
+        )
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING id, workflow_code, supplement_code, quantity_per_request, is_required, is_active,
+                  created_at::text, updated_at::text
+    """
+    row = await db.fetchrow(
+        query,
+        workflow_code,
+        data.supplement_code,
+        data.quantity_per_request,
+        data.is_required,
+        data.is_active
+    )
+    result = dict(row)
+    result['supplement_name'] = supplement['name_es']
+    result['supplement_amount'] = float(supplement['amount'])
+    return WorkflowSupplementConfigResponse(**result)
+
+
+@router.put(
+    "/workflows/{workflow_code}/supplements/{supplement_code}",
+    response_model=WorkflowSupplementConfigResponse,
+    summary="Update workflow supplement config",
+    description="Update the configuration of a supplement for a workflow."
+)
+async def update_workflow_supplement(
+    workflow_code: str = Path(..., description="Workflow code"),
+    supplement_code: str = Path(..., description="Supplement code"),
+    data: WorkflowSupplementConfigUpdate = None,
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("admin:manage_tariffs"))
+):
+    # Build dynamic update query
+    params = [workflow_code, supplement_code]
+    updates = []
+
+    if data.quantity_per_request is not None:
+        params.append(data.quantity_per_request)
+        updates.append(f"quantity_per_request = ${len(params)}")
+
+    if data.is_required is not None:
+        params.append(data.is_required)
+        updates.append(f"is_required = ${len(params)}")
+
+    if data.is_active is not None:
+        params.append(data.is_active)
+        updates.append(f"is_active = ${len(params)}")
+
+    if not updates:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No fields to update"
+        )
+
+    updates.append("updated_at = now()")
+
+    query = f"""
+        UPDATE workflow_supplement_config
+        SET {', '.join(updates)}
+        WHERE workflow_code = $1 AND supplement_code = $2
+        RETURNING id, workflow_code, supplement_code, quantity_per_request, is_required, is_active,
+                  created_at::text, updated_at::text
+    """
+    row = await db.fetchrow(query, *params)
+
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Supplement '{supplement_code}' not found for workflow '{workflow_code}'"
+        )
+
+    # Get supplement details
+    supplement = await db.fetchrow(
+        "SELECT name_es, amount FROM tariff_supplements WHERE code = $1",
+        supplement_code
+    )
+    result = dict(row)
+    if supplement:
+        result['supplement_name'] = supplement['name_es']
+        result['supplement_amount'] = float(supplement['amount'])
+    return WorkflowSupplementConfigResponse(**result)
+
+
+@router.delete(
+    "/workflows/{workflow_code}/supplements/{supplement_code}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Remove supplement from workflow",
+    description="Remove a supplement configuration from a workflow."
+)
+async def remove_workflow_supplement(
+    workflow_code: str = Path(..., description="Workflow code"),
+    supplement_code: str = Path(..., description="Supplement code"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("admin:manage_tariffs"))
+):
+    result = await db.execute(
+        """DELETE FROM workflow_supplement_config
+           WHERE workflow_code = $1 AND supplement_code = $2""",
+        workflow_code, supplement_code
+    )
+
+    if 'DELETE 0' in result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Supplement '{supplement_code}' not found for workflow '{workflow_code}'"
+        )
+
+    return None

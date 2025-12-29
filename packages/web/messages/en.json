@@ -741,7 +741,42 @@
         "created": "Tariff created successfully",
         "updated": "Tariff updated successfully",
         "deleted": "Tariff deleted successfully",
-        "errorLoading": "Error loading tariffs"
+        "errorLoading": "Error loading tariffs",
+        "supplements": {
+          "title": "Supplements",
+          "subtitle": "Certificates, stamps and fiscal duties",
+          "total": "{count} supplements configured",
+          "create": "Create Supplement",
+          "createDescription": "Configure a new tariff supplement",
+          "edit": "Edit Supplement",
+          "editDescription": "Modify the supplement configuration",
+          "code": "Code",
+          "codeHint": "Example: CEDULA_PERSONAL, POLIZA_SEGURO, TIMBRE_FISCAL",
+          "codeReadOnly": "The code cannot be changed after creation",
+          "name": "Name",
+          "amount": "Amount",
+          "currency": "Currency",
+          "legalReference": "Legal Reference",
+          "effectiveFrom": "Effective From",
+          "effectiveTo": "Effective To",
+          "isActive": "Active",
+          "status": "Status",
+          "actions": "Actions",
+          "searchPlaceholder": "Search by code or name...",
+          "showActiveOnly": "Active only",
+          "noSupplementsFound": "No supplements found",
+          "deleteConfirmTitle": "Delete supplement?",
+          "deleteConfirmDescription": "The supplement {code} will be deleted. This action cannot be undone.",
+          "created": "Supplement created successfully",
+          "updated": "Supplement updated successfully",
+          "deleted": "Supplement deleted successfully",
+          "errorLoading": "Error loading supplements",
+          "cannotDelete": "Cannot delete the supplement because it is in use in one or more workflows"
+        },
+        "tabs": {
+          "tariffs": "Tariffs",
+          "supplements": "Supplements"
+        }
       },
       "appointments": {
         "title": "Appointment Management",

@@ -195,6 +195,71 @@ export interface TariffFilters {
 }
 
 // ============================================================================
+// TARIFF SUPPLEMENT TYPES
+// ============================================================================
+
+export interface TariffSupplement {
+  id: number
+  code: string
+  name_es: string
+  amount: number
+  currency: string
+  legal_reference?: string | null
+  effective_from: string
+  effective_to?: string | null
+  is_active: boolean
+  created_at?: string | null
+  updated_at?: string | null
+}
+
+export interface TariffSupplementCreate {
+  code: string
+  name_es: string
+  amount: number
+  currency?: string
+  legal_reference?: string | null
+  effective_from?: string | null
+  effective_to?: string | null
+  is_active?: boolean
+}
+
+export interface TariffSupplementUpdate {
+  name_es?: string
+  amount?: number
+  currency?: string
+  legal_reference?: string | null
+  effective_from?: string | null
+  effective_to?: string | null
+  is_active?: boolean
+}
+
+export interface WorkflowSupplementConfig {
+  id: number
+  workflow_code: string
+  supplement_code: string
+  supplement_name?: string | null
+  supplement_amount?: number | null
+  quantity_per_request: number
+  is_required: boolean
+  is_active: boolean
+  created_at?: string | null
+  updated_at?: string | null
+}
+
+export interface WorkflowSupplementConfigCreate {
+  supplement_code: string
+  quantity_per_request?: number
+  is_required?: boolean
+  is_active?: boolean
+}
+
+export interface WorkflowSupplementConfigUpdate {
+  quantity_per_request?: number
+  is_required?: boolean
+  is_active?: boolean
+}
+
+// ============================================================================
 // APPOINTMENT TYPES
 // ============================================================================
 

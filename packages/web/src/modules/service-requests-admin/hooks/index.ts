@@ -13,6 +13,8 @@ import {
   workflowsApi,
   documentsApi,
   tariffsApi,
+  supplementsApi,
+  workflowSupplementsApi,
   slotConfigsApi,
   blockedDatesApi,
   delayRulesApi,
@@ -27,6 +29,10 @@ import type {
   TariffFilters,
   WorkflowTariffCreate,
   WorkflowTariffUpdate,
+  TariffSupplementCreate,
+  TariffSupplementUpdate,
+  WorkflowSupplementConfigCreate,
+  WorkflowSupplementConfigUpdate,
   SlotConfigFilters,
   AppointmentSlotConfigCreate,
   AppointmentSlotConfigUpdate,
@@ -54,6 +60,15 @@ export const queryKeys = {
   tariffs: {
     all: ['admin', 'service-requests', 'tariffs'] as const,
     list: (filters?: TariffFilters) => [...queryKeys.tariffs.all, 'list', filters] as const,
+  },
+  supplements: {
+    all: ['admin', 'service-requests', 'supplements'] as const,
+    list: (activeOnly?: boolean) => [...queryKeys.supplements.all, 'list', activeOnly] as const,
+    detail: (code: string) => [...queryKeys.supplements.all, 'detail', code] as const,
+  },
+  workflowSupplements: {
+    all: ['admin', 'service-requests', 'workflow-supplements'] as const,
+    byWorkflow: (workflowCode: string) => [...queryKeys.workflowSupplements.all, workflowCode] as const,
   },
   appointments: {
     slotConfigs: {
@@ -377,6 +392,189 @@ export function useDeleteTariff() {
       toast({
         title: 'Error',
         description: error.message || 'No se pudo eliminar la tarifa.',
+        variant: 'destructive',
+      })
+    },
+  })
+}
+
+// =============================================================================
+// TARIFF SUPPLEMENTS HOOKS
+// =============================================================================
+
+export function useSupplements(activeOnly?: boolean) {
+  return useQuery({
+    queryKey: queryKeys.supplements.list(activeOnly),
+    queryFn: () => supplementsApi.getAll(activeOnly),
+  })
+}
+
+export function useSupplement(code: string) {
+  return useQuery({
+    queryKey: queryKeys.supplements.detail(code),
+    queryFn: () => supplementsApi.getByCode(code),
+    enabled: !!code,
+  })
+}
+
+export function useCreateSupplement() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: (data: TariffSupplementCreate) => supplementsApi.create(data),
+    onSuccess: (supplement) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.supplements.all })
+      toast({
+        title: 'Suplemento creado',
+        description: `El suplemento ${supplement.code} ha sido creado correctamente.`,
+      })
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'No se pudo crear el suplemento.',
+        variant: 'destructive',
+      })
+    },
+  })
+}
+
+export function useUpdateSupplement() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: ({ code, data }: { code: string; data: TariffSupplementUpdate }) =>
+      supplementsApi.update(code, data),
+    onSuccess: (supplement) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.supplements.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.supplements.detail(supplement.code) })
+      toast({
+        title: 'Suplemento actualizado',
+        description: `El suplemento ${supplement.code} ha sido actualizado.`,
+      })
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'No se pudo actualizar el suplemento.',
+        variant: 'destructive',
+      })
+    },
+  })
+}
+
+export function useDeleteSupplement() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: (code: string) => supplementsApi.delete(code),
+    onSuccess: (_, code) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.supplements.all })
+      toast({
+        title: 'Suplemento eliminado',
+        description: `El suplemento ${code} ha sido eliminado.`,
+      })
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'No se pudo eliminar el suplemento.',
+        variant: 'destructive',
+      })
+    },
+  })
+}
+
+// =============================================================================
+// WORKFLOW SUPPLEMENTS HOOKS
+// =============================================================================
+
+export function useWorkflowSupplements(workflowCode: string) {
+  return useQuery({
+    queryKey: queryKeys.workflowSupplements.byWorkflow(workflowCode),
+    queryFn: () => workflowSupplementsApi.getByWorkflow(workflowCode),
+    enabled: !!workflowCode,
+  })
+}
+
+export function useAddWorkflowSupplement() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: ({ workflowCode, data }: { workflowCode: string; data: WorkflowSupplementConfigCreate }) =>
+      workflowSupplementsApi.add(workflowCode, data),
+    onSuccess: (_, { workflowCode }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.workflowSupplements.byWorkflow(workflowCode) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.tariffs.all })
+      toast({
+        title: 'Suplemento agregado',
+        description: 'El suplemento ha sido agregado al workflow.',
+      })
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'No se pudo agregar el suplemento.',
+        variant: 'destructive',
+      })
+    },
+  })
+}
+
+export function useUpdateWorkflowSupplement() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: ({
+      workflowCode,
+      supplementCode,
+      data,
+    }: {
+      workflowCode: string
+      supplementCode: string
+      data: WorkflowSupplementConfigUpdate
+    }) => workflowSupplementsApi.update(workflowCode, supplementCode, data),
+    onSuccess: (_, { workflowCode }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.workflowSupplements.byWorkflow(workflowCode) })
+      toast({
+        title: 'Suplemento actualizado',
+        description: 'La configuración del suplemento ha sido actualizada.',
+      })
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'No se pudo actualizar el suplemento.',
+        variant: 'destructive',
+      })
+    },
+  })
+}
+
+export function useRemoveWorkflowSupplement() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: ({ workflowCode, supplementCode }: { workflowCode: string; supplementCode: string }) =>
+      workflowSupplementsApi.remove(workflowCode, supplementCode),
+    onSuccess: (_, { workflowCode }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.workflowSupplements.byWorkflow(workflowCode) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.tariffs.all })
+      toast({
+        title: 'Suplemento eliminado',
+        description: 'El suplemento ha sido eliminado del workflow.',
+      })
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'No se pudo eliminar el suplemento.',
         variant: 'destructive',
       })
     },

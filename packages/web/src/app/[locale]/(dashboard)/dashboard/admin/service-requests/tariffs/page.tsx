@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Table,
   TableBody,
@@ -53,6 +54,7 @@ import {
   Calculator,
   CheckCircle,
   XCircle,
+  Receipt,
 } from 'lucide-react'
 import {
   useWorkflows,
@@ -68,10 +70,12 @@ import type {
   TariffType,
 } from '@/modules/service-requests-admin'
 import { TARIFF_TYPES } from '@/modules/service-requests-admin'
+import SupplementsTabContent from './components/SupplementsTabContent'
 
 export default function TariffsPage() {
   const t = useTranslations('admin.serviceRequests.tariffs')
   const tCommon = useTranslations('common')
+  const [activeTab, setActiveTab] = useState('tariffs')
 
   // State
   const [searchQuery, setSearchQuery] = useState('')
@@ -284,12 +288,28 @@ export default function TariffsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
-          <p className="text-muted-foreground">{t('subtitle')}</p>
-        </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+        <p className="text-muted-foreground">{t('subtitle')}</p>
+      </div>
+
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="tariffs" className="gap-2">
+            <DollarSign className="h-4 w-4" />
+            {t('tabs.tariffs')}
+          </TabsTrigger>
+          <TabsTrigger value="supplements" className="gap-2">
+            <Receipt className="h-4 w-4" />
+            {t('tabs.supplements')}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="tariffs" className="space-y-6">
+          {/* Tariffs Actions */}
+          <div className="flex justify-end">
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => resetForm()}>
               <Plus className="mr-2 h-4 w-4" />
@@ -742,6 +762,12 @@ export default function TariffsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+        </TabsContent>
+
+        <TabsContent value="supplements">
+          <SupplementsTabContent />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

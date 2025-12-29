@@ -741,7 +741,42 @@
         "created": "Tarifa creada exitosamente",
         "updated": "Tarifa actualizada exitosamente",
         "deleted": "Tarifa eliminada exitosamente",
-        "errorLoading": "Error al cargar tarifas"
+        "errorLoading": "Error al cargar tarifas",
+        "supplements": {
+          "title": "Suplementos",
+          "subtitle": "Cédulas, pólizas y timbres fiscales",
+          "total": "{count} suplementos configurados",
+          "create": "Crear Suplemento",
+          "createDescription": "Configurar un nuevo suplemento tarifario",
+          "edit": "Editar Suplemento",
+          "editDescription": "Modificar la configuración del suplemento",
+          "code": "Código",
+          "codeHint": "Ejemplo: CEDULA_PERSONAL, POLIZA_SEGURO, TIMBRE_FISCAL",
+          "codeReadOnly": "El código no se puede modificar después de la creación",
+          "name": "Nombre",
+          "amount": "Monto",
+          "currency": "Moneda",
+          "legalReference": "Referencia Legal",
+          "effectiveFrom": "Vigente Desde",
+          "effectiveTo": "Vigente Hasta",
+          "isActive": "Activo",
+          "status": "Estado",
+          "actions": "Acciones",
+          "searchPlaceholder": "Buscar por código o nombre...",
+          "showActiveOnly": "Solo activos",
+          "noSupplementsFound": "No se encontraron suplementos",
+          "deleteConfirmTitle": "¿Eliminar suplemento?",
+          "deleteConfirmDescription": "Se eliminará el suplemento {code}. Esta acción no se puede deshacer.",
+          "created": "Suplemento creado exitosamente",
+          "updated": "Suplemento actualizado exitosamente",
+          "deleted": "Suplemento eliminado exitosamente",
+          "errorLoading": "Error al cargar suplementos",
+          "cannotDelete": "No se puede eliminar el suplemento porque está en uso en uno o más flujos de trabajo"
+        },
+        "tabs": {
+          "tariffs": "Tarifas",
+          "supplements": "Suplementos"
+        }
       },
       "appointments": {
         "title": "Gestión de Citas",

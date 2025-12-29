@@ -24,6 +24,12 @@ import type {
   WorkflowTariffCreate,
   WorkflowTariffUpdate,
   TariffFilters,
+  TariffSupplement,
+  TariffSupplementCreate,
+  TariffSupplementUpdate,
+  WorkflowSupplementConfig,
+  WorkflowSupplementConfigCreate,
+  WorkflowSupplementConfigUpdate,
   AppointmentSlotConfig,
   AppointmentSlotConfigCreate,
   AppointmentSlotConfigUpdate,
@@ -195,6 +201,100 @@ export const tariffsApi = {
 }
 
 // =============================================================================
+// TARIFF SUPPLEMENTS API
+// =============================================================================
+
+export const supplementsApi = {
+  /**
+   * List all tariff supplements
+   * BACKEND: GET /api/v1/admin/service-requests/supplements
+   */
+  getAll: async (activeOnly?: boolean): Promise<TariffSupplement[]> => {
+    return fetchClient.get<TariffSupplement[]>(
+      `${ADMIN_BASE}/supplements`,
+      activeOnly !== undefined ? { active_only: activeOnly } : undefined
+    )
+  },
+
+  /**
+   * Get supplement by code
+   * BACKEND: GET /api/v1/admin/service-requests/supplements/{code}
+   */
+  getByCode: async (code: string): Promise<TariffSupplement> => {
+    return fetchClient.get<TariffSupplement>(`${ADMIN_BASE}/supplements/${code}`)
+  },
+
+  /**
+   * Create tariff supplement
+   * BACKEND: POST /api/v1/admin/service-requests/supplements
+   */
+  create: async (data: TariffSupplementCreate): Promise<TariffSupplement> => {
+    return fetchClient.post<TariffSupplement>(`${ADMIN_BASE}/supplements`, data)
+  },
+
+  /**
+   * Update tariff supplement
+   * BACKEND: PUT /api/v1/admin/service-requests/supplements/{code}
+   */
+  update: async (code: string, data: TariffSupplementUpdate): Promise<TariffSupplement> => {
+    return fetchClient.put<TariffSupplement>(`${ADMIN_BASE}/supplements/${code}`, data)
+  },
+
+  /**
+   * Delete tariff supplement
+   * BACKEND: DELETE /api/v1/admin/service-requests/supplements/{code}
+   */
+  delete: async (code: string): Promise<void> => {
+    return fetchClient.delete<void>(`${ADMIN_BASE}/supplements/${code}`)
+  },
+}
+
+// =============================================================================
+// WORKFLOW SUPPLEMENT CONFIG API
+// =============================================================================
+
+export const workflowSupplementsApi = {
+  /**
+   * List supplements for a workflow
+   * BACKEND: GET /api/v1/admin/service-requests/workflows/{code}/supplements
+   */
+  getByWorkflow: async (workflowCode: string): Promise<WorkflowSupplementConfig[]> => {
+    return fetchClient.get<WorkflowSupplementConfig[]>(`${ADMIN_BASE}/workflows/${workflowCode}/supplements`)
+  },
+
+  /**
+   * Add supplement to workflow
+   * BACKEND: POST /api/v1/admin/service-requests/workflows/{code}/supplements
+   */
+  add: async (workflowCode: string, data: WorkflowSupplementConfigCreate): Promise<WorkflowSupplementConfig> => {
+    return fetchClient.post<WorkflowSupplementConfig>(`${ADMIN_BASE}/workflows/${workflowCode}/supplements`, data)
+  },
+
+  /**
+   * Update workflow supplement configuration
+   * BACKEND: PUT /api/v1/admin/service-requests/workflows/{code}/supplements/{supplement_code}
+   */
+  update: async (
+    workflowCode: string,
+    supplementCode: string,
+    data: WorkflowSupplementConfigUpdate
+  ): Promise<WorkflowSupplementConfig> => {
+    return fetchClient.put<WorkflowSupplementConfig>(
+      `${ADMIN_BASE}/workflows/${workflowCode}/supplements/${supplementCode}`,
+      data
+    )
+  },
+
+  /**
+   * Remove supplement from workflow
+   * BACKEND: DELETE /api/v1/admin/service-requests/workflows/{code}/supplements/{supplement_code}
+   */
+  remove: async (workflowCode: string, supplementCode: string): Promise<void> => {
+    return fetchClient.delete<void>(`${ADMIN_BASE}/workflows/${workflowCode}/supplements/${supplementCode}`)
+  },
+}
+
+// =============================================================================
 // APPOINTMENT SLOT CONFIGS API
 // =============================================================================
 
@@ -319,6 +419,8 @@ export const serviceRequestsAdminApi = {
   workflows: workflowsApi,
   documents: documentsApi,
   tariffs: tariffsApi,
+  supplements: supplementsApi,
+  workflowSupplements: workflowSupplementsApi,
   slotConfigs: slotConfigsApi,
   blockedDates: blockedDatesApi,
   delayRules: delayRulesApi,
