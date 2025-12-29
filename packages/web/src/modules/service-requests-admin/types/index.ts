@@ -15,9 +15,17 @@ export type WorkflowType = 'standard' | 'direct_payment' | 'multi_phase'
 
 export type DocumentConditionType =
   | 'always'
-  | 'if_solicitud_type'
-  | 'if_form_field'
-  | 'if_document_exists'
+  | 'age_less_than'
+  | 'age_greater_than'
+  | 'is_renewal'
+  | 'is_new'
+  | 'is_duplicate'
+  | 'has_previous'
+  | 'is_minor'
+  | 'is_adult'
+  | 'is_foreign'
+  | 'is_national'
+  | 'custom'
 
 export type TariffType = 'FIXED' | 'PERCENTAGE' | 'NOTA_INGRESO'
 
@@ -396,9 +404,17 @@ export const WORKFLOW_TYPES: { value: WorkflowType; label: string }[] = [
 
 export const DOCUMENT_CONDITION_TYPES: { value: DocumentConditionType; label: string }[] = [
   { value: 'always', label: 'Siempre requerido' },
-  { value: 'if_solicitud_type', label: 'Según tipo de solicitud' },
-  { value: 'if_form_field', label: 'Según campo del formulario' },
-  { value: 'if_document_exists', label: 'Si otro documento existe' },
+  { value: 'is_renewal', label: 'Si es renovación' },
+  { value: 'is_new', label: 'Si es nueva solicitud' },
+  { value: 'is_duplicate', label: 'Si es duplicado' },
+  { value: 'has_previous', label: 'Si tiene documento anterior' },
+  { value: 'is_minor', label: 'Si es menor de edad' },
+  { value: 'is_adult', label: 'Si es mayor de edad' },
+  { value: 'is_foreign', label: 'Si es extranjero' },
+  { value: 'is_national', label: 'Si es nacional' },
+  { value: 'age_less_than', label: 'Si edad menor que...' },
+  { value: 'age_greater_than', label: 'Si edad mayor que...' },
+  { value: 'custom', label: 'Condición personalizada' },
 ]
 
 export const TARIFF_TYPES: { value: TariffType; label: string }[] = [
