@@ -30,9 +30,11 @@ import type {
   SlotConfigFilters,
   AppointmentBlockedDate,
   AppointmentBlockedDateCreate,
+  AppointmentBlockedDateUpdate,
   BlockedDateFilters,
   AppointmentDelayRule,
   AppointmentDelayRuleCreate,
+  AppointmentDelayRuleUpdate,
 } from '../types'
 
 // =============================================================================
@@ -252,6 +254,14 @@ export const blockedDatesApi = {
   },
 
   /**
+   * Update blocked date
+   * BACKEND: PUT /api/v1/admin/service-requests/appointments/blocked-dates/{blocked_date_id}
+   */
+  update: async (blockedDateId: string, data: AppointmentBlockedDateUpdate): Promise<AppointmentBlockedDate> => {
+    return fetchClient.put<AppointmentBlockedDate>(`${ADMIN_BASE}/appointments/blocked-dates/${blockedDateId}`, data)
+  },
+
+  /**
    * Remove blocked date
    * BACKEND: DELETE /api/v1/admin/service-requests/appointments/blocked-dates/{blocked_date_id}
    */
@@ -282,6 +292,14 @@ export const delayRulesApi = {
    */
   create: async (data: AppointmentDelayRuleCreate): Promise<AppointmentDelayRule> => {
     return fetchClient.post<AppointmentDelayRule>(`${ADMIN_BASE}/appointments/delay-rules`, data)
+  },
+
+  /**
+   * Update delay rule
+   * BACKEND: PUT /api/v1/admin/service-requests/appointments/delay-rules/{rule_id}
+   */
+  update: async (ruleId: string, data: AppointmentDelayRuleUpdate): Promise<AppointmentDelayRule> => {
+    return fetchClient.put<AppointmentDelayRule>(`${ADMIN_BASE}/appointments/delay-rules/${ruleId}`, data)
   },
 
   /**

@@ -45,6 +45,7 @@ import {
 import {
   Clock,
   Plus,
+  Pencil,
   Trash2,
   Loader2,
   AlertCircle,
@@ -55,11 +56,13 @@ import {
   useWorkflows,
   useDelayRules,
   useCreateDelayRule,
+  useUpdateDelayRule,
   useDeleteDelayRule,
 } from '@/modules/service-requests-admin'
 import type {
   AppointmentDelayRule,
   AppointmentDelayRuleCreate,
+  AppointmentDelayRuleUpdate,
   AppointmentPriority,
 } from '@/modules/service-requests-admin'
 import { PRIORITY_LABELS } from '@/modules/service-requests-admin'
@@ -71,6 +74,7 @@ export default function DelaysTabContent() {
   // State
   const [workflowFilter, setWorkflowFilter] = useState<string>('all')
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [selectedRule, setSelectedRule] = useState<AppointmentDelayRule | null>(null)
 
@@ -93,6 +97,7 @@ export default function DelaysTabContent() {
 
   // Mutations
   const createMutation = useCreateDelayRule()
+  const updateMutation = useUpdateDelayRule()
   const deleteMutation = useDeleteDelayRule()
 
   // Sort rules: default first, then by workflow and priority
@@ -119,6 +124,23 @@ export default function DelaysTabContent() {
     }
   }
 
+  const handleUpdateRule = async () => {
+    if (!selectedRule) return
+
+    try {
+      const updateData: AppointmentDelayRuleUpdate = {
+        delay_business_days: formData.delay_business_days,
+        is_active: formData.is_active,
+      }
+      await updateMutation.mutateAsync({ ruleId: selectedRule.id, data: updateData })
+      setIsEditDialogOpen(false)
+      setSelectedRule(null)
+      resetForm()
+    } catch {
+      // Error handled by mutation
+    }
+  }
+
   const handleDeleteRule = async () => {
     if (!selectedRule) return
 
@@ -129,6 +151,17 @@ export default function DelaysTabContent() {
     } catch {
       // Error handled by mutation
     }
+  }
+
+  const openEditDialog = (rule: AppointmentDelayRule) => {
+    setSelectedRule(rule)
+    setFormData({
+      workflow_code: rule.workflow_code || null,
+      priority: rule.priority as AppointmentPriority,
+      delay_business_days: rule.delay_business_days,
+      is_active: rule.is_active,
+    })
+    setIsEditDialogOpen(true)
   }
 
   const openDeleteDialog = (rule: AppointmentDelayRule) => {
@@ -366,6 +399,13 @@ export default function DelaysTabContent() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          onClick={() => openEditDialog(rule)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => openDeleteDialog(rule)}
                           className="text-destructive hover:text-destructive"
                         >
@@ -405,6 +445,67 @@ export default function DelaysTabContent() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('edit')}</DialogTitle>
+            <DialogDescription>{t('editDescription')}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>{t('workflow')}</Label>
+              <div className="p-2 bg-muted rounded-md text-sm">
+                {selectedRule?.workflow_code ? (
+                  <code>{selectedRule.workflow_code}</code>
+                ) : (
+                  <span>{t('defaultAllWorkflows')}</span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">{t('workflowReadOnly')}</p>
+            </div>
+            <div className="grid gap-2">
+              <Label>{t('priority')}</Label>
+              <div className="p-2 bg-muted rounded-md text-sm">
+                {PRIORITY_LABELS[formData.priority as AppointmentPriority] || formData.priority}
+              </div>
+              <p className="text-xs text-muted-foreground">{t('priorityReadOnly')}</p>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit_days">{t('delayDays')}</Label>
+              <Input
+                id="edit_days"
+                type="number"
+                value={formData.delay_business_days}
+                onChange={(e) =>
+                  setFormData({ ...formData, delay_business_days: parseInt(e.target.value) || 0 })
+                }
+                min={0}
+                max={30}
+              />
+              <p className="text-xs text-muted-foreground">{t('delayDaysHint')}</p>
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="edit_is_active">{t('isActive')}</Label>
+              <Switch
+                id="edit_is_active"
+                checked={formData.is_active}
+                onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              {tCommon('cancel')}
+            </Button>
+            <Button onClick={handleUpdateRule} disabled={updateMutation.isPending}>
+              {updateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {tCommon('save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

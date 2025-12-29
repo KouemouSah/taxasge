@@ -273,6 +273,12 @@ class AppointmentBlockedDateResponse(BaseModel):
     is_recurring: bool
 
 
+class AppointmentBlockedDateUpdate(BaseModel):
+    """Update blocked date"""
+    reason: Optional[str] = Field(None, max_length=255)
+    is_recurring: Optional[bool] = None
+
+
 # ─────────────────────────────────────────────────────────────────
 # APPOINTMENT_DELAY_RULES (table: appointment_delay_rules)
 # ─────────────────────────────────────────────────────────────────
@@ -292,6 +298,12 @@ class AppointmentDelayRuleResponse(BaseModel):
     priority: str
     delay_business_days: int
     is_active: bool
+
+
+class AppointmentDelayRuleUpdate(BaseModel):
+    """Update delay rule"""
+    delay_business_days: Optional[int] = Field(None, ge=0, le=30)
+    is_active: Optional[bool] = None
 
 
 # Legacy aliases for backward compatibility
@@ -1396,6 +1408,61 @@ async def add_blocked_date(
     )
 
 
+@router.put(
+    "/appointments/blocked-dates/{blocked_date_id}",
+    response_model=AppointmentBlockedDateResponse,
+    summary="Update blocked date",
+    description="Update a blocked appointment date."
+)
+async def update_blocked_date(
+    blocked_date_id: str = Path(..., description="Blocked date ID (UUID)"),
+    data: AppointmentBlockedDateUpdate = Body(...),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("admin:manage_appointments"))
+):
+    # Build update query dynamically
+    updates = []
+    params = [blocked_date_id]
+
+    if data.reason is not None:
+        params.append(data.reason)
+        updates.append(f"reason = ${len(params)}")
+
+    if data.is_recurring is not None:
+        params.append(data.is_recurring)
+        updates.append(f"is_recurring = ${len(params)}")
+
+    if not updates:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No fields to update"
+        )
+
+    query = f"""
+        UPDATE appointment_blocked_dates
+        SET {', '.join(updates)}
+        WHERE id = $1::uuid
+        RETURNING *
+    """
+
+    row = await db.fetchrow(query, *params)
+
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Blocked date not found"
+        )
+
+    return AppointmentBlockedDateResponse(
+        id=str(row['id']),
+        entity_code=row['entity_code'],
+        blocked_date=str(row['blocked_date']),
+        reason=row['reason'],
+        is_recurring=row['is_recurring']
+    )
+
+
 @router.delete(
     "/appointments/blocked-dates/{blocked_date_id}",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -1482,6 +1549,61 @@ async def create_delay_rule(
             is_active = EXCLUDED.is_active
         RETURNING *
     """, rule.workflow_code, rule.priority, rule.delay_business_days, rule.is_active)
+
+    return AppointmentDelayRuleResponse(
+        id=str(row['id']),
+        workflow_code=row['workflow_code'],
+        priority=row['priority'],
+        delay_business_days=row['delay_business_days'],
+        is_active=row['is_active']
+    )
+
+
+@router.put(
+    "/appointments/delay-rules/{rule_id}",
+    response_model=AppointmentDelayRuleResponse,
+    summary="Update delay rule",
+    description="Update an appointment delay rule."
+)
+async def update_delay_rule(
+    rule_id: str = Path(..., description="Delay rule ID (UUID)"),
+    data: AppointmentDelayRuleUpdate = Body(...),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("admin:manage_appointments"))
+):
+    # Build update query dynamically
+    updates = []
+    params = [rule_id]
+
+    if data.delay_business_days is not None:
+        params.append(data.delay_business_days)
+        updates.append(f"delay_business_days = ${len(params)}")
+
+    if data.is_active is not None:
+        params.append(data.is_active)
+        updates.append(f"is_active = ${len(params)}")
+
+    if not updates:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No fields to update"
+        )
+
+    query = f"""
+        UPDATE appointment_delay_rules
+        SET {', '.join(updates)}
+        WHERE id = $1::uuid
+        RETURNING *
+    """
+
+    row = await db.fetchrow(query, *params)
+
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Delay rule not found"
+        )
 
     return AppointmentDelayRuleResponse(
         id=str(row['id']),

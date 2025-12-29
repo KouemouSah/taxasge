@@ -254,6 +254,11 @@ export interface AppointmentBlockedDateCreate {
   is_recurring?: boolean
 }
 
+export interface AppointmentBlockedDateUpdate {
+  reason?: string | null
+  is_recurring?: boolean
+}
+
 export interface BlockedDateFilters {
   entity_code?: string
   from_date?: string
@@ -272,6 +277,11 @@ export interface AppointmentDelayRule {
 export interface AppointmentDelayRuleCreate {
   workflow_code?: string | null
   priority: AppointmentPriority
+  delay_business_days?: number
+  is_active?: boolean
+}
+
+export interface AppointmentDelayRuleUpdate {
   delay_business_days?: number
   is_active?: boolean
 }

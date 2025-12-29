@@ -45,6 +45,7 @@ import {
 import {
   CalendarX,
   Plus,
+  Pencil,
   Trash2,
   Loader2,
   AlertCircle,
@@ -54,12 +55,14 @@ import {
 import {
   useBlockedDates,
   useAddBlockedDate,
+  useUpdateBlockedDate,
   useRemoveBlockedDate,
   useSlotConfigs,
 } from '@/modules/service-requests-admin'
 import type {
   AppointmentBlockedDate,
   AppointmentBlockedDateCreate,
+  AppointmentBlockedDateUpdate,
 } from '@/modules/service-requests-admin'
 
 export default function BlockedTabContent() {
@@ -69,6 +72,7 @@ export default function BlockedTabContent() {
   // State
   const [entityFilter, setEntityFilter] = useState<string>('all')
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<AppointmentBlockedDate | null>(null)
 
@@ -93,6 +97,7 @@ export default function BlockedTabContent() {
 
   // Mutations
   const addMutation = useAddBlockedDate()
+  const updateMutation = useUpdateBlockedDate()
   const removeMutation = useRemoveBlockedDate()
 
   // Get unique entity codes
@@ -114,6 +119,23 @@ export default function BlockedTabContent() {
     }
   }
 
+  const handleUpdateBlockedDate = async () => {
+    if (!selectedDate) return
+
+    try {
+      const updateData: AppointmentBlockedDateUpdate = {
+        reason: formData.reason || null,
+        is_recurring: formData.is_recurring,
+      }
+      await updateMutation.mutateAsync({ blockedDateId: selectedDate.id, data: updateData })
+      setIsEditDialogOpen(false)
+      setSelectedDate(null)
+      resetForm()
+    } catch {
+      // Error handled by mutation
+    }
+  }
+
   const handleRemoveBlockedDate = async () => {
     if (!selectedDate) return
 
@@ -124,6 +146,17 @@ export default function BlockedTabContent() {
     } catch {
       // Error handled by mutation
     }
+  }
+
+  const openEditDialog = (date: AppointmentBlockedDate) => {
+    setSelectedDate(date)
+    setFormData({
+      entity_code: date.entity_code || null,
+      blocked_date: date.blocked_date,
+      reason: date.reason || '',
+      is_recurring: date.is_recurring,
+    })
+    setIsEditDialogOpen(true)
   }
 
   const openDeleteDialog = (date: AppointmentBlockedDate) => {
@@ -342,6 +375,13 @@ export default function BlockedTabContent() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          onClick={() => openEditDialog(date)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => openDeleteDialog(date)}
                           className="text-destructive hover:text-destructive"
                         >
@@ -380,6 +420,65 @@ export default function BlockedTabContent() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('edit')}</DialogTitle>
+            <DialogDescription>{t('editDescription')}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>{t('entityCode')}</Label>
+              <div className="p-2 bg-muted rounded-md text-sm">
+                {selectedDate?.entity_code ? (
+                  <Badge variant="outline">{selectedDate.entity_code}</Badge>
+                ) : (
+                  <Badge variant="default">{t('global')}</Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">{t('entityReadOnly')}</p>
+            </div>
+            <div className="grid gap-2">
+              <Label>{t('date')}</Label>
+              <div className="p-2 bg-muted rounded-md text-sm font-mono">
+                {selectedDate?.blocked_date}
+              </div>
+              <p className="text-xs text-muted-foreground">{t('dateReadOnly')}</p>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit_reason">{t('reason')}</Label>
+              <Input
+                id="edit_reason"
+                value={formData.reason || ''}
+                onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                placeholder="Día festivo nacional"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="edit_recurring">{t('isRecurring')}</Label>
+                <p className="text-xs text-muted-foreground">{t('recurringHint')}</p>
+              </div>
+              <Switch
+                id="edit_recurring"
+                checked={formData.is_recurring}
+                onCheckedChange={(checked) => setFormData({ ...formData, is_recurring: checked })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              {tCommon('cancel')}
+            </Button>
+            <Button onClick={handleUpdateBlockedDate} disabled={updateMutation.isPending}>
+              {updateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {tCommon('save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

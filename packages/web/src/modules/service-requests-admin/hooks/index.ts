@@ -32,7 +32,9 @@ import type {
   AppointmentSlotConfigUpdate,
   BlockedDateFilters,
   AppointmentBlockedDateCreate,
+  AppointmentBlockedDateUpdate,
   AppointmentDelayRuleCreate,
+  AppointmentDelayRuleUpdate,
 } from '../types'
 
 // =============================================================================
@@ -496,6 +498,30 @@ export function useAddBlockedDate() {
   })
 }
 
+export function useUpdateBlockedDate() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: ({ blockedDateId, data }: { blockedDateId: string; data: AppointmentBlockedDateUpdate }) =>
+      blockedDatesApi.update(blockedDateId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.blockedDates.all })
+      toast({
+        title: 'Fecha actualizada',
+        description: 'La fecha bloqueada ha sido actualizada correctamente.',
+      })
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'No se pudo actualizar la fecha.',
+        variant: 'destructive',
+      })
+    },
+  })
+}
+
 export function useRemoveBlockedDate() {
   const queryClient = useQueryClient()
   const { toast } = useToast()
@@ -547,6 +573,30 @@ export function useCreateDelayRule() {
       toast({
         title: 'Error',
         description: error.message || 'No se pudo crear la regla.',
+        variant: 'destructive',
+      })
+    },
+  })
+}
+
+export function useUpdateDelayRule() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: ({ ruleId, data }: { ruleId: string; data: AppointmentDelayRuleUpdate }) =>
+      delayRulesApi.update(ruleId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.delayRules.all })
+      toast({
+        title: 'Regla actualizada',
+        description: 'La regla de espera ha sido actualizada correctamente.',
+      })
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'No se pudo actualizar la regla.',
         variant: 'destructive',
       })
     },
