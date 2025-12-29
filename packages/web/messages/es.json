@@ -680,7 +680,14 @@
         "noDocuments": "No hay documentos configurados para este flujo",
         "order": "#",
         "condition": "Condición",
-        "schema": "Schema"
+        "schema": "Schema",
+        "required": "Requerido",
+        "status": "Estado",
+        "actions": "Acciones",
+        "editDocument": "Editar Documento",
+        "editDocumentDescription": "Modificar la configuración del documento requerido",
+        "deleteConfirmTitle": "¿Eliminar documento?",
+        "deleteConfirmDescription": "Se eliminará el documento {name}. Esta acción no se puede deshacer."
       },
       "tariffs": {
         "title": "Tarifas",

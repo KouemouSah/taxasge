@@ -680,7 +680,14 @@
         "noDocuments": "No documents configured for this workflow",
         "order": "#",
         "condition": "Condition",
-        "schema": "Schema"
+        "schema": "Schema",
+        "required": "Required",
+        "status": "Status",
+        "actions": "Actions",
+        "editDocument": "Edit Document",
+        "editDocumentDescription": "Modify the required document configuration",
+        "deleteConfirmTitle": "Delete document?",
+        "deleteConfirmDescription": "Document {name} will be deleted. This action cannot be undone."
       },
       "tariffs": {
         "title": "Tariffs",

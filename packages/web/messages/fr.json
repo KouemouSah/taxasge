@@ -680,7 +680,14 @@
         "noDocuments": "Aucun document configuré pour ce flux",
         "order": "#",
         "condition": "Condition",
-        "schema": "Schéma"
+        "schema": "Schéma",
+        "required": "Requis",
+        "status": "Statut",
+        "actions": "Actions",
+        "editDocument": "Modifier Document",
+        "editDocumentDescription": "Modifier la configuration du document requis",
+        "deleteConfirmTitle": "Supprimer le document ?",
+        "deleteConfirmDescription": "Le document {name} sera supprimé. Cette action est irréversible."
       },
       "tariffs": {
         "title": "Tarifs",
