@@ -10,6 +10,7 @@ RESTful endpoints for administrators to manage:
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Path, Body
 from typing import List, Optional, Dict, Any
 import asyncpg
+import json
 from datetime import date
 from decimal import Decimal
 
@@ -24,6 +25,21 @@ router = APIRouter(
     prefix="/admin/service-requests",
     tags=["Admin - Service Requests Configuration"]
 )
+
+def _parse_config(config_value):
+    """Parse config JSONB field - handles both string and dict."""
+    if config_value is None:
+        return {}
+    if isinstance(config_value, dict):
+        return config_value
+    if isinstance(config_value, str):
+        try:
+            return json.loads(config_value)
+        except (json.JSONDecodeError, TypeError):
+            return {}
+    return {}
+
+
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -392,7 +408,7 @@ async def list_workflows(
             display_order=row['display_order'] or 0,
             icon=row['icon'],
             color=row['color'],
-            config=row['config'],
+            config=_parse_config(row['config']),
             is_active=row['is_active'],
             documents_count=row['documents_count'],
             tariffs_count=row['tariffs_count']
@@ -447,7 +463,7 @@ async def get_workflow(
         display_order=row['display_order'] or 0,
         icon=row['icon'],
         color=row['color'],
-        config=row['config'],
+        config=_parse_config(row['config']),
         is_active=row['is_active'],
         documents_count=row['documents_count'],
         tariffs_count=row['tariffs_count']
@@ -522,7 +538,7 @@ async def create_workflow(
         display_order=row['display_order'] or 0,
         icon=row['icon'],
         color=row['color'],
-        config=row['config'],
+        config=_parse_config(row['config']),
         is_active=row['is_active']
     )
 
@@ -599,7 +615,7 @@ async def update_workflow(
         display_order=row['display_order'] or 0,
         icon=row['icon'],
         color=row['color'],
-        config=row['config'],
+        config=_parse_config(row['config']),
         is_active=row['is_active']
     )
 
