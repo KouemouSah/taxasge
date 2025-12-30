@@ -31,6 +31,8 @@ import {
   CheckCircle,
   XCircle,
   Calculator,
+  Eye,
+  Pencil,
 } from 'lucide-react'
 import {
   useWorkflows,
@@ -287,12 +289,13 @@ export default function WorkflowsPage() {
                   <TableHead className="text-right">Expedicion</TableHead>
                   <TableHead className="text-right">Renovacion</TableHead>
                   <TableHead className="text-center">{t('status')}</TableHead>
+                  <TableHead className="text-right w-[100px]">{t('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paginatedWorkflows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                       {t('noWorkflowsFound')}
                     </TableCell>
                   </TableRow>
@@ -328,6 +331,32 @@ export default function WorkflowsPage() {
                         ) : (
                           <XCircle className="h-5 w-5 text-red-500 mx-auto" />
                         )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              navigateToWorkflow(wf.code)
+                            }}
+                            title={tCommon('view')}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              router.push(`/${locale}/dashboard/admin/service-requests/workflows/${wf.code}?mode=edit`)
+                            }}
+                            title={tCommon('edit')}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
