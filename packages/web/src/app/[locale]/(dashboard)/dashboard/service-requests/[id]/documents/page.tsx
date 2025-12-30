@@ -9,22 +9,19 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
-import { Input } from '@/components/ui/input'
+// Input component removed - not used
 import {
   ArrowLeft,
   FileText,
   CheckCircle,
-  Clock,
   AlertCircle,
   Upload,
   Loader2,
-  XCircle,
   ExternalLink,
-  Trash2,
   ArrowRight,
 } from 'lucide-react'
 import { useServiceRequests } from '@/modules/service-requests'
