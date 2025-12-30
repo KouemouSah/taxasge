@@ -122,12 +122,24 @@ class ServiceRequestsApiClient {
 
   /**
    * Start a new service request workflow
+   * Backend uses POST / to create, returns ServiceRequestResponse
    */
   async startWorkflow(data: ServiceRequestCreate): Promise<WorkflowStartResponse> {
-    return this.request<WorkflowStartResponse>('/start', {
+    // Backend endpoint is POST / not /start
+    const request = await this.request<ServiceRequest>('/', {
       method: 'POST',
       body: JSON.stringify(data),
     })
+
+    // Fetch workflow config to return complete response
+    const workflow = await this.getWorkflow(request.workflowCode)
+    const currentStepConfig = workflow.steps?.find(s => s.stepNumber === (request.currentStep || 1)) || null
+
+    return {
+      request,
+      workflow,
+      currentStepConfig,
+    }
   }
 
   /**

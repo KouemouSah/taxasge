@@ -3232,7 +3232,9 @@
       "progress": "Progression",
       "step_completed": "Étape terminée",
       "step_current": "Étape actuelle",
-      "step_pending": "Étape en attente"
+      "step_pending": "Étape en attente",
+      "step_content_placeholder": "Démarrer une nouvelle demande de service",
+      "select_workflow": "Sélectionnez le type de démarche"
     },
     "steps": {
       "identity_verification": "Vérification d'Identité",
@@ -3424,7 +3426,12 @@
       "updated": "Mise à jour",
       "actions": "Actions",
       "no_results": "Aucune demande trouvée",
-      "loading": "Historique de vos demandes de service"
+      "loading": "Historique de vos demandes de service",
+      "reference": "Référence",
+      "type": "Type",
+      "date": "Date",
+      "amount": "Montant",
+      "progress": "Progrès"
     },
     "reason": {
       "invalid_documents": "Documents invalides ou illisibles",
@@ -3443,6 +3450,24 @@
     "searchServices": "Rechercher des services...",
     "errorLoadingWorkflows": "Erreur lors du chargement des services",
     "noServicesFound": "Aucun service trouvé",
-    "startRequest": "Démarrer la Demande"
+    "startRequest": "Démarrer la Demande",
+    "back": "Retour",
+    "search_placeholder": "Rechercher par numéro ou nom...",
+    "no_requests_found": "Aucune demande trouvée",
+    "newRequestDescription": "Démarrer une nouvelle demande de service",
+    "selectWorkflow": "Sélectionner une démarche",
+    "selectWorkflowSubtitle": "Choisissez le type de démarche que vous souhaitez effectuer",
+    "availableServices": "Services disponibles",
+    "noWorkflowsInCategory": "Aucune démarche disponible dans cette catégorie",
+    "startingRequest": "Démarrage de la demande...",
+    "categories": {
+      "all": "Toutes",
+      "IDENTIDAD": "Identité",
+      "EXTRANJERIA": "Immigration",
+      "VEHICULOS": "Véhicules",
+      "CONTRATOS": "Contrats",
+      "CONDUCCION": "Conduite",
+      "FUNCION_PUBLICA": "Fonction Publique"
+    }
   }
 }

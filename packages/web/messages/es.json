@@ -3333,7 +3333,12 @@
       "loading": "Historial de tus solicitudes de servicio",
       "status": "Estado",
       "priority": "Progreso",
-      "actions": "Acciones"
+      "actions": "Acciones",
+      "reference": "Referencia",
+      "type": "Tipo",
+      "date": "Fecha",
+      "amount": "Monto",
+      "progress": "Progreso"
     },
     "filters": {
       "pending": "Pendientes",
@@ -3349,6 +3354,25 @@
     "searchServices": "Buscar servicios...",
     "errorLoadingWorkflows": "Error al cargar los servicios",
     "noServicesFound": "No se encontraron servicios",
-    "startRequest": "Iniciar Solicitud"
+    "startRequest": "Iniciar Solicitud",
+    "wizard": {
+      "step_content_placeholder": "Iniciar una nueva solicitud de servicio",
+      "select_workflow": "Selecciona el tipo de trámite"
+    },
+    "newRequestDescription": "Iniciar una nueva solicitud de servicio",
+    "selectWorkflow": "Seleccionar trámite",
+    "selectWorkflowSubtitle": "Elige el tipo de trámite que deseas realizar",
+    "availableServices": "Servicios disponibles",
+    "noWorkflowsInCategory": "No hay trámites disponibles en esta categoría",
+    "startingRequest": "Iniciando solicitud...",
+    "categories": {
+      "all": "Todas",
+      "IDENTIDAD": "Identidad",
+      "EXTRANJERIA": "Extranjería",
+      "VEHICULOS": "Vehículos",
+      "CONTRATOS": "Contratos",
+      "CONDUCCION": "Conducción",
+      "FUNCION_PUBLICA": "Función Pública"
+    }
   }
 }

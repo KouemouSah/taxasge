@@ -3232,7 +3232,9 @@
       "progress": "Progress",
       "step_completed": "Step completed",
       "step_current": "Current step",
-      "step_pending": "Pending step"
+      "step_pending": "Pending step",
+      "step_content_placeholder": "Start a new service request",
+      "select_workflow": "Select the type of request"
     },
     "steps": {
       "identity_verification": "Identity Verification",
@@ -3424,7 +3426,12 @@
       "updated": "Updated",
       "actions": "Actions",
       "no_results": "No requests found",
-      "loading": "Your service request history"
+      "loading": "Your service request history",
+      "reference": "Reference",
+      "type": "Type",
+      "date": "Date",
+      "amount": "Amount",
+      "progress": "Progress"
     },
     "reason": {
       "invalid_documents": "Invalid or unreadable documents",
@@ -3443,6 +3450,24 @@
     "searchServices": "Search services...",
     "errorLoadingWorkflows": "Error loading services",
     "noServicesFound": "No services found",
-    "startRequest": "Start Request"
+    "startRequest": "Start Request",
+    "back": "Back",
+    "search_placeholder": "Search by number or name...",
+    "no_requests_found": "No requests found",
+    "newRequestDescription": "Start a new service request",
+    "selectWorkflow": "Select service",
+    "selectWorkflowSubtitle": "Choose the type of service you want to request",
+    "availableServices": "Available services",
+    "noWorkflowsInCategory": "No services available in this category",
+    "startingRequest": "Starting request...",
+    "categories": {
+      "all": "All",
+      "IDENTIDAD": "Identity",
+      "EXTRANJERIA": "Immigration",
+      "VEHICULOS": "Vehicles",
+      "CONTRATOS": "Contracts",
+      "CONDUCCION": "Driving",
+      "FUNCION_PUBLICA": "Public Service"
+    }
   }
 }
