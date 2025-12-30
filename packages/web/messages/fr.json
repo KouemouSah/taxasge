@@ -3175,8 +3175,8 @@
     }
   },
   "service_requests": {
-    "title": "Demandes de Services",
-    "subtitle": "Gérez vos demandes administratives en ligne",
+    "title": "Demandes de Service",
+    "subtitle": "Gérez vos démarches et demandes",
     "newRequest": "Nouvelle Demande",
     "myRequests": "Mes Demandes",
     "allRequests": "Toutes les Demandes",
@@ -3403,7 +3403,7 @@
     },
     "filters": {
       "all": "Toutes",
-      "pending": "En Attente",
+      "pending": "En attente",
       "approved": "Approuvées",
       "rejected": "Rejetées",
       "date_range": "Période",
@@ -3411,19 +3411,20 @@
       "status": "Statut",
       "priority": "Priorité",
       "entity": "Entité",
-      "clear_filters": "Effacer les Filtres"
+      "clear_filters": "Effacer les Filtres",
+      "completed": "Terminées"
     },
     "table": {
       "id": "ID",
       "citizen": "Citoyen",
       "workflow": "Service",
       "status": "Statut",
-      "priority": "Priorité",
+      "priority": "Progrès",
       "created": "Créée",
       "updated": "Mise à jour",
       "actions": "Actions",
-      "no_results": "Aucun résultat trouvé",
-      "loading": "Chargement des demandes..."
+      "no_results": "Aucune demande trouvée",
+      "loading": "Historique de vos demandes de service"
     },
     "reason": {
       "invalid_documents": "Documents invalides ou illisibles",
@@ -3431,6 +3432,17 @@
       "identity_mismatch": "Divergence d'identité",
       "expired_documents": "Documents expirés",
       "other": "Autre raison"
-    }
+    },
+    "allStatuses": "Tous les états",
+    "close": "Fermer",
+    "selectCategory": "Sélectionner une Catégorie",
+    "selectCategorySubtitle": "Choisissez une catégorie de démarche pour commencer",
+    "selectService": "Sélectionner un Service",
+    "selectServiceSubtitle": "Choisissez le service que vous souhaitez demander",
+    "backToCategories": "Retour aux catégories",
+    "searchServices": "Rechercher des services...",
+    "errorLoadingWorkflows": "Erreur lors du chargement des services",
+    "noServicesFound": "Aucun service trouvé",
+    "startRequest": "Démarrer la Demande"
   }
 }

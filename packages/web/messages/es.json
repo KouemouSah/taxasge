@@ -3257,7 +3257,18 @@
       "approved": "Aprobada",
       "rejected": "Rechazada",
       "completed": "Completada",
-      "cancelled": "Cancelada"
+      "cancelled": "Cancelada",
+      "timbres_pending": "Timbres Pendientes",
+      "timbres_paid": "Timbres Pagados",
+      "dossier_valide": "Dossier Validado",
+      "pending_nota_ingreso": "Nota de Ingreso Pendiente",
+      "nota_uploaded": "Nota Subida",
+      "payment_processing": "Procesando Pago",
+      "paid": "Pagado",
+      "payment_failed": "Pago Fallido",
+      "in_progress": "En Proceso",
+      "expired": "Expirada",
+      "under_review": "En Revisión"
     },
     "documents": "Documentos",
     "date": "Fecha",
@@ -3309,6 +3320,35 @@
       "identity_mismatch": "Discrepancia de identidad",
       "expired_documents": "Documentos expirados",
       "other": "Otro motivo"
-    }
+    },
+    "title": "Solicitudes de Servicio",
+    "subtitle": "Gestiona tus trámites y solicitudes",
+    "newRequest": "Nueva Solicitud",
+    "myRequests": "Mis Solicitudes",
+    "allRequests": "Todas las Solicitudes",
+    "allStatuses": "Todos los estados",
+    "close": "Cerrar",
+    "table": {
+      "no_results": "No se encontraron solicitudes",
+      "loading": "Historial de tus solicitudes de servicio",
+      "status": "Estado",
+      "priority": "Progreso",
+      "actions": "Acciones"
+    },
+    "filters": {
+      "pending": "Pendientes",
+      "all": "Todas",
+      "completed": "Completadas",
+      "rejected": "Rechazadas"
+    },
+    "selectCategory": "Seleccionar Categoría",
+    "selectCategorySubtitle": "Elige una categoría de trámite para comenzar",
+    "selectService": "Seleccionar Servicio",
+    "selectServiceSubtitle": "Elige el servicio que deseas solicitar",
+    "backToCategories": "Volver a categorías",
+    "searchServices": "Buscar servicios...",
+    "errorLoadingWorkflows": "Error al cargar los servicios",
+    "noServicesFound": "No se encontraron servicios",
+    "startRequest": "Iniciar Solicitud"
   }
 }

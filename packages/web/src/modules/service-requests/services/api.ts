@@ -139,15 +139,20 @@ class ServiceRequestsApiClient {
 
   /**
    * List user's service requests with filters
+   * Backend uses limit/offset pagination and returns array directly
    */
   async listMyRequests(
     page: number = 1,
     pageSize: number = 10,
     filters?: ServiceRequestFilters
   ): Promise<ServiceRequestListResponse> {
+    // Convert page/pageSize to limit/offset for backend
+    const limit = pageSize
+    const offset = (page - 1) * pageSize
+
     const params = new URLSearchParams({
-      page: page.toString(),
-      page_size: pageSize.toString(),
+      limit: limit.toString(),
+      offset: offset.toString(),
     })
 
     if (filters?.status) params.append('status', filters.status)
@@ -157,7 +162,17 @@ class ServiceRequestsApiClient {
     if (filters?.dateFrom) params.append('date_from', filters.dateFrom)
     if (filters?.dateTo) params.append('date_to', filters.dateTo)
 
-    return this.request<ServiceRequestListResponse>(`/my?${params.toString()}`)
+    // Backend returns List[ServiceRequestResponse] directly (array), not wrapped
+    const requests = await this.request<ServiceRequest[]>(`/?${params.toString()}`)
+
+    // Wrap in expected response format for frontend hook compatibility
+    return {
+      requests: requests || [],
+      total: requests?.length || 0,
+      page,
+      pageSize,
+      totalPages: Math.ceil((requests?.length || 0) / pageSize),
+    }
   }
 
   /**

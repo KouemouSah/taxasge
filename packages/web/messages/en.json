@@ -3176,7 +3176,7 @@
   },
   "service_requests": {
     "title": "Service Requests",
-    "subtitle": "Manage your administrative requests online",
+    "subtitle": "Manage your requests and applications",
     "newRequest": "New Request",
     "myRequests": "My Requests",
     "allRequests": "All Requests",
@@ -3411,19 +3411,20 @@
       "status": "Status",
       "priority": "Priority",
       "entity": "Entity",
-      "clear_filters": "Clear Filters"
+      "clear_filters": "Clear Filters",
+      "completed": "Completed"
     },
     "table": {
       "id": "ID",
       "citizen": "Citizen",
       "workflow": "Service",
       "status": "Status",
-      "priority": "Priority",
+      "priority": "Progress",
       "created": "Created",
       "updated": "Updated",
       "actions": "Actions",
-      "no_results": "No results found",
-      "loading": "Loading requests..."
+      "no_results": "No requests found",
+      "loading": "Your service request history"
     },
     "reason": {
       "invalid_documents": "Invalid or unreadable documents",
@@ -3431,6 +3432,17 @@
       "identity_mismatch": "Identity mismatch",
       "expired_documents": "Expired documents",
       "other": "Other reason"
-    }
+    },
+    "allStatuses": "All statuses",
+    "close": "Close",
+    "selectCategory": "Select Category",
+    "selectCategorySubtitle": "Choose a category to start your request",
+    "selectService": "Select Service",
+    "selectServiceSubtitle": "Choose the service you want to request",
+    "backToCategories": "Back to categories",
+    "searchServices": "Search services...",
+    "errorLoadingWorkflows": "Error loading services",
+    "noServicesFound": "No services found",
+    "startRequest": "Start Request"
   }
 }

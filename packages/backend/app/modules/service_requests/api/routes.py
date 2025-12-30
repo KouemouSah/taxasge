@@ -21,8 +21,61 @@ from fastapi import HTTPException, status
 from ..services.service_request_service import service_request_service
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
+from ..services.workflow_engine import workflow_engine
 
 router = APIRouter(prefix="/service-requests", tags=["Service Requests"])
+
+
+# ═══════════════════════════════════════════════════════════════
+# WORKFLOW CATALOG (Public for authenticated users)
+# ═══════════════════════════════════════════════════════════════
+
+@router.get(
+    "/workflows",
+    summary="List available workflows",
+    description="""
+    Get list of available service request workflows.
+    Returns workflows that can be started by the current user.
+
+    Optional category filter to get workflows for specific category.
+    """,
+)
+async def list_available_workflows(
+    category: Optional[str] = Query(None, description="Filter by category"),
+    current_user=Depends(get_current_user)
+) -> List[dict]:
+    """Return list of available workflows for citizens"""
+    if category:
+        from ..workflows.base_workflow import WorkflowCategory
+        try:
+            cat = WorkflowCategory(category)
+            workflows = workflow_engine.get_workflows_by_category(cat)
+            return [w.get_info() for w in workflows]
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid category: {category}"
+            )
+    return workflow_engine.get_available_workflows()
+
+
+@router.get(
+    "/workflows/{workflow_code}",
+    summary="Get workflow details",
+    description="Get configuration details for a specific workflow",
+)
+async def get_workflow_details(
+    workflow_code: str = Path(..., description="The workflow code"),
+    current_user=Depends(get_current_user)
+) -> dict:
+    """Return workflow configuration details"""
+    workflow = workflow_engine.get_workflow_by_string(workflow_code)
+    if not workflow:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Workflow not found: {workflow_code}"
+        )
+    return workflow.get_info()
 
 
 # ═══════════════════════════════════════════════════════════════

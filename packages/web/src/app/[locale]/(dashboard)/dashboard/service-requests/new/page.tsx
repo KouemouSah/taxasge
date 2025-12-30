@@ -265,7 +265,7 @@ export default function NewServiceRequestPage() {
           <AlertDescription>
             {error}
             <Button variant="link" size="sm" onClick={clearError} className="ml-2">
-              Cerrar
+              {t('close')}
             </Button>
           </AlertDescription>
         </Alert>
