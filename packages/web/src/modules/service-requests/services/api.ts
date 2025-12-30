@@ -252,7 +252,7 @@ class ServiceRequestsApiClient {
     // Map workflow sub_types (NUEVO, RENOVACION, PERDIDA, ROBO, DETERIORO)
     // to solicitud_type enum (expedicion, renovacion, duplicado)
     const mapSubTypeToSolicitudType = (subType?: string): string => {
-      if (\!subType) return 'expedicion'
+      if (!subType) return 'expedicion'
       const upper = subType.toUpperCase()
       if (upper === 'NUEVO' || upper === 'EXPEDICION') return 'expedicion'
       if (upper === 'RENOVACION') return 'renovacion'
