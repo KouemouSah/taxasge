@@ -47,13 +47,6 @@ import type {
 import { DataTablePagination, usePagination } from '@/modules/service-requests-admin/components'
 import SupplementsTabContent from './components/SupplementsTabContent'
 
-// Solicitud types
-const SOLICITUD_TYPES = [
-  { value: 'expedicion', label: 'Expedición' },
-  { value: 'renovacion', label: 'Renovación' },
-  { value: 'duplicado', label: 'Duplicado' },
-]
-
 // Format currency
 const formatCurrency = (amount: number, currency: string = 'XAF') => {
   return new Intl.NumberFormat('es-GQ', {
