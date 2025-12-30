@@ -3196,13 +3196,18 @@
       "payment_processing": "Paiement en cours",
       "payment_confirmed": "Paiement confirmé",
       "pending_appointment": "Rendez-vous en attente",
-      "appointment_scheduled": "Rendez-vous programmé",
+      "appointment_scheduled": "Rendez-vous prevu",
       "in_review": "En cours de révision",
       "approved": "Approuvée",
-      "rejected": "Rejetée",
-      "completed": "Terminée",
-      "cancelled": "Annulée",
-      "expired": "Expirée"
+      "rejected": "Rejetee",
+      "completed": "Terminee",
+      "cancelled": "Annulee",
+      "expired": "Expirée",
+      "submitted": "Soumise",
+      "agent_review": "En revision",
+      "documents_pending": "Documents requis",
+      "payment_pending": "Paiement en attente",
+      "payment_completed": "Payee"
     },
     "priority": {
       "low": "Basse",
@@ -3421,17 +3426,18 @@
       "citizen": "Citoyen",
       "workflow": "Service",
       "status": "Statut",
-      "priority": "Progrès",
+      "priority": "Progres",
       "created": "Créée",
       "updated": "Mise à jour",
       "actions": "Actions",
-      "no_results": "Aucune demande trouvée",
+      "no_results": "Aucun resultat",
       "loading": "Historique de vos demandes de service",
       "reference": "Référence",
       "type": "Type",
       "date": "Date",
       "amount": "Montant",
-      "progress": "Progrès"
+      "progress": "Progrès",
+      "shown": "affichees"
     },
     "reason": {
       "invalid_documents": "Documents invalides ou illisibles",
@@ -3440,7 +3446,7 @@
       "expired_documents": "Documents expirés",
       "other": "Autre raison"
     },
-    "allStatuses": "Tous les états",
+    "allStatuses": "Tous les etats",
     "close": "Fermer",
     "selectCategory": "Sélectionner une Catégorie",
     "selectCategorySubtitle": "Choisissez une catégorie de démarche pour commencer",
@@ -3468,6 +3474,11 @@
       "CONTRATOS": "Contrats",
       "CONDUCCION": "Conduite",
       "FUNCION_PUBLICA": "Fonction Publique"
-    }
+    },
+    "request_number": "Numero de Demande",
+    "workflow": "Service",
+    "created": "Creee le",
+    "tariff": "Tarif",
+    "filter_status": "Filtrer par etat"
   }
 }

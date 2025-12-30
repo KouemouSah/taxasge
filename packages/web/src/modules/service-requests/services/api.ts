@@ -125,10 +125,15 @@ class ServiceRequestsApiClient {
    * Backend uses POST / to create, returns ServiceRequestResponse
    */
   async startWorkflow(data: ServiceRequestCreate): Promise<WorkflowStartResponse> {
-    // Backend endpoint is POST / not /start
+    // Backend endpoint is POST / - convert to snake_case for backend
+    const backendData = {
+      workflow_code: data.workflowCode,
+      solicitud_type: data.subType?.toUpperCase() || 'EXPEDICION',
+      form_data: data.formData || {},
+    }
     const request = await this.request<ServiceRequest>('/', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(backendData),
     })
 
     // Fetch workflow config to return complete response

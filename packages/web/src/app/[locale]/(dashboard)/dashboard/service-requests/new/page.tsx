@@ -277,24 +277,27 @@ export default function NewServiceRequestPage() {
 
   return (
     <div className="space-y-6">
+      {/* Back Navigation */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => router.push(`/${locale}/dashboard/service-requests`)}
+        className="text-muted-foreground hover:text-foreground -ml-2"
+      >
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        {t('back')}
+      </Button>
+
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => router.back()}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            {t('back')}
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">{t('newRequest')}</h1>
-            <p className="text-muted-foreground">
-              {locale === 'es'
-                ? 'Selecciona una categoria para ver los tramites disponibles'
-                : locale === 'fr'
-                  ? 'Selectionnez une categorie pour voir les demarches disponibles'
-                  : 'Select a category to see available services'}
-            </p>
-          </div>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">{t('newRequest')}</h1>
+        <p className="text-muted-foreground">
+          {locale === 'es'
+            ? 'Selecciona una categoria para ver los tramites disponibles'
+            : locale === 'fr'
+              ? 'Selectionnez une categorie pour voir les demarches disponibles'
+              : 'Select a category to see available services'}
+        </p>
       </div>
 
       {/* Error Alert */}
@@ -302,7 +305,7 @@ export default function NewServiceRequestPage() {
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            {error}
+            {typeof error === 'string' ? error : 'Une erreur est survenue'}
             <Button variant="link" size="sm" onClick={clearError} className="ml-2">
               {t('close')}
             </Button>

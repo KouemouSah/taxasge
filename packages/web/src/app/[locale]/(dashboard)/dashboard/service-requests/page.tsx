@@ -258,7 +258,7 @@ export default function ServiceRequestsPage() {
           <CardContent>
             <div className="text-2xl font-bold">{pagination.total || 0}</div>
             <p className="text-xs text-muted-foreground">
-              {t('table.no_results') ? `${filteredRequests.length} mostradas` : `${filteredRequests.length} shown`}
+              {filteredRequests.length} {t('table.shown')}
             </p>
           </CardContent>
         </Card>
@@ -275,7 +275,7 @@ export default function ServiceRequestsPage() {
               ).length}
             </div>
             <p className="text-xs text-muted-foreground">
-              {t('filters.pending') || 'Solicitudes en proceso'}
+              {t('filters.pending')}
             </p>
           </CardContent>
         </Card>

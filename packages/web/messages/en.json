@@ -3196,13 +3196,18 @@
       "payment_processing": "Payment Processing",
       "payment_confirmed": "Payment Confirmed",
       "pending_appointment": "Pending Appointment",
-      "appointment_scheduled": "Appointment Scheduled",
+      "appointment_scheduled": "Appointment scheduled",
       "in_review": "In Review",
       "approved": "Approved",
       "rejected": "Rejected",
       "completed": "Completed",
       "cancelled": "Cancelled",
-      "expired": "Expired"
+      "expired": "Expired",
+      "submitted": "Submitted",
+      "agent_review": "Under review",
+      "documents_pending": "Documents required",
+      "payment_pending": "Payment pending",
+      "payment_completed": "Paid"
     },
     "priority": {
       "low": "Low",
@@ -3425,13 +3430,14 @@
       "created": "Created",
       "updated": "Updated",
       "actions": "Actions",
-      "no_results": "No requests found",
+      "no_results": "No results",
       "loading": "Your service request history",
       "reference": "Reference",
       "type": "Type",
       "date": "Date",
       "amount": "Amount",
-      "progress": "Progress"
+      "progress": "Progress",
+      "shown": "shown"
     },
     "reason": {
       "invalid_documents": "Invalid or unreadable documents",
@@ -3468,6 +3474,11 @@
       "CONTRATOS": "Contracts",
       "CONDUCCION": "Driving",
       "FUNCION_PUBLICA": "Public Service"
-    }
+    },
+    "request_number": "Request Number",
+    "workflow": "Service",
+    "created": "Created",
+    "tariff": "Fee",
+    "filter_status": "Filter by status"
   }
 }
