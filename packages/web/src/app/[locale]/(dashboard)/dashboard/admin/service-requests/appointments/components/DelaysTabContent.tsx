@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -66,6 +66,7 @@ import type {
   AppointmentPriority,
 } from '@/modules/service-requests-admin'
 import { PRIORITY_LABELS } from '@/modules/service-requests-admin'
+import { DataTablePagination, usePagination } from '@/modules/service-requests-admin/components'
 
 export default function DelaysTabContent() {
   const t = useTranslations('admin.serviceRequests.appointments.delays')
@@ -77,6 +78,17 @@ export default function DelaysTabContent() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [selectedRule, setSelectedRule] = useState<AppointmentDelayRule | null>(null)
+
+  // Pagination
+  const {
+    currentPage,
+    pageSize,
+    setCurrentPage,
+    setPageSize,
+    paginateData,
+    getTotalPages,
+    resetPage,
+  } = usePagination(10)
 
   // Form state
   const [formData, setFormData] = useState<AppointmentDelayRuleCreate>({
@@ -100,18 +112,34 @@ export default function DelaysTabContent() {
   const updateMutation = useUpdateDelayRule()
   const deleteMutation = useDeleteDelayRule()
 
-  // Sort rules: default first, then by workflow and priority
-  const sortedRules = [...(delayRules || [])].sort((a, b) => {
-    if (!a.workflow_code && b.workflow_code) return -1
-    if (a.workflow_code && !b.workflow_code) return 1
-    if (a.workflow_code && b.workflow_code) {
-      if (a.workflow_code !== b.workflow_code) {
-        return a.workflow_code.localeCompare(b.workflow_code)
-      }
+  // Sort and filter rules: default first, then by workflow and priority
+  const filteredRules = useMemo(() => {
+    let result = [...(delayRules || [])]
+
+    // Filter by workflow
+    if (workflowFilter === 'default') {
+      result = result.filter((r) => !r.workflow_code)
+    } else if (workflowFilter !== 'all') {
+      result = result.filter((r) => r.workflow_code === workflowFilter)
     }
-    const priorityOrder = ['URGENT', 'HIGH', 'NORMAL', 'LOW']
-    return priorityOrder.indexOf(a.priority) - priorityOrder.indexOf(b.priority)
-  })
+
+    // Sort: default first, then by workflow and priority
+    return result.sort((a, b) => {
+      if (!a.workflow_code && b.workflow_code) return -1
+      if (a.workflow_code && !b.workflow_code) return 1
+      if (a.workflow_code && b.workflow_code) {
+        if (a.workflow_code !== b.workflow_code) {
+          return a.workflow_code.localeCompare(b.workflow_code)
+        }
+      }
+      const priorityOrder = ['URGENT', 'HIGH', 'NORMAL', 'LOW']
+      return priorityOrder.indexOf(a.priority) - priorityOrder.indexOf(b.priority)
+    })
+  }, [delayRules, workflowFilter])
+
+  // Pagination
+  const paginatedRules = paginateData(filteredRules)
+  const totalPages = getTotalPages(filteredRules.length)
 
   // Handlers
   const handleCreateRule = async () => {
@@ -334,11 +362,17 @@ export default function DelaysTabContent() {
             <Clock className="h-5 w-5" />
             {t('title')}
           </CardTitle>
-          <CardDescription>{t('total', { count: delayRules?.length || 0 })}</CardDescription>
+          <CardDescription>{filteredRules.length} reglas de retraso</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex gap-4 mb-4">
-            <Select value={workflowFilter} onValueChange={setWorkflowFilter}>
+            <Select
+              value={workflowFilter}
+              onValueChange={(v) => {
+                setWorkflowFilter(v)
+                resetPage()
+              }}
+            >
               <SelectTrigger className="w-[250px]">
                 <SelectValue placeholder={t('filterByWorkflow')} />
               </SelectTrigger>
@@ -367,14 +401,14 @@ export default function DelaysTabContent() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedRules.length === 0 ? (
+                {paginatedRules.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                       {t('noRulesFound')}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  sortedRules.map((rule) => (
+                  paginatedRules.map((rule) => (
                     <TableRow key={rule.id}>
                       <TableCell>
                         {rule.workflow_code ? (
@@ -418,6 +452,17 @@ export default function DelaysTabContent() {
               </TableBody>
             </Table>
           </div>
+
+          {/* Pagination */}
+          <DataTablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredRules.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[10, 20, 30, 50]}
+          />
         </CardContent>
       </Card>
 

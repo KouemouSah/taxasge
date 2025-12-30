@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -64,6 +64,7 @@ import type {
   AppointmentBlockedDateCreate,
   AppointmentBlockedDateUpdate,
 } from '@/modules/service-requests-admin'
+import { DataTablePagination, usePagination } from '@/modules/service-requests-admin/components'
 
 export default function BlockedTabContent() {
   const t = useTranslations('admin.serviceRequests.appointments.blocked')
@@ -75,6 +76,17 @@ export default function BlockedTabContent() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<AppointmentBlockedDate | null>(null)
+
+  // Pagination
+  const {
+    currentPage,
+    pageSize,
+    setCurrentPage,
+    setPageSize,
+    paginateData,
+    getTotalPages,
+    resetPage,
+  } = usePagination(10)
 
   // Form state
   const [formData, setFormData] = useState<AppointmentBlockedDateCreate>({
@@ -103,10 +115,24 @@ export default function BlockedTabContent() {
   // Get unique entity codes
   const entities = Array.from(new Set(slotConfigs?.map((s) => s.entity_code) || []))
 
-  // Sort blocked dates by date
-  const sortedDates = [...(blockedDates || [])].sort(
-    (a, b) => new Date(a.blocked_date).getTime() - new Date(b.blocked_date).getTime()
-  )
+  // Sort and filter blocked dates
+  const filteredDates = useMemo(() => {
+    let result = [...(blockedDates || [])]
+
+    // Filter by entity
+    if (entityFilter === 'global') {
+      result = result.filter((d) => !d.entity_code)
+    } else if (entityFilter !== 'all') {
+      result = result.filter((d) => d.entity_code === entityFilter)
+    }
+
+    // Sort by date
+    return result.sort((a, b) => new Date(a.blocked_date).getTime() - new Date(b.blocked_date).getTime())
+  }, [blockedDates, entityFilter])
+
+  // Pagination
+  const paginatedDates = paginateData(filteredDates)
+  const totalPages = getTotalPages(filteredDates.length)
 
   // Handlers
   const handleAddBlockedDate = async () => {
@@ -302,11 +328,17 @@ export default function BlockedTabContent() {
             <CalendarX className="h-5 w-5" />
             {t('title')}
           </CardTitle>
-          <CardDescription>{t('total', { count: blockedDates?.length || 0 })}</CardDescription>
+          <CardDescription>{filteredDates.length} fechas bloqueadas</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex gap-4 mb-4">
-            <Select value={entityFilter} onValueChange={setEntityFilter}>
+            <Select
+              value={entityFilter}
+              onValueChange={(v) => {
+                setEntityFilter(v)
+                resetPage()
+              }}
+            >
               <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder={t('filterByEntity')} />
               </SelectTrigger>
@@ -335,14 +367,14 @@ export default function BlockedTabContent() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedDates.length === 0 ? (
+                {paginatedDates.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                       {t('noDatesFound')}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  sortedDates.map((date) => (
+                  paginatedDates.map((date) => (
                     <TableRow key={date.id}>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -394,6 +426,17 @@ export default function BlockedTabContent() {
               </TableBody>
             </Table>
           </div>
+
+          {/* Pagination */}
+          <DataTablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredDates.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[10, 20, 30, 50]}
+          />
         </CardContent>
       </Card>
 
