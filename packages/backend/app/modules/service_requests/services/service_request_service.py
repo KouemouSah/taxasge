@@ -139,7 +139,7 @@ class ServiceRequestService:
                 detail="Service request not found"
             )
 
-        if request["user_id"] != user_id:
+        if str(request["user_id"]) != str(user_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied"
@@ -288,7 +288,7 @@ class ServiceRequestService:
                 detail="Service request not found"
             )
 
-        if request["user_id"] != user_id:
+        if str(request["user_id"]) != str(user_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied"
@@ -658,7 +658,7 @@ class ServiceRequestService:
                 detail="Service request not found"
             )
 
-        if request["user_id"] != user_id:
+        if str(request["user_id"]) != str(user_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied"
@@ -723,7 +723,7 @@ class ServiceRequestService:
                 detail="Service request not found"
             )
 
-        if request["user_id"] != user_id:
+        if str(request["user_id"]) != str(user_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied"
@@ -797,7 +797,7 @@ class ServiceRequestService:
                 detail="Service request not found"
             )
 
-        if request["user_id"] != user_id:
+        if str(request["user_id"]) != str(user_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied"
@@ -851,7 +851,7 @@ class ServiceRequestService:
                 detail="Service request not found"
             )
 
-        if request["user_id"] != user_id:
+        if str(request["user_id"]) != str(user_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied"
@@ -941,7 +941,7 @@ class ServiceRequestService:
                 detail="Service request not found"
             )
 
-        if request["user_id"] != user_id:
+        if str(request["user_id"]) != str(user_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied"

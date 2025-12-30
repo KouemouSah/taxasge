@@ -335,7 +335,7 @@ async def get_by_reference(
             detail=f"Service request not found: {reference}"
         )
 
-    if request["user_id"] != current_user.id:
+    if str(request["user_id"]) != str(current_user.id):
         from fastapi import HTTPException, status
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
