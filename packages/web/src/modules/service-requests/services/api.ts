@@ -12,6 +12,7 @@ import type {
   ServiceRequestListResponse,
   ServiceRequestFilters,
   WorkflowConfig,
+  WorkflowStep,
   WorkflowStartResponse,
   StepSubmitRequest,
   StepSubmitResponse,
@@ -23,6 +24,67 @@ import type {
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const API_VERSION = '/api/v1'
 const ENDPOINT_BASE = '/service-requests'
+
+// ============================================================================
+// BACKEND RESPONSE TYPES (snake_case from Python)
+// ============================================================================
+
+interface BackendWorkflowStep {
+  number: number
+  id: string
+  type: string
+  title_es: string
+  description_es?: string
+  is_inherited: boolean
+  is_optional?: boolean
+  config?: Record<string, unknown>
+}
+
+interface BackendWorkflow {
+  code: string
+  category: string
+  entity_code: string
+  service_name_es: string
+  requires_nota_ingreso: boolean
+  requires_appointment: boolean
+  requires_agent_review: boolean
+  allowed_sub_types: string[]
+  total_steps?: number
+  steps?: BackendWorkflowStep[]
+  tariff_type?: string
+}
+
+// ============================================================================
+// TRANSFORMATION FUNCTIONS (snake_case -> camelCase)
+// ============================================================================
+
+function transformStep(backend: BackendWorkflowStep): WorkflowStep {
+  return {
+    stepNumber: backend.number,
+    stepId: backend.id,
+    stepType: backend.type as WorkflowStep['stepType'],
+    titleEs: backend.title_es,
+    descriptionEs: backend.description_es,
+    isInherited: backend.is_inherited,
+    isOptional: backend.is_optional,
+    config: backend.config,
+  }
+}
+
+function transformWorkflow(backend: BackendWorkflow): WorkflowConfig {
+  return {
+    workflowCode: backend.code,
+    category: backend.category as WorkflowConfig['category'],
+    entityCode: backend.entity_code,
+    serviceNameEs: backend.service_name_es,
+    requiresNotaIngreso: backend.requires_nota_ingreso,
+    requiresAppointment: backend.requires_appointment,
+    requiresAgentReview: backend.requires_agent_review,
+    allowedSubTypes: backend.allowed_sub_types || [],
+    steps: (backend.steps || []).map(transformStep),
+    tariffType: (backend.tariff_type as WorkflowConfig['tariffType']) || 'fixed',
+  }
+}
 
 class ServiceRequestsApiClient {
   private baseUrl: string
@@ -98,14 +160,16 @@ class ServiceRequestsApiClient {
    */
   async getWorkflows(category?: string): Promise<WorkflowConfig[]> {
     const params = category ? `?category=${category}` : ''
-    return this.request<WorkflowConfig[]>(`/workflows${params}`)
+    const workflows = await this.request<BackendWorkflow[]>(`/workflows${params}`)
+    return workflows.map(transformWorkflow)
   }
 
   /**
    * Get workflow configuration by code
    */
   async getWorkflow(workflowCode: string): Promise<WorkflowConfig> {
-    return this.request<WorkflowConfig>(`/workflows/${workflowCode}`)
+    const workflow = await this.request<BackendWorkflow>(`/workflows/${workflowCode}`)
+    return transformWorkflow(workflow)
   }
 
   /**
@@ -113,7 +177,8 @@ class ServiceRequestsApiClient {
    */
   async getWorkflowSteps(workflowCode: string, subType?: string): Promise<WorkflowConfig> {
     const params = subType ? `?sub_type=${subType}` : ''
-    return this.request<WorkflowConfig>(`/workflows/${workflowCode}/steps${params}`)
+    const workflow = await this.request<BackendWorkflow>(`/workflows/${workflowCode}/steps${params}`)
+    return transformWorkflow(workflow)
   }
 
   // =========================================================================
@@ -128,7 +193,7 @@ class ServiceRequestsApiClient {
     // Backend endpoint is POST / - convert to snake_case for backend
     const backendData = {
       workflow_code: data.workflowCode,
-      solicitud_type: data.subType?.toUpperCase() || 'EXPEDICION',
+      solicitud_type: data.subType?.toLowerCase() || 'expedicion',
       form_data: data.formData || {},
     }
     const request = await this.request<ServiceRequest>('/', {
