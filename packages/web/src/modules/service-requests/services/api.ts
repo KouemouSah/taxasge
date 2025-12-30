@@ -54,6 +54,25 @@ interface BackendWorkflow {
   tariff_type?: string
 }
 
+interface BackendServiceRequest {
+  id: string
+  reference: string
+  user_id: string
+  workflow_code: string
+  solicitud_type: string
+  status: string
+  priority: string
+  form_data?: Record<string, unknown>
+  extracted_data?: Record<string, unknown>
+  created_at: string
+  updated_at?: string
+  submitted_at?: string
+  completed_at?: string
+  assigned_to?: string
+  current_step?: number
+  tariff?: Record<string, unknown>
+}
+
 // ============================================================================
 // TRANSFORMATION FUNCTIONS (snake_case -> camelCase)
 // ============================================================================
@@ -83,6 +102,26 @@ function transformWorkflow(backend: BackendWorkflow): WorkflowConfig {
     allowedSubTypes: backend.allowed_sub_types || [],
     steps: (backend.steps || []).map(transformStep),
     tariffType: (backend.tariff_type as WorkflowConfig['tariffType']) || 'fixed',
+  }
+}
+
+function transformServiceRequest(backend: BackendServiceRequest): ServiceRequest {
+  return {
+    id: backend.id,
+    requestNumber: backend.reference,
+    userId: backend.user_id,
+    workflowCode: backend.workflow_code,
+    subType: backend.solicitud_type,
+    status: backend.status as ServiceRequest['status'],
+    currentStep: backend.current_step || 1,
+    formData: backend.form_data || {},
+    extractedData: backend.extracted_data,
+    tariffAmount: backend.tariff?.total_amount as number | undefined,
+    assignedAgentId: backend.assigned_to,
+    createdAt: backend.created_at,
+    updatedAt: backend.updated_at,
+    submittedAt: backend.submitted_at,
+    completedAt: backend.completed_at,
   }
 }
 
@@ -187,7 +226,7 @@ class ServiceRequestsApiClient {
 
   /**
    * Start a new service request workflow
-   * Backend uses POST / to create, returns ServiceRequestResponse
+   * Backend uses POST / to create, returns ServiceRequestResponse (snake_case)
    */
   async startWorkflow(data: ServiceRequestCreate): Promise<WorkflowStartResponse> {
     // Backend endpoint is POST / - convert to snake_case for backend
@@ -196,10 +235,12 @@ class ServiceRequestsApiClient {
       solicitud_type: data.subType?.toLowerCase() || 'expedicion',
       form_data: data.formData || {},
     }
-    const request = await this.request<ServiceRequest>('/', {
+    // Backend returns snake_case, transform to camelCase
+    const backendRequest = await this.request<BackendServiceRequest>('/', {
       method: 'POST',
       body: JSON.stringify(backendData),
     })
+    const request = transformServiceRequest(backendRequest)
 
     // Fetch workflow config to return complete response
     const workflow = await this.getWorkflow(request.workflowCode)
@@ -216,12 +257,13 @@ class ServiceRequestsApiClient {
    * Get service request by ID
    */
   async getRequest(requestId: string): Promise<ServiceRequest> {
-    return this.request<ServiceRequest>(`/${requestId}`)
+    const backend = await this.request<BackendServiceRequest>(`/${requestId}`)
+    return transformServiceRequest(backend)
   }
 
   /**
    * List user's service requests with filters
-   * Backend uses limit/offset pagination and returns array directly
+   * Backend uses limit/offset pagination and returns array directly (snake_case)
    */
   async listMyRequests(
     page: number = 1,
@@ -244,16 +286,17 @@ class ServiceRequestsApiClient {
     if (filters?.dateFrom) params.append('date_from', filters.dateFrom)
     if (filters?.dateTo) params.append('date_to', filters.dateTo)
 
-    // Backend returns List[ServiceRequestResponse] directly (array), not wrapped
-    const requests = await this.request<ServiceRequest[]>(`/?${params.toString()}`)
+    // Backend returns List[ServiceRequestResponse] directly (array, snake_case)
+    const backendRequests = await this.request<BackendServiceRequest[]>(`/?${params.toString()}`)
+    const requests = (backendRequests || []).map(transformServiceRequest)
 
     // Wrap in expected response format for frontend hook compatibility
     return {
-      requests: requests || [],
-      total: requests?.length || 0,
+      requests,
+      total: requests.length,
       page,
       pageSize,
-      totalPages: Math.ceil((requests?.length || 0) / pageSize),
+      totalPages: Math.ceil(requests.length / pageSize),
     }
   }
 
@@ -264,10 +307,11 @@ class ServiceRequestsApiClient {
     requestId: string,
     data: ServiceRequestUpdate
   ): Promise<ServiceRequest> {
-    return this.request<ServiceRequest>(`/${requestId}`, {
+    const backend = await this.request<BackendServiceRequest>(`/${requestId}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     })
+    return transformServiceRequest(backend)
   }
 
   /**
@@ -313,10 +357,11 @@ class ServiceRequestsApiClient {
     stepId: string,
     data: Record<string, unknown>
   ): Promise<ServiceRequest> {
-    return this.request<ServiceRequest>(`/${requestId}/step/${stepId}/save`, {
+    const backend = await this.request<BackendServiceRequest>(`/${requestId}/step/${stepId}/save`, {
       method: 'POST',
       body: JSON.stringify(data),
     })
+    return transformServiceRequest(backend)
   }
 
   // =========================================================================
@@ -437,9 +482,10 @@ class ServiceRequestsApiClient {
    * Submit request for processing
    */
   async submitRequest(requestId: string): Promise<ServiceRequest> {
-    return this.request<ServiceRequest>(`/${requestId}/submit`, {
+    const backend = await this.request<BackendServiceRequest>(`/${requestId}/submit`, {
       method: 'POST',
     })
+    return transformServiceRequest(backend)
   }
 
   /**
@@ -505,10 +551,11 @@ class ServiceRequestsApiClient {
     requestId: string,
     agentId: string
   ): Promise<ServiceRequest> {
-    return this.request<ServiceRequest>(`/${requestId}/assign`, {
+    const backend = await this.request<BackendServiceRequest>(`/${requestId}/assign`, {
       method: 'POST',
       body: JSON.stringify({ agent_id: agentId }),
     })
+    return transformServiceRequest(backend)
   }
 
   /**
@@ -518,10 +565,11 @@ class ServiceRequestsApiClient {
     requestId: string,
     notes?: string
   ): Promise<ServiceRequest> {
-    return this.request<ServiceRequest>(`/${requestId}/approve`, {
+    const backend = await this.request<BackendServiceRequest>(`/${requestId}/approve`, {
       method: 'POST',
       body: JSON.stringify({ notes }),
     })
+    return transformServiceRequest(backend)
   }
 
   /**
@@ -532,10 +580,11 @@ class ServiceRequestsApiClient {
     reason: string,
     notes?: string
   ): Promise<ServiceRequest> {
-    return this.request<ServiceRequest>(`/${requestId}/reject`, {
+    const backend = await this.request<BackendServiceRequest>(`/${requestId}/reject`, {
       method: 'POST',
       body: JSON.stringify({ reason, notes }),
     })
+    return transformServiceRequest(backend)
   }
 
   /**
@@ -546,10 +595,11 @@ class ServiceRequestsApiClient {
     message: string,
     requiredDocuments?: string[]
   ): Promise<ServiceRequest> {
-    return this.request<ServiceRequest>(`/${requestId}/request-info`, {
+    const backend = await this.request<BackendServiceRequest>(`/${requestId}/request-info`, {
       method: 'POST',
       body: JSON.stringify({ message, required_documents: requiredDocuments }),
     })
+    return transformServiceRequest(backend)
   }
 
   /**
@@ -561,20 +611,22 @@ class ServiceRequestsApiClient {
     time: string,
     location: string
   ): Promise<ServiceRequest> {
-    return this.request<ServiceRequest>(`/${requestId}/appointment`, {
+    const backend = await this.request<BackendServiceRequest>(`/${requestId}/appointment`, {
       method: 'POST',
       body: JSON.stringify({ date, time, location }),
     })
+    return transformServiceRequest(backend)
   }
 
   /**
    * Add agent note
    */
   async addAgentNote(requestId: string, note: string): Promise<ServiceRequest> {
-    return this.request<ServiceRequest>(`/${requestId}/notes`, {
+    const backend = await this.request<BackendServiceRequest>(`/${requestId}/notes`, {
       method: 'POST',
       body: JSON.stringify({ note }),
     })
+    return transformServiceRequest(backend)
   }
 }
 
