@@ -642,7 +642,9 @@
         "errorLoading": "Error al cargar flujos",
         "noWorkflows": "No hay flujos configurados",
         "workflowDetails": "Detalles del Flujo",
-        "workflowDetailsDescription": "Información básica y configuración del flujo de trabajo"
+        "workflowDetailsDescription": "Información básica y configuración del flujo de trabajo",
+        "createNew": "Nuevo Flujo de Trabajo",
+        "createNewDescription": "Complete la información para crear un nuevo flujo de trabajo"
       },
       "documents": {
         "title": "Documentos Requeridos",

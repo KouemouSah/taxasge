@@ -384,17 +384,21 @@ export interface AppointmentsAdminState {
 // HELPER CONSTANTS
 // ============================================================================
 
-export const WORKFLOW_CATEGORIES = [
-  'IDENTIDAD',
-  'EXTRANJERIA',
-  'VEHICULOS',
-  'CONTRATOS',
-  'CONDUCCION',
-  'FUNCION_PUBLICA',
-  'REGISTRO_CIVIL',
-  'COMERCIO',
-  'OTROS',
-] as const
+// Database values (lowercase) with display labels
+export const WORKFLOW_CATEGORIES_MAP: { value: string; label: string }[] = [
+  { value: 'identite', label: 'Identidad' },
+  { value: 'vehiculo', label: 'Vehículos' },
+  { value: 'contrato', label: 'Contratos' },
+  { value: 'conducir', label: 'Conducción' },
+  { value: 'funcion_publica', label: 'Función Pública' },
+  { value: 'extranjeria', label: 'Extranjería' },
+  { value: 'registro_civil', label: 'Registro Civil' },
+  { value: 'comercio', label: 'Comercio' },
+  { value: 'otros', label: 'Otros' },
+]
+
+// Keep the old constant for backwards compatibility (use the values from the map)
+export const WORKFLOW_CATEGORIES = WORKFLOW_CATEGORIES_MAP.map(c => c.value)
 
 export const WORKFLOW_TYPES: { value: WorkflowType; label: string }[] = [
   { value: 'standard', label: 'Estándar (con validación)' },

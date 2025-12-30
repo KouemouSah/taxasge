@@ -642,7 +642,9 @@
         "errorLoading": "Error loading workflows",
         "noWorkflows": "No workflows configured",
         "workflowDetails": "Workflow Details",
-        "workflowDetailsDescription": "Basic information and workflow configuration"
+        "workflowDetailsDescription": "Basic information and workflow configuration",
+        "createNew": "New Workflow",
+        "createNewDescription": "Fill in the information to create a new workflow"
       },
       "documents": {
         "title": "Document Requirements",

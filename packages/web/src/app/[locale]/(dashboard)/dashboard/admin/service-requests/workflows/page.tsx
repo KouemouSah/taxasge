@@ -54,7 +54,7 @@ import type {
   Workflow,
   WorkflowTariff,
 } from '@/modules/service-requests-admin'
-import { WORKFLOW_CATEGORIES } from '@/modules/service-requests-admin'
+import { WORKFLOW_CATEGORIES_MAP } from '@/modules/service-requests-admin'
 import { DataTablePagination, usePagination } from '@/modules/service-requests-admin/components'
 
 const formatCurrency = (amount: number, currency = 'XAF') => {
@@ -134,8 +134,8 @@ export default function WorkflowsPage() {
   const filteredWorkflows = useMemo(() => {
     let result = workflowsWithTariffs
     if (categoryFilter !== 'all') {
-      // Case-insensitive comparison since DB may have different casing
-      result = result.filter((wf) => wf.category.toUpperCase() === categoryFilter.toUpperCase())
+      // Direct comparison with database category values
+      result = result.filter((wf) => wf.category === categoryFilter)
     }
     if (statusFilter !== 'all') {
       const isActive = statusFilter === 'active'
@@ -286,9 +286,9 @@ export default function WorkflowsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t('allCategories')}</SelectItem>
-                {WORKFLOW_CATEGORIES.map((cat) => (
-                  <SelectItem key={cat} value={cat}>
-                    {cat}
+                {WORKFLOW_CATEGORIES_MAP.map((cat) => (
+                  <SelectItem key={cat.value} value={cat.value}>
+                    {cat.label}
                   </SelectItem>
                 ))}
               </SelectContent>

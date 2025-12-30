@@ -642,7 +642,9 @@
         "errorLoading": "Erreur lors du chargement des flux",
         "noWorkflows": "Aucun flux configuré",
         "workflowDetails": "Détails du Flux",
-        "workflowDetailsDescription": "Informations de base et configuration du flux de travail"
+        "workflowDetailsDescription": "Informations de base et configuration du flux de travail",
+        "createNew": "Nouveau Flux de Travail",
+        "createNewDescription": "Remplissez les informations pour créer un nouveau flux de travail"
       },
       "documents": {
         "title": "Documents Requis",

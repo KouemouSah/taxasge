@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -16,27 +16,6 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -45,215 +24,200 @@ import {
 } from '@/components/ui/select'
 import {
   DollarSign,
-  Plus,
   Search,
-  Pencil,
-  Trash2,
   Loader2,
   AlertCircle,
-  Calculator,
   CheckCircle,
   XCircle,
   Receipt,
+  TrendingUp,
+  FileText,
+  BarChart3,
 } from 'lucide-react'
 import {
   useWorkflows,
   useTariffs,
-  useCreateTariff,
-  useUpdateTariff,
-  useDeleteTariff,
+  useSupplements,
+  WORKFLOW_CATEGORIES_MAP,
 } from '@/modules/service-requests-admin'
 import type {
+  Workflow,
   WorkflowTariff,
-  WorkflowTariffCreate,
-  WorkflowTariffUpdate,
-  TariffType,
 } from '@/modules/service-requests-admin'
-import { TARIFF_TYPES } from '@/modules/service-requests-admin'
+import { DataTablePagination, usePagination } from '@/modules/service-requests-admin/components'
 import SupplementsTabContent from './components/SupplementsTabContent'
+
+// Solicitud types
+const SOLICITUD_TYPES = [
+  { value: 'expedicion', label: 'Expedición' },
+  { value: 'renovacion', label: 'Renovación' },
+  { value: 'duplicado', label: 'Duplicado' },
+]
+
+// Format currency
+const formatCurrency = (amount: number, currency: string = 'XAF') => {
+  return new Intl.NumberFormat('es-GQ', {
+    style: 'currency',
+    currency: currency,
+    minimumFractionDigits: 0,
+  }).format(amount)
+}
+
+// Interface for workflow with calculated tariff data
+interface WorkflowTariffSummary {
+  workflow: Workflow
+  tariffs: {
+    expedicion: { tariff: WorkflowTariff | null; total: number }
+    renovacion: { tariff: WorkflowTariff | null; total: number }
+    duplicado: { tariff: WorkflowTariff | null; total: number }
+  }
+  hasTariffs: boolean
+}
 
 export default function TariffsPage() {
   const t = useTranslations('admin.serviceRequests.tariffs')
   const tCommon = useTranslations('common')
-  const [activeTab, setActiveTab] = useState('tariffs')
+  const [activeTab, setActiveTab] = useState('overview')
 
   // State
   const [searchQuery, setSearchQuery] = useState('')
-  const [workflowFilter, setWorkflowFilter] = useState<string>('all')
+  const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [isSimulatorOpen, setIsSimulatorOpen] = useState(false)
-  const [selectedTariff, setSelectedTariff] = useState<WorkflowTariff | null>(null)
 
-  // Simulator state
-  const [simulatorAmount, setSimulatorAmount] = useState<number>(100000)
-  const [simulatorResult, setSimulatorResult] = useState<number | null>(null)
-
-  // Form state
-  const [formData, setFormData] = useState<WorkflowTariffCreate>({
-    workflow_code: '',
-    solicitud_type: 'expedicion',
-    tariff_type: 'FIXED',
-    amount: 0,
-    percentage_rate: null,
-    currency: 'XAF',
-    legal_reference: '',
-    effective_from: new Date().toISOString().split('T')[0],
-    effective_to: null,
-    is_active: true,
-  })
+  // Pagination
+  const {
+    currentPage,
+    pageSize,
+    setCurrentPage,
+    setPageSize,
+    paginateData,
+    getTotalPages,
+    resetPage,
+  } = usePagination(10)
 
   // Queries
-  const { data: workflows } = useWorkflows()
-  const {
-    data: tariffs,
-    isLoading,
-    error,
-    refetch,
-  } = useTariffs({
-    workflow_code: workflowFilter === 'all' ? undefined : workflowFilter,
-    is_active: statusFilter === 'all' ? undefined : statusFilter === 'active',
-  })
+  const { data: workflows, isLoading: loadingWorkflows } = useWorkflows()
+  const { data: tariffs, isLoading: loadingTariffs, error, refetch } = useTariffs()
+  const { data: supplements, isLoading: loadingSupplements } = useSupplements()
 
-  // Mutations
-  const createMutation = useCreateTariff()
-  const updateMutation = useUpdateTariff()
-  const deleteMutation = useDeleteTariff()
+  const isLoading = loadingWorkflows || loadingTariffs || loadingSupplements
 
-  // Filter tariffs by search
-  const filteredTariffs = tariffs?.filter((t) => {
-    if (!searchQuery) return true
-    const query = searchQuery.toLowerCase()
-    return (
-      t.workflow_code.toLowerCase().includes(query) ||
-      t.solicitud_type.toLowerCase().includes(query)
-    )
-  }) || []
+  // Calculate workflow summaries with tariffs
+  const workflowSummaries: WorkflowTariffSummary[] = useMemo(() => {
+    if (!workflows || !tariffs) return []
 
-  // Handlers
-  const handleCreateTariff = async () => {
-    try {
-      await createMutation.mutateAsync(formData)
-      setIsCreateDialogOpen(false)
-      resetForm()
-    } catch {
-      // Error handled by mutation
-    }
-  }
-
-  const handleUpdateTariff = async () => {
-    if (!selectedTariff) return
-
-    try {
-      const updateData: WorkflowTariffUpdate = {
-        solicitud_type: formData.solicitud_type,
-        tariff_type: formData.tariff_type as TariffType,
-        amount: formData.amount,
-        percentage_rate: formData.percentage_rate,
-        currency: formData.currency,
-        legal_reference: formData.legal_reference,
-        effective_to: formData.effective_to,
-        is_active: formData.is_active,
+    return workflows.map((wf) => {
+      const getTypeTariff = (type: string) => {
+        const tariff = tariffs.find(
+          (t) => t.workflow_code === wf.code && t.solicitud_type === type && t.is_active
+        )
+        return {
+          tariff,
+          total: tariff?.amount || 0,
+        }
       }
-      await updateMutation.mutateAsync({ tariffId: selectedTariff.id, data: updateData })
-      setIsEditDialogOpen(false)
-      resetForm()
-    } catch {
-      // Error handled by mutation
-    }
-  }
 
-  const handleDeleteTariff = async () => {
-    if (!selectedTariff) return
+      const expedicion = getTypeTariff('expedicion')
+      const renovacion = getTypeTariff('renovacion')
+      const duplicado = getTypeTariff('duplicado')
 
-    try {
-      await deleteMutation.mutateAsync(selectedTariff.id)
-      setIsDeleteDialogOpen(false)
-      setSelectedTariff(null)
-    } catch {
-      // Error handled by mutation
-    }
-  }
-
-  const openEditDialog = (tariff: WorkflowTariff) => {
-    setSelectedTariff(tariff)
-    setFormData({
-      workflow_code: tariff.workflow_code,
-      solicitud_type: tariff.solicitud_type,
-      tariff_type: tariff.tariff_type as TariffType,
-      amount: tariff.amount,
-      percentage_rate: tariff.percentage_rate,
-      currency: tariff.currency,
-      legal_reference: tariff.legal_reference || '',
-      effective_from: tariff.effective_from,
-      effective_to: tariff.effective_to,
-      is_active: tariff.is_active,
+      return {
+        workflow: wf,
+        tariffs: { expedicion, renovacion, duplicado },
+        hasTariffs: !!(expedicion.tariff || renovacion.tariff || duplicado.tariff),
+      }
     })
-    setIsEditDialogOpen(true)
-  }
+  }, [workflows, tariffs])
 
-  const openDeleteDialog = (tariff: WorkflowTariff) => {
-    setSelectedTariff(tariff)
-    setIsDeleteDialogOpen(true)
-  }
-
-  const openSimulator = (tariff: WorkflowTariff) => {
-    setSelectedTariff(tariff)
-    setSimulatorAmount(100000)
-    calculateSimulation(tariff, 100000)
-    setIsSimulatorOpen(true)
-  }
-
-  const calculateSimulation = (tariff: WorkflowTariff, baseAmount: number) => {
-    if (tariff.tariff_type === 'FIXED') {
-      setSimulatorResult(tariff.amount)
-    } else if (tariff.tariff_type === 'PERCENTAGE' && tariff.percentage_rate) {
-      setSimulatorResult(baseAmount * (tariff.percentage_rate / 100))
-    } else {
-      setSimulatorResult(tariff.amount)
+  // Calculate statistics
+  const statistics = useMemo(() => {
+    if (!workflows || !tariffs || !supplements) {
+      return {
+        totalWorkflows: 0,
+        workflowsWithTariffs: 0,
+        totalActiveTariffs: 0,
+        totalActiveSupplements: 0,
+        averageTariff: 0,
+        totalTariffValue: 0,
+      }
     }
-  }
 
-  const resetForm = () => {
-    setFormData({
-      workflow_code: '',
-      solicitud_type: 'expedicion',
-      tariff_type: 'FIXED',
-      amount: 0,
-      percentage_rate: null,
-      currency: 'XAF',
-      legal_reference: '',
-      effective_from: new Date().toISOString().split('T')[0],
-      effective_to: null,
-      is_active: true,
-    })
-    setSelectedTariff(null)
-  }
+    const activeTariffs = tariffs.filter((t) => t.is_active)
+    const activeSupplements = supplements.filter((s) => s.is_active)
+    const workflowsWithTariffs = new Set(activeTariffs.map((t) => t.workflow_code)).size
+    const totalTariffValue = activeTariffs.reduce((sum, t) => sum + t.amount, 0)
+    const averageTariff = activeTariffs.length > 0 ? totalTariffValue / activeTariffs.length : 0
 
-  const formatCurrency = (amount: number, currency: string = 'XAF') => {
-    return new Intl.NumberFormat('es-GQ', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 0,
-    }).format(amount)
-  }
-
-  const getTariffTypeBadge = (type: string) => {
-    switch (type) {
-      case 'FIXED':
-        return <Badge variant="default">{t('typeFixed')}</Badge>
-      case 'PERCENTAGE':
-        return <Badge variant="secondary">{t('typePercentage')}</Badge>
-      case 'NOTA_INGRESO':
-        return <Badge variant="outline">{t('typeNotaIngreso')}</Badge>
-      default:
-        return <Badge variant="outline">{type}</Badge>
+    return {
+      totalWorkflows: workflows.length,
+      workflowsWithTariffs,
+      totalActiveTariffs: activeTariffs.length,
+      totalActiveSupplements: activeSupplements.length,
+      averageTariff,
+      totalTariffValue,
     }
+  }, [workflows, tariffs, supplements])
+
+  // Filter workflows
+  const filteredSummaries = useMemo(() => {
+    let result = workflowSummaries
+
+    if (statusFilter === 'with_tariffs') {
+      result = result.filter((ws) => ws.hasTariffs)
+    } else if (statusFilter === 'without_tariffs') {
+      result = result.filter((ws) => !ws.hasTariffs)
+    }
+
+    if (categoryFilter !== 'all') {
+      result = result.filter((ws) => ws.workflow.category === categoryFilter)
+    }
+
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      result = result.filter(
+        (ws) =>
+          ws.workflow.code.toLowerCase().includes(query) ||
+          ws.workflow.name_es.toLowerCase().includes(query)
+      )
+    }
+
+    return result
+  }, [workflowSummaries, statusFilter, categoryFilter, searchQuery])
+
+  // Pagination
+  const paginatedSummaries = paginateData(filteredSummaries)
+  const totalPages = getTotalPages(filteredSummaries.length)
+
+  // Handle filter changes
+  const handleFilterChange = (setter: (value: string) => void, value: string) => {
+    setter(value)
+    resetPage()
   }
 
-  // Render loading state
+  // Get tariff display
+  const getTariffDisplay = (tariff: WorkflowTariff | null) => {
+    if (!tariff) return <span className="text-muted-foreground">-</span>
+
+    const typeLabel = tariff.tariff_type === 'FIXED' ? 'Fijo' :
+                      tariff.tariff_type === 'PERCENTAGE' ? '%' : 'RBC'
+    const amount = tariff.tariff_type === 'PERCENTAGE'
+      ? `${tariff.percentage_rate}%`
+      : formatCurrency(tariff.amount)
+
+    return (
+      <div className="flex items-center justify-end gap-2">
+        <Badge variant="outline" className="text-xs">{typeLabel}</Badge>
+        <span className="font-mono">{amount}</span>
+      </div>
+    )
+  }
+
+  // Get category label
+  const getCategoryLabel = (value: string) => {
+    const cat = WORKFLOW_CATEGORIES_MAP.find((c) => c.value === value)
+    return cat?.label || value
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -262,7 +226,6 @@ export default function TariffsPage() {
     )
   }
 
-  // Render error state
   if (error) {
     return (
       <div className="space-y-6">
@@ -287,18 +250,69 @@ export default function TariffsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
         <p className="text-muted-foreground">{t('subtitle')}</p>
       </div>
 
+      {/* Statistics Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Workflows con Tarifas</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{statistics.workflowsWithTariffs}</div>
+            <p className="text-xs text-muted-foreground">
+              de {statistics.totalWorkflows} workflows totales
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Tarifas Activas</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{statistics.totalActiveTariffs}</div>
+            <p className="text-xs text-muted-foreground">
+              Promedio: {formatCurrency(statistics.averageTariff)}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Suplementos Activos</CardTitle>
+            <Receipt className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{statistics.totalActiveSupplements}</div>
+            <p className="text-xs text-muted-foreground">
+              Configurados globalmente
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Valor Total Tarifas</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(statistics.totalTariffValue)}</div>
+            <p className="text-xs text-muted-foreground">
+              Suma de todas las tarifas activas
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
-          <TabsTrigger value="tariffs" className="gap-2">
-            <DollarSign className="h-4 w-4" />
-            {t('tabs.tariffs')}
+          <TabsTrigger value="overview" className="gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Vista por Workflow
           </TabsTrigger>
           <TabsTrigger value="supplements" className="gap-2">
             <Receipt className="h-4 w-4" />
@@ -306,462 +320,133 @@ export default function TariffsPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="tariffs" className="space-y-6">
-          {/* Tariffs Actions */}
-          <div className="flex justify-end">
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => resetForm()}>
-              <Plus className="mr-2 h-4 w-4" />
-              {t('create')}
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>{t('create')}</DialogTitle>
-              <DialogDescription>{t('createDescription')}</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="workflow">{t('workflow')}</Label>
+        <TabsContent value="overview" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5" />
+                Tarifas por Workflow
+              </CardTitle>
+              <CardDescription>
+                {filteredSummaries.length} de {workflowSummaries.length} workflows
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por código o nombre..."
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value)
+                      resetPage()
+                    }}
+                    className="pl-9"
+                  />
+                </div>
                 <Select
-                  value={formData.workflow_code}
-                  onValueChange={(value) => setFormData({ ...formData, workflow_code: value })}
+                  value={categoryFilter}
+                  onValueChange={(v) => handleFilterChange(setCategoryFilter, v)}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t('selectWorkflow')} />
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Categoría" />
                   </SelectTrigger>
                   <SelectContent>
-                    {workflows?.map((wf) => (
-                      <SelectItem key={wf.code} value={wf.code}>
-                        {wf.code} - {wf.name_es}
+                    <SelectItem value="all">Todas las categorías</SelectItem>
+                    {WORKFLOW_CATEGORIES_MAP.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <Select
+                  value={statusFilter}
+                  onValueChange={(v) => handleFilterChange(setStatusFilter, v)}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Estado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="with_tariffs">Con tarifas</SelectItem>
+                    <SelectItem value="without_tariffs">Sin tarifas</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="solicitud_type">{t('solicitudType')}</Label>
-                  <Select
-                    value={formData.solicitud_type}
-                    onValueChange={(value) => setFormData({ ...formData, solicitud_type: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={t('selectSolicitudType')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="expedicion">{t('solicitudTypeExpedicion')}</SelectItem>
-                      <SelectItem value="renovacion">{t('solicitudTypeRenovacion')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="tariff_type">{t('tariffType')}</Label>
-                  <Select
-                    value={formData.tariff_type}
-                    onValueChange={(value) => setFormData({ ...formData, tariff_type: value as TariffType })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TARIFF_TYPES.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="amount">{t('amount')} (XAF)</Label>
-                  <Input
-                    id="amount"
-                    type="number"
-                    value={formData.amount}
-                    onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
-                    min={0}
-                  />
-                </div>
-                {formData.tariff_type === 'PERCENTAGE' && (
-                  <div className="grid gap-2">
-                    <Label htmlFor="percentage">{t('percentage')} (%)</Label>
-                    <Input
-                      id="percentage"
-                      type="number"
-                      value={formData.percentage_rate || ''}
-                      onChange={(e) =>
-                        setFormData({ ...formData, percentage_rate: parseFloat(e.target.value) || null })
-                      }
-                      min={0}
-                      max={100}
-                      step={0.01}
-                    />
-                  </div>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="effective_from">{t('effectiveFrom')}</Label>
-                  <Input
-                    id="effective_from"
-                    type="date"
-                    value={formData.effective_from}
-                    onChange={(e) => setFormData({ ...formData, effective_from: e.target.value })}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="effective_to">{t('effectiveTo')}</Label>
-                  <Input
-                    id="effective_to"
-                    type="date"
-                    value={formData.effective_to || ''}
-                    onChange={(e) => setFormData({ ...formData, effective_to: e.target.value || null })}
-                  />
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="legal_reference">{t('legalReference')}</Label>
-                <Input
-                  id="legal_reference"
-                  value={formData.legal_reference || ''}
-                  onChange={(e) => setFormData({ ...formData, legal_reference: e.target.value })}
-                  placeholder="Ley XX/2024, Art. YY"
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="is_active_tariff">{t('isActive')}</Label>
-                <Switch
-                  id="is_active_tariff"
-                  checked={formData.is_active}
-                  onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                {tCommon('cancel')}
-              </Button>
-              <Button
-                onClick={handleCreateTariff}
-                disabled={!formData.workflow_code || !formData.amount || createMutation.isPending}
-              >
-                {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {tCommon('create')}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
 
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
-            {t('title')}
-          </CardTitle>
-          <CardDescription>{t('total', { count: tariffs?.length || 0 })}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4 mb-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder={t('searchPlaceholder')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Select value={workflowFilter} onValueChange={setWorkflowFilter}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder={t('filterByWorkflow')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('allWorkflows')}</SelectItem>
-                {workflows?.map((wf) => (
-                  <SelectItem key={wf.code} value={wf.code}>
-                    {wf.code}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder={t('filterByStatus')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('allStatuses')}</SelectItem>
-                <SelectItem value="active">{t('active')}</SelectItem>
-                <SelectItem value="inactive">{t('inactive')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Tariffs Table */}
-          <div className="border rounded-md">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('workflow')}</TableHead>
-                  <TableHead>{t('solicitudType')}</TableHead>
-                  <TableHead>{t('type')}</TableHead>
-                  <TableHead className="text-right">{t('amount')}</TableHead>
-                  <TableHead>{t('validity')}</TableHead>
-                  <TableHead className="text-center">{t('status')}</TableHead>
-                  <TableHead className="text-right">{t('actions')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredTariffs.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                      {t('noTariffsFound')}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredTariffs.map((tariff) => (
-                    <TableRow key={tariff.id}>
-                      <TableCell>
-                        <code className="text-sm bg-muted px-2 py-1 rounded">{tariff.workflow_code}</code>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{tariff.solicitud_type}</Badge>
-                      </TableCell>
-                      <TableCell>{getTariffTypeBadge(tariff.tariff_type)}</TableCell>
-                      <TableCell className="text-right font-mono">
-                        {tariff.tariff_type === 'PERCENTAGE' && tariff.percentage_rate
-                          ? `${tariff.percentage_rate}%`
-                          : formatCurrency(tariff.amount, tariff.currency)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          <div>{tariff.effective_from}</div>
-                          {tariff.effective_to && (
-                            <div className="text-muted-foreground">→ {tariff.effective_to}</div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {tariff.is_active ? (
-                          <CheckCircle className="h-5 w-5 text-green-500 mx-auto" />
-                        ) : (
-                          <XCircle className="h-5 w-5 text-red-500 mx-auto" />
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openSimulator(tariff)}
-                            title={t('simulate')}
-                          >
-                            <Calculator className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => openEditDialog(tariff)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openDeleteDialog(tariff)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+              <div className="border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[200px]">Workflow</TableHead>
+                      <TableHead>Categoría</TableHead>
+                      <TableHead className="text-right">Expedición</TableHead>
+                      <TableHead className="text-right">Renovación</TableHead>
+                      <TableHead className="text-right">Duplicado</TableHead>
+                      <TableHead className="text-center">Estado</TableHead>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedSummaries.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                          No se encontraron workflows
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      paginatedSummaries.map((summary) => (
+                        <TableRow key={summary.workflow.code} className="hover:bg-muted/50">
+                          <TableCell>
+                            <div>
+                              <code className="text-sm bg-muted px-2 py-1 rounded">
+                                {summary.workflow.code}
+                              </code>
+                              <div className="text-sm text-muted-foreground mt-1">
+                                {summary.workflow.name_es}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {getCategoryLabel(summary.workflow.category)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {getTariffDisplay(summary.tariffs.expedicion.tariff)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {getTariffDisplay(summary.tariffs.renovacion.tariff)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {getTariffDisplay(summary.tariffs.duplicado.tariff)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {summary.hasTariffs ? (
+                              <CheckCircle className="h-5 w-5 text-green-500 mx-auto" />
+                            ) : (
+                              <XCircle className="h-5 w-5 text-red-500 mx-auto" />
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
 
-      {/* Edit Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{t('edit')}</DialogTitle>
-            <DialogDescription>{t('editDescription')}</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>{t('workflow')}</Label>
-              <Input value={formData.workflow_code} disabled className="bg-muted" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="edit-solicitud">{t('solicitudType')}</Label>
-                <Select
-                  value={formData.solicitud_type}
-                  onValueChange={(value) => setFormData({ ...formData, solicitud_type: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="expedicion">{t('solicitudTypeExpedicion')}</SelectItem>
-                    <SelectItem value="renovacion">{t('solicitudTypeRenovacion')}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-type">{t('tariffType')}</Label>
-                <Select
-                  value={formData.tariff_type}
-                  onValueChange={(value) => setFormData({ ...formData, tariff_type: value as TariffType })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TARIFF_TYPES.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="edit-amount">{t('amount')} (XAF)</Label>
-                <Input
-                  id="edit-amount"
-                  type="number"
-                  value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
-                  min={0}
-                />
-              </div>
-              {formData.tariff_type === 'PERCENTAGE' && (
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-percentage">{t('percentage')} (%)</Label>
-                  <Input
-                    id="edit-percentage"
-                    type="number"
-                    value={formData.percentage_rate || ''}
-                    onChange={(e) =>
-                      setFormData({ ...formData, percentage_rate: parseFloat(e.target.value) || null })
-                    }
-                    min={0}
-                    max={100}
-                    step={0.01}
-                  />
-                </div>
-              )}
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-legal">{t('legalReference')}</Label>
-              <Input
-                id="edit-legal"
-                value={formData.legal_reference || ''}
-                onChange={(e) => setFormData({ ...formData, legal_reference: e.target.value })}
+              <DataTablePagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filteredSummaries.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={setPageSize}
+                pageSizeOptions={[10, 20, 30, 50]}
               />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="edit-active">{t('isActive')}</Label>
-              <Switch
-                id="edit-active"
-                checked={formData.is_active}
-                onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              {tCommon('cancel')}
-            </Button>
-            <Button onClick={handleUpdateTariff} disabled={updateMutation.isPending}>
-              {updateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {tCommon('save')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Simulator Dialog */}
-      <Dialog open={isSimulatorOpen} onOpenChange={setIsSimulatorOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Calculator className="h-5 w-5" />
-              {t('simulator')}
-            </DialogTitle>
-            <DialogDescription>{t('simulatorDescription')}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="p-4 bg-muted rounded-lg">
-              <div className="text-sm text-muted-foreground">{t('workflow')}</div>
-              <div className="font-medium">{selectedTariff?.workflow_code}</div>
-              <div className="text-sm text-muted-foreground mt-2">{t('tariffType')}</div>
-              <div className="font-medium">
-                {selectedTariff?.tariff_type === 'PERCENTAGE'
-                  ? `${selectedTariff?.percentage_rate}%`
-                  : formatCurrency(selectedTariff?.amount || 0)}
-              </div>
-            </div>
-
-            {selectedTariff?.tariff_type === 'PERCENTAGE' && (
-              <div className="grid gap-2">
-                <Label htmlFor="sim-amount">{t('baseAmount')} (XAF)</Label>
-                <Input
-                  id="sim-amount"
-                  type="number"
-                  value={simulatorAmount}
-                  onChange={(e) => {
-                    const val = parseFloat(e.target.value) || 0
-                    setSimulatorAmount(val)
-                    if (selectedTariff) calculateSimulation(selectedTariff, val)
-                  }}
-                  min={0}
-                />
-              </div>
-            )}
-
-            <div className="p-4 bg-primary/10 rounded-lg">
-              <div className="text-sm text-muted-foreground">{t('calculatedAmount')}</div>
-              <div className="text-2xl font-bold text-primary">
-                {simulatorResult !== null ? formatCurrency(simulatorResult) : '-'}
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setIsSimulatorOpen(false)}>{tCommon('close')}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('deleteConfirmTitle')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t('deleteConfirmDescription', { workflow: selectedTariff?.workflow_code })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteTariff}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {tCommon('delete')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="supplements">
