@@ -400,6 +400,7 @@ class ServiceRequestsApiClient {
 
   /**
    * Upload a document for extraction
+   * Backend returns flat response, we transform to expected frontend format
    */
   async uploadDocument(
     requestId: string,
@@ -412,10 +413,45 @@ class ServiceRequestsApiClient {
     formData.append('document_code', documentCode)
     if (face) formData.append('face', face)
 
-    return this.uploadRequest<DocumentUploadResponse>(
+    // Backend returns: { document_id, document_code, extraction, confidence, processor, status, needs_review }
+    interface BackendDocumentUploadResponse {
+      document_id: string
+      document_code: string
+      extraction: Record<string, unknown>
+      confidence: number
+      processor: string
+      status: string
+      needs_review: boolean
+    }
+
+    const backendResponse = await this.uploadRequest<BackendDocumentUploadResponse>(
       `/${requestId}/documents`,
       formData
     )
+
+    // Transform to frontend expected format
+    // Create a ServiceRequestDocument from the backend response
+    const document: ServiceRequestDocument = {
+      id: backendResponse.document_id,
+      requestId: requestId,
+      documentCode: backendResponse.document_code,
+      documentNameEs: backendResponse.document_code,
+      fileName: file.name,
+      fileUrl: '',
+      fileSize: file.size,
+      mimeType: file.type,
+      extractionStatus: backendResponse.status === 'success' ? ExtractionStatus.COMPLETED :
+                        backendResponse.status === 'failed' ? ExtractionStatus.FAILED : ExtractionStatus.MANUAL_REVIEW,
+      extractedData: backendResponse.extraction,
+      extractionConfidence: backendResponse.confidence,
+      uploadedAt: new Date().toISOString(),
+    }
+
+    return {
+      document,
+      extractedData: backendResponse.extraction,
+      validationErrors: backendResponse.needs_review ? ['Review required'] : undefined,
+    }
   }
 
   /**
