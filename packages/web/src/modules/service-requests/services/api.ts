@@ -249,9 +249,20 @@ class ServiceRequestsApiClient {
    */
   async startWorkflow(data: ServiceRequestCreate): Promise<WorkflowStartResponse> {
     // Backend endpoint is POST / - convert to snake_case for backend
+    // Map workflow sub_types (NUEVO, RENOVACION, PERDIDA, ROBO, DETERIORO)
+    // to solicitud_type enum (expedicion, renovacion, duplicado)
+    const mapSubTypeToSolicitudType = (subType?: string): string => {
+      if (\!subType) return 'expedicion'
+      const upper = subType.toUpperCase()
+      if (upper === 'NUEVO' || upper === 'EXPEDICION') return 'expedicion'
+      if (upper === 'RENOVACION') return 'renovacion'
+      if (['PERDIDA', 'ROBO', 'DETERIORO', 'DUPLICADO'].includes(upper)) return 'duplicado'
+      return 'expedicion' // fallback
+    }
+    
     const backendData = {
       workflow_code: data.workflowCode,
-      solicitud_type: data.subType?.toLowerCase() || 'expedicion',
+      solicitud_type: mapSubTypeToSolicitudType(data.subType),
       form_data: data.formData || {},
     }
     // Backend returns snake_case, transform to camelCase

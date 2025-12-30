@@ -179,8 +179,19 @@ export default function ServiceRequestDetailPage() {
     })
   }
 
-  // Get workflow display name
+  // Get workflow display name (translated)
   const getWorkflowName = (code: string): string => {
+    // Try to get translation first
+    const translationKey = `workflows.${code.toLowerCase()}`
+    try {
+      const translated = t(translationKey)
+      if (translated && translated !== translationKey) {
+        return translated
+      }
+    } catch {
+      // Fallback to formatting
+    }
+    // Fallback: Replace underscores with spaces and format
     return code
       .split('_')
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())

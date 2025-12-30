@@ -3374,6 +3374,26 @@
       "CONTRATOS": "Contratos",
       "CONDUCCION": "Conducción",
       "FUNCION_PUBLICA": "Función Pública"
+    },
+    "workflows": {
+      "pasaporte_nuevo": "Pasaporte Nuevo",
+      "pasaporte_renovacion": "Renovacion de Pasaporte",
+      "pasaporte_perdida": "Pasaporte por Perdida",
+      "pasaporte_robo": "Pasaporte por Robo",
+      "pasaporte_deterioro": "Pasaporte por Deterioro",
+      "conducir_nuevo": "Permiso de Conducir Nuevo",
+      "conducir_renovacion": "Renovacion de Permiso de Conducir",
+      "conducir_perdida": "Permiso de Conducir por Perdida",
+      "conducir_robo": "Permiso de Conducir por Robo",
+      "conducir_deterioro": "Permiso de Conducir por Deterioro",
+      "residencia_primera_vez": "Primera Residencia",
+      "residencia_renovacion": "Renovacion de Residencia",
+      "vehiculo_nuevo": "Matricula de Vehiculo Nuevo",
+      "vehiculo_renovacion": "Renovacion de Matricula",
+      "funcion_publica_nuevo": "Carnet de Funcionario Nuevo",
+      "funcion_publica_renovacion": "Renovacion de Carnet de Funcionario",
+      "contrato_nuevo": "Nuevo Contrato Laboral",
+      "contrato_renovacion": "Renovacion de Contrato"
     }
   }
 }

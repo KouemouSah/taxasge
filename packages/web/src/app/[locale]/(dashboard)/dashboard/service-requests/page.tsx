@@ -209,9 +209,19 @@ export default function ServiceRequestsPage() {
     })
   }
 
-  // Get workflow display name
+  // Get workflow display name (translated)
   const getWorkflowName = (code: string): string => {
-    // Replace underscores with spaces and format
+    // Try to get translation first
+    const translationKey = `workflows.${code.toLowerCase()}`
+    try {
+      const translated = t(translationKey)
+      if (translated && translated !== translationKey) {
+        return translated
+      }
+    } catch {
+      // Fallback to formatting
+    }
+    // Fallback: Replace underscores with spaces and format
     return code
       .split('_')
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
@@ -409,18 +419,16 @@ export default function ServiceRequestsPage() {
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button variant="outline" size="sm" asChild>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" asChild title={t('view_details') || 'Ver'}>
                               <Link href={`/${locale}/dashboard/service-requests/${req.id}`}>
-                                <Eye className="mr-1 h-3 w-3" />
-                                {t('view_details') || 'Ver'}
+                                <Eye className="h-4 w-4" />
                               </Link>
                             </Button>
                             {canContinue(req.status) && (
-                              <Button size="sm" asChild>
+                              <Button size="icon" className="h-8 w-8" asChild title={t('next') || 'Continuar'}>
                                 <Link href={`/${locale}/dashboard/service-requests/${req.id}`}>
-                                  {t('next') || 'Continuar'}
-                                  <ArrowRight className="ml-1 h-3 w-3" />
+                                  <ArrowRight className="h-4 w-4" />
                                 </Link>
                               </Button>
                             )}

@@ -3479,6 +3479,26 @@
     "workflow": "Service",
     "created": "Creee le",
     "tariff": "Tarif",
-    "filter_status": "Filtrer par etat"
+    "filter_status": "Filtrer par etat",
+    "workflows": {
+      "pasaporte_nuevo": "Nouveau Passeport",
+      "pasaporte_renovacion": "Renouvellement de Passeport",
+      "pasaporte_perdida": "Passeport Perdu",
+      "pasaporte_robo": "Passeport Vole",
+      "pasaporte_deterioro": "Passeport Deteriore",
+      "conducir_nuevo": "Nouveau Permis de Conduire",
+      "conducir_renovacion": "Renouvellement Permis de Conduire",
+      "conducir_perdida": "Permis de Conduire Perdu",
+      "conducir_robo": "Permis de Conduire Vole",
+      "conducir_deterioro": "Permis de Conduire Deteriore",
+      "residencia_primera_vez": "Premiere Residence",
+      "residencia_renovacion": "Renouvellement de Residence",
+      "vehiculo_nuevo": "Immatriculation Nouveau Vehicule",
+      "vehiculo_renovacion": "Renouvellement Immatriculation",
+      "funcion_publica_nuevo": "Nouvelle Carte de Fonctionnaire",
+      "funcion_publica_renovacion": "Renouvellement Carte de Fonctionnaire",
+      "contrato_nuevo": "Nouveau Contrat de Travail",
+      "contrato_renovacion": "Renouvellement de Contrat"
+    }
   }
 }

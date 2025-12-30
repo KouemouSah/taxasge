@@ -116,6 +116,27 @@ async def create_service_request(
 # DOCUMENTS
 # ═══════════════════════════════════════════════════════════════
 
+@router.get(
+    "/{request_id}/documents",
+    summary="List documents for a service request",
+    description="Get all uploaded documents for a service request",
+)
+async def get_request_documents(
+    request_id: UUID = Path(..., description="The service request ID"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user)
+) -> List[dict]:
+    """Return list of documents for a service request"""
+    # Verify request belongs to user and get documents
+    request = await service_request_service.get_request(
+        db=db,
+        request_id=request_id,
+        user_id=current_user.id
+    )
+    # Documents are included in the response
+    return [doc.model_dump() for doc in request.provided_documents]
+
+
 @router.post(
     "/{request_id}/documents",
     response_model=DocumentUploadResponse,

@@ -3479,6 +3479,26 @@
     "workflow": "Service",
     "created": "Created",
     "tariff": "Fee",
-    "filter_status": "Filter by status"
+    "filter_status": "Filter by status",
+    "workflows": {
+      "pasaporte_nuevo": "New Passport",
+      "pasaporte_renovacion": "Passport Renewal",
+      "pasaporte_perdida": "Lost Passport",
+      "pasaporte_robo": "Stolen Passport",
+      "pasaporte_deterioro": "Damaged Passport",
+      "conducir_nuevo": "New Drivers License",
+      "conducir_renovacion": "Drivers License Renewal",
+      "conducir_perdida": "Lost Drivers License",
+      "conducir_robo": "Stolen Drivers License",
+      "conducir_deterioro": "Damaged Drivers License",
+      "residencia_primera_vez": "First Residence",
+      "residencia_renovacion": "Residence Renewal",
+      "vehiculo_nuevo": "New Vehicle Registration",
+      "vehiculo_renovacion": "Vehicle Registration Renewal",
+      "funcion_publica_nuevo": "New Civil Servant Card",
+      "funcion_publica_renovacion": "Civil Servant Card Renewal",
+      "contrato_nuevo": "New Employment Contract",
+      "contrato_renovacion": "Contract Renewal"
+    }
   }
 }
