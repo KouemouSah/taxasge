@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -150,6 +150,10 @@ export default function WorkflowDetailPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [editForm, setEditForm] = useState<Partial<WorkflowUpdate>>({})
 
+  // Page view mode: false = summary dashboard, true = tabbed editing
+  const initialMode = searchParams.get('mode')
+  const [isEditingPage, setIsEditingPage] = useState(initialMode === 'edit')
+
   // Tariffs data
   const { data: allTariffs, isLoading: loadingTariffs } = useTariffs({ workflow_code: workflowCode })
   const createTariffMutation = useCreateTariff()
@@ -194,6 +198,17 @@ export default function WorkflowDetailPage() {
     is_required: false,
     is_active: true,
   })
+
+  // Batch supplement additions for multi-add
+  interface PendingSupplement {
+    supplement_code: string
+    supplement_name: string
+    supplement_amount: number
+    quantity_per_request: number
+    is_required: boolean
+  }
+  const [pendingSupplements, setPendingSupplements] = useState<PendingSupplement[]>([])
+  const [isSavingBatch, setIsSavingBatch] = useState(false)
 
   // Documents data
   const { data: documents, isLoading: loadingDocuments } = useDocumentRequirements(workflowCode)
@@ -251,8 +266,8 @@ export default function WorkflowDetailPage() {
     setIsCreating(true)
     try {
       const newWorkflow = await createWorkflowMutation.mutateAsync(createForm)
-      // Redirect to the created workflow's detail page
-      router.push(`/${locale}/dashboard/admin/service-requests/workflows/${newWorkflow.code}`)
+      // Redirect to the created workflow's detail page in edit mode to add tariffs/documents
+      router.push(`/${locale}/dashboard/admin/service-requests/workflows/${newWorkflow.code}?mode=edit&tab=tariffs`)
     } catch {
       // Error handled by mutation
     } finally {
@@ -414,11 +429,113 @@ export default function WorkflowDetailPage() {
     }
   }
 
+  // Batch supplement handlers
+  const addToPendingSupplements = () => {
+    if (!supplementForm.supplement_code) return
+
+    const selectedSupplement = allSupplements?.find(s => s.code === supplementForm.supplement_code)
+    if (!selectedSupplement) return
+
+    // Check if already in pending list
+    if (pendingSupplements.find(p => p.supplement_code === supplementForm.supplement_code)) return
+
+    setPendingSupplements([
+      ...pendingSupplements,
+      {
+        supplement_code: selectedSupplement.code,
+        supplement_name: selectedSupplement.name_es,
+        supplement_amount: selectedSupplement.amount,
+        quantity_per_request: supplementForm.quantity_per_request,
+        is_required: supplementForm.is_required,
+      }
+    ])
+
+    // Reset form but keep in create mode
+    setSupplementForm({
+      supplement_code: '',
+      quantity_per_request: 1,
+      is_required: false,
+      is_active: true,
+    })
+  }
+
+  const removeFromPendingSupplements = (code: string) => {
+    setPendingSupplements(pendingSupplements.filter(p => p.supplement_code !== code))
+  }
+
+  const pendingSupplementsTotal = pendingSupplements.reduce(
+    (sum, p) => sum + (p.supplement_amount * p.quantity_per_request),
+    0
+  )
+
+  const handleSaveBatchSupplements = async () => {
+    if (pendingSupplements.length === 0) return
+
+    setIsSavingBatch(true)
+    try {
+      // Save all pending supplements sequentially
+      for (const pending of pendingSupplements) {
+        await addWorkflowSupplementMutation.mutateAsync({
+          workflowCode,
+          data: {
+            supplement_code: pending.supplement_code,
+            quantity_per_request: pending.quantity_per_request,
+            is_required: pending.is_required,
+            is_active: true,
+          },
+        })
+      }
+      // Clear pending and reset form
+      setPendingSupplements([])
+      resetSupplementForm()
+    } catch {
+      // Error handled by mutation
+    } finally {
+      setIsSavingBatch(false)
+    }
+  }
+
+  const cancelBatchSupplements = () => {
+    setPendingSupplements([])
+    resetSupplementForm()
+  }
+
+  // Get supplements available for adding (not already configured and not in pending)
+  const pendingSupplementCodes = pendingSupplements.map(p => p.supplement_code)
+
   const isSupplementSaving = addWorkflowSupplementMutation.isPending || updateWorkflowSupplementMutation.isPending
 
-  // Get available supplements (not already configured for this workflow)
+  // Get available supplements (not already configured for this workflow and not in pending)
   const configuredSupplementCodes = workflowSupplements?.map((ws) => ws.supplement_code) || []
-  const availableSupplements = allSupplements?.filter((s) => !configuredSupplementCodes.includes(s.code)) || []
+  const availableSupplements = allSupplements?.filter((s) =>
+    !configuredSupplementCodes.includes(s.code) && !pendingSupplementCodes.includes(s.code)
+  ) || []
+
+  // Calculate totals per solicitud type (tariff + supplements)
+  const costTotals = useMemo(() => {
+    const types = ['expedicion', 'renovacion', 'duplicado'] as const
+    const totals: Record<string, { tariff: number; supplements: number; total: number }> = {}
+
+    // Calculate supplements total (same for all types)
+    const supplementsTotal = workflowSupplements?.reduce((sum, s) => {
+      if (!s.is_active) return sum
+      const supplementAmount = s.supplement_amount || 0
+      return sum + (supplementAmount * s.quantity_per_request)
+    }, 0) || 0
+
+    for (const type of types) {
+      const tariff = allTariffs?.find(t => t.solicitud_type === type && t.is_active)
+      const tariffAmount = tariff?.amount || 0
+
+      totals[type] = {
+        tariff: tariffAmount,
+        supplements: supplementsTotal,
+        total: tariffAmount + supplementsTotal
+      }
+    }
+
+    return totals
+  }, [allTariffs, workflowSupplements])
 
   // Handlers - Documents
   const resetDocForm = () => {
@@ -678,9 +795,9 @@ export default function WorkflowDetailPage() {
             <div className="flex items-start gap-4">
               <DollarSign className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div>
-                <p className="font-medium">Tarifas, Documentos y Suplementos</p>
+                <p className="font-medium">Siguiente paso: Configurar tarifas</p>
                 <p className="text-sm text-muted-foreground">
-                  Despues de crear el workflow, podra configurar tarifas, documentos requeridos y suplementos desde la pagina de detalle.
+                  Al crear el workflow, sera redirigido a la pagina de configuracion donde podra agregar tarifas, suplementos y documentos requeridos.
                 </p>
               </div>
             </div>
@@ -796,31 +913,232 @@ export default function WorkflowDetailPage() {
           </div>
           <p className="text-muted-foreground">
             <code className="bg-muted px-2 py-0.5 rounded">{workflow.code}</code>
-            {" - "}{workflow.entity_code}
+            {" - "}{workflow.entity_code} · {workflow.category}
           </p>
         </div>
+        {!isEditingPage && (
+          <Button onClick={() => setIsEditingPage(true)}>
+            <Pencil className="mr-2 h-4 w-4" />
+            Editar
+          </Button>
+        )}
       </div>
 
-      {/* Tabs */}
+      {/* Summary Dashboard (View Mode) */}
+      {!isEditingPage && (
+        <div className="space-y-6">
+          {/* Info + Tariffs Row */}
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Info Summary */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <GitBranch className="h-5 w-5" />
+                  Informacion
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="text-muted-foreground">Tipo:</div>
+                  <div className="font-medium capitalize">{workflow.workflow_type.replace('_', ' ')}</div>
+                  <div className="text-muted-foreground">Requiere Cita:</div>
+                  <div className="font-medium">{workflow.requires_appointment ? 'Si' : 'No'}</div>
+                  <div className="text-muted-foreground">Requiere Validacion:</div>
+                  <div className="font-medium">{workflow.requires_agent_validation ? 'Si' : 'No'}</div>
+                  <div className="text-muted-foreground">SLA:</div>
+                  <div className="font-medium">{workflow.sla_hours}h</div>
+                </div>
+                {workflow.description_es && (
+                  <p className="text-sm text-muted-foreground border-t pt-3">
+                    {workflow.description_es}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Tariffs Summary */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <DollarSign className="h-5 w-5" />
+                  Tarifas
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-2 font-medium"></th>
+                      <th className="text-right py-2 font-medium">Expedicion</th>
+                      <th className="text-right py-2 font-medium">Renovacion</th>
+                      <th className="text-right py-2 font-medium">Duplicado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-dashed">
+                      <td className="py-2 text-muted-foreground">Tarifa</td>
+                      <td className="text-right py-2 font-mono">
+                        {costTotals.expedicion?.tariff ? formatCurrency(costTotals.expedicion.tariff) : '-'}
+                      </td>
+                      <td className="text-right py-2 font-mono">
+                        {costTotals.renovacion?.tariff ? formatCurrency(costTotals.renovacion.tariff) : '-'}
+                      </td>
+                      <td className="text-right py-2 font-mono">
+                        {costTotals.duplicado?.tariff ? formatCurrency(costTotals.duplicado.tariff) : '-'}
+                      </td>
+                    </tr>
+                    <tr className="border-b border-dashed">
+                      <td className="py-2 text-muted-foreground">Suplementos</td>
+                      <td className="text-right py-2 font-mono">
+                        {costTotals.expedicion?.supplements ? formatCurrency(costTotals.expedicion.supplements) : '-'}
+                      </td>
+                      <td className="text-right py-2 font-mono">
+                        {costTotals.renovacion?.supplements ? formatCurrency(costTotals.renovacion.supplements) : '-'}
+                      </td>
+                      <td className="text-right py-2 font-mono">
+                        {costTotals.duplicado?.supplements ? formatCurrency(costTotals.duplicado.supplements) : '-'}
+                      </td>
+                    </tr>
+                    <tr className="font-semibold bg-muted/50">
+                      <td className="py-2">TOTAL</td>
+                      <td className="text-right py-2 font-mono">
+                        {costTotals.expedicion?.total ? formatCurrency(costTotals.expedicion.total) : '-'}
+                      </td>
+                      <td className="text-right py-2 font-mono">
+                        {costTotals.renovacion?.total ? formatCurrency(costTotals.renovacion.total) : '-'}
+                      </td>
+                      <td className="text-right py-2 font-mono">
+                        {costTotals.duplicado?.total ? formatCurrency(costTotals.duplicado.total) : '-'}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Supplements Summary */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Boxes className="h-5 w-5" />
+                Suplementos ({workflowSupplements?.length || 0})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(workflowSupplements?.length || 0) > 0 ? (
+                <div className="space-y-2">
+                  {workflowSupplements?.map((s) => (
+                    <div key={s.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{s.supplement_name}</span>
+                        {s.is_required && <Badge variant="default" className="text-xs">Obligatorio</Badge>}
+                      </div>
+                      <div className="text-right">
+                        <span className="font-mono text-sm">
+                          {s.supplement_amount?.toLocaleString()} XAF × {s.quantity_per_request}
+                        </span>
+                        <span className="font-mono font-semibold ml-2">
+                          = {((s.supplement_amount || 0) * s.quantity_per_request).toLocaleString()} XAF
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="flex justify-end pt-2 border-t font-semibold">
+                    <span>Total: {costTotals.expedicion?.supplements?.toLocaleString() || 0} XAF</span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">Sin suplementos configurados</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Documents Summary */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <FileCheck className="h-5 w-5" />
+                Documentos Requeridos ({sortedDocuments?.length || 0})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {sortedDocuments.length > 0 ? (
+                <div className="grid gap-2">
+                  {sortedDocuments.map((doc, index) => (
+                    <div key={doc.id} className="flex items-center gap-3 py-1">
+                      <span className="text-muted-foreground w-6">{index + 1}.</span>
+                      <span className="flex-1">{doc.document_name_es}</span>
+                      {doc.is_required ? (
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Opcional</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">Sin documentos requeridos</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Appointments Summary */}
+          {workflow.requires_appointment && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <CalendarClock className="h-5 w-5" />
+                  Citas
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div className="p-3 bg-muted/30 rounded-lg">
+                    <div className="text-2xl font-bold">{slotConfigs?.length || 0}</div>
+                    <div className="text-sm text-muted-foreground">Horarios</div>
+                  </div>
+                  <div className="p-3 bg-muted/30 rounded-lg">
+                    <div className="text-2xl font-bold">{blockedDates?.length || 0}</div>
+                    <div className="text-sm text-muted-foreground">Fechas Bloqueadas</div>
+                  </div>
+                  <div className="p-3 bg-muted/30 rounded-lg">
+                    <div className="text-2xl font-bold">{delayRules?.length || 0}</div>
+                    <div className="text-sm text-muted-foreground">Reglas de Espera</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* Tabs (Edit Mode) */}
+      {isEditingPage && (
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 lg:w-[600px]">
-          <TabsTrigger value="info" className="gap-2">
-            <GitBranch className="h-4 w-4" />
-            <span className="hidden sm:inline">Informacion</span>
-          </TabsTrigger>
-          <TabsTrigger value="tariffs" className="gap-2">
-            <DollarSign className="h-4 w-4" />
-            <span className="hidden sm:inline">Tarifas</span>
-          </TabsTrigger>
-          <TabsTrigger value="documents" className="gap-2">
-            <FileCheck className="h-4 w-4" />
-            <span className="hidden sm:inline">Documentos</span>
-          </TabsTrigger>
-          <TabsTrigger value="appointments" className="gap-2">
-            <CalendarClock className="h-4 w-4" />
-            <span className="hidden sm:inline">Citas</span>
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between">
+          <TabsList className="grid w-full grid-cols-4 lg:w-[600px]">
+            <TabsTrigger value="info" className="gap-2">
+              <GitBranch className="h-4 w-4" />
+              <span className="hidden sm:inline">Informacion</span>
+            </TabsTrigger>
+            <TabsTrigger value="tariffs" className="gap-2">
+              <DollarSign className="h-4 w-4" />
+              <span className="hidden sm:inline">Tarifas</span>
+            </TabsTrigger>
+            <TabsTrigger value="documents" className="gap-2">
+              <FileCheck className="h-4 w-4" />
+              <span className="hidden sm:inline">Documentos</span>
+            </TabsTrigger>
+            <TabsTrigger value="appointments" className="gap-2">
+              <CalendarClock className="h-4 w-4" />
+              <span className="hidden sm:inline">Citas</span>
+            </TabsTrigger>
+          </TabsList>
+          <Button variant="outline" onClick={() => setIsEditingPage(false)}>
+            Volver a Vista
+          </Button>
+        </div>
 
         {/* Info Tab */}
         <TabsContent value="info" className="space-y-6">
@@ -925,6 +1243,65 @@ export default function WorkflowDetailPage() {
               )}
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Cost Summary Table */}
+              {(allTariffs?.length || workflowSupplements?.length) && tariffEditMode === 'none' ? (
+                <div className="border rounded-lg p-4 bg-muted/30 mb-4">
+                  <h4 className="font-semibold mb-3 text-sm uppercase tracking-wide text-muted-foreground">
+                    Resumen de Costos por Tipo de Solicitud
+                  </h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-2 px-3 font-medium"></th>
+                          <th className="text-right py-2 px-3 font-medium">Expedicion</th>
+                          <th className="text-right py-2 px-3 font-medium">Renovacion</th>
+                          <th className="text-right py-2 px-3 font-medium">Duplicado</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-b border-dashed">
+                          <td className="py-2 px-3 text-muted-foreground">Tarifa Base</td>
+                          <td className="text-right py-2 px-3 font-mono">
+                            {costTotals.expedicion?.tariff ? formatCurrency(costTotals.expedicion.tariff) : '-'}
+                          </td>
+                          <td className="text-right py-2 px-3 font-mono">
+                            {costTotals.renovacion?.tariff ? formatCurrency(costTotals.renovacion.tariff) : '-'}
+                          </td>
+                          <td className="text-right py-2 px-3 font-mono">
+                            {costTotals.duplicado?.tariff ? formatCurrency(costTotals.duplicado.tariff) : '-'}
+                          </td>
+                        </tr>
+                        <tr className="border-b border-dashed">
+                          <td className="py-2 px-3 text-muted-foreground">Suplementos</td>
+                          <td className="text-right py-2 px-3 font-mono">
+                            {costTotals.expedicion?.supplements ? formatCurrency(costTotals.expedicion.supplements) : '-'}
+                          </td>
+                          <td className="text-right py-2 px-3 font-mono">
+                            {costTotals.renovacion?.supplements ? formatCurrency(costTotals.renovacion.supplements) : '-'}
+                          </td>
+                          <td className="text-right py-2 px-3 font-mono">
+                            {costTotals.duplicado?.supplements ? formatCurrency(costTotals.duplicado.supplements) : '-'}
+                          </td>
+                        </tr>
+                        <tr className="font-semibold bg-muted/50">
+                          <td className="py-2 px-3">TOTAL</td>
+                          <td className="text-right py-2 px-3 font-mono">
+                            {costTotals.expedicion?.total ? formatCurrency(costTotals.expedicion.total) : '-'}
+                          </td>
+                          <td className="text-right py-2 px-3 font-mono">
+                            {costTotals.renovacion?.total ? formatCurrency(costTotals.renovacion.total) : '-'}
+                          </td>
+                          <td className="text-right py-2 px-3 font-mono">
+                            {costTotals.duplicado?.total ? formatCurrency(costTotals.duplicado.total) : '-'}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+
               {/* Inline Create/Edit Form */}
               {tariffEditMode !== 'none' && (
                 <Card className="border-primary">
@@ -945,6 +1322,7 @@ export default function WorkflowDetailPage() {
                           <SelectContent>
                             <SelectItem value="expedicion">Expedicion</SelectItem>
                             <SelectItem value="renovacion">Renovacion</SelectItem>
+                            <SelectItem value="duplicado">Duplicado</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -1045,11 +1423,7 @@ export default function WorkflowDetailPage() {
                 <div className="text-center text-muted-foreground py-8">
                   <DollarSign className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p className="text-lg font-medium">{tTariffs('noTariffsFound')}</p>
-                  <p className="text-sm mt-1">Haga clic en &quot;Crear Tarifa&quot; para agregar una nueva tarifa</p>
-                  <Button onClick={startCreateTariff} className="mt-4">
-                    <Plus className="mr-2 h-4 w-4" />
-                    {tTariffs('create')}
-                  </Button>
+                  <p className="text-sm mt-1">Use el boton &quot;Crear Tarifa&quot; de arriba para agregar una nueva tarifa</p>
                 </div>
               ) : (allTariffs?.length || 0) > 0 && (
                 <div className="border rounded-md">
@@ -1172,11 +1546,17 @@ export default function WorkflowDetailPage() {
                 <Card className="border-primary">
                   <CardHeader className="pb-4">
                     <CardTitle className="text-lg">
-                      {supplementEditMode === 'create' ? 'Agregar Suplemento' : 'Editar Suplemento'}
+                      {supplementEditMode === 'create' ? 'Agregar Suplementos' : 'Editar Suplemento'}
                     </CardTitle>
+                    {supplementEditMode === 'create' && (
+                      <CardDescription>
+                        Puede agregar varios suplementos antes de guardar
+                      </CardDescription>
+                    )}
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Input row for adding supplements */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                       {supplementEditMode === 'create' && (
                         <div className="space-y-2">
                           <Label>Suplemento</Label>
@@ -1202,7 +1582,7 @@ export default function WorkflowDetailPage() {
                         </div>
                       )}
                       <div className="space-y-2">
-                        <Label>Cantidad por solicitud</Label>
+                        <Label>Cantidad</Label>
                         <Input
                           type="number"
                           value={supplementForm.quantity_per_request}
@@ -1210,16 +1590,25 @@ export default function WorkflowDetailPage() {
                           min={1}
                         />
                       </div>
-                      <div className="space-y-2 flex items-end gap-4">
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            id="supplement_is_required"
-                            checked={supplementForm.is_required}
-                            onCheckedChange={(checked) => setSupplementForm({ ...supplementForm, is_required: checked })}
-                          />
-                          <Label htmlFor="supplement_is_required">Obligatorio</Label>
-                        </div>
-                        <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 pb-2">
+                        <Switch
+                          id="supplement_is_required"
+                          checked={supplementForm.is_required}
+                          onCheckedChange={(checked) => setSupplementForm({ ...supplementForm, is_required: checked })}
+                        />
+                        <Label htmlFor="supplement_is_required">Obligatorio</Label>
+                      </div>
+                      {supplementEditMode === 'create' ? (
+                        <Button
+                          variant="secondary"
+                          onClick={addToPendingSupplements}
+                          disabled={!supplementForm.supplement_code}
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Añadir
+                        </Button>
+                      ) : (
+                        <div className="flex items-center gap-2 pb-2">
                           <Switch
                             id="supplement_is_active"
                             checked={supplementForm.is_active}
@@ -1227,18 +1616,91 @@ export default function WorkflowDetailPage() {
                           />
                           <Label htmlFor="supplement_is_active">Activo</Label>
                         </div>
-                      </div>
+                      )}
                     </div>
-                    <div className="flex justify-end gap-2 pt-2">
-                      <Button variant="outline" onClick={resetSupplementForm} disabled={isSupplementSaving}>
-                        <X className="mr-2 h-4 w-4" />
-                        {tCommon('cancel')}
-                      </Button>
-                      <Button onClick={handleSaveSupplement} disabled={!supplementForm.supplement_code || isSupplementSaving}>
-                        {isSupplementSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        <Save className="mr-2 h-4 w-4" />
-                        {tCommon('save')}
-                      </Button>
+
+                    {/* Pending supplements list (batch mode) */}
+                    {supplementEditMode === 'create' && pendingSupplements.length > 0 && (
+                      <div className="border rounded-md mt-4">
+                        <div className="bg-muted/50 px-4 py-2 border-b">
+                          <span className="text-sm font-medium">Suplementos pendientes ({pendingSupplements.length})</span>
+                        </div>
+                        <Table>
+                          <TableBody>
+                            {pendingSupplements.map((pending) => (
+                              <TableRow key={pending.supplement_code}>
+                                <TableCell className="font-medium">{pending.supplement_name}</TableCell>
+                                <TableCell className="text-right font-mono text-sm">
+                                  {pending.supplement_amount.toLocaleString()} XAF × {pending.quantity_per_request}
+                                </TableCell>
+                                <TableCell className="text-right font-mono font-semibold">
+                                  = {(pending.supplement_amount * pending.quantity_per_request).toLocaleString()} XAF
+                                </TableCell>
+                                <TableCell className="text-center w-[80px]">
+                                  {pending.is_required ? (
+                                    <Badge variant="default" className="text-xs">Oblig.</Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="text-xs">Opc.</Badge>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-right w-[50px]">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => removeFromPendingSupplements(pending.supplement_code)}
+                                    className="h-8 w-8 text-destructive hover:text-destructive"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                            <TableRow className="bg-muted/30 font-semibold">
+                              <TableCell colSpan={2} className="text-right">Total suplementos:</TableCell>
+                              <TableCell className="text-right font-mono">
+                                {pendingSupplementsTotal.toLocaleString()} XAF
+                              </TableCell>
+                              <TableCell colSpan={2}></TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+
+                    {/* Action buttons */}
+                    <div className="flex justify-end gap-2 pt-2 border-t">
+                      {supplementEditMode === 'create' ? (
+                        <>
+                          <Button
+                            variant="outline"
+                            onClick={cancelBatchSupplements}
+                            disabled={isSavingBatch}
+                          >
+                            <X className="mr-2 h-4 w-4" />
+                            Cancelar
+                          </Button>
+                          <Button
+                            onClick={handleSaveBatchSupplements}
+                            disabled={pendingSupplements.length === 0 || isSavingBatch}
+                          >
+                            {isSavingBatch && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            <Save className="mr-2 h-4 w-4" />
+                            Guardar Todo ({pendingSupplements.length})
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button variant="outline" onClick={resetSupplementForm} disabled={isSupplementSaving}>
+                            <X className="mr-2 h-4 w-4" />
+                            {tCommon('cancel')}
+                          </Button>
+                          <Button onClick={handleSaveSupplement} disabled={!supplementForm.supplement_code || isSupplementSaving}>
+                            {isSupplementSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            <Save className="mr-2 h-4 w-4" />
+                            {tCommon('save')}
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -1253,13 +1715,11 @@ export default function WorkflowDetailPage() {
                 <div className="text-center text-muted-foreground py-8">
                   <Boxes className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p className="text-lg font-medium">Sin suplementos configurados</p>
-                  <p className="text-sm mt-1">Los suplementos son cargos adicionales opcionales u obligatorios</p>
-                  {availableSupplements.length > 0 && (
-                    <Button onClick={startCreateSupplement} className="mt-4">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Agregar Suplemento
-                    </Button>
-                  )}
+                  <p className="text-sm mt-1">
+                    {availableSupplements.length > 0
+                      ? 'Use el boton "Agregar Suplemento" de arriba para configurar suplementos'
+                      : 'No hay suplementos disponibles para agregar'}
+                  </p>
                 </div>
               ) : (workflowSupplements?.length || 0) > 0 && (
                 <div className="border rounded-md">
@@ -1483,11 +1943,7 @@ export default function WorkflowDetailPage() {
                 <div className="text-center text-muted-foreground py-8">
                   <FileCheck className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p className="text-lg font-medium">{tDocs('noDocuments')}</p>
-                  <p className="text-sm mt-1">Haga clic en &quot;Agregar Documento&quot; para agregar un nuevo requisito</p>
-                  <Button onClick={startCreateDocument} className="mt-4">
-                    <Plus className="mr-2 h-4 w-4" />
-                    {tDocs('addDocument')}
-                  </Button>
+                  <p className="text-sm mt-1">Use el boton &quot;Agregar Documento&quot; de arriba para agregar un nuevo requisito</p>
                 </div>
               ) : sortedDocuments.length > 0 && (
                 <div className="border rounded-md">
@@ -1731,6 +2187,7 @@ export default function WorkflowDetailPage() {
           </div>
         </TabsContent>
       </Tabs>
+      )}
     </div>
   )
 }
