@@ -103,7 +103,7 @@ export default function TariffsPage() {
       const getTypeTariff = (type: string) => {
         const tariff = tariffs.find(
           (t) => t.workflow_code === wf.code && t.solicitud_type === type && t.is_active
-        )
+        ) ?? null
         return {
           tariff,
           total: tariff?.amount || 0,
