@@ -25,7 +25,7 @@ import {
   ArrowRight,
 } from 'lucide-react'
 import { useServiceRequests } from '@/modules/service-requests'
-import type { WorkflowConfig } from '@/modules/service-requests'
+// WorkflowConfig import removed - not needed with simplified logic
 
 // Document requirement interface matching workflow
 interface DocumentRequirement {
@@ -69,8 +69,7 @@ export default function DocumentsUploadPage() {
     clearError,
   } = useServiceRequests()
 
-  // Local state for workflows
-  const [workflows, setWorkflows] = useState<WorkflowConfig[]>([])
+
 
   // Upload state
   const [uploadingDocCode, setUploadingDocCode] = useState<string | null>(null)
@@ -84,7 +83,7 @@ export default function DocumentsUploadPage() {
     if (requestId) {
       loadRequest(requestId)
       loadDocuments()
-      loadWorkflows().then(setWorkflows)
+      loadWorkflows()  // Keep for future use
     }
   }, [requestId, loadRequest, loadDocuments, loadWorkflows])
 
