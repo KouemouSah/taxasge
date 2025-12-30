@@ -156,7 +156,17 @@ class ServiceRequestsApiClient {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.detail || `API Error: ${response.status}`)
+      // Handle error.detail that could be string or object
+      let errorMessage = `API Error: ${response.status}`
+      if (errorData.detail) {
+        if (typeof errorData.detail === 'string') {
+          errorMessage = errorData.detail
+        } else if (typeof errorData.detail === 'object') {
+          // FastAPI can return detail as object: {"message": "...", "code": "..."}
+          errorMessage = errorData.detail.message || errorData.detail.msg || JSON.stringify(errorData.detail)
+        }
+      }
+      throw new Error(errorMessage)
     }
 
     // Handle 204 No Content
@@ -184,7 +194,16 @@ class ServiceRequestsApiClient {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.detail || `Upload Error: ${response.status}`)
+      // Handle error.detail that could be string or object
+      let errorMessage = `Upload Error: ${response.status}`
+      if (errorData.detail) {
+        if (typeof errorData.detail === 'string') {
+          errorMessage = errorData.detail
+        } else if (typeof errorData.detail === 'object') {
+          errorMessage = errorData.detail.message || errorData.detail.msg || JSON.stringify(errorData.detail)
+        }
+      }
+      throw new Error(errorMessage)
     }
 
     return response.json()
