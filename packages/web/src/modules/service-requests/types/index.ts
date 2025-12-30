@@ -233,7 +233,7 @@ export interface ServiceRequestListResponse {
 export interface WorkflowStartResponse {
   request: ServiceRequest
   workflow: WorkflowConfig
-  currentStepConfig: WorkflowStep
+  currentStepConfig: WorkflowStep | null
 }
 
 export interface StepSubmitRequest {
