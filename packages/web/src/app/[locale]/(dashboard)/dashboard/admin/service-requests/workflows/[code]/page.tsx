@@ -445,8 +445,8 @@ export default function WorkflowDetailPage() {
         supplement_code: selectedSupplement.code,
         supplement_name: selectedSupplement.name_es,
         supplement_amount: selectedSupplement.amount,
-        quantity_per_request: supplementForm.quantity_per_request,
-        is_required: supplementForm.is_required,
+        quantity_per_request: supplementForm.quantity_per_request ?? 1,
+        is_required: supplementForm.is_required ?? false,
       }
     ])
 
