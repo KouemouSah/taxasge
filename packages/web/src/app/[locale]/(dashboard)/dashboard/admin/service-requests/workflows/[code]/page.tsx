@@ -44,6 +44,7 @@ import {
   DollarSign,
   FileCheck,
   CalendarClock,
+  Clock,
   Plus,
   Pencil,
   Trash2,
@@ -57,6 +58,7 @@ import {
   Save,
   X,
   Boxes,
+  Eye,
 } from 'lucide-react'
 import {
   useWorkflow,
@@ -80,9 +82,14 @@ import {
   useSlotConfigs,
   useBlockedDates,
   useDelayRules,
+  useCreateDelayRule,
+  useUpdateDelayRule,
+  useDeleteDelayRule,
   WORKFLOW_CATEGORIES,
   DOCUMENT_CONDITION_TYPES,
   TARIFF_TYPES,
+  PRIORITY_LABELS,
+  DAY_OF_WEEK_LABELS,
 } from '@/modules/service-requests-admin'
 import type {
   WorkflowCreate,
@@ -99,6 +106,7 @@ import type {
   DocumentRequirementUpdate,
   DocumentConditionType,
   DocumentReorderItem,
+  AppointmentPriority,
 } from '@/modules/service-requests-admin'
 
 export default function WorkflowDetailPage() {
@@ -234,10 +242,36 @@ export default function WorkflowDetailPage() {
     is_active: true,
   })
 
-  // Appointments data (read-only summary)
-  const { data: slotConfigs } = useSlotConfigs({ workflow_code: workflowCode })
-  const { data: blockedDates } = useBlockedDates({ workflow_code: workflowCode })
+  // Batch document additions for multi-add
+  interface PendingDocument {
+    document_code: string
+    document_name_es: string
+    condition_type: string
+    is_required: boolean
+    instructions_es: string
+  }
+  const [pendingDocuments, setPendingDocuments] = useState<PendingDocument[]>([])
+  const [isSavingDocBatch, setIsSavingDocBatch] = useState(false)
+
+  // Appointments data
+  const { data: slotConfigs } = useSlotConfigs({ entity_code: workflow?.entity_code })
+  const { data: blockedDates } = useBlockedDates({ entity_code: workflow?.entity_code })
   const { data: delayRules } = useDelayRules(workflowCode)
+  
+  // Delay rules mutations
+  const createDelayRuleMutation = useCreateDelayRule()
+  const updateDelayRuleMutation = useUpdateDelayRule()
+  const deleteDelayRuleMutation = useDeleteDelayRule()
+  
+  // Delay rule form state
+  const [isAddingDelayRule, setIsAddingDelayRule] = useState(false)
+  const [editingDelayRule, setEditingDelayRule] = useState<string | null>(null)
+  const [deleteDelayRuleId, setDeleteDelayRuleId] = useState<string | null>(null)
+  const [delayRuleForm, setDelayRuleForm] = useState({
+    priority: 'NORMAL' as const,
+    delay_business_days: 3,
+    is_active: true,
+  })
 
   // Update URL when tab changes
   const handleTabChange = (value: string) => {
@@ -629,6 +663,79 @@ export default function WorkflowDetailPage() {
     })
 
     await reorderDocumentsMutation.mutateAsync({ workflowCode, order: newOrder })
+  }
+
+  // Batch document handlers
+  const addToPendingDocuments = () => {
+    if (!docForm.document_code || !docForm.document_name_es) return
+
+    // Check if already in pending list or already exists
+    if (pendingDocuments.find(p => p.document_code === docForm.document_code)) return
+    if (documents?.find(d => d.document_code === docForm.document_code)) return
+
+    setPendingDocuments([
+      ...pendingDocuments,
+      {
+        document_code: docForm.document_code,
+        document_name_es: docForm.document_name_es,
+        condition_type: docForm.condition_type ?? 'always',
+        is_required: docForm.is_required ?? true,
+        instructions_es: docForm.instructions_es || '',
+      }
+    ])
+
+    // Reset form but keep in create mode
+    setDocForm({
+      document_code: '',
+      document_name_es: '',
+      condition_type: 'always',
+      is_required: true,
+      display_order: 0,
+      instructions_es: '',
+      extraction_schema_key: '',
+      is_active: true,
+    })
+  }
+
+  const removeFromPendingDocuments = (code: string) => {
+    setPendingDocuments(pendingDocuments.filter(p => p.document_code !== code))
+  }
+
+  const handleSaveBatchDocuments = async () => {
+    if (pendingDocuments.length === 0) return
+
+    setIsSavingDocBatch(true)
+    try {
+      const baseOrder = documents?.length || 0
+      // Save all pending documents sequentially
+      for (let i = 0; i < pendingDocuments.length; i++) {
+        const pending = pendingDocuments[i]
+        await addDocumentMutation.mutateAsync({
+          workflowCode,
+          data: {
+            document_code: pending.document_code,
+            document_name_es: pending.document_name_es,
+            condition_type: pending.condition_type as DocumentConditionType,
+            is_required: pending.is_required,
+            instructions_es: pending.instructions_es,
+            display_order: baseOrder + i,
+            is_active: true,
+          },
+        })
+      }
+      // Clear pending and reset form
+      setPendingDocuments([])
+      resetDocForm()
+    } catch {
+      // Error handled by mutation
+    } finally {
+      setIsSavingDocBatch(false)
+    }
+  }
+
+  const cancelBatchDocuments = () => {
+    setPendingDocuments([])
+    resetDocForm()
   }
 
   const isDocumentSaving = addDocumentMutation.isPending || updateDocumentMutation.isPending
@@ -1135,7 +1242,8 @@ export default function WorkflowDetailPage() {
               <span className="hidden sm:inline">Citas</span>
             </TabsTrigger>
           </TabsList>
-          <Button variant="outline" onClick={() => setIsEditingPage(false)}>
+          <Button variant="secondary" className="bg-primary/10 hover:bg-primary/20 text-primary" onClick={() => setIsEditingPage(false)}>
+            <Eye className="mr-2 h-4 w-4" />
             Volver a Vista
           </Button>
         </div>
@@ -1839,8 +1947,13 @@ export default function WorkflowDetailPage() {
                 <Card className="border-primary">
                   <CardHeader className="pb-4">
                     <CardTitle className="text-lg">
-                      {documentEditMode === 'create' ? tDocs('addDocument') : tDocs('editDocument')}
+                      {documentEditMode === 'create' ? 'Agregar Documentos' : tDocs('editDocument')}
                     </CardTitle>
+                    {documentEditMode === 'create' && (
+                      <CardDescription>
+                        Puede agregar varios documentos antes de guardar
+                      </CardDescription>
+                    )}
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1878,33 +1991,85 @@ export default function WorkflowDetailPage() {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="space-y-2">
-                        <Label>{tDocs('extractionSchema')}</Label>
-                        <Input
-                          value={docForm.extraction_schema_key || ''}
-                          onChange={(e) => setDocForm({ ...docForm, extraction_schema_key: e.target.value })}
-                          placeholder="dip_gq"
+                      <div className="flex items-center gap-2 pt-6">
+                        <Switch
+                          id="doc_is_required"
+                          checked={docForm.is_required}
+                          onCheckedChange={(checked) => setDocForm({ ...docForm, is_required: checked })}
                         />
+                        <Label htmlFor="doc_is_required">{tDocs('isRequired')}</Label>
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label>{tDocs('instructions')}</Label>
-                      <Textarea
-                        value={docForm.instructions_es || ''}
-                        onChange={(e) => setDocForm({ ...docForm, instructions_es: e.target.value })}
-                        rows={2}
-                        placeholder="Instrucciones para el ciudadano..."
-                      />
-                    </div>
-                    <div className="flex items-center justify-between pt-2">
-                      <div className="flex items-center gap-6">
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            id="doc_is_required"
-                            checked={docForm.is_required}
-                            onCheckedChange={(checked) => setDocForm({ ...docForm, is_required: checked })}
+                    {documentEditMode === 'create' && (
+                      <div className="flex justify-end">
+                        <Button
+                          variant="secondary"
+                          onClick={addToPendingDocuments}
+                          disabled={!docForm.document_code || !docForm.document_name_es}
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Añadir a lista
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Pending documents list (batch mode) */}
+                    {documentEditMode === 'create' && pendingDocuments.length > 0 && (
+                      <div className="border rounded-md mt-4">
+                        <div className="bg-muted/50 px-4 py-2 border-b">
+                          <span className="text-sm font-medium">Documentos pendientes ({pendingDocuments.length})</span>
+                        </div>
+                        <Table>
+                          <TableBody>
+                            {pendingDocuments.map((pending) => (
+                              <TableRow key={pending.document_code}>
+                                <TableCell>
+                                  <code className="text-xs bg-muted px-2 py-1 rounded">{pending.document_code}</code>
+                                </TableCell>
+                                <TableCell className="font-medium">{pending.document_name_es}</TableCell>
+                                <TableCell className="text-center w-[100px]">
+                                  {pending.is_required ? (
+                                    <Badge variant="default" className="text-xs">Obligatorio</Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="text-xs">Opcional</Badge>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-right w-[50px]">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => removeFromPendingDocuments(pending.document_code)}
+                                    className="h-8 w-8 text-destructive hover:text-destructive"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+
+                    {/* Edit mode additional fields */}
+                    {documentEditMode === 'edit' && (
+                      <>
+                        <div className="space-y-2">
+                          <Label>{tDocs('extractionSchema')}</Label>
+                          <Input
+                            value={docForm.extraction_schema_key || ''}
+                            onChange={(e) => setDocForm({ ...docForm, extraction_schema_key: e.target.value })}
+                            placeholder="dip_gq"
                           />
-                          <Label htmlFor="doc_is_required">{tDocs('isRequired')}</Label>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>{tDocs('instructions')}</Label>
+                          <Textarea
+                            value={docForm.instructions_es || ''}
+                            onChange={(e) => setDocForm({ ...docForm, instructions_es: e.target.value })}
+                            rows={2}
+                            placeholder="Instrucciones para el ciudadano..."
+                          />
                         </div>
                         <div className="flex items-center gap-2">
                           <Switch
@@ -1914,21 +2079,46 @@ export default function WorkflowDetailPage() {
                           />
                           <Label htmlFor="doc_is_active">{tDocs('isActive')}</Label>
                         </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button variant="outline" onClick={resetDocForm} disabled={isDocumentSaving}>
-                          <X className="mr-2 h-4 w-4" />
-                          {tCommon('cancel')}
-                        </Button>
-                        <Button
-                          onClick={handleSaveDocument}
-                          disabled={!docForm.document_code || !docForm.document_name_es || isDocumentSaving}
-                        >
-                          {isDocumentSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                          <Save className="mr-2 h-4 w-4" />
-                          {tCommon('save')}
-                        </Button>
-                      </div>
+                      </>
+                    )}
+
+                    {/* Action buttons */}
+                    <div className="flex justify-end gap-2 pt-2 border-t">
+                      {documentEditMode === 'create' ? (
+                        <>
+                          <Button
+                            variant="outline"
+                            onClick={cancelBatchDocuments}
+                            disabled={isSavingDocBatch}
+                          >
+                            <X className="mr-2 h-4 w-4" />
+                            Cancelar
+                          </Button>
+                          <Button
+                            onClick={handleSaveBatchDocuments}
+                            disabled={pendingDocuments.length === 0 || isSavingDocBatch}
+                          >
+                            {isSavingDocBatch && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            <Save className="mr-2 h-4 w-4" />
+                            Guardar Todo ({pendingDocuments.length})
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button variant="outline" onClick={resetDocForm} disabled={isDocumentSaving}>
+                            <X className="mr-2 h-4 w-4" />
+                            {tCommon('cancel')}
+                          </Button>
+                          <Button
+                            onClick={handleSaveDocument}
+                            disabled={!docForm.document_code || !docForm.document_name_es || isDocumentSaving}
+                          >
+                            {isDocumentSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            <Save className="mr-2 h-4 w-4" />
+                            {tCommon('save')}
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -2070,121 +2260,262 @@ export default function WorkflowDetailPage() {
 
         {/* Appointments Tab */}
         <TabsContent value="appointments" className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-3">
-            {/* Slot Configs */}
+          {/* Summary Cards */}
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Slot Configs Summary */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Horarios</CardTitle>
-                <CardDescription>
-                  Configuracion de horarios de citas
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <CalendarClock className="h-4 w-4" />
+                  Horarios de Entidad
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Configurados para {workflow?.entity_code || 'la entidad'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {slotConfigs && slotConfigs.length > 0 ? (
-                  <div className="space-y-2">
-                    {slotConfigs.slice(0, 3).map((slot) => (
-                      <div key={slot.id} className="flex items-center justify-between p-2 bg-muted rounded">
-                        <span className="text-sm">{slot.day_of_week}</span>
-                        <Badge variant="outline">{slot.max_appointments_per_slot} slots</Badge>
+                  <div className="space-y-1">
+                    {slotConfigs.map((slot) => (
+                      <div key={slot.id} className="flex items-center justify-between py-1 text-sm">
+                        <span>{DAY_OF_WEEK_LABELS[slot.day_of_week] || slot.day_of_week}</span>
+                        <span className="text-muted-foreground">{slot.start_time} - {slot.end_time}</span>
                       </div>
                     ))}
-                    {slotConfigs.length > 3 && (
-                      <p className="text-sm text-muted-foreground text-center">
-                        +{slotConfigs.length - 3} mas
-                      </p>
-                    )}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    Sin horarios configurados
-                  </p>
+                  <p className="text-sm text-muted-foreground">Sin horarios configurados</p>
                 )}
-                <Button
-                  variant="outline"
-                  className="w-full mt-4"
-                  onClick={() => router.push(`/${locale}/dashboard/admin/service-requests/appointments?tab=slots&workflow=${workflowCode}`)}
-                >
-                  Gestionar Horarios
-                </Button>
               </CardContent>
             </Card>
 
-            {/* Blocked Dates */}
+            {/* Blocked Dates Summary */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Fechas Bloqueadas</CardTitle>
-                <CardDescription>
-                  Fechas sin disponibilidad
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <XCircle className="h-4 w-4" />
+                  Fechas Bloqueadas
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  {blockedDates?.length || 0} fechas bloqueadas
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {blockedDates && blockedDates.length > 0 ? (
-                  <div className="space-y-2">
-                    {blockedDates.slice(0, 3).map((blocked) => (
-                      <div key={blocked.id} className="flex items-center justify-between p-2 bg-muted rounded">
-                        <span className="text-sm">{blocked.blocked_date}</span>
-                        <Badge variant="secondary">Bloqueado</Badge>
+                  <div className="space-y-1 max-h-32 overflow-auto">
+                    {blockedDates.map((blocked) => (
+                      <div key={blocked.id} className="flex items-center justify-between py-1 text-sm">
+                        <span>{blocked.blocked_date}</span>
+                        <span className="text-xs text-muted-foreground">{blocked.reason || '-'}</span>
                       </div>
                     ))}
-                    {blockedDates.length > 3 && (
-                      <p className="text-sm text-muted-foreground text-center">
-                        +{blockedDates.length - 3} mas
-                      </p>
-                    )}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    Sin fechas bloqueadas
-                  </p>
+                  <p className="text-sm text-muted-foreground">Sin fechas bloqueadas</p>
                 )}
-                <Button
-                  variant="outline"
-                  className="w-full mt-4"
-                  onClick={() => router.push(`/${locale}/dashboard/admin/service-requests/appointments?tab=blocked&workflow=${workflowCode}`)}
-                >
-                  Gestionar Fechas
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Delay Rules */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Reglas de Espera</CardTitle>
-                <CardDescription>
-                  Dias minimos de anticipacion
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {delayRules && delayRules.length > 0 ? (
-                  <div className="space-y-2">
-                    {delayRules.slice(0, 3).map((rule) => (
-                      <div key={rule.id} className="flex items-center justify-between p-2 bg-muted rounded">
-                        <span className="text-sm">{rule.priority}</span>
-                        <Badge variant="outline">{rule.delay_business_days}d</Badge>
-                      </div>
-                    ))}
-                    {delayRules.length > 3 && (
-                      <p className="text-sm text-muted-foreground text-center">
-                        +{delayRules.length - 3} mas
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    Sin reglas de espera
-                  </p>
-                )}
-                <Button
-                  variant="outline"
-                  className="w-full mt-4"
-                  onClick={() => router.push(`/${locale}/dashboard/admin/service-requests/appointments?tab=delays&workflow=${workflowCode}`)}
-                >
-                  Gestionar Reglas
-                </Button>
               </CardContent>
             </Card>
           </div>
+
+          {/* Delay Rules - Full Management */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  Reglas de Espera
+                </CardTitle>
+                <CardDescription>
+                  Dias minimos de anticipacion para reservar cita segun prioridad
+                </CardDescription>
+              </div>
+              <Button onClick={() => setIsAddingDelayRule(true)} disabled={isAddingDelayRule}>
+                <Plus className="mr-2 h-4 w-4" />
+                Agregar Regla
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {/* Add Form */}
+              {isAddingDelayRule && (
+                <Card className="mb-4 border-primary">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Nueva Regla de Espera</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      <div className="space-y-2">
+                        <Label>Prioridad</Label>
+                        <Select
+                          value={delayRuleForm.priority}
+                          onValueChange={(v) => setDelayRuleForm({...delayRuleForm, priority: v as AppointmentPriority})}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(PRIORITY_LABELS).map(([key, label]) => (
+                              <SelectItem key={key} value={key}>{label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Dias de Espera</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={delayRuleForm.delay_business_days}
+                          onChange={(e) => setDelayRuleForm({...delayRuleForm, delay_business_days: parseInt(e.target.value) || 0})}
+                        />
+                      </div>
+                      <div className="flex items-end gap-2">
+                        <Button
+                          onClick={async () => {
+                            await createDelayRuleMutation.mutateAsync({
+                              workflow_code: workflowCode,
+                              priority: delayRuleForm.priority,
+                              delay_business_days: delayRuleForm.delay_business_days,
+                              is_active: true,
+                            })
+                            setIsAddingDelayRule(false)
+                            setDelayRuleForm({ priority: 'NORMAL', delay_business_days: 3, is_active: true })
+                          }}
+                          disabled={createDelayRuleMutation.isPending}
+                        >
+                          {createDelayRuleMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                          Guardar
+                        </Button>
+                        <Button variant="outline" onClick={() => setIsAddingDelayRule(false)}>
+                          Cancelar
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Rules Table */}
+              <div className="border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Prioridad</TableHead>
+                      <TableHead>Dias de Espera</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead className="text-right">Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {!delayRules || delayRules.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                          No hay reglas de espera configuradas
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      delayRules.map((rule) => (
+                        <TableRow key={rule.id}>
+                          <TableCell>
+                            <Badge variant="outline">{PRIORITY_LABELS[rule.priority as AppointmentPriority] || rule.priority}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            {editingDelayRule === rule.id ? (
+                              <Input
+                                type="number"
+                                min={0}
+                                className="w-20"
+                                value={delayRuleForm.delay_business_days}
+                                onChange={(e) => setDelayRuleForm({...delayRuleForm, delay_business_days: parseInt(e.target.value) || 0})}
+                              />
+                            ) : (
+                              <span>{rule.delay_business_days} dias habiles</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {rule.is_active ? (
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <XCircle className="h-4 w-4 text-red-500" />
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {editingDelayRule === rule.id ? (
+                              <div className="flex justify-end gap-1">
+                                <Button
+                                  size="sm"
+                                  onClick={async () => {
+                                    await updateDelayRuleMutation.mutateAsync({
+                                      ruleId: rule.id,
+                                      data: { delay_business_days: delayRuleForm.delay_business_days }
+                                    })
+                                    setEditingDelayRule(null)
+                                  }}
+                                  disabled={updateDelayRuleMutation.isPending}
+                                >
+                                  {updateDelayRuleMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Guardar'}
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => setEditingDelayRule(null)}>
+                                  Cancelar
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex justify-end gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => {
+                                    setDelayRuleForm({ priority: rule.priority as AppointmentPriority, delay_business_days: rule.delay_business_days, is_active: rule.is_active })
+                                    setEditingDelayRule(rule.id)
+                                  }}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-destructive"
+                                  onClick={() => setDeleteDelayRuleId(rule.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Delete Delay Rule Dialog */}
+          <AlertDialog open={!!deleteDelayRuleId} onOpenChange={() => setDeleteDelayRuleId(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Eliminar Regla de Espera</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta accion no se puede deshacer. La regla sera eliminada permanentemente.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={async () => {
+                    if (deleteDelayRuleId) {
+                      await deleteDelayRuleMutation.mutateAsync(deleteDelayRuleId)
+                      setDeleteDelayRuleId(null)
+                    }
+                  }}
+                >
+                  {deleteDelayRuleMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {tCommon('delete')}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </TabsContent>
       </Tabs>
       )}

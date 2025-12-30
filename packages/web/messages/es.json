@@ -640,7 +640,9 @@
         "updated": "Flujo actualizado exitosamente",
         "deleted": "Flujo eliminado exitosamente",
         "errorLoading": "Error al cargar flujos",
-        "noWorkflows": "No hay flujos configurados"
+        "noWorkflows": "No hay flujos configurados",
+        "workflowDetails": "Detalles del Flujo",
+        "workflowDetailsDescription": "Información básica y configuración del flujo de trabajo"
       },
       "documents": {
         "title": "Documentos Requeridos",
@@ -798,7 +800,15 @@
           "selectEntity": "Seleccionar entidad",
           "day": "Día",
           "dayOfWeek": "Día de la Semana",
-          "days": ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
+          "days": [
+            "Lunes",
+            "Martes",
+            "Miércoles",
+            "Jueves",
+            "Viernes",
+            "Sábado",
+            "Domingo"
+          ],
           "hours": "Horario",
           "startTime": "Hora Inicio",
           "endTime": "Hora Fin",
@@ -3228,7 +3238,24 @@
     "no_requests_found": "No se encontraron solicitudes",
     "request_number": "Número de Solicitud",
     "applicant": "Solicitante",
-    "status": "Estado",
+    "status": {
+      "draft": "Borrador",
+      "documents_pending": "Documentos Pendientes",
+      "documents_uploaded": "Documentos Cargados",
+      "extraction_pending": "Extracción Pendiente",
+      "extraction_complete": "Extracción Completa",
+      "validation_pending": "Validación Pendiente",
+      "payment_pending": "Pago Pendiente",
+      "payment_completed": "Pago Completado",
+      "submitted": "Enviada",
+      "agent_review": "En Revisión",
+      "additional_info": "Info. Adicional Requerida",
+      "appointment_scheduled": "Cita Programada",
+      "approved": "Aprobada",
+      "rejected": "Rechazada",
+      "completed": "Completada",
+      "cancelled": "Cancelada"
+    },
     "documents": "Documentos",
     "date": "Fecha",
     "showing_of": "Mostrando {start}-{end} de {total}",
@@ -3279,24 +3306,6 @@
       "identity_mismatch": "Discrepancia de identidad",
       "expired_documents": "Documentos expirados",
       "other": "Otro motivo"
-    },
-    "status": {
-      "draft": "Borrador",
-      "documents_pending": "Documentos Pendientes",
-      "documents_uploaded": "Documentos Cargados",
-      "extraction_pending": "Extracción Pendiente",
-      "extraction_complete": "Extracción Completa",
-      "validation_pending": "Validación Pendiente",
-      "payment_pending": "Pago Pendiente",
-      "payment_completed": "Pago Completado",
-      "submitted": "Enviada",
-      "agent_review": "En Revisión",
-      "additional_info": "Info. Adicional Requerida",
-      "appointment_scheduled": "Cita Programada",
-      "approved": "Aprobada",
-      "rejected": "Rechazada",
-      "completed": "Completada",
-      "cancelled": "Cancelada"
     }
   }
 }

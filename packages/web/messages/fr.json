@@ -640,7 +640,9 @@
         "updated": "Flux mis à jour avec succès",
         "deleted": "Flux supprimé avec succès",
         "errorLoading": "Erreur lors du chargement des flux",
-        "noWorkflows": "Aucun flux configuré"
+        "noWorkflows": "Aucun flux configuré",
+        "workflowDetails": "Détails du Flux",
+        "workflowDetailsDescription": "Informations de base et configuration du flux de travail"
       },
       "documents": {
         "title": "Documents Requis",
@@ -798,7 +800,15 @@
           "selectEntity": "Sélectionner entité",
           "day": "Jour",
           "dayOfWeek": "Jour de la Semaine",
-          "days": ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"],
+          "days": [
+            "Lundi",
+            "Mardi",
+            "Mercredi",
+            "Jeudi",
+            "Vendredi",
+            "Samedi",
+            "Dimanche"
+          ],
           "hours": "Horaires",
           "startTime": "Heure Début",
           "endTime": "Heure Fin",

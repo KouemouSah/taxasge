@@ -640,7 +640,9 @@
         "updated": "Workflow updated successfully",
         "deleted": "Workflow deleted successfully",
         "errorLoading": "Error loading workflows",
-        "noWorkflows": "No workflows configured"
+        "noWorkflows": "No workflows configured",
+        "workflowDetails": "Workflow Details",
+        "workflowDetailsDescription": "Basic information and workflow configuration"
       },
       "documents": {
         "title": "Document Requirements",
@@ -798,7 +800,15 @@
           "selectEntity": "Select entity",
           "day": "Day",
           "dayOfWeek": "Day of Week",
-          "days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+          "days": [
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+            "Sunday"
+          ],
           "hours": "Hours",
           "startTime": "Start Time",
           "endTime": "End Time",

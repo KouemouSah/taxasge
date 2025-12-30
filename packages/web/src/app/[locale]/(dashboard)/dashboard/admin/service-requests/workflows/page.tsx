@@ -33,10 +33,22 @@ import {
   Calculator,
   Eye,
   Pencil,
+  Trash2,
 } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import {
   useWorkflows,
   useTariffs,
+  useDeleteWorkflow,
 } from '@/modules/service-requests-admin'
 import type {
   Workflow,
@@ -84,6 +96,10 @@ export default function WorkflowsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [workflowToDelete, setWorkflowToDelete] = useState<string | null>(null)
+
+  const deleteWorkflowMutation = useDeleteWorkflow()
 
   const {
     currentPage,
@@ -118,7 +134,8 @@ export default function WorkflowsPage() {
   const filteredWorkflows = useMemo(() => {
     let result = workflowsWithTariffs
     if (categoryFilter !== 'all') {
-      result = result.filter((wf) => wf.category === categoryFilter)
+      // Case-insensitive comparison since DB may have different casing
+      result = result.filter((wf) => wf.category.toUpperCase() === categoryFilter.toUpperCase())
     }
     if (statusFilter !== 'all') {
       const isActive = statusFilter === 'active'
@@ -150,6 +167,19 @@ export default function WorkflowsPage() {
 
   const navigateToNewWorkflow = () => {
     router.push(`/${locale}/dashboard/admin/service-requests/workflows/new`)
+  }
+
+  const handleDeleteClick = (e: React.MouseEvent, code: string) => {
+    e.stopPropagation()
+    setWorkflowToDelete(code)
+    setDeleteDialogOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!workflowToDelete) return
+    await deleteWorkflowMutation.mutateAsync(workflowToDelete)
+    setDeleteDialogOpen(false)
+    setWorkflowToDelete(null)
   }
 
   const renderTariffCell = (amount: number | null, isRBC: boolean) => {
@@ -356,6 +386,15 @@ export default function WorkflowsPage() {
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={(e) => handleDeleteClick(e, wf.code)}
+                            title={tCommon('delete')}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -376,6 +415,35 @@ export default function WorkflowsPage() {
           />
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('deleteConfirmTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('deleteConfirmDescription', { code: workflowToDelete || '' })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleConfirmDelete}
+              disabled={deleteWorkflowMutation.isPending}
+            >
+              {deleteWorkflowMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {tCommon('deleting')}
+                </>
+              ) : (
+                tCommon('delete')
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
