@@ -35,11 +35,11 @@ import {
   Globe,
   Car,
   FileSignature,
-  IdCard,
   Building,
   Calendar,
   CreditCard,
   CheckCircle,
+  BadgeCheck,
 } from 'lucide-react'
 import { useServiceRequests } from '@/modules/service-requests'
 import type { WorkflowConfig } from '@/modules/service-requests'
@@ -50,7 +50,7 @@ const CATEGORY_CONFIG: Record<
   { icon: React.ElementType; labelEs: string; labelFr: string; labelEn: string }
 > = {
   IDENTIDAD: {
-    icon: IdCard,
+    icon: BadgeCheck,
     labelEs: 'Identidad',
     labelFr: 'Identité',
     labelEn: 'Identity',
@@ -74,7 +74,7 @@ const CATEGORY_CONFIG: Record<
     labelEn: 'Contracts',
   },
   CONDUCCION: {
-    icon: IdCard,
+    icon: BadgeCheck,
     labelEs: 'Conducción',
     labelFr: 'Conduite',
     labelEn: 'Driving',
