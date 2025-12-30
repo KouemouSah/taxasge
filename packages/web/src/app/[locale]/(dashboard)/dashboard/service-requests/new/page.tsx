@@ -3,6 +3,7 @@
 /**
  * New Service Request Page
  * Workflow selection and request creation wizard
+ * UX: Category-first collapsible approach
  */
 
 import { useState, useEffect, useMemo } from 'react'
@@ -11,7 +12,11 @@ import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
@@ -31,6 +36,7 @@ import {
   Loader2,
   AlertCircle,
   ChevronRight,
+  ChevronDown,
   User,
   Globe,
   Car,
@@ -44,56 +50,74 @@ import {
 import { useServiceRequests } from '@/modules/service-requests'
 import type { WorkflowConfig } from '@/modules/service-requests'
 
-// Category icons and labels
+// Category icons, labels and descriptions
 const CATEGORY_CONFIG: Record<
   string,
-  { icon: React.ElementType; labelEs: string; labelFr: string; labelEn: string }
+  { icon: React.ElementType; labelEs: string; labelFr: string; labelEn: string; descEs: string; descFr: string; descEn: string }
 > = {
   IDENTIDAD: {
     icon: BadgeCheck,
     labelEs: 'Identidad',
-    labelFr: 'Identité',
+    labelFr: 'Identite',
     labelEn: 'Identity',
+    descEs: 'DIP, Certificados de nacimiento, etc.',
+    descFr: 'DIP, Certificats de naissance, etc.',
+    descEn: 'ID, Birth certificates, etc.',
   },
   EXTRANJERIA: {
     icon: Globe,
-    labelEs: 'Extranjería',
+    labelEs: 'Extranjeria',
     labelFr: 'Immigration',
     labelEn: 'Immigration',
+    descEs: 'Visados, Permisos de residencia',
+    descFr: 'Visas, Permis de sejour',
+    descEn: 'Visas, Residence permits',
   },
   VEHICULOS: {
     icon: Car,
-    labelEs: 'Vehículos',
-    labelFr: 'Véhicules',
+    labelEs: 'Vehiculos',
+    labelFr: 'Vehicules',
     labelEn: 'Vehicles',
+    descEs: 'Matriculacion, Transferencias',
+    descFr: 'Immatriculation, Transferts',
+    descEn: 'Registration, Transfers',
   },
   CONTRATOS: {
     icon: FileSignature,
     labelEs: 'Contratos',
     labelFr: 'Contrats',
     labelEn: 'Contracts',
+    descEs: 'Legalizacion de contratos',
+    descFr: 'Legalisation de contrats',
+    descEn: 'Contract legalization',
   },
   CONDUCCION: {
     icon: BadgeCheck,
-    labelEs: 'Conducción',
+    labelEs: 'Conduccion',
     labelFr: 'Conduite',
     labelEn: 'Driving',
+    descEs: 'Permisos de conducir',
+    descFr: 'Permis de conduire',
+    descEn: 'Driving licenses',
   },
   FUNCION_PUBLICA: {
     icon: Building,
-    labelEs: 'Función Pública',
+    labelEs: 'Funcion Publica',
     labelFr: 'Fonction Publique',
     labelEn: 'Public Service',
+    descEs: 'Certificados de funcionarios',
+    descFr: 'Certificats de fonctionnaires',
+    descEn: 'Civil servant certificates',
   },
 }
 
 // Sub-type labels
 const SUB_TYPE_LABELS: Record<string, { es: string; fr: string; en: string }> = {
-  expedicion: { es: 'Nueva Expedición', fr: 'Nouvelle Émission', en: 'New Issuance' },
-  renovacion: { es: 'Renovación', fr: 'Renouvellement', en: 'Renewal' },
+  expedicion: { es: 'Nueva Expedicion', fr: 'Nouvelle Emission', en: 'New Issuance' },
+  renovacion: { es: 'Renovacion', fr: 'Renouvellement', en: 'Renewal' },
   duplicado: { es: 'Duplicado', fr: 'Duplicata', en: 'Duplicate' },
-  EXPEDICION: { es: 'Nueva Expedición', fr: 'Nouvelle Émission', en: 'New Issuance' },
-  RENOVACION: { es: 'Renovación', fr: 'Renouvellement', en: 'Renewal' },
+  EXPEDICION: { es: 'Nueva Expedicion', fr: 'Nouvelle Emission', en: 'New Issuance' },
+  RENOVACION: { es: 'Renovacion', fr: 'Renouvellement', en: 'Renewal' },
   DUPLICADO: { es: 'Duplicado', fr: 'Duplicata', en: 'Duplicate' },
 }
 
@@ -105,7 +129,7 @@ export default function NewServiceRequestPage() {
 
   // State
   const [workflows, setWorkflows] = useState<WorkflowConfig[]>([])
-  const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowConfig | null>(null)
   const [selectedSubType, setSelectedSubType] = useState<string>('')
@@ -123,41 +147,49 @@ export default function NewServiceRequestPage() {
     loadData()
   }, [loadWorkflows])
 
-  // Get unique categories
-  const categories = useMemo(() => {
-    const cats = new Set(workflows.map((w) => w.category))
-    return ['all', ...Array.from(cats)]
+  // Group workflows by category
+  const workflowsByCategory = useMemo(() => {
+    const groups: Record<string, WorkflowConfig[]> = {}
+    workflows.forEach((w) => {
+      if (!groups[w.category]) {
+        groups[w.category] = []
+      }
+      groups[w.category].push(w)
+    })
+    return groups
   }, [workflows])
 
-  // Filter workflows
-  const filteredWorkflows = useMemo(() => {
-    let result = workflows
-
-    if (selectedCategory !== 'all') {
-      result = result.filter((w) => w.category === selectedCategory)
-    }
-
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
-      result = result.filter(
+  // Filter workflows by search, grouped by category
+  const filteredWorkflowsByCategory = useMemo(() => {
+    if (!searchQuery.trim()) return workflowsByCategory
+    const query = searchQuery.toLowerCase()
+    const filtered: Record<string, WorkflowConfig[]> = {}
+    Object.entries(workflowsByCategory).forEach(([category, wfs]) => {
+      const matchingWfs = wfs.filter(
         (w) =>
           w.workflowCode.toLowerCase().includes(query) ||
           w.serviceNameEs.toLowerCase().includes(query) ||
           w.entityCode.toLowerCase().includes(query)
       )
-    }
-
-    return result
-  }, [workflows, selectedCategory, searchQuery])
+      if (matchingWfs.length > 0) {
+        filtered[category] = matchingWfs
+      }
+    })
+    return filtered
+  }, [workflowsByCategory, searchQuery])
 
   // Get category label
   const getCategoryLabel = (category: string): string => {
-    if (category === 'all') {
-      return locale === 'es' ? 'Todos' : locale === 'fr' ? 'Tous' : 'All'
-    }
     const config = CATEGORY_CONFIG[category]
     if (!config) return category
     return locale === 'es' ? config.labelEs : locale === 'fr' ? config.labelFr : config.labelEn
+  }
+
+  // Get category description
+  const getCategoryDesc = (category: string): string => {
+    const config = CATEGORY_CONFIG[category]
+    if (!config) return ''
+    return locale === 'es' ? config.descEs : locale === 'fr' ? config.descFr : config.descEn
   }
 
   // Get sub-type label
@@ -165,6 +197,11 @@ export default function NewServiceRequestPage() {
     const labels = SUB_TYPE_LABELS[subType]
     if (!labels) return subType
     return locale === 'es' ? labels.es : locale === 'fr' ? labels.fr : labels.en
+  }
+
+  // Handle category click
+  const handleCategoryClick = (category: string) => {
+    setExpandedCategory(expandedCategory === category ? null : category)
   }
 
   // Handle workflow selection
@@ -217,7 +254,7 @@ export default function NewServiceRequestPage() {
     if (workflow.requiresAgentReview) {
       features.push({
         icon: User,
-        label: locale === 'es' ? 'Revisión de agente' : locale === 'fr' ? 'Révision agent' : 'Agent review',
+        label: locale === 'es' ? 'Revision de agente' : locale === 'fr' ? 'Revision agent' : 'Agent review',
       })
     }
     if (workflow.requiresAppointment) {
@@ -236,6 +273,8 @@ export default function NewServiceRequestPage() {
     return features
   }
 
+  const categoriesWithWorkflows = Object.keys(filteredWorkflowsByCategory)
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -249,10 +288,10 @@ export default function NewServiceRequestPage() {
             <h1 className="text-2xl font-bold tracking-tight">{t('newRequest')}</h1>
             <p className="text-muted-foreground">
               {locale === 'es'
-                ? 'Selecciona el tipo de trámite que deseas realizar'
+                ? 'Selecciona una categoria para ver los tramites disponibles'
                 : locale === 'fr'
-                  ? 'Sélectionnez le type de démarche que vous souhaitez effectuer'
-                  : 'Select the type of service you want to request'}
+                  ? 'Selectionnez une categorie pour voir les demarches disponibles'
+                  : 'Select a category to see available services'}
             </p>
           </div>
         </div>
@@ -276,7 +315,7 @@ export default function NewServiceRequestPage() {
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="search"
-          placeholder={t('search_placeholder') || 'Buscar trámite...'}
+          placeholder={t('search_placeholder') || 'Buscar tramite...'}
           className="pl-9"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -293,115 +332,104 @@ export default function NewServiceRequestPage() {
         </div>
       )}
 
-      {/* Category Tabs and Workflows */}
+      {/* Category Grid with Collapsible Cards */}
       {workflows.length > 0 && (
-        <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-          <TabsList className="flex-wrap h-auto gap-1 p-1">
-            {categories.map((cat) => {
-              const Icon = cat === 'all' ? FileText : CATEGORY_CONFIG[cat]?.icon || FileText
-              return (
-                <TabsTrigger key={cat} value={cat} className="flex items-center gap-1.5">
-                  <Icon className="h-4 w-4" />
-                  {getCategoryLabel(cat)}
-                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                    {cat === 'all'
-                      ? workflows.length
-                      : workflows.filter((w) => w.category === cat).length}
-                  </Badge>
-                </TabsTrigger>
-              )
-            })}
-          </TabsList>
+        <div className="space-y-4">
+          {categoriesWithWorkflows.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p className="text-lg font-medium mb-2">
+                {locale === 'es'
+                  ? 'No se encontraron tramites'
+                  : locale === 'fr'
+                    ? 'Aucune demarche trouvee'
+                    : 'No services found'}
+              </p>
+              <p className="text-sm">
+                {locale === 'es'
+                  ? 'Intenta con otros terminos de busqueda'
+                  : locale === 'fr'
+                    ? "Essayez avec d'autres termes de recherche"
+                    : 'Try different search terms'}
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {categoriesWithWorkflows.map((category) => {
+                const CategoryIcon = CATEGORY_CONFIG[category]?.icon || FileText
+                const workflowsInCategory = filteredWorkflowsByCategory[category] || []
+                const isExpanded = expandedCategory === category
 
-          <TabsContent value={selectedCategory} className="mt-6">
-            {filteredWorkflows.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="text-lg font-medium mb-2">
-                  {locale === 'es'
-                    ? 'No se encontraron trámites'
-                    : locale === 'fr'
-                      ? 'Aucune démarche trouvée'
-                      : 'No services found'}
-                </p>
-                <p className="text-sm">
-                  {locale === 'es'
-                    ? 'Intenta con otros filtros o términos de búsqueda'
-                    : locale === 'fr'
-                      ? 'Essayez avec d\'autres filtres ou termes de recherche'
-                      : 'Try different filters or search terms'}
-                </p>
-              </div>
-            ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {filteredWorkflows.map((workflow) => {
-                  const CategoryIcon = CATEGORY_CONFIG[workflow.category]?.icon || FileText
-                  const features = getWorkflowFeatures(workflow)
-
-                  return (
-                    <Card
-                      key={workflow.workflowCode}
-                      className="cursor-pointer hover:shadow-lg hover:border-primary/50 transition-all group"
-                      onClick={() => handleWorkflowSelect(workflow)}
-                    >
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors">
-                              <CategoryIcon className="h-5 w-5 text-primary" />
+                return (
+                  <Collapsible
+                    key={category}
+                    open={isExpanded}
+                    onOpenChange={() => handleCategoryClick(category)}
+                  >
+                    <Card className={`transition-all ${isExpanded ? 'ring-2 ring-primary' : 'hover:shadow-md'}`}>
+                      <CollapsibleTrigger asChild>
+                        <CardHeader className="cursor-pointer">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className={`p-2 rounded-lg ${isExpanded ? 'bg-primary text-primary-foreground' : 'bg-primary/10'}`}>
+                                <CategoryIcon className="h-5 w-5" />
+                              </div>
+                              <div>
+                                <CardTitle className="text-lg">{getCategoryLabel(category)}</CardTitle>
+                                <CardDescription className="text-sm">{getCategoryDesc(category)}</CardDescription>
+                              </div>
                             </div>
-                            <div>
-                              <CardTitle className="text-base line-clamp-2">
-                                {workflow.serviceNameEs}
-                              </CardTitle>
-                              <CardDescription className="text-xs mt-0.5">
-                                {workflow.entityCode}
-                              </CardDescription>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary">{workflowsInCategory.length}</Badge>
+                              <ChevronDown className={`h-5 w-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                             </div>
                           </div>
-                          <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                        </div>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <div className="flex flex-wrap gap-1.5 mb-3">
-                          <Badge variant="outline" className="text-xs">
-                            {getCategoryLabel(workflow.category)}
-                          </Badge>
-                          {workflow.allowedSubTypes?.length > 1 && (
-                            <Badge variant="secondary" className="text-xs">
-                              {workflow.allowedSubTypes.length} tipos
-                            </Badge>
-                          )}
-                        </div>
+                        </CardHeader>
+                      </CollapsibleTrigger>
 
-                        {features.length > 0 && (
-                          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                            {features.slice(0, 3).map((feature, index) => {
-                              const FeatureIcon = feature.icon
+                      <CollapsibleContent>
+                        <CardContent className="pt-0">
+                          <div className="space-y-2 border-t pt-4">
+                            {workflowsInCategory.map((workflow) => {
+                              const features = getWorkflowFeatures(workflow)
+
                               return (
-                                <div key={index} className="flex items-center gap-1">
-                                  <FeatureIcon className="h-3 w-3" />
-                                  <span>{feature.label}</span>
+                                <div
+                                  key={workflow.workflowCode}
+                                  className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors group"
+                                  onClick={() => handleWorkflowSelect(workflow)}
+                                >
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium truncate">{workflow.serviceNameEs}</p>
+                                    <p className="text-sm text-muted-foreground truncate">{workflow.entityCode}</p>
+                                    {features.length > 0 && (
+                                      <div className="flex gap-2 mt-1">
+                                        {features.slice(0, 2).map((feature, idx) => {
+                                          const FeatureIcon = feature.icon
+                                          return (
+                                            <span key={idx} className="flex items-center gap-1 text-xs text-muted-foreground">
+                                              <FeatureIcon className="h-3 w-3" />
+                                              {feature.label}
+                                            </span>
+                                          )
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary flex-shrink-0 ml-2" />
                                 </div>
                               )
                             })}
                           </div>
-                        )}
-
-                        <div className="mt-4 pt-3 border-t">
-                          <Button variant="ghost" size="sm" className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                            {locale === 'es' ? 'Iniciar trámite' : locale === 'fr' ? 'Commencer' : 'Start'}
-                            <ChevronRight className="ml-1 h-4 w-4" />
-                          </Button>
-                        </div>
-                      </CardContent>
+                        </CardContent>
+                      </CollapsibleContent>
                     </Card>
-                  )
-                })}
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+                  </Collapsible>
+                )
+              })}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Sub-Type Selection Dialog */}
@@ -439,18 +467,18 @@ export default function NewServiceRequestPage() {
                       ? locale === 'es'
                         ? 'Primera vez que solicitas este documento'
                         : locale === 'fr'
-                          ? 'Première demande de ce document'
+                          ? 'Premiere demande de ce document'
                           : 'First time requesting this document'
                       : subType === 'renovacion' || subType === 'RENOVACION'
                         ? locale === 'es'
-                          ? 'Ya tienes este documento y está por vencer o vencido'
+                          ? 'Ya tienes este documento y esta por vencer o vencido'
                           : locale === 'fr'
-                            ? 'Vous avez déjà ce document qui expire ou est expiré'
-                            : 'You already have this document and it\'s expiring or expired'
+                            ? 'Vous avez deja ce document qui expire ou est expire'
+                            : 'You already have this document and it is expiring or expired'
                         : locale === 'es'
-                          ? 'Necesitas una copia por pérdida o deterioro'
+                          ? 'Necesitas una copia por perdida o deterioro'
                           : locale === 'fr'
-                            ? 'Vous avez besoin d\'une copie pour perte ou détérioration'
+                            ? "Vous avez besoin d'une copie pour perte ou deterioration"
                             : 'You need a copy due to loss or damage'}
                   </p>
                 </Label>
@@ -469,7 +497,7 @@ export default function NewServiceRequestPage() {
               {isStarting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {locale === 'es' ? 'Iniciando...' : locale === 'fr' ? 'Démarrage...' : 'Starting...'}
+                  {locale === 'es' ? 'Iniciando...' : locale === 'fr' ? 'Demarrage...' : 'Starting...'}
                 </>
               ) : (
                 <>
@@ -491,7 +519,7 @@ export default function NewServiceRequestPage() {
               {locale === 'es'
                 ? 'Iniciando tu solicitud...'
                 : locale === 'fr'
-                  ? 'Démarrage de votre demande...'
+                  ? 'Demarrage de votre demande...'
                   : 'Starting your request...'}
             </p>
           </div>
