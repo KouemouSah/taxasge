@@ -2411,7 +2411,8 @@
     "viewDetails": "View",
     "welcome": "Welcome",
     "welcomeMessage": "Welcome, {name}!",
-    "welcomeSubtitle": "Manage your tax services with ease"
+    "welcomeSubtitle": "Manage your tax services with ease",
+    "serviceRequests": "Service Requests"
   },
   "declarations": {
     "actionContinue": "Continue",
@@ -3423,6 +3424,13 @@
       "actions": "Actions",
       "no_results": "No results found",
       "loading": "Loading requests..."
+    },
+    "reason": {
+      "invalid_documents": "Invalid or unreadable documents",
+      "incomplete_data": "Incomplete data",
+      "identity_mismatch": "Identity mismatch",
+      "expired_documents": "Expired documents",
+      "other": "Other reason"
     }
   }
 }

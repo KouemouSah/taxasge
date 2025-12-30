@@ -16,6 +16,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import {
   LayoutDashboard,
   FileText,
+  ClipboardList,
   HelpCircle,
   User,
   Settings,
@@ -57,6 +58,11 @@ export function DashboardSidebar({ className }: DashboardSidebarProps) {
       titleKey: 'declarations',
       href: `/${locale}/dashboard/declarations`,
       icon: FileText,
+    },
+    {
+      titleKey: 'serviceRequests',
+      href: `/${locale}/dashboard/service-requests`,
+      icon: ClipboardList,
     },
     {
       titleKey: 'chatAssistant',

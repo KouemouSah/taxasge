@@ -2425,7 +2425,8 @@
     "viewDetails": "Ver",
     "welcome": "Bienvenido",
     "welcomeMessage": "Bienvenido, {name}!",
-    "welcomeSubtitle": "Gestione sus servicios fiscales con toda simplicidad"
+    "welcomeSubtitle": "Gestione sus servicios fiscales con toda simplicidad",
+    "serviceRequests": "Solicitudes de Servicios"
   },
   "declarations": {
     "actionContinue": "Continuar",

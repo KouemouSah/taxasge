@@ -2411,7 +2411,8 @@
     "viewDetails": "Voir",
     "welcome": "Bienvenue",
     "welcomeMessage": "Bienvenue, {name} !",
-    "welcomeSubtitle": "Gérez vos services fiscaux en toute simplicité"
+    "welcomeSubtitle": "Gérez vos services fiscaux en toute simplicité",
+    "serviceRequests": "Demandes de Services"
   },
   "declarations": {
     "actionContinue": "Continuer",
@@ -3423,6 +3424,13 @@
       "actions": "Actions",
       "no_results": "Aucun résultat trouvé",
       "loading": "Chargement des demandes..."
+    },
+    "reason": {
+      "invalid_documents": "Documents invalides ou illisibles",
+      "incomplete_data": "Données incomplètes",
+      "identity_mismatch": "Divergence d'identité",
+      "expired_documents": "Documents expirés",
+      "other": "Autre raison"
     }
   }
 }
