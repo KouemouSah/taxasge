@@ -423,7 +423,7 @@ export default function ServiceRequestDetailPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">{t('overview')}</TabsTrigger>
-          <TabsTrigger value="documents">{t('documents')}</TabsTrigger>
+          <TabsTrigger value="documents">{t('documents_tab')}</TabsTrigger>
           <TabsTrigger value="payment">{t('tariff') || 'Pago'}</TabsTrigger>
           {currentRequest.status === 'CITA_SCHEDULED' && (
             <TabsTrigger value="appointment">{t('schedule_appointment') || 'Cita'}</TabsTrigger>
@@ -673,10 +673,26 @@ export default function ServiceRequestDetailPage() {
           </Link>
         </Button>
         {['DRAFT', 'DOCUMENTS_REQUIRED'].includes(currentRequest.status) && (
-          <Button onClick={() => router.push(`/${locale}/dashboard/service-requests/${requestId}/documents`)}>
-            <Upload className="mr-2 h-4 w-4" />
-            {t('continue_request') || 'Continuar solicitud'}
-          </Button>
+          <div className="flex gap-2">
+            {/* Upload documents button */}
+            <Button 
+              variant="outline"
+              onClick={() => router.push(`/${locale}/dashboard/service-requests/${requestId}/documents`)}
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              {t('upload_documents')}
+            </Button>
+            {/* Continue button - only when documents are uploaded */}
+            {documents.length > 0 && (
+              <Button 
+                onClick={() => router.push(`/${locale}/dashboard/service-requests/${requestId}/documents`)}
+                disabled={documents.length === 0}
+              >
+                <CheckCircle className="mr-2 h-4 w-4" />
+                {t('continue_to_verification')}
+              </Button>
+            )}
+          </div>
         )}
       </div>
 

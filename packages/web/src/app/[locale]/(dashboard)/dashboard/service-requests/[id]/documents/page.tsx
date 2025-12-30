@@ -89,89 +89,104 @@ export default function DocumentsUploadPage() {
   }, [requestId, loadRequest, loadDocuments, loadWorkflows])
 
   // Get required documents based on workflow and sub_type
+  // This logic MUST match pasaporte_workflow.py exactly
   const getRequiredDocuments = useCallback((): DocumentRequirement[] => {
-    if (!currentRequest || !workflows) return []
+    if (!currentRequest) return []
 
+    const workflowCode = currentRequest.workflowCode?.toUpperCase() || ''
     const subType = currentRequest.subType?.toUpperCase() || 'NUEVO'
 
     // Check if user is minor (for conditional documents)
     const userIsMinor = isUserMinor(currentRequest.formData?.fecha_nacimiento as string | undefined)
 
-    // Document requirements by workflow and sub_type with translation keys
-    const workflowDocuments: Record<string, Record<string, DocumentRequirement[]>> = {
-      'PASAPORTE_NUEVO': {
-        'NUEVO': [
-          { documentCode: 'dip', documentNameKey: 'document_types.dip', isRequired: true, instructionsKey: 'document_instructions.dip' },
-          { documentCode: 'certificado_nacimiento', documentNameKey: 'document_types.birth_certificate', isRequired: true, instructionsKey: 'document_instructions.birth_certificate' },
-          { documentCode: 'photo_carnet', documentNameKey: 'document_types.passport_photos', isRequired: true, instructionsKey: 'document_instructions.passport_photos' },
-        ],
-        'RENOVACION': [
-          { documentCode: 'dip', documentNameKey: 'document_types.dip', isRequired: true, instructionsKey: 'document_instructions.dip' },
-          { documentCode: 'pasaporte_antiguo', documentNameKey: 'document_types.old_passport', isRequired: true, instructionsKey: 'document_instructions.old_passport' },
-          { documentCode: 'photo_carnet', documentNameKey: 'document_types.passport_photos', isRequired: true, instructionsKey: 'document_instructions.passport_photos' },
-        ],
-        'PERDIDA': [
-          { documentCode: 'dip', documentNameKey: 'document_types.dip', isRequired: true, instructionsKey: 'document_instructions.dip' },
-          { documentCode: 'denuncia_policial', documentNameKey: 'document_types.police_report', isRequired: true, instructionsKey: 'document_instructions.police_report_loss' },
-          { documentCode: 'photo_carnet', documentNameKey: 'document_types.passport_photos', isRequired: true, instructionsKey: 'document_instructions.passport_photos' },
-        ],
-        'ROBO': [
-          { documentCode: 'dip', documentNameKey: 'document_types.dip', isRequired: true, instructionsKey: 'document_instructions.dip' },
-          { documentCode: 'denuncia_policial', documentNameKey: 'document_types.police_report', isRequired: true, instructionsKey: 'document_instructions.police_report_theft' },
-          { documentCode: 'photo_carnet', documentNameKey: 'document_types.passport_photos', isRequired: true, instructionsKey: 'document_instructions.passport_photos' },
-        ],
-        'DETERIORO': [
-          { documentCode: 'dip', documentNameKey: 'document_types.dip', isRequired: true, instructionsKey: 'document_instructions.dip' },
-          { documentCode: 'pasaporte_antiguo', documentNameKey: 'document_types.damaged_passport', isRequired: true, instructionsKey: 'document_instructions.damaged_passport' },
-          { documentCode: 'photo_carnet', documentNameKey: 'document_types.passport_photos', isRequired: true, instructionsKey: 'document_instructions.passport_photos' },
-        ],
-      },
-      'RESIDENCIA': {
-        'EXPEDICION': [
-          { documentCode: 'pasaporte', documentNameKey: 'document_types.valid_passport', isRequired: true },
-          { documentCode: 'foto_carnet', documentNameKey: 'document_types.id_photo', isRequired: true },
-          { documentCode: 'contrato_trabajo', documentNameKey: 'document_types.work_contract', isRequired: false },
-        ],
-        'RENOVACION': [
-          { documentCode: 'pasaporte', documentNameKey: 'document_types.valid_passport', isRequired: true },
-          { documentCode: 'carnet_residencia_antiguo', documentNameKey: 'document_types.current_residence_card', isRequired: true },
-          { documentCode: 'foto_carnet', documentNameKey: 'document_types.id_photo', isRequired: true },
-        ],
-      },
-    }
-
-    // Get base workflow code
-    const workflowCode = currentRequest.workflowCode.toUpperCase()
-    const baseCode = workflowCode.split('_').slice(0, -1).join('_') || workflowCode
-    const workflowDocs = workflowDocuments[workflowCode] || workflowDocuments[baseCode]
+    // Detect if this is a passport workflow (any variant)
+    const isPasaporte = workflowCode.includes('PASAPORTE')
 
     let docs: DocumentRequirement[] = []
 
-    if (workflowDocs && workflowDocs[subType]) {
-      docs = [...workflowDocs[subType]]
-    } else if (workflowDocs && workflowDocs['NUEVO']) {
-      docs = [...workflowDocs['NUEVO']]
+    if (isPasaporte) {
+      // DIP is ALWAYS required for passport
+      docs.push({
+        documentCode: 'dip',
+        documentNameKey: 'document_types.dip',
+        isRequired: true,
+        instructionsKey: 'document_instructions.dip',
+        conditionType: 'ALWAYS'
+      })
+
+      // Type-specific documents based on sub_type
+      if (subType === 'NUEVO') {
+        docs.push({
+          documentCode: 'certificado_nacimiento',
+          documentNameKey: 'document_types.birth_certificate',
+          isRequired: true,
+          instructionsKey: 'document_instructions.birth_certificate',
+          conditionType: 'IS_NEW'
+        })
+      } else if (subType === 'RENOVACION' || subType === 'DETERIORO') {
+        docs.push({
+          documentCode: 'pasaporte_antiguo',
+          documentNameKey: subType === 'DETERIORO' ? 'document_types.damaged_passport' : 'document_types.old_passport',
+          isRequired: true,
+          instructionsKey: subType === 'DETERIORO' ? 'document_instructions.damaged_passport' : 'document_instructions.old_passport'
+        })
+      } else if (subType === 'PERDIDA' || subType === 'ROBO') {
+        docs.push({
+          documentCode: 'denuncia_policial',
+          documentNameKey: 'document_types.police_report',
+          isRequired: true,
+          instructionsKey: subType === 'ROBO' ? 'document_instructions.police_report_theft' : 'document_instructions.police_report_loss'
+        })
+      }
+
+      // Photos are ALWAYS required for passport
+      docs.push({
+        documentCode: 'photo_carnet',
+        documentNameKey: 'document_types.passport_photos',
+        isRequired: true,
+        instructionsKey: 'document_instructions.passport_photos',
+        conditionType: 'ALWAYS'
+      })
+
+      // Parental authorization for minors (IS_MINOR condition)
+      if (userIsMinor) {
+        docs.push({
+          documentCode: 'autorizacion_parental',
+          documentNameKey: 'document_types.parental_authorization',
+          isRequired: true,
+          instructionsKey: 'document_instructions.parental_authorization',
+          conditionType: 'IS_MINOR'
+        })
+      }
+    } else if (workflowCode.includes('RESIDENCIA')) {
+      // Residencia workflow
+      docs.push({
+        documentCode: 'pasaporte',
+        documentNameKey: 'document_types.valid_passport',
+        isRequired: true
+      })
+      docs.push({
+        documentCode: 'foto_carnet',
+        documentNameKey: 'document_types.id_photo',
+        isRequired: true
+      })
+      if (subType === 'RENOVACION') {
+        docs.push({
+          documentCode: 'carnet_residencia_antiguo',
+          documentNameKey: 'document_types.current_residence_card',
+          isRequired: true
+        })
+      }
     } else {
-      // Default fallback
+      // Default fallback for unknown workflows
       docs = [
         { documentCode: 'dip', documentNameKey: 'document_types.dip', isRequired: true },
         { documentCode: 'foto_carnet', documentNameKey: 'document_types.id_photo', isRequired: true },
       ]
     }
 
-    // Add parental authorization for minors (passport workflows)
-    if (userIsMinor && workflowCode.includes('PASAPORTE')) {
-      docs.push({
-        documentCode: 'autorizacion_parental',
-        documentNameKey: 'document_types.parental_authorization',
-        isRequired: true,
-        instructionsKey: 'document_instructions.parental_authorization',
-        conditionType: 'IS_MINOR'
-      })
-    }
-
     return docs
-  }, [currentRequest, workflows])
+  }, [currentRequest])
 
   // Check if document is already uploaded
   const isDocumentUploaded = (docCode: string): boolean => {
@@ -193,14 +208,17 @@ export default function DocumentsUploadPage() {
     setUploadSuccess(null)
     setUploadProgress(10)
 
+    // Define interval outside try block so it can be cleared in catch
+    let progressInterval: ReturnType<typeof setInterval> | null = null
+
     try {
-      const progressInterval = setInterval(() => {
+      progressInterval = setInterval(() => {
         setUploadProgress(prev => Math.min(prev + 15, 90))
       }, 200)
 
       await uploadDocument(docCode, file)
 
-      clearInterval(progressInterval)
+      if (progressInterval) clearInterval(progressInterval)
       setUploadProgress(100)
       setUploadSuccess(docCode)
 
@@ -212,6 +230,8 @@ export default function DocumentsUploadPage() {
         setUploadingDocCode(null)
       }, 1000)
     } catch (err) {
+      // Clear interval on error to prevent memory leak
+      if (progressInterval) clearInterval(progressInterval)
       setUploadError(err instanceof Error ? err.message : t('documents.upload_error'))
       setUploadProgress(0)
       setUploadingDocCode(null)

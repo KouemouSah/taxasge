@@ -3581,6 +3581,11 @@
     },
     "request_not_found_id": "Request with ID {id} was not found",
     "upload": "Upload",
-    "documents_uploaded": "document(s) uploaded"
+    "documents_uploaded": "document(s) uploaded",
+    "documents_tab": "Documents",
+    "verify_data": "Verify data",
+    "all_documents_uploaded": "All required documents have been uploaded",
+    "documents_pending": "Some documents still need to be uploaded",
+    "continue_to_verification": "Continue to verification"
   }
 }

@@ -3479,6 +3479,11 @@
       "pay_now": "Proceder al pago",
       "base_tariff": "Tarifa base",
       "total": "Total"
-    }
+    },
+    "documents_tab": "Documentos",
+    "verify_data": "Verificar datos",
+    "all_documents_uploaded": "Todos los documentos requeridos han sido cargados",
+    "documents_pending": "Quedan documentos por cargar",
+    "continue_to_verification": "Continuar a verificacion"
   }
 }

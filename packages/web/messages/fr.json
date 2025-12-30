@@ -3581,6 +3581,11 @@
     },
     "request_not_found_id": "La demande avec l'ID {id} n'a pas été trouvée",
     "upload": "Télécharger",
-    "documents_uploaded": "document(s) téléchargé(s)"
+    "documents_uploaded": "document(s) téléchargé(s)",
+    "documents_tab": "Documents",
+    "verify_data": "Verifier les donnees",
+    "all_documents_uploaded": "Tous les documents requis sont telecharges",
+    "documents_pending": "Il reste des documents a telecharger",
+    "continue_to_verification": "Continuer vers la verification"
   }
 }
