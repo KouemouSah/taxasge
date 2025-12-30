@@ -3300,12 +3300,14 @@
       "mobile_money": "Mobile Money",
       "bank_transfer": "Bank Transfer",
       "cash": "Cash",
-      "pay_now": "Pay Now",
+      "pay_now": "Proceed to payment",
       "payment_pending": "Payment pending",
       "payment_confirmed": "Payment confirmed",
       "payment_failed": "Payment failed",
       "receipt": "Receipt",
-      "reference": "Reference"
+      "reference": "Reference",
+      "base_tariff": "Base tariff",
+      "total": "Total"
     },
     "appointment": {
       "title": "Appointment",
@@ -3459,7 +3461,7 @@
     "startRequest": "Start Request",
     "back": "Back",
     "search_placeholder": "Search by number or name...",
-    "no_requests_found": "No requests found",
+    "no_requests_found": "Request not found",
     "newRequestDescription": "Start a new service request",
     "selectWorkflow": "Select service",
     "selectWorkflowSubtitle": "Choose the type of service you want to request",
@@ -3525,6 +3527,60 @@
     "file": "File",
     "upload_success": "Document uploaded successfully",
     "continue_request": "Continue request",
-    "view": "View"
+    "view": "View",
+    "status_messages": {
+      "draft": "Your request is a draft. Complete the required documents to continue.",
+      "timbres_pending": "Fiscal stamps payment pending.",
+      "timbres_paid": "Stamps paid. You can continue with your request.",
+      "submitted": "Your request has been submitted and is awaiting review.",
+      "documents_required": "Additional documents required. Please upload the missing documents.",
+      "under_review": "An agent is reviewing your request.",
+      "dossier_valide": "Your dossier has been validated. Proceed to payment.",
+      "rejected": "Your request has been rejected. Check the reasons below.",
+      "payment_pending": "Payment pending. Complete the payment to continue.",
+      "paid": "Payment completed. Your request is being processed.",
+      "cita_scheduled": "Appointment scheduled. Check your appointment details.",
+      "in_progress": "Your request is being processed.",
+      "completed": "Completed! Your document is ready for pickup.",
+      "payment_processing": "Processing your payment. Please wait.",
+      "cancelled": "This request was cancelled.",
+      "expired": "This request has expired."
+    },
+    "document_types": {
+      "dip": "Personal Identity Document (DIP)",
+      "birth_certificate": "Birth Certificate",
+      "passport_photos": "Passport Photos (x2)",
+      "old_passport": "Old Passport",
+      "damaged_passport": "Damaged Passport",
+      "police_report": "Police Report",
+      "parental_authorization": "Parental Authorization",
+      "valid_passport": "Valid Passport",
+      "id_photo": "ID Photo",
+      "work_contract": "Work Contract",
+      "current_residence_card": "Current Residence Card"
+    },
+    "document_instructions": {
+      "dip": "Scan both sides of your DIP",
+      "birth_certificate": "Literal certification of birth registration",
+      "passport_photos": "2 photos of 35x45mm, white background, visible face",
+      "old_passport": "Scan the data page of your current passport",
+      "damaged_passport": "Scan the data page of your damaged passport",
+      "police_report_loss": "Loss report from the National Police",
+      "police_report_theft": "Theft report from the National Police",
+      "parental_authorization": "Authorization signed by both parents or legal guardian"
+    },
+    "sub_type": "Request type",
+    "sub_types": {
+      "nuevo": "New request",
+      "renovacion": "Renewal",
+      "perdida": "Loss",
+      "robo": "Theft",
+      "deterioro": "Damage",
+      "expedicion": "First issuance",
+      "duplicado": "Duplicate"
+    },
+    "request_not_found_id": "Request with ID {id} was not found",
+    "upload": "Upload",
+    "documents_uploaded": "document(s) uploaded"
   }
 }

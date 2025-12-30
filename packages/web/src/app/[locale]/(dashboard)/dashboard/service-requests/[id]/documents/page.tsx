@@ -30,10 +30,24 @@ import type { WorkflowConfig } from '@/modules/service-requests'
 // Document requirement interface matching workflow
 interface DocumentRequirement {
   documentCode: string
-  documentNameEs: string
+  documentNameKey: string  // Translation key
   isRequired: boolean
-  instructionsEs?: string
+  instructionsKey?: string  // Translation key
   acceptedFormats?: string[]
+  conditionType?: 'ALWAYS' | 'IS_MINOR' | 'IS_NEW' | 'CUSTOM'
+}
+
+// Check if user is minor (age < 18)
+const isUserMinor = (birthDate?: string): boolean => {
+  if (!birthDate) return false
+  const birth = new Date(birthDate)
+  const today = new Date()
+  const age = today.getFullYear() - birth.getFullYear()
+  const monthDiff = today.getMonth() - birth.getMonth()
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    return age - 1 < 18
+  }
+  return age < 18
 }
 
 export default function DocumentsUploadPage() {
@@ -78,75 +92,85 @@ export default function DocumentsUploadPage() {
   const getRequiredDocuments = useCallback((): DocumentRequirement[] => {
     if (!currentRequest || !workflows) return []
 
-    const workflow = workflows.find(w => w.workflowCode === currentRequest.workflowCode)
-    if (!workflow) {
-      // Fallback to generic document list
-      return [
-        { documentCode: 'dip_gq', documentNameEs: 'DIP Guinea Ecuatorial', isRequired: true },
-        { documentCode: 'foto_carnet', documentNameEs: 'Fotografía tipo carnet', isRequired: true },
-      ]
-    }
+    const subType = currentRequest.subType?.toUpperCase() || 'NUEVO'
 
-    // Use workflow's required documents filtered by sub_type
-    // For now return basic requirements - the workflow should provide this
-    const subType = currentRequest.subType?.toUpperCase() || 'EXPEDICION'
+    // Check if user is minor (for conditional documents)
+    const userIsMinor = isUserMinor(currentRequest.formData?.fecha_nacimiento as string | undefined)
 
-    // Map common workflow codes to their document requirements
+    // Document requirements by workflow and sub_type with translation keys
     const workflowDocuments: Record<string, Record<string, DocumentRequirement[]>> = {
       'PASAPORTE_NUEVO': {
         'NUEVO': [
-          { documentCode: 'dip', documentNameEs: 'Documento de Identidad Personal (DIP)', isRequired: true, instructionsEs: 'Escanee ambas caras de su DIP' },
-          { documentCode: 'certificado_nacimiento', documentNameEs: 'Certificado de Nacimiento', isRequired: true, instructionsEs: 'Certificación literal de inscripción de nacimiento' },
-          { documentCode: 'photo_carnet', documentNameEs: 'Fotografías tipo pasaporte (x2)', isRequired: true, instructionsEs: '2 fotos de 35x45mm, fondo blanco, rostro visible' },
+          { documentCode: 'dip', documentNameKey: 'document_types.dip', isRequired: true, instructionsKey: 'document_instructions.dip' },
+          { documentCode: 'certificado_nacimiento', documentNameKey: 'document_types.birth_certificate', isRequired: true, instructionsKey: 'document_instructions.birth_certificate' },
+          { documentCode: 'photo_carnet', documentNameKey: 'document_types.passport_photos', isRequired: true, instructionsKey: 'document_instructions.passport_photos' },
         ],
         'RENOVACION': [
-          { documentCode: 'dip', documentNameEs: 'Documento de Identidad Personal (DIP)', isRequired: true },
-          { documentCode: 'pasaporte_antiguo', documentNameEs: 'Pasaporte Antiguo', isRequired: true, instructionsEs: 'Escanee la página de datos de su pasaporte actual' },
-          { documentCode: 'photo_carnet', documentNameEs: 'Fotografías tipo pasaporte (x2)', isRequired: true },
+          { documentCode: 'dip', documentNameKey: 'document_types.dip', isRequired: true, instructionsKey: 'document_instructions.dip' },
+          { documentCode: 'pasaporte_antiguo', documentNameKey: 'document_types.old_passport', isRequired: true, instructionsKey: 'document_instructions.old_passport' },
+          { documentCode: 'photo_carnet', documentNameKey: 'document_types.passport_photos', isRequired: true, instructionsKey: 'document_instructions.passport_photos' },
         ],
         'PERDIDA': [
-          { documentCode: 'dip', documentNameEs: 'Documento de Identidad Personal (DIP)', isRequired: true },
-          { documentCode: 'denuncia_policial', documentNameEs: 'Denuncia Policial', isRequired: true, instructionsEs: 'Denuncia de pérdida de la Policía Nacional' },
-          { documentCode: 'photo_carnet', documentNameEs: 'Fotografías tipo pasaporte (x2)', isRequired: true },
+          { documentCode: 'dip', documentNameKey: 'document_types.dip', isRequired: true, instructionsKey: 'document_instructions.dip' },
+          { documentCode: 'denuncia_policial', documentNameKey: 'document_types.police_report', isRequired: true, instructionsKey: 'document_instructions.police_report_loss' },
+          { documentCode: 'photo_carnet', documentNameKey: 'document_types.passport_photos', isRequired: true, instructionsKey: 'document_instructions.passport_photos' },
         ],
         'ROBO': [
-          { documentCode: 'dip', documentNameEs: 'Documento de Identidad Personal (DIP)', isRequired: true },
-          { documentCode: 'denuncia_policial', documentNameEs: 'Denuncia Policial', isRequired: true, instructionsEs: 'Denuncia de robo de la Policía Nacional' },
-          { documentCode: 'photo_carnet', documentNameEs: 'Fotografías tipo pasaporte (x2)', isRequired: true },
+          { documentCode: 'dip', documentNameKey: 'document_types.dip', isRequired: true, instructionsKey: 'document_instructions.dip' },
+          { documentCode: 'denuncia_policial', documentNameKey: 'document_types.police_report', isRequired: true, instructionsKey: 'document_instructions.police_report_theft' },
+          { documentCode: 'photo_carnet', documentNameKey: 'document_types.passport_photos', isRequired: true, instructionsKey: 'document_instructions.passport_photos' },
         ],
         'DETERIORO': [
-          { documentCode: 'dip', documentNameEs: 'Documento de Identidad Personal (DIP)', isRequired: true },
-          { documentCode: 'pasaporte_antiguo', documentNameEs: 'Pasaporte Deteriorado', isRequired: true, instructionsEs: 'Escanee la página de datos de su pasaporte deteriorado' },
-          { documentCode: 'photo_carnet', documentNameEs: 'Fotografías tipo pasaporte (x2)', isRequired: true },
+          { documentCode: 'dip', documentNameKey: 'document_types.dip', isRequired: true, instructionsKey: 'document_instructions.dip' },
+          { documentCode: 'pasaporte_antiguo', documentNameKey: 'document_types.damaged_passport', isRequired: true, instructionsKey: 'document_instructions.damaged_passport' },
+          { documentCode: 'photo_carnet', documentNameKey: 'document_types.passport_photos', isRequired: true, instructionsKey: 'document_instructions.passport_photos' },
         ],
       },
       'RESIDENCIA': {
         'EXPEDICION': [
-          { documentCode: 'pasaporte', documentNameEs: 'Pasaporte Válido', isRequired: true },
-          { documentCode: 'foto_carnet', documentNameEs: 'Fotografía tipo carnet', isRequired: true },
-          { documentCode: 'contrato_trabajo', documentNameEs: 'Contrato de Trabajo', isRequired: false },
+          { documentCode: 'pasaporte', documentNameKey: 'document_types.valid_passport', isRequired: true },
+          { documentCode: 'foto_carnet', documentNameKey: 'document_types.id_photo', isRequired: true },
+          { documentCode: 'contrato_trabajo', documentNameKey: 'document_types.work_contract', isRequired: false },
         ],
         'RENOVACION': [
-          { documentCode: 'pasaporte', documentNameEs: 'Pasaporte Válido', isRequired: true },
-          { documentCode: 'carnet_residencia_antiguo', documentNameEs: 'Carnet de Residencia Actual', isRequired: true },
-          { documentCode: 'foto_carnet', documentNameEs: 'Fotografía tipo carnet', isRequired: true },
+          { documentCode: 'pasaporte', documentNameKey: 'document_types.valid_passport', isRequired: true },
+          { documentCode: 'carnet_residencia_antiguo', documentNameKey: 'document_types.current_residence_card', isRequired: true },
+          { documentCode: 'foto_carnet', documentNameKey: 'document_types.id_photo', isRequired: true },
         ],
       },
     }
 
-    // Get base workflow code (without subtype suffix)
-    const baseCode = currentRequest.workflowCode.toUpperCase().split('_').slice(0, -1).join('_') || currentRequest.workflowCode.toUpperCase()
-    const workflowDocs = workflowDocuments[currentRequest.workflowCode.toUpperCase()] || workflowDocuments[baseCode]
+    // Get base workflow code
+    const workflowCode = currentRequest.workflowCode.toUpperCase()
+    const baseCode = workflowCode.split('_').slice(0, -1).join('_') || workflowCode
+    const workflowDocs = workflowDocuments[workflowCode] || workflowDocuments[baseCode]
+
+    let docs: DocumentRequirement[] = []
 
     if (workflowDocs && workflowDocs[subType]) {
-      return workflowDocs[subType]
+      docs = [...workflowDocs[subType]]
+    } else if (workflowDocs && workflowDocs['NUEVO']) {
+      docs = [...workflowDocs['NUEVO']]
+    } else {
+      // Default fallback
+      docs = [
+        { documentCode: 'dip', documentNameKey: 'document_types.dip', isRequired: true },
+        { documentCode: 'foto_carnet', documentNameKey: 'document_types.id_photo', isRequired: true },
+      ]
     }
 
-    // Default fallback
-    return [
-      { documentCode: 'dip', documentNameEs: 'Documento de Identidad Personal (DIP)', isRequired: true },
-      { documentCode: 'foto_carnet', documentNameEs: 'Fotografía tipo carnet', isRequired: true },
-    ]
+    // Add parental authorization for minors (passport workflows)
+    if (userIsMinor && workflowCode.includes('PASAPORTE')) {
+      docs.push({
+        documentCode: 'autorizacion_parental',
+        documentNameKey: 'document_types.parental_authorization',
+        isRequired: true,
+        instructionsKey: 'document_instructions.parental_authorization',
+        conditionType: 'IS_MINOR'
+      })
+    }
+
+    return docs
   }, [currentRequest, workflows])
 
   // Check if document is already uploaded
@@ -188,7 +212,7 @@ export default function DocumentsUploadPage() {
         setUploadingDocCode(null)
       }, 1000)
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : t('error_upload_failed') || 'Error al subir el documento')
+      setUploadError(err instanceof Error ? err.message : t('documents.upload_error'))
       setUploadProgress(0)
       setUploadingDocCode(null)
     }
@@ -258,7 +282,7 @@ export default function DocumentsUploadPage() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">
-              {t('upload_documents') || 'Subir Documentos'}
+              {t('upload_documents')}
             </h1>
             <p className="text-muted-foreground">
               {currentRequest.requestNumber} - {currentRequest.workflowCode}
@@ -266,7 +290,7 @@ export default function DocumentsUploadPage() {
           </div>
         </div>
         <Badge variant={allRequiredUploaded ? 'default' : 'secondary'}>
-          {uploadedCount} / {totalRequired} {t('required') || 'requeridos'}
+          {uploadedCount} / {totalRequired} {t('documents.required')}
         </Badge>
       </div>
 
@@ -275,7 +299,7 @@ export default function DocumentsUploadPage() {
         <CardContent className="pt-6">
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span>{t('upload_progress') || 'Progreso de carga'}</span>
+              <span>{t('upload_progress')}</span>
               <span>{Math.round((uploadedCount / Math.max(totalRequired, 1)) * 100)}%</span>
             </div>
             <Progress value={(uploadedCount / Math.max(totalRequired, 1)) * 100} className="h-2" />
@@ -287,9 +311,9 @@ export default function DocumentsUploadPage() {
       {currentRequest.subType && (
         <Alert>
           <FileText className="h-4 w-4" />
-          <AlertTitle>{t('sub_type') || 'Tipo de solicitud'}: {currentRequest.subType}</AlertTitle>
+          <AlertTitle>{t('sub_type')}: {t(`sub_types.${currentRequest.subType?.toLowerCase()}`) || currentRequest.subType}</AlertTitle>
           <AlertDescription>
-            {t('documents_for_subtype') || 'Los documentos requeridos dependen del tipo de solicitud seleccionado.'}
+            {t('documents_for_subtype')}
           </AlertDescription>
         </Alert>
       )}
@@ -327,16 +351,16 @@ export default function DocumentsUploadPage() {
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-medium">{doc.documentNameEs}</h3>
+                        <h3 className="font-medium">{t(doc.documentNameKey)}</h3>
                         {doc.isRequired && (
                           <Badge variant="outline" className="text-xs">
-                            {t('required') || 'Requerido'}
+                            {t('documents.required')}
                           </Badge>
                         )}
                       </div>
 
-                      {doc.instructionsEs && (
-                        <p className="text-sm text-muted-foreground mb-2">{doc.instructionsEs}</p>
+                      {doc.instructionsKey && (
+                        <p className="text-sm text-muted-foreground mb-2">{t(doc.instructionsKey)}</p>
                       )}
 
                       {isUploaded && uploadedDoc && (
@@ -351,7 +375,7 @@ export default function DocumentsUploadPage() {
                               className="text-blue-600 hover:underline flex items-center gap-1"
                             >
                               <ExternalLink className="h-3 w-3" />
-                              {t('view') || 'Ver'}
+                              {t('documents.preview')}
                             </a>
                           )}
                         </div>
@@ -360,14 +384,14 @@ export default function DocumentsUploadPage() {
                       {isCurrentlyUploading && (
                         <div className="mt-2 space-y-2">
                           <Progress value={uploadProgress} className="h-2" />
-                          <p className="text-sm text-muted-foreground">{t('uploading') || 'Subiendo...'} {uploadProgress}%</p>
+                          <p className="text-sm text-muted-foreground">{t('documents.uploading')} {uploadProgress}%</p>
                         </div>
                       )}
 
                       {justUploaded && !isCurrentlyUploading && (
                         <div className="mt-2 flex items-center gap-2 text-green-600">
                           <CheckCircle className="h-4 w-4" />
-                          <span className="text-sm">{t('upload_success') || 'Documento subido correctamente'}</span>
+                          <span className="text-sm">{t('documents.upload_success')}</span>
                         </div>
                       )}
                     </div>

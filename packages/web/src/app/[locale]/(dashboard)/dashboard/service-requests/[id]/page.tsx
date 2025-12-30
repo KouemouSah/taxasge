@@ -51,87 +51,87 @@ import {
 } from 'lucide-react'
 import { useServiceRequests } from '@/modules/service-requests'
 
-// Status configuration for visual styling
-const STATUS_CONFIG: Record<string, { color: string; icon: React.ElementType; message: string }> = {
+// Status configuration for visual styling (messages use translation keys)
+const STATUS_CONFIG: Record<string, { color: string; icon: React.ElementType; messageKey: string }> = {
   DRAFT: {
     color: 'bg-slate-500',
     icon: FileText,
-    message: 'Tu solicitud está en borrador. Completa los documentos requeridos para continuar.',
+    messageKey: 'status_messages.draft',
   },
   TIMBRES_PENDING: {
     color: 'bg-amber-500',
     icon: CreditCard,
-    message: 'Pago de timbres fiscales pendiente.',
+    messageKey: 'status_messages.timbres_pending',
   },
   TIMBRES_PAID: {
     color: 'bg-amber-600',
     icon: CheckCircle,
-    message: 'Timbres pagados. Puedes continuar con tu solicitud.',
+    messageKey: 'status_messages.timbres_paid',
   },
   SUBMITTED: {
     color: 'bg-blue-500',
     icon: Clock,
-    message: 'Tu solicitud ha sido enviada y está en espera de revisión.',
+    messageKey: 'status_messages.submitted',
   },
   DOCUMENTS_REQUIRED: {
     color: 'bg-orange-500',
     icon: AlertCircle,
-    message: 'Se requieren documentos adicionales. Por favor, sube los documentos faltantes.',
+    messageKey: 'status_messages.documents_required',
   },
   UNDER_REVIEW: {
     color: 'bg-indigo-500',
     icon: Eye,
-    message: 'Un agente está revisando tu solicitud.',
+    messageKey: 'status_messages.under_review',
   },
   DOSSIER_VALIDE: {
     color: 'bg-teal-500',
     icon: CheckCircle,
-    message: 'Tu dossier ha sido validado. Procede al pago.',
+    messageKey: 'status_messages.dossier_valide',
   },
   REJECTED: {
     color: 'bg-red-500',
     icon: XCircle,
-    message: 'Tu solicitud ha sido rechazada. Revisa los motivos abajo.',
+    messageKey: 'status_messages.rejected',
   },
   PAYMENT_PENDING: {
     color: 'bg-yellow-500',
     icon: CreditCard,
-    message: 'Pago pendiente. Completa el pago para continuar.',
+    messageKey: 'status_messages.payment_pending',
   },
   PAYMENT_PROCESSING: {
     color: 'bg-yellow-600',
     icon: Loader2,
-    message: 'Procesando tu pago. Por favor espera.',
+    messageKey: 'status_messages.payment_processing',
   },
   PAID: {
     color: 'bg-green-500',
     icon: CheckCircle,
-    message: 'Pago completado exitosamente.',
+    messageKey: 'status_messages.paid',
   },
   CITA_SCHEDULED: {
     color: 'bg-cyan-500',
     icon: CalendarCheck,
-    message: 'Tu cita ha sido programada. Revisa los detalles abajo.',
+    messageKey: 'status_messages.cita_scheduled',
   },
   IN_PROGRESS: {
     color: 'bg-blue-600',
     icon: Clock,
-    message: 'Tu solicitud está siendo procesada.',
+    messageKey: 'status_messages.in_progress',
   },
   COMPLETED: {
     color: 'bg-green-600',
     icon: CheckCircle,
-    message: '¡Felicidades! Tu solicitud ha sido completada.',
+    messageKey: 'status_messages.completed',
   },
   CANCELLED: {
     color: 'bg-gray-500',
     icon: XCircle,
-    message: 'Esta solicitud fue cancelada.',
+    messageKey: 'status_messages.cancelled',
   },
   EXPIRED: {
     color: 'bg-gray-600',
     icon: Clock,
-    message: 'Esta solicitud ha expirado.',
+    messageKey: 'status_messages.expired',
   },
 }
 
@@ -231,16 +231,16 @@ export default function ServiceRequestDetailPage() {
     }).format(amount)
   }
 
-  // Format date
+  // Format date as DD/MM/YY - HHhMM
   const formatDate = (dateString?: string): string => {
     if (!dateString) return '-'
-    return new Date(dateString).toLocaleDateString(locale, {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
+    const date = new Date(dateString)
+    const day = date.getDate().toString().padStart(2, '0')
+    const month = (date.getMonth() + 1).toString().padStart(2, '0')
+    const year = date.getFullYear().toString().slice(-2)
+    const hours = date.getHours().toString().padStart(2, '0')
+    const minutes = date.getMinutes().toString().padStart(2, '0')
+    return `${day}/${month}/${year} - ${hours}H${minutes}`
   }
 
   // Get workflow display name (translated)
@@ -310,9 +310,9 @@ export default function ServiceRequestDetailPage() {
         </Button>
         <Alert>
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>{t('no_requests_found') || 'Solicitud no encontrada'}</AlertTitle>
+          <AlertTitle>{t('no_requests_found')}</AlertTitle>
           <AlertDescription>
-            No se encontró la solicitud con ID: {requestId}
+            {t('request_not_found_id', { id: requestId })}
           </AlertDescription>
         </Alert>
       </div>
@@ -362,7 +362,7 @@ export default function ServiceRequestDetailPage() {
         <AlertTitle>
           {t(`status.${currentRequest.status.toLowerCase()}`) || 'Estado de tu solicitud'}
         </AlertTitle>
-        <AlertDescription>{statusConfig.message}</AlertDescription>
+        <AlertDescription>{t(statusConfig.messageKey)}</AlertDescription>
       </Alert>
 
       {/* Horizontal Progress Bar */}
@@ -500,13 +500,13 @@ export default function ServiceRequestDetailPage() {
               <div>
                 <CardTitle>{t('documents')}</CardTitle>
                 <CardDescription>
-                  {documents.length} documento(s) subido(s)
+                  {documents.length} {t('documents_uploaded')}
                 </CardDescription>
               </div>
               {['DRAFT', 'DOCUMENTS_REQUIRED'].includes(currentRequest.status) && (
                 <Button onClick={() => router.push(`/${locale}/dashboard/service-requests/${requestId}/documents`)}>
                   <Upload className="mr-2 h-4 w-4" />
-                  {t('upload') || 'Subir documentos'}
+                  {t('upload')}
                 </Button>
               )}
             </CardHeader>
@@ -514,7 +514,7 @@ export default function ServiceRequestDetailPage() {
               {documents.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>{t('no_documents') || 'No hay documentos subidos'}</p>
+                  <p>{t('documents.no_documents')}</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -569,7 +569,7 @@ export default function ServiceRequestDetailPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CreditCard className="h-5 w-5" />
-                {t('tariff') || 'Desglose de Pago'}
+                {t('tariff')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -577,7 +577,7 @@ export default function ServiceRequestDetailPage() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Tarifa base</span>
+                      <span className="text-muted-foreground">{t('payment.base_tariff')}</span>
                       <span className="font-medium">{formatAmount(tariff.baseAmount)}</span>
                     </div>
                     {tariff.additionalFees?.map((fee, index) => (
@@ -596,7 +596,7 @@ export default function ServiceRequestDetailPage() {
                   {['PAYMENT_PENDING', 'DOSSIER_VALIDE'].includes(currentRequest.status) && (
                     <Button className="w-full mt-4">
                       <CreditCard className="mr-2 h-4 w-4" />
-                      Proceder al pago
+                      {t('payment.pay_now')}
                     </Button>
                   )}
 

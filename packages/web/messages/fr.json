@@ -3258,7 +3258,7 @@
       "or_click": "ou cliquez pour sélectionner",
       "max_size": "Taille maximale",
       "allowed_formats": "Formats autorisés",
-      "uploading": "Téléchargement en cours...",
+      "uploading": "Telechargement en cours...",
       "upload_success": "Document téléchargé avec succès",
       "upload_error": "Erreur lors du téléchargement",
       "remove": "Supprimer",
@@ -3271,7 +3271,7 @@
       "completed": "Terminé",
       "failed": "Échoué",
       "extraction_status": "Statut d'extraction",
-      "no_documents": "Aucun document téléchargé",
+      "no_documents": "Aucun document telecharge",
       "file_too_large": "Le fichier est trop volumineux",
       "invalid_format": "Format de fichier non valide"
     },
@@ -3300,12 +3300,14 @@
       "mobile_money": "Mobile Money",
       "bank_transfer": "Virement bancaire",
       "cash": "Espèces",
-      "pay_now": "Payer maintenant",
+      "pay_now": "Proceder au paiement",
       "payment_pending": "Paiement en attente",
       "payment_confirmed": "Paiement confirmé",
       "payment_failed": "Paiement échoué",
       "receipt": "Reçu",
-      "reference": "Référence"
+      "reference": "Référence",
+      "base_tariff": "Tarif de base",
+      "total": "Total"
     },
     "appointment": {
       "title": "Rendez-vous",
@@ -3510,7 +3512,7 @@
       "payment": "Paiement",
       "completed": "Terminé"
     },
-    "upload_documents": "Télécharger des Documents",
+    "upload_documents": "Télécharger les documents",
     "upload_progress": "Progression du téléchargement",
     "documents_for_subtype": "Les documents requis dépendent du type de demande sélectionné.",
     "back_to_request": "Retour à la demande",
@@ -3525,6 +3527,60 @@
     "file": "Fichier",
     "upload_success": "Document téléchargé avec succès",
     "continue_request": "Continuer la demande",
-    "view": "Voir"
+    "view": "Voir",
+    "status_messages": {
+      "draft": "Votre demande est en brouillon. Complétez les documents requis pour continuer.",
+      "timbres_pending": "Paiement des timbres fiscaux en attente.",
+      "timbres_paid": "Timbres payés. Vous pouvez continuer avec votre demande.",
+      "submitted": "Votre demande a été soumise et est en attente de révision.",
+      "documents_required": "Documents supplémentaires requis. Veuillez télécharger les documents manquants.",
+      "under_review": "Un agent examine votre demande.",
+      "dossier_valide": "Votre dossier a été validé. Procédez au paiement.",
+      "rejected": "Votre demande a été rejetée. Consultez les motifs ci-dessous.",
+      "payment_pending": "Paiement en attente. Complétez le paiement pour continuer.",
+      "paid": "Paiement effectué. Votre demande est en cours de traitement.",
+      "cita_scheduled": "Rendez-vous programmé. Consultez les détails de votre rendez-vous.",
+      "in_progress": "Votre demande est en cours de traitement.",
+      "completed": "Terminé ! Votre document est prêt à être retiré.",
+      "payment_processing": "Paiement en cours de traitement. Veuillez patienter.",
+      "cancelled": "Cette demande a ete annulee.",
+      "expired": "Cette demande a expire."
+    },
+    "document_types": {
+      "dip": "Document d'Identité Personnelle (DIP)",
+      "birth_certificate": "Certificat de Naissance",
+      "passport_photos": "Photos d'identité format passeport (x2)",
+      "old_passport": "Ancien Passeport",
+      "damaged_passport": "Passeport Endommagé",
+      "police_report": "Déclaration de Police",
+      "parental_authorization": "Autorisation Parentale",
+      "valid_passport": "Passeport Valide",
+      "id_photo": "Photo d'identité",
+      "work_contract": "Contrat de Travail",
+      "current_residence_card": "Carte de Résidence Actuelle"
+    },
+    "document_instructions": {
+      "dip": "Scannez les deux côtés de votre DIP",
+      "birth_certificate": "Certificat littéral d'inscription de naissance",
+      "passport_photos": "2 photos de 35x45mm, fond blanc, visage visible",
+      "old_passport": "Scannez la page de données de votre passeport actuel",
+      "damaged_passport": "Scannez la page de données de votre passeport endommagé",
+      "police_report_loss": "Déclaration de perte de la Police Nationale",
+      "police_report_theft": "Déclaration de vol de la Police Nationale",
+      "parental_authorization": "Autorisation signée par les deux parents ou le tuteur légal"
+    },
+    "sub_type": "Type de demande",
+    "sub_types": {
+      "nuevo": "Nouvelle demande",
+      "renovacion": "Renouvellement",
+      "perdida": "Perte",
+      "robo": "Vol",
+      "deterioro": "Détérioration",
+      "expedicion": "Première demande",
+      "duplicado": "Duplicata"
+    },
+    "request_not_found_id": "La demande avec l'ID {id} n'a pas été trouvée",
+    "upload": "Télécharger",
+    "documents_uploaded": "document(s) téléchargé(s)"
   }
 }

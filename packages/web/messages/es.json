@@ -3238,7 +3238,7 @@
     "search_placeholder": "Buscar por número o nombre...",
     "filter_status": "Filtrar por estado",
     "all_statuses": "Todos los estados",
-    "no_requests_found": "No se encontraron solicitudes",
+    "no_requests_found": "Solicitud no encontrada",
     "request_number": "Numero de Solicitud",
     "applicant": "Solicitante",
     "status": {
@@ -3270,7 +3270,11 @@
       "expired": "Expirada",
       "under_review": "En Revisión"
     },
-    "documents": "Documentos",
+    "documents": {
+      "uploading": "Subiendo...",
+      "no_documents": "No hay documentos subidos",
+      "required": "Requerido"
+    },
     "date": "Fecha",
     "showing_of": "Mostrando {start}-{end} de {total}",
     "page_of": "Página {page} de {total}",
@@ -3286,7 +3290,7 @@
     "name": "Nombre",
     "email": "Correo",
     "workflow": "Servicio",
-    "sub_type": "Subtipo",
+    "sub_type": "Tipo de solicitud",
     "created": "Creada",
     "tariff": "Tarifa",
     "form_data": "Datos del Formulario",
@@ -3418,6 +3422,63 @@
     "file": "Archivo",
     "upload_success": "Documento subido correctamente",
     "continue_request": "Continuar solicitud",
-    "view": "Ver"
+    "view": "Ver",
+    "status_messages": {
+      "draft": "Tu solicitud está en borrador. Completa los documentos requeridos para continuar.",
+      "timbres_pending": "Pago de timbres fiscales pendiente.",
+      "timbres_paid": "Timbres pagados. Puedes continuar con tu solicitud.",
+      "submitted": "Tu solicitud ha sido enviada y está en espera de revisión.",
+      "documents_required": "Se requieren documentos adicionales. Por favor, sube los documentos faltantes.",
+      "under_review": "Un agente está revisando tu solicitud.",
+      "dossier_valide": "Tu dossier ha sido validado. Procede al pago.",
+      "rejected": "Tu solicitud ha sido rechazada. Revisa los motivos abajo.",
+      "payment_pending": "Pago pendiente. Completa el pago para continuar.",
+      "paid": "Pago completado. Tu solicitud está en proceso.",
+      "cita_scheduled": "Cita programada. Revisa los detalles de tu cita.",
+      "in_progress": "Tu solicitud está siendo procesada.",
+      "completed": "¡Completado! Tu documento está listo para recoger.",
+      "payment_processing": "Procesando tu pago. Por favor espera.",
+      "cancelled": "Esta solicitud fue cancelada.",
+      "expired": "Esta solicitud ha expirado."
+    },
+    "document_types": {
+      "dip": "Documento de Identidad Personal (DIP)",
+      "birth_certificate": "Certificado de Nacimiento",
+      "passport_photos": "Fotografías tipo pasaporte (x2)",
+      "old_passport": "Pasaporte Antiguo",
+      "damaged_passport": "Pasaporte Deteriorado",
+      "police_report": "Denuncia Policial",
+      "parental_authorization": "Autorización Parental",
+      "valid_passport": "Pasaporte Válido",
+      "id_photo": "Fotografía tipo carnet",
+      "work_contract": "Contrato de Trabajo",
+      "current_residence_card": "Carnet de Residencia Actual"
+    },
+    "document_instructions": {
+      "dip": "Escanee ambas caras de su DIP",
+      "birth_certificate": "Certificación literal de inscripción de nacimiento",
+      "passport_photos": "2 fotos de 35x45mm, fondo blanco, rostro visible",
+      "old_passport": "Escanee la página de datos de su pasaporte actual",
+      "damaged_passport": "Escanee la página de datos de su pasaporte deteriorado",
+      "police_report_loss": "Denuncia de pérdida de la Policía Nacional",
+      "police_report_theft": "Denuncia de robo de la Policía Nacional",
+      "parental_authorization": "Autorización firmada por ambos padres o tutor legal"
+    },
+    "sub_types": {
+      "nuevo": "Nueva solicitud",
+      "renovacion": "Renovación",
+      "perdida": "Pérdida",
+      "robo": "Robo",
+      "deterioro": "Deterioro",
+      "expedicion": "Primera expedición",
+      "duplicado": "Duplicado"
+    },
+    "request_not_found_id": "No se encontró la solicitud con ID: {id}",
+    "documents_uploaded": "documento(s) subido(s)",
+    "payment": {
+      "pay_now": "Proceder al pago",
+      "base_tariff": "Tarifa base",
+      "total": "Total"
+    }
   }
 }
