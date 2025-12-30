@@ -267,8 +267,12 @@ export default function WorkflowDetailPage() {
   const [isAddingDelayRule, setIsAddingDelayRule] = useState(false)
   const [editingDelayRule, setEditingDelayRule] = useState<string | null>(null)
   const [deleteDelayRuleId, setDeleteDelayRuleId] = useState<string | null>(null)
-  const [delayRuleForm, setDelayRuleForm] = useState({
-    priority: 'NORMAL' as const,
+  const [delayRuleForm, setDelayRuleForm] = useState<{
+    priority: AppointmentPriority
+    delay_business_days: number
+    is_active: boolean
+  }>({
+    priority: 'NORMAL',
     delay_business_days: 3,
     is_active: true,
   })
