@@ -3499,6 +3499,8 @@
       "funcion_publica_renovacion": "Renouvellement Carte de Fonctionnaire",
       "contrato_nuevo": "Nouveau Contrat de Travail",
       "contrato_renovacion": "Renouvellement de Contrat"
-    }
+    },
+    "overview": "Aperçu",
+    "history": "Historique"
   }
 }

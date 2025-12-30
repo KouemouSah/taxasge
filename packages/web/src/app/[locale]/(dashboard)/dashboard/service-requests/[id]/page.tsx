@@ -5,7 +5,7 @@
  * Shows request details, documents, status timeline, and next actions
  */
 
-import { useEffect } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
@@ -15,6 +15,23 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/separator'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Progress } from '@/components/ui/progress' 
 import {
   ArrowLeft,
   FileText,
@@ -135,7 +152,54 @@ export default function ServiceRequestDetailPage() {
     loadDocuments,
     calculateTariff,
     clearError,
+    uploadDocument,
   } = useServiceRequests()
+
+  // State for upload dialog
+  const [showUploadDialog, setShowUploadDialog] = useState(false)
+  const [uploadingDocument, setUploadingDocument] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [selectedDocType, setSelectedDocType] = useState('')
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [activeTab, setActiveTab] = useState('overview')
+
+  // Handle file upload
+  const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file || !selectedDocType) return
+
+    setUploadingDocument(true)
+    setUploadError(null)
+    setUploadProgress(10)
+
+    try {
+      // Simulate progress
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => Math.min(prev + 20, 90))
+      }, 200)
+
+      await uploadDocument(selectedDocType, file)
+      
+      clearInterval(progressInterval)
+      setUploadProgress(100)
+      
+      // Refresh documents list
+      await loadDocuments()
+      
+      // Close dialog and reset state
+      setTimeout(() => {
+        setShowUploadDialog(false)
+        setSelectedDocType('')
+        setUploadProgress(0)
+        if (fileInputRef.current) fileInputRef.current.value = ''
+      }, 500)
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Error uploading document')
+    } finally {
+      setUploadingDocument(false)
+    }
+  }, [selectedDocType, uploadDocument, loadDocuments])
 
   // Load request on mount
   useEffect(() => {
@@ -302,7 +366,7 @@ export default function ServiceRequestDetailPage() {
       </Alert>
 
       {/* Main Content Tabs */}
-      <Tabs defaultValue="overview" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">{t('overview')}</TabsTrigger>
           <TabsTrigger value="documents">{t('documents')}</TabsTrigger>
@@ -430,11 +494,9 @@ export default function ServiceRequestDetailPage() {
                 </CardDescription>
               </div>
               {['DRAFT', 'DOCUMENTS_REQUIRED'].includes(currentRequest.status) && (
-                <Button asChild>
-                  <Link href={`/${locale}/dashboard/service-requests/${requestId}/upload`}>
-                    <Upload className="mr-2 h-4 w-4" />
-                    {t('upload') || 'Subir documento'}
-                  </Link>
+                <Button onClick={() => setShowUploadDialog(true)}>
+                  <Upload className="mr-2 h-4 w-4" />
+                  {t('upload') || 'Subir documento'}
                 </Button>
               )}
             </CardHeader>
@@ -601,13 +663,93 @@ export default function ServiceRequestDetailPage() {
           </Link>
         </Button>
         {['DRAFT', 'DOCUMENTS_REQUIRED'].includes(currentRequest.status) && (
-          <Button asChild>
-            <Link href={`/${locale}/dashboard/service-requests/${requestId}/continue`}>
-              Continuar solicitud
-            </Link>
+          <Button onClick={() => {
+            setActiveTab('documents')
+            setShowUploadDialog(true)
+          }}>
+            <Upload className="mr-2 h-4 w-4" />
+            {t('continue_request') || 'Continuar solicitud'}
           </Button>
         )}
       </div>
+
+      {/* Upload Document Dialog */}
+      <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5" />
+              {t('upload_document') || 'Subir Documento'}
+            </DialogTitle>
+            <DialogDescription>
+              {t('upload_document_description') || 'Selecciona el tipo de documento y sube el archivo'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {/* Document type selection */}
+            <div className="space-y-2">
+              <Label htmlFor="docType">{t('document_type') || 'Tipo de documento'}</Label>
+              <Select value={selectedDocType} onValueChange={setSelectedDocType}>
+                <SelectTrigger id="docType">
+                  <SelectValue placeholder={t('select_document_type') || 'Seleccionar tipo...'} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="dip_gq">DIP Guinea Ecuatorial</SelectItem>
+                  <SelectItem value="pasaporte_gq">Pasaporte GQ</SelectItem>
+                  <SelectItem value="partida_nacimiento">Partida de Nacimiento</SelectItem>
+                  <SelectItem value="certificado_residencia">Certificado de Residencia</SelectItem>
+                  <SelectItem value="foto_carnet">Foto Carnet</SelectItem>
+                  <SelectItem value="otros">Otros</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* File input */}
+            <div className="space-y-2">
+              <Label htmlFor="file">{t('file') || 'Archivo'}</Label>
+              <Input
+                id="file"
+                type="file"
+                ref={fileInputRef}
+                accept=".pdf,.jpg,.jpeg,.png"
+                onChange={handleFileUpload}
+                disabled={!selectedDocType || uploadingDocument}
+              />
+              <p className="text-xs text-muted-foreground">
+                PDF, JPG o PNG. Max 5MB.
+              </p>
+            </div>
+
+            {/* Progress bar */}
+            {uploadingDocument && (
+              <div className="space-y-2">
+                <Progress value={uploadProgress} className="h-2" />
+                <p className="text-sm text-center text-muted-foreground">
+                  {t('uploading') || 'Subiendo...'} {uploadProgress}%
+                </p>
+              </div>
+            )}
+
+            {/* Error message */}
+            {uploadError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{uploadError}</AlertDescription>
+              </Alert>
+            )}
+
+            {/* Success message */}
+            {uploadProgress === 100 && !uploadingDocument && (
+              <Alert className="border-green-500 bg-green-50">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <AlertDescription className="text-green-700">
+                  {t('upload_success') || 'Documento subido correctamente'}
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

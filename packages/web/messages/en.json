@@ -3478,7 +3478,7 @@
     "request_number": "Request Number",
     "workflow": "Service",
     "created": "Created",
-    "tariff": "Fee",
+    "tariff": "Tariff",
     "filter_status": "Filter by status",
     "workflows": {
       "pasaporte_nuevo": "New Passport",
@@ -3499,6 +3499,8 @@
       "funcion_publica_renovacion": "Civil Servant Card Renewal",
       "contrato_nuevo": "New Employment Contract",
       "contrato_renovacion": "Contract Renewal"
-    }
+    },
+    "overview": "Overview",
+    "history": "History"
   }
 }
