@@ -118,10 +118,9 @@ export default function WorkflowDetailPage() {
   // Detect create mode
   const isCreateMode = workflowCode === 'new'
 
-  // Workflow data (skip fetch in create mode)
+  // Workflow data (skip fetch in create mode - hook has enabled: !!code)
   const { data: workflow, isLoading: loadingWorkflow, error: workflowError, refetch } = useWorkflow(
-    isCreateMode ? '' : workflowCode,
-    { enabled: !isCreateMode }
+    isCreateMode ? '' : workflowCode
   )
   const { data: allWorkflows } = useWorkflows()
   const createWorkflowMutation = useCreateWorkflow()
