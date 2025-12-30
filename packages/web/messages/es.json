@@ -3394,6 +3394,30 @@
       "funcion_publica_renovacion": "Renovacion de Carnet de Funcionario",
       "contrato_nuevo": "Nuevo Contrato Laboral",
       "contrato_renovacion": "Renovacion de Contrato"
-    }
+    },
+    "progress": {
+      "draft": "Borrador",
+      "documents": "Documentos",
+      "submitted": "Enviado",
+      "review": "Revisión",
+      "payment": "Pago",
+      "completed": "Completado"
+    },
+    "upload_documents": "Subir Documentos",
+    "upload_progress": "Progreso de carga",
+    "documents_for_subtype": "Los documentos requeridos dependen del tipo de solicitud seleccionado.",
+    "back_to_request": "Volver a la solicitud",
+    "continue": "Continuar",
+    "replace": "Reemplazar",
+    "accepted_formats": "Formatos aceptados",
+    "max_size": "Tamaño máximo",
+    "upload_document": "Subir Documento",
+    "upload_document_description": "Selecciona el tipo de documento y sube el archivo",
+    "document_type": "Tipo de documento",
+    "select_document_type": "Seleccionar tipo...",
+    "file": "Archivo",
+    "upload_success": "Documento subido correctamente",
+    "continue_request": "Continuar solicitud",
+    "view": "Ver"
   }
 }

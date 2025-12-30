@@ -3501,6 +3501,30 @@
       "contrato_renovacion": "Renouvellement de Contrat"
     },
     "overview": "Aperçu",
-    "history": "Historique"
+    "history": "Historique",
+    "progress": {
+      "draft": "Brouillon",
+      "documents": "Documents",
+      "submitted": "Soumis",
+      "review": "Révision",
+      "payment": "Paiement",
+      "completed": "Terminé"
+    },
+    "upload_documents": "Télécharger des Documents",
+    "upload_progress": "Progression du téléchargement",
+    "documents_for_subtype": "Les documents requis dépendent du type de demande sélectionné.",
+    "back_to_request": "Retour à la demande",
+    "continue": "Continuer",
+    "replace": "Remplacer",
+    "accepted_formats": "Formats acceptés",
+    "max_size": "Taille maximale",
+    "upload_document": "Télécharger un Document",
+    "upload_document_description": "Sélectionnez le type de document et téléchargez le fichier",
+    "document_type": "Type de document",
+    "select_document_type": "Sélectionner le type...",
+    "file": "Fichier",
+    "upload_success": "Document téléchargé avec succès",
+    "continue_request": "Continuer la demande",
+    "view": "Voir"
   }
 }

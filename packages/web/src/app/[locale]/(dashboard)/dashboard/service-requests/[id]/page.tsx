@@ -365,6 +365,60 @@ export default function ServiceRequestDetailPage() {
         <AlertDescription>{statusConfig.message}</AlertDescription>
       </Alert>
 
+      {/* Horizontal Progress Bar */}
+      <Card className="p-4">
+        <div className="flex items-center justify-between">
+          {[
+            { key: 'DRAFT', label: t('progress.draft') || 'Borrador' },
+            { key: 'DOCUMENTS', label: t('progress.documents') || 'Documentos' },
+            { key: 'SUBMITTED', label: t('progress.submitted') || 'Enviado' },
+            { key: 'REVIEW', label: t('progress.review') || 'Revisión' },
+            { key: 'PAYMENT', label: t('progress.payment') || 'Pago' },
+            { key: 'COMPLETED', label: t('progress.completed') || 'Completado' },
+          ].map((step, index, arr) => {
+            const statusOrder = ['DRAFT', 'DOCUMENTS_REQUIRED', 'SUBMITTED', 'UNDER_REVIEW', 'DOSSIER_VALIDE', 'PAYMENT_PENDING', 'PAID', 'CITA_SCHEDULED', 'IN_PROGRESS', 'COMPLETED']
+            const stepToStatus: Record<string, string[]> = {
+              'DRAFT': ['DRAFT'],
+              'DOCUMENTS': ['DOCUMENTS_REQUIRED'],
+              'SUBMITTED': ['SUBMITTED'],
+              'REVIEW': ['UNDER_REVIEW', 'DOSSIER_VALIDE'],
+              'PAYMENT': ['PAYMENT_PENDING', 'PAID'],
+              'COMPLETED': ['CITA_SCHEDULED', 'IN_PROGRESS', 'COMPLETED'],
+            }
+            const currentIndex = statusOrder.indexOf(currentRequest.status)
+            const stepStatuses = stepToStatus[step.key]
+            const stepMaxIndex = Math.max(...stepStatuses.map(s => statusOrder.indexOf(s)))
+            const isActive = stepStatuses.includes(currentRequest.status)
+            const isDone = currentIndex > stepMaxIndex
+            const isCurrent = isActive && !isDone
+
+            return (
+              <div key={step.key} className="flex items-center flex-1">
+                <div className="flex flex-col items-center">
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                      isDone
+                        ? 'bg-green-500 text-white'
+                        : isCurrent
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    {isDone ? <CheckCircle className="h-4 w-4" /> : index + 1}
+                  </div>
+                  <span className={`text-xs mt-1 text-center max-w-[80px] ${isDone ? 'text-green-700 font-medium' : isCurrent ? 'text-blue-700 font-medium' : 'text-muted-foreground'}`}>
+                    {step.label}
+                  </span>
+                </div>
+                {index < arr.length - 1 && (
+                  <div className={`flex-1 h-0.5 mx-2 ${isDone ? 'bg-green-500' : 'bg-muted'}`} />
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </Card>
+
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
@@ -378,7 +432,7 @@ export default function ServiceRequestDetailPage() {
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4">
             {/* Request Info */}
             <Card>
               <CardHeader>
@@ -435,51 +489,7 @@ export default function ServiceRequestDetailPage() {
               </CardContent>
             </Card>
 
-            {/* Timeline / Progress */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-5 w-5" />
-                  {t('history') || 'Progreso'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {/* Simple timeline based on status */}
-                  {[
-                    { status: 'DRAFT', label: 'Borrador creado', done: true },
-                    { status: 'SUBMITTED', label: 'Solicitud enviada', done: ['SUBMITTED', 'UNDER_REVIEW', 'DOSSIER_VALIDE', 'PAYMENT_PENDING', 'PAID', 'CITA_SCHEDULED', 'IN_PROGRESS', 'COMPLETED'].includes(currentRequest.status) },
-                    { status: 'UNDER_REVIEW', label: 'En revisión', done: ['DOSSIER_VALIDE', 'PAYMENT_PENDING', 'PAID', 'CITA_SCHEDULED', 'IN_PROGRESS', 'COMPLETED'].includes(currentRequest.status) },
-                    { status: 'DOSSIER_VALIDE', label: 'Dossier validado', done: ['DOSSIER_VALIDE', 'PAYMENT_PENDING', 'PAID', 'CITA_SCHEDULED', 'IN_PROGRESS', 'COMPLETED'].includes(currentRequest.status) },
-                    { status: 'PAID', label: 'Pago completado', done: ['PAID', 'CITA_SCHEDULED', 'IN_PROGRESS', 'COMPLETED'].includes(currentRequest.status) },
-                    { status: 'COMPLETED', label: 'Completado', done: currentRequest.status === 'COMPLETED' },
-                  ].map((step, index) => (
-                    <div key={step.status} className="flex items-center gap-3">
-                      <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                          step.done
-                            ? 'bg-green-500 text-white'
-                            : currentRequest.status === step.status
-                              ? 'bg-blue-500 text-white'
-                              : 'bg-muted text-muted-foreground'
-                        }`}
-                      >
-                        {step.done ? (
-                          <CheckCircle className="h-4 w-4" />
-                        ) : (
-                          <span>{index + 1}</span>
-                        )}
-                      </div>
-                      <div>
-                        <p className={`font-medium ${step.done ? 'text-green-700' : ''}`}>
-                          {step.label}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+
           </div>
         </TabsContent>
 
@@ -494,9 +504,9 @@ export default function ServiceRequestDetailPage() {
                 </CardDescription>
               </div>
               {['DRAFT', 'DOCUMENTS_REQUIRED'].includes(currentRequest.status) && (
-                <Button onClick={() => setShowUploadDialog(true)}>
+                <Button onClick={() => router.push(`/${locale}/dashboard/service-requests/${requestId}/documents`)}>
                   <Upload className="mr-2 h-4 w-4" />
-                  {t('upload') || 'Subir documento'}
+                  {t('upload') || 'Subir documentos'}
                 </Button>
               )}
             </CardHeader>
@@ -663,10 +673,7 @@ export default function ServiceRequestDetailPage() {
           </Link>
         </Button>
         {['DRAFT', 'DOCUMENTS_REQUIRED'].includes(currentRequest.status) && (
-          <Button onClick={() => {
-            setActiveTab('documents')
-            setShowUploadDialog(true)
-          }}>
+          <Button onClick={() => router.push(`/${locale}/dashboard/service-requests/${requestId}/documents`)}>
             <Upload className="mr-2 h-4 w-4" />
             {t('continue_request') || 'Continuar solicitud'}
           </Button>
