@@ -12,6 +12,7 @@ WORKDIR /app
 
 # Install system dependencies for building Python packages
 # Includes cairo dev libs for xhtml2pdf/pycairo PDF generation
+# Note: libgdk-pixbuf-2.0-dev (with dashes) for Debian Trixie
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
@@ -19,8 +20,9 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     libcairo2-dev \
     libpango1.0-dev \
-    libgdk-pixbuf2.0-dev \
+    libgdk-pixbuf-2.0-dev \
     libffi-dev \
+    pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better layer caching
@@ -45,7 +47,7 @@ WORKDIR /app
 # - tesseract-ocr-fra: French language data (secondary)
 # - tesseract-ocr-eng: English language data (fallback)
 # - poppler-utils: PDF rendering utilities (required by pdf2image)
-# - libcairo2, libpango*, libgdk-pixbuf2.0-0: Cairo runtime for PDF generation
+# - libcairo2, libpango*, libgdk-pixbuf-2.0-0: Cairo runtime for PDF generation
 RUN apt-get update && apt-get install -y \
     libpq5 \
     tesseract-ocr \
@@ -56,7 +58,7 @@ RUN apt-get update && apt-get install -y \
     libcairo2 \
     libpango-1.0-0 \
     libpangocairo-1.0-0 \
-    libgdk-pixbuf2.0-0 \
+    libgdk-pixbuf-2.0-0 \
     shared-mime-info \
     && rm -rf /var/lib/apt/lists/*
 
