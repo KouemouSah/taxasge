@@ -13,7 +13,7 @@
  * Fallback: Submit without appointment if no slots available
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   MapPin,
   Calendar,
@@ -241,7 +241,7 @@ export function AppointmentSelection({
 
   // Slots state
   const [slots, setSlots] = useState<AvailableSlot[]>([])
-  const [hasAvailability, setHasAvailability] = useState(true)
+  const [_hasAvailability, setHasAvailability] = useState(true)
   const [isLoadingSlots, setIsLoadingSlots] = useState(false)
 
   // Hold state
