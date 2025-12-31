@@ -6,8 +6,7 @@
  * This is the "formulaire récapitulatif" that citizens see before final submission
  */
 
-import { useState, useCallback, useMemo } from 'react'
-import { useTranslations } from 'next-intl'
+import { useState, useMemo } from 'react'
 import {
   CheckCircle,
   AlertCircle,
@@ -93,8 +92,6 @@ export function CitizenSummaryForm({
   isSubmitting = false,
   locale = 'es',
 }: CitizenSummaryFormProps) {
-  const t = useTranslations('service_requests')
-
   // Confirmation checkbox state
   const [isConfirmed, setIsConfirmed] = useState(false)
 

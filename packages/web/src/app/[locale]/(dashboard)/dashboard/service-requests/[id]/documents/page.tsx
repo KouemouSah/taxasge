@@ -23,11 +23,9 @@ import {
   Loader2,
   ExternalLink,
   ArrowRight,
-  Eye,
 } from 'lucide-react'
 import { useServiceRequests } from '@/modules/service-requests'
 import { DocumentPreviewDialog } from '@/modules/service-requests/components'
-import type { DocumentExtractionPreview } from '@/modules/service-requests/types'
 // WorkflowConfig import removed - not needed with simplified logic
 
 // Document requirement interface matching workflow
@@ -64,12 +62,12 @@ export default function DocumentsUploadPage() {
     currentRequest,
     documents,
     isLoading,
-    isSaving,
+    isSaving: _isSaving,
     error,
     loadRequest,
     loadDocuments,
     loadWorkflows,
-    uploadDocument, // Legacy direct upload (kept as fallback)
+    uploadDocument: _uploadDocument, // Legacy direct upload (kept as fallback)
     previewDocument, // NEW: Two-step preview flow
     validateDocument, // NEW: Validate and save after preview
     currentPreview,

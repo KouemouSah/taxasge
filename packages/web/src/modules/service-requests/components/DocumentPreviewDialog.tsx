@@ -7,7 +7,6 @@
  */
 
 import { useState, useCallback, useMemo } from 'react'
-import { useTranslations } from 'next-intl'
 import {
   CheckCircle,
   AlertCircle,
@@ -34,7 +33,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -224,8 +222,6 @@ export function DocumentPreviewDialog({
   isConfirming = false,
   locale = 'es',
 }: DocumentPreviewDialogProps) {
-  const t = useTranslations('service_requests')
-
   // Editable data state
   const [editedData, setEditedData] = useState<Record<string, unknown>>({})
   const [editingField, setEditingField] = useState<string | null>(null)
