@@ -628,13 +628,16 @@ try:
     from app.modules.service_requests.api import router as service_requests_router
     from app.modules.service_requests.api import agent_router as service_requests_agent_router
     from app.modules.service_requests.api import admin_router as service_requests_admin_router
+    from app.modules.service_requests.api.appointment_routes import router as service_requests_appointment_router
     app.include_router(service_requests_router, prefix="/api/v1", tags=["service-requests"])
     app.include_router(service_requests_agent_router, prefix="/api/v1", tags=["service-requests-agent"])
     app.include_router(service_requests_admin_router, prefix="/api/v1", tags=["service-requests-admin"])
+    app.include_router(service_requests_appointment_router, prefix="/api/v1", tags=["service-requests-appointments"])
     routers_loaded.append("service_requests")
     routers_loaded.append("service_requests_agent")
     routers_loaded.append("service_requests_admin")
-    logger.info("✅ Service Requests router loaded (citizen, agent, admin)")
+    routers_loaded.append("service_requests_appointments")
+    logger.info("✅ Service Requests router loaded (citizen, agent, admin, appointments)")
 except Exception as e:
     logger.error(f"❌ Service Requests router failed: {e}")
     logger.error(traceback.format_exc())
