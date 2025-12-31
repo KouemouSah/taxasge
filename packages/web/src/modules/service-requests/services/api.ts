@@ -107,12 +107,16 @@ function transformWorkflow(backend: BackendWorkflow): WorkflowConfig {
 }
 
 function transformServiceRequest(backend: BackendServiceRequest): ServiceRequest {
+  // CRITICAL: sub_type comes from form_data (NUEVO/PERDIDA/ROBO/DETERIORO)
+  // solicitud_type is the enum (expedicion/renovacion/duplicado)
+  // Workflow-specific logic (like document requirements) needs the original sub_type
+  const subType = (backend.form_data?.sub_type as string) || backend.solicitud_type
   return {
     id: backend.id,
     requestNumber: backend.reference,
     userId: backend.user_id,
     workflowCode: backend.workflow_code,
-    subType: backend.solicitud_type,
+    subType,
     status: backend.status as ServiceRequest['status'],
     currentStep: backend.current_step || 1,
     formData: backend.form_data || {},
@@ -264,7 +268,13 @@ class ServiceRequestsApiClient {
     const backendData = {
       workflow_code: data.workflowCode,
       solicitud_type: mapSubTypeToSolicitudType(data.subType),
-      form_data: data.formData || {},
+      form_data: {
+        ...(data.formData || {}),
+        // CRITICAL: Preserve original sub_type for workflow engine
+        // workflow_engine.py reads form_data.sub_type or form_data.tipo
+        // Required for pasaporte_workflow document requirements (NUEVO/PERDIDA/ROBO/etc.)
+        sub_type: data.subType?.toUpperCase() || 'NUEVO',
+      },
     }
     // Backend returns snake_case, transform to camelCase
     const backendRequest = await this.request<BackendServiceRequest>('/', {

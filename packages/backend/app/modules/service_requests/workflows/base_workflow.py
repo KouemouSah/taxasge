@@ -371,9 +371,10 @@ class BaseWorkflow(ABC):
             is_inherited=True
         ))
 
-        # Step 3: Form Review (pre-filled from extraction)
+        # Step 4: Form Review (pre-filled from extraction)
+        # Note: Step 3 reserved for workflow-specific uploads (photos, etc.)
         self._steps.append(WorkflowStep(
-            step_number=3,
+            step_number=4,
             step_id="review_form",
             step_type=StepType.FORM_REVIEW,
             title_es="Verificar Datos",
@@ -381,9 +382,9 @@ class BaseWorkflow(ABC):
             is_inherited=True
         ))
 
-        # Step 4: Validation
+        # Step 5: Validation
         self._steps.append(WorkflowStep(
-            step_number=4,
+            step_number=5,
             step_id="validation",
             step_type=StepType.VALIDATION,
             title_es="Validaciones",

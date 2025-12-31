@@ -112,13 +112,72 @@ const CATEGORY_CONFIG: Record<
 }
 
 // Sub-type labels
-const SUB_TYPE_LABELS: Record<string, { es: string; fr: string; en: string }> = {
-  expedicion: { es: 'Nueva Expedicion', fr: 'Nouvelle Emission', en: 'New Issuance' },
-  renovacion: { es: 'Renovacion', fr: 'Renouvellement', en: 'Renewal' },
-  duplicado: { es: 'Duplicado', fr: 'Duplicata', en: 'Duplicate' },
-  EXPEDICION: { es: 'Nueva Expedicion', fr: 'Nouvelle Emission', en: 'New Issuance' },
-  RENOVACION: { es: 'Renovacion', fr: 'Renouvellement', en: 'Renewal' },
-  DUPLICADO: { es: 'Duplicado', fr: 'Duplicata', en: 'Duplicate' },
+// Sub-type labels including passport-specific types (NUEVO, PERDIDA, ROBO, DETERIORO)
+// These must match pasaporte_workflow.py allowed_sub_types
+const SUB_TYPE_LABELS: Record<string, { es: string; fr: string; en: string; desc_es: string; desc_fr: string; desc_en: string }> = {
+  // Generic types (used by SolicitudType enum)
+  expedicion: {
+    es: 'Nueva Expedicion', fr: 'Nouvelle Emission', en: 'New Issuance',
+    desc_es: 'Primera vez que solicitas este documento',
+    desc_fr: 'Premiere demande de ce document',
+    desc_en: 'First time requesting this document'
+  },
+  renovacion: {
+    es: 'Renovacion', fr: 'Renouvellement', en: 'Renewal',
+    desc_es: 'Ya tienes este documento y esta por vencer o vencido',
+    desc_fr: 'Vous avez deja ce document qui expire ou est expire',
+    desc_en: 'You already have this document and it is expiring or expired'
+  },
+  duplicado: {
+    es: 'Duplicado', fr: 'Duplicata', en: 'Duplicate',
+    desc_es: 'Necesitas una copia por perdida o deterioro',
+    desc_fr: 'Vous avez besoin d'une copie pour perte ou deterioration',
+    desc_en: 'You need a copy due to loss or damage'
+  },
+  // Passport-specific sub-types (from pasaporte_workflow.py)
+  NUEVO: {
+    es: 'Nuevo Pasaporte', fr: 'Nouveau Passeport', en: 'New Passport',
+    desc_es: 'Primera vez que solicitas pasaporte (requiere certificado de nacimiento)',
+    desc_fr: 'Premiere demande de passeport (certificat de naissance requis)',
+    desc_en: 'First passport request (birth certificate required)'
+  },
+  RENOVACION: {
+    es: 'Renovacion', fr: 'Renouvellement', en: 'Renewal',
+    desc_es: 'Tu pasaporte esta por vencer o ya vencio',
+    desc_fr: 'Votre passeport expire bientot ou est deja expire',
+    desc_en: 'Your passport is expiring or has expired'
+  },
+  PERDIDA: {
+    es: 'Perdida', fr: 'Perte', en: 'Loss',
+    desc_es: 'Perdiste tu pasaporte (requiere denuncia policial)',
+    desc_fr: 'Vous avez perdu votre passeport (declaration de perte requise)',
+    desc_en: 'You lost your passport (police report required)'
+  },
+  ROBO: {
+    es: 'Robo', fr: 'Vol', en: 'Theft',
+    desc_es: 'Te robaron tu pasaporte (requiere denuncia policial)',
+    desc_fr: 'Votre passeport a ete vole (declaration de vol requise)',
+    desc_en: 'Your passport was stolen (police report required)'
+  },
+  DETERIORO: {
+    es: 'Deterioro', fr: 'Deterioration', en: 'Damage',
+    desc_es: 'Tu pasaporte esta danado (debes presentar el pasaporte danado)',
+    desc_fr: 'Votre passeport est endommage (vous devez presenter le passeport endommage)',
+    desc_en: 'Your passport is damaged (you must present the damaged passport)'
+  },
+  // Uppercase generic (for backward compatibility)
+  EXPEDICION: {
+    es: 'Nueva Expedicion', fr: 'Nouvelle Emission', en: 'New Issuance',
+    desc_es: 'Primera vez que solicitas este documento',
+    desc_fr: 'Premiere demande de ce document',
+    desc_en: 'First time requesting this document'
+  },
+  DUPLICADO: {
+    es: 'Duplicado', fr: 'Duplicata', en: 'Duplicate',
+    desc_es: 'Necesitas una copia por perdida o deterioro',
+    desc_fr: 'Vous avez besoin d'une copie pour perte ou deterioration',
+    desc_en: 'You need a copy due to loss or damage'
+  },
 }
 
 export default function NewServiceRequestPage() {
@@ -466,23 +525,13 @@ export default function NewServiceRequestPage() {
                 <Label htmlFor={subType} className="cursor-pointer flex-1">
                   <span className="font-medium">{getSubTypeLabel(subType)}</span>
                   <p className="text-sm text-muted-foreground mt-0.5">
-                    {subType === 'expedicion' || subType === 'EXPEDICION'
+                    {SUB_TYPE_LABELS[subType]
                       ? locale === 'es'
-                        ? 'Primera vez que solicitas este documento'
+                        ? SUB_TYPE_LABELS[subType].desc_es
                         : locale === 'fr'
-                          ? 'Premiere demande de ce document'
-                          : 'First time requesting this document'
-                      : subType === 'renovacion' || subType === 'RENOVACION'
-                        ? locale === 'es'
-                          ? 'Ya tienes este documento y esta por vencer o vencido'
-                          : locale === 'fr'
-                            ? 'Vous avez deja ce document qui expire ou est expire'
-                            : 'You already have this document and it is expiring or expired'
-                        : locale === 'es'
-                          ? 'Necesitas una copia por perdida o deterioro'
-                          : locale === 'fr'
-                            ? "Vous avez besoin d'une copie pour perte ou deterioration"
-                            : 'You need a copy due to loss or damage'}
+                          ? SUB_TYPE_LABELS[subType].desc_fr
+                          : SUB_TYPE_LABELS[subType].desc_en
+                      : subType}
                   </p>
                 </Label>
                 {selectedSubType === subType && (

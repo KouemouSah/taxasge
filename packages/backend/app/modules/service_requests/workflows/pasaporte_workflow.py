@@ -60,9 +60,10 @@ class PasaporteWorkflow(BaseWorkflow):
     def _setup_specific_steps(self) -> None:
         """Setup passport-specific workflow steps."""
 
-        # Step 5: Upload Photos (specific to pasaporte)
+        # Step 3: Upload Photos (specific to pasaporte)
+        # This step comes BEFORE form review per WORKFLOW_PASAPORTE_CITOYEN.md
         self.add_step(WorkflowStep(
-            step_number=5,
+            step_number=3,
             step_id="upload_photos",
             step_type=StepType.DOCUMENT_UPLOAD,
             title_es="Fotografías",
@@ -112,11 +113,11 @@ class PasaporteWorkflow(BaseWorkflow):
         self._tariff_config = TariffConfig(
             tariff_type=TariffType.FIXED,
             fixed_amounts={
-                "NUEVO": 75000,       # 75,000 XAF
-                "RENOVACION": 50000,  # 50,000 XAF
-                "PERDIDA": 100000,    # 100,000 XAF (includes penalty)
-                "ROBO": 100000,       # 100,000 XAF (includes penalty)
-                "DETERIORO": 75000    # 75,000 XAF
+                "NUEVO": 7500,       # 75,000 XAF
+                "RENOVACION": 5000,  # 50,000 XAF
+                "PERDIDA": 10000,    # 100,000 XAF (includes penalty)
+                "ROBO": 10000,       # 100,000 XAF (includes penalty)
+                "DETERIORO": 7500    # 75,000 XAF
             },
             currency="XAF"
         )
