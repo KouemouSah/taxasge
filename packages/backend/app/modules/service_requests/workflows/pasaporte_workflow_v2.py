@@ -529,35 +529,48 @@ class PasaporteWorkflow(PredefinedWorkflow):
 
     # === Form Field Mapping ===
 
-    def get_form_mapping(self, is_minor: bool = False) -> Dict[str, str]:
+    def get_form_mapping(self, context: Optional[WorkflowContext] = None) -> Dict[str, str]:
         """
         Map extracted data fields to form fields.
 
-        Includes ALL fields from DIP schema (dip_gq.json):
-        - natural_de, distrito_provincia, grupo_sanguineo (were missing)
+        ALIGNED WITH JSON SCHEMAS (source of truth):
+        - dip_gq.json: documento.fecha_emision (NOT fecha_expedicion)
+        - certificacion_nacimiento_gq.json:
+          - inscrito.nombre (NOT nombres), inscrito.primer_apellido + segundo_apellido
+          - padre.hijo_de, madre.hija_de (NOT natural_de)
+          - declarante.calidad (NOT relacion), declarante.nombre (NOT nombre_completo)
+          - NO hora_nacimiento, NO numero_acta, NO edad, NO domicilio_padre
 
-        For minors: Extract ALL data from certificado_nacimiento without exception.
+        For minors: Extract ALL available data from certificado_nacimiento.
         For adults: Add padre.profesion and madre.profesion from certificado_nacimiento.
         """
+        # Determine if user is minor from context
+        is_minor = False
+        if context and context.form_data:
+            fecha_nacimiento = context.form_data.get("fecha_nacimiento")
+            if fecha_nacimiento:
+                is_minor = self._is_minor(fecha_nacimiento)
+
         mapping = {
-            # === DIP Fields (complete extraction per dip_gq.json) ===
+            # === DIP Fields (per dip_gq.json schema) ===
             "numero_dip": "dip.documento.numero_dip",
             "apellidos": "dip.titular.apellidos",
             "nombres": "dip.titular.nombres",
             "sexo": "dip.titular.sexo",
             "fecha_nacimiento": "dip.titular.fecha_nacimiento",
             "lugar_nacimiento": "dip.titular.lugar_nacimiento",
-            "natural_de": "dip.titular.natural_de",  # ADDED - was missing
-            "distrito_provincia": "dip.titular.distrito_provincia",  # ADDED - was missing
+            "natural_de": "dip.titular.natural_de",
+            "distrito_provincia": "dip.titular.distrito_provincia",
             "nacionalidad": "dip.titular.nacionalidad",
             "estado_civil": "dip.titular.estado_civil",
             "profesion": "dip.titular.profesion",
             "domicilio": "dip.titular.domiciliacion",
-            "grupo_sanguineo": "dip.titular.grupo_sanguineo",  # ADDED - was missing
+            "grupo_sanguineo": "dip.titular.grupo_sanguineo",
 
-            # === DIP document metadata ===
-            "dip_fecha_expedicion": "dip.documento.fecha_expedicion",
+            # === DIP document metadata (fecha_EMISION per schema) ===
+            "dip_fecha_emision": "dip.documento.fecha_emision",
             "dip_fecha_expiracion": "dip.documento.fecha_expiracion",
+            "dip_lugar_emision": "dip.documento.lugar_emision",
 
             # === Old passport fields (for RENOVACION/DETERIORO) ===
             "numero_pasaporte_antiguo": "pasaporte_antiguo.documento.numero_pasaporte",
@@ -567,57 +580,61 @@ class PasaporteWorkflow(PredefinedWorkflow):
 
         if is_minor:
             # === For MINORS: Extract ALL data from certificado_nacimiento ===
+            # ALIGNED with certificacion_nacimiento_gq.json schema
             mapping.update({
-                # Inscrito data (the minor)
+                # Document metadata
                 "registro_civil": "certificado_nacimiento.documento.registro_civil_de",
+                "provincia_registro": "certificado_nacimiento.documento.provincia",
+                "seccion_registro": "certificado_nacimiento.documento.seccion",
                 "tomo_nacimiento": "certificado_nacimiento.documento.tomo",
                 "pagina_nacimiento": "certificado_nacimiento.documento.pagina",
-                "acta_nacimiento": "certificado_nacimiento.documento.numero_acta",
+                "folio_nacimiento": "certificado_nacimiento.documento.folio",
 
-                # Inscrito personal data (repeat from cert for verification)
-                "cert_apellidos": "certificado_nacimiento.inscrito.apellidos",
-                "cert_nombres": "certificado_nacimiento.inscrito.nombres",
+                # Inscrito data - CORRECT field names per schema
+                "cert_nombre": "certificado_nacimiento.inscrito.nombre",
+                "cert_primer_apellido": "certificado_nacimiento.inscrito.primer_apellido",
+                "cert_segundo_apellido": "certificado_nacimiento.inscrito.segundo_apellido",
                 "cert_sexo": "certificado_nacimiento.inscrito.sexo",
                 "cert_fecha_nacimiento": "certificado_nacimiento.inscrito.fecha_nacimiento",
-                "cert_hora_nacimiento": "certificado_nacimiento.inscrito.hora_nacimiento",
                 "cert_lugar_nacimiento": "certificado_nacimiento.inscrito.lugar_nacimiento",
 
-                # Father data (complete)
+                # Father data - CORRECT field names per schema
                 "nombre_padre": "certificado_nacimiento.padre.nombre_completo",
                 "nacionalidad_padre": "certificado_nacimiento.padre.nacionalidad",
-                "natural_de_padre": "certificado_nacimiento.padre.natural_de",
+                "lugar_nacimiento_padre": "certificado_nacimiento.padre.lugar_nacimiento",
+                "estado_civil_padre": "certificado_nacimiento.padre.estado_civil",
                 "profesion_padre": "certificado_nacimiento.padre.profesion",
-                "domicilio_padre": "certificado_nacimiento.padre.domicilio",
-                "edad_padre": "certificado_nacimiento.padre.edad",
+                # Grandparents (paternal) - in padre.hijo_de and padre.y_de
+                "abuelo_paterno": "certificado_nacimiento.padre.hijo_de",
+                "abuela_paterna": "certificado_nacimiento.padre.y_de",
 
-                # Mother data (complete)
+                # Mother data - CORRECT field names per schema
                 "nombre_madre": "certificado_nacimiento.madre.nombre_completo",
                 "nacionalidad_madre": "certificado_nacimiento.madre.nacionalidad",
-                "natural_de_madre": "certificado_nacimiento.madre.natural_de",
+                "lugar_nacimiento_madre": "certificado_nacimiento.madre.lugar_nacimiento",
+                "estado_civil_madre": "certificado_nacimiento.madre.estado_civil",
                 "profesion_madre": "certificado_nacimiento.madre.profesion",
                 "domicilio_madre": "certificado_nacimiento.madre.domicilio",
-                "edad_madre": "certificado_nacimiento.madre.edad",
+                # Grandparents (maternal) - in madre.hija_de and madre.y_de
+                "abuelo_materno": "certificado_nacimiento.madre.hija_de",
+                "abuela_materna": "certificado_nacimiento.madre.y_de",
 
-                # Grandparents (paternal)
-                "abuelo_paterno": "certificado_nacimiento.abuelo_paterno.nombre_completo",
-                "abuela_paterna": "certificado_nacimiento.abuela_paterna.nombre_completo",
+                # Marriage info
+                "matrimonio_padres": "certificado_nacimiento.matrimonio_padres.informacion",
 
-                # Grandparents (maternal)
-                "abuelo_materno": "certificado_nacimiento.abuelo_materno.nombre_completo",
-                "abuela_materna": "certificado_nacimiento.abuela_materna.nombre_completo",
-
-                # Declarant info
-                "declarante_nombre": "certificado_nacimiento.declarante.nombre_completo",
-                "declarante_relacion": "certificado_nacimiento.declarante.relacion",
+                # Declarant info - CORRECT field names per schema
+                "declarante_nombre": "certificado_nacimiento.declarante.nombre",
+                "declarante_calidad": "certificado_nacimiento.declarante.calidad",
+                "declarante_domicilio": "certificado_nacimiento.declarante.domicilio",
             })
         else:
-            # === For ADULTS: Add parent professions from certificado (if NUEVO) ===
+            # === For ADULTS: Add parent info from certificado (if NUEVO) ===
             mapping.update({
                 "registro_civil": "certificado_nacimiento.documento.registro_civil_de",
                 "nombre_padre": "certificado_nacimiento.padre.nombre_completo",
-                "profesion_padre": "certificado_nacimiento.padre.profesion",  # ADDED
+                "profesion_padre": "certificado_nacimiento.padre.profesion",
                 "nombre_madre": "certificado_nacimiento.madre.nombre_completo",
-                "profesion_madre": "certificado_nacimiento.madre.profesion",  # ADDED
+                "profesion_madre": "certificado_nacimiento.madre.profesion",
             })
 
         return mapping
