@@ -6,7 +6,7 @@
  * This is the "formulaire récapitulatif" that citizens see before final submission
  */
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import {
   CheckCircle,
   AlertCircle,

@@ -118,7 +118,6 @@ export function useServiceRequests(): UseServiceRequestsReturn {
   const [validationResults, setValidationResults] = useState<ValidationResult[]>([])
   const [tariff, setTariff] = useState<TariffCalculation | null>(null)
   const [currentPreview, setCurrentPreview] = useState<DocumentExtractionPreview | null>(null)
-  const [currentPreview, setCurrentPreview] = useState<DocumentExtractionPreview | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -489,101 +488,6 @@ export function useServiceRequests(): UseServiceRequestsReturn {
     }
   }, [currentRequest, handleError])
 
-  // =========================================================================
-  // DOCUMENT PREVIEW/VALIDATE (NEW TWO-STEP FLOW)
-  // =========================================================================
-
-  const previewDocument = useCallback(async (
-    documentCode: string,
-    file: File
-  ): Promise<DocumentExtractionPreview | null> => {
-    if (!currentRequest) return null
-
-    try {
-      setIsSaving(true)
-      setError(null)
-      const preview = await serviceRequestsApi.previewDocumentExtraction(
-        currentRequest.id,
-        documentCode,
-        file
-      )
-      setCurrentPreview(preview)
-      return preview
-    } catch (err) {
-      handleError(err)
-      return null
-    } finally {
-      setIsSaving(false)
-    }
-  }, [currentRequest, handleError, setCurrentPreview])
-
-  const validateDocument = useCallback(async (
-    previewId: string,
-    confirmedData: Record<string, unknown>,
-    userNotes?: string
-  ): Promise<DocumentValidationResponse | null> => {
-    if (!currentRequest) return null
-
-    try {
-      setIsSaving(true)
-      setError(null)
-      const response = await serviceRequestsApi.validateAndUploadDocument(
-        currentRequest.id,
-        previewId,
-        confirmedData,
-        userNotes
-      )
-      // Clear preview after successful validation
-      setCurrentPreview(null)
-      // Refresh documents list
-      const docs = await serviceRequestsApi.getDocuments(currentRequest.id)
-      setDocuments(docs)
-      return response
-    } catch (err) {
-      handleError(err)
-      return null
-    } finally {
-      setIsSaving(false)
-    }
-  }, [currentRequest, handleError, setCurrentPreview])
-
-  const clearPreview = useCallback(() => {
-    setCurrentPreview(null)
-  }, [setCurrentPreview])
-
-  // =========================================================================
-  // FORM DATA AND CITIZEN SUMMARY
-  // =========================================================================
-
-  const getFormData = useCallback(async (): Promise<FormDataResponse | null> => {
-    if (!currentRequest) return null
-
-    try {
-      setIsLoading(true)
-      setError(null)
-      return await serviceRequestsApi.getFormData(currentRequest.id)
-    } catch (err) {
-      handleError(err)
-      return null
-    } finally {
-      setIsLoading(false)
-    }
-  }, [currentRequest, handleError])
-
-  const getCitizenSummary = useCallback(async (): Promise<CitizenSummaryResponse | null> => {
-    if (!currentRequest) return null
-
-    try {
-      setIsLoading(true)
-      setError(null)
-      return await serviceRequestsApi.getCitizenSummary(currentRequest.id)
-    } catch (err) {
-      handleError(err)
-      return null
-    } finally {
-      setIsLoading(false)
-    }
-  }, [currentRequest, handleError])
 
   // =========================================================================
   // VALIDATION & TARIFF
