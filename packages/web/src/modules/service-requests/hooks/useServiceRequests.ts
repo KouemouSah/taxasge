@@ -419,7 +419,7 @@ export function useServiceRequests(): UseServiceRequestsReturn {
     } finally {
       setIsSaving(false)
     }
-  }, [currentRequest, handleError])
+  }, [currentRequest, handleError, setCurrentPreview])
 
   const validateDocument = useCallback(async (
     previewId: string,
@@ -449,11 +449,11 @@ export function useServiceRequests(): UseServiceRequestsReturn {
     } finally {
       setIsSaving(false)
     }
-  }, [currentRequest, handleError])
+  }, [currentRequest, handleError, setCurrentPreview])
 
   const clearPreview = useCallback(() => {
     setCurrentPreview(null)
-  }, [])
+  }, [setCurrentPreview])
 
   // =========================================================================
   // FORM DATA AND CITIZEN SUMMARY
@@ -515,7 +515,7 @@ export function useServiceRequests(): UseServiceRequestsReturn {
     } finally {
       setIsSaving(false)
     }
-  }, [currentRequest, handleError])
+  }, [currentRequest, handleError, setCurrentPreview])
 
   const validateDocument = useCallback(async (
     previewId: string,
@@ -545,11 +545,11 @@ export function useServiceRequests(): UseServiceRequestsReturn {
     } finally {
       setIsSaving(false)
     }
-  }, [currentRequest, handleError])
+  }, [currentRequest, handleError, setCurrentPreview])
 
   const clearPreview = useCallback(() => {
     setCurrentPreview(null)
-  }, [])
+  }, [setCurrentPreview])
 
   // =========================================================================
   // FORM DATA AND CITIZEN SUMMARY
