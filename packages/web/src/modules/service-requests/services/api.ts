@@ -19,6 +19,13 @@ import type {
   DocumentUploadResponse,
   TariffCalculation,
   ValidationResult,
+  // Two-step preview/validate types (camelCase for frontend)
+  DocumentExtractionPreview,
+  DocumentValidationResponse,
+  FormDataResponse,
+  CitizenSummaryResponse,
+  FieldIndicator,
+  RiskAnalysisResult,
 } from '../types'
 import { ExtractionStatus } from '../types'
 
@@ -74,6 +81,98 @@ interface BackendServiceRequest {
   tariff?: Record<string, unknown>
 }
 
+
+// Backend types for two-step preview/validate flow (snake_case from Python)
+interface BackendFieldIndicator {
+  field_name: string
+  value?: unknown
+  confidence: number
+  status: 'ok' | 'warning' | 'error' | 'missing'
+  risk_level?: string
+  risk_message?: string
+  requires_attention: boolean
+  suggestion?: string
+}
+
+interface BackendRiskAnalysis {
+  risk_level: string
+  risk_score: number
+  risk_factors: Array<Record<string, unknown>>
+  recommendations: string[]
+  requires_rejection: boolean
+  requires_review: boolean
+  factors_count: Record<string, number>
+}
+
+interface BackendDocumentExtractionPreview {
+  preview_id: string
+  document_code: string
+  document_name: string
+  file_name: string
+  file_size: number
+  mime_type: string
+  extraction: Record<string, unknown>
+  confidence: number
+  processor: string
+  field_indicators: BackendFieldIndicator[]
+  risk_analysis?: BackendRiskAnalysis
+  extraction_status: string
+  needs_correction: boolean
+  detected_document_type?: string
+  document_type_match: boolean
+  expected_fields: Array<Record<string, unknown>>
+  expires_at: string
+  processing_time_ms?: number
+}
+
+interface BackendDocumentValidationResponse {
+  document_id: string
+  document_code: string
+  document_name: string
+  file_path: string
+  extraction_data: Record<string, unknown>
+  extraction_confidence: number
+  is_validated: boolean
+  validated_at: string
+}
+
+interface BackendFormDataResponse {
+  form_data: Record<string, unknown>
+  extracted_data: Record<string, unknown>
+  form_schema?: Record<string, unknown>
+  requires_review: boolean
+  completion_percentage: number
+  missing_fields: string[]
+}
+
+interface BackendCitizenSummaryResponse {
+  request_id: string
+  reference: string
+  workflow_code: string
+  workflow_name_es: string
+  solicitud_type: string
+  sub_type?: string
+  personal_data: Record<string, unknown>
+  documents_uploaded: Array<{
+    document_code: string
+    document_name: string
+    file_name: string
+    extraction_confidence: number
+    is_validated: boolean
+  }>
+  documents_complete: boolean
+  tariff_summary?: {
+    base_amount: number
+    supplements_total: number
+    total_amount: number
+    currency: string
+  }
+  validation_passed: boolean
+  validation_warnings: string[]
+  can_submit: boolean
+  blockers: string[]
+}
+
 // ============================================================================
 // TRANSFORMATION FUNCTIONS (snake_case -> camelCase)
 // ============================================================================
@@ -127,6 +226,115 @@ function transformServiceRequest(backend: BackendServiceRequest): ServiceRequest
     updatedAt: backend.updated_at,
     submittedAt: backend.submitted_at,
     completedAt: backend.completed_at,
+  }
+}
+
+
+// Transform functions for two-step preview/validate types
+function transformFieldIndicator(backend: BackendFieldIndicator): FieldIndicator {
+  return {
+    fieldName: backend.field_name,
+    value: backend.value,
+    confidence: backend.confidence,
+    status: backend.status,
+    riskLevel: backend.risk_level,
+    riskMessage: backend.risk_message,
+    requiresAttention: backend.requires_attention,
+    suggestion: backend.suggestion,
+  }
+}
+
+function transformRiskAnalysis(backend: BackendRiskAnalysis): RiskAnalysisResult {
+  return {
+    riskLevel: backend.risk_level as RiskAnalysisResult['riskLevel'],
+    riskScore: backend.risk_score,
+    riskFactors: backend.risk_factors,
+    recommendations: backend.recommendations,
+    requiresRejection: backend.requires_rejection,
+    requiresReview: backend.requires_review,
+    factorsCount: backend.factors_count,
+  }
+}
+
+function transformDocumentExtractionPreview(backend: BackendDocumentExtractionPreview): DocumentExtractionPreview {
+  return {
+    previewId: backend.preview_id,
+    documentCode: backend.document_code,
+    documentName: backend.document_name,
+    fileName: backend.file_name,
+    fileSize: backend.file_size,
+    mimeType: backend.mime_type,
+    extraction: backend.extraction,
+    confidence: backend.confidence,
+    processor: backend.processor as DocumentExtractionPreview['processor'],
+    fieldIndicators: backend.field_indicators.map(transformFieldIndicator),
+    riskAnalysis: backend.risk_analysis ? transformRiskAnalysis(backend.risk_analysis) : undefined,
+    extractionStatus: backend.extraction_status as DocumentExtractionPreview['extractionStatus'],
+    needsCorrection: backend.needs_correction,
+    detectedDocumentType: backend.detected_document_type,
+    documentTypeMatch: backend.document_type_match,
+    expectedFields: backend.expected_fields.map(f => ({
+      key: (f as Record<string, unknown>).key as string,
+      label: (f as Record<string, unknown>).label as string,
+      type: (f as Record<string, unknown>).type as string,
+      required: (f as Record<string, unknown>).required as boolean,
+    })),
+    expiresAt: backend.expires_at,
+    processingTimeMs: backend.processing_time_ms,
+  }
+}
+
+function transformDocumentValidationResponse(backend: BackendDocumentValidationResponse): DocumentValidationResponse {
+  return {
+    documentId: backend.document_id,
+    documentCode: backend.document_code,
+    documentName: backend.document_name,
+    filePath: backend.file_path,
+    extractionData: backend.extraction_data,
+    extractionConfidence: backend.extraction_confidence,
+    isValidated: backend.is_validated,
+    validatedAt: backend.validated_at,
+  }
+}
+
+function transformFormDataResponse(backend: BackendFormDataResponse): FormDataResponse {
+  return {
+    formData: backend.form_data,
+    extractedData: backend.extracted_data,
+    formSchema: backend.form_schema,
+    requiresReview: backend.requires_review,
+    completionPercentage: backend.completion_percentage,
+    missingFields: backend.missing_fields,
+  }
+}
+
+function transformCitizenSummaryResponse(backend: BackendCitizenSummaryResponse): CitizenSummaryResponse {
+  return {
+    requestId: backend.request_id,
+    reference: backend.reference,
+    workflowCode: backend.workflow_code,
+    workflowNameEs: backend.workflow_name_es,
+    solicitudType: backend.solicitud_type,
+    subType: backend.sub_type,
+    personalData: backend.personal_data,
+    documentsUploaded: backend.documents_uploaded.map(d => ({
+      documentCode: d.document_code,
+      documentName: d.document_name,
+      fileName: d.file_name,
+      extractionConfidence: d.extraction_confidence,
+      isValidated: d.is_validated,
+    })),
+    documentsComplete: backend.documents_complete,
+    tariffSummary: backend.tariff_summary ? {
+      baseAmount: backend.tariff_summary.base_amount,
+      supplements: [], // Backend uses supplements_total, frontend expects array
+      total: backend.tariff_summary.total_amount,
+      currency: backend.tariff_summary.currency,
+    } : undefined,
+    validationPassed: backend.validation_passed,
+    validationWarnings: backend.validation_warnings,
+    canSubmit: backend.can_submit,
+    blockers: backend.blockers,
   }
 }
 
@@ -736,7 +944,8 @@ class ServiceRequestsApiClient {
    * Uses workflow's form_mapping to transform extracted_data to form fields
    */
   async getFormData(requestId: string): Promise<FormDataResponse> {
-    return this.request<FormDataResponse>(`/${requestId}/form-data`)
+    const backend = await this.request<BackendFormDataResponse>(`/${requestId}/form-data`)
+    return transformFormDataResponse(backend)
   }
 
   /**
@@ -744,7 +953,8 @@ class ServiceRequestsApiClient {
    * This is the "formulaire recapitulatif"
    */
   async getCitizenSummary(requestId: string): Promise<CitizenSummaryResponse> {
-    return this.request<CitizenSummaryResponse>(`/${requestId}/summary`)
+    const backend = await this.request<BackendCitizenSummaryResponse>(`/${requestId}/summary`)
+    return transformCitizenSummaryResponse(backend)
   }
 
   // =========================================================================
@@ -764,10 +974,11 @@ class ServiceRequestsApiClient {
     formData.append('file', file)
     formData.append('document_code', documentCode)
 
-    return this.uploadRequest<DocumentExtractionPreview>(
+    const backend = await this.uploadRequest<BackendDocumentExtractionPreview>(
       `/${requestId}/documents/preview`,
       formData
     )
+    return transformDocumentExtractionPreview(backend)
   }
 
   /**
@@ -780,7 +991,7 @@ class ServiceRequestsApiClient {
     confirmedData: Record<string, unknown>,
     userNotes?: string
   ): Promise<DocumentValidationResponse> {
-    return this.request<DocumentValidationResponse>(`/${requestId}/documents/validate`, {
+    const backend = await this.request<BackendDocumentValidationResponse>(`/${requestId}/documents/validate`, {
       method: 'POST',
       body: JSON.stringify({
         preview_id: previewId,
@@ -788,6 +999,7 @@ class ServiceRequestsApiClient {
         user_notes: userNotes,
       }),
     })
+    return transformDocumentValidationResponse(backend)
   }
 }
 
@@ -827,90 +1039,6 @@ export interface StepExecutionResponse {
     title_es: string
   }
   error?: string
-}
-
-export interface FormDataResponse {
-  form_data: Record<string, unknown>
-  extracted_data: Record<string, unknown>
-  form_schema?: Record<string, unknown>
-  requires_review: boolean
-  completion_percentage: number
-  missing_fields: string[]
-}
-
-export interface CitizenSummaryResponse {
-  request_id: string
-  reference: string
-  workflow_code: string
-  workflow_name_es: string
-  solicitud_type: string
-  sub_type?: string
-  personal_data: Record<string, unknown>
-  documents_uploaded: Array<{
-    code: string
-    name: string
-    status: 'uploaded' | 'validated' | 'pending'
-  }>
-  documents_complete: boolean
-  tariff_summary?: {
-    base_amount: number
-    supplements_total: number
-    total_amount: number
-    currency: string
-  }
-  validation_passed: boolean
-  validation_warnings: string[]
-  can_submit: boolean
-  blockers: string[]
-}
-
-export interface DocumentExtractionPreview {
-  preview_id: string
-  document_code: string
-  document_name: string
-  file_name: string
-  file_size: number
-  mime_type: string
-  extraction: Record<string, unknown>
-  confidence: number
-  processor: string
-  field_indicators: Array<{
-    field_name: string
-    value?: unknown
-    confidence: number
-    status: 'ok' | 'warning' | 'error' | 'missing'
-    risk_level?: string
-    risk_message?: string
-    requires_attention: boolean
-    suggestion?: string
-  }>
-  risk_analysis?: {
-    risk_level: string
-    risk_score: number
-    risk_factors: Array<Record<string, unknown>>
-    recommendations: string[]
-    requires_rejection: boolean
-    requires_review: boolean
-    factors_count: Record<string, number>
-  }
-  extraction_status: string
-  needs_correction: boolean
-  detected_document_type?: string
-  document_type_match: boolean
-  expected_fields: Array<Record<string, unknown>>
-  expires_at: string
-  processing_time_ms?: number
-}
-
-export interface DocumentValidationResponse {
-  document_id: string
-  document_code: string
-  document_name: string
-  file_path: string
-  extraction_data: Record<string, unknown>
-  extraction_confidence: number
-  is_validated: boolean
-  validated_at: string
 }
 
 // Export singleton instance
