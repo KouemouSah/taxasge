@@ -310,7 +310,7 @@ class WorkflowEngine:
                 result.update(await self._execute_document_step(db, workflow, context, step, step_data))
 
             elif step.step_type == StepType.FORM_REVIEW:
-                result.update(await self._execute_form_review_step(context, step, step_data))
+                result.update(await self._execute_form_review_step(workflow, context, step, step_data))
 
             elif step.step_type == StepType.VALIDATION:
                 result.update(await self._execute_validation_step(workflow, context, step))
@@ -439,17 +439,81 @@ class WorkflowEngine:
             "documents_count": len(context.documents_uploaded)
         }
 
+    def _apply_form_mapping(
+        self,
+        extracted_data: Dict[str, Any],
+        form_mapping: Dict[str, str]
+    ) -> Dict[str, Any]:
+        """
+        Apply form mapping to transform extracted data into form fields.
+
+        Args:
+            extracted_data: Raw extracted data from documents
+                Example: {"dip": {"titular": {"nombres": "JUAN", "apellidos": "PEREZ"}}}
+            form_mapping: Mapping from form field to extraction path
+                Example: {"nombres": "dip.titular.nombres"}
+
+        Returns:
+            Mapped form data with flat field names
+                Example: {"nombres": "JUAN", "apellidos": "PEREZ"}
+        """
+        mapped_data: Dict[str, Any] = {}
+
+        for form_field, extraction_path in form_mapping.items():
+            try:
+                # Navigate the dot path in extracted_data
+                parts = extraction_path.split('.')
+                value = extracted_data
+
+                for part in parts:
+                    if isinstance(value, dict) and part in value:
+                        value = value[part]
+                    else:
+                        value = None
+                        break
+
+                if value is not None:
+                    mapped_data[form_field] = value
+                    logger.debug(f"Mapped {extraction_path} -> {form_field}: {value}")
+
+            except Exception as e:
+                logger.warning(f"Error mapping {extraction_path} to {form_field}: {e}")
+                continue
+
+        return mapped_data
+
     async def _execute_form_review_step(
         self,
+        workflow: AnyWorkflow,
         context: WorkflowContext,
         step: WorkflowStep,
         step_data: Optional[Dict[str, Any]]
     ) -> Dict[str, Any]:
-        """Execute form review step."""
+        """
+        Execute form review step.
+
+        Applies form_mapping from workflow to transform extracted_data
+        into properly mapped form_data for frontend display.
+        """
         if not step_data:
-            # Return pre-filled form data from extractions
+            # Get form mapping from workflow and apply it to extracted data
+            try:
+                form_mapping = workflow.get_form_mapping(context)
+                mapped_form_data = self._apply_form_mapping(context.extracted_data, form_mapping)
+
+                # Merge with any existing form_data (preserves user-entered data)
+                final_form_data = {**mapped_form_data, **context.form_data}
+
+                logger.info(
+                    f"Form mapping applied: {len(form_mapping)} mappings, "
+                    f"{len(mapped_form_data)} fields populated"
+                )
+            except Exception as e:
+                logger.warning(f"Error applying form mapping: {e}, returning raw data")
+                final_form_data = context.form_data
+
             return {
-                "form_data": context.form_data,
+                "form_data": final_form_data,
                 "extracted_data": context.extracted_data,
                 "requires_review": True
             }

@@ -470,6 +470,19 @@ class WorkflowInterface(Protocol):
         """Get cross-document validation rules."""
         ...
 
+    def get_form_mapping(self, context: Optional[WorkflowContext] = None) -> Dict[str, str]:
+        """
+        Get mapping from extracted document data to form fields.
+
+        Returns:
+            Dict mapping form_field_name -> extraction_path
+            Example: {"numero_dip": "dip.documento.numero_dip"}
+
+        The extraction_path follows dot notation:
+        - "dip.titular.nombres" -> extracted_data["dip"]["titular"]["nombres"]
+        """
+        ...
+
     def validate_step(
         self,
         step_number: int,
@@ -598,6 +611,20 @@ class PredefinedWorkflow(ABC):
     @abstractmethod
     def get_cross_validation_rules(self) -> List[Dict[str, Any]]:
         """Get validation rules."""
+        ...
+
+    @abstractmethod
+    def get_form_mapping(self, context: Optional[WorkflowContext] = None) -> Dict[str, str]:
+        """
+        Get mapping from extracted document data to form fields.
+
+        Args:
+            context: Workflow context (for conditional mappings like is_minor)
+
+        Returns:
+            Dict mapping form_field_name -> extraction_path
+            Example: {"numero_dip": "dip.documento.numero_dip"}
+        """
         ...
 
     # === Step Management (final implementation) ===

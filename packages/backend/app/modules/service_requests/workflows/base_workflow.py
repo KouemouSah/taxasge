@@ -345,6 +345,19 @@ class BaseWorkflow(ABC):
         """Get cross-document validation rules."""
         pass
 
+    def get_form_mapping(self, context: Optional["WorkflowContext"] = None) -> Dict[str, str]:
+        """
+        Get mapping from extracted document data to form fields.
+
+        Override this method in subclass to define field mappings.
+        Default implementation returns empty dict (no mapping).
+
+        Returns:
+            Dict mapping form_field_name -> extraction_path
+            Example: {"numero_dip": "dip.documento.numero_dip"}
+        """
+        return {}
+
     # === Common Steps Setup (from Flux_demande.md) ===
 
     def _setup_common_steps(self) -> None:
