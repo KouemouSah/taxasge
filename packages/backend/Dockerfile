@@ -11,11 +11,16 @@ FROM python:3.11-slim as builder
 WORKDIR /app
 
 # Install system dependencies for building Python packages
+# Includes cairo dev libs for xhtml2pdf/pycairo PDF generation
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     make \
     libpq-dev \
+    libcairo2-dev \
+    libpango1.0-dev \
+    libgdk-pixbuf2.0-dev \
+    libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better layer caching
@@ -33,13 +38,14 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Install runtime dependencies including Tesseract OCR
+# Install runtime dependencies including Tesseract OCR and Cairo for PDF generation
 # - libpq5: PostgreSQL client library
 # - tesseract-ocr: OCR engine for text extraction from images/PDFs
 # - tesseract-ocr-spa: Spanish language data (primary for Guinea Ecuatorial)
 # - tesseract-ocr-fra: French language data (secondary)
 # - tesseract-ocr-eng: English language data (fallback)
 # - poppler-utils: PDF rendering utilities (required by pdf2image)
+# - libcairo2, libpango*, libgdk-pixbuf2.0-0: Cairo runtime for PDF generation
 RUN apt-get update && apt-get install -y \
     libpq5 \
     tesseract-ocr \
@@ -47,6 +53,11 @@ RUN apt-get update && apt-get install -y \
     tesseract-ocr-fra \
     tesseract-ocr-eng \
     poppler-utils \
+    libcairo2 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libgdk-pixbuf2.0-0 \
+    shared-mime-info \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy installed packages from builder
