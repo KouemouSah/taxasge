@@ -76,6 +76,7 @@ export interface UseServiceRequestsReturn {
   // Form data and summary
   getFormData: () => Promise<FormDataResponse | null>
   getCitizenSummary: () => Promise<CitizenSummaryResponse | null>
+  downloadSummaryPDF: (language?: string) => Promise<void>
 
   // Validation & Tariff
   validateDocuments: () => Promise<ValidationResult[]>
@@ -500,6 +501,24 @@ export function useServiceRequests(): UseServiceRequestsReturn {
     }
   }, [currentRequest, handleError])
 
+  const downloadSummaryPDF = useCallback(async (language: string = 'es'): Promise<void> => {
+    if (!currentRequest) return
+    try {
+      const blob = await serviceRequestsApi.downloadSummaryPDF(currentRequest.id, language)
+      // Create download link
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `resumen_${currentRequest.requestNumber || currentRequest.id}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      handleError(err)
+    }
+  }, [currentRequest, handleError])
+
 
   // =========================================================================
   // VALIDATION & TARIFF
@@ -903,6 +922,7 @@ export function useServiceRequests(): UseServiceRequestsReturn {
     // Form data and summary
     getFormData,
     getCitizenSummary,
+    downloadSummaryPDF,
 
     // Validation & Tariff
     validateDocuments,

@@ -705,3 +705,117 @@ async def get_citizen_summary(
         can_submit=docs_complete and len(blockers) == 0,
         blockers=blockers
     )
+
+# ═══════════════════════════════════════════════════════════════
+# CITIZEN SUMMARY PDF DOWNLOAD
+# ═══════════════════════════════════════════════════════════════
+
+@router.get(
+    "/{request_id}/summary/pdf",
+    summary="Download summary PDF",
+    description="""
+    Download the service request summary as a PDF document.
+
+    This is the 'formulaire récapitulatif' in PDF format for printing
+    or saving.
+
+    **Query parameters:**
+    - language: Language for the PDF (es, fr, en). Default: es
+    """,
+    responses={
+        200: {
+            "description": "PDF file",
+            "content": {"application/pdf": {}}
+        }
+    }
+)
+async def download_citizen_summary_pdf(
+    request_id: UUID = Path(..., description="The service request ID"),
+    language: str = Query("es", description="Language for PDF (es, fr, en)"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user)
+):
+    """Download service request summary as PDF"""
+    from fastapi.responses import Response
+    from ..services.summary_pdf_service import summary_pdf_service
+
+    # Get full request details
+    request = await service_request_service.get_request(
+        db=db,
+        request_id=request_id,
+        user_id=current_user.id
+    )
+
+    # Get workflow for name
+    workflow = workflow_engine.get_workflow_by_string(request.workflow_code)
+    workflow_name = workflow.service_name_es if workflow else request.workflow_code
+
+    # Build personal data from form_data
+    personal_data = {
+        "nombres": request.form_data.get("nombres", ""),
+        "apellidos": request.form_data.get("apellidos", ""),
+        "fecha_nacimiento": request.form_data.get("fecha_nacimiento", ""),
+        "lugar_nacimiento": request.form_data.get("lugar_nacimiento", ""),
+        "numero_dip": request.form_data.get("numero_dip", ""),
+        "nacionalidad": request.form_data.get("nacionalidad", ""),
+        "domicilio": request.form_data.get("domicilio", ""),
+        "profesion": request.form_data.get("profesion", ""),
+        "estado_civil": request.form_data.get("estado_civil", ""),
+    }
+
+    # Documents list
+    documents = [
+        {
+            "name": doc.document_name or doc.document_code,
+            "confidence": doc.extraction_confidence or 0,
+            "validation_status": "verified" if doc.is_valid else "pending"
+        }
+        for doc in request.provided_documents
+    ]
+
+    # Tariff
+    tariff = {
+        "base_amount": request.tariff.base_amount if request.tariff else 0,
+        "additional_fees": [],
+        "total_amount": request.tariff.total_amount if request.tariff else 0
+    }
+    if request.tariff and request.tariff.supplements_total:
+        tariff["additional_fees"].append({
+            "name": "Suplementos",
+            "amount": request.tariff.supplements_total
+        })
+
+    # Appointment (if scheduled)
+    appointment = None
+    if request.appointment_date:
+        appointment = {
+            "date": request.appointment_date.strftime("%d/%m/%Y") if request.appointment_date else None,
+            "time": request.appointment_time.strftime("%H:%M") if request.appointment_time else None,
+            "location": request.form_data.get("appointment_location", "Oficina Central")
+        }
+
+    # Get sub_type
+    solicitud_type = request.form_data.get("sub_type") or request.solicitud_type.value
+
+    # Generate PDF
+    pdf_bytes = await summary_pdf_service.generate_summary_pdf(
+        request_number=request.reference,
+        workflow_name=workflow_name,
+        solicitud_type=solicitud_type,
+        personal_data=personal_data,
+        documents=documents,
+        tariff=tariff,
+        appointment=appointment,
+        language=language
+    )
+
+    # Return PDF response
+    filename = f"solicitud_{request.reference}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}"
+        }
+    )
+

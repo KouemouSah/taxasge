@@ -7,6 +7,7 @@ from .workflow_engine import workflow_engine, WorkflowEngine
 from .notification_service import workflow_notification_service, WorkflowNotificationService
 from .appointment_scheduler import appointment_scheduler, AppointmentSchedulerService
 from .agent_queue_service import agent_queue_service, AgentQueueService
+from .summary_pdf_service import summary_pdf_service, SummaryPDFService
 
 # Validations (re-export for convenience)
 from ..validations import cross_document_validator, CrossDocumentValidator
@@ -24,6 +25,8 @@ __all__ = [
     "AppointmentSchedulerService",
     "agent_queue_service",
     "AgentQueueService",
+    "summary_pdf_service",
+    "SummaryPDFService",
     "cross_document_validator",
     "CrossDocumentValidator"
 ]

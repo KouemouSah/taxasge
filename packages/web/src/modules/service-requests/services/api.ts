@@ -961,6 +961,25 @@ class ServiceRequestsApiClient {
     return transformCitizenSummaryResponse(backend)
   }
 
+  /**
+   * Download citizen summary as PDF
+   * Backend generates PDF using xhtml2pdf + Jinja2 template
+   */
+  async downloadSummaryPDF(requestId: string, language: string = 'es'): Promise<Blob> {
+    const token = this.getToken()
+    const response = await fetch(`${this.baseUrl}/${requestId}/summary/pdf?language=${language}`, {
+      method: 'GET',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    })
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Failed to download PDF' }))
+      throw new Error(typeof error.detail === 'string' ? error.detail : 'Failed to download PDF')
+    }
+    return response.blob()
+  }
+
   // =========================================================================
   // DOCUMENT PREVIEW/VALIDATE FLOW (RECOMMENDED)
   // =========================================================================

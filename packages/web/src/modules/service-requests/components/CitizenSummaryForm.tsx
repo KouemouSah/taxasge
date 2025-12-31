@@ -20,6 +20,7 @@ import {
   Shield,
   Edit2,
   Loader2,
+  Download,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -48,6 +49,7 @@ interface CitizenSummaryFormProps {
   onBack: () => void
   onEditDocuments: () => void
   onEditPersonalData: () => void
+  onDownloadPDF?: () => Promise<void>
   isSubmitting?: boolean
   locale?: 'es' | 'fr' | 'en'
 }
@@ -89,11 +91,14 @@ export function CitizenSummaryForm({
   onBack,
   onEditDocuments,
   onEditPersonalData,
+  onDownloadPDF,
   isSubmitting = false,
   locale = 'es',
 }: CitizenSummaryFormProps) {
   // Confirmation checkbox state
   const [isConfirmed, setIsConfirmed] = useState(false)
+  // PDF download state
+  const [isDownloading, setIsDownloading] = useState(false)
 
   // Get personal data fields to display
   const personalDataFields = useMemo(() => {
@@ -129,6 +134,17 @@ export function CitizenSummaryForm({
     await onSubmit()
   }, [isConfirmed, summary.canSubmit, onSubmit])
 
+  // Handle PDF download
+  const handleDownloadPDF = useCallback(async () => {
+    if (!onDownloadPDF || isDownloading) return
+    setIsDownloading(true)
+    try {
+      await onDownloadPDF()
+    } finally {
+      setIsDownloading(false)
+    }
+  }, [onDownloadPDF, isDownloading])
+
   // Texts by locale
   const texts = {
     title: locale === 'es' ? 'Resumen de Solicitud' : locale === 'fr' ? 'Résumé de la Demande' : 'Request Summary',
@@ -146,6 +162,8 @@ export function CitizenSummaryForm({
     submit: locale === 'es' ? 'Enviar Solicitud' : locale === 'fr' ? 'Soumettre la Demande' : 'Submit Request',
     submitting: locale === 'es' ? 'Enviando...' : locale === 'fr' ? 'Envoi en cours...' : 'Submitting...',
     back: locale === 'es' ? 'Volver' : locale === 'fr' ? 'Retour' : 'Back',
+    downloadPDF: locale === 'es' ? 'Descargar PDF' : locale === 'fr' ? 'Telecharger PDF' : 'Download PDF',
+    downloading: locale === 'es' ? 'Descargando...' : locale === 'fr' ? 'Telechargement...' : 'Downloading...',
     edit: locale === 'es' ? 'Editar' : locale === 'fr' ? 'Modifier' : 'Edit',
     baseTariff: locale === 'es' ? 'Tarifa Base' : locale === 'fr' ? 'Tarif de Base' : 'Base Tariff',
     supplements: locale === 'es' ? 'Suplementos' : locale === 'fr' ? 'Suppléments' : 'Supplements',
@@ -445,22 +463,44 @@ export function CitizenSummaryForm({
           {texts.back}
         </Button>
 
-        <Button
-          onClick={handleSubmit}
-          disabled={!isConfirmed || !summary.canSubmit || isSubmitting}
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {texts.submitting}
-            </>
-          ) : (
-            <>
-              <Send className="mr-2 h-4 w-4" />
-              {texts.submit}
-            </>
+        <div className="flex gap-2">
+          {onDownloadPDF && (
+            <Button
+              variant="outline"
+              onClick={handleDownloadPDF}
+              disabled={isDownloading}
+            >
+              {isDownloading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {texts.downloading}
+                </>
+              ) : (
+                <>
+                  <Download className="mr-2 h-4 w-4" />
+                  {texts.downloadPDF}
+                </>
+              )}
+            </Button>
           )}
-        </Button>
+
+          <Button
+            onClick={handleSubmit}
+            disabled={!isConfirmed || !summary.canSubmit || isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {texts.submitting}
+              </>
+            ) : (
+              <>
+                <Send className="mr-2 h-4 w-4" />
+                {texts.submit}
+              </>
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   )
