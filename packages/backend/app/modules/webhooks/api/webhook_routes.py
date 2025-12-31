@@ -27,6 +27,9 @@ from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.permissions.middleware.permission_middleware import permission_required
 from app.database.connection import get_database
 
+# Import appointment service for post-payment confirmation
+from app.modules.service_requests.services.appointment_service import appointment_service
+
 router = APIRouter(tags=["Webhooks"])
 security = HTTPBearer()
 repository = WebhookRepository()
@@ -108,6 +111,11 @@ async def bange_webhook_callback(
             reconciled = await repository.auto_reconcile_by_reference(db, payload.merchant_reference)
             if reconciled:
                 logger.info(f"Auto-reconciled transaction {transaction_id} with payment")
+                
+                # Confirm appointment hold if this payment is for a service_request
+                if reconciled.get("payment_id"):
+                    await confirm_appointment_for_payment(db, str(reconciled["payment_id"]))
+                
                 return {"message": "Transaction processed and reconciled", "transaction_id": transaction_id}
         except Exception as e:
             logger.warning(f"Auto-reconciliation failed: {e}, will require manual reconciliation")
@@ -116,6 +124,34 @@ async def bange_webhook_callback(
 
 
 # ========== BANK TRANSACTIONS (AUTHENTICATED) ==========
+
+# ========== HELPER: Confirm appointment after payment ==========
+
+async def confirm_appointment_for_payment(db, payment_id: str):
+    """
+    After successful payment reconciliation, confirm any held appointment.
+    
+    Flow:
+    1. Find service_request with this payment_id
+    2. If found, confirm the appointment hold
+    """
+    try:
+        # Find service_request linked to this payment
+        query = "SELECT id FROM service_requests WHERE payment_id = $1"
+        result = await db.fetchrow(query, payment_id)
+        
+        if result:
+            service_request_id = result["id"]
+            confirm_result = await appointment_service.confirm_hold(db, service_request_id)
+            if confirm_result.success:
+                logger.info(f"Appointment confirmed for service_request {service_request_id} after payment {payment_id}")
+            else:
+                logger.warning(f"Failed to confirm appointment for service_request {service_request_id}: {confirm_result.error}")
+        else:
+            logger.debug(f"No service_request linked to payment {payment_id}")
+    except Exception as e:
+        logger.error(f"Error confirming appointment for payment {payment_id}: {e}")
+
 
 @router.get("/transactions/unreconciled", response_model=BankTransactionListResponse)
 async def list_unreconciled_transactions(
@@ -178,6 +214,10 @@ async def manual_reconcile(
             user_id
         )
         logger.info(f"Admin {user_id} reconciled transaction {reconcile.bank_transaction_id}")
+        
+        # Confirm appointment hold if this payment is for a service_request
+        await confirm_appointment_for_payment(db, reconcile.payment_id)
+        
         return BankTransactionResponse(**result)
 
     except ValueError as e:
