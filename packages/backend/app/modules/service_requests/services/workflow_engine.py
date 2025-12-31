@@ -8,7 +8,7 @@ Responsibilities:
 - Coordinate with document processor, tariff service, and validators
 """
 import asyncio
-from typing import Dict, List, Optional, Type, Any
+from typing import Dict, List, Optional, Type, Any, Union
 from uuid import UUID
 from datetime import datetime
 import logging
@@ -21,14 +21,28 @@ from ..models.enums import (
     ServiceRequestStatus,
     SolicitudType
 )
+# v1 (legacy) - BaseWorkflow
 from ..workflows.base_workflow import (
     BaseWorkflow,
+    WorkflowStep as BaseWorkflowStep,
+    WorkflowContext as BaseWorkflowContext,
+    ValidationResult as BaseValidationResult,
+    DocumentRequirement as BaseDocumentRequirement,
+    StepType
+)
+# v2 (new) - PredefinedWorkflow (autonomous)
+from ..workflows.workflow_interface import (
+    WorkflowInterface,
+    PredefinedWorkflow,
     WorkflowStep,
     WorkflowContext,
     ValidationResult,
     DocumentRequirement,
-    StepType
+    RenovacionMotivo,
 )
+
+# Type alias for any workflow (v1 or v2)
+AnyWorkflow = Union[BaseWorkflow, PredefinedWorkflow]
 from .schema_loader import schema_loader
 from .gemini_document_processor import gemini_document_processor
 from .tariff_service import tariff_service
@@ -53,10 +67,10 @@ class WorkflowEngine:
     """
 
     def __init__(self):
-        self._workflows: Dict[WorkflowCode, BaseWorkflow] = {}
-        self._workflow_classes: Dict[WorkflowCode, Type[BaseWorkflow]] = {}
+        self._workflows: Dict[WorkflowCode, AnyWorkflow] = {}
+        self._workflow_classes: Dict[WorkflowCode, Type[AnyWorkflow]] = {}
 
-    def register(self, workflow_class: Type[BaseWorkflow]) -> None:
+    def register(self, workflow_class: Type[AnyWorkflow]) -> None:
         """
         Register a workflow class.
 
@@ -73,16 +87,16 @@ class WorkflowEngine:
         self._workflow_classes[code] = workflow_class
         logger.info(f"Registered workflow: {code.value}")
 
-    def register_many(self, workflow_classes: List[Type[BaseWorkflow]]) -> None:
+    def register_many(self, workflow_classes: List[Type[AnyWorkflow]]) -> None:
         """Register multiple workflow classes."""
         for cls in workflow_classes:
             self.register(cls)
 
-    def get_workflow(self, code: WorkflowCode) -> Optional[BaseWorkflow]:
+    def get_workflow(self, code: WorkflowCode) -> Optional[AnyWorkflow]:
         """Get a registered workflow by code."""
         return self._workflows.get(code)
 
-    def get_workflow_by_string(self, code_str: str) -> Optional[BaseWorkflow]:
+    def get_workflow_by_string(self, code_str: str) -> Optional[AnyWorkflow]:
         """Get workflow by string code (for API usage)."""
         try:
             code = WorkflowCode(code_str)
@@ -91,11 +105,11 @@ class WorkflowEngine:
             logger.warning(f"Unknown workflow code: {code_str}")
             return None
 
-    def get_all_workflows(self) -> Dict[WorkflowCode, BaseWorkflow]:
+    def get_all_workflows(self) -> Dict[WorkflowCode, AnyWorkflow]:
         """Get all registered workflows."""
         return self._workflows.copy()
 
-    def get_workflows_by_category(self, category: WorkflowCategory) -> List[BaseWorkflow]:
+    def get_workflows_by_category(self, category: WorkflowCategory) -> List[AnyWorkflow]:
         """Get all workflows in a category."""
         return [
             w for w in self._workflows.values()
@@ -335,7 +349,7 @@ class WorkflowEngine:
 
     async def _execute_selection_step(
         self,
-        workflow: BaseWorkflow,
+        workflow: AnyWorkflow,
         context: WorkflowContext,
         step: WorkflowStep,
         step_data: Optional[Dict[str, Any]]
@@ -378,7 +392,7 @@ class WorkflowEngine:
     async def _execute_document_step(
         self,
         db: asyncpg.Connection,
-        workflow: BaseWorkflow,
+        workflow: AnyWorkflow,
         context: WorkflowContext,
         step: WorkflowStep,
         step_data: Optional[Dict[str, Any]]
@@ -450,7 +464,7 @@ class WorkflowEngine:
 
     async def _execute_validation_step(
         self,
-        workflow: BaseWorkflow,
+        workflow: AnyWorkflow,
         context: WorkflowContext,
         step: WorkflowStep
     ) -> Dict[str, Any]:
@@ -486,7 +500,7 @@ class WorkflowEngine:
     async def _execute_payment_step(
         self,
         db: asyncpg.Connection,
-        workflow: BaseWorkflow,
+        workflow: AnyWorkflow,
         context: WorkflowContext,
         step: WorkflowStep,
         step_data: Optional[Dict[str, Any]]
@@ -555,7 +569,7 @@ class WorkflowEngine:
     async def _execute_confirmation_step(
         self,
         db: asyncpg.Connection,
-        workflow: BaseWorkflow,
+        workflow: AnyWorkflow,
         context: WorkflowContext,
         step: WorkflowStep
     ) -> Dict[str, Any]:
@@ -587,7 +601,7 @@ class WorkflowEngine:
 
     async def _execute_custom_step(
         self,
-        workflow: BaseWorkflow,
+        workflow: AnyWorkflow,
         context: WorkflowContext,
         step: WorkflowStep,
         step_data: Optional[Dict[str, Any]]
@@ -729,9 +743,15 @@ def register_all_workflows() -> None:
     This function is called automatically when the module is imported.
     It registers all workflow classes so they can be retrieved via
     workflow_engine.get_workflow() or workflow_engine.get_workflow_by_string().
+    
+    Note: PasaporteWorkflow uses v2 architecture (autonomous, no inheritance).
+    Other workflows still use v1 (BaseWorkflow) - to be migrated gradually.
     """
+    # v2 workflows (autonomous)
+    from ..workflows import PasaporteWorkflow  # v2 autonomous
+    
+    # v1 workflows (legacy - to be migrated)
     from ..workflows import (
-        PasaporteWorkflow,
         ResidenciaWorkflow,
         VehiculoWorkflow,
         ContratoWorkflow,
@@ -743,9 +763,11 @@ def register_all_workflows() -> None:
         CertificadoAdministrativoWorkflow
     )
 
-    workflows_to_register = [
-        # Identidad
+    workflows_to_register: List[Type[AnyWorkflow]] = [
+        # === v2 (autonomous) ===
         PasaporteWorkflow,
+        
+        # === v1 (legacy - to migrate) ===
         # Extranjeria
         ResidenciaWorkflow,
         # Vehiculos
@@ -763,7 +785,7 @@ def register_all_workflows() -> None:
     ]
 
     workflow_engine.register_many(workflows_to_register)
-    logger.info(f"Registered {len(workflows_to_register)} workflows")
+    logger.info(f"Registered {len(workflows_to_register)} workflows (v2: 1, v1: {len(workflows_to_register) - 1})")
 
 
 # Auto-register workflows on module import

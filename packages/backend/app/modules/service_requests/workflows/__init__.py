@@ -1,14 +1,39 @@
 # Workflows exports
-from .base_workflow import (
-    BaseWorkflow,
+
+# =============================================================================
+# NEW ARCHITECTURE (v2) - Autonomous workflows
+# =============================================================================
+
+# Core interfaces and dataclasses
+from .workflow_interface import (
+    WorkflowInterface,
+    PredefinedWorkflow,
     WorkflowStep,
     WorkflowContext,
     ValidationResult,
     DocumentRequirement,
     TariffConfig,
-    StepType
+    StepType,
+    RenovacionMotivo,
 )
-from .pasaporte_workflow import PasaporteWorkflow
+
+# Pasaporte workflow v2 (autonomous)
+from .pasaporte_workflow_v2 import (
+    PasaporteWorkflow,
+    get_pasaporte_workflow
+)
+
+# =============================================================================
+# LEGACY (v1) - For backward compatibility
+# =============================================================================
+
+# Legacy BaseWorkflow (still used by some workflows)
+from .base_workflow import BaseWorkflow
+
+# Legacy pasaporte workflow (for backward compatibility during migration)
+from .pasaporte_workflow import PasaporteWorkflow as PasaporteWorkflowLegacy
+
+# Other legacy workflows (to be migrated to v2)
 from .contrato_workflow import ContratoWorkflow
 from .residencia_workflow import (
     ResidenciaWorkflow,
@@ -25,6 +50,7 @@ from .conducir_workflow import (
     LicenseClass,
     ApplicantType
 )
+
 # FuncionPublica workflows
 from .funcion_publica import (
     VerificacionFuncionarioWorkflow,
@@ -44,16 +70,26 @@ from .generic_workflow import (
 )
 
 __all__ = [
-    # Base classes
-    "BaseWorkflow",
+    # === NEW (v2) ===
+    # Protocol and base class
+    "WorkflowInterface",
+    "PredefinedWorkflow",
+    # Core dataclasses
     "WorkflowStep",
     "WorkflowContext",
     "ValidationResult",
     "DocumentRequirement",
     "TariffConfig",
     "StepType",
-    # Pasaporte workflow
+    "RenovacionMotivo",
+    # Pasaporte v2
     "PasaporteWorkflow",
+    "get_pasaporte_workflow",
+
+    # === LEGACY (v1) ===
+    "BaseWorkflow",
+    "PasaporteWorkflowLegacy",
+
     # Contrato workflow
     "ContratoWorkflow",
     # Residencia workflow (3 phases)

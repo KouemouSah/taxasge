@@ -113,11 +113,11 @@ class PasaporteWorkflow(BaseWorkflow):
         self._tariff_config = TariffConfig(
             tariff_type=TariffType.FIXED,
             fixed_amounts={
-                "NUEVO": 7500,       # 75,000 XAF
-                "RENOVACION": 5000,  # 50,000 XAF
-                "PERDIDA": 10000,    # 100,000 XAF (includes penalty)
-                "ROBO": 10000,       # 100,000 XAF (includes penalty)
-                "DETERIORO": 7500    # 75,000 XAF
+                "NUEVO": 7500,       # 7500 XAF
+                "RENOVACION": 5000,  # 5000 XAF
+                "PERDIDA": 10000,    # 10000 XAF (includes penalty)
+                "ROBO": 10000,       # 10000 XAF (includes penalty)
+                "DETERIORO": 7500    # 7500 XAF
             },
             currency="XAF"
         )

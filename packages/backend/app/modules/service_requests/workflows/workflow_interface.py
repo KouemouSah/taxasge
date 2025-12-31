@@ -1,0 +1,884 @@
+"""
+WorkflowInterface - Protocol defining the contract for all workflows.
+
+This module provides:
+1. WorkflowInterface Protocol - The contract that ALL workflows must implement
+2. Core dataclasses - StepType, WorkflowStep, DocumentRequirement, etc.
+3. RenovacionMotivo - Enum for renewal reasons
+
+Architecture:
+- PredefinedWorkflow: Code-based workflows (pasaporte, residencia, etc.) - AUTONOMOUS
+- ConfigurableWorkflow: Admin dashboard created workflows - Uses BaseWorkflow
+
+The key principle: Each workflow is AUTONOMOUS and defines ALL its logic internally.
+No more relying on base class for steps that might conflict.
+"""
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from typing import Dict, List, Any, Optional, Protocol, runtime_checkable
+from datetime import datetime
+from uuid import UUID
+from enum import Enum
+import logging
+
+from ..models.enums import (
+    WorkflowCode,
+    WorkflowCategory,
+    EntityCode,
+    TariffType,
+    ServiceRequestStatus,
+    SolicitudType,
+    DocumentConditionType
+)
+
+logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# ENUMS
+# =============================================================================
+
+class StepType(str, Enum):
+    """Types of workflow steps"""
+    SELECTION = "selection"           # User selects option
+    DOCUMENT_UPLOAD = "document_upload"  # Document upload with extraction
+    FORM_REVIEW = "form_review"       # Review pre-filled form
+    VALIDATION = "validation"         # Cross-document validation
+    PAYMENT = "payment"               # Payment processing
+    CONFIRMATION = "confirmation"     # Final confirmation
+    AGENT_REVIEW = "agent_review"     # Agent reviews and validates
+    APPOINTMENT = "appointment"       # Schedule appointment (cita)
+    CUSTOM = "custom"                 # Custom step defined by workflow
+
+
+class RenovacionMotivo(str, Enum):
+    """
+    Reason for RENOVACION (renewal) request.
+
+    Business logic:
+    - VENCIMIENTO: Document expired or expiring soon
+    - PERDIDA: Document was lost
+    - ROBO: Document was stolen
+    - DETERIORO: Document is damaged
+
+    Each motivo may require different documents and has different tariffs.
+    """
+    VENCIMIENTO = "VENCIMIENTO"  # Expired/expiring
+    PERDIDA = "PERDIDA"          # Lost
+    ROBO = "ROBO"                # Stolen
+    DETERIORO = "DETERIORO"      # Damaged
+
+
+# =============================================================================
+# DATACLASSES
+# =============================================================================
+
+@dataclass
+class ValidationResult:
+    """Result of a validation check."""
+    is_valid: bool
+    rule_id: str
+    severity: str = "error"  # error, warning, info
+    message_es: Optional[str] = None
+    field_name: Optional[str] = None
+    document_code: Optional[str] = None
+
+    @property
+    def is_error(self) -> bool:
+        return not self.is_valid and self.severity == "error"
+
+    @property
+    def is_warning(self) -> bool:
+        return not self.is_valid and self.severity == "warning"
+
+
+@dataclass
+class DocumentRequirement:
+    """
+    Document required for a workflow.
+
+    Attributes:
+        document_code: Unique code for the document (e.g., "dip", "certificado_nacimiento")
+        document_name_es: Spanish name for display
+        schema_key: OCR extraction schema key (e.g., "DIP_GQ_V2")
+        is_required: Whether document is mandatory
+        display_order: Order in UI
+        condition_type: When to show this document
+        condition_value: Additional condition parameters
+        instructions_es: Spanish instructions for upload
+        faces_required: Required faces (e.g., ["recto", "verso"])
+        accepted_formats: Allowed file formats
+        max_size_mb: Maximum file size in MB
+        config: Additional frontend configuration
+    """
+    document_code: str
+    document_name_es: str
+    schema_key: Optional[str] = None
+    is_required: bool = True
+    display_order: int = 0
+    condition_type: DocumentConditionType = DocumentConditionType.ALWAYS
+    condition_value: Dict[str, Any] = field(default_factory=dict)
+    instructions_es: Optional[str] = None
+    faces_required: List[str] = field(default_factory=list)
+    accepted_formats: List[str] = field(default_factory=lambda: ["pdf", "jpg", "png"])
+    max_size_mb: int = 10
+    config: Dict[str, Any] = field(default_factory=dict)
+
+    def should_show(self, context: "WorkflowContext") -> bool:
+        """Determine if document should be shown based on condition."""
+        if self.condition_type == DocumentConditionType.ALWAYS:
+            return True
+
+        if self.condition_type == DocumentConditionType.IS_NEW:
+            return context.solicitud_type == SolicitudType.EXPEDICION
+
+        if self.condition_type == DocumentConditionType.IS_RENEWAL:
+            return context.solicitud_type == SolicitudType.RENOVACION
+
+        if self.condition_type == DocumentConditionType.IS_DUPLICATE:
+            return context.solicitud_type == SolicitudType.DUPLICADO
+
+        if self.condition_type == DocumentConditionType.IS_MINOR:
+            age = context.get_user_age()
+            return age is not None and age < 18
+
+        if self.condition_type == DocumentConditionType.IS_ADULT:
+            age = context.get_user_age()
+            return age is not None and age >= 18
+
+        if self.condition_type == DocumentConditionType.AGE_LESS_THAN:
+            threshold = self.condition_value.get("age", 18)
+            age = context.get_user_age()
+            return age is not None and age < threshold
+
+        if self.condition_type == DocumentConditionType.AGE_GREATER_THAN:
+            threshold = self.condition_value.get("age", 18)
+            age = context.get_user_age()
+            return age is not None and age >= threshold
+
+        if self.condition_type == DocumentConditionType.HAS_PREVIOUS:
+            return context.has_previous_document(self.document_code)
+
+        if self.condition_type == DocumentConditionType.IS_FOREIGN:
+            return context.is_foreign_national()
+
+        if self.condition_type == DocumentConditionType.IS_NATIONAL:
+            return not context.is_foreign_national()
+
+        if self.condition_type == DocumentConditionType.CUSTOM:
+            return self._evaluate_custom_condition(context)
+
+        return True
+
+    def _evaluate_custom_condition(self, context: "WorkflowContext") -> bool:
+        """Evaluate custom condition expression."""
+        allowed_types = self.condition_value.get("types", [])
+        if allowed_types and context.sub_type:
+            return context.sub_type in allowed_types
+
+        # Check motivo for RENOVACION
+        allowed_motivos = self.condition_value.get("motivos", [])
+        if allowed_motivos and context.motivo:
+            return context.motivo in allowed_motivos
+
+        return True
+
+
+@dataclass
+class WorkflowStep:
+    """
+    A step in the workflow.
+
+    Each workflow defines ALL its steps internally.
+    No "inherited" steps - everything is explicit.
+    """
+    step_number: int
+    step_id: str
+    step_type: StepType
+    title_es: str
+    description_es: Optional[str] = None
+    documents: List[DocumentRequirement] = field(default_factory=list)
+    is_optional: bool = False
+    requires_previous: bool = True
+    config: Dict[str, Any] = field(default_factory=dict)
+
+    def get_applicable_documents(self, context: "WorkflowContext") -> List[DocumentRequirement]:
+        """Get documents that should be shown based on context."""
+        return [doc for doc in self.documents if doc.should_show(context)]
+
+
+@dataclass
+class WorkflowContext:
+    """
+    Runtime context for a workflow execution.
+    Carries state between steps.
+    """
+    service_request_id: UUID
+    user_id: UUID
+    workflow_code: WorkflowCode
+    solicitud_type: SolicitudType
+    sub_type: Optional[str] = None  # Legacy: NUEVO, RENOVACION, etc.
+    motivo: Optional[RenovacionMotivo] = None  # NEW: For RENOVACION type
+    current_step: int = 1
+    status: ServiceRequestStatus = ServiceRequestStatus.DRAFT
+
+    # Extracted data from documents
+    extracted_data: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+
+    # Form data (user corrections)
+    form_data: Dict[str, Any] = field(default_factory=dict)
+
+    # Documents uploaded
+    documents_uploaded: Dict[str, UUID] = field(default_factory=dict)
+
+    # Validation results
+    validation_results: List[ValidationResult] = field(default_factory=list)
+
+    # Payment info
+    payment_id: Optional[UUID] = None
+    payment_status: Optional[str] = None
+
+    # Timestamps
+    created_at: datetime = field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = None
+    submitted_at: Optional[datetime] = None
+
+    # Entity assignment
+    entity_code: Optional[str] = None
+    assigned_to: Optional[UUID] = None
+
+    def get_user_age(self) -> Optional[int]:
+        """Calculate user age from extracted data (DIP fecha_nacimiento)."""
+        dip_data = self.extracted_data.get("dip", {})
+        fecha_nac = dip_data.get("titular", {}).get("fecha_nacimiento")
+
+        if not fecha_nac:
+            fecha_nac = self.form_data.get("fecha_nacimiento")
+
+        if fecha_nac:
+            try:
+                if isinstance(fecha_nac, str):
+                    birth_date = datetime.strptime(fecha_nac, "%Y-%m-%d")
+                else:
+                    birth_date = fecha_nac
+                today = datetime.today()
+                age = today.year - birth_date.year
+                if (today.month, today.day) < (birth_date.month, birth_date.day):
+                    age -= 1
+                return age
+            except (ValueError, TypeError):
+                pass
+        return None
+
+    def has_previous_document(self, document_code: str) -> bool:
+        """Check if user has a previous document of this type."""
+        return False  # Will check verified_identifiers
+
+    def is_foreign_national(self) -> bool:
+        """Check if user is a foreign national."""
+        dip_data = self.extracted_data.get("dip", {})
+        nacionalidad = dip_data.get("titular", {}).get("nacionalidad", "")
+        return nacionalidad.upper() not in ["GNQ", "GUINEA ECUATORIAL", "ECUATOGUINEANO"]
+
+    def get_extracted_field(self, document_code: str, field_path: str) -> Optional[Any]:
+        """Get a field value from extracted data using dot notation."""
+        doc_data = self.extracted_data.get(document_code, {})
+        parts = field_path.split(".")
+        current = doc_data
+        for part in parts:
+            if isinstance(current, dict):
+                current = current.get(part)
+            else:
+                return None
+        return current
+
+    def has_errors(self) -> bool:
+        """Check if there are any validation errors."""
+        return any(r.is_error for r in self.validation_results)
+
+    def get_errors(self) -> List[ValidationResult]:
+        """Get all validation errors."""
+        return [r for r in self.validation_results if r.is_error]
+
+    def get_warnings(self) -> List[ValidationResult]:
+        """Get all validation warnings."""
+        return [r for r in self.validation_results if r.is_warning]
+
+
+@dataclass
+class TariffConfig:
+    """Tariff configuration for a workflow."""
+    tariff_type: TariffType
+    fixed_amounts: Dict[str, int] = field(default_factory=dict)  # key -> amount
+    percentage: Optional[float] = None
+    rbc_params: Dict[str, Any] = field(default_factory=dict)
+    currency: str = "XAF"
+    extra: Dict[str, Any] = field(default_factory=dict)
+
+    def get_amount(self, key: str, value: Optional[float] = None) -> int:
+        """Calculate tariff amount based on type and configuration."""
+        if self.tariff_type == TariffType.FIXED:
+            return self.fixed_amounts.get(key, 0)
+
+        if self.tariff_type == TariffType.PERCENTAGE and value:
+            return int(value * (self.percentage or 0) / 100)
+
+        if self.tariff_type == TariffType.RBC:
+            return 0  # Calculated by RBC calculator
+
+        if self.tariff_type == TariffType.NOTA_INGRESO:
+            return 0  # Determined by Nota
+
+        return 0
+
+
+# =============================================================================
+# WORKFLOW INTERFACE (Protocol)
+# =============================================================================
+
+@runtime_checkable
+class WorkflowInterface(Protocol):
+    """
+    Protocol defining the contract for all workflows.
+
+    Every workflow (predefined or configurable) must implement this interface.
+    This ensures consistency while allowing complete autonomy in implementation.
+
+    Key principle: Each workflow is AUTONOMOUS.
+    - Defines ALL its steps internally (no inheritance conflicts)
+    - Has its own document requirements logic
+    - Has its own tariff calculation logic
+    - Has its own validation rules
+    """
+
+    # === Required Properties ===
+
+    @property
+    def workflow_code(self) -> WorkflowCode:
+        """Unique code identifying this workflow."""
+        ...
+
+    @property
+    def category(self) -> WorkflowCategory:
+        """Category for UI grouping."""
+        ...
+
+    @property
+    def entity_code(self) -> EntityCode:
+        """Entity responsible for processing."""
+        ...
+
+    @property
+    def service_name_es(self) -> str:
+        """Spanish service name for display."""
+        ...
+
+    @property
+    def allowed_solicitud_types(self) -> List[SolicitudType]:
+        """Allowed solicitud types (EXPEDICION, RENOVACION, DUPLICADO)."""
+        ...
+
+    # === Workflow Configuration ===
+
+    @property
+    def requires_appointment(self) -> bool:
+        """Whether workflow requires scheduling a cita."""
+        ...
+
+    @property
+    def requires_agent_review(self) -> bool:
+        """Whether workflow requires agent review."""
+        ...
+
+    @property
+    def requires_nota_ingreso(self) -> bool:
+        """Whether workflow requires Nota de Ingreso from Treasury."""
+        ...
+
+    # === Step Management ===
+
+    def get_steps(self, context: Optional[WorkflowContext] = None) -> List[WorkflowStep]:
+        """
+        Get ALL workflow steps in order.
+
+        Each workflow defines its complete step sequence internally.
+        Context can be used to customize steps based on solicitud_type/motivo.
+        """
+        ...
+
+    def get_step(self, step_number: int) -> Optional[WorkflowStep]:
+        """Get a specific step by number."""
+        ...
+
+    def get_step_by_id(self, step_id: str) -> Optional[WorkflowStep]:
+        """Get a specific step by ID."""
+        ...
+
+    def get_total_steps(self) -> int:
+        """Get total number of steps."""
+        ...
+
+    # === Document Requirements ===
+
+    def get_document_requirements(
+        self,
+        solicitud_type: SolicitudType,
+        motivo: Optional[RenovacionMotivo] = None,
+        context: Optional[WorkflowContext] = None
+    ) -> List[DocumentRequirement]:
+        """
+        Get document requirements based on solicitud type and motivo.
+
+        Args:
+            solicitud_type: EXPEDICION, RENOVACION, or DUPLICADO
+            motivo: For RENOVACION: VENCIMIENTO, PERDIDA, ROBO, DETERIORO
+            context: Optional runtime context for additional conditions
+
+        Returns:
+            List of required documents for this request type
+        """
+        ...
+
+    # === Tariff Calculation ===
+
+    def get_tariff(
+        self,
+        solicitud_type: SolicitudType,
+        motivo: Optional[RenovacionMotivo] = None,
+        context: Optional[WorkflowContext] = None
+    ) -> int:
+        """
+        Get tariff amount for this request.
+
+        Args:
+            solicitud_type: EXPEDICION, RENOVACION, or DUPLICADO
+            motivo: For RENOVACION: reason (affects pricing)
+            context: Optional runtime context
+
+        Returns:
+            Amount in XAF (centimes)
+        """
+        ...
+
+    def get_tariff_config(self) -> TariffConfig:
+        """Get the full tariff configuration."""
+        ...
+
+    # === Validation ===
+
+    def get_cross_validation_rules(self) -> List[Dict[str, Any]]:
+        """Get cross-document validation rules."""
+        ...
+
+    def validate_step(
+        self,
+        step_number: int,
+        context: WorkflowContext
+    ) -> List[ValidationResult]:
+        """Validate a specific step."""
+        ...
+
+    def validate_documents(self, context: WorkflowContext) -> List[ValidationResult]:
+        """Validate all documents for completeness."""
+        ...
+
+    # === Status Management ===
+
+    def get_next_status(
+        self,
+        current_status: ServiceRequestStatus
+    ) -> Optional[ServiceRequestStatus]:
+        """Get the next valid status in the workflow."""
+        ...
+
+    def can_transition_to(
+        self,
+        current_status: ServiceRequestStatus,
+        target_status: ServiceRequestStatus
+    ) -> bool:
+        """Check if a status transition is valid."""
+        ...
+
+    # === Workflow Info ===
+
+    def get_info(self) -> Dict[str, Any]:
+        """Get workflow information for API responses."""
+        ...
+
+
+# =============================================================================
+# BASE PREDEFINED WORKFLOW (Abstract)
+# =============================================================================
+
+class PredefinedWorkflow(ABC):
+    """
+    Abstract base for predefined (code-based) workflows.
+
+    Provides common utilities but does NOT define steps.
+    Each workflow is AUTONOMOUS and must define ALL its logic.
+
+    Use this for complex workflows with specific business logic:
+    - Pasaporte, Residencia, Vehiculo, Conducir, Contrato, Funcion Publica
+    """
+
+    def __init__(self):
+        """Initialize the workflow. Subclass must set up steps and tariffs."""
+        self._steps: List[WorkflowStep] = []
+        self._tariff_config: Optional[TariffConfig] = None
+        self._setup_workflow()
+
+    # === Abstract Methods (MUST be implemented) ===
+
+    @property
+    @abstractmethod
+    def workflow_code(self) -> WorkflowCode:
+        """Unique workflow code."""
+        ...
+
+    @property
+    @abstractmethod
+    def category(self) -> WorkflowCategory:
+        """Workflow category."""
+        ...
+
+    @property
+    @abstractmethod
+    def entity_code(self) -> EntityCode:
+        """Responsible entity."""
+        ...
+
+    @property
+    @abstractmethod
+    def service_name_es(self) -> str:
+        """Spanish service name."""
+        ...
+
+    @property
+    @abstractmethod
+    def allowed_solicitud_types(self) -> List[SolicitudType]:
+        """Allowed solicitud types."""
+        ...
+
+    @property
+    def requires_appointment(self) -> bool:
+        """Override if workflow requires cita."""
+        return False
+
+    @property
+    def requires_agent_review(self) -> bool:
+        """Override if workflow requires agent review."""
+        return True
+
+    @property
+    def requires_nota_ingreso(self) -> bool:
+        """Override if workflow requires Nota de Ingreso."""
+        return False
+
+    @abstractmethod
+    def _setup_workflow(self) -> None:
+        """
+        Setup the complete workflow.
+
+        MUST define:
+        1. All steps via add_step()
+        2. Tariff config via set_tariff_config()
+        """
+        ...
+
+    @abstractmethod
+    def get_document_requirements(
+        self,
+        solicitud_type: SolicitudType,
+        motivo: Optional[RenovacionMotivo] = None,
+        context: Optional[WorkflowContext] = None
+    ) -> List[DocumentRequirement]:
+        """Get document requirements."""
+        ...
+
+    @abstractmethod
+    def get_cross_validation_rules(self) -> List[Dict[str, Any]]:
+        """Get validation rules."""
+        ...
+
+    # === Step Management (final implementation) ===
+
+    def add_step(self, step: WorkflowStep) -> None:
+        """Add a step to the workflow."""
+        self._steps.append(step)
+
+    def set_tariff_config(self, config: TariffConfig) -> None:
+        """Set the tariff configuration."""
+        self._tariff_config = config
+
+    def get_steps(self, context: Optional[WorkflowContext] = None) -> List[WorkflowStep]:
+        """Get all steps in order."""
+        return sorted(self._steps, key=lambda s: s.step_number)
+
+    def get_step(self, step_number: int) -> Optional[WorkflowStep]:
+        """Get step by number."""
+        for step in self._steps:
+            if step.step_number == step_number:
+                return step
+        return None
+
+    def get_step_by_id(self, step_id: str) -> Optional[WorkflowStep]:
+        """Get step by ID."""
+        for step in self._steps:
+            if step.step_id == step_id:
+                return step
+        return None
+
+    def get_total_steps(self) -> int:
+        """Get total steps."""
+        return len(self._steps)
+
+    # === Tariff Management ===
+
+    def get_tariff_config(self) -> TariffConfig:
+        """Get tariff config."""
+        return self._tariff_config or TariffConfig(tariff_type=TariffType.FIXED)
+
+    def get_tariff(
+        self,
+        solicitud_type: SolicitudType,
+        motivo: Optional[RenovacionMotivo] = None,
+        context: Optional[WorkflowContext] = None
+    ) -> int:
+        """Get tariff amount."""
+        if not self._tariff_config:
+            return 0
+
+        # Build the key for tariff lookup
+        # For RENOVACION with motivo, use motivo as key
+        if solicitud_type == SolicitudType.RENOVACION and motivo:
+            key = motivo.value
+        else:
+            key = solicitud_type.value.upper()
+
+        return self._tariff_config.get_amount(key)
+
+    # === Validation ===
+
+    def validate_step(
+        self,
+        step_number: int,
+        context: WorkflowContext
+    ) -> List[ValidationResult]:
+        """Validate a specific step."""
+        step = self.get_step(step_number)
+        if not step:
+            return []
+
+        results = []
+
+        if step.step_type == StepType.DOCUMENT_UPLOAD:
+            results.extend(self._validate_documents_for_step(step, context))
+        elif step.step_type == StepType.VALIDATION:
+            results.extend(self._validate_cross_documents(context))
+
+        return results
+
+    def validate_documents(self, context: WorkflowContext) -> List[ValidationResult]:
+        """Validate all required documents are uploaded."""
+        results = []
+        requirements = self.get_document_requirements(
+            context.solicitud_type,
+            context.motivo,
+            context
+        )
+
+        for doc in requirements:
+            if doc.is_required and doc.document_code not in context.documents_uploaded:
+                results.append(ValidationResult(
+                    is_valid=False,
+                    rule_id=f"doc_required_{doc.document_code}",
+                    severity="error",
+                    message_es=f"El documento {doc.document_name_es} es obligatorio",
+                    document_code=doc.document_code
+                ))
+
+        return results
+
+    def _validate_documents_for_step(
+        self,
+        step: WorkflowStep,
+        context: WorkflowContext
+    ) -> List[ValidationResult]:
+        """Validate documents for a step."""
+        results = []
+        applicable_docs = step.get_applicable_documents(context)
+
+        for doc in applicable_docs:
+            if doc.is_required and doc.document_code not in context.documents_uploaded:
+                results.append(ValidationResult(
+                    is_valid=False,
+                    rule_id=f"doc_required_{doc.document_code}",
+                    severity="error",
+                    message_es=f"El documento {doc.document_name_es} es obligatorio",
+                    document_code=doc.document_code
+                ))
+
+        return results
+
+    def _validate_cross_documents(self, context: WorkflowContext) -> List[ValidationResult]:
+        """Run cross-document validations."""
+        results = []
+
+        for rule in self.get_cross_validation_rules():
+            result = self._evaluate_validation_rule(rule, context)
+            if result:
+                results.append(result)
+
+        return results
+
+    def _evaluate_validation_rule(
+        self,
+        rule: Dict[str, Any],
+        context: WorkflowContext
+    ) -> Optional[ValidationResult]:
+        """Evaluate a single validation rule."""
+        rule_id = rule.get("id", "unknown")
+
+        # Check condition
+        condition = rule.get("condition")
+        if condition and not self._evaluate_condition(condition, context):
+            return None
+
+        # Evaluate rule
+        rule_expr = rule.get("rule", "")
+        is_valid = self._evaluate_rule_expression(rule_expr, context)
+
+        if not is_valid:
+            return ValidationResult(
+                is_valid=False,
+                rule_id=rule_id,
+                severity=rule.get("severity", "error"),
+                message_es=rule.get("error_es"),
+                document_code=rule.get("document")
+            )
+
+        return None
+
+    def _evaluate_condition(self, condition: str, context: WorkflowContext) -> bool:
+        """Evaluate a condition expression."""
+        if "tipo ==" in condition:
+            expected = condition.split("==")[1].strip().strip("'\"")
+            return context.sub_type == expected
+
+        if "tipo IN" in condition:
+            import re
+            match = re.search(r"\[([^\]]+)\]", condition)
+            if match:
+                types = [t.strip().strip("'\"") for t in match.group(1).split(",")]
+                return context.sub_type in types
+
+        if "motivo ==" in condition:
+            expected = condition.split("==")[1].strip().strip("'\"")
+            return context.motivo and context.motivo.value == expected
+
+        if "motivo IN" in condition:
+            import re
+            match = re.search(r"\[([^\]]+)\]", condition)
+            if match:
+                motivos = [m.strip().strip("'\"") for m in match.group(1).split(",")]
+                return context.motivo and context.motivo.value in motivos
+
+        return True
+
+    def _evaluate_rule_expression(self, rule: str, context: WorkflowContext) -> bool:
+        """Evaluate rule expression. Simplified - extend as needed."""
+        logger.debug(f"Evaluating rule: {rule}")
+        return True  # Implement proper evaluation
+
+    # === Status Transitions ===
+
+    def get_next_status(
+        self,
+        current_status: ServiceRequestStatus
+    ) -> Optional[ServiceRequestStatus]:
+        """Get next valid status."""
+        transitions = self._get_status_transitions()
+        return transitions.get(current_status)
+
+    def _get_status_transitions(self) -> Dict[ServiceRequestStatus, ServiceRequestStatus]:
+        """Get valid status transitions."""
+        transitions = {
+            ServiceRequestStatus.DRAFT: ServiceRequestStatus.SUBMITTED,
+            ServiceRequestStatus.SUBMITTED: ServiceRequestStatus.UNDER_REVIEW,
+            ServiceRequestStatus.UNDER_REVIEW: ServiceRequestStatus.DOSSIER_VALIDE,
+            ServiceRequestStatus.DOSSIER_VALIDE: ServiceRequestStatus.PAYMENT_PENDING,
+            ServiceRequestStatus.PAYMENT_PENDING: ServiceRequestStatus.PAYMENT_PROCESSING,
+            ServiceRequestStatus.PAYMENT_PROCESSING: ServiceRequestStatus.PAID,
+            ServiceRequestStatus.PAID: ServiceRequestStatus.CITA_SCHEDULED,
+            ServiceRequestStatus.CITA_SCHEDULED: ServiceRequestStatus.IN_PROGRESS,
+            ServiceRequestStatus.IN_PROGRESS: ServiceRequestStatus.COMPLETED,
+        }
+
+        if self.requires_nota_ingreso:
+            transitions[ServiceRequestStatus.SUBMITTED] = ServiceRequestStatus.TIMBRES_PENDING
+            transitions[ServiceRequestStatus.TIMBRES_PENDING] = ServiceRequestStatus.TIMBRES_PAID
+            transitions[ServiceRequestStatus.TIMBRES_PAID] = ServiceRequestStatus.UNDER_REVIEW
+            transitions[ServiceRequestStatus.DOSSIER_VALIDE] = ServiceRequestStatus.PENDING_NOTA_INGRESO
+            transitions[ServiceRequestStatus.PENDING_NOTA_INGRESO] = ServiceRequestStatus.NOTA_UPLOADED
+            transitions[ServiceRequestStatus.NOTA_UPLOADED] = ServiceRequestStatus.PAYMENT_PENDING
+
+        if not self.requires_appointment:
+            # Skip CITA_SCHEDULED if no appointment needed
+            transitions[ServiceRequestStatus.PAID] = ServiceRequestStatus.IN_PROGRESS
+
+        return transitions
+
+    def can_transition_to(
+        self,
+        current_status: ServiceRequestStatus,
+        target_status: ServiceRequestStatus
+    ) -> bool:
+        """Check if transition is valid."""
+        next_status = self.get_next_status(current_status)
+        if next_status == target_status:
+            return True
+
+        # Special transitions
+        if target_status == ServiceRequestStatus.REJECTED:
+            return current_status in [
+                ServiceRequestStatus.SUBMITTED,
+                ServiceRequestStatus.UNDER_REVIEW,
+                ServiceRequestStatus.DOCUMENTS_REQUIRED
+            ]
+
+        if target_status == ServiceRequestStatus.DOCUMENTS_REQUIRED:
+            return current_status == ServiceRequestStatus.UNDER_REVIEW
+
+        if target_status == ServiceRequestStatus.CANCELLED:
+            return current_status not in [
+                ServiceRequestStatus.COMPLETED,
+                ServiceRequestStatus.CANCELLED
+            ]
+
+        return False
+
+    # === Workflow Info ===
+
+    def get_info(self) -> Dict[str, Any]:
+        """Get workflow info for API."""
+        return {
+            "code": self.workflow_code.value,
+            "category": self.category.value,
+            "entity_code": self.entity_code.value,
+            "service_name_es": self.service_name_es,
+            "requires_nota_ingreso": self.requires_nota_ingreso,
+            "requires_appointment": self.requires_appointment,
+            "requires_agent_review": self.requires_agent_review,
+            "allowed_solicitud_types": [t.value for t in self.allowed_solicitud_types],
+            "total_steps": self.get_total_steps(),
+            "steps": [
+                {
+                    "number": s.step_number,
+                    "id": s.step_id,
+                    "type": s.step_type.value,
+                    "title_es": s.title_es,
+                    "description_es": s.description_es,
+                }
+                for s in self.get_steps()
+            ]
+        }
