@@ -237,7 +237,7 @@ function transformFieldIndicator(backend: BackendFieldIndicator): FieldIndicator
     value: backend.value,
     confidence: backend.confidence,
     status: backend.status,
-    riskLevel: backend.risk_level,
+    riskLevel: backend.risk_level as FieldIndicator['riskLevel'],
     riskMessage: backend.risk_message,
     requiresAttention: backend.requires_attention,
     suggestion: backend.suggestion,
@@ -248,7 +248,11 @@ function transformRiskAnalysis(backend: BackendRiskAnalysis): RiskAnalysisResult
   return {
     riskLevel: backend.risk_level as RiskAnalysisResult['riskLevel'],
     riskScore: backend.risk_score,
-    riskFactors: backend.risk_factors,
+    riskFactors: backend.risk_factors.map((f) => ({
+      type: (f as Record<string, unknown>).type as string,
+      severity: (f as Record<string, unknown>).severity as string,
+      description: (f as Record<string, unknown>).description as string,
+    })),
     recommendations: backend.recommendations,
     requiresRejection: backend.requires_rejection,
     requiresReview: backend.requires_review,
