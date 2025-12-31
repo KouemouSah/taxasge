@@ -16,6 +16,10 @@ import type {
   StepSubmitRequest,
   ValidationResult,
   TariffCalculation,
+  DocumentExtractionPreview,
+  DocumentValidationResponse,
+  FormDataResponse,
+  CitizenSummaryResponse,
 } from '../types'
 
 // ============================================================================
@@ -53,12 +57,22 @@ export interface UseServiceRequestsReturn {
   saveStepData: (stepId: string, data: Record<string, unknown>) => Promise<boolean>
   validateStep: (stepId: string, data: Record<string, unknown>) => Promise<ValidationResult[]>
 
-  // Document actions
+  // Document actions (legacy - direct upload)
   uploadDocument: (documentCode: string, file: File, face?: string) => Promise<ServiceRequestDocument | null>
   deleteDocument: (documentId: string) => Promise<boolean>
   retryExtraction: (documentId: string) => Promise<boolean>
   updateExtractedData: (documentId: string, data: Record<string, unknown>) => Promise<boolean>
   loadDocuments: () => Promise<void>
+
+  // Document actions (NEW - preview/validate two-step flow)
+  previewDocument: (documentCode: string, file: File) => Promise<DocumentExtractionPreview | null>
+  validateDocument: (previewId: string, confirmedData: Record<string, unknown>, userNotes?: string) => Promise<DocumentValidationResponse | null>
+  currentPreview: DocumentExtractionPreview | null
+  clearPreview: () => void
+
+  // Form data and summary
+  getFormData: () => Promise<FormDataResponse | null>
+  getCitizenSummary: () => Promise<CitizenSummaryResponse | null>
 
   // Validation & Tariff
   validateDocuments: () => Promise<ValidationResult[]>
@@ -103,6 +117,8 @@ export function useServiceRequests(): UseServiceRequestsReturn {
   const [documents, setDocuments] = useState<ServiceRequestDocument[]>([])
   const [validationResults, setValidationResults] = useState<ValidationResult[]>([])
   const [tariff, setTariff] = useState<TariffCalculation | null>(null)
+  const [currentPreview, setCurrentPreview] = useState<DocumentExtractionPreview | null>(null)
+  const [currentPreview, setCurrentPreview] = useState<DocumentExtractionPreview | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -372,6 +388,198 @@ export function useServiceRequests(): UseServiceRequestsReturn {
       setDocuments(docs)
     } catch (err) {
       handleError(err)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [currentRequest, handleError])
+
+  // =========================================================================
+  // DOCUMENT PREVIEW/VALIDATE (NEW TWO-STEP FLOW)
+  // =========================================================================
+
+  const previewDocument = useCallback(async (
+    documentCode: string,
+    file: File
+  ): Promise<DocumentExtractionPreview | null> => {
+    if (!currentRequest) return null
+
+    try {
+      setIsSaving(true)
+      setError(null)
+      const preview = await serviceRequestsApi.previewDocumentExtraction(
+        currentRequest.id,
+        documentCode,
+        file
+      )
+      setCurrentPreview(preview)
+      return preview
+    } catch (err) {
+      handleError(err)
+      return null
+    } finally {
+      setIsSaving(false)
+    }
+  }, [currentRequest, handleError])
+
+  const validateDocument = useCallback(async (
+    previewId: string,
+    confirmedData: Record<string, unknown>,
+    userNotes?: string
+  ): Promise<DocumentValidationResponse | null> => {
+    if (!currentRequest) return null
+
+    try {
+      setIsSaving(true)
+      setError(null)
+      const response = await serviceRequestsApi.validateAndUploadDocument(
+        currentRequest.id,
+        previewId,
+        confirmedData,
+        userNotes
+      )
+      // Clear preview after successful validation
+      setCurrentPreview(null)
+      // Refresh documents list
+      const docs = await serviceRequestsApi.getDocuments(currentRequest.id)
+      setDocuments(docs)
+      return response
+    } catch (err) {
+      handleError(err)
+      return null
+    } finally {
+      setIsSaving(false)
+    }
+  }, [currentRequest, handleError])
+
+  const clearPreview = useCallback(() => {
+    setCurrentPreview(null)
+  }, [])
+
+  // =========================================================================
+  // FORM DATA AND CITIZEN SUMMARY
+  // =========================================================================
+
+  const getFormData = useCallback(async (): Promise<FormDataResponse | null> => {
+    if (!currentRequest) return null
+
+    try {
+      setIsLoading(true)
+      setError(null)
+      return await serviceRequestsApi.getFormData(currentRequest.id)
+    } catch (err) {
+      handleError(err)
+      return null
+    } finally {
+      setIsLoading(false)
+    }
+  }, [currentRequest, handleError])
+
+  const getCitizenSummary = useCallback(async (): Promise<CitizenSummaryResponse | null> => {
+    if (!currentRequest) return null
+
+    try {
+      setIsLoading(true)
+      setError(null)
+      return await serviceRequestsApi.getCitizenSummary(currentRequest.id)
+    } catch (err) {
+      handleError(err)
+      return null
+    } finally {
+      setIsLoading(false)
+    }
+  }, [currentRequest, handleError])
+
+  // =========================================================================
+  // DOCUMENT PREVIEW/VALIDATE (NEW TWO-STEP FLOW)
+  // =========================================================================
+
+  const previewDocument = useCallback(async (
+    documentCode: string,
+    file: File
+  ): Promise<DocumentExtractionPreview | null> => {
+    if (!currentRequest) return null
+
+    try {
+      setIsSaving(true)
+      setError(null)
+      const preview = await serviceRequestsApi.previewDocumentExtraction(
+        currentRequest.id,
+        documentCode,
+        file
+      )
+      setCurrentPreview(preview)
+      return preview
+    } catch (err) {
+      handleError(err)
+      return null
+    } finally {
+      setIsSaving(false)
+    }
+  }, [currentRequest, handleError])
+
+  const validateDocument = useCallback(async (
+    previewId: string,
+    confirmedData: Record<string, unknown>,
+    userNotes?: string
+  ): Promise<DocumentValidationResponse | null> => {
+    if (!currentRequest) return null
+
+    try {
+      setIsSaving(true)
+      setError(null)
+      const response = await serviceRequestsApi.validateAndUploadDocument(
+        currentRequest.id,
+        previewId,
+        confirmedData,
+        userNotes
+      )
+      // Clear preview after successful validation
+      setCurrentPreview(null)
+      // Refresh documents list
+      const docs = await serviceRequestsApi.getDocuments(currentRequest.id)
+      setDocuments(docs)
+      return response
+    } catch (err) {
+      handleError(err)
+      return null
+    } finally {
+      setIsSaving(false)
+    }
+  }, [currentRequest, handleError])
+
+  const clearPreview = useCallback(() => {
+    setCurrentPreview(null)
+  }, [])
+
+  // =========================================================================
+  // FORM DATA AND CITIZEN SUMMARY
+  // =========================================================================
+
+  const getFormData = useCallback(async (): Promise<FormDataResponse | null> => {
+    if (!currentRequest) return null
+
+    try {
+      setIsLoading(true)
+      setError(null)
+      return await serviceRequestsApi.getFormData(currentRequest.id)
+    } catch (err) {
+      handleError(err)
+      return null
+    } finally {
+      setIsLoading(false)
+    }
+  }, [currentRequest, handleError])
+
+  const getCitizenSummary = useCallback(async (): Promise<CitizenSummaryResponse | null> => {
+    if (!currentRequest) return null
+
+    try {
+      setIsLoading(true)
+      setError(null)
+      return await serviceRequestsApi.getCitizenSummary(currentRequest.id)
+    } catch (err) {
+      handleError(err)
+      return null
     } finally {
       setIsLoading(false)
     }
@@ -718,12 +926,22 @@ export function useServiceRequests(): UseServiceRequestsReturn {
     saveStepData,
     validateStep,
 
-    // Document actions
+    // Document actions (legacy)
     uploadDocument,
     deleteDocument,
     retryExtraction,
     updateExtractedData,
     loadDocuments,
+
+    // Document actions (new preview/validate flow)
+    previewDocument,
+    validateDocument,
+    currentPreview,
+    clearPreview,
+
+    // Form data and summary
+    getFormData,
+    getCitizenSummary,
 
     // Validation & Tariff
     validateDocuments,

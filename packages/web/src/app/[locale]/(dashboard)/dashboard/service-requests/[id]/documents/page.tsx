@@ -23,8 +23,11 @@ import {
   Loader2,
   ExternalLink,
   ArrowRight,
+  Eye,
 } from 'lucide-react'
 import { useServiceRequests } from '@/modules/service-requests'
+import { DocumentPreviewDialog } from '@/modules/service-requests/components'
+import type { DocumentExtractionPreview } from '@/modules/service-requests/types'
 // WorkflowConfig import removed - not needed with simplified logic
 
 // Document requirement interface matching workflow
@@ -61,11 +64,16 @@ export default function DocumentsUploadPage() {
     currentRequest,
     documents,
     isLoading,
+    isSaving,
     error,
     loadRequest,
     loadDocuments,
     loadWorkflows,
-    uploadDocument,
+    uploadDocument, // Legacy direct upload (kept as fallback)
+    previewDocument, // NEW: Two-step preview flow
+    validateDocument, // NEW: Validate and save after preview
+    currentPreview,
+    clearPreview,
     clearError,
   } = useServiceRequests()
 
@@ -77,6 +85,11 @@ export default function DocumentsUploadPage() {
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null)
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
+
+  // Preview dialog state
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false)
+  const [previewingDocCode, setPreviewingDocCode] = useState<string | null>(null)
+  const [isConfirmingPreview, setIsConfirmingPreview] = useState(false)
 
   // Load request and documents on mount
   useEffect(() => {
@@ -197,45 +210,82 @@ export default function DocumentsUploadPage() {
     return documents.find(d => d.documentCode === docCode || d.documentCode?.toLowerCase() === docCode.toLowerCase())
   }
 
-  // Handle file upload
+  // Handle file upload - TWO-STEP PREVIEW FLOW
+  // Step 1: Preview extraction without saving
   const handleFileUpload = useCallback(async (docCode: string, event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
 
     setUploadingDocCode(docCode)
+    setPreviewingDocCode(docCode)
     setUploadError(null)
     setUploadSuccess(null)
     setUploadProgress(10)
 
-    // Define interval outside try block so it can be cleared in catch
     let progressInterval: ReturnType<typeof setInterval> | null = null
 
     try {
       progressInterval = setInterval(() => {
-        setUploadProgress(prev => Math.min(prev + 15, 90))
+        setUploadProgress(prev => Math.min(prev + 15, 80))
       }, 200)
 
-      await uploadDocument(docCode, file)
+      // Call preview endpoint - document NOT saved yet
+      const preview = await previewDocument(docCode, file)
 
       if (progressInterval) clearInterval(progressInterval)
       setUploadProgress(100)
-      setUploadSuccess(docCode)
 
-      // Refresh documents
-      await loadDocuments()
+      if (preview) {
+        // Open preview dialog for user validation
+        setShowPreviewDialog(true)
+      }
 
-      setTimeout(() => {
-        setUploadProgress(0)
-        setUploadingDocCode(null)
-      }, 1000)
+      setUploadingDocCode(null)
+      setUploadProgress(0)
     } catch (err) {
-      // Clear interval on error to prevent memory leak
       if (progressInterval) clearInterval(progressInterval)
       setUploadError(err instanceof Error ? err.message : t('documents.upload_error'))
       setUploadProgress(0)
       setUploadingDocCode(null)
+      setPreviewingDocCode(null)
     }
-  }, [uploadDocument, loadDocuments, t])
+  }, [previewDocument, t])
+
+  // Step 2: Confirm preview and save document
+  const handleConfirmPreview = useCallback(async (
+    confirmedData: Record<string, unknown>,
+    userNotes?: string
+  ) => {
+    if (!currentPreview) return
+
+    setIsConfirmingPreview(true)
+    try {
+      const result = await validateDocument(
+        currentPreview.previewId,
+        confirmedData,
+        userNotes
+      )
+
+      if (result) {
+        setUploadSuccess(previewingDocCode)
+        setShowPreviewDialog(false)
+        setPreviewingDocCode(null)
+        // Refresh documents list
+        await loadDocuments()
+      }
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : t('documents.validation_error'))
+    } finally {
+      setIsConfirmingPreview(false)
+    }
+  }, [currentPreview, validateDocument, previewingDocCode, loadDocuments, t])
+
+  // Cancel preview dialog
+  const handleCancelPreview = useCallback(() => {
+    setShowPreviewDialog(false)
+    setPreviewingDocCode(null)
+    clearPreview()
+  }, [clearPreview])
 
   // Calculate progress
   const requiredDocs = getRequiredDocuments()
@@ -486,6 +536,15 @@ export default function DocumentsUploadPage() {
       <p className="text-xs text-center text-muted-foreground">
         {t('accepted_formats') || 'Formatos aceptados'}: PDF, JPG, PNG. {t('max_size') || 'Tamaño máximo'}: 5MB
       </p>
+      {/* Document Preview Dialog - Two-Step Validation */}
+      <DocumentPreviewDialog
+        preview={currentPreview}
+        isOpen={showPreviewDialog}
+        onClose={handleCancelPreview}
+        onConfirm={handleConfirmPreview}
+        isConfirming={isConfirmingPreview}
+        locale={locale as 'es' | 'fr' | 'en'}
+      />
     </div>
   )
 }
