@@ -572,3 +572,123 @@ export function getStepTypeIcon(stepType: StepType): string {
   }
   return icons[stepType] || 'circle'
 }
+
+// ============================================================================
+// APPOINTMENT TYPES (Citizen-First Flow)
+// ============================================================================
+
+/**
+ * EntityLocation - Physical location for appointments
+ * From entity_locations table (migration 030)
+ */
+export interface EntityLocation {
+  id: string
+  entityCode: string
+  locationCode: string
+  locationName: string
+  city: string
+  province?: string
+  region?: string
+  address?: string
+  phone?: string
+  email?: string
+  isMainOffice: boolean
+}
+
+/**
+ * AvailableSlot - Available appointment slot for selection
+ */
+export interface AvailableSlot {
+  slotDate: string // ISO date string
+  slotTime: string // HH:mm:ss format
+  locationName: string
+  locationAddress?: string
+  slotsRemaining: number
+}
+
+/**
+ * HoldSlotRequest - Request to hold an appointment slot before payment
+ */
+export interface HoldSlotRequest {
+  locationId?: string
+  locationName: string
+  locationAddress?: string
+  appointmentDate: string // ISO date string
+  appointmentTime: string // HH:mm:ss format
+}
+
+/**
+ * HoldSlotResponse - Response after holding a slot
+ */
+export interface HoldSlotResponse {
+  success: boolean
+  holdId?: string
+  locationName?: string
+  appointmentDate?: string
+  appointmentTime?: string
+  expiresAt?: string // ISO datetime
+  expiresInSeconds: number
+  error?: string
+}
+
+/**
+ * AppointmentHoldStatus - Current status of an appointment hold
+ */
+export interface AppointmentHoldStatus {
+  hasHold: boolean
+  status?: 'held' | 'confirmed' | 'expired' | 'released' | 'fallback'
+  locationName?: string
+  appointmentDate?: string
+  appointmentTime?: string
+  expiresAt?: string
+  isExpired: boolean
+}
+
+/**
+ * AppointmentLocationsResponse - List of locations for an entity
+ */
+export interface AppointmentLocationsResponse {
+  entityCode: string
+  locations: EntityLocation[]
+  count: number
+}
+
+/**
+ * AppointmentSlotsResponse - List of available slots for a location
+ */
+export interface AppointmentSlotsResponse {
+  entityCode: string
+  locationName: string
+  fromDate: string
+  slots: AvailableSlot[]
+  count: number
+  hasAvailability: boolean
+}
+
+/**
+ * SubmitWithoutAppointmentRequest - Fallback when no slots available
+ */
+export interface SubmitWithoutAppointmentRequest {
+  preferredLocation: string
+}
+
+/**
+ * SubmitWithoutAppointmentResponse - Response for fallback submission
+ */
+export interface SubmitWithoutAppointmentResponse {
+  success: boolean
+  locationName?: string
+  message: string
+  error?: string
+}
+
+/**
+ * ConfirmHoldResponse - Response after confirming hold (payment webhook)
+ */
+export interface ConfirmHoldResponse {
+  success: boolean
+  appointmentDate?: string
+  appointmentTime?: string
+  locationName?: string
+  error?: string
+}

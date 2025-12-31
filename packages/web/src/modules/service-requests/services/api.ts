@@ -1005,6 +1005,284 @@ class ServiceRequestsApiClient {
     })
     return transformDocumentValidationResponse(backend)
   }
+
+  // =========================================================================
+  // APPOINTMENT METHODS (Citizen-First Flow)
+  // =========================================================================
+
+  /**
+   * Get available locations for appointment selection
+   */
+  async getAppointmentLocations(requestId: string): Promise<{
+    entityCode: string
+    locations: Array<{
+      id: string
+      entityCode: string
+      locationCode: string
+      locationName: string
+      city: string
+      province?: string
+      region?: string
+      address?: string
+      phone?: string
+      email?: string
+      isMainOffice: boolean
+    }>
+    count: number
+  }> {
+    const response = await this.request<{
+      entity_code: string
+      locations: Array<{
+        id: string
+        entity_code: string
+        location_code: string
+        location_name: string
+        city: string
+        province?: string
+        region?: string
+        address?: string
+        phone?: string
+        email?: string
+        is_main_office: boolean
+      }>
+      count: number
+    }>(`/${requestId}/appointments/locations`)
+
+    return {
+      entityCode: response.entity_code,
+      locations: response.locations.map(loc => ({
+        id: loc.id,
+        entityCode: loc.entity_code,
+        locationCode: loc.location_code,
+        locationName: loc.location_name,
+        city: loc.city,
+        province: loc.province,
+        region: loc.region,
+        address: loc.address,
+        phone: loc.phone,
+        email: loc.email,
+        isMainOffice: loc.is_main_office,
+      })),
+      count: response.count,
+    }
+  }
+
+  /**
+   * Get available appointment slots for a location
+   */
+  async getAppointmentSlots(
+    requestId: string,
+    locationName: string,
+    fromDate?: string,
+    limit: number = 6
+  ): Promise<{
+    entityCode: string
+    locationName: string
+    fromDate: string
+    slots: Array<{
+      slotDate: string
+      slotTime: string
+      locationName: string
+      locationAddress?: string
+      slotsRemaining: number
+    }>
+    count: number
+    hasAvailability: boolean
+  }> {
+    const params = new URLSearchParams({
+      location_name: locationName,
+      limit: limit.toString(),
+    })
+    if (fromDate) params.append('from_date', fromDate)
+
+    const response = await this.request<{
+      entity_code: string
+      location_name: string
+      from_date: string
+      slots: Array<{
+        slot_date: string
+        slot_time: string
+        location_name: string
+        location_address?: string
+        slots_remaining: number
+      }>
+      count: number
+      has_availability: boolean
+    }>(`/${requestId}/appointments/slots?${params.toString()}`)
+
+    return {
+      entityCode: response.entity_code,
+      locationName: response.location_name,
+      fromDate: response.from_date,
+      slots: response.slots.map(slot => ({
+        slotDate: slot.slot_date,
+        slotTime: slot.slot_time,
+        locationName: slot.location_name,
+        locationAddress: slot.location_address,
+        slotsRemaining: slot.slots_remaining,
+      })),
+      count: response.count,
+      hasAvailability: response.has_availability,
+    }
+  }
+
+  /**
+   * Hold an appointment slot before payment
+   */
+  async holdAppointmentSlot(
+    requestId: string,
+    data: {
+      locationName: string
+      locationAddress?: string
+      appointmentDate: string
+      appointmentTime: string
+    }
+  ): Promise<{
+    success: boolean
+    holdId?: string
+    locationName?: string
+    appointmentDate?: string
+    appointmentTime?: string
+    expiresAt?: string
+    expiresInSeconds: number
+    error?: string
+  }> {
+    const response = await this.request<{
+      success: boolean
+      hold_id?: string
+      location_name?: string
+      appointment_date?: string
+      appointment_time?: string
+      expires_at?: string
+      expires_in_seconds: number
+      error?: string
+    }>(`/${requestId}/appointments/hold`, {
+      method: 'POST',
+      body: JSON.stringify({
+        location_name: data.locationName,
+        location_address: data.locationAddress,
+        appointment_date: data.appointmentDate,
+        appointment_time: data.appointmentTime,
+      }),
+    })
+
+    return {
+      success: response.success,
+      holdId: response.hold_id,
+      locationName: response.location_name,
+      appointmentDate: response.appointment_date,
+      appointmentTime: response.appointment_time,
+      expiresAt: response.expires_at,
+      expiresInSeconds: response.expires_in_seconds,
+      error: response.error,
+    }
+  }
+
+  /**
+   * Get current hold status for a request
+   */
+  async getHoldStatus(requestId: string): Promise<{
+    hasHold: boolean
+    status?: 'held' | 'confirmed' | 'expired' | 'released' | 'fallback'
+    locationName?: string
+    appointmentDate?: string
+    appointmentTime?: string
+    expiresAt?: string
+    isExpired: boolean
+  }> {
+    const response = await this.request<{
+      has_hold: boolean
+      status?: string
+      location_name?: string
+      appointment_date?: string
+      appointment_time?: string
+      expires_at?: string
+      is_expired: boolean
+    }>(`/${requestId}/appointments/hold-status`)
+
+    return {
+      hasHold: response.has_hold,
+      status: response.status as 'held' | 'confirmed' | 'expired' | 'released' | 'fallback' | undefined,
+      locationName: response.location_name,
+      appointmentDate: response.appointment_date,
+      appointmentTime: response.appointment_time,
+      expiresAt: response.expires_at,
+      isExpired: response.is_expired,
+    }
+  }
+
+  /**
+   * Release an appointment hold
+   */
+  async releaseHold(requestId: string): Promise<{
+    success: boolean
+    message: string
+  }> {
+    return this.request<{ success: boolean; message: string }>(`/${requestId}/appointments/hold`, {
+      method: 'DELETE',
+    })
+  }
+
+  /**
+   * Submit without appointment (fallback when no slots available)
+   */
+  async submitWithoutAppointment(
+    requestId: string,
+    preferredLocation: string
+  ): Promise<{
+    success: boolean
+    locationName?: string
+    message: string
+    error?: string
+  }> {
+    const response = await this.request<{
+      success: boolean
+      location_name?: string
+      message: string
+      error?: string
+    }>(`/${requestId}/appointments/fallback`, {
+      method: 'POST',
+      body: JSON.stringify({
+        preferred_location: preferredLocation,
+      }),
+    })
+
+    return {
+      success: response.success,
+      locationName: response.location_name,
+      message: response.message,
+      error: response.error,
+    }
+  }
+
+  /**
+   * Confirm appointment hold after payment (for webhook integration)
+   */
+  async confirmAppointmentHold(requestId: string): Promise<{
+    success: boolean
+    appointmentDate?: string
+    appointmentTime?: string
+    locationName?: string
+    error?: string
+  }> {
+    const response = await this.request<{
+      success: boolean
+      appointment_date?: string
+      appointment_time?: string
+      location_name?: string
+      error?: string
+    }>(`/${requestId}/appointments/confirm`, {
+      method: 'POST',
+    })
+
+    return {
+      success: response.success,
+      appointmentDate: response.appointment_date,
+      appointmentTime: response.appointment_time,
+      locationName: response.location_name,
+      error: response.error,
+    }
+  }
 }
 
 // =========================================================================

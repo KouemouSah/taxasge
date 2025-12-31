@@ -20,6 +20,9 @@ import type {
   DocumentValidationResponse,
   FormDataResponse,
   CitizenSummaryResponse,
+  EntityLocation,
+  AvailableSlot,
+  AppointmentHoldStatus,
 } from '../types'
 
 // ============================================================================
@@ -96,6 +99,15 @@ export interface UseServiceRequestsReturn {
   requestAdditionalInfo: (message: string, requiredDocs?: string[]) => Promise<boolean>
   scheduleAppointment: (date: string, time: string, location: string) => Promise<boolean>
   addAgentNote: (note: string) => Promise<boolean>
+
+  // Appointment actions (citizen-first flow)
+  getAppointmentLocations: (requestId: string) => Promise<{ entityCode: string; locations: EntityLocation[]; count: number }>
+  getAppointmentSlots: (requestId: string, locationName: string, fromDate?: string, limit?: number) => Promise<{ entityCode: string; locationName: string; fromDate: string; slots: AvailableSlot[]; count: number; hasAvailability: boolean }>
+  holdAppointmentSlot: (requestId: string, data: { locationName: string; locationAddress?: string; appointmentDate: string; appointmentTime: string }) => Promise<{ success: boolean; holdId?: string; expiresInSeconds: number; expiresAt?: string; error?: string }>
+  getAppointmentHoldStatus: (requestId: string) => Promise<AppointmentHoldStatus>
+  releaseAppointmentHold: (requestId: string) => Promise<{ success: boolean; message: string }>
+  submitWithoutAppointment: (requestId: string, preferredLocation: string) => Promise<{ success: boolean; locationName?: string; message: string; error?: string }>
+  confirmAppointmentHold: (requestId: string) => Promise<{ success: boolean; appointmentDate?: string; appointmentTime?: string; locationName?: string; error?: string }>
 
   // Utility
   clearError: () => void
@@ -801,6 +813,51 @@ export function useServiceRequests(): UseServiceRequestsReturn {
   }, [])
 
   // =========================================================================
+  // APPOINTMENT ACTIONS (Citizen-First Flow)
+  // =========================================================================
+
+  const getAppointmentLocations = useCallback(async (requestId: string) => {
+    return serviceRequestsApi.getAppointmentLocations(requestId)
+  }, [])
+
+  const getAppointmentSlots = useCallback(async (
+    requestId: string,
+    locationName: string,
+    fromDate?: string,
+    limit: number = 6
+  ) => {
+    return serviceRequestsApi.getAppointmentSlots(requestId, locationName, fromDate, limit)
+  }, [])
+
+  const holdAppointmentSlot = useCallback(async (
+    requestId: string,
+    data: {
+      locationName: string
+      locationAddress?: string
+      appointmentDate: string
+      appointmentTime: string
+    }
+  ) => {
+    return serviceRequestsApi.holdAppointmentSlot(requestId, data)
+  }, [])
+
+  const getAppointmentHoldStatus = useCallback(async (requestId: string) => {
+    return serviceRequestsApi.getHoldStatus(requestId)
+  }, [])
+
+  const releaseAppointmentHold = useCallback(async (requestId: string) => {
+    return serviceRequestsApi.releaseHold(requestId)
+  }, [])
+
+  const submitWithoutAppointment = useCallback(async (requestId: string, preferredLocation: string) => {
+    return serviceRequestsApi.submitWithoutAppointment(requestId, preferredLocation)
+  }, [])
+
+  const confirmAppointmentHold = useCallback(async (requestId: string) => {
+    return serviceRequestsApi.confirmAppointmentHold(requestId)
+  }, [])
+
+  // =========================================================================
   // RETURN
   // =========================================================================
 
@@ -869,6 +926,15 @@ export function useServiceRequests(): UseServiceRequestsReturn {
     requestAdditionalInfo,
     scheduleAppointment,
     addAgentNote,
+
+    // Appointment actions (citizen-first flow)
+    getAppointmentLocations,
+    getAppointmentSlots,
+    holdAppointmentSlot,
+    getAppointmentHoldStatus,
+    releaseAppointmentHold,
+    submitWithoutAppointment,
+    confirmAppointmentHold,
 
     // Utility
     clearError,
