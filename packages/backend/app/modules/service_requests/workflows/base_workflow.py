@@ -79,6 +79,7 @@ class DocumentRequirement:
     faces_required: List[str] = field(default_factory=list)  # ["recto", "verso"]
     accepted_formats: List[str] = field(default_factory=lambda: ["pdf", "jpg", "png"])
     max_size_mb: int = 10
+    config: Dict[str, Any] = field(default_factory=dict)  # Additional config for frontend
 
     def should_show(self, context: "WorkflowContext") -> bool:
         """Determine if document should be shown based on condition."""
