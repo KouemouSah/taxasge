@@ -15,7 +15,11 @@ from ..models.service_request import (
     ServiceRequestListResponse,
     DocumentExtractionPreview,
     DocumentValidationRequest,
-    DocumentValidationResponse
+    DocumentValidationResponse,
+    StepExecutionRequest,
+    StepExecutionResponse,
+    FormDataResponse,
+    CitizenSummaryResponse
 )
 from fastapi import HTTPException, status
 from ..services.service_request_service import service_request_service
@@ -464,4 +468,240 @@ async def cancel_service_request(
         request_id=request_id,
         user_id=current_user.id,
         reason=reason
+    )
+
+# ═══════════════════════════════════════════════════════════════
+# WORKFLOW STEPS EXECUTION
+# ═══════════════════════════════════════════════════════════════
+
+@router.post(
+    "/{request_id}/step/{step_number}",
+    response_model=StepExecutionResponse,
+    summary="Execute a workflow step",
+    description="""
+    Execute a specific step in the service request workflow.
+
+    **Step Types:**
+    - `SELECTION`: Choose sub-type (NUEVO, RENOVACION, PERDIDA, etc.)
+    - `DOCUMENT_UPLOAD`: Upload required documents
+    - `FORM_REVIEW`: Review and confirm extracted data
+    - `VALIDATION`: Cross-document validation
+    - `PAYMENT`: Process payment
+    - `CONFIRMATION`: Final submission
+
+    **Usage:**
+    1. Call without step_data to get step requirements
+    2. Call with step_data to complete the step
+    """
+)
+async def execute_workflow_step(
+    request_id: UUID = Path(..., description="The service request ID"),
+    step_number: int = Path(..., ge=1, le=10, description="The step number to execute"),
+    body: StepExecutionRequest = Body(default=StepExecutionRequest()),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user)
+):
+    """Execute a workflow step and return result"""
+    # Load context from database
+    context = await workflow_engine.load_context_from_db(db, request_id)
+    if not context:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Service request not found: {request_id}"
+        )
+
+    # Verify ownership
+    if str(context.user_id) != str(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
+
+    # Execute the step
+    result = await workflow_engine.execute_step(
+        db=db,
+        context=context,
+        step_number=step_number,
+        step_data=body.step_data
+    )
+
+    # Save context if step was successful
+    if result.get("success", False):
+        await workflow_engine.save_context_to_db(db, context)
+
+    return StepExecutionResponse(**result)
+
+
+# ═══════════════════════════════════════════════════════════════
+# FORM DATA (Pre-filled from extraction)
+# ═══════════════════════════════════════════════════════════════
+
+@router.get(
+    "/{request_id}/form-data",
+    response_model=FormDataResponse,
+    summary="Get pre-filled form data",
+    description="""
+    Get form data pre-filled from document extraction.
+
+    This endpoint applies the workflow's form_mapping to transform
+    extracted document data into form fields.
+
+    **Returns:**
+    - `form_data`: Flat dict of form field -> value
+    - `extracted_data`: Raw extraction by document
+    - `completion_percentage`: How much of the form is filled
+    - `missing_fields`: Required fields that are still empty
+    """
+)
+async def get_form_data(
+    request_id: UUID = Path(..., description="The service request ID"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user)
+):
+    """Get pre-filled form data from document extraction"""
+    # Load context
+    context = await workflow_engine.load_context_from_db(db, request_id)
+    if not context:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Service request not found: {request_id}"
+        )
+
+    # Verify ownership
+    if str(context.user_id) != str(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
+
+    # Get workflow
+    workflow = workflow_engine.get_workflow(context.workflow_code)
+    if not workflow:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown workflow: {context.workflow_code}"
+        )
+
+    # Get form mapping and apply it
+    try:
+        form_mapping = workflow.get_form_mapping(context)
+        mapped_data = workflow_engine._apply_form_mapping(
+            context.extracted_data,
+            form_mapping
+        )
+        # Merge with existing form_data (preserves user edits)
+        final_form_data = {**mapped_data, **context.form_data}
+    except Exception as e:
+        import logging
+        logging.warning(f"Error applying form mapping: {e}")
+        final_form_data = context.form_data
+        form_mapping = {}
+
+    # Calculate completion
+    required_fields = list(form_mapping.keys()) if form_mapping else []
+    filled_fields = [f for f in required_fields if f in final_form_data and final_form_data[f]]
+    missing = [f for f in required_fields if f not in final_form_data or not final_form_data[f]]
+    completion = (len(filled_fields) / len(required_fields) * 100) if required_fields else 100
+
+    return FormDataResponse(
+        form_data=final_form_data,
+        extracted_data=context.extracted_data,
+        requires_review=True,
+        completion_percentage=round(completion, 1),
+        missing_fields=missing
+    )
+
+
+# ═══════════════════════════════════════════════════════════════
+# CITIZEN SUMMARY (Formulaire Récapitulatif)
+# ═══════════════════════════════════════════════════════════════
+
+@router.get(
+    "/{request_id}/summary",
+    response_model=CitizenSummaryResponse,
+    summary="Get request summary for citizen",
+    description="""
+    Get a complete summary of the service request for citizen confirmation.
+
+    This is the 'formulaire récapitulatif' shown before final submission.
+
+    **Includes:**
+    - Personal data extracted from documents
+    - Documents upload status
+    - Tariff breakdown
+    - Validation status
+    - Whether request can be submitted
+    """
+)
+async def get_citizen_summary(
+    request_id: UUID = Path(..., description="The service request ID"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user)
+):
+    """Get complete summary for citizen confirmation"""
+    # Get full request details
+    request = await service_request_service.get_request(
+        db=db,
+        request_id=request_id,
+        user_id=current_user.id
+    )
+
+    # Get workflow for name
+    workflow = workflow_engine.get_workflow_by_string(request.workflow_code)
+    workflow_name = workflow.service_name_es if workflow else request.workflow_code
+
+    # Build personal data from form_data (mapped from extraction)
+    personal_fields = [
+        "nombres", "apellidos", "fecha_nacimiento", "lugar_nacimiento",
+        "numero_dip", "sexo", "nacionalidad", "estado_civil", "profesion"
+    ]
+    personal_data = {k: v for k, v in request.form_data.items() if k in personal_fields}
+
+    # Documents summary
+    docs_summary = []
+    for doc in request.provided_documents:
+        docs_summary.append({
+            "code": doc.document_code,
+            "name": doc.document_name,
+            "status": "validated" if doc.is_valid else ("pending" if doc.extraction_status == "pending" else "uploaded")
+        })
+
+    # Check if all required documents are provided
+    docs_complete = len(request.missing_documents) == 0
+
+    # Tariff summary
+    tariff_summary = None
+    if request.tariff:
+        tariff_summary = {
+            "base_amount": request.tariff.base_amount,
+            "supplements_total": request.tariff.supplements_total,
+            "total_amount": request.tariff.total_amount,
+            "currency": request.tariff.currency
+        }
+
+    # Check blockers
+    blockers = []
+    if not docs_complete:
+        blockers.append(f"Faltan {len(request.missing_documents)} documentos por subir")
+    if request.validations and request.validations.get("errors"):
+        blockers.append("Hay errores de validacion pendientes")
+
+    # Get sub_type from form_data
+    sub_type = request.form_data.get("sub_type") or request.form_data.get("tipo")
+
+    return CitizenSummaryResponse(
+        request_id=request.id,
+        reference=request.reference,
+        workflow_code=request.workflow_code,
+        workflow_name_es=workflow_name,
+        solicitud_type=request.solicitud_type.value,
+        sub_type=sub_type,
+        personal_data=personal_data,
+        documents_uploaded=docs_summary,
+        documents_complete=docs_complete,
+        tariff_summary=tariff_summary,
+        validation_passed=not request.validations.get("errors") if request.validations else True,
+        validation_warnings=request.validations.get("warnings", []) if request.validations else [],
+        can_submit=docs_complete and len(blockers) == 0,
+        blockers=blockers
     )

@@ -421,3 +421,137 @@ class ServiceRequestListResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+# === Workflow Step Execution Models ===
+
+class StepExecutionRequest(BaseModel):
+    """Request to execute a workflow step"""
+    step_data: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Data for the step (selections, form data, etc.)"
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "step_data": {
+                    "selection": "NUEVO",
+                    "confirmed_data": {"nombres": "JUAN CARLOS"}
+                }
+            }
+        }
+
+
+class StepInfo(BaseModel):
+    """Information about a workflow step"""
+    number: int
+    id: str
+    type: str
+    title_es: str
+
+
+class StepExecutionResponse(BaseModel):
+    """Response from executing a workflow step"""
+    step_number: int
+    step_id: str
+    step_type: str
+    success: bool
+
+    # Step-specific results
+    options: Optional[List[str]] = None
+    selection: Optional[str] = None
+    documents_required: Optional[List[Dict[str, Any]]] = None
+    missing_documents: Optional[List[Dict[str, Any]]] = None
+    form_data: Optional[Dict[str, Any]] = None
+    extracted_data: Optional[Dict[str, Any]] = None
+    requires_review: Optional[bool] = None
+    validation_complete: Optional[bool] = None
+    has_errors: Optional[bool] = None
+    errors: Optional[List[Dict[str, Any]]] = None
+    warnings: Optional[List[Dict[str, Any]]] = None
+    amount: Optional[float] = None
+    tariff_breakdown: Optional[Dict[str, Any]] = None
+    payment_methods: Optional[List[str]] = None
+
+    # Navigation
+    next_step: Optional[StepInfo] = None
+    error: Optional[str] = None
+
+
+class FormDataResponse(BaseModel):
+    """
+    Response with pre-filled form data from document extraction.
+
+    This applies the workflow's form_mapping to transform extracted_data
+    into a flat form structure ready for frontend display.
+    """
+    form_data: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Pre-filled form fields from extraction"
+    )
+    extracted_data: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Raw extracted data by document"
+    )
+    form_schema: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Form schema for frontend rendering (optional)"
+    )
+    requires_review: bool = Field(
+        default=True,
+        description="True if user should review and confirm data"
+    )
+    completion_percentage: float = Field(
+        default=0,
+        ge=0, le=100,
+        description="Percentage of required fields filled"
+    )
+    missing_fields: List[str] = Field(
+        default_factory=list,
+        description="List of required fields that are empty"
+    )
+
+
+class CitizenSummaryResponse(BaseModel):
+    """
+    Summary of service request for citizen confirmation.
+
+    This is the 'formulaire recapitulatif' shown before final submission.
+    """
+    request_id: UUID
+    reference: str
+    workflow_code: str
+    workflow_name_es: str
+    solicitud_type: str
+    sub_type: Optional[str] = None
+
+    # Personal data extracted
+    personal_data: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Personal information extracted from documents"
+    )
+
+    # Documents summary
+    documents_uploaded: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="List of uploaded documents with status"
+    )
+    documents_complete: bool = False
+
+    # Tariff summary
+    tariff_summary: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Cost breakdown"
+    )
+
+    # Validation status
+    validation_passed: bool = False
+    validation_warnings: List[str] = Field(default_factory=list)
+
+    # Ready for submission?
+    can_submit: bool = False
+    blockers: List[str] = Field(
+        default_factory=list,
+        description="Reasons why submission is blocked"
+    )

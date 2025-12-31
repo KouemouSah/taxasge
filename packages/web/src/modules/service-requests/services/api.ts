@@ -710,6 +710,207 @@ class ServiceRequestsApiClient {
     })
     return transformServiceRequest(backend)
   }
+
+  // =========================================================================
+  // WORKFLOW STEP EXECUTION (NEW v2 ENDPOINTS)
+  // =========================================================================
+
+  /**
+   * Execute a workflow step
+   * Call without stepData to get step requirements
+   * Call with stepData to complete the step
+   */
+  async executeStep(
+    requestId: string,
+    stepNumber: number,
+    stepData?: Record<string, unknown>
+  ): Promise<StepExecutionResponse> {
+    return this.request<StepExecutionResponse>(`/${requestId}/step/${stepNumber}`, {
+      method: 'POST',
+      body: JSON.stringify({ step_data: stepData || null }),
+    })
+  }
+
+  /**
+   * Get pre-filled form data from document extraction
+   * Uses workflow's form_mapping to transform extracted_data to form fields
+   */
+  async getFormData(requestId: string): Promise<FormDataResponse> {
+    return this.request<FormDataResponse>(`/${requestId}/form-data`)
+  }
+
+  /**
+   * Get citizen summary for confirmation before submission
+   * This is the "formulaire recapitulatif"
+   */
+  async getCitizenSummary(requestId: string): Promise<CitizenSummaryResponse> {
+    return this.request<CitizenSummaryResponse>(`/${requestId}/summary`)
+  }
+
+  // =========================================================================
+  // DOCUMENT PREVIEW/VALIDATE FLOW (RECOMMENDED)
+  // =========================================================================
+
+  /**
+   * Preview document extraction before upload (Step 1 of 2)
+   * Document is NOT uploaded to storage yet - just extracted for user review
+   */
+  async previewDocumentExtraction(
+    requestId: string,
+    documentCode: string,
+    file: File
+  ): Promise<DocumentExtractionPreview> {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('document_code', documentCode)
+
+    return this.uploadRequest<DocumentExtractionPreview>(
+      `/${requestId}/documents/preview`,
+      formData
+    )
+  }
+
+  /**
+   * Validate and finalize document upload (Step 2 of 2)
+   * User confirms/corrects extraction, then document is uploaded to storage
+   */
+  async validateAndUploadDocument(
+    requestId: string,
+    previewId: string,
+    confirmedData: Record<string, unknown>,
+    userNotes?: string
+  ): Promise<DocumentValidationResponse> {
+    return this.request<DocumentValidationResponse>(`/${requestId}/documents/validate`, {
+      method: 'POST',
+      body: JSON.stringify({
+        preview_id: previewId,
+        confirmed_data: confirmedData,
+        user_notes: userNotes,
+      }),
+    })
+  }
+}
+
+// =========================================================================
+// RESPONSE TYPES FOR NEW ENDPOINTS
+// =========================================================================
+
+export interface StepExecutionResponse {
+  step_number: number
+  step_id: string
+  step_type: string
+  success: boolean
+  options?: string[]
+  selection?: string
+  documents_required?: Array<{
+    code: string
+    name_es: string
+    is_required: boolean
+    uploaded?: boolean
+    schema_key?: string
+  }>
+  missing_documents?: Array<{ code: string; name_es: string }>
+  form_data?: Record<string, unknown>
+  extracted_data?: Record<string, unknown>
+  requires_review?: boolean
+  validation_complete?: boolean
+  has_errors?: boolean
+  errors?: Array<{ rule_id: string; message_es: string; document_code?: string }>
+  warnings?: Array<{ rule_id: string; message_es: string; document_code?: string }>
+  amount?: number
+  tariff_breakdown?: Record<string, unknown>
+  payment_methods?: string[]
+  next_step?: {
+    number: number
+    id: string
+    type: string
+    title_es: string
+  }
+  error?: string
+}
+
+export interface FormDataResponse {
+  form_data: Record<string, unknown>
+  extracted_data: Record<string, unknown>
+  form_schema?: Record<string, unknown>
+  requires_review: boolean
+  completion_percentage: number
+  missing_fields: string[]
+}
+
+export interface CitizenSummaryResponse {
+  request_id: string
+  reference: string
+  workflow_code: string
+  workflow_name_es: string
+  solicitud_type: string
+  sub_type?: string
+  personal_data: Record<string, unknown>
+  documents_uploaded: Array<{
+    code: string
+    name: string
+    status: 'uploaded' | 'validated' | 'pending'
+  }>
+  documents_complete: boolean
+  tariff_summary?: {
+    base_amount: number
+    supplements_total: number
+    total_amount: number
+    currency: string
+  }
+  validation_passed: boolean
+  validation_warnings: string[]
+  can_submit: boolean
+  blockers: string[]
+}
+
+export interface DocumentExtractionPreview {
+  preview_id: string
+  document_code: string
+  document_name: string
+  file_name: string
+  file_size: number
+  mime_type: string
+  extraction: Record<string, unknown>
+  confidence: number
+  processor: string
+  field_indicators: Array<{
+    field_name: string
+    value?: unknown
+    confidence: number
+    status: 'ok' | 'warning' | 'error' | 'missing'
+    risk_level?: string
+    risk_message?: string
+    requires_attention: boolean
+    suggestion?: string
+  }>
+  risk_analysis?: {
+    risk_level: string
+    risk_score: number
+    risk_factors: Array<Record<string, unknown>>
+    recommendations: string[]
+    requires_rejection: boolean
+    requires_review: boolean
+    factors_count: Record<string, number>
+  }
+  extraction_status: string
+  needs_correction: boolean
+  detected_document_type?: string
+  document_type_match: boolean
+  expected_fields: Array<Record<string, unknown>>
+  expires_at: string
+  processing_time_ms?: number
+}
+
+export interface DocumentValidationResponse {
+  document_id: string
+  document_code: string
+  document_name: string
+  file_path: string
+  extraction_data: Record<string, unknown>
+  extraction_confidence: number
+  is_validated: boolean
+  validated_at: string
 }
 
 // Export singleton instance
