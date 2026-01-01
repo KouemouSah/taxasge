@@ -1104,6 +1104,7 @@ class ServiceRequestsApiClient {
       locationName: string
       locationAddress?: string
       slotsRemaining: number
+      city?: string
     }>
     count: number
     hasAvailability: boolean
@@ -1124,6 +1125,7 @@ class ServiceRequestsApiClient {
         location_name: string
         location_address?: string
         slots_remaining: number
+        city?: string
       }>
       count: number
       has_availability: boolean
@@ -1139,6 +1141,7 @@ class ServiceRequestsApiClient {
         locationName: slot.location_name,
         locationAddress: slot.location_address,
         slotsRemaining: slot.slots_remaining,
+        city: slot.city,
       })),
       count: response.count,
       hasAvailability: response.has_availability,
@@ -1189,6 +1192,7 @@ class ServiceRequestsApiClient {
       success: response.success,
       holdId: response.hold_id,
       locationName: response.location_name,
+      city: response.city,
       appointmentDate: response.appointment_date,
       appointmentTime: response.appointment_time,
       expiresAt: response.expires_at,
@@ -1204,6 +1208,7 @@ class ServiceRequestsApiClient {
     hasHold: boolean
     status?: 'held' | 'confirmed' | 'expired' | 'released' | 'fallback'
     locationName?: string
+    city?: string
     appointmentDate?: string
     appointmentTime?: string
     expiresAt?: string
@@ -1213,6 +1218,7 @@ class ServiceRequestsApiClient {
       has_hold: boolean
       status?: string
       location_name?: string
+      city?: string
       appointment_date?: string
       appointment_time?: string
       expires_at?: string
@@ -1223,6 +1229,7 @@ class ServiceRequestsApiClient {
       hasHold: response.has_hold,
       status: response.status as 'held' | 'confirmed' | 'expired' | 'released' | 'fallback' | undefined,
       locationName: response.location_name,
+      city: response.city,
       appointmentDate: response.appointment_date,
       appointmentTime: response.appointment_time,
       expiresAt: response.expires_at,
@@ -1282,6 +1289,7 @@ class ServiceRequestsApiClient {
     appointmentDate?: string
     appointmentTime?: string
     locationName?: string
+    city?: string
     error?: string
   }> {
     const response = await this.request<{
@@ -1289,6 +1297,7 @@ class ServiceRequestsApiClient {
       appointment_date?: string
       appointment_time?: string
       location_name?: string
+      city?: string
       error?: string
     }>(`/${requestId}/appointments/confirm`, {
       method: 'POST',
@@ -1299,6 +1308,7 @@ class ServiceRequestsApiClient {
       appointmentDate: response.appointment_date,
       appointmentTime: response.appointment_time,
       locationName: response.location_name,
+      city: response.city,
       error: response.error,
     }
   }

@@ -18,7 +18,10 @@ from uuid import UUID
 
 class EntityLocationResponse(BaseModel):
     """
-    Location available for appointments (from entity_locations table).
+    Location available for appointments.
+
+    NOTE: Data comes from appointment_slot_configs table (DISTINCT ON city, location_name).
+    The entity_locations table was planned but NOT created. Fields phone/email are always null.
 
     Entity codes: CNEDOGE, DGT, EXTRANJERIA, MINFP, ONRC, MINHV
     Cities: Malabo (capital, insular) or Bata (continental)
@@ -86,7 +89,7 @@ class HoldSlotRequest(BaseModel):
     """
     location_id: Optional[UUID] = Field(
         None,
-        description="FK to entity_locations table (preferred, optional)"
+        description="Optional slot_config_id from appointment_slot_configs table"
     )
     location_name: str = Field(
         ...,

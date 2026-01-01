@@ -579,7 +579,8 @@ export function getStepTypeIcon(stepType: StepType): string {
 
 /**
  * EntityLocation - Physical location for appointments
- * From entity_locations table (migration 030)
+ * NOTE: Data comes from appointment_slot_configs table (DISTINCT ON city, location_name)
+ * The entity_locations table was planned but NOT created. Fields like phone/email are always null.
  */
 export interface EntityLocation {
   id: string
@@ -604,6 +605,7 @@ export interface AvailableSlot {
   locationName: string
   locationAddress?: string
   slotsRemaining: number
+  city?: string // Malabo or Bata (from appointment_slot_configs.city)
 }
 
 /**
@@ -638,6 +640,7 @@ export interface AppointmentHoldStatus {
   hasHold: boolean
   status?: 'held' | 'confirmed' | 'expired' | 'released' | 'fallback'
   locationName?: string
+  city?: string // Malabo or Bata (from appointment_holds.city)
   appointmentDate?: string
   appointmentTime?: string
   expiresAt?: string
@@ -690,5 +693,6 @@ export interface ConfirmHoldResponse {
   appointmentDate?: string
   appointmentTime?: string
   locationName?: string
+  city?: string // Malabo or Bata (from confirm_appointment_hold function)
   error?: string
 }
