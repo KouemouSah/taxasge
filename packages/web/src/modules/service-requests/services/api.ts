@@ -1163,6 +1163,7 @@ class ServiceRequestsApiClient {
     success: boolean
     holdId?: string
     locationName?: string
+    city?: string
     appointmentDate?: string
     appointmentTime?: string
     expiresAt?: string
@@ -1173,6 +1174,7 @@ class ServiceRequestsApiClient {
       success: boolean
       hold_id?: string
       location_name?: string
+      city?: string
       appointment_date?: string
       appointment_time?: string
       expires_at?: string
