@@ -152,7 +152,7 @@ jobs:
             --set-env-vars="^##^FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV=${FIREBASE_SA_ESCAPED}" \
             --min-instances=0 \
             --max-instances=10 \
-            --memory=1Gi \
+            --memory=2Gi \
             --cpu=1 \
             --timeout=300 \
             --concurrency=80
