@@ -347,15 +347,16 @@ FROM appointment_holds
 GROUP BY city;
 
 -- View: Service requests by city
+-- Note: Uses UPPERCASE enum values as defined in service_request_status_enum
 CREATE OR REPLACE VIEW v_service_requests_by_city AS
 SELECT
     COALESCE(selected_city, 'Non spécifié') as city,
     COUNT(*) as total_requests,
-    COUNT(*) FILTER (WHERE status = 'draft') as draft,
-    COUNT(*) FILTER (WHERE status = 'submitted') as submitted,
-    COUNT(*) FILTER (WHERE status = 'under_review') as under_review,
-    COUNT(*) FILTER (WHERE status = 'approved') as approved,
-    COUNT(*) FILTER (WHERE status = 'completed') as completed
+    COUNT(*) FILTER (WHERE status = 'DRAFT') as draft,
+    COUNT(*) FILTER (WHERE status = 'SUBMITTED') as submitted,
+    COUNT(*) FILTER (WHERE status = 'UNDER_REVIEW') as under_review,
+    COUNT(*) FILTER (WHERE status = 'DOSSIER_VALIDE') as approved,
+    COUNT(*) FILTER (WHERE status = 'COMPLETED') as completed
 FROM service_requests
 GROUP BY selected_city;
 
