@@ -626,6 +626,7 @@ export interface HoldSlotResponse {
   success: boolean
   holdId?: string
   locationName?: string
+  city?: string // Malabo or Bata (from appointment_holds.city)
   appointmentDate?: string
   appointmentTime?: string
   expiresAt?: string // ISO datetime
