@@ -63,6 +63,7 @@ class AvailableSlotResponse(BaseModel):
     location_name: str = Field(..., description="Location name")
     location_address: Optional[str] = None
     slots_remaining: int = Field(1, description="Remaining slots at this time", ge=0)
+    city: Optional[str] = Field(None, description="City (Malabo or Bata)")
 
     class Config:
         json_schema_extra = {
@@ -150,12 +151,13 @@ class ConfirmHoldResponse(BaseModel):
     Response after confirming appointment hold (called by payment webhook).
 
     On success, appointment is permanently booked and
-    service_request is updated with cita_date, cita_time, cita_location.
+    service_request is updated with cita_date, cita_time, cita_location, selected_city.
     """
     success: bool
     appointment_date: Optional[date] = None
     appointment_time: Optional[time] = None
     location_name: Optional[str] = None
+    city: Optional[str] = Field(None, description="City (Malabo or Bata)")
     error: Optional[str] = Field(None, description="Error message if failed")
 
     class Config:
@@ -181,6 +183,7 @@ class AppointmentHoldStatus(BaseModel):
         description="Hold status: held, confirmed, expired, released, fallback"
     )
     location_name: Optional[str] = None
+    city: Optional[str] = Field(None, description="City (Malabo or Bata)")
     appointment_date: Optional[date] = None
     appointment_time: Optional[time] = None
     expires_at: Optional[datetime] = None
