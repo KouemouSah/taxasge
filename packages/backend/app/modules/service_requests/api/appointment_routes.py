@@ -17,8 +17,8 @@ from uuid import UUID
 import asyncpg
 import logging
 
-from app.database.connection import get_db
-from app.core.auth import get_current_user
+from app.database.connection import get_database
+from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.auth.models.user import UserResponse
 
 from ..models.appointments import (
@@ -64,7 +64,7 @@ router = APIRouter(
 )
 async def get_appointment_locations(
     request_id: UUID,
-    db: asyncpg.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_database),
     current_user: UserResponse = Depends(get_current_user)
 ):
     """Get available locations for a service request."""
@@ -149,7 +149,7 @@ async def get_available_slots(
     location_name: str = Query(..., description="Location name (e.g., 'CNEDOGE Malabo')"),
     from_date: Optional[date] = Query(None, description="Start date (defaults to min delay date)"),
     limit: int = Query(6, ge=1, le=20, description="Max slots to return"),
-    db: asyncpg.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_database),
     current_user: UserResponse = Depends(get_current_user)
 ):
     """Get available appointment slots for a location."""
@@ -221,7 +221,7 @@ async def get_available_slots(
 async def hold_appointment_slot(
     request_id: UUID,
     hold_request: HoldSlotRequest,
-    db: asyncpg.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_database),
     current_user: UserResponse = Depends(get_current_user)
 ):
     """Create a temporary hold on an appointment slot."""
@@ -285,7 +285,7 @@ async def hold_appointment_slot(
 )
 async def get_hold_status(
     request_id: UUID,
-    db: asyncpg.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_database),
     current_user: UserResponse = Depends(get_current_user)
 ):
     """Get the current hold status for a service request."""
@@ -343,7 +343,7 @@ async def get_hold_status(
 )
 async def release_hold(
     request_id: UUID,
-    db: asyncpg.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_database),
     current_user: UserResponse = Depends(get_current_user)
 ):
     """Release a held appointment slot."""
@@ -394,7 +394,7 @@ async def release_hold(
 async def submit_without_appointment(
     request_id: UUID,
     fallback_request: SubmitWithoutAppointmentRequest,
-    db: asyncpg.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_database),
     current_user: UserResponse = Depends(get_current_user)
 ):
     """Submit request without appointment (fallback when no slots)."""
@@ -452,7 +452,7 @@ async def submit_without_appointment(
 )
 async def confirm_appointment_hold(
     request_id: UUID,
-    db: asyncpg.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_database),
     current_user: UserResponse = Depends(get_current_user)
 ):
     """Confirm appointment hold after payment (webhook endpoint)."""
