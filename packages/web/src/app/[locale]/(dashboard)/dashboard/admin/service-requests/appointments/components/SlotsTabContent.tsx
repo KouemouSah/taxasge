@@ -555,7 +555,7 @@ export default function SlotsTabContent() {
                   id="edit-start"
                   type="time"
                   value={editFormData.start_time}
-                  onChange={(e) => setEditFormData({ ...formData, start_time: e.target.value })}
+                  onChange={(e) => setEditFormData({ ...editFormData, start_time: e.target.value })}
                 />
               </div>
               <div className="grid gap-2">
@@ -564,7 +564,7 @@ export default function SlotsTabContent() {
                   id="edit-end"
                   type="time"
                   value={editFormData.end_time}
-                  onChange={(e) => setEditFormData({ ...formData, end_time: e.target.value })}
+                  onChange={(e) => setEditFormData({ ...editFormData, end_time: e.target.value })}
                 />
               </div>
             </div>
@@ -576,7 +576,7 @@ export default function SlotsTabContent() {
                   type="number"
                   value={editFormData.slot_duration_minutes}
                   onChange={(e) =>
-                    setEditFormData({ ...formData, slot_duration_minutes: parseInt(e.target.value) || 30 })
+                    setEditFormData({ ...editFormData, slot_duration_minutes: parseInt(e.target.value) || 30 })
                   }
                 />
               </div>
@@ -587,7 +587,7 @@ export default function SlotsTabContent() {
                   type="number"
                   value={editFormData.max_appointments_per_slot}
                   onChange={(e) =>
-                    setEditFormData({ ...formData, max_appointments_per_slot: parseInt(e.target.value) || 10 })
+                    setEditFormData({ ...editFormData, max_appointments_per_slot: parseInt(e.target.value) || 10 })
                   }
                 />
               </div>
@@ -597,7 +597,7 @@ export default function SlotsTabContent() {
               <Input
                 id="edit-location"
                 value={editFormData.location_name || ''}
-                onChange={(e) => setEditFormData({ ...formData, location_name: e.target.value })}
+                onChange={(e) => setEditFormData({ ...editFormData, location_name: e.target.value })}
               />
             </div>
             <div className="grid gap-2">
@@ -605,7 +605,7 @@ export default function SlotsTabContent() {
               <Input
                 id="edit-address"
                 value={editFormData.location_address || ''}
-                onChange={(e) => setEditFormData({ ...formData, location_address: e.target.value })}
+                onChange={(e) => setEditFormData({ ...editFormData, location_address: e.target.value })}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -613,7 +613,7 @@ export default function SlotsTabContent() {
                 <Label htmlFor="edit-city">{t('city')}</Label>
                 <Select
                   value={editFormData.city || 'Malabo'}
-                  onValueChange={(v) => setEditFormData({ ...formData, city: v, region: v === 'Malabo' ? 'Insular' : 'Continental' })}
+                  onValueChange={(v) => setEditFormData({ ...editFormData, city: v, region: v === 'Malabo' ? 'Insular' : 'Continental' })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder={t('selectCity')} />
@@ -639,7 +639,7 @@ export default function SlotsTabContent() {
               <Switch
                 id="edit-active"
                 checked={editFormData.is_active}
-                onCheckedChange={(checked) => setEditFormData({ ...formData, is_active: checked })}
+                onCheckedChange={(checked) => setEditFormData({ ...editFormData, is_active: checked })}
               />
             </div>
           </div>

@@ -78,7 +78,7 @@ export default function LocationsConfigPage() {
       const citySlots = slotConfigs.filter(
         (slot) => slot.city?.toLowerCase() === config.city.toLowerCase()
       )
-      const uniqueEntities = [...new Set(citySlots.map((s) => s.entity_code))]
+      const uniqueEntities = Array.from(new Set(citySlots.map((s) => s.entity_code)))
 
       // Get description based on locale
       let description = config.description
@@ -103,7 +103,7 @@ export default function LocationsConfigPage() {
     return {
       totalSlots: cityStats.reduce((sum, city) => sum + city.totalSlots, 0),
       activeSlots: cityStats.reduce((sum, city) => sum + city.activeSlots, 0),
-      entitiesCount: [...new Set(slotConfigs?.map((s) => s.entity_code) || [])].length,
+      entitiesCount: Array.from(new Set(slotConfigs?.map((s) => s.entity_code) || [])).length,
     }
   }, [cityStats, slotConfigs])
 
