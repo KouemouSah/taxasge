@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
+import { useRouter, useParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,7 +22,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import {
   AlertDialog,
@@ -56,13 +56,11 @@ import {
 } from 'lucide-react'
 import {
   useSlotConfigs,
-  useCreateSlotConfig,
   useUpdateSlotConfig,
   useDeleteSlotConfig,
 } from '@/modules/service-requests-admin'
 import type {
   AppointmentSlotConfig,
-  AppointmentSlotConfigCreate,
   AppointmentSlotConfigUpdate,
 } from '@/modules/service-requests-admin'
 import { DAY_OF_WEEK_LABELS } from '@/modules/service-requests-admin'
@@ -180,19 +178,18 @@ function groupSlotConfigs(slots: AppointmentSlotConfig[]): GroupedSlotConfig[] {
 export default function SlotsTabContent() {
   const t = useTranslations('admin.serviceRequests.appointments.slots')
   const tCommon = useTranslations('common')
+  const router = useRouter()
+  const params = useParams()
+  const locale = params.locale as string
 
   // State
   const [searchQuery, setSearchQuery] = useState('')
   const [entityFilter, setEntityFilter] = useState<string>('all')
   const [cityFilter, setCityFilter] = useState<string>('all')
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [selectedSlot, setSelectedSlot] = useState<AppointmentSlotConfig | null>(null)
   const [selectedGroup, setSelectedGroup] = useState<GroupedSlotConfig | null>(null)
-
-  // Multi-day selection state for creation
-  const [selectedDays, setSelectedDays] = useState<number[]>([0])
 
   // Pagination
   const {
@@ -205,17 +202,16 @@ export default function SlotsTabContent() {
     resetPage,
   } = usePagination(10)
 
-  // Form state (without day_of_week, using selectedDays instead)
-  const [formData, setFormData] = useState<Omit<AppointmentSlotConfigCreate, 'day_of_week'> & { day_of_week?: number }>({
-    entity_code: '',
+  // Edit form state
+  const [editFormData, setEditFormData] = useState<AppointmentSlotConfigUpdate & { entity_code?: string; day_of_week?: number }>({
     start_time: '08:00',
     end_time: '16:00',
     slot_duration_minutes: 30,
     max_appointments_per_slot: 10,
     location_name: '',
     location_address: '',
-    city: 'Malabo',  // Default to capital
-    region: 'Insular',  // Default region
+    city: 'Malabo',
+    region: 'Insular',
     is_active: true,
   })
 
@@ -230,7 +226,6 @@ export default function SlotsTabContent() {
   })
 
   // Mutations
-  const createMutation = useCreateSlotConfig()
   const updateMutation = useUpdateSlotConfig()
   const deleteMutation = useDeleteSlotConfig()
 
@@ -258,53 +253,30 @@ export default function SlotsTabContent() {
   const paginatedGroups = paginateData(filteredGroups)
   const totalPages = getTotalPages(filteredGroups.length)
 
-  // Toggle day selection
-  const toggleDay = (day: number) => {
-    setSelectedDays((prev) => {
-      if (prev.includes(day)) {
-        return prev.filter((d) => d !== day)
-      }
-      return [...prev, day].sort((a, b) => a - b)
-    })
+  // Navigate to create page
+  const handleNavigateToCreate = () => {
+    router.push(`/${locale}/dashboard/admin/service-requests/appointments/slots/new`)
   }
 
   // Handlers
-  const handleCreateSlots = async () => {
-    if (selectedDays.length === 0) return
-
-    try {
-      // Create a slot for each selected day
-      for (const day of selectedDays) {
-        await createMutation.mutateAsync({
-          ...formData,
-          day_of_week: day,
-        } as AppointmentSlotConfigCreate)
-      }
-      setIsCreateDialogOpen(false)
-      resetForm()
-    } catch {
-      // Error handled by mutation
-    }
-  }
-
   const handleUpdateSlot = async () => {
     if (!selectedSlot) return
 
     try {
       const updateData: AppointmentSlotConfigUpdate = {
-        start_time: formData.start_time,
-        end_time: formData.end_time,
-        slot_duration_minutes: formData.slot_duration_minutes,
-        max_appointments_per_slot: formData.max_appointments_per_slot,
-        location_name: formData.location_name,
-        location_address: formData.location_address,
-        city: formData.city,
-        region: formData.region,
-        is_active: formData.is_active,
+        start_time: editFormData.start_time,
+        end_time: editFormData.end_time,
+        slot_duration_minutes: editFormData.slot_duration_minutes,
+        max_appointments_per_slot: editFormData.max_appointments_per_slot,
+        location_name: editFormData.location_name,
+        location_address: editFormData.location_address,
+        city: editFormData.city,
+        region: editFormData.region,
+        is_active: editFormData.is_active,
       }
       await updateMutation.mutateAsync({ slotId: selectedSlot.id, data: updateData })
       setIsEditDialogOpen(false)
-      resetForm()
+      setSelectedSlot(null)
     } catch {
       // Error handled by mutation
     }
@@ -330,7 +302,7 @@ export default function SlotsTabContent() {
     // Use the first slot as the reference
     const slot = group.originalSlots[0]
     setSelectedSlot(slot)
-    setFormData({
+    setEditFormData({
       entity_code: slot.entity_code,
       day_of_week: slot.day_of_week,
       start_time: slot.start_time,
@@ -349,24 +321,6 @@ export default function SlotsTabContent() {
   const openDeleteDialog = (group: GroupedSlotConfig) => {
     setSelectedGroup(group)
     setIsDeleteDialogOpen(true)
-  }
-
-  const resetForm = () => {
-    setFormData({
-      entity_code: '',
-      start_time: '08:00',
-      end_time: '16:00',
-      slot_duration_minutes: 30,
-      max_appointments_per_slot: 10,
-      location_name: '',
-      location_address: '',
-      city: 'Malabo',
-      region: 'Insular',
-      is_active: true,
-    })
-    setSelectedSlot(null)
-    setSelectedGroup(null)
-    setSelectedDays([0])
   }
 
   // Render loading state
@@ -399,172 +353,10 @@ export default function SlotsTabContent() {
     <div className="space-y-4">
       {/* Actions Bar */}
       <div className="flex justify-end">
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => resetForm()}>
-              <Plus className="mr-2 h-4 w-4" />
-              {t('create')}
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>{t('create')}</DialogTitle>
-              <DialogDescription>{t('createDescription')}</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="entity">{t('entityCode')}</Label>
-                <Input
-                  id="entity"
-                  value={formData.entity_code}
-                  onChange={(e) => setFormData({ ...formData, entity_code: e.target.value.toUpperCase() })}
-                  placeholder="CNEDOGE"
-                />
-              </div>
-
-              {/* Multi-day selection */}
-              <div className="grid gap-2">
-                <Label>{t('dayOfWeek')}</Label>
-                <div className="flex flex-wrap gap-2">
-                  {Object.entries(DAY_OF_WEEK_LABELS).map(([day, label]) => {
-                    const dayNum = parseInt(day)
-                    const isSelected = selectedDays.includes(dayNum)
-                    return (
-                      <Button
-                        key={day}
-                        type="button"
-                        variant={isSelected ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => toggleDay(dayNum)}
-                        className="min-w-[80px]"
-                      >
-                        {label}
-                      </Button>
-                    )
-                  })}
-                </div>
-                {selectedDays.length > 1 && (
-                  <p className="text-sm text-muted-foreground">
-                    {selectedDays.length} días seleccionados: {formatDayRange(selectedDays)}
-                  </p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="start">{t('startTime')}</Label>
-                  <Input
-                    id="start"
-                    type="time"
-                    value={formData.start_time}
-                    onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="end">{t('endTime')}</Label>
-                  <Input
-                    id="end"
-                    type="time"
-                    value={formData.end_time}
-                    onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="duration">{t('slotDuration')}</Label>
-                  <Input
-                    id="duration"
-                    type="number"
-                    value={formData.slot_duration_minutes}
-                    onChange={(e) =>
-                      setFormData({ ...formData, slot_duration_minutes: parseInt(e.target.value) || 30 })
-                    }
-                    min={5}
-                    max={120}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="max">{t('maxPerSlot')}</Label>
-                  <Input
-                    id="max"
-                    type="number"
-                    value={formData.max_appointments_per_slot}
-                    onChange={(e) =>
-                      setFormData({ ...formData, max_appointments_per_slot: parseInt(e.target.value) || 10 })
-                    }
-                    min={1}
-                    max={100}
-                  />
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="location">{t('locationName')}</Label>
-                <Input
-                  id="location"
-                  value={formData.location_name || ''}
-                  onChange={(e) => setFormData({ ...formData, location_name: e.target.value })}
-                  placeholder="Oficina Principal"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="address">{t('locationAddress')}</Label>
-                <Input
-                  id="address"
-                  value={formData.location_address || ''}
-                  onChange={(e) => setFormData({ ...formData, location_address: e.target.value })}
-                  placeholder="Av. de la Independencia, Malabo"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="city">{t('city')}</Label>
-                  <Select
-                    value={formData.city || 'Malabo'}
-                    onValueChange={(v) => setFormData({ ...formData, city: v, region: v === 'Malabo' ? 'Insular' : 'Continental' })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={t('selectCity')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Malabo">Malabo</SelectItem>
-                      <SelectItem value="Bata">Bata</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="region">{t('region')}</Label>
-                  <Input
-                    id="region"
-                    value={formData.region || ''}
-                    disabled
-                    className="bg-muted"
-                  />
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="is_active_slot">{t('isActive')}</Label>
-                <Switch
-                  id="is_active_slot"
-                  checked={formData.is_active}
-                  onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                {tCommon('cancel')}
-              </Button>
-              <Button
-                onClick={handleCreateSlots}
-                disabled={!formData.entity_code || selectedDays.length === 0 || createMutation.isPending}
-              >
-                {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {selectedDays.length > 1 ? `Crear ${selectedDays.length} días` : tCommon('create')}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={handleNavigateToCreate}>
+          <Plus className="mr-2 h-4 w-4" />
+          {t('create')}
+        </Button>
       </div>
 
       {/* Filters */}
@@ -745,12 +537,12 @@ export default function SlotsTabContent() {
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>{t('entityCode')}</Label>
-                <Input value={formData.entity_code} disabled className="bg-muted" />
+                <Input value={editFormData.entity_code} disabled className="bg-muted" />
               </div>
               <div className="grid gap-2">
                 <Label>{t('dayOfWeek')}</Label>
                 <Input
-                  value={formData.day_of_week !== undefined ? DAY_OF_WEEK_LABELS[formData.day_of_week] : ''}
+                  value={editFormData.day_of_week !== undefined ? DAY_OF_WEEK_LABELS[editFormData.day_of_week] : ''}
                   disabled
                   className="bg-muted"
                 />
@@ -762,8 +554,8 @@ export default function SlotsTabContent() {
                 <Input
                   id="edit-start"
                   type="time"
-                  value={formData.start_time}
-                  onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
+                  value={editFormData.start_time}
+                  onChange={(e) => setEditFormData({ ...formData, start_time: e.target.value })}
                 />
               </div>
               <div className="grid gap-2">
@@ -771,8 +563,8 @@ export default function SlotsTabContent() {
                 <Input
                   id="edit-end"
                   type="time"
-                  value={formData.end_time}
-                  onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
+                  value={editFormData.end_time}
+                  onChange={(e) => setEditFormData({ ...formData, end_time: e.target.value })}
                 />
               </div>
             </div>
@@ -782,9 +574,9 @@ export default function SlotsTabContent() {
                 <Input
                   id="edit-duration"
                   type="number"
-                  value={formData.slot_duration_minutes}
+                  value={editFormData.slot_duration_minutes}
                   onChange={(e) =>
-                    setFormData({ ...formData, slot_duration_minutes: parseInt(e.target.value) || 30 })
+                    setEditFormData({ ...formData, slot_duration_minutes: parseInt(e.target.value) || 30 })
                   }
                 />
               </div>
@@ -793,9 +585,9 @@ export default function SlotsTabContent() {
                 <Input
                   id="edit-max"
                   type="number"
-                  value={formData.max_appointments_per_slot}
+                  value={editFormData.max_appointments_per_slot}
                   onChange={(e) =>
-                    setFormData({ ...formData, max_appointments_per_slot: parseInt(e.target.value) || 10 })
+                    setEditFormData({ ...formData, max_appointments_per_slot: parseInt(e.target.value) || 10 })
                   }
                 />
               </div>
@@ -804,24 +596,24 @@ export default function SlotsTabContent() {
               <Label htmlFor="edit-location">{t('locationName')}</Label>
               <Input
                 id="edit-location"
-                value={formData.location_name || ''}
-                onChange={(e) => setFormData({ ...formData, location_name: e.target.value })}
+                value={editFormData.location_name || ''}
+                onChange={(e) => setEditFormData({ ...formData, location_name: e.target.value })}
               />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="edit-address">{t('locationAddress')}</Label>
               <Input
                 id="edit-address"
-                value={formData.location_address || ''}
-                onChange={(e) => setFormData({ ...formData, location_address: e.target.value })}
+                value={editFormData.location_address || ''}
+                onChange={(e) => setEditFormData({ ...formData, location_address: e.target.value })}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="edit-city">{t('city')}</Label>
                 <Select
-                  value={formData.city || 'Malabo'}
-                  onValueChange={(v) => setFormData({ ...formData, city: v, region: v === 'Malabo' ? 'Insular' : 'Continental' })}
+                  value={editFormData.city || 'Malabo'}
+                  onValueChange={(v) => setEditFormData({ ...formData, city: v, region: v === 'Malabo' ? 'Insular' : 'Continental' })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder={t('selectCity')} />
@@ -836,7 +628,7 @@ export default function SlotsTabContent() {
                 <Label htmlFor="edit-region">{t('region')}</Label>
                 <Input
                   id="edit-region"
-                  value={formData.region || ''}
+                  value={editFormData.region || ''}
                   disabled
                   className="bg-muted"
                 />
@@ -846,8 +638,8 @@ export default function SlotsTabContent() {
               <Label htmlFor="edit-active">{t('isActive')}</Label>
               <Switch
                 id="edit-active"
-                checked={formData.is_active}
-                onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+                checked={editFormData.is_active}
+                onCheckedChange={(checked) => setEditFormData({ ...formData, is_active: checked })}
               />
             </div>
           </div>

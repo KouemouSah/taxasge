@@ -835,7 +835,16 @@
           "created": "Horario creado exitosamente",
           "updated": "Horario actualizado exitosamente",
           "deleted": "Horario eliminado exitosamente",
-          "errorLoading": "Error al cargar horarios"
+          "errorLoading": "Error al cargar horarios",
+          "city": "Ciudad",
+          "region": "Región",
+          "filterByCity": "Filtrar por ciudad",
+          "allCities": "Todas las ciudades",
+          "selectCity": "Seleccionar ciudad",
+          "malabo": "Malabo",
+          "bata": "Bata",
+          "insular": "Insular",
+          "continental": "Continental"
         },
         "blocked": {
           "title": "Fechas Bloqueadas",
@@ -935,6 +944,32 @@
           "delayRules": "Reglas de Demora",
           "delayDescription": "Días de espera mínimos según prioridad",
           "businessDays": "días hábiles"
+        },
+        "locations": {
+          "title": "Configuración de Ciudades",
+          "subtitle": "Gestionar ubicaciones y regiones para citas",
+          "totalLocations": "Total de Ubicaciones",
+          "citiesConfigured": "ciudades configuradas",
+          "totalSlots": "Total de Horarios",
+          "activeSlots": "horarios activos",
+          "entitiesWithSlots": "Entidades con Horarios",
+          "uniqueEntities": "entidades únicas",
+          "configuredCities": "Ciudades Configuradas",
+          "citiesDescription": "Lista de ciudades disponibles para citas y sus estadísticas",
+          "city": "Ciudad",
+          "region": "Región",
+          "slots": "Horarios",
+          "entities": "Entidades",
+          "entitiesList": "Lista de Entidades",
+          "actions": "Acciones",
+          "capital": "Capital",
+          "total": "total",
+          "viewSlots": "Ver Horarios",
+          "aboutLocations": "Acerca de las Ubicaciones",
+          "locationInfo1": "Las ubicaciones se configuran automáticamente basándose en los horarios de citas existentes.",
+          "locationInfo2": "Para agregar nuevas ubicaciones, cree horarios de citas con la ciudad y región deseada.",
+          "malaboInfo": "Capital de Guinea Ecuatorial, ubicada en la Isla de Bioko (Región Insular)",
+          "bataInfo": "Ciudad más grande del continente, ubicada en Río Muni (Región Continental)"
         }
       },
       "common": {

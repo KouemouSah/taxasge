@@ -835,7 +835,16 @@
           "created": "Créneau créé avec succès",
           "updated": "Créneau mis à jour avec succès",
           "deleted": "Créneau supprimé avec succès",
-          "errorLoading": "Erreur lors du chargement des créneaux"
+          "errorLoading": "Erreur lors du chargement des créneaux",
+          "city": "Ville",
+          "region": "Région",
+          "filterByCity": "Filtrer par ville",
+          "allCities": "Toutes les villes",
+          "selectCity": "Sélectionner ville",
+          "malabo": "Malabo",
+          "bata": "Bata",
+          "insular": "Insulaire",
+          "continental": "Continentale"
         },
         "blocked": {
           "title": "Dates Bloquées",
@@ -935,6 +944,32 @@
           "delayRules": "Règles de Délai",
           "delayDescription": "Jours ouvrables minimum selon la priorité",
           "businessDays": "jours ouvrables"
+        },
+        "locations": {
+          "title": "Configuration des Villes",
+          "subtitle": "Gérer les emplacements et régions pour les rendez-vous",
+          "totalLocations": "Total des Emplacements",
+          "citiesConfigured": "villes configurées",
+          "totalSlots": "Total des Créneaux",
+          "activeSlots": "créneaux actifs",
+          "entitiesWithSlots": "Entités avec Créneaux",
+          "uniqueEntities": "entités uniques",
+          "configuredCities": "Villes Configurées",
+          "citiesDescription": "Liste des villes disponibles pour les rendez-vous et leurs statistiques",
+          "city": "Ville",
+          "region": "Région",
+          "slots": "Créneaux",
+          "entities": "Entités",
+          "entitiesList": "Liste des Entités",
+          "actions": "Actions",
+          "capital": "Capitale",
+          "total": "total",
+          "viewSlots": "Voir Créneaux",
+          "aboutLocations": "À propos des Emplacements",
+          "locationInfo1": "Les emplacements sont configurés automatiquement en fonction des créneaux de rendez-vous existants.",
+          "locationInfo2": "Pour ajouter de nouveaux emplacements, créez des créneaux de rendez-vous avec la ville et la région souhaitées.",
+          "malaboInfo": "Capitale de la Guinée équatoriale, située sur l'île de Bioko (Région Insulaire)",
+          "bataInfo": "Plus grande ville du continent, située à Río Muni (Région Continentale)"
         }
       },
       "common": {

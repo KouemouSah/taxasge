@@ -835,7 +835,16 @@
           "created": "Slot created successfully",
           "updated": "Slot updated successfully",
           "deleted": "Slot deleted successfully",
-          "errorLoading": "Error loading slots"
+          "errorLoading": "Error loading slots",
+          "city": "City",
+          "region": "Region",
+          "filterByCity": "Filter by city",
+          "allCities": "All cities",
+          "selectCity": "Select city",
+          "malabo": "Malabo",
+          "bata": "Bata",
+          "insular": "Insular",
+          "continental": "Continental"
         },
         "blocked": {
           "title": "Blocked Dates",
@@ -935,6 +944,32 @@
           "delayRules": "Delay Rules",
           "delayDescription": "Minimum business days by priority",
           "businessDays": "business days"
+        },
+        "locations": {
+          "title": "City Configuration",
+          "subtitle": "Manage locations and regions for appointments",
+          "totalLocations": "Total Locations",
+          "citiesConfigured": "cities configured",
+          "totalSlots": "Total Slots",
+          "activeSlots": "active slots",
+          "entitiesWithSlots": "Entities with Slots",
+          "uniqueEntities": "unique entities",
+          "configuredCities": "Configured Cities",
+          "citiesDescription": "List of available cities for appointments and their statistics",
+          "city": "City",
+          "region": "Region",
+          "slots": "Slots",
+          "entities": "Entities",
+          "entitiesList": "Entities List",
+          "actions": "Actions",
+          "capital": "Capital",
+          "total": "total",
+          "viewSlots": "View Slots",
+          "aboutLocations": "About Locations",
+          "locationInfo1": "Locations are automatically configured based on existing appointment slots.",
+          "locationInfo2": "To add new locations, create appointment slots with the desired city and region.",
+          "malaboInfo": "Capital of Equatorial Guinea, located on Bioko Island (Insular Region)",
+          "bataInfo": "Largest city on the mainland, located in Río Muni (Continental Region)"
         }
       },
       "common": {
