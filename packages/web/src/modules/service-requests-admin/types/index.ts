@@ -281,6 +281,8 @@ export interface AppointmentSlotConfig {
   max_appointments_per_slot: number
   location_name?: string | null
   location_address?: string | null
+  city?: string | null  // Migration 029: Malabo or Bata
+  region?: string | null  // Migration 029: Insular or Continental
   is_active: boolean
 }
 
@@ -293,6 +295,8 @@ export interface AppointmentSlotConfigCreate {
   max_appointments_per_slot?: number
   location_name?: string | null
   location_address?: string | null
+  city?: string | null  // Malabo or Bata
+  region?: string | null  // Insular or Continental
   is_active?: boolean
 }
 
@@ -303,11 +307,14 @@ export interface AppointmentSlotConfigUpdate {
   max_appointments_per_slot?: number
   location_name?: string | null
   location_address?: string | null
+  city?: string | null
+  region?: string | null
   is_active?: boolean
 }
 
 export interface SlotConfigFilters {
   entity_code?: string
+  city?: string  // Filter by city (Malabo or Bata)
   is_active?: boolean
   [key: string]: string | number | boolean | undefined
 }
