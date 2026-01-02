@@ -788,7 +788,8 @@
         "tabs": {
           "slots": "Horaires",
           "blocked": "Bloquées",
-          "delays": "Délais"
+          "delays": "Délais",
+          "stats": "Statistiques"
         },
         "slots": {
           "title": "Configuration des Créneaux",
@@ -905,6 +906,35 @@
           "editDescription": "Modifier les jours de délai ou l'état de la règle",
           "workflowReadOnly": "Le flux de travail ne peut pas être modifié",
           "priorityReadOnly": "La priorité ne peut pas être modifiée"
+        },
+        "stats": {
+          "title": "Statistiques",
+          "subtitle": "Résumé de la configuration des rendez-vous",
+          "totalSlots": "Total des Créneaux",
+          "active": "actifs",
+          "inactive": "inactifs",
+          "dailyCapacity": "Capacité Quotidienne",
+          "appointmentsPerDay": "rendez-vous par jour",
+          "blockedDates": "Dates Bloquées",
+          "datesBlocked": "dates bloquées",
+          "entities": "Entités",
+          "entitiesWithSlots": "entités avec créneaux",
+          "byCity": "Statistiques par Ville",
+          "cityDescription": "Comparaison des créneaux entre Malabo et Bata",
+          "total": "Total",
+          "activeRatio": "Ratio Actifs",
+          "capacity": "Capacité",
+          "perDay": "par jour",
+          "entitiesServed": "Entités desservies",
+          "operatingDays": "Jours de fonctionnement",
+          "byEntity": "Répartition par Entité",
+          "entityDescription": "Distribution des créneaux par entité et ville",
+          "entity": "Entité",
+          "distribution": "Distribution",
+          "noData": "Aucune donnée disponible",
+          "delayRules": "Règles de Délai",
+          "delayDescription": "Jours ouvrables minimum selon la priorité",
+          "businessDays": "jours ouvrables"
         }
       },
       "common": {

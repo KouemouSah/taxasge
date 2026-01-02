@@ -788,7 +788,8 @@
         "tabs": {
           "slots": "Horarios",
           "blocked": "Bloqueadas",
-          "delays": "Esperas"
+          "delays": "Esperas",
+          "stats": "Estadísticas"
         },
         "slots": {
           "title": "Configuración de Horarios",
@@ -905,6 +906,35 @@
           "editDescription": "Modificar los días de espera o el estado de la regla",
           "workflowReadOnly": "El flujo de trabajo no puede modificarse",
           "priorityReadOnly": "La prioridad no puede modificarse"
+        },
+        "stats": {
+          "title": "Estadísticas",
+          "subtitle": "Resumen de configuración de citas",
+          "totalSlots": "Total de Horarios",
+          "active": "activos",
+          "inactive": "inactivos",
+          "dailyCapacity": "Capacidad Diaria",
+          "appointmentsPerDay": "citas por día",
+          "blockedDates": "Fechas Bloqueadas",
+          "datesBlocked": "fechas bloqueadas",
+          "entities": "Entidades",
+          "entitiesWithSlots": "entidades con horarios",
+          "byCity": "Estadísticas por Ciudad",
+          "cityDescription": "Comparación de horarios entre Malabo y Bata",
+          "total": "Total",
+          "activeRatio": "Ratio Activos",
+          "capacity": "Capacidad",
+          "perDay": "por día",
+          "entitiesServed": "Entidades atendidas",
+          "operatingDays": "Días de operación",
+          "byEntity": "Desglose por Entidad",
+          "entityDescription": "Distribución de horarios por entidad y ciudad",
+          "entity": "Entidad",
+          "distribution": "Distribución",
+          "noData": "No hay datos disponibles",
+          "delayRules": "Reglas de Demora",
+          "delayDescription": "Días de espera mínimos según prioridad",
+          "businessDays": "días hábiles"
         }
       },
       "common": {

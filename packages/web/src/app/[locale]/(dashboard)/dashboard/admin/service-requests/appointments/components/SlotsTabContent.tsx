@@ -91,6 +91,8 @@ interface GroupedSlotConfig {
   max_appointments_per_slot: number
   location_name: string | null
   location_address: string | null
+  city: string | null  // Malabo or Bata
+  region: string | null  // Insular or Continental
   is_active: boolean
   originalSlots: AppointmentSlotConfig[]
 }
@@ -159,6 +161,8 @@ function groupSlotConfigs(slots: AppointmentSlotConfig[]): GroupedSlotConfig[] {
         max_appointments_per_slot: firstSlot.max_appointments_per_slot,
         location_name: firstSlot.location_name ?? null,
         location_address: firstSlot.location_address ?? null,
+        city: firstSlot.city ?? null,
+        region: firstSlot.region ?? null,
         is_active: firstSlot.is_active,
         originalSlots: groupSlots,
       })
@@ -180,6 +184,7 @@ export default function SlotsTabContent() {
   // State
   const [searchQuery, setSearchQuery] = useState('')
   const [entityFilter, setEntityFilter] = useState<string>('all')
+  const [cityFilter, setCityFilter] = useState<string>('all')
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -209,6 +214,8 @@ export default function SlotsTabContent() {
     max_appointments_per_slot: 10,
     location_name: '',
     location_address: '',
+    city: 'Malabo',  // Default to capital
+    region: 'Insular',  // Default region
     is_active: true,
   })
 
@@ -291,6 +298,8 @@ export default function SlotsTabContent() {
         max_appointments_per_slot: formData.max_appointments_per_slot,
         location_name: formData.location_name,
         location_address: formData.location_address,
+        city: formData.city,
+        region: formData.region,
         is_active: formData.is_active,
       }
       await updateMutation.mutateAsync({ slotId: selectedSlot.id, data: updateData })
@@ -330,6 +339,8 @@ export default function SlotsTabContent() {
       max_appointments_per_slot: slot.max_appointments_per_slot,
       location_name: slot.location_name || '',
       location_address: slot.location_address || '',
+      city: slot.city || 'Malabo',
+      region: slot.region || 'Insular',
       is_active: slot.is_active,
     })
     setIsEditDialogOpen(true)
@@ -349,6 +360,8 @@ export default function SlotsTabContent() {
       max_appointments_per_slot: 10,
       location_name: '',
       location_address: '',
+      city: 'Malabo',
+      region: 'Insular',
       is_active: true,
     })
     setSelectedSlot(null)
@@ -503,6 +516,32 @@ export default function SlotsTabContent() {
                   placeholder="Av. de la Independencia, Malabo"
                 />
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="city">{t('city')}</Label>
+                  <Select
+                    value={formData.city || 'Malabo'}
+                    onValueChange={(v) => setFormData({ ...formData, city: v, region: v === 'Malabo' ? 'Insular' : 'Continental' })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={t('selectCity')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Malabo">Malabo</SelectItem>
+                      <SelectItem value="Bata">Bata</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="region">{t('region')}</Label>
+                  <Input
+                    id="region"
+                    value={formData.region || ''}
+                    disabled
+                    className="bg-muted"
+                  />
+                </div>
+              </div>
               <div className="flex items-center justify-between">
                 <Label htmlFor="is_active_slot">{t('isActive')}</Label>
                 <Switch
@@ -572,6 +611,22 @@ export default function SlotsTabContent() {
                 ))}
               </SelectContent>
             </Select>
+            <Select
+              value={cityFilter}
+              onValueChange={(v) => {
+                setCityFilter(v)
+                resetPage()
+              }}
+            >
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder={t('filterByCity')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('allCities')}</SelectItem>
+                <SelectItem value="Malabo">Malabo</SelectItem>
+                <SelectItem value="Bata">Bata</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Slots Table with Grouped Days */}
@@ -585,6 +640,7 @@ export default function SlotsTabContent() {
                   <TableHead className="text-center">{t('duration')}</TableHead>
                   <TableHead className="text-center">{t('capacity')}</TableHead>
                   <TableHead>{t('location')}</TableHead>
+                  <TableHead>{t('city')}</TableHead>
                   <TableHead className="text-center">{t('status')}</TableHead>
                   <TableHead className="text-right">{t('actions')}</TableHead>
                 </TableRow>
@@ -592,7 +648,7 @@ export default function SlotsTabContent() {
               <TableBody>
                 {paginatedGroups.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                       {t('noSlotsFound')}
                     </TableCell>
                   </TableRow>
@@ -625,6 +681,13 @@ export default function SlotsTabContent() {
                             <MapPin className="h-3 w-3 text-muted-foreground" />
                             <span className="text-sm truncate max-w-[150px]">{group.location_name}</span>
                           </div>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {group.city ? (
+                          <Badge variant="secondary">{group.city}</Badge>
                         ) : (
                           <span className="text-muted-foreground">-</span>
                         )}
@@ -752,6 +815,32 @@ export default function SlotsTabContent() {
                 value={formData.location_address || ''}
                 onChange={(e) => setFormData({ ...formData, location_address: e.target.value })}
               />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-city">{t('city')}</Label>
+                <Select
+                  value={formData.city || 'Malabo'}
+                  onValueChange={(v) => setFormData({ ...formData, city: v, region: v === 'Malabo' ? 'Insular' : 'Continental' })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('selectCity')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Malabo">Malabo</SelectItem>
+                    <SelectItem value="Bata">Bata</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-region">{t('region')}</Label>
+                <Input
+                  id="edit-region"
+                  value={formData.region || ''}
+                  disabled
+                  className="bg-muted"
+                />
+              </div>
             </div>
             <div className="flex items-center justify-between">
               <Label htmlFor="edit-active">{t('isActive')}</Label>

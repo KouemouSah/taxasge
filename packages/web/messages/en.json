@@ -788,7 +788,8 @@
         "tabs": {
           "slots": "Slots",
           "blocked": "Blocked",
-          "delays": "Delays"
+          "delays": "Delays",
+          "stats": "Statistics"
         },
         "slots": {
           "title": "Slot Configuration",
@@ -905,6 +906,35 @@
           "editDescription": "Modify the delay days or status of the rule",
           "workflowReadOnly": "Workflow cannot be modified",
           "priorityReadOnly": "Priority cannot be modified"
+        },
+        "stats": {
+          "title": "Statistics",
+          "subtitle": "Appointment configuration overview",
+          "totalSlots": "Total Slots",
+          "active": "active",
+          "inactive": "inactive",
+          "dailyCapacity": "Daily Capacity",
+          "appointmentsPerDay": "appointments per day",
+          "blockedDates": "Blocked Dates",
+          "datesBlocked": "dates blocked",
+          "entities": "Entities",
+          "entitiesWithSlots": "entities with slots",
+          "byCity": "Statistics by City",
+          "cityDescription": "Comparison of slots between Malabo and Bata",
+          "total": "Total",
+          "activeRatio": "Active Ratio",
+          "capacity": "Capacity",
+          "perDay": "per day",
+          "entitiesServed": "Entities served",
+          "operatingDays": "Operating days",
+          "byEntity": "Breakdown by Entity",
+          "entityDescription": "Slot distribution by entity and city",
+          "entity": "Entity",
+          "distribution": "Distribution",
+          "noData": "No data available",
+          "delayRules": "Delay Rules",
+          "delayDescription": "Minimum business days by priority",
+          "businessDays": "business days"
         }
       },
       "common": {
