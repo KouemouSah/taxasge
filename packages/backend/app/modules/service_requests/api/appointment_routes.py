@@ -19,7 +19,7 @@ import logging
 
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
-from app.modules.auth.models.user import UserResponse
+from app.modules.users.models.user import UserResponse
 
 from ..models.appointments import (
     EntityLocationResponse,
@@ -187,7 +187,8 @@ async def get_available_slots(
             slot_time=slot.slot_time,
             location_name=slot.location_name,
             location_address=slot.location_address,
-            slots_remaining=slot.slots_remaining
+            slots_remaining=slot.slots_remaining,
+            city=slot.city  # Include city for statistics (migration 029)
         )
         for slot in slots
     ]
@@ -317,6 +318,7 @@ async def get_hold_status(
             has_hold=True,
             status=hold.status.value,
             location_name=hold.location_name,
+            city=hold.city,  # Include city from appointment_holds table
             appointment_date=hold.appointment_date,
             appointment_time=hold.appointment_time,
             expires_at=hold.expires_at,
@@ -484,5 +486,6 @@ async def confirm_appointment_hold(
         appointment_date=result.appointment_date,
         appointment_time=result.appointment_time,
         location_name=result.location_name,
+        city=result.city,  # Include city from confirm_appointment_hold function
         error=result.error
     )
