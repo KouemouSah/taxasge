@@ -31,23 +31,8 @@ import {
 } from '@/modules/service-requests-admin'
 import type { AppointmentSlotConfig } from '@/modules/service-requests-admin'
 import { DAY_OF_WEEK_LABELS } from '@/modules/service-requests-admin'
-
-// City/Region configuration for Equatorial Guinea
-const CITIES = ['Malabo', 'Bata'] as const
-const REGIONS: Record<string, string> = {
-  'Malabo': 'Insular',
-  'Bata': 'Continental',
-}
-
-// Entity codes for display
-const ENTITY_LABELS: Record<string, string> = {
-  'CNEDOGE': 'CNEDOGE - Identidad',
-  'DGT': 'DGT - Tráfico',
-  'EXTRANJERIA': 'Extranjería',
-  'MINFP': 'Función Pública',
-  'ONRC': 'Registro Civil',
-  'MINHV': 'Vivienda',
-}
+import { CITIES, CITY_REGION_MAP, ENTITY_INFO, type City } from '@/modules/entity-locations'
+import { useEntityLocations } from '@/modules/entity-locations'
 
 interface CityStats {
   city: string
@@ -58,15 +43,16 @@ interface CityStats {
   totalCapacity: number
   entitiesCovered: string[]
   daysWithSlots: number[]
+  locationsCount: number
 }
 
 interface EntityStats {
   entityCode: string
   label: string
-  malaboSlots: number
-  bataSlots: number
+  slotsByCity: Record<string, number>
   totalSlots: number
   totalCapacity: number
+  locationsCount: number
 }
 
 export default function StatsTabContent() {
@@ -76,8 +62,12 @@ export default function StatsTabContent() {
   const { data: slotConfigs, isLoading: loadingSlots, error: slotsError } = useSlotConfigs()
   const { data: blockedDates, isLoading: loadingBlocked } = useBlockedDates()
   const { data: delayRules, isLoading: loadingDelays } = useDelayRules()
+  const { data: locationsData, isLoading: loadingLocations } = useEntityLocations({ is_active: true })
 
-  const isLoading = loadingSlots || loadingBlocked || loadingDelays
+  const isLoading = loadingSlots || loadingBlocked || loadingDelays || loadingLocations
+
+  // Get locations array from paginated response
+  const locations = locationsData?.items || []
 
   // Calculate statistics by city
   const cityStats = useMemo((): CityStats[] => {
@@ -85,17 +75,18 @@ export default function StatsTabContent() {
 
     const statsByCity: Record<string, CityStats> = {}
 
-    // Initialize stats for each city
+    // Initialize stats for each city using imported CITIES
     CITIES.forEach(city => {
       statsByCity[city] = {
         city,
-        region: REGIONS[city] || 'Unknown',
+        region: CITY_REGION_MAP[city],
         totalSlots: 0,
         activeSlots: 0,
         inactiveSlots: 0,
         totalCapacity: 0,
         entitiesCovered: [],
         daysWithSlots: [],
+        locationsCount: locations.filter(loc => loc.city === city).length,
       }
     })
 
@@ -112,6 +103,7 @@ export default function StatsTabContent() {
           totalCapacity: 0,
           entitiesCovered: [],
           daysWithSlots: [],
+          locationsCount: 0,
         }
       }
 
@@ -136,8 +128,11 @@ export default function StatsTabContent() {
       }
     })
 
-    return Object.values(statsByCity).filter(s => CITIES.includes(s.city as typeof CITIES[number]))
-  }, [slotConfigs])
+    // Return all cities that have either slots or locations
+    return Object.values(statsByCity).filter(s =>
+      CITIES.includes(s.city as City) && (s.totalSlots > 0 || s.locationsCount > 0)
+    )
+  }, [slotConfigs, locations])
 
   // Calculate statistics by entity
   const entityStats = useMemo((): EntityStats[] => {
@@ -150,12 +145,16 @@ export default function StatsTabContent() {
       if (!statsByEntity[entityCode]) {
         statsByEntity[entityCode] = {
           entityCode,
-          label: ENTITY_LABELS[entityCode] || entityCode,
-          malaboSlots: 0,
-          bataSlots: 0,
+          label: ENTITY_INFO[entityCode as keyof typeof ENTITY_INFO]?.description || entityCode,
+          slotsByCity: {},
           totalSlots: 0,
           totalCapacity: 0,
+          locationsCount: locations.filter(loc => loc.entity_code === entityCode).length,
         }
+        // Initialize all cities to 0
+        CITIES.forEach(city => {
+          statsByEntity[entityCode].slotsByCity[city] = 0
+        })
       }
 
       const stats = statsByEntity[entityCode]
@@ -165,15 +164,15 @@ export default function StatsTabContent() {
         stats.totalCapacity += slot.max_appointments_per_slot
       }
 
-      if (slot.city === 'Malabo') {
-        stats.malaboSlots++
-      } else if (slot.city === 'Bata') {
-        stats.bataSlots++
+      // Increment city counter
+      const city = slot.city as City
+      if (city && stats.slotsByCity[city] !== undefined) {
+        stats.slotsByCity[city]++
       }
     })
 
     return Object.values(statsByEntity).sort((a, b) => b.totalSlots - a.totalSlots)
-  }, [slotConfigs])
+  }, [slotConfigs, locations])
 
   // Calculate overall totals
   const totals = useMemo(() => {
@@ -185,9 +184,11 @@ export default function StatsTabContent() {
       totalCapacity: slotConfigs?.reduce((sum: number, s: AppointmentSlotConfig) =>
         s.is_active ? sum + s.max_appointments_per_slot : sum, 0) || 0,
       entities: Array.from(new Set(slotConfigs?.map((s: AppointmentSlotConfig) => s.entity_code) || [])).length,
+      locations: locations.length,
+      citiesWithSlots: Array.from(new Set(slotConfigs?.map((s: AppointmentSlotConfig) => s.city).filter(Boolean) || [])).length,
     }
     return total
-  }, [slotConfigs, blockedDates, delayRules])
+  }, [slotConfigs, blockedDates, delayRules, locations])
 
   // Loading state
   if (isLoading) {
@@ -215,7 +216,7 @@ export default function StatsTabContent() {
   return (
     <div className="space-y-6">
       {/* Overview Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -227,6 +228,21 @@ export default function StatsTabContent() {
             <div className="text-2xl font-bold">{totals.slots}</div>
             <p className="text-xs text-muted-foreground">
               {totals.activeSlots} {t('stats.active')}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              {t('stats.locations')}
+            </CardTitle>
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totals.locations}</div>
+            <p className="text-xs text-muted-foreground">
+              {totals.citiesWithSlots} {t('stats.cities')}
             </p>
           </CardContent>
         </Card>
@@ -289,7 +305,7 @@ export default function StatsTabContent() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {cityStats.map((stats) => (
               <Card key={stats.city} className="bg-muted/50">
                 <CardHeader className="pb-2">
@@ -299,33 +315,39 @@ export default function StatsTabContent() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Slot counts */}
-                  <div className="grid grid-cols-3 gap-2 text-center">
+                  {/* Slot and location counts */}
+                  <div className="grid grid-cols-4 gap-2 text-center">
                     <div>
-                      <div className="text-2xl font-bold">{stats.totalSlots}</div>
-                      <div className="text-xs text-muted-foreground">{t('stats.total')}</div>
+                      <div className="text-xl font-bold">{stats.locationsCount}</div>
+                      <div className="text-xs text-muted-foreground">{t('stats.locations')}</div>
                     </div>
                     <div>
-                      <div className="text-2xl font-bold text-green-600">{stats.activeSlots}</div>
+                      <div className="text-xl font-bold">{stats.totalSlots}</div>
+                      <div className="text-xs text-muted-foreground">{t('stats.slots')}</div>
+                    </div>
+                    <div>
+                      <div className="text-xl font-bold text-green-600">{stats.activeSlots}</div>
                       <div className="text-xs text-muted-foreground">{t('stats.active')}</div>
                     </div>
                     <div>
-                      <div className="text-2xl font-bold text-muted-foreground">{stats.inactiveSlots}</div>
+                      <div className="text-xl font-bold text-muted-foreground">{stats.inactiveSlots}</div>
                       <div className="text-xs text-muted-foreground">{t('stats.inactive')}</div>
                     </div>
                   </div>
 
                   {/* Progress bar for active ratio */}
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span>{t('stats.activeRatio')}</span>
-                      <span>{stats.totalSlots > 0 ? Math.round((stats.activeSlots / stats.totalSlots) * 100) : 0}%</span>
+                  {stats.totalSlots > 0 && (
+                    <div>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span>{t('stats.activeRatio')}</span>
+                        <span>{Math.round((stats.activeSlots / stats.totalSlots) * 100)}%</span>
+                      </div>
+                      <Progress
+                        value={(stats.activeSlots / stats.totalSlots) * 100}
+                        className="h-2"
+                      />
                     </div>
-                    <Progress
-                      value={stats.totalSlots > 0 ? (stats.activeSlots / stats.totalSlots) * 100 : 0}
-                      className="h-2"
-                    />
-                  </div>
+                  )}
 
                   {/* Capacity */}
                   <div className="flex items-center justify-between text-sm">
@@ -337,28 +359,32 @@ export default function StatsTabContent() {
                   </div>
 
                   {/* Entities */}
-                  <div>
-                    <div className="text-sm mb-2">{t('stats.entitiesServed')}</div>
-                    <div className="flex flex-wrap gap-1">
-                      {stats.entitiesCovered.map(entity => (
-                        <Badge key={entity} variant="secondary" className="text-xs">
-                          {entity}
-                        </Badge>
-                      ))}
+                  {stats.entitiesCovered.length > 0 && (
+                    <div>
+                      <div className="text-sm mb-2">{t('stats.entitiesServed')}</div>
+                      <div className="flex flex-wrap gap-1">
+                        {stats.entitiesCovered.map(entity => (
+                          <Badge key={entity} variant="secondary" className="text-xs">
+                            {entity}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Days with slots */}
-                  <div>
-                    <div className="text-sm mb-2">{t('stats.operatingDays')}</div>
-                    <div className="flex flex-wrap gap-1">
-                      {stats.daysWithSlots.sort((a, b) => a - b).map(day => (
-                        <Badge key={day} variant="outline" className="text-xs">
-                          {DAY_OF_WEEK_LABELS[day]}
-                        </Badge>
-                      ))}
+                  {stats.daysWithSlots.length > 0 && (
+                    <div>
+                      <div className="text-sm mb-2">{t('stats.operatingDays')}</div>
+                      <div className="flex flex-wrap gap-1">
+                        {stats.daysWithSlots.sort((a, b) => a - b).map(day => (
+                          <Badge key={day} variant="outline" className="text-xs">
+                            {DAY_OF_WEEK_LABELS[day]}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
             ))}
@@ -378,76 +404,65 @@ export default function StatsTabContent() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t('stats.entity')}</TableHead>
-                <TableHead className="text-center">Malabo</TableHead>
-                <TableHead className="text-center">Bata</TableHead>
-                <TableHead className="text-center">{t('stats.total')}</TableHead>
-                <TableHead className="text-center">{t('stats.capacity')}</TableHead>
-                <TableHead>{t('stats.distribution')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {entityStats.length === 0 ? (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                    {t('stats.noData')}
-                  </TableCell>
+                  <TableHead>{t('stats.entity')}</TableHead>
+                  <TableHead className="text-center">{t('stats.locations')}</TableHead>
+                  {CITIES.map(city => (
+                    <TableHead key={city} className="text-center">{city}</TableHead>
+                  ))}
+                  <TableHead className="text-center">{t('stats.total')}</TableHead>
+                  <TableHead className="text-center">{t('stats.capacity')}</TableHead>
                 </TableRow>
-              ) : (
-                entityStats.map((entity) => {
-                  const malaboPercent = entity.totalSlots > 0
-                    ? Math.round((entity.malaboSlots / entity.totalSlots) * 100)
-                    : 0
-                  const bataPercent = 100 - malaboPercent
-
-                  return (
+              </TableHeader>
+              <TableBody>
+                {entityStats.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4 + CITIES.length} className="text-center text-muted-foreground py-8">
+                      {t('stats.noData')}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  entityStats.map((entity) => (
                     <TableRow key={entity.entityCode}>
                       <TableCell>
                         <div>
                           <div className="font-medium">{entity.entityCode}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {ENTITY_LABELS[entity.entityCode]?.replace(`${entity.entityCode} - `, '') || ''}
+                          <div className="text-xs text-muted-foreground truncate max-w-[150px]">
+                            {entity.label}
                           </div>
                         </div>
                       </TableCell>
                       <TableCell className="text-center">
-                        <Badge variant="outline" className="bg-blue-50">
-                          {entity.malaboSlots}
+                        <Badge variant="secondary">
+                          {entity.locationsCount}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="outline" className="bg-green-50">
-                          {entity.bataSlots}
-                        </Badge>
-                      </TableCell>
+                      {CITIES.map(city => (
+                        <TableCell key={city} className="text-center">
+                          {entity.slotsByCity[city] > 0 ? (
+                            <Badge variant="outline">
+                              {entity.slotsByCity[city]}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                      ))}
                       <TableCell className="text-center font-medium">
                         {entity.totalSlots}
                       </TableCell>
                       <TableCell className="text-center">
                         {entity.totalCapacity}
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2 min-w-[100px]">
-                          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-blue-500"
-                              style={{ width: `${malaboPercent}%` }}
-                            />
-                          </div>
-                          <span className="text-xs text-muted-foreground w-16">
-                            {malaboPercent}% / {bataPercent}%
-                          </span>
-                        </div>
-                      </TableCell>
                     </TableRow>
-                  )
-                })
-              )}
-            </TableBody>
-          </Table>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
