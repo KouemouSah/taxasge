@@ -97,6 +97,32 @@ async def get_locations_by_region(
 
 
 # ============================================================================
+# UTILITY ENDPOINTS (must be before /{location_id} to avoid route conflicts)
+# ============================================================================
+
+@router.get(
+    "/meta/entities",
+    response_model=List[str],
+    summary="Get valid entity codes",
+    description="Returns the list of valid entity codes.",
+)
+async def get_valid_entity_codes() -> List[str]:
+    """Get list of valid entity codes."""
+    return VALID_ENTITY_CODES
+
+
+@router.get(
+    "/meta/cities",
+    response_model=List[str],
+    summary="Get valid cities",
+    description="Returns the list of valid cities.",
+)
+async def get_valid_cities() -> List[str]:
+    """Get list of valid cities."""
+    return VALID_CITIES
+
+
+# ============================================================================
 # ADMIN ENDPOINTS (require authentication)
 # ============================================================================
 
@@ -243,29 +269,3 @@ async def toggle_location_active(
             detail="Entity location not found",
         )
     return location
-
-
-# ============================================================================
-# UTILITY ENDPOINTS
-# ============================================================================
-
-@router.get(
-    "/meta/entities",
-    response_model=List[str],
-    summary="Get valid entity codes",
-    description="Returns the list of valid entity codes.",
-)
-async def get_valid_entity_codes() -> List[str]:
-    """Get list of valid entity codes."""
-    return VALID_ENTITY_CODES
-
-
-@router.get(
-    "/meta/cities",
-    response_model=List[str],
-    summary="Get valid cities",
-    description="Returns the list of valid cities.",
-)
-async def get_valid_cities() -> List[str]:
-    """Get list of valid cities."""
-    return VALID_CITIES
