@@ -250,16 +250,9 @@ export default function NewSlotConfigPage() {
                 <SelectContent>
                   {availableLocations.map((loc) => (
                     <SelectItem key={loc.id} value={loc.id}>
-                      <div className="flex flex-col">
-                        <span className="font-medium">
-                          {loc.entity_code} - {loc.location_name}
-                        </span>
-                        {loc.location_address && (
-                          <span className="text-xs text-muted-foreground">
-                            {loc.location_address}
-                          </span>
-                        )}
-                      </div>
+                      <span className="font-medium">
+                        {loc.entity_code} - {loc.location_name}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>

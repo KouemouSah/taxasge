@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
+import { useRouter, useParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -83,6 +84,9 @@ import {
 export default function LocationsTabContent() {
   const t = useTranslations('admin.serviceRequests.appointments.locations')
   const tCommon = useTranslations('common')
+  const router = useRouter()
+  const params = useParams()
+  const locale = params.locale as string
 
   // State
   const [page, setPage] = useState(1)
@@ -93,7 +97,6 @@ export default function LocationsTabContent() {
   const [searchQuery, setSearchQuery] = useState('')
 
   // Dialog state
-  const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingLocation, setEditingLocation] = useState<EntityLocation | null>(null)
   const [deletingLocation, setDeletingLocation] = useState<EntityLocation | null>(null)
 
@@ -140,11 +143,6 @@ export default function LocationsTabContent() {
   }, [editingLocation, filteredLocations])
 
   // Handlers
-  const handleCreate = async (formData: EntityLocationCreate) => {
-    await createMutation.mutateAsync(formData)
-    setIsCreateOpen(false)
-  }
-
   const handleUpdate = async (formData: EntityLocationCreate) => {
     if (!editingLocation) return
     const updateData: EntityLocationUpdate = {
@@ -278,7 +276,7 @@ export default function LocationsTabContent() {
               </CardTitle>
               <CardDescription>{t('subtitle')}</CardDescription>
             </div>
-            <Button onClick={() => setIsCreateOpen(true)}>
+            <Button onClick={() => router.push(`/${locale}/dashboard/admin/service-requests/appointments/locations/new`)}>
               <Plus className="mr-2 h-4 w-4" />
               {t('addLocation')}
             </Button>
@@ -361,7 +359,7 @@ export default function LocationsTabContent() {
               <Building className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p className="text-lg font-medium mb-2">{t('noLocations')}</p>
               <p className="text-sm mb-4">{t('noLocationsDescription')}</p>
-              <Button onClick={() => setIsCreateOpen(true)}>
+              <Button onClick={() => router.push(`/${locale}/dashboard/admin/service-requests/appointments/locations/new`)}>
                 <Plus className="mr-2 h-4 w-4" />
                 {t('createFirstLocation')}
               </Button>
@@ -520,21 +518,6 @@ export default function LocationsTabContent() {
           )}
         </CardContent>
       </Card>
-
-      {/* Create Dialog */}
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{t('form.createTitle')}</DialogTitle>
-            <DialogDescription>{t('form.createDescription')}</DialogDescription>
-          </DialogHeader>
-          <EntityLocationForm
-            onSubmit={handleCreate}
-            onCancel={() => setIsCreateOpen(false)}
-            isLoading={createMutation.isPending}
-          />
-        </DialogContent>
-      </Dialog>
 
       {/* Edit Dialog */}
       <Dialog open={!!editingLocation} onOpenChange={(open) => !open && setEditingLocation(null)}>
