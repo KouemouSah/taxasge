@@ -16,7 +16,7 @@ from app.modules.cities.models.city import (
     EntityCreate, EntityUpdate, EntityResponse, EntitySimple, EntityListResponse,
 )
 
-router = APIRouter(prefix="/api/v1", tags=["cities"])
+router = APIRouter(tags=["cities"])
 
 
 # ============================================================================

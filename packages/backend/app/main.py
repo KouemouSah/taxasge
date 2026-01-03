@@ -875,7 +875,7 @@ except Exception as e:
 # Try to load cities router (Module - Cities and Entities Management)
 try:
     from app.modules.cities.api import router as cities_router
-    app.include_router(cities_router, tags=["cities"])
+    app.include_router(cities_router, prefix="/api/v1", tags=["cities"])
     routers_loaded.append("cities")
     logger.info("✅ Cities router loaded")
 except Exception as e:
