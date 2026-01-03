@@ -168,6 +168,9 @@ DROP COLUMN IF EXISTS city,
 DROP COLUMN IF EXISTS region;
 
 -- Step 4.6: Drop old unique constraint and create new one
+-- Must drop constraint (not index) because unique_slot is a named constraint
+ALTER TABLE appointment_slot_configs DROP CONSTRAINT IF EXISTS unique_slot;
+ALTER TABLE appointment_slot_configs DROP CONSTRAINT IF EXISTS unique_slot_v2;
 DROP INDEX IF EXISTS unique_slot;
 DROP INDEX IF EXISTS unique_slot_v2;
 CREATE UNIQUE INDEX unique_slot_v2 ON appointment_slot_configs(entity_location_id, day_of_week, start_time);
