@@ -19,8 +19,9 @@ from ..models.entity_location import (
     EntityLocationUpdate,
     EntityLocationResponse,
     EntityLocationListResponse,
-    VALID_ENTITY_CODES,
-    VALID_CITIES,
+    DEFAULT_ENTITY_CODES,
+    DEFAULT_CITIES,
+    VALID_REGIONS,
 )
 from ..services.entity_location_service import EntityLocationService
 
@@ -43,11 +44,11 @@ async def get_locations_by_entity(
     db: Connection = Depends(get_database),
 ) -> List[EntityLocationResponse]:
     """Get all active locations for a specific entity."""
-    entity_code = entity_code.upper()
-    if entity_code not in VALID_ENTITY_CODES:
+    entity_code = entity_code.upper().strip()
+    if len(entity_code) < 2:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid entity code. Must be one of: {VALID_ENTITY_CODES}",
+            detail="Entity code must be at least 2 characters",
         )
 
     service = EntityLocationService(db)
@@ -65,10 +66,11 @@ async def get_locations_by_city(
     db: Connection = Depends(get_database),
 ) -> List[EntityLocationResponse]:
     """Get all active locations in a specific city."""
-    if city not in VALID_CITIES:
+    city = city.strip().title()
+    if len(city) < 2:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid city. Must be one of: {VALID_CITIES}",
+            detail="City name must be at least 2 characters",
         )
 
     service = EntityLocationService(db)
@@ -86,10 +88,11 @@ async def get_locations_by_region(
     db: Connection = Depends(get_database),
 ) -> List[EntityLocationResponse]:
     """Get all active locations in a specific region."""
-    if region not in ["Insular", "Continental"]:
+    region = region.strip().title()
+    if region not in VALID_REGIONS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid region. Must be 'Insular' or 'Continental'",
+            detail=f"Invalid region. Must be one of: {VALID_REGIONS}",
         )
 
     service = EntityLocationService(db)
@@ -103,23 +106,23 @@ async def get_locations_by_region(
 @router.get(
     "/meta/entities",
     response_model=List[str],
-    summary="Get valid entity codes",
-    description="Returns the list of valid entity codes.",
+    summary="Get default entity codes",
+    description="Returns the list of default entity codes. Use /api/v1/entities/simple for full list.",
 )
-async def get_valid_entity_codes() -> List[str]:
-    """Get list of valid entity codes."""
-    return VALID_ENTITY_CODES
+async def get_default_entity_codes() -> List[str]:
+    """Get list of default entity codes."""
+    return list(DEFAULT_ENTITY_CODES)
 
 
 @router.get(
     "/meta/cities",
     response_model=List[str],
-    summary="Get valid cities",
-    description="Returns the list of valid cities.",
+    summary="Get default cities",
+    description="Returns the list of default cities. Use /api/v1/cities/simple for full list.",
 )
-async def get_valid_cities() -> List[str]:
-    """Get list of valid cities."""
-    return VALID_CITIES
+async def get_default_cities() -> List[str]:
+    """Get list of default cities."""
+    return list(DEFAULT_CITIES)
 
 
 # ============================================================================
