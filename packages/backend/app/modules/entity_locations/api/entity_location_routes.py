@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from asyncpg import Connection
 
 from app.database.connection import get_database
-from app.modules.auth.dependencies import get_current_user, require_admin
+from app.modules.auth.middleware.auth_middleware import get_current_user, require_admin
 from app.modules.users.models.user import UserResponse
 
 from ..models.entity_location import (
