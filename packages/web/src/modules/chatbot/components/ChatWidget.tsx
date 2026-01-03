@@ -45,7 +45,7 @@ import {
 } from 'lucide-react'
 import { useChat, useChatSettings } from '../hooks'
 import { formatTimestamp } from '../types'
-import type { ChatWidgetProps, ServiceReference } from '../types'
+import type { ChatWidgetProps, ServiceReference, SupportedLanguage } from '../types'
 import {
   announceToScreenReader,
   announceNewMessage,
@@ -98,7 +98,7 @@ export const ChatWidget = ({
     retry,
     stopStreaming,
   } = useChat({
-    language: (initialLanguage || settings.language) as any,
+    language: (initialLanguage || settings.language) as SupportedLanguage,
     persistToStorage: enableHistory,
     enableStreaming: enableStreaming,
   })
@@ -111,7 +111,7 @@ export const ChatWidget = ({
   // Sync language with locale
   useEffect(() => {
     if (locale && locale !== settings.language) {
-      setLanguage(locale as any)
+      setLanguage(locale as SupportedLanguage)
     }
   }, [locale, settings.language, setLanguage])
 
@@ -135,7 +135,7 @@ export const ChatWidget = ({
       const lastMessage = messages[messages.length - 1]
       announceNewMessage(lastMessage.role as 'user' | 'assistant', lastMessage.content)
     }
-  }, [messages.length])
+  }, [messages])
 
   // Announce errors
   useEffect(() => {
@@ -144,12 +144,20 @@ export const ChatWidget = ({
     }
   }, [error])
 
+  // Close handler - memoized for keyboard navigation
+  const handleClose = useCallback(() => {
+    setIsOpen(false)
+    if (onClose) {
+      onClose()
+    }
+  }, [onClose])
+
   // Keyboard navigation - Escape to close
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === KEYS.ESCAPE && isOpen) {
       handleClose()
     }
-  }, [isOpen])
+  }, [isOpen, handleClose])
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown)
@@ -185,13 +193,6 @@ export const ChatWidget = ({
 
   const handleSuggestionClick = (suggestion: string) => {
     setMessage(suggestion)
-  }
-
-  const handleClose = () => {
-    setIsOpen(false)
-    if (onClose) {
-      onClose()
-    }
   }
 
   // =============================================================================

@@ -70,8 +70,8 @@ export default function RecentActivity() {
 
   const getActionLabel = (action: string) => {
     // Try to get translation, fallback to action name
-    const key = `activityType.${action}` as any
-    const translated = t(key)
+    const key = `activityType.${action}`
+    const translated = t(key as Parameters<typeof t>[0])
     // If translation returns the key itself, use the action name
     return translated === key ? action.replace(/_/g, ' ') : translated
   }

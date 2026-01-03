@@ -74,7 +74,7 @@ export function AssignmentForm({
     }
   }
 
-  const handleChange = (field: string, value: any) => {
+  const handleChange = (field: string, value: string | AssignmentPriority | AssignmentStatus) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 

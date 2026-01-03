@@ -15,7 +15,7 @@ import type { AuditAction } from '../types'
 export const auditLogsKeys = {
   all: ['audit-logs'] as const,
   lists: () => [...auditLogsKeys.all, 'list'] as const,
-  list: (filters: Record<string, any>) =>
+  list: (filters: Record<string, string | number | boolean | undefined>) =>
     [...auditLogsKeys.lists(), filters] as const,
   details: () => [...auditLogsKeys.all, 'detail'] as const,
   detail: (id: string) => [...auditLogsKeys.details(), id] as const,

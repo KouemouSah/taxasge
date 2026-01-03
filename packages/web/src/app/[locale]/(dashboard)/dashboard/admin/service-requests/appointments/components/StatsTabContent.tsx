@@ -66,8 +66,8 @@ export default function StatsTabContent() {
 
   const isLoading = loadingSlots || loadingBlocked || loadingDelays || loadingLocations
 
-  // Get locations array from paginated response
-  const locations = locationsData?.items || []
+  // Get locations array from paginated response - memoized to prevent re-renders
+  const locations = useMemo(() => locationsData?.items ?? [], [locationsData?.items])
 
   // Calculate statistics by city
   const cityStats = useMemo((): CityStats[] => {
