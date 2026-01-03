@@ -10,7 +10,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from asyncpg import Connection
 
-from app.database.connection import get_db
+from app.database.connection import get_database
 from app.modules.auth.dependencies import get_current_user, require_admin
 from app.modules.users.models.user import UserResponse
 
@@ -40,7 +40,7 @@ router = APIRouter(prefix="/entity-locations", tags=["Entity Locations"])
 )
 async def get_locations_by_entity(
     entity_code: str,
-    db: Connection = Depends(get_db),
+    db: Connection = Depends(get_database),
 ) -> List[EntityLocationResponse]:
     """Get all active locations for a specific entity."""
     entity_code = entity_code.upper()
@@ -62,7 +62,7 @@ async def get_locations_by_entity(
 )
 async def get_locations_by_city(
     city: str,
-    db: Connection = Depends(get_db),
+    db: Connection = Depends(get_database),
 ) -> List[EntityLocationResponse]:
     """Get all active locations in a specific city."""
     if city not in VALID_CITIES:
@@ -83,7 +83,7 @@ async def get_locations_by_city(
 )
 async def get_locations_by_region(
     region: str,
-    db: Connection = Depends(get_db),
+    db: Connection = Depends(get_database),
 ) -> List[EntityLocationResponse]:
     """Get all active locations in a specific region."""
     if region not in ["Insular", "Continental"]:
@@ -139,7 +139,7 @@ async def list_entity_locations(
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
-    db: Connection = Depends(get_db),
+    db: Connection = Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
 ) -> EntityLocationListResponse:
     """List all entity locations with pagination and filters."""
@@ -162,7 +162,7 @@ async def list_entity_locations(
 )
 async def get_entity_location(
     location_id: UUID,
-    db: Connection = Depends(get_db),
+    db: Connection = Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
 ) -> EntityLocationResponse:
     """Get a single entity location by ID."""
@@ -185,7 +185,7 @@ async def get_entity_location(
 )
 async def create_entity_location(
     data: EntityLocationCreate,
-    db: Connection = Depends(get_db),
+    db: Connection = Depends(get_database),
     current_user: UserResponse = Depends(require_admin),
 ) -> EntityLocationResponse:
     """Create a new entity location."""
@@ -208,7 +208,7 @@ async def create_entity_location(
 async def update_entity_location(
     location_id: UUID,
     data: EntityLocationUpdate,
-    db: Connection = Depends(get_db),
+    db: Connection = Depends(get_database),
     current_user: UserResponse = Depends(require_admin),
 ) -> EntityLocationResponse:
     """Update an existing entity location."""
@@ -230,7 +230,7 @@ async def update_entity_location(
 )
 async def delete_entity_location(
     location_id: UUID,
-    db: Connection = Depends(get_db),
+    db: Connection = Depends(get_database),
     current_user: UserResponse = Depends(require_admin),
 ) -> None:
     """Delete an entity location."""
@@ -257,7 +257,7 @@ async def delete_entity_location(
 )
 async def toggle_location_active(
     location_id: UUID,
-    db: Connection = Depends(get_db),
+    db: Connection = Depends(get_database),
     current_user: UserResponse = Depends(require_admin),
 ) -> EntityLocationResponse:
     """Toggle the active status of a location."""
