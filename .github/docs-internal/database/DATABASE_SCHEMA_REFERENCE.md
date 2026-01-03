@@ -3,7 +3,7 @@
 TAXASGE DATABASE SCHEMA - COMPLETE REFERENCE
 ====================================================================================================
 
-Extracted on: 2025-12-29 21:00:50
+Extracted on: 2026-01-03 21:41:47
 Database: Supabase PostgreSQL
 Project: taxasge-dev
 
@@ -17,6 +17,7 @@ Project: taxasge-dev
   - agent_workloads                          Suivi en temps réel de la charge de travail des agents
   - appointment_blocked_dates                Holidays and blocked dates when appointments cannot be scheduled
   - appointment_delay_rules                  Configurable delay (in business days) between validation and appointment
+  - appointment_holds                        No description
   - appointment_reservations                 Booked appointments for service requests
   - appointment_slot_configs                 Available appointment time slots by entity and day of week
   - assignment_rules                         Règles configurables pour l'auto-assignation intelligente
@@ -26,6 +27,7 @@ Project: taxasge-dev
   - bank_transactions                        Transactions bancaires reçues des banques (webhooks ou réconciliation manuelle)
   - calculation_history                      No description
   - categories                               No description
+  - cities                                   No description
   - communication_provider_settings          Configuration settings for communication providers (SMS, Email, Push, WhatsApp)
   - companies                                No description
   - declaration_amount_adjustments           Audit trail de tous les ajustements de montants (historique complet)
@@ -39,6 +41,8 @@ Project: taxasge-dev
   - document_templates                       Templates documents - Avec validity_duration_months (v4.1 fix)
   - document_templates_backup_20251017       No description
   - email_templates                          Email templates with multilingual support. HTML content stored in separate files.
+  - entities                                 No description
+  - entity_locations                         Master table of physical locations for each government entity. Single source of truth for location data.
   - entity_translations                      Traductions optimisées - ENUM strict + codes courts (-40%% storage)
   - extraction_schemas                       Mapping entre catégories de documents et schemas JSON d'extraction
   - fiscal_service_data                      NIVEAU 3 - Données fiscal services avec support OCR Tesseract (ex: Nota de Ingreso)
@@ -130,6 +134,13 @@ agent_availability_enum:
   - training
   - mission
   - temporarily_unavailable
+
+appointment_hold_status:
+  - held
+  - confirmed
+  - expired
+  - released
+  - fallback
 
 assignment_method_enum:
   - auto
@@ -656,6 +667,46 @@ Indexes:
     CREATE INDEX idx_adr_lookup ON public.appointment_delay_rules USING btree (workflow_code, priority, is_active) WHERE (is_active = true)
 
 ----------------------------------------------------------------------------------------------------
+Table: APPOINTMENT_HOLDS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+service_request_id                  uuid                      NO                                       
+slot_config_id                      uuid                      YES                                      
+appointment_date                    date                      NO                                       
+appointment_time                    time without time zone    NO                                       
+status                              appointment_hold_status   NO         'held'::appointment_hold_statu
+held_at                             timestamp with time zone  NO         now()                         
+expires_at                          timestamp with time zone  NO         (now() + '00:15:00'::interval)
+confirmed_at                        timestamp with time zone  YES                                      
+released_at                         timestamp with time zone  YES                                      
+created_at                          timestamp with time zone  NO         now()                         
+updated_at                          timestamp with time zone  NO         now()                         
+entity_location_id                  uuid                      YES                                      
+  └─ Description: FK to entity_locations - the location for this appointment hold
+
+Primary Key: id
+
+Foreign Keys:
+  - service_request_id → service_requests.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+  - slot_config_id → appointment_slot_configs.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - entity_location_id → entity_locations.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+
+Unique Constraints:
+  - unique_active_hold_per_request: (service_request_id)
+
+Indexes:
+  - unique_active_hold_per_request
+    CREATE UNIQUE INDEX unique_active_hold_per_request ON public.appointment_holds USING btree (service_request_id)
+  - idx_appointment_holds_status
+    CREATE INDEX idx_appointment_holds_status ON public.appointment_holds USING btree (status) WHERE (status = 'held'::appointment_hold_status)
+  - idx_appointment_holds_expires
+    CREATE INDEX idx_appointment_holds_expires ON public.appointment_holds USING btree (expires_at) WHERE (status = 'held'::appointment_hold_status)
+
+----------------------------------------------------------------------------------------------------
 Table: APPOINTMENT_RESERVATIONS
 ----------------------------------------------------------------------------------------------------
 
@@ -664,11 +715,8 @@ Column                              Type                      Nullable   Default
 ----------------------------------------------------------------------------------------------------
 id                                  uuid                      NO         gen_random_uuid()             
 service_request_id                  uuid                      NO                                       
-entity_code                         varchar(50)               NO                                       
 appointment_date                    date                      NO                                       
 appointment_time                    time without time zone    NO                                       
-location_name                       varchar(255)              YES                                      
-location_address                    text                      YES                                      
 status                              varchar(20)               NO         'scheduled'::character varying
   └─ Description: scheduled, confirmed, completed, cancelled, no_show, rescheduled
 reminder_sent_at                    timestamp with time zone  YES                                      
@@ -683,6 +731,8 @@ updated_at                          timestamp with time zone  NO         now()
 cancelled_at                        timestamp with time zone  YES                                      
 cancelled_by                        uuid                      YES                                      
 cancellation_reason                 text                      YES                                      
+entity_location_id                  uuid                      YES                                      
+  └─ Description: FK to entity_locations - the location for this reservation
 
 Primary Key: id
 
@@ -691,16 +741,13 @@ Foreign Keys:
   - completed_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
   - rescheduled_from → appointment_reservations.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
   - service_request_id → service_requests.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+  - entity_location_id → entity_locations.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
 
 Indexes:
   - idx_ar_service_request
     CREATE INDEX idx_ar_service_request ON public.appointment_reservations USING btree (service_request_id)
-  - idx_ar_entity_date
-    CREATE INDEX idx_ar_entity_date ON public.appointment_reservations USING btree (entity_code, appointment_date)
   - idx_ar_status
     CREATE INDEX idx_ar_status ON public.appointment_reservations USING btree (status)
-  - idx_ar_scheduled
-    CREATE INDEX idx_ar_scheduled ON public.appointment_reservations USING btree (entity_code, appointment_date, appointment_time) WHERE ((status)::text = ANY ((ARRAY['scheduled'::character varying, 'confirmed'::character varying])::text[]))
   - idx_ar_pending_reminders
     CREATE INDEX idx_ar_pending_reminders ON public.appointment_reservations USING btree (appointment_date) WHERE (((status)::text = 'scheduled'::text) AND (reminder_sent_at IS NULL))
 
@@ -719,30 +766,28 @@ start_time                          time without time zone    NO
 end_time                            time without time zone    NO                                       
 slot_duration_minutes               integer                   NO         30                            
 max_appointments_per_slot           integer                   NO         10                            
-location_name                       varchar(255)              YES                                      
-location_address                    text                      YES                                      
 is_active                           boolean                   NO         true                          
 created_at                          timestamp with time zone  NO         now()                         
 updated_at                          timestamp with time zone  NO         now()                         
 created_by                          uuid                      YES                                      
+entity_location_id                  uuid                      NO                                       
+  └─ Description: FK to entity_locations - the physical location for this slot
 
 Primary Key: id
 
 Foreign Keys:
   - created_by → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
-
-Unique Constraints:
-  - unique_slot: (entity_code, day_of_week, start_time)
+  - entity_location_id → entity_locations.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
 
 Indexes:
-  - unique_slot
-    CREATE UNIQUE INDEX unique_slot ON public.appointment_slot_configs USING btree (entity_code, day_of_week, start_time)
-  - idx_asc_entity
-    CREATE INDEX idx_asc_entity ON public.appointment_slot_configs USING btree (entity_code)
   - idx_asc_day
     CREATE INDEX idx_asc_day ON public.appointment_slot_configs USING btree (day_of_week)
   - idx_asc_active
     CREATE INDEX idx_asc_active ON public.appointment_slot_configs USING btree (entity_code, is_active) WHERE (is_active = true)
+  - unique_slot_v2
+    CREATE UNIQUE INDEX unique_slot_v2 ON public.appointment_slot_configs USING btree (entity_location_id, day_of_week, start_time)
+  - idx_slot_entity_location
+    CREATE INDEX idx_slot_entity_location ON public.appointment_slot_configs USING btree (entity_location_id)
 
 ----------------------------------------------------------------------------------------------------
 Table: ASSIGNMENT_RULES
@@ -1015,6 +1060,43 @@ Indexes:
     CREATE INDEX idx_categories_sector ON public.categories USING btree (sector_id) WHERE (sector_id IS NOT NULL)
   - idx_categories_ministry_direct
     CREATE INDEX idx_categories_ministry_direct ON public.categories USING btree (ministry_id) WHERE (ministry_id IS NOT NULL)
+
+----------------------------------------------------------------------------------------------------
+Table: CITIES
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+name                                varchar(100)              NO                                       
+region                              varchar(50)               NO                                       
+description                         text                      YES                                      
+is_capital                          boolean                   YES        false                         
+is_active                           boolean                   YES        true                          
+created_at                          timestamp with time zone  YES        now()                         
+updated_at                          timestamp with time zone  YES        now()                         
+created_by                          uuid                      YES                                      
+updated_by                          uuid                      YES                                      
+
+Primary Key: id
+
+Foreign Keys:
+  - created_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - updated_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+
+Unique Constraints:
+  - cities_name_key: (name)
+
+Indexes:
+  - cities_name_key
+    CREATE UNIQUE INDEX cities_name_key ON public.cities USING btree (name)
+  - idx_cities_active
+    CREATE INDEX idx_cities_active ON public.cities USING btree (is_active) WHERE (is_active = true)
+  - idx_cities_region
+    CREATE INDEX idx_cities_region ON public.cities USING btree (region)
+  - idx_cities_name
+    CREATE INDEX idx_cities_name ON public.cities USING btree (name)
 
 ----------------------------------------------------------------------------------------------------
 Table: COMMUNICATION_PROVIDER_SETTINGS
@@ -1610,6 +1692,100 @@ Indexes:
     CREATE INDEX idx_email_templates_category ON public.email_templates USING btree (category)
   - idx_email_templates_active
     CREATE INDEX idx_email_templates_active ON public.email_templates USING btree (is_active)
+
+----------------------------------------------------------------------------------------------------
+Table: ENTITIES
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+code                                varchar(50)               NO                                       
+name                                varchar(255)              NO                                       
+description                         text                      YES                                      
+is_active                           boolean                   YES        true                          
+created_at                          timestamp with time zone  YES        now()                         
+updated_at                          timestamp with time zone  YES        now()                         
+created_by                          uuid                      YES                                      
+updated_by                          uuid                      YES                                      
+
+Primary Key: id
+
+Foreign Keys:
+  - created_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - updated_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+
+Unique Constraints:
+  - entities_code_key: (code)
+
+Indexes:
+  - entities_code_key
+    CREATE UNIQUE INDEX entities_code_key ON public.entities USING btree (code)
+  - idx_entities_active
+    CREATE INDEX idx_entities_active ON public.entities USING btree (is_active) WHERE (is_active = true)
+  - idx_entities_code
+    CREATE INDEX idx_entities_code ON public.entities USING btree (code)
+
+----------------------------------------------------------------------------------------------------
+Table: ENTITY_LOCATIONS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+entity_code                         varchar(50)               NO                                       
+  └─ Description: Entity code (CNEDOGE, DGT, EXTRANJERIA, MINFP, ONRC, MINHV)
+city                                varchar(100)              NO                                       
+  └─ Description: City: Malabo (Insular) or Bata/Mongomo/Evinayong/Ebebiyin (Continental)
+region                              varchar(50)               NO                                       
+  └─ Description: Region: Insular (Bioko island) or Continental (mainland)
+location_name                       varchar(255)              NO                                       
+location_address                    text                      YES                                      
+phone                               varchar(50)               YES                                      
+email                               varchar(255)              YES                                      
+is_main_office                      boolean                   NO         false                         
+  └─ Description: True for main office (typically in Malabo, the capital)
+is_active                           boolean                   NO         true                          
+operating_hours                     jsonb                     YES        '{"friday": {"open": "08:00", 
+  └─ Description: Operating hours per day as JSONB: {"monday": {"open": "08:00", "close": "16:00"}, ...}
+notes                               text                      YES                                      
+created_at                          timestamp with time zone  NO         now()                         
+updated_at                          timestamp with time zone  NO         now()                         
+created_by                          uuid                      YES                                      
+updated_by                          uuid                      YES                                      
+city_id                             uuid                      YES                                      
+entity_id                           uuid                      YES                                      
+
+Primary Key: id
+
+Foreign Keys:
+  - city_id → cities.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - created_by → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - entity_id → entities.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - updated_by → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+
+Unique Constraints:
+  - unique_entity_city: (entity_code, city)
+
+Indexes:
+  - unique_entity_city
+    CREATE UNIQUE INDEX unique_entity_city ON public.entity_locations USING btree (entity_code, city)
+  - idx_entity_locations_entity
+    CREATE INDEX idx_entity_locations_entity ON public.entity_locations USING btree (entity_code)
+  - idx_entity_locations_city
+    CREATE INDEX idx_entity_locations_city ON public.entity_locations USING btree (city)
+  - idx_entity_locations_region
+    CREATE INDEX idx_entity_locations_region ON public.entity_locations USING btree (region)
+  - idx_entity_locations_active
+    CREATE INDEX idx_entity_locations_active ON public.entity_locations USING btree (is_active) WHERE (is_active = true)
+  - idx_entity_locations_entity_active
+    CREATE INDEX idx_entity_locations_entity_active ON public.entity_locations USING btree (entity_code, is_active) WHERE (is_active = true)
+  - idx_entity_locations_city_id
+    CREATE INDEX idx_entity_locations_city_id ON public.entity_locations USING btree (city_id)
+  - idx_entity_locations_entity_id
+    CREATE INDEX idx_entity_locations_entity_id ON public.entity_locations USING btree (entity_id)
 
 ----------------------------------------------------------------------------------------------------
 Table: ENTITY_TRANSLATIONS
@@ -3312,10 +3488,13 @@ rejection_reason                    text                      YES
 created_at                          timestamp with time zone  NO         now()                         
 updated_at                          timestamp with time zone  NO         now()                         
 created_by                          uuid                      YES                                      
+entity_location_id                  uuid                      YES                                      
+  └─ Description: FK to entity_locations - user selected location for appointment (nullable)
 
 Primary Key: id
 
 Foreign Keys:
+  - entity_location_id → entity_locations.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
   - assigned_to → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
   - created_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
   - fiscal_service_id → fiscal_services.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
@@ -3345,6 +3524,8 @@ Indexes:
     CREATE INDEX idx_sr_fiscal_service ON public.service_requests USING btree (fiscal_service_id) WHERE (fiscal_service_id IS NOT NULL)
   - idx_sr_workflow_status
     CREATE INDEX idx_sr_workflow_status ON public.service_requests USING btree (workflow_code, status)
+  - idx_sr_entity_location
+    CREATE INDEX idx_sr_entity_location ON public.service_requests USING btree (entity_location_id) WHERE (entity_location_id IS NOT NULL)
 
 ----------------------------------------------------------------------------------------------------
 Table: SESSIONS
@@ -4639,6 +4820,12 @@ Definition:  SELECT ma.id AS agent_id,
     aw.current_assignments,
 ...
 
+View: v_appointments_by_city
+Definition:  SELECT COALESCE(el.city, 'Non specifie'::character varying) AS city,
+    COALESCE(el.region, 'Non specifie'::character varying) AS region,
+    count(*) AS total_appointments,
+    count(*) FILTER (WHE...
+
 View: v_available_agents
 Definition:  SELECT u.id AS agent_id,
     u.full_name AS agent_name,
@@ -4658,15 +4845,6 @@ Definition:  SELECT m.id AS ministry_id,
         CASE
             WHEN (ma.is_active = true) THEN 1
             EL...
-
-View: v_available_appointment_slots
-Definition:  SELECT asc_config.entity_code,
-    asc_config.day_of_week,
-    asc_config.start_time,
-    asc_config.end_time,
-    asc_config.slot_duration_minutes,
-    asc_config.max_appointments_per_slot,
-    asc_...
 
 View: v_bank_reconciliation_matching
 Definition:  SELECT id AS bank_transaction_id,
@@ -4727,6 +4905,21 @@ View: v_embedding_status
 Definition:  SELECT count(*) FILTER (WHERE (embedding IS NOT NULL)) AS total_with_embeddings,
     count(*) FILTER (WHERE (embedding IS NULL)) AS total_without_embeddings,
     count(*) FILTER (WHERE (needs_embeddi...
+
+View: v_entity_locations
+Definition:  SELECT id,
+    entity_code,
+    city,
+    region,
+    location_name,
+    location_address,
+    phone,
+    email,
+    is_main_office,
+    is_active,
+    operating_hours
+   FROM entity_locations
+  WHER...
 
 View: v_failed_payments_recovery
 Definition:  SELECT p.id AS payment_id,
@@ -4867,6 +5060,21 @@ Definition:  SELECT nl.id,
     nl.template_code,
     nl.subject,
     nl.content_prev...
+
+View: v_service_requests_by_city
+Definition:  SELECT COALESCE(el.city, 'Non specifie'::character varying) AS city,
+    COALESCE(el.region, 'Non specifie'::character varying) AS region,
+    count(*) AS total_requests,
+    count(*) FILTER (WHERE (...
+
+View: v_slot_availability_by_location
+Definition:  SELECT el.id AS location_id,
+    el.entity_code,
+    el.city,
+    el.region,
+    el.location_name,
+    count(DISTINCT sc.id) AS slot_configs,
+    COALESCE(sum(sc.max_appointments_per_slot), (0)::bigi...
 
 View: v_user_effective_permissions
 Definition:  SELECT u.id AS user_id,
@@ -5030,6 +5238,9 @@ Returns: integer
 Function: cleanup_old_gemini_logs
 Returns: integer
 
+Function: confirm_appointment_hold
+Returns: record
+
 Function: cosine_distance
 Returns: double precision
 
@@ -5059,6 +5270,9 @@ Returns: void
 
 Function: generate_service_request_reference
 Returns: character varying
+
+Function: get_entity_locations
+Returns: record
 
 Function: get_entity_translation
 Returns: text
@@ -5486,6 +5700,9 @@ Returns: internal
 Function: hnswhandler
 Returns: index_am_handler
 
+Function: hold_appointment_slot
+Returns: record
+
 Function: increment_retry_count
 Returns: trigger
 
@@ -5560,6 +5777,9 @@ Returns: text
 
 Function: process_verificacion_funcionario
 Returns: jsonb
+
+Function: release_expired_appointment_holds
+Returns: integer
 
 Function: search_fiscal_services_semantic
 Returns: record
@@ -5648,6 +5868,9 @@ Returns: real
 Function: strict_word_similarity_op
 Returns: boolean
 
+Function: submit_without_appointment
+Returns: record
+
 Function: subvector
 Returns: USER-DEFINED
 
@@ -5688,6 +5911,9 @@ Function: update_appointment_reservations_updated_at
 Returns: trigger
 
 Function: update_capacity_percentage
+Returns: trigger
+
+Function: update_entity_location_timestamp
 Returns: trigger
 
 Function: update_fiscal_service_data_updated_at
@@ -5856,11 +6082,16 @@ agent_workloads.agent_id → users.id
 appointment_blocked_dates.created_by → users.id
 appointment_delay_rules.created_by → users.id
 appointment_delay_rules.workflow_code → workflows.code
+appointment_holds.entity_location_id → entity_locations.id
+appointment_holds.service_request_id → service_requests.id
+appointment_holds.slot_config_id → appointment_slot_configs.id
 appointment_reservations.cancelled_by → users.id
 appointment_reservations.completed_by → users.id
+appointment_reservations.entity_location_id → entity_locations.id
 appointment_reservations.rescheduled_from → appointment_reservations.id
 appointment_reservations.service_request_id → service_requests.id
 appointment_slot_configs.created_by → users.id
+appointment_slot_configs.entity_location_id → entity_locations.id
 assignment_rules.created_by → users.id
 assignment_rules.updated_by → users.id
 assignments.agent_id → users.id
@@ -5874,6 +6105,8 @@ calculation_history.fiscal_service_code → fiscal_services.service_code
 calculation_history.user_id → users.id
 categories.ministry_id → ministries.id
 categories.sector_id → sectors.id
+cities.created_by → users.id
+cities.updated_by → users.id
 communication_provider_settings.created_by → users.id
 communication_provider_settings.updated_by → users.id
 companies.primary_sector_id → sectors.id
@@ -5902,6 +6135,12 @@ document_processing_queue.form_template_id → form_templates.id
 document_processing_queue.uploaded_file_id → uploaded_files.id
 email_templates.created_by → users.id
 email_templates.updated_by → users.id
+entities.created_by → users.id
+entities.updated_by → users.id
+entity_locations.city_id → cities.id
+entity_locations.created_by → users.id
+entity_locations.entity_id → entities.id
+entity_locations.updated_by → users.id
 fiscal_service_data.fiscal_service_id → fiscal_services.id
 fiscal_service_data.ocr_extraction_id → ocr_extraction_results.id
 fiscal_service_data.payment_id → payments.id
@@ -5976,6 +6215,7 @@ service_request_history.performed_by → users.id
 service_request_history.service_request_id → service_requests.id
 service_requests.assigned_to → users.id
 service_requests.created_by → users.id
+service_requests.entity_location_id → entity_locations.id
 service_requests.fiscal_service_id → fiscal_services.id
 service_requests.user_id → users.id
 sessions.user_id → users.id
