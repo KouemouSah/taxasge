@@ -12,7 +12,6 @@ from asyncpg import Connection
 from ..models.entity_location import (
     EntityLocationCreate,
     EntityLocationUpdate,
-    CITY_REGION_MAP,
 )
 
 
@@ -138,7 +137,14 @@ class EntityLocationRepository:
         created_by: Optional[UUID] = None
     ) -> Dict[str, Any]:
         """Create a new entity location."""
-        region = CITY_REGION_MAP.get(data.city, "Continental")
+        # Fetch region from cities table, use provided region as fallback
+        region = await self.db.fetchval(
+            "SELECT region FROM cities WHERE LOWER(name) = LOWER($1)",
+            data.city
+        )
+        if not region:
+            region = data.region  # Use region from request data
+
         operating_hours = None
         if data.operating_hours:
             operating_hours = json.dumps(data.operating_hours.model_dump())

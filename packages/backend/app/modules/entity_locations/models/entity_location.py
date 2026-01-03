@@ -29,10 +29,6 @@ DEFAULT_CITY_REGION_MAP = {
     "Ebebiyin": "Continental",
 }
 
-# Backward compatibility aliases
-VALID_ENTITY_CODES = DEFAULT_ENTITY_CODES
-VALID_CITIES = DEFAULT_CITIES
-CITY_REGION_MAP = DEFAULT_CITY_REGION_MAP
 
 
 class DayHours(BaseModel):
