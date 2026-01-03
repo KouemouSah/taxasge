@@ -477,6 +477,62 @@ async def debug_service_requests_import():
     }
 
 
+@app.get("/api/v1/debug/entity-locations-import")
+async def debug_entity_locations_import():
+    """Debug endpoint to diagnose entity_locations router import errors"""
+    import_errors = []
+    import_success = []
+
+    # Test each import in the entity_locations module chain
+    try:
+        from app.modules.entity_locations.models.entity_location import (
+            EntityLocationCreate,
+            EntityLocationResponse,
+            VALID_ENTITY_CODES,
+            VALID_CITIES,
+        )
+        import_success.append(f"models.entity_location (VALID_ENTITY_CODES={VALID_ENTITY_CODES})")
+    except Exception as e:
+        import traceback
+        import_errors.append({"module": "models.entity_location", "error": str(e), "type": type(e).__name__, "traceback": traceback.format_exc()})
+
+    try:
+        from app.modules.entity_locations.repositories.entity_location_repository import EntityLocationRepository
+        import_success.append("repositories.entity_location_repository.EntityLocationRepository")
+    except Exception as e:
+        import traceback
+        import_errors.append({"module": "repositories.entity_location_repository", "error": str(e), "type": type(e).__name__, "traceback": traceback.format_exc()})
+
+    try:
+        from app.modules.entity_locations.services.entity_location_service import EntityLocationService
+        import_success.append("services.entity_location_service.EntityLocationService")
+    except Exception as e:
+        import traceback
+        import_errors.append({"module": "services.entity_location_service", "error": str(e), "type": type(e).__name__, "traceback": traceback.format_exc()})
+
+    try:
+        from app.modules.entity_locations.api.entity_location_routes import router
+        import_success.append("api.entity_location_routes.router")
+    except Exception as e:
+        import traceback
+        import_errors.append({"module": "api.entity_location_routes", "error": str(e), "type": type(e).__name__, "traceback": traceback.format_exc()})
+
+    try:
+        from app.modules.entity_locations.api import router as entity_locations_router
+        import_success.append("api.__init__.router")
+    except Exception as e:
+        import traceback
+        import_errors.append({"module": "api.__init__", "error": str(e), "type": type(e).__name__, "traceback": traceback.format_exc()})
+
+    return {
+        "status": "diagnostic",
+        "entity_locations_loaded": "entity-locations" in routers_loaded,
+        "import_success": import_success,
+        "import_errors": import_errors,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+
 # API v1 info endpoint
 @app.get("/api/v1/")
 async def api_v1_info():
