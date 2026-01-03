@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { CalendarClock, CalendarX, Clock, BarChart3, MapPin } from 'lucide-react'
+import { CalendarClock, CalendarX, Clock, BarChart3, MapPin, Globe } from 'lucide-react'
 
 // Import tab content components
 import SlotsTabContent from './components/SlotsTabContent'
@@ -12,8 +12,9 @@ import BlockedTabContent from './components/BlockedTabContent'
 import DelaysTabContent from './components/DelaysTabContent'
 import StatsTabContent from './components/StatsTabContent'
 import LocationsTabContent from './components/LocationsTabContent'
+import CitiesTabContent from './components/CitiesTabContent'
 
-const VALID_TABS = ['slots', 'locations', 'blocked', 'delays', 'stats']
+const VALID_TABS = ['slots', 'locations', 'cities', 'blocked', 'delays', 'stats']
 
 export default function AppointmentsPage() {
   const t = useTranslations('admin.serviceRequests.appointments')
@@ -51,7 +52,7 @@ export default function AppointmentsPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-5 lg:w-[800px]">
+        <TabsList className="grid w-full grid-cols-6 lg:w-[900px]">
           <TabsTrigger value="slots" className="flex items-center gap-2">
             <CalendarClock className="h-4 w-4" />
             <span className="hidden sm:inline">{t('slots.title')}</span>
@@ -61,6 +62,11 @@ export default function AppointmentsPage() {
             <MapPin className="h-4 w-4" />
             <span className="hidden sm:inline">{t('locations.title')}</span>
             <span className="sm:hidden">{t('tabs.locations')}</span>
+          </TabsTrigger>
+          <TabsTrigger value="cities" className="flex items-center gap-2">
+            <Globe className="h-4 w-4" />
+            <span className="hidden sm:inline">{t('citiesManagement.title')}</span>
+            <span className="sm:hidden">{t('tabs.cities')}</span>
           </TabsTrigger>
           <TabsTrigger value="blocked" className="flex items-center gap-2">
             <CalendarX className="h-4 w-4" />
@@ -85,6 +91,10 @@ export default function AppointmentsPage() {
 
         <TabsContent value="locations" className="mt-6">
           <LocationsTabContent />
+        </TabsContent>
+
+        <TabsContent value="cities" className="mt-6">
+          <CitiesTabContent />
         </TabsContent>
 
         <TabsContent value="blocked" className="mt-6">
