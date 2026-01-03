@@ -35,7 +35,6 @@ import {
   CITIES,
   CITY_REGION_MAP,
   type City,
-  type EntityLocation,
 } from '@/modules/entity-locations/types'
 
 export default function NewSlotConfigPage() {

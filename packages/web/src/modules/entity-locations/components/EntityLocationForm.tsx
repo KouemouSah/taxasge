@@ -53,7 +53,7 @@ const entityLocationSchema = z.object({
   location_address: z.string().nullable().optional(),
   phone: z
     .string()
-    .regex(/^\+?[0-9\s\-]*$/, 'Invalid phone number format')
+    .regex(/^\+?[0-9\s-]*$/, 'Invalid phone number format')
     .nullable()
     .optional()
     .or(z.literal('')),
