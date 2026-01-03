@@ -27,34 +27,34 @@ export async function getCities(params?: {
   region?: Region
   is_active?: boolean
 }): Promise<CityListResponse> {
-  const response = await apiClient.get<CityListResponse>('/api/v1/cities', { params })
+  const response = await apiClient.get<CityListResponse>('/cities', { params })
   return response.data
 }
 
 export async function getCitiesSimple(isActive: boolean = true): Promise<CitySimple[]> {
-  const response = await apiClient.get<CitySimple[]>('/api/v1/cities/simple', {
+  const response = await apiClient.get<CitySimple[]>('/cities/simple', {
     params: { is_active: isActive },
   })
   return response.data
 }
 
 export async function getCityById(cityId: string): Promise<City> {
-  const response = await apiClient.get<City>(`/api/v1/cities/${cityId}`)
+  const response = await apiClient.get<City>(`/cities/${cityId}`)
   return response.data
 }
 
 export async function createCity(data: CityCreate): Promise<City> {
-  const response = await apiClient.post<City>('/api/v1/cities', data)
+  const response = await apiClient.post<City>('/cities', data)
   return response.data
 }
 
 export async function updateCity(cityId: string, data: CityUpdate): Promise<City> {
-  const response = await apiClient.patch<City>(`/api/v1/cities/${cityId}`, data)
+  const response = await apiClient.patch<City>(`/cities/${cityId}`, data)
   return response.data
 }
 
 export async function deleteCity(cityId: string): Promise<void> {
-  await apiClient.delete(`/api/v1/cities/${cityId}`)
+  await apiClient.delete(`/cities/${cityId}`)
 }
 
 // ============================================================================
@@ -62,32 +62,32 @@ export async function deleteCity(cityId: string): Promise<void> {
 // ============================================================================
 
 export async function getEntities(params?: { is_active?: boolean }): Promise<EntityListResponse> {
-  const response = await apiClient.get<EntityListResponse>('/api/v1/entities', { params })
+  const response = await apiClient.get<EntityListResponse>('/entities', { params })
   return response.data
 }
 
 export async function getEntitiesSimple(isActive: boolean = true): Promise<EntitySimple[]> {
-  const response = await apiClient.get<EntitySimple[]>('/api/v1/entities/simple', {
+  const response = await apiClient.get<EntitySimple[]>('/entities/simple', {
     params: { is_active: isActive },
   })
   return response.data
 }
 
 export async function getEntityById(entityId: string): Promise<Entity> {
-  const response = await apiClient.get<Entity>(`/api/v1/entities/${entityId}`)
+  const response = await apiClient.get<Entity>(`/entities/${entityId}`)
   return response.data
 }
 
 export async function createEntity(data: EntityCreate): Promise<Entity> {
-  const response = await apiClient.post<Entity>('/api/v1/entities', data)
+  const response = await apiClient.post<Entity>('/entities', data)
   return response.data
 }
 
 export async function updateEntity(entityId: string, data: EntityUpdate): Promise<Entity> {
-  const response = await apiClient.patch<Entity>(`/api/v1/entities/${entityId}`, data)
+  const response = await apiClient.patch<Entity>(`/entities/${entityId}`, data)
   return response.data
 }
 
 export async function deleteEntity(entityId: string): Promise<void> {
-  await apiClient.delete(`/api/v1/entities/${entityId}`)
+  await apiClient.delete(`/entities/${entityId}`)
 }
