@@ -129,6 +129,12 @@ ON CONFLICT (entity_code, city) DO UPDATE SET
 -- ============================================================================
 -- Remove duplicated columns, add FK to entity_locations
 
+-- Step 4.0: Drop dependent views FIRST (they will be recreated in section 11)
+DROP VIEW IF EXISTS v_available_appointment_slots CASCADE;
+DROP VIEW IF EXISTS v_slot_availability_by_city CASCADE;
+DROP VIEW IF EXISTS v_appointments_by_city CASCADE;
+DROP VIEW IF EXISTS v_service_requests_by_city CASCADE;
+
 -- Step 4.1: Add entity_location_id column
 ALTER TABLE appointment_slot_configs
 ADD COLUMN IF NOT EXISTS entity_location_id UUID;

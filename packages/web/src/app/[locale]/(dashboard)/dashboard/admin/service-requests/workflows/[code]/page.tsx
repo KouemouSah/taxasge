@@ -59,6 +59,8 @@ import {
   X,
   Boxes,
   Eye,
+  MapPin,
+  ExternalLink,
 } from 'lucide-react'
 import {
   useWorkflow,
@@ -2269,26 +2271,80 @@ export default function WorkflowDetailPage() {
             {/* Slot Configs Summary */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <CalendarClock className="h-4 w-4" />
-                  Horarios de Entidad
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  Configurados para {workflow?.entity_code || 'la entidad'}
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <CalendarClock className="h-4 w-4" />
+                      Horarios de Entidad
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Configurados para {workflow?.entity_code || 'la entidad'}
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => router.push(`/${locale}/dashboard/admin/service-requests/appointments/slots/new?entity=${workflow?.entity_code}`)}
+                  >
+                    <Plus className="mr-1 h-3 w-3" />
+                    Nuevo
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 {slotConfigs && slotConfigs.length > 0 ? (
-                  <div className="space-y-1">
-                    {slotConfigs.map((slot) => (
-                      <div key={slot.id} className="flex items-center justify-between py-1 text-sm">
-                        <span>{DAY_OF_WEEK_LABELS[slot.day_of_week] || slot.day_of_week}</span>
-                        <span className="text-muted-foreground">{slot.start_time} - {slot.end_time}</span>
+                  <div className="space-y-3">
+                    {/* Group slots by location */}
+                    {Object.entries(
+                      slotConfigs.reduce((acc, slot) => {
+                        const key = slot.location_name || 'Sin ubicacion'
+                        if (!acc[key]) acc[key] = { city: slot.city, slots: [] }
+                        acc[key].slots.push(slot)
+                        return acc
+                      }, {} as Record<string, { city: string | null | undefined; slots: typeof slotConfigs }>)
+                    ).map(([locationName, { city, slots }]) => (
+                      <div key={locationName} className="border rounded-md p-2">
+                        <div className="flex items-center gap-1 text-xs font-medium text-muted-foreground mb-1">
+                          <MapPin className="h-3 w-3" />
+                          {locationName}
+                          {city && <span className="text-muted-foreground">({city})</span>}
+                        </div>
+                        <div className="space-y-1">
+                          {slots.map((slot) => (
+                            <div key={slot.id} className="flex items-center justify-between py-0.5 text-sm">
+                              <span>{DAY_OF_WEEK_LABELS[slot.day_of_week] || slot.day_of_week}</span>
+                              <span className="text-muted-foreground font-mono text-xs">{slot.start_time} - {slot.end_time}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">Sin horarios configurados</p>
+                  <div className="text-center py-4">
+                    <p className="text-sm text-muted-foreground mb-2">Sin horarios configurados</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => router.push(`/${locale}/dashboard/admin/service-requests/appointments/slots/new?entity=${workflow?.entity_code}`)}
+                    >
+                      <Plus className="mr-1 h-3 w-3" />
+                      Configurar Horarios
+                    </Button>
+                  </div>
+                )}
+                {slotConfigs && slotConfigs.length > 0 && (
+                  <div className="mt-3 pt-3 border-t">
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="text-xs p-0 h-auto"
+                      onClick={() => router.push(`/${locale}/dashboard/admin/service-requests/appointments?tab=slots`)}
+                    >
+                      Ver todos los horarios
+                      <ExternalLink className="ml-1 h-3 w-3" />
+                    </Button>
+                  </div>
                 )}
               </CardContent>
             </Card>
