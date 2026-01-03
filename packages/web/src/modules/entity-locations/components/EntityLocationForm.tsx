@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -30,21 +30,24 @@ import { Badge } from '@/components/ui/badge'
 import { Loader2, ChevronLeft, ChevronRight, X } from 'lucide-react'
 
 import {
-  ENTITY_CODES,
-  CITIES,
-  CITY_REGION_MAP,
-  ENTITY_INFO,
-  CITY_INFO,
+  DEFAULT_CITIES,
+  DEFAULT_CITY_REGION_MAP,
+  DEFAULT_ENTITY_CODES,
+  DEFAULT_ENTITY_INFO,
+  REGIONS,
+  getCityRegion,
   type EntityLocation,
   type EntityLocationCreate,
+  type Region,
 } from '../types'
 
+import { useCitiesSimple, useEntitiesSimple } from '@/modules/cities'
+
 const entityLocationSchema = z.object({
-  entity_code: z.enum(ENTITY_CODES, {
-    required_error: 'Entity code is required',
-  }),
-  city: z.enum(CITIES, {
-    required_error: 'City is required',
+  entity_code: z.string().min(2, 'Entity code is required').max(50),
+  city: z.string().min(2, 'City is required').max(100),
+  region: z.enum(REGIONS, {
+    required_error: 'Region is required',
   }),
   location_name: z
     .string()
@@ -89,11 +92,16 @@ export function EntityLocationForm({
   const t = useTranslations('admin.serviceRequests.appointments.locations.form')
   const tCommon = useTranslations('common')
 
+  // Fetch cities and entities from API
+  const { data: apiCities, isLoading: citiesLoading } = useCitiesSimple(true)
+  const { data: apiEntities, isLoading: entitiesLoading } = useEntitiesSimple(true)
+
   const form = useForm<FormData>({
     resolver: zodResolver(entityLocationSchema),
     defaultValues: {
-      entity_code: location?.entity_code || undefined,
-      city: location?.city || undefined,
+      entity_code: location?.entity_code || '',
+      city: location?.city || '',
+      region: location?.region || 'Continental',
       location_name: location?.location_name || '',
       location_address: location?.location_address || '',
       phone: location?.phone || '',
@@ -105,7 +113,52 @@ export function EntityLocationForm({
   })
 
   const watchedCity = form.watch('city')
-  const region = watchedCity ? CITY_REGION_MAP[watchedCity] : undefined
+
+  // Build city list from API or fallback to defaults
+  const cities = useMemo(() => {
+    if (apiCities && apiCities.length > 0) {
+      return apiCities
+    }
+    // Fallback to defaults if API not available
+    return DEFAULT_CITIES.map((name) => ({
+      id: name,
+      name,
+      region: DEFAULT_CITY_REGION_MAP[name] || ('Continental' as Region),
+      is_capital: name === 'Malabo',
+    }))
+  }, [apiCities])
+
+  // Build entity list from API or fallback to defaults
+  const entities = useMemo(() => {
+    if (apiEntities && apiEntities.length > 0) {
+      return apiEntities
+    }
+    // Fallback to defaults if API not available
+    return DEFAULT_ENTITY_CODES.map((code) => ({
+      id: code,
+      code,
+      name: DEFAULT_ENTITY_INFO[code]?.description || code,
+    }))
+  }, [apiEntities])
+
+  // Build city region map from API data
+  const cityRegionMap = useMemo(() => {
+    const map: Record<string, Region> = { ...DEFAULT_CITY_REGION_MAP }
+    if (apiCities) {
+      apiCities.forEach((city) => {
+        map[city.name] = city.region
+      })
+    }
+    return map
+  }, [apiCities])
+
+  // Auto-fill region when city changes
+  useEffect(() => {
+    if (watchedCity) {
+      const suggestedRegion = cityRegionMap[watchedCity] || getCityRegion(watchedCity)
+      form.setValue('region', suggestedRegion)
+    }
+  }, [watchedCity, form, cityRegionMap])
 
   // Reset form when location changes
   useEffect(() => {
@@ -113,6 +166,7 @@ export function EntityLocationForm({
       form.reset({
         entity_code: location.entity_code,
         city: location.city,
+        region: location.region,
         location_name: location.location_name,
         location_address: location.location_address || '',
         phone: location.phone || '',
@@ -126,8 +180,9 @@ export function EntityLocationForm({
 
   const handleSubmit = (data: FormData) => {
     const submitData: EntityLocationCreate = {
-      entity_code: data.entity_code,
+      entity_code: data.entity_code.toUpperCase(),
       city: data.city,
+      region: data.region,
       location_name: data.location_name,
       location_address: data.location_address || null,
       phone: data.phone || null,
@@ -138,6 +193,7 @@ export function EntityLocationForm({
     }
     onSubmit(submitData)
   }
+
 
   return (
     <Form {...form}>
@@ -180,8 +236,9 @@ export function EntityLocationForm({
           </div>
         </div>
 
-        {/* Entity and City */}
-        <div className="grid gap-4 md:grid-cols-2">
+        {/* City, Region, and Entity */}
+        <div className="grid gap-4 md:grid-cols-3">
+          {/* City Select */}
           <FormField
             control={form.control}
             name="city"
@@ -190,39 +247,77 @@ export function EntityLocationForm({
                 <FormLabel>{t('city')} *</FormLabel>
                 <Select
                   onValueChange={field.onChange}
-                  defaultValue={field.value}
-                  disabled={!!location}
+                  value={field.value}
+                  disabled={!!location || citiesLoading}
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder={t('selectCity')} />
+                      {citiesLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <SelectValue placeholder={t('selectCity')} />
+                      )}
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {CITIES.map((city) => (
-                      <SelectItem key={city} value={city}>
+                    {cities.map((city) => (
+                      <SelectItem key={city.id} value={city.name}>
                         <div className="flex items-center gap-2">
-                          <span>{city}</span>
+                          <span>{city.name}</span>
                           <Badge variant="outline" className="text-xs">
-                            {CITY_INFO[city].region}
+                            {city.region}
                           </Badge>
+                          {city.is_capital && (
+                            <Badge variant="secondary" className="text-xs">
+                              Capital
+                            </Badge>
+                          )}
                         </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <FormDescription>
-                  {region && (
-                    <span className="text-primary">
-                      {t('region')}: {region}
-                    </span>
-                  )}
+                <FormDescription className="text-xs">
+                  {t('cityDescription')}
                 </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
           />
 
+          {/* Region Select */}
+          <FormField
+            control={form.control}
+            name="region"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('region')} *</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder={t('selectRegion')} />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {REGIONS.map((region) => (
+                      <SelectItem key={region} value={region}>
+                        {region}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormDescription className="text-xs">
+                  {t('regionDescription')}
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Entity Select */}
           <FormField
             control={form.control}
             name="entity_code"
@@ -231,27 +326,34 @@ export function EntityLocationForm({
                 <FormLabel>{t('entityCode')} *</FormLabel>
                 <Select
                   onValueChange={field.onChange}
-                  defaultValue={field.value}
-                  disabled={!!location}
+                  value={field.value}
+                  disabled={!!location || entitiesLoading}
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder={t('selectEntity')} />
+                      {entitiesLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <SelectValue placeholder={t('selectEntity')} />
+                      )}
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {ENTITY_CODES.map((code) => (
-                      <SelectItem key={code} value={code}>
+                    {entities.map((entity) => (
+                      <SelectItem key={entity.id} value={entity.code}>
                         <div className="flex flex-col">
-                          <span className="font-medium">{code}</span>
+                          <span className="font-medium">{entity.code}</span>
                           <span className="text-xs text-muted-foreground">
-                            {ENTITY_INFO[code].description}
+                            {entity.name}
                           </span>
                         </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <FormDescription className="text-xs">
+                  {t('entityDescription')}
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}

@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter, useParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Table,
   TableBody,
@@ -46,6 +47,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
+import {
   Building,
   MapPin,
   Plus,
@@ -58,9 +64,11 @@ import {
   Power,
   Phone,
   Mail,
-  ChevronLeft,
-  ChevronRight,
+  ChevronDown,
+  ChevronUp,
+  Globe,
 } from 'lucide-react'
+import { toast } from 'sonner'
 
 import {
   useEntityLocations,
@@ -71,15 +79,22 @@ import {
 } from '@/modules/entity-locations/hooks'
 import { EntityLocationForm } from '@/modules/entity-locations/components/EntityLocationForm'
 import {
-  ENTITY_CODES,
-  CITIES,
-  ENTITY_INFO,
+  DEFAULT_ENTITY_CODES,
+  DEFAULT_CITIES,
+  DEFAULT_ENTITY_INFO,
+  REGIONS,
   type EntityLocation,
   type EntityLocationCreate,
   type EntityLocationUpdate,
-  type EntityCode,
-  type City,
+  type Region,
 } from '@/modules/entity-locations/types'
+import {
+  useCitiesSimple,
+  useEntitiesSimple,
+  useCreateCity,
+  useCreateEntity,
+} from '@/modules/cities'
+import type { CityCreate, EntityCreate } from '@/modules/cities'
 
 export default function LocationsTabContent() {
   const t = useTranslations('admin.serviceRequests.appointments.locations')
@@ -90,15 +105,37 @@ export default function LocationsTabContent() {
 
   // State
   const [page, setPage] = useState(1)
-  const [pageSize] = useState(10)
-  const [entityFilter, setEntityFilter] = useState<EntityCode | 'all'>('all')
-  const [cityFilter, setCityFilter] = useState<City | 'all'>('all')
+  const [pageSize] = useState(20)
+  const [entityFilter, setEntityFilter] = useState<string>('all')
+  const [cityFilter, setCityFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
   const [searchQuery, setSearchQuery] = useState('')
 
   // Dialog state
   const [editingLocation, setEditingLocation] = useState<EntityLocation | null>(null)
   const [deletingLocation, setDeletingLocation] = useState<EntityLocation | null>(null)
+
+  // City/Entity management state
+  const [citiesOpen, setCitiesOpen] = useState(false)
+  const [entitiesOpen, setEntitiesOpen] = useState(false)
+  const [newCityName, setNewCityName] = useState('')
+  const [newCityRegion, setNewCityRegion] = useState<Region>('Continental')
+  const [newCityDescription, setNewCityDescription] = useState('')
+  const [newEntityCode, setNewEntityCode] = useState('')
+  const [newEntityName, setNewEntityName] = useState('')
+  const [newEntityDescription, setNewEntityDescription] = useState('')
+
+  // Infinite scroll ref
+  const tableContainerRef = useRef<HTMLDivElement>(null)
+  const [allLoadedItems, setAllLoadedItems] = useState<EntityLocation[]>([])
+
+  // Fetch cities and entities from API
+  const { data: apiCities, isLoading: citiesLoading } = useCitiesSimple(true)
+  const { data: apiEntities, isLoading: entitiesLoading } = useEntitiesSimple(true)
+
+  // Mutations for cities and entities
+  const createCityMutation = useCreateCity()
+  const createEntityMutation = useCreateEntity()
 
   // Build query params
   const queryParams = useMemo(
@@ -116,25 +153,25 @@ export default function LocationsTabContent() {
   const { data, isLoading, error, refetch } = useEntityLocations(queryParams)
 
   // Mutations
-  const createMutation = useCreateEntityLocation()
+  const _createMutation = useCreateEntityLocation() // For future use in inline creation
   const updateMutation = useUpdateEntityLocation()
   const deleteMutation = useDeleteEntityLocation()
   const toggleActiveMutation = useToggleEntityLocationActive()
 
-  // Filtered locations (client-side search)
+  // Filtered locations (client-side search on all loaded items)
   const filteredLocations = useMemo(() => {
-    if (!data?.items) return []
-    if (!searchQuery) return data.items
+    const items = allLoadedItems.length > 0 ? allLoadedItems : (data?.items || [])
+    if (!searchQuery) return items
 
     const query = searchQuery.toLowerCase()
-    return data.items.filter(
+    return items.filter(
       (loc) =>
         loc.location_name.toLowerCase().includes(query) ||
         loc.location_address?.toLowerCase().includes(query) ||
         loc.entity_code.toLowerCase().includes(query) ||
         loc.city.toLowerCase().includes(query)
     )
-  }, [data?.items, searchQuery])
+  }, [allLoadedItems, data?.items, searchQuery])
 
   // Find index of current editing location
   const currentEditIndex = useMemo(() => {
@@ -179,6 +216,110 @@ export default function LocationsTabContent() {
       setEditingLocation(filteredLocations[currentEditIndex + 1])
     }
   }
+
+  // City/Entity creation handlers
+  const handleCreateCity = async () => {
+    if (!newCityName.trim()) {
+      toast.error(t('cityNameRequired'))
+      return
+    }
+    try {
+      const cityData: CityCreate = {
+        name: newCityName.trim(),
+        region: newCityRegion,
+        description: newCityDescription.trim() || undefined,
+        is_capital: false,
+        is_active: true,
+      }
+      await createCityMutation.mutateAsync(cityData)
+      toast.success(t('cityCreated'))
+      setNewCityName('')
+      setNewCityDescription('')
+    } catch (error) {
+      toast.error(t('cityCreateError'))
+      console.error('Failed to create city:', error)
+    }
+  }
+
+  const handleCreateEntity = async () => {
+    if (!newEntityCode.trim() || !newEntityName.trim()) {
+      toast.error(t('entityFieldsRequired'))
+      return
+    }
+    try {
+      const entityData: EntityCreate = {
+        code: newEntityCode.trim().toUpperCase(),
+        name: newEntityName.trim(),
+        description: newEntityDescription.trim() || undefined,
+        is_active: true,
+      }
+      await createEntityMutation.mutateAsync(entityData)
+      toast.success(t('entityCreated'))
+      setNewEntityCode('')
+      setNewEntityName('')
+      setNewEntityDescription('')
+    } catch (error) {
+      toast.error(t('entityCreateError'))
+      console.error('Failed to create entity:', error)
+    }
+  }
+
+  // Infinite scroll effect
+  useEffect(() => {
+    if (data?.items) {
+      if (page === 1) {
+        setAllLoadedItems(data.items)
+      } else {
+        setAllLoadedItems(prev => [...prev, ...data.items])
+      }
+    }
+  }, [data?.items, page])
+
+  // Scroll handler for infinite scroll
+  const handleScroll = useCallback(() => {
+    if (!tableContainerRef.current || isLoading) return
+    const { scrollTop, scrollHeight, clientHeight } = tableContainerRef.current
+    // Load more when scrolled to 80% of the container
+    if (scrollTop + clientHeight >= scrollHeight * 0.8) {
+      if (data && page < data.total_pages) {
+        setPage(prev => prev + 1)
+      }
+    }
+  }, [data, page, isLoading])
+
+  // Attach scroll listener
+  useEffect(() => {
+    const container = tableContainerRef.current
+    if (container) {
+      container.addEventListener('scroll', handleScroll)
+      return () => container.removeEventListener('scroll', handleScroll)
+    }
+  }, [handleScroll])
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setPage(1)
+    setAllLoadedItems([])
+  }, [entityFilter, cityFilter, statusFilter])
+
+  // Merged cities list (API + defaults as fallback)
+  const cityOptions = useMemo(() => {
+    if (apiCities && apiCities.length > 0) {
+      return apiCities.map(c => ({ name: c.name, region: c.region }))
+    }
+    return DEFAULT_CITIES.map(c => ({ name: c, region: 'Continental' as Region }))
+  }, [apiCities])
+
+  // Merged entities list (API + defaults as fallback)
+  const entityOptions = useMemo(() => {
+    if (apiEntities && apiEntities.length > 0) {
+      return apiEntities.map(e => ({ code: e.code, name: e.name }))
+    }
+    return DEFAULT_ENTITY_CODES.map(code => ({
+      code,
+      name: DEFAULT_ENTITY_INFO[code]?.description || code,
+    }))
+  }, [apiEntities])
 
   // Stats
   const stats = useMemo(() => {
@@ -259,10 +400,233 @@ export default function LocationsTabContent() {
             <Building className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{ENTITY_CODES.length}</div>
+            <div className="text-2xl font-bold">{entityOptions.length}</div>
             <p className="text-xs text-muted-foreground">{t('registeredEntities')}</p>
           </CardContent>
         </Card>
+      </div>
+
+      {/* City and Entity Management Sections */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Cities Management */}
+        <Collapsible open={citiesOpen} onOpenChange={setCitiesOpen}>
+          <Card>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-5 w-5 text-blue-500" />
+                    <div>
+                      <CardTitle className="text-base">{t('manageCities')}</CardTitle>
+                      <CardDescription className="text-sm">
+                        {cityOptions.length} {t('citiesAvailable')}
+                      </CardDescription>
+                    </div>
+                  </div>
+                  {citiesOpen ? (
+                    <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                  )}
+                </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="pt-0 space-y-4">
+                {/* Existing cities list */}
+                <div className="max-h-[200px] overflow-y-auto border rounded-md">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t('cityName')}</TableHead>
+                        <TableHead>{t('region')}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {citiesLoading ? (
+                        <TableRow>
+                          <TableCell colSpan={2} className="text-center py-4">
+                            <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        cityOptions.map((city) => (
+                          <TableRow key={city.name}>
+                            <TableCell className="font-medium">{city.name}</TableCell>
+                            <TableCell>
+                              <Badge variant={city.region === 'Insular' ? 'default' : 'secondary'}>
+                                {city.region}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Add new city form */}
+                <div className="border-t pt-4 space-y-3">
+                  <h4 className="font-medium text-sm">{t('addNewCity')}</h4>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="cityName">{t('cityName')} *</Label>
+                      <Input
+                        id="cityName"
+                        placeholder={t('cityNamePlaceholder')}
+                        value={newCityName}
+                        onChange={(e) => setNewCityName(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="cityRegion">{t('region')} *</Label>
+                      <Select
+                        value={newCityRegion}
+                        onValueChange={(v) => setNewCityRegion(v as Region)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {REGIONS.map((region) => (
+                            <SelectItem key={region} value={region}>
+                              {region}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="cityDescription">{t('description')}</Label>
+                    <Input
+                      id="cityDescription"
+                      placeholder={t('cityDescriptionPlaceholder')}
+                      value={newCityDescription}
+                      onChange={(e) => setNewCityDescription(e.target.value)}
+                    />
+                  </div>
+                  <Button
+                    onClick={handleCreateCity}
+                    disabled={createCityMutation.isPending || !newCityName.trim()}
+                    size="sm"
+                  >
+                    {createCityMutation.isPending && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    <Plus className="mr-2 h-4 w-4" />
+                    {t('addCity')}
+                  </Button>
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+
+        {/* Entities Management */}
+        <Collapsible open={entitiesOpen} onOpenChange={setEntitiesOpen}>
+          <Card>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Building className="h-5 w-5 text-purple-500" />
+                    <div>
+                      <CardTitle className="text-base">{t('manageEntities')}</CardTitle>
+                      <CardDescription className="text-sm">
+                        {entityOptions.length} {t('entitiesAvailable')}
+                      </CardDescription>
+                    </div>
+                  </div>
+                  {entitiesOpen ? (
+                    <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                  )}
+                </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="pt-0 space-y-4">
+                {/* Existing entities list */}
+                <div className="max-h-[200px] overflow-y-auto border rounded-md">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t('entityCode')}</TableHead>
+                        <TableHead>{t('entityName')}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {entitiesLoading ? (
+                        <TableRow>
+                          <TableCell colSpan={2} className="text-center py-4">
+                            <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        entityOptions.map((entity) => (
+                          <TableRow key={entity.code}>
+                            <TableCell>
+                              <Badge variant="outline">{entity.code}</Badge>
+                            </TableCell>
+                            <TableCell className="text-sm">{entity.name}</TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Add new entity form */}
+                <div className="border-t pt-4 space-y-3">
+                  <h4 className="font-medium text-sm">{t('addNewEntity')}</h4>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="entityCode">{t('entityCode')} *</Label>
+                      <Input
+                        id="entityCode"
+                        placeholder={t('entityCodePlaceholder')}
+                        value={newEntityCode}
+                        onChange={(e) => setNewEntityCode(e.target.value.toUpperCase())}
+                        className="uppercase"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="entityName">{t('entityName')} *</Label>
+                      <Input
+                        id="entityName"
+                        placeholder={t('entityNamePlaceholder')}
+                        value={newEntityName}
+                        onChange={(e) => setNewEntityName(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="entityDescription">{t('description')}</Label>
+                    <Input
+                      id="entityDescription"
+                      placeholder={t('entityDescriptionPlaceholder')}
+                      value={newEntityDescription}
+                      onChange={(e) => setNewEntityDescription(e.target.value)}
+                    />
+                  </div>
+                  <Button
+                    onClick={handleCreateEntity}
+                    disabled={createEntityMutation.isPending || !newEntityCode.trim() || !newEntityName.trim()}
+                    size="sm"
+                  >
+                    {createEntityMutation.isPending && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    <Plus className="mr-2 h-4 w-4" />
+                    {t('addEntity')}
+                  </Button>
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
       </div>
 
       {/* Main Card */}
@@ -288,7 +652,7 @@ export default function LocationsTabContent() {
             <Select
               value={cityFilter}
               onValueChange={(v) => {
-                setCityFilter(v as City | 'all')
+                setCityFilter(v)
                 setPage(1)
               }}
             >
@@ -297,9 +661,14 @@ export default function LocationsTabContent() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t('allCities')}</SelectItem>
-                {CITIES.map((city) => (
-                  <SelectItem key={city} value={city}>
-                    {city}
+                {cityOptions.map((city) => (
+                  <SelectItem key={city.name} value={city.name}>
+                    <div className="flex items-center gap-2">
+                      <span>{city.name}</span>
+                      <Badge variant="outline" className="text-xs">
+                        {city.region}
+                      </Badge>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -308,8 +677,9 @@ export default function LocationsTabContent() {
             <Select
               value={entityFilter}
               onValueChange={(v) => {
-                setEntityFilter(v as EntityCode | 'all')
+                setEntityFilter(v)
                 setPage(1)
+                setAllLoadedItems([])
               }}
             >
               <SelectTrigger className="w-[150px]">
@@ -317,9 +687,9 @@ export default function LocationsTabContent() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t('allEntities')}</SelectItem>
-                {ENTITY_CODES.map((code) => (
-                  <SelectItem key={code} value={code}>
-                    {code}
+                {entityOptions.map((entity) => (
+                  <SelectItem key={entity.code} value={entity.code}>
+                    {entity.code}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -330,6 +700,7 @@ export default function LocationsTabContent() {
               onValueChange={(v) => {
                 setStatusFilter(v as 'all' | 'active' | 'inactive')
                 setPage(1)
+                setAllLoadedItems([])
               }}
             >
               <SelectTrigger className="w-[140px]">
@@ -366,9 +737,12 @@ export default function LocationsTabContent() {
             </div>
           ) : (
             <>
-              <div className="border rounded-md">
+              <div
+                ref={tableContainerRef}
+                className="border rounded-md max-h-[500px] overflow-y-auto"
+              >
                 <Table>
-                  <TableHeader>
+                  <TableHeader className="sticky top-0 bg-background z-10">
                     <TableRow>
                       <TableHead>{t('table.entity')}</TableHead>
                       <TableHead>{t('table.city')}</TableHead>
@@ -386,7 +760,7 @@ export default function LocationsTabContent() {
                           <div>
                             <div className="font-medium">{location.entity_code}</div>
                             <div className="text-xs text-muted-foreground max-w-[150px] truncate">
-                              {ENTITY_INFO[location.entity_code]?.description}
+                              {DEFAULT_ENTITY_INFO[location.entity_code]?.description}
                             </div>
                           </div>
                         </TableCell>
@@ -479,41 +853,42 @@ export default function LocationsTabContent() {
                 </Table>
               </div>
 
-              {/* Pagination */}
-              {data && data.total_pages > 1 && (
-                <div className="flex items-center justify-between mt-4">
-                  <p className="text-sm text-muted-foreground">
-                    {t('pagination.showing', {
-                      from: (page - 1) * pageSize + 1,
-                      to: Math.min(page * pageSize, data.total),
-                      total: data.total,
-                    })}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage(page - 1)}
-                      disabled={page === 1}
-                    >
-                      <ChevronLeft className="h-4 w-4 mr-1" />
-                      {t('pagination.previous')}
-                    </Button>
-                    <span className="text-sm text-muted-foreground px-2">
-                      {t('pagination.page', { current: page, total: data.total_pages })}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage(page + 1)}
-                      disabled={page >= data.total_pages}
-                    >
-                      {t('pagination.next')}
-                      <ChevronRight className="h-4 w-4 ml-1" />
-                    </Button>
+              {/* Infinite Scroll Status */}
+              <div className="flex items-center justify-between mt-4">
+                <p className="text-sm text-muted-foreground">
+                  {t('pagination.showing', {
+                    from: 1,
+                    to: filteredLocations.length,
+                    total: data?.total || 0,
+                  })}
+                </p>
+                {data && page < data.total_pages && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        {t('pagination.loading')}
+                      </>
+                    ) : (
+                      <>
+                        <span>{t('pagination.scrollForMore')}</span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPage(prev => prev + 1)}
+                        >
+                          {t('pagination.loadMore')}
+                        </Button>
+                      </>
+                    )}
                   </div>
-                </div>
-              )}
+                )}
+                {data && page >= data.total_pages && filteredLocations.length > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    {t('pagination.allLoaded')}
+                  </p>
+                )}
+              </div>
             </>
           )}
         </CardContent>

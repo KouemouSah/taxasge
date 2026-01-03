@@ -6,19 +6,22 @@ Each entity (CNEDOGE, DGT, etc.) can have locations in different cities.
 """
 
 from datetime import datetime
-from typing import Optional, List, Literal
+from typing import Optional, List
 from uuid import UUID
 from pydantic import BaseModel, Field, EmailStr, field_validator, model_validator
 
 
-# Valid entity codes
-VALID_ENTITY_CODES = ["CNEDOGE", "DGT", "EXTRANJERIA", "MINFP", "ONRC", "MINHV"]
+# Default entity codes (can be extended dynamically)
+DEFAULT_ENTITY_CODES = ["CNEDOGE", "DGT", "EXTRANJERIA", "MINFP", "ONRC", "MINHV"]
 
-# Valid cities
-VALID_CITIES = ["Malabo", "Bata", "Mongomo", "Evinayong", "Ebebiyin"]
+# Default cities (can be extended dynamically)
+DEFAULT_CITIES = ["Malabo", "Bata", "Mongomo", "Evinayong", "Ebebiyin"]
 
-# City to region mapping
-CITY_REGION_MAP = {
+# Valid regions
+VALID_REGIONS = ["Insular", "Continental"]
+
+# Default city to region mapping (used as suggestion for auto-fill)
+DEFAULT_CITY_REGION_MAP = {
     "Malabo": "Insular",
     "Bata": "Continental",
     "Mongomo": "Continental",
@@ -47,7 +50,8 @@ class OperatingHours(BaseModel):
 class EntityLocationBase(BaseModel):
     """Base model with common fields."""
     entity_code: str = Field(..., min_length=2, max_length=50)
-    city: Literal["Malabo", "Bata", "Mongomo", "Evinayong", "Ebebiyin"]
+    city: str = Field(..., min_length=2, max_length=100)
+    region: str = Field(..., min_length=2, max_length=50)
     location_name: str = Field(..., min_length=3, max_length=255)
     location_address: Optional[str] = None
     phone: Optional[str] = Field(None, max_length=50)
@@ -60,10 +64,23 @@ class EntityLocationBase(BaseModel):
     @field_validator("entity_code")
     @classmethod
     def validate_entity_code(cls, v: str) -> str:
-        v = v.upper()
-        if v not in VALID_ENTITY_CODES:
-            raise ValueError(f"entity_code must be one of {VALID_ENTITY_CODES}")
+        """Normalize entity code to uppercase."""
+        return v.upper()
+
+    @field_validator("region")
+    @classmethod
+    def validate_region(cls, v: str) -> str:
+        """Validate region is either Insular or Continental."""
+        v = v.strip().title()
+        if v not in VALID_REGIONS:
+            raise ValueError(f"region must be one of {VALID_REGIONS}")
         return v
+
+    @field_validator("city")
+    @classmethod
+    def validate_city(cls, v: str) -> str:
+        """Normalize city name (capitalize first letter)."""
+        return v.strip().title()
 
     @field_validator("phone")
     @classmethod
@@ -80,20 +97,17 @@ class EntityLocationBase(BaseModel):
 class EntityLocationCreate(EntityLocationBase):
     """Model for creating a new entity location."""
 
-    @model_validator(mode="after")
-    def set_region(self) -> "EntityLocationCreate":
-        """Region is auto-calculated from city."""
-        return self
-
-    def get_region(self) -> str:
-        """Get the region based on city."""
-        return CITY_REGION_MAP.get(self.city, "Continental")
+    @classmethod
+    def get_suggested_region(cls, city: str) -> str:
+        """Get suggested region based on known city mappings."""
+        return DEFAULT_CITY_REGION_MAP.get(city, "Continental")
 
     model_config = {
         "json_schema_extra": {
             "example": {
                 "entity_code": "CNEDOGE",
                 "city": "Malabo",
+                "region": "Insular",
                 "location_name": "CNEDOGE Malabo",
                 "location_address": "Monstoles",
                 "phone": "+240 222 251 000",
@@ -106,6 +120,9 @@ class EntityLocationCreate(EntityLocationBase):
 
 class EntityLocationUpdate(BaseModel):
     """Model for updating an entity location. All fields optional."""
+    entity_code: Optional[str] = Field(None, min_length=2, max_length=50)
+    city: Optional[str] = Field(None, min_length=2, max_length=100)
+    region: Optional[str] = Field(None, min_length=2, max_length=50)
     location_name: Optional[str] = Field(None, min_length=3, max_length=255)
     location_address: Optional[str] = None
     phone: Optional[str] = Field(None, max_length=50)
@@ -114,6 +131,30 @@ class EntityLocationUpdate(BaseModel):
     is_active: Optional[bool] = None
     operating_hours: Optional[OperatingHours] = None
     notes: Optional[str] = None
+
+    @field_validator("entity_code")
+    @classmethod
+    def validate_entity_code(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        return v.upper()
+
+    @field_validator("region")
+    @classmethod
+    def validate_region(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        v = v.strip().title()
+        if v not in VALID_REGIONS:
+            raise ValueError(f"region must be one of {VALID_REGIONS}")
+        return v
+
+    @field_validator("city")
+    @classmethod
+    def validate_city(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        return v.strip().title()
 
     model_config = {
         "json_schema_extra": {
@@ -128,7 +169,6 @@ class EntityLocationUpdate(BaseModel):
 class EntityLocation(EntityLocationBase):
     """Full entity location model with all fields."""
     id: UUID
-    region: str
     created_at: datetime
     updated_at: datetime
     created_by: Optional[UUID] = None

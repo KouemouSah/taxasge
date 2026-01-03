@@ -872,6 +872,16 @@ except Exception as e:
     logger.error(f"❌ Entity locations router failed: {e}")
     logger.error(traceback.format_exc())
 
+# Try to load cities router (Module - Cities and Entities Management)
+try:
+    from app.modules.cities.api import router as cities_router
+    app.include_router(cities_router, tags=["cities"])
+    routers_loaded.append("cities")
+    logger.info("✅ Cities router loaded")
+except Exception as e:
+    logger.error(f"❌ Cities router failed: {e}")
+    logger.error(traceback.format_exc())
+
 if routers_loaded:
     logger.info(f"✅ {len(routers_loaded)} API routers loaded: {', '.join(routers_loaded)}")
 else:

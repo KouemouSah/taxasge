@@ -2,10 +2,11 @@
  * Entity Locations Types
  *
  * TypeScript interfaces for entity location management.
+ * Cities and entities can be created dynamically.
  */
 
-// Valid entity codes
-export const ENTITY_CODES = [
+// Default entity codes (can be extended dynamically)
+export const DEFAULT_ENTITY_CODES = [
   'CNEDOGE',
   'DGT',
   'EXTRANJERIA',
@@ -14,20 +15,20 @@ export const ENTITY_CODES = [
   'MINHV',
 ] as const
 
-export type EntityCode = (typeof ENTITY_CODES)[number]
+export type EntityCode = string
 
-// Valid cities
-export const CITIES = ['Malabo', 'Bata', 'Mongomo', 'Evinayong', 'Ebebiyin'] as const
+// Default cities (can be extended dynamically)
+export const DEFAULT_CITIES = ['Malabo', 'Bata', 'Mongomo', 'Evinayong', 'Ebebiyin'] as const
 
-export type City = (typeof CITIES)[number]
+export type City = string
 
-// Valid regions
+// Valid regions (fixed - only Insular or Continental)
 export const REGIONS = ['Insular', 'Continental'] as const
 
 export type Region = (typeof REGIONS)[number]
 
-// City to region mapping
-export const CITY_REGION_MAP: Record<City, Region> = {
+// Default city to region mapping (used for auto-fill suggestions)
+export const DEFAULT_CITY_REGION_MAP: Record<string, Region> = {
   Malabo: 'Insular',
   Bata: 'Continental',
   Mongomo: 'Continental',
@@ -55,8 +56,8 @@ export interface OperatingHours {
 // Entity location response from API
 export interface EntityLocation {
   id: string
-  entity_code: EntityCode
-  city: City
+  entity_code: string
+  city: string
   region: Region
   location_name: string
   location_address: string | null
@@ -72,8 +73,9 @@ export interface EntityLocation {
 
 // Create entity location request
 export interface EntityLocationCreate {
-  entity_code: EntityCode
-  city: City
+  entity_code: string
+  city: string
+  region: Region
   location_name: string
   location_address?: string | null
   phone?: string | null
@@ -86,6 +88,9 @@ export interface EntityLocationCreate {
 
 // Update entity location request
 export interface EntityLocationUpdate {
+  entity_code?: string
+  city?: string
+  region?: Region
   location_name?: string
   location_address?: string | null
   phone?: string | null
@@ -107,8 +112,8 @@ export interface EntityLocationListResponse {
 
 // Query parameters for listing
 export interface EntityLocationQueryParams {
-  entity_code?: EntityCode
-  city?: City
+  entity_code?: string
+  city?: string
   region?: Region
   is_active?: boolean
   page?: number
@@ -118,15 +123,15 @@ export interface EntityLocationQueryParams {
 // Simplified location for dropdowns
 export interface EntityLocationSimple {
   id: string
-  entity_code: EntityCode
-  city: City
+  entity_code: string
+  city: string
   region: Region
   location_name: string
   is_main_office: boolean
 }
 
-// Entity info with display name
-export const ENTITY_INFO: Record<EntityCode, { name: string; description: string }> = {
+// Default entity info with display name (can be extended dynamically)
+export const DEFAULT_ENTITY_INFO: Record<string, { name: string; description: string }> = {
   CNEDOGE: {
     name: 'CNEDOGE',
     description: 'Centro Nacional de Expedición de Documentos Oficiales',
@@ -153,8 +158,8 @@ export const ENTITY_INFO: Record<EntityCode, { name: string; description: string
   },
 }
 
-// City info with display details
-export const CITY_INFO: Record<City, { region: Region; description: string; isCapital: boolean }> = {
+// Default city info with display details (can be extended dynamically)
+export const DEFAULT_CITY_INFO: Record<string, { region: Region; description: string; isCapital: boolean }> = {
   Malabo: {
     region: 'Insular',
     description: 'Capital en la Isla de Bioko',
@@ -180,4 +185,9 @@ export const CITY_INFO: Record<City, { region: Region; description: string; isCa
     description: 'Provincia de Kie-Ntem',
     isCapital: false,
   },
+}
+
+// Helper function to get region for a city (returns Continental for unknown cities)
+export function getCityRegion(city: string): Region {
+  return DEFAULT_CITY_REGION_MAP[city] ?? 'Continental'
 }

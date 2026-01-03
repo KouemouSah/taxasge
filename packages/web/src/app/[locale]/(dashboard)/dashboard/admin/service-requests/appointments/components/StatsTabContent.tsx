@@ -31,7 +31,7 @@ import {
 } from '@/modules/service-requests-admin'
 import type { AppointmentSlotConfig } from '@/modules/service-requests-admin'
 import { DAY_OF_WEEK_LABELS } from '@/modules/service-requests-admin'
-import { CITIES, CITY_REGION_MAP, ENTITY_INFO, type City } from '@/modules/entity-locations'
+import { DEFAULT_CITIES, DEFAULT_CITY_REGION_MAP, DEFAULT_ENTITY_INFO } from '@/modules/entity-locations'
 import { useEntityLocations } from '@/modules/entity-locations'
 
 interface CityStats {
@@ -75,11 +75,11 @@ export default function StatsTabContent() {
 
     const statsByCity: Record<string, CityStats> = {}
 
-    // Initialize stats for each city using imported CITIES
-    CITIES.forEach(city => {
+    // Initialize stats for each city using imported DEFAULT_CITIES
+    DEFAULT_CITIES.forEach(city => {
       statsByCity[city] = {
         city,
-        region: CITY_REGION_MAP[city],
+        region: DEFAULT_CITY_REGION_MAP[city],
         totalSlots: 0,
         activeSlots: 0,
         inactiveSlots: 0,
@@ -130,7 +130,7 @@ export default function StatsTabContent() {
 
     // Return all cities that have either slots or locations
     return Object.values(statsByCity).filter(s =>
-      CITIES.includes(s.city as City) && (s.totalSlots > 0 || s.locationsCount > 0)
+      DEFAULT_CITIES.includes(s.city as typeof DEFAULT_CITIES[number]) && (s.totalSlots > 0 || s.locationsCount > 0)
     )
   }, [slotConfigs, locations])
 
@@ -145,14 +145,14 @@ export default function StatsTabContent() {
       if (!statsByEntity[entityCode]) {
         statsByEntity[entityCode] = {
           entityCode,
-          label: ENTITY_INFO[entityCode as keyof typeof ENTITY_INFO]?.description || entityCode,
+          label: DEFAULT_ENTITY_INFO[entityCode as keyof typeof DEFAULT_ENTITY_INFO]?.description || entityCode,
           slotsByCity: {},
           totalSlots: 0,
           totalCapacity: 0,
           locationsCount: locations.filter(loc => loc.entity_code === entityCode).length,
         }
         // Initialize all cities to 0
-        CITIES.forEach(city => {
+        DEFAULT_CITIES.forEach(city => {
           statsByEntity[entityCode].slotsByCity[city] = 0
         })
       }
@@ -165,7 +165,7 @@ export default function StatsTabContent() {
       }
 
       // Increment city counter
-      const city = slot.city as City
+      const city = slot.city as string
       if (city && stats.slotsByCity[city] !== undefined) {
         stats.slotsByCity[city]++
       }
@@ -410,7 +410,7 @@ export default function StatsTabContent() {
                 <TableRow>
                   <TableHead>{t('stats.entity')}</TableHead>
                   <TableHead className="text-center">{t('stats.locations')}</TableHead>
-                  {CITIES.map(city => (
+                  {DEFAULT_CITIES.map(city => (
                     <TableHead key={city} className="text-center">{city}</TableHead>
                   ))}
                   <TableHead className="text-center">{t('stats.total')}</TableHead>
@@ -420,7 +420,7 @@ export default function StatsTabContent() {
               <TableBody>
                 {entityStats.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4 + CITIES.length} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={4 + DEFAULT_CITIES.length} className="text-center text-muted-foreground py-8">
                       {t('stats.noData')}
                     </TableCell>
                   </TableRow>
@@ -440,7 +440,7 @@ export default function StatsTabContent() {
                           {entity.locationsCount}
                         </Badge>
                       </TableCell>
-                      {CITIES.map(city => (
+                      {DEFAULT_CITIES.map(city => (
                         <TableCell key={city} className="text-center">
                           {entity.slotsByCity[city] > 0 ? (
                             <Badge variant="outline">

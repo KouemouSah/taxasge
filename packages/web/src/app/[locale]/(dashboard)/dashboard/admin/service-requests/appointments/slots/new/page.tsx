@@ -32,9 +32,8 @@ import type { AppointmentSlotConfigCreate } from '@/modules/service-requests-adm
 import { toast } from 'sonner'
 import { useEntityLocations } from '@/modules/entity-locations/hooks'
 import {
-  CITIES,
-  CITY_REGION_MAP,
-  type City,
+  DEFAULT_CITIES,
+  DEFAULT_CITY_REGION_MAP,
 } from '@/modules/entity-locations/types'
 
 export default function NewSlotConfigPage() {
@@ -46,14 +45,14 @@ export default function NewSlotConfigPage() {
   const locale = params.locale as string
 
   // Get URL params for auto-fill
-  const urlCity = searchParams.get('city') as City | null
+  const urlCity = searchParams.get('city')
   const urlEntity = searchParams.get('entity')
 
   // Multi-day selection state
   const [selectedDays, setSelectedDays] = useState<number[]>([0])
 
   // City filter state
-  const [selectedCity, setSelectedCity] = useState<City>(urlCity || 'Malabo')
+  const [selectedCity, setSelectedCity] = useState<string>(urlCity || 'Malabo')
   const [selectedLocationId, setSelectedLocationId] = useState<string>('')
 
   // Fetch entity locations filtered by city
@@ -200,7 +199,7 @@ export default function NewSlotConfigPage() {
               <Select
                 value={selectedCity}
                 onValueChange={(v) => {
-                  setSelectedCity(v as City)
+                  setSelectedCity(v)
                   setSelectedLocationId('')
                 }}
               >
@@ -208,12 +207,12 @@ export default function NewSlotConfigPage() {
                   <SelectValue placeholder={t('selectCity')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {CITIES.map((city) => (
+                  {DEFAULT_CITIES.map((city) => (
                     <SelectItem key={city} value={city}>
                       <div className="flex items-center gap-2">
                         <span>{city}</span>
                         <Badge variant="outline" className="text-xs">
-                          {CITY_REGION_MAP[city]}
+                          {DEFAULT_CITY_REGION_MAP[city]}
                         </Badge>
                       </div>
                     </SelectItem>
@@ -221,7 +220,7 @@ export default function NewSlotConfigPage() {
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground">
-                {t('region')}: <span className="font-medium">{CITY_REGION_MAP[selectedCity]}</span>
+                {t('region')}: <span className="font-medium">{DEFAULT_CITY_REGION_MAP[selectedCity] || 'Continental'}</span>
               </p>
             </div>
 

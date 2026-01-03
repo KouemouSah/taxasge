@@ -12,7 +12,6 @@ import { toast } from 'sonner'
 
 export default function NewLocationPage() {
   const t = useTranslations('admin.serviceRequests.appointments.locations')
-  const tCommon = useTranslations('common')
   const router = useRouter()
   const params = useParams()
   const locale = params.locale as string

@@ -48,7 +48,7 @@ import { useSlotConfigs, useDeleteSlotConfig } from '@/modules/service-requests-
 import type { AppointmentSlotConfig } from '@/modules/service-requests-admin'
 import { DAY_OF_WEEK_LABELS } from '@/modules/service-requests-admin'
 import { DataTablePagination, usePagination } from '@/modules/service-requests-admin/components'
-import { CITIES } from '@/modules/entity-locations/types'
+import { DEFAULT_CITIES } from '@/modules/entity-locations/types'
 
 // Short labels for compact display
 const DAY_SHORT_LABELS: Record<number, string> = {
@@ -331,7 +331,7 @@ export default function SlotsTabContent() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t('allCities')}</SelectItem>
-                {CITIES.map((city) => (
+                {DEFAULT_CITIES.map((city) => (
                   <SelectItem key={city} value={city}>
                     {city}
                   </SelectItem>
