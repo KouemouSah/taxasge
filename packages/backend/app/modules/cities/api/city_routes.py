@@ -8,7 +8,8 @@ from typing import List, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.database.connection import get_database, Database
+from asyncpg import Connection
+from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user, require_admin
 from app.modules.cities.services.city_service import CityService, EntityService
 from app.modules.cities.models.city import (
@@ -27,7 +28,7 @@ router = APIRouter(tags=["cities"])
 async def get_cities(
     region: Optional[str] = Query(None, description="Filter by region (Insular/Continental)"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
-    db: Database = Depends(get_database),
+    db: Connection = Depends(get_database),
 ):
     """Get all cities with optional filters."""
     service = CityService(db)
@@ -37,7 +38,7 @@ async def get_cities(
 @router.get("/cities/simple", response_model=List[CitySimple])
 async def get_cities_simple(
     is_active: bool = Query(True, description="Filter by active status"),
-    db: Database = Depends(get_database),
+    db: Connection = Depends(get_database),
 ):
     """Get simplified city list for dropdowns."""
     service = CityService(db)
@@ -47,7 +48,7 @@ async def get_cities_simple(
 @router.get("/cities/{city_id}", response_model=CityResponse)
 async def get_city(
     city_id: UUID,
-    db: Database = Depends(get_database),
+    db: Connection = Depends(get_database),
 ):
     """Get a city by ID."""
     service = CityService(db)
@@ -60,7 +61,7 @@ async def get_city(
 @router.post("/cities", response_model=CityResponse, status_code=status.HTTP_201_CREATED)
 async def create_city(
     data: CityCreate,
-    db: Database = Depends(get_database),
+    db: Connection = Depends(get_database),
     current_user: dict = Depends(require_admin),
 ):
     """Create a new city. Requires admin role."""
@@ -75,7 +76,7 @@ async def create_city(
 async def update_city(
     city_id: UUID,
     data: CityUpdate,
-    db: Database = Depends(get_database),
+    db: Connection = Depends(get_database),
     current_user: dict = Depends(require_admin),
 ):
     """Update a city. Requires admin role."""
@@ -92,7 +93,7 @@ async def update_city(
 @router.delete("/cities/{city_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_city(
     city_id: UUID,
-    db: Database = Depends(get_database),
+    db: Connection = Depends(get_database),
     current_user: dict = Depends(require_admin),
 ):
     """Delete a city. Requires admin role."""
@@ -109,7 +110,7 @@ async def delete_city(
 @router.get("/entities", response_model=EntityListResponse)
 async def get_entities(
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
-    db: Database = Depends(get_database),
+    db: Connection = Depends(get_database),
 ):
     """Get all entities with optional filters."""
     service = EntityService(db)
@@ -119,7 +120,7 @@ async def get_entities(
 @router.get("/entities/simple", response_model=List[EntitySimple])
 async def get_entities_simple(
     is_active: bool = Query(True, description="Filter by active status"),
-    db: Database = Depends(get_database),
+    db: Connection = Depends(get_database),
 ):
     """Get simplified entity list for dropdowns."""
     service = EntityService(db)
@@ -129,7 +130,7 @@ async def get_entities_simple(
 @router.get("/entities/{entity_id}", response_model=EntityResponse)
 async def get_entity(
     entity_id: UUID,
-    db: Database = Depends(get_database),
+    db: Connection = Depends(get_database),
 ):
     """Get an entity by ID."""
     service = EntityService(db)
@@ -142,7 +143,7 @@ async def get_entity(
 @router.post("/entities", response_model=EntityResponse, status_code=status.HTTP_201_CREATED)
 async def create_entity(
     data: EntityCreate,
-    db: Database = Depends(get_database),
+    db: Connection = Depends(get_database),
     current_user: dict = Depends(require_admin),
 ):
     """Create a new entity. Requires admin role."""
@@ -157,7 +158,7 @@ async def create_entity(
 async def update_entity(
     entity_id: UUID,
     data: EntityUpdate,
-    db: Database = Depends(get_database),
+    db: Connection = Depends(get_database),
     current_user: dict = Depends(require_admin),
 ):
     """Update an entity. Requires admin role."""
@@ -174,7 +175,7 @@ async def update_entity(
 @router.delete("/entities/{entity_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_entity(
     entity_id: UUID,
-    db: Database = Depends(get_database),
+    db: Connection = Depends(get_database),
     current_user: dict = Depends(require_admin),
 ):
     """Delete an entity. Requires admin role."""

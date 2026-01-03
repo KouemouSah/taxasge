@@ -8,7 +8,7 @@ from typing import List, Optional
 from uuid import UUID
 import logging
 
-from app.database.connection import Database
+from asyncpg import Connection
 from app.modules.cities.repositories.city_repository import CityRepository, EntityRepository
 from app.modules.cities.models.city import (
     CityCreate, CityUpdate, CityResponse, CitySimple, CityListResponse,
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class CityService:
     """Service for city operations."""
 
-    def __init__(self, db: Database):
+    def __init__(self, db: Connection):
         self.repository = CityRepository(db)
 
     async def get_all_cities(
@@ -86,7 +86,7 @@ class CityService:
 class EntityService:
     """Service for entity operations."""
 
-    def __init__(self, db: Database):
+    def __init__(self, db: Connection):
         self.repository = EntityRepository(db)
 
     async def get_all_entities(
