@@ -806,6 +806,16 @@ except Exception as e:
     logger.error(f"❌ Support router failed: {e}")
     logger.error(traceback.format_exc())
 
+# Try to load entity locations router (Module - Entity Locations Management)
+try:
+    from app.modules.entity_locations.api import router as entity_locations_router
+    app.include_router(entity_locations_router, prefix="/api/v1", tags=["entity-locations"])
+    routers_loaded.append("entity-locations")
+    logger.info("✅ Entity locations router loaded")
+except Exception as e:
+    logger.error(f"❌ Entity locations router failed: {e}")
+    logger.error(traceback.format_exc())
+
 if routers_loaded:
     logger.info(f"✅ {len(routers_loaded)} API routers loaded: {', '.join(routers_loaded)}")
 else:

@@ -1,13 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { Badge } from '@/components/ui/badge'
 import {
   Select,
   SelectContent,
@@ -29,40 +30,88 @@ import { useCreateSlotConfig } from '@/modules/service-requests-admin'
 import { DAY_OF_WEEK_LABELS } from '@/modules/service-requests-admin'
 import type { AppointmentSlotConfigCreate } from '@/modules/service-requests-admin'
 import { toast } from 'sonner'
-
-// Entity codes for dropdown
-const ENTITY_CODES = [
-  'CNEDOGE',
-  'DGT',
-  'EXTRANJERIA',
-  'MINFP',
-  'ONRC',
-  'MINHV',
-]
+import { useEntityLocations } from '@/modules/entity-locations/hooks'
+import {
+  CITIES,
+  CITY_REGION_MAP,
+  type City,
+  type EntityLocation,
+} from '@/modules/entity-locations/types'
 
 export default function NewSlotConfigPage() {
   const t = useTranslations('admin.serviceRequests.appointments.slots')
   const tCommon = useTranslations('common')
   const router = useRouter()
   const params = useParams()
+  const searchParams = useSearchParams()
   const locale = params.locale as string
+
+  // Get URL params for auto-fill
+  const urlCity = searchParams.get('city') as City | null
+  const urlEntity = searchParams.get('entity')
 
   // Multi-day selection state
   const [selectedDays, setSelectedDays] = useState<number[]>([0])
 
+  // City filter state
+  const [selectedCity, setSelectedCity] = useState<City>(urlCity || 'Malabo')
+  const [selectedLocationId, setSelectedLocationId] = useState<string>('')
+
+  // Fetch entity locations filtered by city
+  const { data: locationsData, isLoading: locationsLoading } = useEntityLocations({
+    city: selectedCity,
+    is_active: true,
+    page_size: 100,
+  })
+
+  // Filter locations by city
+  const availableLocations = useMemo(() => {
+    return locationsData?.items || []
+  }, [locationsData])
+
+  // Get selected location object
+  const selectedLocation = useMemo(() => {
+    return availableLocations.find((loc) => loc.id === selectedLocationId)
+  }, [availableLocations, selectedLocationId])
+
   // Form state
   const [formData, setFormData] = useState<Omit<AppointmentSlotConfigCreate, 'day_of_week'>>({
-    entity_code: '',
+    entity_code: urlEntity || '',
     start_time: '08:00',
     end_time: '16:00',
     slot_duration_minutes: 30,
     max_appointments_per_slot: 1,
-    location_name: '',
-    location_address: '',
-    city: 'Malabo',
-    region: 'Insular',
+    entity_location_id: '',
     is_active: true,
   })
+
+  // Auto-select location from URL params
+  useEffect(() => {
+    if (urlCity && urlEntity && availableLocations.length > 0) {
+      const matchingLocation = availableLocations.find(
+        (loc) => loc.city === urlCity && loc.entity_code === urlEntity
+      )
+      if (matchingLocation) {
+        setSelectedLocationId(matchingLocation.id)
+        setFormData((prev) => ({
+          ...prev,
+          entity_code: matchingLocation.entity_code,
+          entity_location_id: matchingLocation.id,
+        }))
+      }
+    }
+  }, [urlCity, urlEntity, availableLocations])
+
+  // Update form data when location changes
+  useEffect(() => {
+    if (selectedLocation) {
+      setFormData((prev) => ({
+        ...prev,
+        entity_code: selectedLocation.entity_code,
+        entity_location_id: selectedLocation.id,
+      }))
+    }
+  }, [selectedLocation])
 
   // Mutation
   const createMutation = useCreateSlotConfig()
@@ -91,7 +140,7 @@ export default function NewSlotConfigPage() {
 
   // Handle form submission - creates one slot per selected day
   const handleSubmit = async () => {
-    if (!formData.entity_code || selectedDays.length === 0) {
+    if (!selectedLocationId || selectedDays.length === 0) {
       toast.error(t('validation.requiredFields'))
       return
     }
@@ -101,6 +150,7 @@ export default function NewSlotConfigPage() {
       for (const day of selectedDays) {
         await createMutation.mutateAsync({
           ...formData,
+          entity_location_id: selectedLocationId,
           day_of_week: day,
         })
       }
@@ -140,27 +190,87 @@ export default function NewSlotConfigPage() {
           <CardDescription>{t('slotConfigDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Entity Code */}
-          <div className="grid gap-2">
-            <Label htmlFor="entity_code" className="flex items-center gap-2">
-              <Building className="h-4 w-4" />
-              {t('entityCode')}
-            </Label>
-            <Select
-              value={formData.entity_code}
-              onValueChange={(v) => setFormData({ ...formData, entity_code: v })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={t('selectEntity')} />
-              </SelectTrigger>
-              <SelectContent>
-                {ENTITY_CODES.map((code) => (
-                  <SelectItem key={code} value={code}>
-                    {code}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* City and Location Selection */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {/* City Selector */}
+            <div className="grid gap-2">
+              <Label htmlFor="city" className="flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                {t('city')}
+              </Label>
+              <Select
+                value={selectedCity}
+                onValueChange={(v) => {
+                  setSelectedCity(v as City)
+                  setSelectedLocationId('')
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t('selectCity')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {CITIES.map((city) => (
+                    <SelectItem key={city} value={city}>
+                      <div className="flex items-center gap-2">
+                        <span>{city}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {CITY_REGION_MAP[city]}
+                        </Badge>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">
+                {t('region')}: <span className="font-medium">{CITY_REGION_MAP[selectedCity]}</span>
+              </p>
+            </div>
+
+            {/* Location Selector */}
+            <div className="grid gap-2">
+              <Label htmlFor="location" className="flex items-center gap-2">
+                <Building className="h-4 w-4" />
+                {t('location')}
+              </Label>
+              <Select
+                value={selectedLocationId}
+                onValueChange={setSelectedLocationId}
+                disabled={locationsLoading || availableLocations.length === 0}
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      locationsLoading
+                        ? t('loadingLocations')
+                        : availableLocations.length === 0
+                          ? t('noLocationsForCity')
+                          : t('selectLocation')
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableLocations.map((loc) => (
+                    <SelectItem key={loc.id} value={loc.id}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">
+                          {loc.entity_code} - {loc.location_name}
+                        </span>
+                        {loc.location_address && (
+                          <span className="text-xs text-muted-foreground">
+                            {loc.location_address}
+                          </span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedLocation && (
+                <p className="text-sm text-muted-foreground">
+                  {selectedLocation.location_address || t('noAddressProvided')}
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Day Selection */}
@@ -287,65 +397,6 @@ export default function NewSlotConfigPage() {
             </div>
           </div>
 
-          {/* Location */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="location_name" className="flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
-                {t('locationName')}
-              </Label>
-              <Input
-                id="location_name"
-                value={formData.location_name || ''}
-                onChange={(e) => setFormData({ ...formData, location_name: e.target.value })}
-                placeholder={t('locationNamePlaceholder')}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="location_address">{t('locationAddress')}</Label>
-              <Input
-                id="location_address"
-                value={formData.location_address || ''}
-                onChange={(e) => setFormData({ ...formData, location_address: e.target.value })}
-                placeholder={t('locationAddressPlaceholder')}
-              />
-            </div>
-          </div>
-
-          {/* City and Region */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="city">{t('city')}</Label>
-              <Select
-                value={formData.city || 'Malabo'}
-                onValueChange={(v) =>
-                  setFormData({
-                    ...formData,
-                    city: v,
-                    region: v === 'Malabo' ? 'Insular' : 'Continental',
-                  })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t('selectCity')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Malabo">Malabo</SelectItem>
-                  <SelectItem value="Bata">Bata</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="region">{t('region')}</Label>
-              <Input
-                id="region"
-                value={formData.region || ''}
-                disabled
-                className="bg-muted"
-              />
-            </div>
-          </div>
-
           {/* Is Active */}
           <div className="flex items-center justify-between rounded-lg border p-4">
             <div className="space-y-0.5">
@@ -366,7 +417,7 @@ export default function NewSlotConfigPage() {
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={!formData.entity_code || selectedDays.length === 0 || createMutation.isPending}
+              disabled={!selectedLocationId || selectedDays.length === 0 || createMutation.isPending}
             >
               {createMutation.isPending ? (
                 <>

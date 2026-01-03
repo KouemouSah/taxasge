@@ -4,13 +4,16 @@ import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { CalendarClock, CalendarX, Clock, BarChart3 } from 'lucide-react'
+import { CalendarClock, CalendarX, Clock, BarChart3, MapPin } from 'lucide-react'
 
 // Import tab content components
 import SlotsTabContent from './components/SlotsTabContent'
 import BlockedTabContent from './components/BlockedTabContent'
 import DelaysTabContent from './components/DelaysTabContent'
 import StatsTabContent from './components/StatsTabContent'
+import LocationsTabContent from './components/LocationsTabContent'
+
+const VALID_TABS = ['slots', 'locations', 'blocked', 'delays', 'stats']
 
 export default function AppointmentsPage() {
   const t = useTranslations('admin.serviceRequests.appointments')
@@ -33,7 +36,7 @@ export default function AppointmentsPage() {
   // Sync tab with URL on mount and when URL changes
   useEffect(() => {
     const tabParam = searchParams.get('tab')
-    if (tabParam && ['slots', 'blocked', 'delays', 'stats'].includes(tabParam)) {
+    if (tabParam && VALID_TABS.includes(tabParam)) {
       setActiveTab(tabParam)
     }
   }, [searchParams])
@@ -48,11 +51,16 @@ export default function AppointmentsPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 lg:w-[650px]">
+        <TabsList className="grid w-full grid-cols-5 lg:w-[800px]">
           <TabsTrigger value="slots" className="flex items-center gap-2">
             <CalendarClock className="h-4 w-4" />
             <span className="hidden sm:inline">{t('slots.title')}</span>
             <span className="sm:hidden">{t('tabs.slots')}</span>
+          </TabsTrigger>
+          <TabsTrigger value="locations" className="flex items-center gap-2">
+            <MapPin className="h-4 w-4" />
+            <span className="hidden sm:inline">{t('locations.title')}</span>
+            <span className="sm:hidden">{t('tabs.locations')}</span>
           </TabsTrigger>
           <TabsTrigger value="blocked" className="flex items-center gap-2">
             <CalendarX className="h-4 w-4" />
@@ -73,6 +81,10 @@ export default function AppointmentsPage() {
 
         <TabsContent value="slots" className="mt-6">
           <SlotsTabContent />
+        </TabsContent>
+
+        <TabsContent value="locations" className="mt-6">
+          <LocationsTabContent />
         </TabsContent>
 
         <TabsContent value="blocked" className="mt-6">

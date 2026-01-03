@@ -16,14 +16,6 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -33,8 +25,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -54,17 +44,11 @@ import {
   XCircle,
   MapPin,
 } from 'lucide-react'
-import {
-  useSlotConfigs,
-  useUpdateSlotConfig,
-  useDeleteSlotConfig,
-} from '@/modules/service-requests-admin'
-import type {
-  AppointmentSlotConfig,
-  AppointmentSlotConfigUpdate,
-} from '@/modules/service-requests-admin'
+import { useSlotConfigs, useDeleteSlotConfig } from '@/modules/service-requests-admin'
+import type { AppointmentSlotConfig } from '@/modules/service-requests-admin'
 import { DAY_OF_WEEK_LABELS } from '@/modules/service-requests-admin'
 import { DataTablePagination, usePagination } from '@/modules/service-requests-admin/components'
+import { CITIES } from '@/modules/entity-locations/types'
 
 // Short labels for compact display
 const DAY_SHORT_LABELS: Record<number, string> = {
@@ -89,8 +73,8 @@ interface GroupedSlotConfig {
   max_appointments_per_slot: number
   location_name: string | null
   location_address: string | null
-  city: string | null  // Malabo or Bata
-  region: string | null  // Insular or Continental
+  city: string | null
+  region: string | null
   is_active: boolean
   originalSlots: AppointmentSlotConfig[]
 }
@@ -138,14 +122,16 @@ function groupSlotConfigs(slots: AppointmentSlotConfig[]): GroupedSlotConfig[] {
     const configGroups = new Map<string, AppointmentSlotConfig[]>()
 
     for (const slot of entitySlots) {
-      const configKey = `${slot.start_time}|${slot.end_time}|${slot.slot_duration_minutes}|${slot.max_appointments_per_slot}|${slot.location_name || ''}|${slot.location_address || ''}|${slot.is_active}`
+      const configKey = `${slot.start_time}|${slot.end_time}|${slot.slot_duration_minutes}|${slot.max_appointments_per_slot}|${slot.entity_location_id}|${slot.is_active}`
       const existing = configGroups.get(configKey) || []
       existing.push(slot)
       configGroups.set(configKey, existing)
     }
 
     for (const [, groupSlots] of Array.from(configGroups.entries())) {
-      const days = groupSlots.map((s: AppointmentSlotConfig) => s.day_of_week).sort((a: number, b: number) => a - b)
+      const days = groupSlots
+        .map((s: AppointmentSlotConfig) => s.day_of_week)
+        .sort((a: number, b: number) => a - b)
       const firstSlot = groupSlots[0]
 
       result.push({
@@ -186,9 +172,7 @@ export default function SlotsTabContent() {
   const [searchQuery, setSearchQuery] = useState('')
   const [entityFilter, setEntityFilter] = useState<string>('all')
   const [cityFilter, setCityFilter] = useState<string>('all')
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [selectedSlot, setSelectedSlot] = useState<AppointmentSlotConfig | null>(null)
   const [selectedGroup, setSelectedGroup] = useState<GroupedSlotConfig | null>(null)
 
   // Pagination
@@ -202,19 +186,6 @@ export default function SlotsTabContent() {
     resetPage,
   } = usePagination(10)
 
-  // Edit form state
-  const [editFormData, setEditFormData] = useState<AppointmentSlotConfigUpdate & { entity_code?: string; day_of_week?: number }>({
-    start_time: '08:00',
-    end_time: '16:00',
-    slot_duration_minutes: 30,
-    max_appointments_per_slot: 10,
-    location_name: '',
-    location_address: '',
-    city: 'Malabo',
-    region: 'Insular',
-    is_active: true,
-  })
-
   // Queries
   const {
     data: slotConfigs,
@@ -226,7 +197,6 @@ export default function SlotsTabContent() {
   })
 
   // Mutations
-  const updateMutation = useUpdateSlotConfig()
   const deleteMutation = useDeleteSlotConfig()
 
   // Get unique entity codes for filter
@@ -237,49 +207,35 @@ export default function SlotsTabContent() {
     return groupSlotConfigs(slotConfigs || [])
   }, [slotConfigs])
 
-  // Filter grouped slots
+  // Filter grouped slots by city
+  const cityFilteredGroups = useMemo(() => {
+    if (cityFilter === 'all') return groupedSlots
+    return groupedSlots.filter((g) => g.city === cityFilter)
+  }, [groupedSlots, cityFilter])
+
+  // Filter grouped slots by search
   const filteredGroups = useMemo(() => {
-    if (!searchQuery) return groupedSlots
+    if (!searchQuery) return cityFilteredGroups
     const query = searchQuery.toLowerCase()
-    return groupedSlots.filter(
+    return cityFilteredGroups.filter(
       (g) =>
         g.entity_code.toLowerCase().includes(query) ||
         g.location_name?.toLowerCase().includes(query) ||
         g.location_address?.toLowerCase().includes(query)
     )
-  }, [groupedSlots, searchQuery])
+  }, [cityFilteredGroups, searchQuery])
 
   // Pagination
   const paginatedGroups = paginateData(filteredGroups)
   const totalPages = getTotalPages(filteredGroups.length)
 
-  // Navigate to create page
+  // Handlers
   const handleNavigateToCreate = () => {
     router.push(`/${locale}/dashboard/admin/service-requests/appointments/slots/new`)
   }
 
-  // Handlers
-  const handleUpdateSlot = async () => {
-    if (!selectedSlot) return
-
-    try {
-      const updateData: AppointmentSlotConfigUpdate = {
-        start_time: editFormData.start_time,
-        end_time: editFormData.end_time,
-        slot_duration_minutes: editFormData.slot_duration_minutes,
-        max_appointments_per_slot: editFormData.max_appointments_per_slot,
-        location_name: editFormData.location_name,
-        location_address: editFormData.location_address,
-        city: editFormData.city,
-        region: editFormData.region,
-        is_active: editFormData.is_active,
-      }
-      await updateMutation.mutateAsync({ slotId: selectedSlot.id, data: updateData })
-      setIsEditDialogOpen(false)
-      setSelectedSlot(null)
-    } catch {
-      // Error handled by mutation
-    }
+  const handleEditSlot = (slot: AppointmentSlotConfig) => {
+    router.push(`/${locale}/dashboard/admin/service-requests/appointments/slots/${slot.id}/edit`)
   }
 
   const handleDeleteGroup = async () => {
@@ -295,27 +251,6 @@ export default function SlotsTabContent() {
     } catch {
       // Error handled by mutation
     }
-  }
-
-  const openEditDialog = (group: GroupedSlotConfig) => {
-    // For edit, we only allow editing one slot at a time
-    // Use the first slot as the reference
-    const slot = group.originalSlots[0]
-    setSelectedSlot(slot)
-    setEditFormData({
-      entity_code: slot.entity_code,
-      day_of_week: slot.day_of_week,
-      start_time: slot.start_time,
-      end_time: slot.end_time,
-      slot_duration_minutes: slot.slot_duration_minutes,
-      max_appointments_per_slot: slot.max_appointments_per_slot,
-      location_name: slot.location_name || '',
-      location_address: slot.location_address || '',
-      city: slot.city || 'Malabo',
-      region: slot.region || 'Insular',
-      is_active: slot.is_active,
-    })
-    setIsEditDialogOpen(true)
   }
 
   const openDeleteDialog = (group: GroupedSlotConfig) => {
@@ -371,8 +306,8 @@ export default function SlotsTabContent() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4 mb-4">
-            <div className="relative flex-1">
+          <div className="flex flex-wrap gap-4 mb-4">
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder={t('searchPlaceholder')}
@@ -384,6 +319,25 @@ export default function SlotsTabContent() {
                 className="pl-9"
               />
             </div>
+            <Select
+              value={cityFilter}
+              onValueChange={(v) => {
+                setCityFilter(v)
+                resetPage()
+              }}
+            >
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder={t('filterByCity')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('allCities')}</SelectItem>
+                {CITIES.map((city) => (
+                  <SelectItem key={city} value={city}>
+                    {city}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select
               value={entityFilter}
               onValueChange={(v) => {
@@ -401,22 +355,6 @@ export default function SlotsTabContent() {
                     {entity}
                   </SelectItem>
                 ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={cityFilter}
-              onValueChange={(v) => {
-                setCityFilter(v)
-                resetPage()
-              }}
-            >
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder={t('filterByCity')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('allCities')}</SelectItem>
-                <SelectItem value="Malabo">Malabo</SelectItem>
-                <SelectItem value="Bata">Bata</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -469,9 +407,16 @@ export default function SlotsTabContent() {
                       <TableCell className="text-center">{group.max_appointments_per_slot}</TableCell>
                       <TableCell>
                         {group.location_name ? (
-                          <div className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-sm truncate max-w-[150px]">{group.location_name}</span>
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-1">
+                              <MapPin className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-sm truncate max-w-[150px]">{group.location_name}</span>
+                            </div>
+                            {group.location_address && (
+                              <span className="text-xs text-muted-foreground truncate max-w-[150px]">
+                                {group.location_address}
+                              </span>
+                            )}
                           </div>
                         ) : (
                           <span className="text-muted-foreground">-</span>
@@ -479,7 +424,12 @@ export default function SlotsTabContent() {
                       </TableCell>
                       <TableCell>
                         {group.city ? (
-                          <Badge variant="secondary">{group.city}</Badge>
+                          <div className="flex flex-col">
+                            <Badge variant="secondary">{group.city}</Badge>
+                            {group.region && (
+                              <span className="text-xs text-muted-foreground">{group.region}</span>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-muted-foreground">-</span>
                         )}
@@ -493,7 +443,11 @@ export default function SlotsTabContent() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => openEditDialog(group)}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEditSlot(group.originalSlots[0])}
+                          >
                             <Pencil className="h-4 w-4" />
                           </Button>
                           <Button
@@ -525,135 +479,6 @@ export default function SlotsTabContent() {
           />
         </CardContent>
       </Card>
-
-      {/* Edit Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{t('edit')}</DialogTitle>
-            <DialogDescription>{t('editDescription')}</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>{t('entityCode')}</Label>
-                <Input value={editFormData.entity_code} disabled className="bg-muted" />
-              </div>
-              <div className="grid gap-2">
-                <Label>{t('dayOfWeek')}</Label>
-                <Input
-                  value={editFormData.day_of_week !== undefined ? DAY_OF_WEEK_LABELS[editFormData.day_of_week] : ''}
-                  disabled
-                  className="bg-muted"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="edit-start">{t('startTime')}</Label>
-                <Input
-                  id="edit-start"
-                  type="time"
-                  value={editFormData.start_time}
-                  onChange={(e) => setEditFormData({ ...editFormData, start_time: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-end">{t('endTime')}</Label>
-                <Input
-                  id="edit-end"
-                  type="time"
-                  value={editFormData.end_time}
-                  onChange={(e) => setEditFormData({ ...editFormData, end_time: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="edit-duration">{t('slotDuration')}</Label>
-                <Input
-                  id="edit-duration"
-                  type="number"
-                  value={editFormData.slot_duration_minutes}
-                  onChange={(e) =>
-                    setEditFormData({ ...editFormData, slot_duration_minutes: parseInt(e.target.value) || 30 })
-                  }
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-max">{t('maxPerSlot')}</Label>
-                <Input
-                  id="edit-max"
-                  type="number"
-                  value={editFormData.max_appointments_per_slot}
-                  onChange={(e) =>
-                    setEditFormData({ ...editFormData, max_appointments_per_slot: parseInt(e.target.value) || 10 })
-                  }
-                />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-location">{t('locationName')}</Label>
-              <Input
-                id="edit-location"
-                value={editFormData.location_name || ''}
-                onChange={(e) => setEditFormData({ ...editFormData, location_name: e.target.value })}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-address">{t('locationAddress')}</Label>
-              <Input
-                id="edit-address"
-                value={editFormData.location_address || ''}
-                onChange={(e) => setEditFormData({ ...editFormData, location_address: e.target.value })}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="edit-city">{t('city')}</Label>
-                <Select
-                  value={editFormData.city || 'Malabo'}
-                  onValueChange={(v) => setEditFormData({ ...editFormData, city: v, region: v === 'Malabo' ? 'Insular' : 'Continental' })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t('selectCity')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Malabo">Malabo</SelectItem>
-                    <SelectItem value="Bata">Bata</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-region">{t('region')}</Label>
-                <Input
-                  id="edit-region"
-                  value={editFormData.region || ''}
-                  disabled
-                  className="bg-muted"
-                />
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="edit-active">{t('isActive')}</Label>
-              <Switch
-                id="edit-active"
-                checked={editFormData.is_active}
-                onCheckedChange={(checked) => setEditFormData({ ...editFormData, is_active: checked })}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              {tCommon('cancel')}
-            </Button>
-            <Button onClick={handleUpdateSlot} disabled={updateMutation.isPending}>
-              {updateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {tCommon('save')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
