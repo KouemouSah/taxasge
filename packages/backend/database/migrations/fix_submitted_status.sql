@@ -51,7 +51,7 @@ AND (
 INSERT INTO service_request_history (
     service_request_id,
     action,
-    old_status,
+    previous_status,
     new_status,
     performed_by,
     comment,
@@ -60,8 +60,8 @@ INSERT INTO service_request_history (
 SELECT
     id,
     'status_correction',
-    'SUBMITTED',
-    'DRAFT',
+    'SUBMITTED'::service_request_status_enum,
+    'DRAFT'::service_request_status_enum,
     NULL,  -- System action
     'Auto-correction: Status reset to DRAFT because wizard steps were not completed',
     NOW()
