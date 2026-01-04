@@ -181,12 +181,15 @@ export default function PassportWizardPage() {
     }
   }, [])
 
-  // Initialize wizard state from request form_data AND determine correct step
+  // Track if initial step determination has been done
+  const hasInitializedStep = useRef(false)
+
+  // Initialize wizard state from request form_data (runs on every request update)
   useEffect(() => {
     if (currentRequest) {
       const data = currentRequest.formData as Record<string, unknown> | undefined
 
-      // Set wizard state from form data
+      // Always update wizard state from form data
       if (data) {
         setWizardState({
           isMinor: data.is_minor as boolean | null ?? null,
@@ -194,6 +197,14 @@ export default function PassportWizardPage() {
           motivo: data.motivo as RenovacionMotivo | null ?? null,
         })
       }
+    }
+  }, [currentRequest])
+
+  // Determine initial step ONLY ONCE when request first loads
+  useEffect(() => {
+    if (currentRequest && !hasInitializedStep.current) {
+      hasInitializedStep.current = true
+      const data = currentRequest.formData as Record<string, unknown> | undefined
 
       // Determine step based on status FIRST, then form data
       const stepFromStatus = getStepFromStatus(currentRequest.status)

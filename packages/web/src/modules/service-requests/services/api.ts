@@ -587,9 +587,18 @@ class ServiceRequestsApiClient {
     requestId: string,
     data: ServiceRequestUpdate
   ): Promise<ServiceRequest> {
+    // Transform camelCase to snake_case for backend
+    const backendData: Record<string, unknown> = {}
+    if (data.formData !== undefined) {
+      backendData.form_data = data.formData
+    }
+    if (data.currentStep !== undefined) {
+      backendData.current_step = data.currentStep
+    }
+
     const backend = await this.request<BackendServiceRequest>(`/${requestId}`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
+      method: 'PUT',
+      body: JSON.stringify(backendData),
     })
     return transformServiceRequest(backend)
   }
@@ -630,18 +639,28 @@ class ServiceRequestsApiClient {
   }
 
   /**
-   * Save step data without advancing
+   * Save step data by merging into formData
+   * Uses PUT /{request_id} endpoint with formData
    */
   async saveStepData(
     requestId: string,
-    stepId: string,
+    _stepId: string, // Kept for API compatibility, not used
     data: Record<string, unknown>
   ): Promise<ServiceRequest> {
-    const backend = await this.request<BackendServiceRequest>(`/${requestId}/step/${stepId}/save`, {
-      method: 'POST',
-      body: JSON.stringify(data),
+    // First get current request to preserve existing formData
+    const currentRequest = await this.getRequest(requestId)
+    const existingFormData = currentRequest.formData || {}
+
+    // Merge new data with existing formData
+    const mergedFormData = {
+      ...existingFormData,
+      ...data,
+    }
+
+    // Use the update endpoint with merged formData
+    return this.updateRequest(requestId, {
+      formData: mergedFormData,
     })
-    return transformServiceRequest(backend)
   }
 
   // =========================================================================
