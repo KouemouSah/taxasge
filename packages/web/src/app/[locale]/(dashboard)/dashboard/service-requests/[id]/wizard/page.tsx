@@ -29,7 +29,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   ArrowLeft,
   ArrowRight,
-  User,
   UserCheck,
   FileText,
   Loader2,
@@ -91,7 +90,6 @@ export default function PassportWizardPage() {
   // Service requests hook
   const {
     currentRequest,
-    workflow,
     isLoading,
     error,
     loadRequest,
@@ -908,7 +906,7 @@ interface AppointmentPlaceholderProps {
   onBack: () => void
 }
 
-function AppointmentPlaceholder({ locale, requestId, onNext, onBack }: AppointmentPlaceholderProps) {
+function AppointmentPlaceholder({ locale, requestId: _requestId, onNext, onBack }: AppointmentPlaceholderProps) {
   return (
     <Card>
       <CardHeader>
