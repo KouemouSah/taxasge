@@ -37,6 +37,7 @@ import {
 import { Progress } from '@/components/ui/progress' 
 import {
   ArrowLeft,
+  ArrowRight,
   FileText,
   CheckCircle,
   Clock,
@@ -734,23 +735,34 @@ export default function ServiceRequestDetailPage() {
         </Button>
         {['DRAFT', 'DOCUMENTS_REQUIRED'].includes(currentRequest.status) && (
           <div className="flex gap-2">
-            {/* Upload documents button */}
-            <Button 
-              variant="outline"
-              onClick={() => router.push(`/${locale}/dashboard/service-requests/${requestId}/documents`)}
-            >
-              <Upload className="mr-2 h-4 w-4" />
-              {t('upload_documents')}
-            </Button>
-            {/* Continue button - only when documents are uploaded */}
-            {documents.length > 0 && (
-              <Button 
-                onClick={() => router.push(`/${locale}/dashboard/service-requests/${requestId}/documents`)}
-                disabled={documents.length === 0}
+            {hasWorkflowWizard(currentRequest.workflowCode) ? (
+              /* Workflows with wizard: Single button to continue wizard */
+              <Button
+                onClick={() => router.push(`/${locale}/dashboard/service-requests/${requestId}/wizard`)}
               >
-                <CheckCircle className="mr-2 h-4 w-4" />
-                {t('continue_to_verification')}
+                <ArrowRight className="mr-2 h-4 w-4" />
+                {locale === 'es' ? 'Continuar Solicitud' : locale === 'fr' ? 'Continuer la Demande' : 'Continue Request'}
               </Button>
+            ) : (
+              /* Workflows without wizard: Upload documents buttons */
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => router.push(`/${locale}/dashboard/service-requests/${requestId}/documents`)}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  {t('upload_documents')}
+                </Button>
+                {documents.length > 0 && (
+                  <Button
+                    onClick={() => router.push(`/${locale}/dashboard/service-requests/${requestId}/documents`)}
+                    disabled={documents.length === 0}
+                  >
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    {t('continue_to_verification')}
+                  </Button>
+                )}
+              </>
             )}
           </div>
         )}

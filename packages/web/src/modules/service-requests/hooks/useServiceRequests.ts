@@ -277,7 +277,14 @@ export function useServiceRequests(): UseServiceRequestsReturn {
     try {
       setIsSaving(true)
       setError(null)
-      const request = await serviceRequestsApi.saveStepData(currentRequest.id, stepId, data)
+      // Pass existing formData to avoid extra API call
+      const existingFormData = currentRequest.formData || {}
+      const request = await serviceRequestsApi.saveStepData(
+        currentRequest.id,
+        stepId,
+        data,
+        existingFormData
+      )
       setCurrentRequest(request)
       return true
     } catch (err) {

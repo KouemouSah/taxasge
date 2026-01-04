@@ -641,19 +641,17 @@ class ServiceRequestsApiClient {
   /**
    * Save step data by merging into formData
    * Uses PUT /{request_id} endpoint with formData
+   * @param existingFormData - Optional existing formData to merge with (avoids extra API call)
    */
   async saveStepData(
     requestId: string,
     _stepId: string, // Kept for API compatibility, not used
-    data: Record<string, unknown>
+    data: Record<string, unknown>,
+    existingFormData?: Record<string, unknown>
   ): Promise<ServiceRequest> {
-    // First get current request to preserve existing formData
-    const currentRequest = await this.getRequest(requestId)
-    const existingFormData = currentRequest.formData || {}
-
     // Merge new data with existing formData
     const mergedFormData = {
-      ...existingFormData,
+      ...(existingFormData || {}),
       ...data,
     }
 
@@ -725,9 +723,44 @@ class ServiceRequestsApiClient {
 
   /**
    * Get all documents for a request
+   * Backend returns snake_case, we transform to camelCase
    */
   async getDocuments(requestId: string): Promise<ServiceRequestDocument[]> {
-    return this.request<ServiceRequestDocument[]>(`/${requestId}/documents`)
+    interface BackendProvidedDocument {
+      id: string
+      document_code: string
+      document_name: string
+      file_path: string
+      file_name: string
+      file_size?: number
+      mime_type?: string
+      extraction_data: Record<string, unknown>
+      extraction_confidence?: number
+      extraction_status: string
+      is_valid?: boolean
+      validation_errors: string[]
+    }
+
+    const backendDocs = await this.request<BackendProvidedDocument[]>(`/${requestId}/documents`)
+
+    return backendDocs.map((doc) => ({
+      id: doc.id,
+      requestId: requestId,
+      documentCode: doc.document_code,
+      documentNameEs: doc.document_name,
+      fileName: doc.file_name,
+      fileUrl: doc.file_path, // Firebase Storage path can be used as URL
+      fileSize: doc.file_size || 0,
+      mimeType: doc.mime_type || 'application/octet-stream',
+      extractionStatus: (doc.extraction_status === 'completed' ? ExtractionStatus.COMPLETED :
+                         doc.extraction_status === 'failed' ? ExtractionStatus.FAILED :
+                         doc.extraction_status === 'manual_review' ? ExtractionStatus.MANUAL_REVIEW :
+                         ExtractionStatus.PENDING) as ExtractionStatus,
+      extractedData: doc.extraction_data,
+      extractionConfidence: doc.extraction_confidence,
+      validationErrors: doc.validation_errors,
+      uploadedAt: new Date().toISOString(),
+    }))
   }
 
   /**
