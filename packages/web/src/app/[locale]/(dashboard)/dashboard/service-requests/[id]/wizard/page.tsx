@@ -33,7 +33,6 @@ import {
   ArrowLeft,
   ArrowRight,
   UserCheck,
-  FileText,
   Loader2,
   AlertCircle,
   CheckCircle,
@@ -134,7 +133,7 @@ export default function PassportWizardPage() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null)
   const [phoneNumber, setPhoneNumber] = useState('')
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
-  const [paymentSuccess, setPaymentSuccess] = useState(false)
+  const [_paymentSuccess, setPaymentSuccess] = useState(false) // Prefixed with _ as it's used for state tracking
   const [citizenSummary, setCitizenSummary] = useState<CitizenSummaryResponse | null>(null)
 
   // Load request on mount
@@ -409,7 +408,7 @@ export default function PassportWizardPage() {
           holdSlot={holdAppointmentSlot}
           getHoldStatus={getAppointmentHoldStatus}
           releaseHold={releaseAppointmentHold}
-          onComplete={async (data) => {
+          onComplete={async (_appointmentData) => {
             // Load citizen summary for confirmation step
             const summary = await getCitizenSummary()
             setCitizenSummary(summary)
