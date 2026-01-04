@@ -36,14 +36,6 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
   ArrowLeft,
   ArrowRight,
   UserCheck,
@@ -75,7 +67,6 @@ import type {
   EntityLocation,
   AvailableSlot,
   AppointmentHoldStatus,
-  DocumentExtractionPreview,
   FormDataResponse,
   ValidationResult,
   PassportSolicitudType,
@@ -118,7 +109,7 @@ export default function PassportWizardPage() {
   })
   const [isSaving, setIsSaving] = useState(false)
 
-  // Service requests hook - using ALL available methods now
+  // Service requests hook
   const {
     currentRequest,
     documents,
@@ -127,19 +118,16 @@ export default function PassportWizardPage() {
     loadRequest,
     saveStepData,
     clearError,
-    // Document methods - NEW: using two-step flow
+    // Document methods
     uploadDocument,
     deleteDocument,
-    previewDocument,
-    validateDocument,
-    currentPreview,
-    // Form & validation methods - NEW
+    // Form & validation methods
     getFormData,
     validateDocuments,
     // Summary & PDF
     getCitizenSummary,
     downloadSummaryPDF,
-    // Payment methods - NEW: with status check
+    // Payment methods
     initiatePayment,
     checkPaymentStatus,
     // Appointment methods
@@ -157,12 +145,12 @@ export default function PassportWizardPage() {
   const [paymentComplete, setPaymentComplete] = useState(false)
   const paymentPollRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Document preview state (two-step flow)
-  const [showPreviewDialog, setShowPreviewDialog] = useState(false)
-  const [previewFile, setPreviewFile] = useState<File | null>(null)
-  const [previewDocCode, setPreviewDocCode] = useState<string | null>(null)
-  const [isValidatingDoc, setIsValidatingDoc] = useState(false)
-  const [previewEditedData, setPreviewEditedData] = useState<Record<string, unknown>>({})
+  // Document upload state (direct upload, no dialog)
+  const [isUploadingDocument, setIsUploadingDocument] = useState(false)
+
+  // Form review state - edited data during review steps
+  const [editedFormData, setEditedFormData] = useState<Record<string, unknown>>({})
+  const [isSavingFormData, setIsSavingFormData] = useState(false)
 
   // Form data state
   const [formData, setFormData] = useState<FormDataResponse | null>(null)
@@ -194,28 +182,61 @@ export default function PassportWizardPage() {
     }
   }, [])
 
-  // Initialize wizard state from request form_data
+  // Initialize wizard state from request form_data AND determine correct step
   useEffect(() => {
-    if (currentRequest?.formData) {
-      const data = currentRequest.formData as Record<string, unknown>
-      setWizardState({
-        isMinor: data.is_minor as boolean | null ?? null,
-        solicitudType: data.solicitud_type as SolicitudType | null ?? null,
-        motivo: data.motivo as RenovacionMotivo | null ?? null,
-      })
+    if (currentRequest) {
+      const data = currentRequest.formData as Record<string, unknown> | undefined
 
-      // Determine current step based on saved data
-      if (data.is_minor === undefined || data.is_minor === null) {
-        setCurrentStepIndex(0)
-      } else if (!data.solicitud_type) {
-        setCurrentStepIndex(1)
-      } else if (data.solicitud_type === 'RENOVACION' && !data.motivo) {
-        setCurrentStepIndex(2)
+      // Set wizard state from form data
+      if (data) {
+        setWizardState({
+          isMinor: data.is_minor as boolean | null ?? null,
+          solicitudType: data.solicitud_type as SolicitudType | null ?? null,
+          motivo: data.motivo as RenovacionMotivo | null ?? null,
+        })
+      }
+
+      // Determine step based on status FIRST, then form data
+      const stepFromStatus = getStepFromStatus(currentRequest.status)
+      if (stepFromStatus !== null) {
+        setCurrentStepIndex(stepFromStatus)
+        return
+      }
+
+      // For DRAFT status, determine step from form data and documents
+      if (data) {
+        if (data.is_minor === undefined || data.is_minor === null) {
+          setCurrentStepIndex(0) // is_minor step
+        } else if (!data.solicitud_type) {
+          setCurrentStepIndex(1) // select_type step
+        } else if (data.solicitud_type === 'RENOVACION' && !data.motivo) {
+          setCurrentStepIndex(2) // select_motivo step
+        } else if (documents.length === 0) {
+          setCurrentStepIndex(3) // upload_documents step
+        } else {
+          setCurrentStepIndex(4) // form_review_1 step
+        }
       } else {
-        setCurrentStepIndex(3)
+        setCurrentStepIndex(0)
       }
     }
-  }, [currentRequest])
+  }, [currentRequest, documents.length])
+
+  // Map status to step index
+  function getStepFromStatus(status: string): number | null {
+    const statusToStep: Record<string, number> = {
+      'SUBMITTED': 6, // validation done, waiting
+      'DOCUMENTS_REQUIRED': 3, // back to documents
+      'UNDER_REVIEW': 6, // validation
+      'DOSSIER_VALIDE': 7, // payment
+      'PAYMENT_PENDING': 7, // payment
+      'PAID': 8, // appointment
+      'CITA_SCHEDULED': 9, // confirmation
+      'IN_PROGRESS': 9, // confirmation
+      'COMPLETED': 9, // confirmation
+    }
+    return statusToStep[status] ?? null // null means use form data logic
+  }
 
   // Get current step
   const currentStep = WIZARD_STEPS[currentStepIndex]
@@ -295,57 +316,57 @@ export default function PassportWizardPage() {
   }
 
   // ==========================================================================
-  // TWO-STEP DOCUMENT FLOW HANDLERS
+  // DOCUMENT UPLOAD HANDLERS (Direct upload, no dialog)
   // ==========================================================================
 
-  // Step 1: Preview document extraction (without saving)
-  const handleDocumentPreview = async (documentCode: string, file: File) => {
-    setPreviewDocCode(documentCode)
-    setPreviewFile(file)
-    setPreviewEditedData({})
-
+  // Upload document directly - no preview dialog, extraction done in background
+  const handleDocumentUpload = async (documentCode: string, file: File) => {
+    setIsUploadingDocument(true)
     try {
-      await previewDocument(documentCode, file)
-      setShowPreviewDialog(true)
-    } catch (err) {
-      console.error('Failed to preview document:', err)
-      // Fallback to legacy direct upload
       await uploadDocument(documentCode, file)
-    }
-  }
-
-  // Step 2: Validate and save to Firebase
-  const handleDocumentValidate = async () => {
-    if (!currentPreview || !previewDocCode) return
-
-    setIsValidatingDoc(true)
-    try {
-      const confirmedData = {
-        ...currentPreview.extraction,
-        ...previewEditedData,
-      }
-      await validateDocument(currentPreview.previewId, confirmedData)
-      setShowPreviewDialog(false)
-      setPreviewFile(null)
-      setPreviewDocCode(null)
-      setPreviewEditedData({})
     } catch (err) {
-      console.error('Failed to validate document:', err)
+      console.error('Failed to upload document:', err)
     } finally {
-      setIsValidatingDoc(false)
+      setIsUploadingDocument(false)
     }
   }
 
-  // Cancel preview - use legacy upload instead
-  const handlePreviewCancel = async () => {
-    setShowPreviewDialog(false)
-    // Fallback to legacy upload if user wants to skip review
-    if (previewFile && previewDocCode) {
-      await uploadDocument(previewDocCode, previewFile)
+  // Continue to form review after all documents uploaded
+  const handleDocumentsContinue = () => {
+    // Proceed directly to form review - extraction data will be loaded there
+    setCurrentStepIndex(4)
+  }
+
+  // ==========================================================================
+  // FORM REVIEW HANDLERS (Validate & Edit extracted data)
+  // ==========================================================================
+
+  // Handle field edit in form review
+  const handleFormFieldEdit = (field: string, value: unknown) => {
+    setEditedFormData(prev => ({ ...prev, [field]: value }))
+  }
+
+  // Save form data from review step
+  const handleSaveFormReview = async (stepId: string) => {
+    if (!formData) return false
+
+    setIsSavingFormData(true)
+    try {
+      // Merge extracted data with user edits
+      const dataToSave = {
+        ...formData.extractedData,
+        ...formData.formData,
+        ...editedFormData,
+      }
+
+      await saveStepData(stepId, dataToSave)
+      return true
+    } catch (err) {
+      console.error('Failed to save form data:', err)
+      return false
+    } finally {
+      setIsSavingFormData(false)
     }
-    setPreviewFile(null)
-    setPreviewDocCode(null)
-    setPreviewEditedData({})
   }
 
   // ==========================================================================
@@ -579,20 +600,27 @@ export default function PassportWizardPage() {
           solicitudType={wizardState.solicitudType}
           motivo={wizardState.motivo}
           documents={documents}
-          onPreview={handleDocumentPreview}
+          onUpload={handleDocumentUpload}
           onDelete={async (docId) => { await deleteDocument(docId) }}
-          onNext={() => setCurrentStepIndex(4)}
+          onNext={handleDocumentsContinue}
           onBack={handleBack}
         />
       )}
 
       {(currentStep.id === 'form_review_1' || currentStep.id === 'form_review_2') && (
-        <FormReviewStepImproved
+        <FormReviewStepEditable
           locale={locale}
           step={currentStep.id}
           formData={formData}
+          editedData={editedFormData}
           isLoading={isLoadingFormData}
-          onNext={() => setCurrentStepIndex(prev => prev + 1)}
+          isSaving={isSavingFormData}
+          onFieldEdit={handleFormFieldEdit}
+          onSave={() => handleSaveFormReview(currentStep.id)}
+          onNext={async () => {
+            const success = await handleSaveFormReview(currentStep.id)
+            if (success) setCurrentStepIndex(prev => prev + 1)
+          }}
           onBack={handleBack}
         />
       )}
@@ -652,19 +680,6 @@ export default function PassportWizardPage() {
         />
       )}
 
-      {/* Document Preview Dialog (Two-Step Flow) */}
-      <DocumentPreviewDialog
-        open={showPreviewDialog}
-        onOpenChange={setShowPreviewDialog}
-        preview={currentPreview}
-        locale={locale}
-        isValidating={isValidatingDoc}
-        onConfirm={handleDocumentValidate}
-        onCancel={handlePreviewCancel}
-        onEditField={(field, value) => {
-          setPreviewEditedData(prev => ({ ...prev, [field]: value }))
-        }}
-      />
     </div>
   )
 }
@@ -990,7 +1005,7 @@ interface DocumentsStepImprovedProps {
   solicitudType: SolicitudType | null
   motivo: RenovacionMotivo | null
   documents: ServiceRequestDocument[]
-  onPreview: (documentCode: string, file: File) => Promise<void>
+  onUpload: (documentCode: string, file: File) => Promise<void>
   onDelete: (documentId: string) => Promise<void>
   onNext: () => void
   onBack: () => void
@@ -1002,7 +1017,7 @@ function DocumentsStepImproved({
   solicitudType,
   motivo,
   documents,
-  onPreview,
+  onUpload,
   onDelete,
   onNext,
   onBack,
@@ -1139,7 +1154,7 @@ function DocumentsStepImproved({
               requirement={req}
               uploadedDocument={uploadedDoc}
               locale={locale as 'es' | 'fr' | 'en'}
-              onUpload={(file) => onPreview(req.documentCode, file)}
+              onUpload={(file) => onUpload(req.documentCode, file)}
               onDelete={uploadedDoc ? async () => { await onDelete(uploadedDoc.id) } : undefined}
               maxSizeMB={req.documentCode === 'photo_carnet' ? 2 : 5}
             />
@@ -1172,52 +1187,109 @@ function DocumentsStepImproved({
 }
 
 // =============================================================================
-// STEP 3-4: Form Review - IMPROVED with pre-filled data
+// STEP 3-4: Form Review - EDITABLE with confidence indicators
 // =============================================================================
 
-interface FormReviewStepImprovedProps {
+interface FormReviewStepEditableProps {
   locale: string
   step: string
   formData: FormDataResponse | null
+  editedData: Record<string, unknown>
   isLoading: boolean
-  onNext: () => void
+  isSaving: boolean
+  onFieldEdit: (field: string, value: unknown) => void
+  onSave: () => Promise<boolean>
+  onNext: () => Promise<void>
   onBack: () => void
 }
 
-function FormReviewStepImproved({ locale, step, formData, isLoading, onNext, onBack }: FormReviewStepImprovedProps) {
+function FormReviewStepEditable({
+  locale,
+  step,
+  formData,
+  editedData,
+  isLoading,
+  isSaving,
+  onFieldEdit,
+  onNext,
+  onBack,
+}: FormReviewStepEditableProps) {
   const isStep1 = step === 'form_review_1'
 
-  // Fields for each step
-  const step1Fields = ['numero_dip', 'apellidos', 'nombres', 'sexo', 'fecha_nacimiento', 'lugar_nacimiento', 'natural_de', 'nacionalidad', 'estado_civil', 'profesion', 'grupo_sanguineo', 'domicilio', 'ciudad', 'distrito_provincia']
-  const step2Fields = ['nombre_padre', 'profesion_padre', 'nombre_madre', 'profesion_madre', 'numero_pasaporte_antiguo', 'fecha_expedicion_antiguo', 'fecha_expiracion_antiguo']
+  // Fields for each step with their types
+  const step1Fields = [
+    { key: 'numero_dip', type: 'text', required: true },
+    { key: 'apellidos', type: 'text', required: true },
+    { key: 'nombres', type: 'text', required: true },
+    { key: 'sexo', type: 'select', options: ['M', 'F'], required: true },
+    { key: 'fecha_nacimiento', type: 'date', required: true },
+    { key: 'lugar_nacimiento', type: 'text', required: true },
+    { key: 'nacionalidad', type: 'text', required: false },
+    { key: 'estado_civil', type: 'text', required: false },
+    { key: 'profesion', type: 'text', required: false },
+    { key: 'grupo_sanguineo', type: 'text', required: false },
+    { key: 'domicilio', type: 'text', required: true },
+    { key: 'ciudad', type: 'text', required: false },
+  ]
+  const step2Fields = [
+    { key: 'nombre_padre', type: 'text', required: false },
+    { key: 'profesion_padre', type: 'text', required: false },
+    { key: 'nombre_madre', type: 'text', required: false },
+    { key: 'profesion_madre', type: 'text', required: false },
+    { key: 'numero_pasaporte_antiguo', type: 'text', required: false },
+    { key: 'fecha_expedicion_antiguo', type: 'date', required: false },
+    { key: 'fecha_expiracion_antiguo', type: 'date', required: false },
+  ]
 
   const fieldsToShow = isStep1 ? step1Fields : step2Fields
 
   const getFieldLabel = (field: string): string => {
     const labels: Record<string, Record<string, string>> = {
-      numero_dip: { es: 'Numero DIP', fr: 'Numero DIP', en: 'DIP Number' },
+      numero_dip: { es: 'Número DIP', fr: 'Numéro DIP', en: 'DIP Number' },
       apellidos: { es: 'Apellidos', fr: 'Nom de famille', en: 'Last Name' },
-      nombres: { es: 'Nombres', fr: 'Prenoms', en: 'First Name' },
+      nombres: { es: 'Nombres', fr: 'Prénoms', en: 'First Name' },
       sexo: { es: 'Sexo', fr: 'Sexe', en: 'Gender' },
       fecha_nacimiento: { es: 'Fecha de Nacimiento', fr: 'Date de Naissance', en: 'Birth Date' },
       lugar_nacimiento: { es: 'Lugar de Nacimiento', fr: 'Lieu de Naissance', en: 'Birth Place' },
-      natural_de: { es: 'Natural de', fr: 'Originaire de', en: 'From' },
-      nacionalidad: { es: 'Nacionalidad', fr: 'Nationalite', en: 'Nationality' },
-      estado_civil: { es: 'Estado Civil', fr: 'Etat Civil', en: 'Marital Status' },
-      profesion: { es: 'Profesion', fr: 'Profession', en: 'Profession' },
-      grupo_sanguineo: { es: 'Grupo Sanguineo', fr: 'Groupe Sanguin', en: 'Blood Type' },
+      nacionalidad: { es: 'Nacionalidad', fr: 'Nationalité', en: 'Nationality' },
+      estado_civil: { es: 'Estado Civil', fr: 'État Civil', en: 'Marital Status' },
+      profesion: { es: 'Profesión', fr: 'Profession', en: 'Profession' },
+      grupo_sanguineo: { es: 'Grupo Sanguíneo', fr: 'Groupe Sanguin', en: 'Blood Type' },
       domicilio: { es: 'Domicilio', fr: 'Adresse', en: 'Address' },
       ciudad: { es: 'Ciudad', fr: 'Ville', en: 'City' },
-      distrito_provincia: { es: 'Distrito/Provincia', fr: 'District/Province', en: 'District/Province' },
-      nombre_padre: { es: 'Nombre del Padre', fr: 'Nom du Pere', en: 'Father Name' },
-      profesion_padre: { es: 'Profesion del Padre', fr: 'Profession du Pere', en: 'Father Profession' },
-      nombre_madre: { es: 'Nombre de la Madre', fr: 'Nom de la Mere', en: 'Mother Name' },
-      profesion_madre: { es: 'Profesion de la Madre', fr: 'Profession de la Mere', en: 'Mother Profession' },
-      numero_pasaporte_antiguo: { es: 'Numero Pasaporte Antiguo', fr: 'Numero Ancien Passeport', en: 'Old Passport Number' },
-      fecha_expedicion_antiguo: { es: 'Fecha Expedicion Antiguo', fr: 'Date Emission Ancien', en: 'Old Issue Date' },
-      fecha_expiracion_antiguo: { es: 'Fecha Expiracion Antiguo', fr: 'Date Expiration Ancien', en: 'Old Expiry Date' },
+      nombre_padre: { es: 'Nombre del Padre', fr: 'Nom du Père', en: 'Father Name' },
+      profesion_padre: { es: 'Profesión del Padre', fr: 'Profession du Père', en: 'Father Profession' },
+      nombre_madre: { es: 'Nombre de la Madre', fr: 'Nom de la Mère', en: 'Mother Name' },
+      profesion_madre: { es: 'Profesión de la Madre', fr: 'Profession de la Mère', en: 'Mother Profession' },
+      numero_pasaporte_antiguo: { es: 'Número Pasaporte Antiguo', fr: 'Numéro Ancien Passeport', en: 'Old Passport Number' },
+      fecha_expedicion_antiguo: { es: 'Fecha Expedición Antiguo', fr: 'Date Émission Ancien', en: 'Old Issue Date' },
+      fecha_expiracion_antiguo: { es: 'Fecha Expiración Antiguo', fr: 'Date Expiration Ancien', en: 'Old Expiry Date' },
     }
     return labels[field]?.[locale] || field.replace(/_/g, ' ')
+  }
+
+  // Get current value (edited or extracted)
+  const getFieldValue = (field: string): string => {
+    if (editedData[field] !== undefined) {
+      return String(editedData[field])
+    }
+    if (formData?.formData?.[field] !== undefined) {
+      return String(formData.formData[field])
+    }
+    if (formData?.extractedData?.[field] !== undefined) {
+      return String(formData.extractedData[field])
+    }
+    return ''
+  }
+
+  // Check if field was extracted (to show confidence indicator)
+  const isExtractedField = (field: string): boolean => {
+    return formData?.extractedData?.[field] !== undefined
+  }
+
+  // Check if field was modified by user
+  const isModifiedField = (field: string): boolean => {
+    return editedData[field] !== undefined
   }
 
   if (isLoading) {
@@ -1226,7 +1298,7 @@ function FormReviewStepImproved({ locale, step, formData, isLoading, onNext, onB
         <CardContent className="py-12 text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
           <p className="text-muted-foreground">
-            {locale === 'es' ? 'Cargando datos extraidos...' : locale === 'fr' ? 'Chargement des donnees...' : 'Loading extracted data...'}
+            {locale === 'es' ? 'Cargando datos extraídos...' : locale === 'fr' ? 'Chargement des données...' : 'Loading extracted data...'}
           </p>
         </CardContent>
       </Card>
@@ -1238,13 +1310,15 @@ function FormReviewStepImproved({ locale, step, formData, isLoading, onNext, onB
       <CardHeader>
         <CardTitle>
           {isStep1
-            ? (locale === 'es' ? 'Verificar Datos (1/2)' : locale === 'fr' ? 'Verifier les Donnees (1/2)' : 'Verify Data (1/2)')
-            : (locale === 'es' ? 'Verificar Datos (2/2)' : locale === 'fr' ? 'Verifier les Donnees (2/2)' : 'Verify Data (2/2)')}
+            ? (locale === 'es' ? 'Verificar y Editar Datos (1/2)' : locale === 'fr' ? 'Vérifier et Éditer (1/2)' : 'Verify & Edit Data (1/2)')
+            : (locale === 'es' ? 'Verificar y Editar Datos (2/2)' : locale === 'fr' ? 'Vérifier et Éditer (2/2)' : 'Verify & Edit Data (2/2)')}
         </CardTitle>
         <CardDescription>
-          {isStep1
-            ? (locale === 'es' ? 'Datos Personales y Domicilio' : locale === 'fr' ? 'Donnees Personnelles et Domicile' : 'Personal Data and Address')
-            : (locale === 'es' ? 'Filiacion y Pasaporte Anterior' : locale === 'fr' ? 'Filiation et Ancien Passeport' : 'Filiation and Previous Passport')}
+          {locale === 'es'
+            ? 'Los datos fueron extraídos automáticamente. Verifique y corrija si es necesario.'
+            : locale === 'fr'
+              ? 'Les données ont été extraites automatiquement. Vérifiez et corrigez si nécessaire.'
+              : 'Data was extracted automatically. Verify and correct if needed.'}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -1255,41 +1329,89 @@ function FormReviewStepImproved({ locale, step, formData, isLoading, onNext, onB
               <FileCheck className="h-5 w-5 text-primary" />
               <div className="flex-1">
                 <p className="text-sm font-medium">
-                  {locale === 'es' ? 'Formulario completado' : locale === 'fr' ? 'Formulaire complete' : 'Form completed'}
+                  {locale === 'es' ? 'Datos completados' : locale === 'fr' ? 'Données complétées' : 'Data completed'}
                 </p>
                 <Progress value={formData.completionPercentage} className="h-2 mt-1" />
               </div>
               <span className="text-sm font-semibold">{formData.completionPercentage}%</span>
             </div>
 
-            {/* Form Fields */}
-            <div className="space-y-3">
-              {fieldsToShow.map(field => {
-                const value = formData.formData?.[field] || formData.extractedData?.[field]
-                const isMissing = formData.missingFields?.includes(field)
+            {/* Legend */}
+            <div className="flex gap-4 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                {locale === 'es' ? 'Extraído automáticamente' : 'Auto-extracted'}
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                {locale === 'es' ? 'Modificado por usted' : 'Modified by you'}
+              </span>
+            </div>
+
+            {/* Editable Form Fields */}
+            <div className="space-y-4">
+              {fieldsToShow.map(({ key: field, type, required }) => {
+                const value = getFieldValue(field)
+                const isExtracted = isExtractedField(field)
+                const isModified = isModifiedField(field)
+                const isMissing = required && !value
 
                 return (
-                  <div key={field} className={`flex justify-between py-2 border-b ${isMissing ? 'border-red-200 bg-red-50' : ''}`}>
-                    <span className="text-sm text-muted-foreground">{getFieldLabel(field)}</span>
-                    <span className={`text-sm font-medium ${isMissing ? 'text-red-600' : ''}`}>
-                      {value ? String(value) : (isMissing ? (locale === 'es' ? 'Requerido' : 'Required') : '-')}
-                    </span>
+                  <div key={field} className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor={field} className="text-sm font-medium">
+                        {getFieldLabel(field)}
+                        {required && <span className="text-red-500 ml-1">*</span>}
+                      </Label>
+                      {isExtracted && !isModified && (
+                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                          {locale === 'es' ? 'OCR' : 'OCR'}
+                        </Badge>
+                      )}
+                      {isModified && (
+                        <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                          {locale === 'es' ? 'Editado' : 'Edited'}
+                        </Badge>
+                      )}
+                    </div>
+                    {type === 'select' ? (
+                      <RadioGroup
+                        value={value}
+                        onValueChange={(v) => onFieldEdit(field, v)}
+                        className="flex gap-4"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="M" id={`${field}-m`} />
+                          <Label htmlFor={`${field}-m`}>{locale === 'es' ? 'Masculino' : 'Male'}</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="F" id={`${field}-f`} />
+                          <Label htmlFor={`${field}-f`}>{locale === 'es' ? 'Femenino' : 'Female'}</Label>
+                        </div>
+                      </RadioGroup>
+                    ) : (
+                      <Input
+                        id={field}
+                        type={type}
+                        value={value}
+                        onChange={(e) => onFieldEdit(field, e.target.value)}
+                        className={`${isMissing ? 'border-red-300 bg-red-50' : ''} ${isExtracted && !isModified ? 'border-blue-200 bg-blue-50/30' : ''}`}
+                        placeholder={isMissing ? (locale === 'es' ? 'Campo requerido' : 'Required field') : ''}
+                      />
+                    )}
                   </div>
                 )
               })}
             </div>
 
             {/* Missing Fields Warning */}
-            {formData.missingFields && formData.missingFields.length > 0 && (
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>
-                  {locale === 'es' ? 'Campos faltantes' : locale === 'fr' ? 'Champs manquants' : 'Missing fields'}
-                </AlertTitle>
-                <AlertDescription>
+            {formData.missingFields && formData.missingFields.filter(f => fieldsToShow.some(fs => fs.key === f && fs.required)).length > 0 && (
+              <Alert className="border-yellow-200 bg-yellow-50">
+                <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                <AlertDescription className="text-yellow-700">
                   {locale === 'es'
-                    ? `Los siguientes campos no fueron extraidos: ${formData.missingFields.join(', ')}`
-                    : `Missing fields: ${formData.missingFields.join(', ')}`}
+                    ? 'Complete los campos requeridos marcados en rojo para continuar.'
+                    : 'Fill in required fields marked in red to continue.'}
                 </AlertDescription>
               </Alert>
             )}
@@ -1299,20 +1421,29 @@ function FormReviewStepImproved({ locale, step, formData, isLoading, onNext, onB
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
               {locale === 'es'
-                ? 'No se pudieron cargar los datos. Los documentos pueden no haberse procesado completamente.'
-                : 'Could not load data. Documents may not have been fully processed.'}
+                ? 'No se pudieron cargar los datos. Los documentos pueden no haberse procesado.'
+                : 'Could not load data. Documents may not have been processed.'}
             </AlertDescription>
           </Alert>
         )}
 
         <div className="flex justify-between pt-4">
-          <Button variant="outline" onClick={onBack}>
+          <Button variant="outline" onClick={onBack} disabled={isSaving}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            {locale === 'es' ? 'Anterior' : locale === 'fr' ? 'Precedent' : 'Back'}
+            {locale === 'es' ? 'Anterior' : locale === 'fr' ? 'Précédent' : 'Back'}
           </Button>
-          <Button onClick={onNext}>
-            {locale === 'es' ? 'Continuar' : locale === 'fr' ? 'Continuer' : 'Continue'}
-            <ArrowRight className="ml-2 h-4 w-4" />
+          <Button onClick={onNext} disabled={isSaving}>
+            {isSaving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {locale === 'es' ? 'Guardando...' : 'Saving...'}
+              </>
+            ) : (
+              <>
+                <CheckCircle className="mr-2 h-4 w-4" />
+                {locale === 'es' ? 'Guardar y Continuar' : locale === 'fr' ? 'Enregistrer et Continuer' : 'Save & Continue'}
+              </>
+            )}
           </Button>
         </div>
       </CardContent>
@@ -1849,150 +1980,3 @@ function ConfirmationStepImproved({ locale, requestId, tariff, summary, notifica
   )
 }
 
-// =============================================================================
-// DOCUMENT PREVIEW DIALOG (Two-Step Flow)
-// =============================================================================
-
-interface DocumentPreviewDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  preview: DocumentExtractionPreview | null
-  locale: string
-  isValidating: boolean
-  onConfirm: () => Promise<void>
-  onCancel: () => Promise<void>
-  onEditField?: (field: string, value: unknown) => void
-}
-
-function DocumentPreviewDialog({
-  open,
-  onOpenChange,
-  preview,
-  locale,
-  isValidating,
-  onConfirm,
-  onCancel,
-  onEditField: _onEditField,
-}: DocumentPreviewDialogProps) {
-  if (!preview) return null
-
-  const getConfidenceColor = (confidence: number) => {
-    if (confidence >= 0.9) return 'text-green-600 bg-green-100'
-    if (confidence >= 0.7) return 'text-yellow-600 bg-yellow-100'
-    return 'text-red-600 bg-red-100'
-  }
-
-  const getRiskColor = (level?: string) => {
-    switch (level) {
-      case 'low': return 'text-green-600 bg-green-100'
-      case 'medium': return 'text-yellow-600 bg-yellow-100'
-      case 'high': return 'text-orange-600 bg-orange-100'
-      case 'critical': return 'text-red-600 bg-red-100'
-      default: return 'text-gray-600 bg-gray-100'
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            {locale === 'es' ? 'Revisar Datos Extraidos' : locale === 'fr' ? 'Verifier les Donnees Extraites' : 'Review Extracted Data'}
-          </DialogTitle>
-          <DialogDescription>
-            {locale === 'es'
-              ? 'Verifique que los datos extraidos son correctos antes de guardar.'
-              : 'Verify extracted data is correct before saving.'}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          {/* Document Info */}
-          <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-            <div>
-              <p className="font-medium">{preview.documentName}</p>
-              <p className="text-sm text-muted-foreground">{preview.fileName}</p>
-            </div>
-            <div className="flex gap-2">
-              <Badge className={getConfidenceColor(preview.confidence)}>
-                {Math.round(preview.confidence * 100)}% {locale === 'es' ? 'Confianza' : 'Confidence'}
-              </Badge>
-              {preview.riskAnalysis && (
-                <Badge className={getRiskColor(preview.riskAnalysis.riskLevel)}>
-                  {locale === 'es' ? 'Riesgo' : 'Risk'}: {preview.riskAnalysis.riskLevel}
-                </Badge>
-              )}
-            </div>
-          </div>
-
-          {/* Risk Analysis Warning */}
-          {preview.riskAnalysis && preview.riskAnalysis.riskLevel !== 'low' && (
-            <Alert variant={preview.riskAnalysis.requiresRejection ? 'destructive' : 'default'}>
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>
-                {locale === 'es' ? 'Analisis de Riesgo' : 'Risk Analysis'}
-              </AlertTitle>
-              <AlertDescription>
-                {preview.riskAnalysis.recommendations?.join('. ')}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* Field Indicators */}
-          <div className="space-y-2">
-            <h4 className="font-medium">
-              {locale === 'es' ? 'Campos Extraidos' : 'Extracted Fields'}
-            </h4>
-            {preview.fieldIndicators.map((field) => (
-              <div key={field.fieldName} className="flex items-center justify-between p-2 border rounded">
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{field.fieldName.replace(/_/g, ' ')}</p>
-                  <p className="text-sm text-muted-foreground">{String(field.value || '-')}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge className={getConfidenceColor(field.confidence)} variant="outline">
-                    {Math.round(field.confidence * 100)}%
-                  </Badge>
-                  {field.requiresAttention && (
-                    <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Needs Correction Warning */}
-          {preview.needsCorrection && (
-            <Alert className="border-yellow-200 bg-yellow-50">
-              <AlertTriangle className="h-4 w-4 text-yellow-600" />
-              <AlertDescription className="text-yellow-700">
-                {locale === 'es'
-                  ? 'Algunos campos requieren revision manual.'
-                  : 'Some fields require manual review.'}
-              </AlertDescription>
-            </Alert>
-          )}
-        </div>
-
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onCancel} disabled={isValidating}>
-            {locale === 'es' ? 'Omitir Revision' : 'Skip Review'}
-          </Button>
-          <Button onClick={onConfirm} disabled={isValidating || preview.riskAnalysis?.requiresRejection}>
-            {isValidating ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {locale === 'es' ? 'Guardando...' : 'Saving...'}
-              </>
-            ) : (
-              <>
-                <CheckCircle className="mr-2 h-4 w-4" />
-                {locale === 'es' ? 'Confirmar y Guardar' : 'Confirm & Save'}
-              </>
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
