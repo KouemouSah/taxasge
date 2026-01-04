@@ -14,9 +14,9 @@
  * 3. form_review_1 - Datos Personales + Domicilio
  * 4. form_review_2 - Filiacion + Pasaporte Anterior
  * 5. validation - Cross-document validation results
- * 6. payment - Mobile Money payment
+ * 6. payment - Mobile Money payment (using PaymentMethod from payments module)
  * 7. appointment - Select appointment slot (after payment)
- * 8. confirmation - Final summary
+ * 8. confirmation - Final summary with PDF download
  */
 
 import { useState, useEffect, useCallback } from 'react'
@@ -26,6 +26,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
 import {
   ArrowLeft,
   ArrowRight,
@@ -35,8 +38,27 @@ import {
   AlertCircle,
   CheckCircle,
   Baby,
+  CreditCard,
+  Smartphone,
+  Banknote,
+  Download,
 } from 'lucide-react'
-import { useServiceRequests } from '@/modules/service-requests'
+import {
+  useServiceRequests,
+  DocumentUploader,
+  AppointmentSelection,
+  CitizenSummaryForm,
+} from '@/modules/service-requests'
+import type {
+  DocumentRequirement,
+  ServiceRequestDocument,
+  CitizenSummaryResponse,
+  EntityLocation,
+  AvailableSlot,
+  AppointmentHoldStatus,
+} from '@/modules/service-requests'
+import { DocumentConditionType } from '@/modules/service-requests'
+import { PaymentMethod, getPaymentMethodLabel } from '@/types/payment'
 
 // Step definitions
 const WIZARD_STEPS = [
@@ -90,12 +112,30 @@ export default function PassportWizardPage() {
   // Service requests hook
   const {
     currentRequest,
+    documents,
     isLoading,
     error,
     loadRequest,
     saveStepData,
     clearError,
+    uploadDocument,
+    deleteDocument,
+    getCitizenSummary,
+    downloadSummaryPDF,
+    initiatePayment,
+    getAppointmentLocations,
+    getAppointmentSlots,
+    holdAppointmentSlot,
+    getAppointmentHoldStatus,
+    releaseAppointmentHold,
   } = useServiceRequests()
+
+  // Additional state for payment and confirmation
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null)
+  const [phoneNumber, setPhoneNumber] = useState('')
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false)
+  const [paymentSuccess, setPaymentSuccess] = useState(false)
+  const [citizenSummary, setCitizenSummary] = useState<CitizenSummaryResponse | null>(null)
 
   // Load request on mount
   useEffect(() => {
@@ -299,18 +339,24 @@ export default function PassportWizardPage() {
       )}
 
       {currentStep.id === 'upload_documents' && (
-        <DocumentsPlaceholder
+        <DocumentsStep
           locale={locale}
           requestId={requestId}
           isMinor={wizardState.isMinor || false}
           solicitudType={wizardState.solicitudType}
           motivo={wizardState.motivo}
+          documents={documents}
+          onUpload={async (documentCode, file, face) => {
+            await uploadDocument(documentCode, file, face)
+          }}
+          onDelete={async (docId) => { await deleteDocument(docId) }}
           onNext={() => setCurrentStepIndex(4)}
+          onBack={handleBack}
         />
       )}
 
       {(currentStep.id === 'form_review_1' || currentStep.id === 'form_review_2') && (
-        <FormReviewPlaceholder
+        <FormReviewStep
           locale={locale}
           step={currentStep.id}
           onNext={() => setCurrentStepIndex(prev => prev + 1)}
@@ -319,7 +365,7 @@ export default function PassportWizardPage() {
       )}
 
       {currentStep.id === 'validation' && (
-        <ValidationPlaceholder
+        <ValidationStep
           locale={locale}
           onNext={() => setCurrentStepIndex(7)}
           onBack={handleBack}
@@ -327,28 +373,61 @@ export default function PassportWizardPage() {
       )}
 
       {currentStep.id === 'payment' && (
-        <PaymentPlaceholder
+        <PaymentStep
           locale={locale}
           tariff={getTariff()}
+          selectedMethod={selectedPaymentMethod}
+          phoneNumber={phoneNumber}
+          isProcessing={isProcessingPayment}
+          onMethodSelect={setSelectedPaymentMethod}
+          onPhoneChange={setPhoneNumber}
+          onPay={async () => {
+            if (!selectedPaymentMethod) return
+            setIsProcessingPayment(true)
+            try {
+              const result = await initiatePayment(selectedPaymentMethod, phoneNumber)
+              if (result) {
+                setPaymentSuccess(true)
+                setCurrentStepIndex(8) // Go to appointment step
+              }
+            } finally {
+              setIsProcessingPayment(false)
+            }
+          }}
           onNext={() => setCurrentStepIndex(8)}
           onBack={handleBack}
         />
       )}
 
       {currentStep.id === 'appointment' && (
-        <AppointmentPlaceholder
+        <AppointmentStep
           locale={locale}
           requestId={requestId}
-          onNext={() => setCurrentStepIndex(9)}
+          tariff={getTariff()}
+          getLocations={getAppointmentLocations}
+          getSlots={getAppointmentSlots}
+          holdSlot={holdAppointmentSlot}
+          getHoldStatus={getAppointmentHoldStatus}
+          releaseHold={releaseAppointmentHold}
+          onComplete={async (data) => {
+            // Load citizen summary for confirmation step
+            const summary = await getCitizenSummary()
+            setCitizenSummary(summary)
+            setCurrentStepIndex(9) // Go to confirmation step
+          }}
           onBack={handleBack}
         />
       )}
 
       {currentStep.id === 'confirmation' && (
-        <ConfirmationPlaceholder
+        <ConfirmationStep
           locale={locale}
           requestId={requestId}
           tariff={getTariff()}
+          summary={citizenSummary}
+          onDownloadPDF={async () => {
+            await downloadSummaryPDF(locale)
+          }}
         />
       )}
     </div>
@@ -683,25 +762,131 @@ function MotivoSelectionStep({ locale, selectedValue, onSelect, isSaving }: Moti
 }
 
 // =============================================================================
-// PLACEHOLDER COMPONENTS (To be implemented in detail)
+// STEP COMPONENTS - Integrated with actual module components
 // =============================================================================
 
-interface DocumentsPlaceholderProps {
+interface DocumentsStepProps {
   locale: string
   requestId: string
   isMinor: boolean
   solicitudType: SolicitudType | null
   motivo: RenovacionMotivo | null
+  documents: ServiceRequestDocument[]
+  onUpload: (documentCode: string, file: File, face?: string) => Promise<void>
+  onDelete: (documentId: string) => Promise<void>
   onNext: () => void
+  onBack: () => void
 }
 
-function DocumentsPlaceholder({ locale, requestId, isMinor, solicitudType, motivo, onNext }: DocumentsPlaceholderProps) {
-  const router = useRouter()
+function DocumentsStep({
+  locale,
+  isMinor,
+  solicitudType,
+  motivo,
+  documents,
+  onUpload,
+  onDelete,
+  onNext,
+  onBack,
+}: DocumentsStepProps) {
+  // Build document requirements based on selection
+  const getDocumentRequirements = (): DocumentRequirement[] => {
+    const requirements: DocumentRequirement[] = []
 
-  // Redirect to existing documents page for now
-  const handleGoToDocuments = () => {
-    router.push(`/${locale}/dashboard/service-requests/${requestId}/documents`)
+    // DIP - Always required
+    requirements.push({
+      documentCode: 'dip',
+      documentNameEs: 'Documento de Identidad Personal (DIP)',
+      schemaKey: 'DIP_GQ_V2',
+      isRequired: true,
+      displayOrder: 1,
+      conditionType: DocumentConditionType.ALWAYS,
+      instructionsEs: 'Escanee ambas caras de su DIP vigente',
+      acceptedFormats: ['pdf', 'jpg', 'jpeg', 'png'],
+    })
+
+    // Type-specific documents
+    if (solicitudType === 'EXPEDICION') {
+      requirements.push({
+        documentCode: 'certificado_nacimiento',
+        documentNameEs: 'Certificado de Nacimiento',
+        isRequired: true,
+        displayOrder: 2,
+        conditionType: DocumentConditionType.IS_NEW,
+        instructionsEs: 'Certificacion literal de inscripcion de nacimiento',
+        acceptedFormats: ['pdf', 'jpg', 'jpeg', 'png'],
+      })
+    } else if (solicitudType === 'RENOVACION' && motivo) {
+      if (motivo === 'VENCIMIENTO' || motivo === 'DETERIORO') {
+        requirements.push({
+          documentCode: 'pasaporte_antiguo',
+          documentNameEs: motivo === 'DETERIORO' ? 'Pasaporte Danado' : 'Pasaporte Antiguo',
+          isRequired: true,
+          displayOrder: 2,
+          conditionType: DocumentConditionType.CUSTOM,
+          instructionsEs: motivo === 'DETERIORO'
+            ? 'Presente el pasaporte danado para verificacion'
+            : 'Escanee la pagina de datos de su pasaporte vencido',
+          acceptedFormats: ['pdf', 'jpg', 'jpeg', 'png'],
+        })
+      } else if (motivo === 'PERDIDA' || motivo === 'ROBO') {
+        requirements.push({
+          documentCode: 'denuncia_policial',
+          documentNameEs: 'Denuncia Policial',
+          isRequired: true,
+          displayOrder: 2,
+          conditionType: DocumentConditionType.CUSTOM,
+          instructionsEs: `Denuncia de ${motivo === 'ROBO' ? 'robo' : 'perdida'} emitida por la Policia Nacional`,
+          acceptedFormats: ['pdf', 'jpg', 'jpeg', 'png'],
+        })
+      }
+    }
+
+    // Photo - Always required (images only)
+    requirements.push({
+      documentCode: 'photo_carnet',
+      documentNameEs: 'Fotografia tipo pasaporte',
+      isRequired: true,
+      displayOrder: 10,
+      conditionType: DocumentConditionType.ALWAYS,
+      instructionsEs: '1 foto de 35x45mm, fondo blanco, rostro visible',
+      acceptedFormats: ['jpg', 'jpeg', 'png'], // Only images for photos
+    })
+
+    // Minor-specific documents (using CUSTOM since IS_MINOR doesn't exist in enum)
+    if (isMinor) {
+      requirements.push({
+        documentCode: 'autorizacion_parental',
+        documentNameEs: 'Autorizacion Parental',
+        isRequired: true,
+        displayOrder: 5,
+        conditionType: DocumentConditionType.CUSTOM,
+        conditionValue: { is_minor: true },
+        instructionsEs: 'Autorizacion firmada por ambos padres o tutor legal',
+        acceptedFormats: ['pdf', 'jpg', 'jpeg', 'png'],
+      })
+      requirements.push({
+        documentCode: 'dip_padre_tutor',
+        documentNameEs: 'DIP del Padre, Madre o Tutor',
+        isRequired: true,
+        displayOrder: 6,
+        conditionType: DocumentConditionType.CUSTOM,
+        conditionValue: { is_minor: true },
+        instructionsEs: 'DIP del padre, madre o tutor legal',
+        acceptedFormats: ['pdf', 'jpg', 'jpeg', 'png'],
+      })
+    }
+
+    return requirements.sort((a, b) => a.displayOrder - b.displayOrder)
   }
+
+  const requirements = getDocumentRequirements()
+
+  // Check if all required documents are uploaded
+  const allRequiredUploaded = requirements.every(req => {
+    if (!req.isRequired) return true
+    return documents.some(doc => doc.documentCode === req.documentCode)
+  })
 
   return (
     <Card>
@@ -718,40 +903,54 @@ function DocumentsPlaceholder({ locale, requestId, isMinor, solicitudType, motiv
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Alert>
-          <FileText className="h-4 w-4" />
-          <AlertDescription>
-            {locale === 'es'
-              ? 'Utilice la pagina de documentos existente para cargar sus archivos.'
-              : locale === 'fr'
-                ? 'Utilisez la page de documents existante pour telecharger vos fichiers.'
-                : 'Use the existing documents page to upload your files.'}
-          </AlertDescription>
-        </Alert>
+        {requirements.map((req) => {
+          const uploadedDoc = documents.find(d => d.documentCode === req.documentCode)
+          return (
+            <DocumentUploader
+              key={req.documentCode}
+              requirement={req}
+              uploadedDocument={uploadedDoc}
+              locale={locale as 'es' | 'fr' | 'en'}
+              onUpload={(file, face) => onUpload(req.documentCode, file, face)}
+              onDelete={uploadedDoc ? async () => { await onDelete(uploadedDoc.id) } : undefined}
+              maxSizeMB={req.documentCode === 'photo_carnet' ? 2 : 5}
+            />
+          )
+        })}
 
-        <div className="flex gap-2">
-          <Button onClick={handleGoToDocuments}>
-            <FileText className="mr-2 h-4 w-4" />
-            {locale === 'es' ? 'Ir a Documentos' : locale === 'fr' ? 'Aller aux Documents' : 'Go to Documents'}
+        <div className="flex justify-between pt-4">
+          <Button variant="outline" onClick={onBack}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            {locale === 'es' ? 'Anterior' : locale === 'fr' ? 'Precedent' : 'Back'}
           </Button>
-          <Button variant="outline" onClick={onNext}>
+          <Button onClick={onNext} disabled={!allRequiredUploaded}>
             {locale === 'es' ? 'Continuar' : locale === 'fr' ? 'Continuer' : 'Continue'}
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
+
+        {!allRequiredUploaded && (
+          <p className="text-sm text-muted-foreground text-center">
+            {locale === 'es'
+              ? 'Suba todos los documentos requeridos para continuar'
+              : locale === 'fr'
+                ? 'Telechargez tous les documents requis pour continuer'
+                : 'Upload all required documents to continue'}
+          </p>
+        )}
       </CardContent>
     </Card>
   )
 }
 
-interface FormReviewPlaceholderProps {
+interface FormReviewStepProps {
   locale: string
   step: string
   onNext: () => void
   onBack: () => void
 }
 
-function FormReviewPlaceholder({ locale, step, onNext, onBack }: FormReviewPlaceholderProps) {
+function FormReviewStep({ locale, step, onNext, onBack }: FormReviewStepProps) {
   const isStep1 = step === 'form_review_1'
 
   return (
@@ -795,13 +994,13 @@ function FormReviewPlaceholder({ locale, step, onNext, onBack }: FormReviewPlace
   )
 }
 
-interface ValidationPlaceholderProps {
+interface ValidationStepProps {
   locale: string
   onNext: () => void
   onBack: () => void
 }
 
-function ValidationPlaceholder({ locale, onNext, onBack }: ValidationPlaceholderProps) {
+function ValidationStep({ locale, onNext, onBack }: ValidationStepProps) {
   return (
     <Card>
       <CardHeader>
@@ -843,55 +1042,149 @@ function ValidationPlaceholder({ locale, onNext, onBack }: ValidationPlaceholder
   )
 }
 
-interface PaymentPlaceholderProps {
+interface PaymentStepProps {
   locale: string
   tariff: number
+  selectedMethod: PaymentMethod | null
+  phoneNumber: string
+  isProcessing: boolean
+  onMethodSelect: (method: PaymentMethod) => void
+  onPhoneChange: (phone: string) => void
+  onPay: () => Promise<void>
   onNext: () => void
   onBack: () => void
 }
 
-function PaymentPlaceholder({ locale, tariff, onNext, onBack }: PaymentPlaceholderProps) {
+function PaymentStep({
+  locale,
+  tariff,
+  selectedMethod,
+  phoneNumber,
+  isProcessing,
+  onMethodSelect,
+  onPhoneChange,
+  onPay,
+  onBack,
+}: PaymentStepProps) {
+  // Available payment methods from PaymentMethod enum (aligned with backend)
+  const availableMethods = [
+    {
+      method: PaymentMethod.MOBILE_MONEY,
+      icon: Smartphone,
+      requiresPhone: true,
+    },
+    {
+      method: PaymentMethod.CASH,
+      icon: Banknote,
+      requiresPhone: false,
+    },
+  ]
+
+  const texts = {
+    es: {
+      title: 'Pago de Tasas',
+      subtitle: 'Seleccione un metodo de pago',
+      amount: 'Monto a pagar',
+      selectMethod: 'Metodo de pago',
+      phoneLabel: 'Numero de telefono',
+      phonePlaceholder: '+240 XXX XXX XXX',
+      payButton: 'Pagar ahora',
+      processing: 'Procesando...',
+      back: 'Anterior',
+    },
+    fr: {
+      title: 'Paiement des Frais',
+      subtitle: 'Selectionnez un mode de paiement',
+      amount: 'Montant a payer',
+      selectMethod: 'Mode de paiement',
+      phoneLabel: 'Numero de telephone',
+      phonePlaceholder: '+240 XXX XXX XXX',
+      payButton: 'Payer maintenant',
+      processing: 'Traitement...',
+      back: 'Precedent',
+    },
+    en: {
+      title: 'Fee Payment',
+      subtitle: 'Select a payment method',
+      amount: 'Amount to pay',
+      selectMethod: 'Payment method',
+      phoneLabel: 'Phone number',
+      phonePlaceholder: '+240 XXX XXX XXX',
+      payButton: 'Pay now',
+      processing: 'Processing...',
+      back: 'Back',
+    },
+  }
+
+  const t = texts[locale as keyof typeof texts] || texts.es
+
+  const canPay = selectedMethod !== null &&
+    (!availableMethods.find(m => m.method === selectedMethod)?.requiresPhone || phoneNumber.length >= 9)
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>
-          {locale === 'es' ? 'Pago de Tasas' : locale === 'fr' ? 'Paiement des Frais' : 'Fee Payment'}
-        </CardTitle>
-        <CardDescription>
-          {locale === 'es'
-            ? 'Realice el pago mediante Mobile Money'
-            : locale === 'fr'
-              ? 'Effectuez le paiement via Mobile Money'
-              : 'Make payment via Mobile Money'}
-        </CardDescription>
+        <CardTitle>{t.title}</CardTitle>
+        <CardDescription>{t.subtitle}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-6">
+        {/* Amount Display */}
         <div className="p-4 bg-muted rounded-lg text-center">
-          <p className="text-sm text-muted-foreground">
-            {locale === 'es' ? 'Monto a pagar' : locale === 'fr' ? 'Montant a payer' : 'Amount to pay'}
-          </p>
+          <p className="text-sm text-muted-foreground">{t.amount}</p>
           <p className="text-3xl font-bold text-primary">{tariff.toLocaleString()} XAF</p>
         </div>
 
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            {locale === 'es'
-              ? 'La integracion de pago Mobile Money se mostrara aqui.'
-              : locale === 'fr'
-                ? "L'integration du paiement Mobile Money sera affichee ici."
-                : 'Mobile Money payment integration will be shown here.'}
-          </AlertDescription>
-        </Alert>
+        {/* Payment Method Selection */}
+        <div className="space-y-3">
+          <Label>{t.selectMethod}</Label>
+          <RadioGroup
+            value={selectedMethod || ''}
+            onValueChange={(value) => onMethodSelect(value as PaymentMethod)}
+          >
+            {availableMethods.map(({ method, icon: Icon }) => (
+              <div key={method} className="flex items-center space-x-3">
+                <RadioGroupItem value={method} id={method} />
+                <Label htmlFor={method} className="flex items-center gap-2 cursor-pointer">
+                  <Icon className="h-5 w-5" />
+                  {getPaymentMethodLabel(method)}
+                </Label>
+              </div>
+            ))}
+          </RadioGroup>
+        </div>
 
-        <div className="flex justify-between">
-          <Button variant="outline" onClick={onBack}>
+        {/* Phone Number (for Mobile Money) */}
+        {selectedMethod === PaymentMethod.MOBILE_MONEY && (
+          <div className="space-y-2">
+            <Label htmlFor="phone">{t.phoneLabel}</Label>
+            <Input
+              id="phone"
+              type="tel"
+              value={phoneNumber}
+              onChange={(e) => onPhoneChange(e.target.value)}
+              placeholder={t.phonePlaceholder}
+            />
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex justify-between pt-4">
+          <Button variant="outline" onClick={onBack} disabled={isProcessing}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            {locale === 'es' ? 'Anterior' : locale === 'fr' ? 'Precedent' : 'Back'}
+            {t.back}
           </Button>
-          <Button onClick={onNext}>
-            {locale === 'es' ? 'Simular Pago y Continuar' : locale === 'fr' ? 'Simuler Paiement et Continuer' : 'Simulate Payment & Continue'}
-            <ArrowRight className="ml-2 h-4 w-4" />
+          <Button onClick={onPay} disabled={!canPay || isProcessing}>
+            {isProcessing ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {t.processing}
+              </>
+            ) : (
+              <>
+                <CreditCard className="mr-2 h-4 w-4" />
+                {t.payButton}
+              </>
+            )}
           </Button>
         </div>
       </CardContent>
@@ -899,75 +1192,132 @@ function PaymentPlaceholder({ locale, tariff, onNext, onBack }: PaymentPlacehold
   )
 }
 
-interface AppointmentPlaceholderProps {
-  locale: string
-  requestId: string
-  onNext: () => void
-  onBack: () => void
-}
-
-function AppointmentPlaceholder({ locale, requestId: _requestId, onNext, onBack }: AppointmentPlaceholderProps) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {locale === 'es' ? 'Programar Cita' : locale === 'fr' ? 'Programmer un Rendez-vous' : 'Schedule Appointment'}
-        </CardTitle>
-        <CardDescription>
-          {locale === 'es'
-            ? 'Seleccione una cita en la oficina CNEDOGE'
-            : locale === 'fr'
-              ? 'Selectionnez un rendez-vous au bureau CNEDOGE'
-              : 'Select an appointment at the CNEDOGE office'}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <Alert>
-          <CheckCircle className="h-4 w-4 text-green-500" />
-          <AlertDescription className="text-green-600">
-            {locale === 'es'
-              ? 'Pago confirmado. Ahora puede seleccionar su cita.'
-              : locale === 'fr'
-                ? 'Paiement confirme. Vous pouvez maintenant selectionner votre rendez-vous.'
-                : 'Payment confirmed. You can now select your appointment.'}
-          </AlertDescription>
-        </Alert>
-
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            {locale === 'es'
-              ? 'El componente AppointmentSelection con hold de 15min se integrara aqui.'
-              : locale === 'fr'
-                ? "Le composant AppointmentSelection avec hold de 15min sera integre ici."
-                : 'The AppointmentSelection component with 15min hold will be integrated here.'}
-          </AlertDescription>
-        </Alert>
-
-        <div className="flex justify-between">
-          <Button variant="outline" onClick={onBack}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            {locale === 'es' ? 'Anterior' : locale === 'fr' ? 'Precedent' : 'Back'}
-          </Button>
-          <Button onClick={onNext}>
-            {locale === 'es' ? 'Confirmar Cita' : locale === 'fr' ? 'Confirmer le Rendez-vous' : 'Confirm Appointment'}
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-interface ConfirmationPlaceholderProps {
+interface AppointmentStepProps {
   locale: string
   requestId: string
   tariff: number
+  getLocations: (requestId: string) => Promise<{ entityCode: string; locations: EntityLocation[]; count: number }>
+  getSlots: (requestId: string, locationName: string, fromDate?: string, limit?: number) => Promise<{ entityCode: string; locationName: string; fromDate: string; slots: AvailableSlot[]; count: number; hasAvailability: boolean }>
+  holdSlot: (requestId: string, data: { locationName: string; locationAddress?: string; appointmentDate: string; appointmentTime: string }) => Promise<{ success: boolean; holdId?: string; expiresInSeconds: number; expiresAt?: string; error?: string }>
+  getHoldStatus: (requestId: string) => Promise<AppointmentHoldStatus>
+  releaseHold: (requestId: string) => Promise<{ success: boolean; message: string }>
+  onComplete: (data: { hasAppointment: boolean; locationName?: string; appointmentDate?: string; appointmentTime?: string; isFallback: boolean }) => void
+  onBack: () => void
 }
 
-function ConfirmationPlaceholder({ locale, requestId, tariff }: ConfirmationPlaceholderProps) {
-  const router = useRouter()
+function AppointmentStep({
+  locale,
+  requestId,
+  tariff,
+  getLocations,
+  getSlots,
+  holdSlot,
+  getHoldStatus,
+  releaseHold,
+  onComplete,
+  onBack,
+}: AppointmentStepProps) {
+  return (
+    <div className="space-y-4">
+      {/* Payment Confirmation Banner */}
+      <Alert className="border-green-200 bg-green-50">
+        <CheckCircle className="h-4 w-4 text-green-600" />
+        <AlertDescription className="text-green-700">
+          {locale === 'es'
+            ? `Pago de ${tariff.toLocaleString()} XAF confirmado. Seleccione su cita.`
+            : locale === 'fr'
+              ? `Paiement de ${tariff.toLocaleString()} XAF confirme. Selectionnez votre rendez-vous.`
+              : `Payment of ${tariff.toLocaleString()} XAF confirmed. Select your appointment.`}
+        </AlertDescription>
+      </Alert>
 
+      {/* AppointmentSelection Component */}
+      <AppointmentSelection
+        requestId={requestId}
+        locale={locale as 'es' | 'fr' | 'en'}
+        onComplete={onComplete}
+        onBack={onBack}
+        getLocations={getLocations}
+        getSlots={getSlots}
+        holdSlot={holdSlot}
+        getHoldStatus={getHoldStatus}
+        releaseHold={releaseHold}
+        submitWithoutAppointment={async (reqId, preferredLocation) => ({
+          success: true,
+          locationName: preferredLocation,
+          message: 'Submitted without appointment',
+        })}
+      />
+    </div>
+  )
+}
+
+interface ConfirmationStepProps {
+  locale: string
+  requestId: string
+  tariff: number
+  summary: CitizenSummaryResponse | null
+  onDownloadPDF: () => Promise<void>
+}
+
+function ConfirmationStep({ locale, requestId, tariff, summary, onDownloadPDF }: ConfirmationStepProps) {
+  const router = useRouter()
+  const [isDownloading, setIsDownloading] = useState(false)
+
+  const handleDownload = async () => {
+    setIsDownloading(true)
+    try {
+      await onDownloadPDF()
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
+  // If we have a summary, use CitizenSummaryForm for display
+  if (summary) {
+    return (
+      <div className="space-y-4">
+        {/* Success Banner */}
+        <Alert className="border-green-200 bg-green-50">
+          <CheckCircle className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-700 font-semibold">
+            {locale === 'es'
+              ? 'Solicitud completada exitosamente'
+              : locale === 'fr'
+                ? 'Demande completee avec succes'
+                : 'Request completed successfully'}
+          </AlertDescription>
+        </Alert>
+
+        {/* Summary Display using CitizenSummaryForm */}
+        <CitizenSummaryForm
+          summary={summary}
+          locale={locale as 'es' | 'fr' | 'en'}
+          isSubmitting={false}
+          onSubmit={async () => {}}
+          onBack={() => {}}
+          onEditDocuments={() => {}}
+          onEditPersonalData={() => {}}
+          onDownloadPDF={handleDownload}
+        />
+
+        {/* Navigation */}
+        <div className="flex justify-center gap-2 pt-4">
+          <Button
+            variant="outline"
+            onClick={() => router.push(`/${locale}/dashboard/service-requests/${requestId}`)}
+          >
+            {locale === 'es' ? 'Ver Detalles' : locale === 'fr' ? 'Voir les Details' : 'View Details'}
+          </Button>
+          <Button onClick={() => router.push(`/${locale}/dashboard/service-requests`)}>
+            {locale === 'es' ? 'Volver a Solicitudes' : locale === 'fr' ? 'Retour aux Demandes' : 'Back to Requests'}
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // Fallback simple display
   return (
     <Card>
       <CardHeader className="text-center">
@@ -1006,6 +1356,14 @@ function ConfirmationPlaceholder({ locale, requestId, tariff }: ConfirmationPlac
         </div>
 
         <div className="flex justify-center gap-2">
+          <Button variant="outline" onClick={handleDownload} disabled={isDownloading}>
+            {isDownloading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="mr-2 h-4 w-4" />
+            )}
+            {locale === 'es' ? 'Descargar PDF' : locale === 'fr' ? 'Telecharger PDF' : 'Download PDF'}
+          </Button>
           <Button
             variant="outline"
             onClick={() => router.push(`/${locale}/dashboard/service-requests/${requestId}`)}

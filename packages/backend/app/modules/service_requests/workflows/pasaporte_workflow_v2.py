@@ -52,6 +52,9 @@ from ..models.enums import (
     DocumentConditionType
 )
 
+# Import PaymentMethod from payments module
+from ...payments.models.payment import PaymentMethod
+
 
 class PasaporteWorkflow(PredefinedWorkflow):
     """
@@ -364,14 +367,20 @@ class PasaporteWorkflow(PredefinedWorkflow):
         ))
 
         # === Step 6: Payment (BEFORE Appointment) ===
+        # Payment methods from payments module - only Mobile Money and Cash for passport
+        available_payment_methods = [
+            PaymentMethod.MOBILE_MONEY.value,  # Primary: Mobile Money (BANGE integration)
+            PaymentMethod.CASH.value,          # Secondary: Cash at CNEDOGE office
+        ]
         self.add_step(WorkflowStep(
             step_number=6,
             step_id="payment",
             step_type=StepType.PAYMENT,
             title_es="Pago de Tasas",
-            description_es="Realice el pago mediante Mobile Money",
+            description_es="Realice el pago mediante Mobile Money o en efectivo",
             config={
-                "payment_methods": ["MTN_MOBILE_MONEY", "ORANGE_MONEY", "BANGE_WALLET"],
+                "payment_methods": available_payment_methods,
+                "primary_method": PaymentMethod.MOBILE_MONEY.value,
                 "currency": "XAF",
                 "show_breakdown": True,
                 "dynamic_tariff": True  # Tariff based on solicitud_type/motivo
@@ -549,7 +558,12 @@ class PasaporteWorkflow(PredefinedWorkflow):
             display_order=10,
             condition_type=DocumentConditionType.ALWAYS,
             instructions_es="1 foto de 35x45mm, fondo blanco, rostro visible",
-            config={"quantity": 1}
+            accepted_formats=["jpg", "jpeg", "png"],  # Only image formats for photos
+            config={
+                "quantity": 1,
+                "max_size_mb": 2,  # Photos should be small
+                "min_dimensions": {"width": 350, "height": 450}  # 35x45mm at ~254dpi
+            }
         ))
 
         # === Minor-specific requirements ===
