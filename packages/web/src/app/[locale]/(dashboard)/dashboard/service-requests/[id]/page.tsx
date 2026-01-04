@@ -1,8 +1,11 @@
 'use client'
 
 /**
- * Service Request Detail Page - User View
- * Shows request details, documents, status timeline, and next actions
+ * Service Request Detail Page - User View (Read-Only Consultation)
+ *
+ * BEHAVIOR:
+ * - DRAFT status with wizard → Auto-redirect to wizard
+ * - Other statuses → Show read-only consultation page organized by wizard steps
  */
 
 import { useEffect, useState, useCallback, useRef } from 'react'
@@ -54,6 +57,14 @@ import {
   getVisiblePassportSteps,
   getPassportStepIndex,
 } from '@/modules/service-requests'
+
+// Workflow prefixes that have dedicated wizards
+const WORKFLOW_PREFIXES_WITH_WIZARD = ['PASAPORTE']
+
+// Check if a workflow code has a dedicated wizard
+function hasWorkflowWizard(workflowCode: string): boolean {
+  return WORKFLOW_PREFIXES_WITH_WIZARD.some(prefix => workflowCode.startsWith(prefix))
+}
 
 // Status configuration for visual styling (messages use translation keys)
 const STATUS_CONFIG: Record<string, { color: string; icon: React.ElementType; messageKey: string }> = {
@@ -220,6 +231,15 @@ export default function ServiceRequestDetailPage() {
     }
   }, [currentRequest, tariff, calculateTariff])
 
+  // Auto-redirect DRAFT status to wizard for workflows with dedicated wizard
+  useEffect(() => {
+    if (currentRequest && currentRequest.status === 'DRAFT') {
+      if (hasWorkflowWizard(currentRequest.workflowCode)) {
+        router.replace(`/${locale}/dashboard/service-requests/${requestId}/wizard`)
+      }
+    }
+  }, [currentRequest, locale, requestId, router])
+
   // Get status config
   const getStatusConfig = (status: string) => {
     return STATUS_CONFIG[status] || STATUS_CONFIG.DRAFT
@@ -371,8 +391,8 @@ export default function ServiceRequestDetailPage() {
 
       {/* Horizontal Progress Bar - Adapts to workflow type */}
       <Card className="p-4">
-        {currentRequest.workflowCode === 'PASAPORTE' ? (
-          // PASAPORTE workflow uses its specific steps from shared constants
+        {hasWorkflowWizard(currentRequest.workflowCode) ? (
+          // Workflows with wizard use their specific steps from shared constants
           <PassportProgressStepper
             status={currentRequest.status}
             formData={currentRequest.formData as Record<string, unknown> | undefined}
@@ -433,20 +453,20 @@ export default function ServiceRequestDetailPage() {
         )}
       </Card>
 
-      {/* Continue Wizard Button for workflows with dedicated wizard (e.g., PASAPORTE) */}
-      {currentRequest.workflowCode === 'PASAPORTE' && ['DRAFT', 'DOCUMENTS_REQUIRED'].includes(currentRequest.status) && (
+      {/* Continue Wizard Button for workflows with dedicated wizard (non-DRAFT only, DRAFT auto-redirects) */}
+      {hasWorkflowWizard(currentRequest.workflowCode) && currentRequest.status === 'DOCUMENTS_REQUIRED' && (
         <Alert className="border-primary/50 bg-primary/5">
           <FileText className="h-4 w-4 text-primary" />
           <AlertTitle className="text-primary">
-            {locale === 'es' ? 'Continuar Solicitud' : locale === 'fr' ? 'Continuer la Demande' : 'Continue Request'}
+            {locale === 'es' ? 'Documentos Requeridos' : locale === 'fr' ? 'Documents Requis' : 'Documents Required'}
           </AlertTitle>
           <AlertDescription className="flex items-center justify-between">
             <span>
               {locale === 'es'
-                ? 'Complete los pasos restantes de su solicitud de pasaporte.'
+                ? 'Se requieren documentos adicionales para continuar.'
                 : locale === 'fr'
-                  ? 'Complétez les étapes restantes de votre demande de passeport.'
-                  : 'Complete the remaining steps of your passport request.'}
+                  ? 'Des documents supplémentaires sont requis pour continuer.'
+                  : 'Additional documents are required to continue.'}
             </span>
             <Button size="sm" asChild>
               <Link href={`/${locale}/dashboard/service-requests/${requestId}/wizard`}>
@@ -471,7 +491,7 @@ export default function ServiceRequestDetailPage() {
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-4">
           <div className="grid gap-4">
-            {/* Request Info */}
+            {/* Request Info Card */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -480,7 +500,7 @@ export default function ServiceRequestDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">{t('request_number') || 'Referencia'}</p>
                     <p className="font-mono font-medium">
@@ -500,34 +520,36 @@ export default function ServiceRequestDetailPage() {
                     <p className="font-medium">{formatDate(currentRequest.updatedAt)}</p>
                   </div>
                 </div>
-
-                <Separator />
-
-                <div>
-                  <p className="text-sm text-muted-foreground mb-2">{t('workflow') || 'Trámite'}</p>
-                  <p className="font-medium">{getWorkflowName(currentRequest.workflowCode)}</p>
-                </div>
-
-                {currentRequest.formData && Object.keys(currentRequest.formData).length > 0 && (
-                  <>
-                    <Separator />
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-2">{t('form_data') || 'Datos del Formulario'}</p>
-                      <div className="bg-muted p-3 rounded-md text-sm space-y-1">
-                        {Object.entries(currentRequest.formData).slice(0, 5).map(([key, value]) => (
-                          <div key={key} className="flex justify-between">
-                            <span className="text-muted-foreground">{key}:</span>
-                            <span className="font-medium">{String(value)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
               </CardContent>
             </Card>
 
-
+            {/* Wizard Data Display - Organized by steps */}
+            {hasWorkflowWizard(currentRequest.workflowCode) && currentRequest.formData ? (
+              <PassportDataSummary
+                formData={currentRequest.formData as Record<string, unknown>}
+                locale={locale}
+                tariff={tariff}
+              />
+            ) : (
+              /* Generic form data display for non-wizard workflows */
+              currentRequest.formData && Object.keys(currentRequest.formData).length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>{t('form_data') || 'Datos del Formulario'}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                      {Object.entries(currentRequest.formData).map(([key, value]) => (
+                        <div key={key} className="p-3 bg-muted rounded-lg">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide">{key.replace(/_/g, ' ')}</p>
+                          <p className="font-medium mt-1">{String(value) || '-'}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            )}
           </div>
         </TabsContent>
 
@@ -882,6 +904,204 @@ function PassportProgressStepper({ status, formData, locale }: PassportProgressS
           {locale === 'es' ? 'completado' : locale === 'fr' ? 'complété' : 'completed'}
         </span>
       </div>
+    </div>
+  )
+}
+
+// =============================================================================
+// PASSPORT DATA SUMMARY - Displays form data organized by wizard steps
+// =============================================================================
+
+interface PassportDataSummaryProps {
+  formData: Record<string, unknown>
+  locale: string
+  tariff?: {
+    baseAmount?: number
+    totalAmount?: number
+    additionalFees?: Array<{ code: string; nameEs?: string; amount: number }>
+  } | null
+}
+
+function PassportDataSummary({ formData, locale, tariff }: PassportDataSummaryProps) {
+  // Labels for each section
+  const labels = {
+    applicant: {
+      es: 'Solicitante',
+      fr: 'Demandeur',
+      en: 'Applicant',
+    },
+    requestType: {
+      es: 'Tipo de Solicitud',
+      fr: 'Type de Demande',
+      en: 'Request Type',
+    },
+    reason: {
+      es: 'Motivo',
+      fr: 'Motif',
+      en: 'Reason',
+    },
+    personalData: {
+      es: 'Datos Personales',
+      fr: 'Données Personnelles',
+      en: 'Personal Data',
+    },
+    contact: {
+      es: 'Contacto',
+      fr: 'Contact',
+      en: 'Contact',
+    },
+    tariff: {
+      es: 'Tarifa',
+      fr: 'Tarif',
+      en: 'Tariff',
+    },
+  }
+
+  const getLabel = (key: keyof typeof labels) => {
+    return labels[key][locale as 'es' | 'fr' | 'en'] || labels[key].es
+  }
+
+  // Format field labels
+  const formatFieldLabel = (key: string): string => {
+    const fieldLabels: Record<string, Record<string, string>> = {
+      is_minor: { es: '¿Es menor de edad?', fr: 'Est mineur?', en: 'Is minor?' },
+      solicitud_type: { es: 'Tipo de solicitud', fr: 'Type de demande', en: 'Request type' },
+      renovacion_motivo: { es: 'Motivo de renovación', fr: 'Motif de renouvellement', en: 'Renewal reason' },
+      apellidos: { es: 'Apellidos', fr: 'Nom de famille', en: 'Last name' },
+      nombres: { es: 'Nombres', fr: 'Prénoms', en: 'First name' },
+      fecha_nacimiento: { es: 'Fecha de nacimiento', fr: 'Date de naissance', en: 'Date of birth' },
+      lugar_nacimiento: { es: 'Lugar de nacimiento', fr: 'Lieu de naissance', en: 'Place of birth' },
+      sexo: { es: 'Sexo', fr: 'Sexe', en: 'Gender' },
+      estado_civil: { es: 'Estado civil', fr: 'État civil', en: 'Marital status' },
+      profesion: { es: 'Profesión', fr: 'Profession', en: 'Profession' },
+      telefono: { es: 'Teléfono', fr: 'Téléphone', en: 'Phone' },
+      email: { es: 'Correo electrónico', fr: 'Email', en: 'Email' },
+      direccion: { es: 'Dirección', fr: 'Adresse', en: 'Address' },
+      numero_dip: { es: 'Número DIP', fr: 'Numéro DIP', en: 'DIP Number' },
+      numero_pasaporte_anterior: { es: 'Pasaporte anterior', fr: 'Passeport précédent', en: 'Previous passport' },
+    }
+    return fieldLabels[key]?.[locale] || key.replace(/_/g, ' ')
+  }
+
+  // Format values
+  const formatValue = (key: string, value: unknown): string => {
+    if (value === null || value === undefined || value === '') return '-'
+    if (typeof value === 'boolean') {
+      return value
+        ? (locale === 'es' ? 'Sí' : locale === 'fr' ? 'Oui' : 'Yes')
+        : (locale === 'es' ? 'No' : locale === 'fr' ? 'Non' : 'No')
+    }
+    if (key === 'solicitud_type') {
+      const types: Record<string, Record<string, string>> = {
+        EXPEDICION: { es: 'Nueva Expedición', fr: 'Nouvelle Émission', en: 'New Issuance' },
+        RENOVACION: { es: 'Renovación', fr: 'Renouvellement', en: 'Renewal' },
+      }
+      return types[String(value)]?.[locale] || String(value)
+    }
+    if (key === 'renovacion_motivo') {
+      const motivos: Record<string, Record<string, string>> = {
+        VENCIMIENTO: { es: 'Vencimiento', fr: 'Expiration', en: 'Expiration' },
+        PERDIDA: { es: 'Pérdida', fr: 'Perte', en: 'Loss' },
+        ROBO: { es: 'Robo', fr: 'Vol', en: 'Theft' },
+        DETERIORO: { es: 'Deterioro', fr: 'Détérioration', en: 'Damage' },
+      }
+      return motivos[String(value)]?.[locale] || String(value)
+    }
+    if (key === 'sexo') {
+      const sexos: Record<string, Record<string, string>> = {
+        M: { es: 'Masculino', fr: 'Masculin', en: 'Male' },
+        F: { es: 'Femenino', fr: 'Féminin', en: 'Female' },
+      }
+      return sexos[String(value)]?.[locale] || String(value)
+    }
+    return String(value)
+  }
+
+  // Format amount
+  const formatAmount = (amount?: number): string => {
+    if (!amount) return '-'
+    return new Intl.NumberFormat(locale === 'es' ? 'es-GQ' : locale, {
+      style: 'currency',
+      currency: 'XAF',
+      minimumFractionDigits: 0,
+    }).format(amount)
+  }
+
+  // Group fields by section
+  const applicantFields = ['is_minor']
+  const typeFields = ['solicitud_type']
+  const motivoFields = ['renovacion_motivo']
+  const personalFields = ['apellidos', 'nombres', 'fecha_nacimiento', 'lugar_nacimiento', 'sexo', 'estado_civil', 'profesion', 'numero_dip', 'numero_pasaporte_anterior']
+  const contactFields = ['telefono', 'email', 'direccion']
+
+  const renderFieldGroup = (fields: string[], title: string) => {
+    const relevantFields = fields.filter(f => formData[f] !== undefined && formData[f] !== '')
+    if (relevantFields.length === 0) return null
+
+    return (
+      <Card key={title}>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">{title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {relevantFields.map(field => (
+              <div key={field} className="p-3 bg-muted/50 rounded-lg">
+                <p className="text-xs text-muted-foreground">{formatFieldLabel(field)}</p>
+                <p className="font-medium mt-0.5">{formatValue(field, formData[field])}</p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <div className="grid gap-4">
+      {/* Applicant & Type Section */}
+      {renderFieldGroup(applicantFields, getLabel('applicant'))}
+      {renderFieldGroup(typeFields, getLabel('requestType'))}
+      {formData.solicitud_type === 'RENOVACION' && renderFieldGroup(motivoFields, getLabel('reason'))}
+
+      {/* Personal Data Section */}
+      {renderFieldGroup(personalFields, getLabel('personalData'))}
+
+      {/* Contact Section */}
+      {renderFieldGroup(contactFields, getLabel('contact'))}
+
+      {/* Tariff Section */}
+      {tariff && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <CreditCard className="h-4 w-4" />
+              {getLabel('tariff')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between p-2 bg-muted/50 rounded">
+                <span className="text-muted-foreground">
+                  {locale === 'es' ? 'Tarifa base' : locale === 'fr' ? 'Tarif de base' : 'Base tariff'}
+                </span>
+                <span className="font-medium">{formatAmount(tariff.baseAmount)}</span>
+              </div>
+              {tariff.additionalFees?.map((fee, index) => (
+                <div key={index} className="flex justify-between p-2 bg-muted/50 rounded">
+                  <span className="text-muted-foreground">{fee.nameEs || fee.code}</span>
+                  <span className="font-medium">{formatAmount(fee.amount)}</span>
+                </div>
+              ))}
+              <Separator />
+              <div className="flex justify-between p-2 font-bold">
+                <span>Total</span>
+                <span className="text-primary">{formatAmount(tariff.totalAmount)}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

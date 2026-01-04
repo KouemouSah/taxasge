@@ -289,8 +289,11 @@ export default function NewServiceRequestPage() {
 
       if (request) {
         // Workflows with dedicated wizard go directly to wizard page
-        const workflowsWithWizard = ['PASAPORTE']
-        if (workflowsWithWizard.includes(workflowCode)) {
+        // Check prefix to match all variants (PASAPORTE_NUEVO, PASAPORTE_RENOVACION, etc.)
+        const workflowPrefixesWithWizard = ['PASAPORTE']
+        const hasWizard = workflowPrefixesWithWizard.some(prefix => workflowCode.startsWith(prefix))
+
+        if (hasWizard) {
           router.push(`/${locale}/dashboard/service-requests/${request.id}/wizard`)
         } else {
           // Other workflows go to detail page
