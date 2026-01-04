@@ -50,7 +50,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import {
   Select,
@@ -266,29 +265,20 @@ export default function ServiceRequestsPage() {
     if (selectedIds.size === 0) return
 
     setIsBulkDeleting(true)
-    let successCount = 0
-    let errorCount = 0
 
     // Delete each selected request
     const idsToDelete = Array.from(selectedIds)
     for (const id of idsToDelete) {
       try {
-        const success = await deleteRequestById(id)
-        if (success) {
-          successCount++
-        } else {
-          errorCount++
-        }
+        await deleteRequestById(id)
       } catch {
-        errorCount++
+        // Continue with other deletions even if one fails
       }
     }
 
     setIsBulkDeleting(false)
     setBulkDeleteDialogOpen(false)
     clearSelection()
-
-    // Optionally show toast with results (successCount, errorCount)
   }
 
   const handleBulkDeleteCancel = () => {
