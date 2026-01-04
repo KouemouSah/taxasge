@@ -30,7 +30,7 @@ import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
@@ -145,8 +145,7 @@ export default function PassportWizardPage() {
   const [paymentComplete, setPaymentComplete] = useState(false)
   const paymentPollRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Document upload state (direct upload, no dialog)
-  const [isUploadingDocument, setIsUploadingDocument] = useState(false)
+  // Document upload state - removed unused state, upload handled by useServiceRequestDocuments hook
 
   // Form review state - edited data during review steps
   const [editedFormData, setEditedFormData] = useState<Record<string, unknown>>({})
@@ -321,13 +320,10 @@ export default function PassportWizardPage() {
 
   // Upload document directly - no preview dialog, extraction done in background
   const handleDocumentUpload = async (documentCode: string, file: File) => {
-    setIsUploadingDocument(true)
     try {
       await uploadDocument(documentCode, file)
     } catch (err) {
       console.error('Failed to upload document:', err)
-    } finally {
-      setIsUploadingDocument(false)
     }
   }
 
