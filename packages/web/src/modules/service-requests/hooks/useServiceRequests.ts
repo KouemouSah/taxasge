@@ -92,6 +92,7 @@ export interface UseServiceRequestsReturn {
   loadAllRequests: (page?: number, pageSize?: number) => Promise<void>
   updateRequest: (data: ServiceRequestUpdate) => Promise<ServiceRequest | null>
   deleteRequest: () => Promise<boolean>
+  deleteRequestById: (requestId: string) => Promise<boolean>
 
   // Agent actions
   assignToAgent: (agentId: string) => Promise<boolean>
@@ -689,6 +690,22 @@ export function useServiceRequests(): UseServiceRequestsReturn {
     }
   }, [currentRequest, handleError])
 
+  const deleteRequestById = useCallback(async (requestId: string): Promise<boolean> => {
+    try {
+      setIsSaving(true)
+      setError(null)
+      await serviceRequestsApi.deleteRequest(requestId)
+      // Remove from list if present
+      setRequests(prev => prev.filter(r => r.id !== requestId))
+      return true
+    } catch (err) {
+      handleError(err)
+      return false
+    } finally {
+      setIsSaving(false)
+    }
+  }, [handleError])
+
   // =========================================================================
   // AGENT ACTIONS
   // =========================================================================
@@ -938,6 +955,7 @@ export function useServiceRequests(): UseServiceRequestsReturn {
     loadAllRequests,
     updateRequest,
     deleteRequest,
+    deleteRequestById,
 
     // Agent actions
     assignToAgent,

@@ -40,6 +40,7 @@ import {
   CalendarCheck,
   ArrowRight,
   RefreshCw,
+  Trash2,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import {
@@ -49,6 +50,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { useTranslations } from 'next-intl'
 import { useServiceRequests } from '@/modules/service-requests'
 import type { ServiceRequestStatus } from '@/modules/service-requests'
@@ -97,7 +108,11 @@ export default function ServiceRequestsPage() {
   const t = useTranslations('service_requests')
 
   const [filterStatus, setFilterStatus] = useState('all')
+  const [filterWorkflow, setFilterWorkflow] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [requestToDelete, setRequestToDelete] = useState<{ id: string; reference: string } | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Use the service requests hook
   const {
@@ -108,6 +123,7 @@ export default function ServiceRequestsPage() {
     loadMyRequests,
     setFilters,
     clearError,
+    deleteRequestById,
   } = useServiceRequests()
 
   // Load requests on mount
@@ -115,29 +131,73 @@ export default function ServiceRequestsPage() {
     loadMyRequests(1, 20)
   }, [loadMyRequests])
 
-  // Apply filters when status changes
+  // Apply filters when status or workflow changes
   useEffect(() => {
-    if (filterStatus === 'all') {
-      setFilters({})
-    } else {
-      setFilters({ status: filterStatus as ServiceRequestStatus })
+    const newFilters: { status?: ServiceRequestStatus; workflowCode?: string } = {}
+    if (filterStatus !== 'all') {
+      newFilters.status = filterStatus as ServiceRequestStatus
     }
-  }, [filterStatus, setFilters])
+    if (filterWorkflow !== 'all') {
+      newFilters.workflowCode = filterWorkflow
+    }
+    setFilters(newFilters)
+  }, [filterStatus, filterWorkflow, setFilters])
+
+  // Get unique workflow codes for filter dropdown
+  const workflowOptions = useMemo(() => {
+    const uniqueWorkflows = new Set(requests.map((r) => r.workflowCode))
+    return Array.from(uniqueWorkflows).sort()
+  }, [requests])
 
   // Filter by search query (client-side)
   const filteredRequests = useMemo(() => {
-    if (!searchQuery.trim()) return requests
+    let result = requests
 
-    const query = searchQuery.toLowerCase()
-    return requests.filter((req) => {
-      const reference = req.requestNumber || req.id || ''
-      const workflow = req.workflowCode || ''
-      return (
-        reference.toLowerCase().includes(query) ||
-        workflow.toLowerCase().includes(query)
-      )
-    })
-  }, [requests, searchQuery])
+    // Filter by workflow (client-side backup if server filter not applied)
+    if (filterWorkflow !== 'all') {
+      result = result.filter((req) => req.workflowCode === filterWorkflow)
+    }
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      result = result.filter((req) => {
+        const reference = req.requestNumber || req.id || ''
+        const workflow = req.workflowCode || ''
+        return (
+          reference.toLowerCase().includes(query) ||
+          workflow.toLowerCase().includes(query)
+        )
+      })
+    }
+
+    return result
+  }, [requests, searchQuery, filterWorkflow])
+
+  // Handle delete confirmation
+  const handleDeleteClick = (id: string, reference: string) => {
+    setRequestToDelete({ id, reference })
+    setDeleteDialogOpen(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!requestToDelete) return
+
+    setIsDeleting(true)
+    const success = await deleteRequestById(requestToDelete.id)
+    setIsDeleting(false)
+    setDeleteDialogOpen(false)
+    setRequestToDelete(null)
+
+    if (success) {
+      // Request was removed from list by the hook
+    }
+  }
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false)
+    setRequestToDelete(null)
+  }
 
   // Get status badge
   const getStatusBadge = (status: string) => {
@@ -312,10 +372,24 @@ export default function ServiceRequestsPage() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
+              <Select value={filterWorkflow} onValueChange={setFilterWorkflow}>
+                <SelectTrigger className="w-full sm:w-48">
+                  <FileText className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder={t('filter_workflow') || 'Tipo'} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t('allTypes') || 'Todos los tipos'}</SelectItem>
+                  {workflowOptions.map((workflow) => (
+                    <SelectItem key={workflow} value={workflow}>
+                      {getWorkflowName(workflow)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger className="w-full sm:w-48">
                   <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder={t('filter_status') || 'Filtrar'} />
+                  <SelectValue placeholder={t('filter_status') || 'Estado'} />
                 </SelectTrigger>
                 <SelectContent>
                   {STATUS_OPTIONS.map((option) => (
@@ -432,6 +506,17 @@ export default function ServiceRequestsPage() {
                                 </Link>
                               </Button>
                             )}
+                            {req.status === 'DRAFT' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                title={t('delete') || 'Eliminar'}
+                                onClick={() => handleDeleteClick(req.id, req.requestNumber || req.id?.slice(0, 8) || '')}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -490,6 +575,50 @@ export default function ServiceRequestsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {locale === 'es'
+                ? 'Eliminar Solicitud'
+                : locale === 'fr'
+                  ? 'Supprimer la Demande'
+                  : 'Delete Request'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {locale === 'es'
+                ? `¿Está seguro de que desea eliminar la solicitud ${requestToDelete?.reference}? Esta acción no se puede deshacer.`
+                : locale === 'fr'
+                  ? `Êtes-vous sûr de vouloir supprimer la demande ${requestToDelete?.reference} ? Cette action est irréversible.`
+                  : `Are you sure you want to delete request ${requestToDelete?.reference}? This action cannot be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDeleteCancel} disabled={isDeleting}>
+              {locale === 'es' ? 'Cancelar' : locale === 'fr' ? 'Annuler' : 'Cancel'}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {locale === 'es' ? 'Eliminando...' : locale === 'fr' ? 'Suppression...' : 'Deleting...'}
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {locale === 'es' ? 'Eliminar' : locale === 'fr' ? 'Supprimer' : 'Delete'}
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
