@@ -637,19 +637,60 @@ class WorkflowEngine:
         context: WorkflowContext,
         step: WorkflowStep
     ) -> Dict[str, Any]:
-        """Execute confirmation and submission step."""
-        # Verify all previous steps completed
+        """
+        Execute confirmation and submission step.
+
+        STRICT VALIDATION: All previous steps MUST be completed before submission.
+        """
+        errors = []
+
+        # 1. Check for any existing validation errors
         if context.has_errors():
+            errors.extend([
+                {"rule_id": e.rule_id, "message_es": e.message_es}
+                for e in context.get_errors()
+            ])
+
+        # 2. Verify all required documents are uploaded
+        required_docs = workflow.get_required_documents(context)
+        if required_docs:
+            required_codes = {d.document_code for d in required_docs if d.is_required}
+            provided_codes = set(context.provided_documents.keys()) if context.provided_documents else set()
+            missing_docs = required_codes - provided_codes
+            if missing_docs:
+                errors.append({
+                    "rule_id": "MISSING_DOCUMENTS",
+                    "message_es": f"Documentos requeridos no proporcionados: {', '.join(missing_docs)}"
+                })
+
+        # 3. Verify form data has been reviewed (form_data should have required fields)
+        form_mapping = workflow.get_form_mapping(context) if hasattr(workflow, 'get_form_mapping') else {}
+        if form_mapping:
+            required_fields = list(form_mapping.keys())
+            missing_fields = [f for f in required_fields if not context.form_data.get(f)]
+            if missing_fields:
+                errors.append({
+                    "rule_id": "INCOMPLETE_FORM",
+                    "message_es": f"Campos requeridos no completados: {', '.join(missing_fields[:5])}"
+                })
+
+        # 4. Verify current step is at or past confirmation step
+        confirmation_step_number = step.step_number
+        if context.current_step < confirmation_step_number - 1:
+            errors.append({
+                "rule_id": "STEPS_NOT_COMPLETED",
+                "message_es": f"Debe completar todas las etapas anteriores. Etapa actual: {context.current_step}, requerida: {confirmation_step_number - 1}"
+            })
+
+        # If any errors, reject submission
+        if errors:
             return {
                 "success": False,
-                "error": "Cannot submit with validation errors",
-                "errors": [
-                    {"rule_id": e.rule_id, "message_es": e.message_es}
-                    for e in context.get_errors()
-                ]
+                "error": "No se puede enviar la solicitud. Complete todas las etapas requeridas.",
+                "errors": errors
             }
 
-        # Update status to submitted
+        # All validations passed - update status to submitted
         context.status = ServiceRequestStatus.SUBMITTED
         context.submitted_at = datetime.utcnow()
 

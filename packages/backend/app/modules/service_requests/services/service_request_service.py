@@ -1331,7 +1331,13 @@ class ServiceRequestService:
         request_id: UUID,
         user_id: UUID
     ) -> None:
-        """Check if all required documents are provided and update status"""
+        """
+        Check if all required documents are provided and calculate tariff.
+
+        NOTE: This does NOT set status to SUBMITTED.
+        SUBMITTED can only be set through the proper workflow confirmation step
+        after ALL required steps (document upload, form review, validation) are completed.
+        """
         request = await service_request_repository.find_by_id(db, request_id)
         required = await self._get_required_documents(db, request["workflow_code"])
         provided = await document_repository.find_by_request(db, request_id)
@@ -1340,7 +1346,8 @@ class ServiceRequestService:
         provided_codes = {d["document_code"] for d in provided}
 
         if required_codes <= provided_codes:
-            # All required documents provided - calculate tariff
+            # All required documents provided - calculate tariff for display
+            # but DO NOT change status - user must complete all wizard steps
             tariff = await tariff_service.calculate(
                 db=db,
                 workflow_code=request["workflow_code"],
@@ -1356,16 +1363,9 @@ class ServiceRequestService:
                 total_amount=tariff["total_amount"]
             )
 
-            # Update status to SUBMITTED
-            await service_request_repository.update_status(
-                db=db,
-                request_id=request_id,
-                new_status=ServiceRequestStatus.SUBMITTED.value,
-                performed_by=user_id,
-                comment="All required documents provided"
-            )
-
-            logger.info(f"Request {request['reference']} completed documents, status -> SUBMITTED")
+            # Status stays DRAFT - user must complete form review, validation,
+            # and confirmation steps before request can be SUBMITTED
+            logger.info(f"Request {request['reference']} has all documents, tariff calculated. Status remains {request['status']}")
 
     async def _build_response(
         self,
