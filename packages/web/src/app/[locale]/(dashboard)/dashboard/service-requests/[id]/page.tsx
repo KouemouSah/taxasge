@@ -49,7 +49,11 @@ import {
   RefreshCw,
   ExternalLink,
 } from 'lucide-react'
-import { useServiceRequests } from '@/modules/service-requests'
+import {
+  useServiceRequests,
+  getVisiblePassportSteps,
+  getPassportStepIndex,
+} from '@/modules/service-requests'
 
 // Status configuration for visual styling (messages use translation keys)
 const STATUS_CONFIG: Record<string, { color: string; icon: React.ElementType; messageKey: string }> = {
@@ -365,59 +369,93 @@ export default function ServiceRequestDetailPage() {
         <AlertDescription>{t(statusConfig.messageKey)}</AlertDescription>
       </Alert>
 
-      {/* Horizontal Progress Bar */}
+      {/* Horizontal Progress Bar - Adapts to workflow type */}
       <Card className="p-4">
-        <div className="flex items-center justify-between">
-          {[
-            { key: 'DRAFT', label: t('progress.draft') || 'Borrador' },
-            { key: 'DOCUMENTS', label: t('progress.documents') || 'Documentos' },
-            { key: 'SUBMITTED', label: t('progress.submitted') || 'Enviado' },
-            { key: 'REVIEW', label: t('progress.review') || 'Revisión' },
-            { key: 'PAYMENT', label: t('progress.payment') || 'Pago' },
-            { key: 'COMPLETED', label: t('progress.completed') || 'Completado' },
-          ].map((step, index, arr) => {
-            const statusOrder = ['DRAFT', 'DOCUMENTS_REQUIRED', 'SUBMITTED', 'UNDER_REVIEW', 'DOSSIER_VALIDE', 'PAYMENT_PENDING', 'PAID', 'CITA_SCHEDULED', 'IN_PROGRESS', 'COMPLETED']
-            const stepToStatus: Record<string, string[]> = {
-              'DRAFT': ['DRAFT'],
-              'DOCUMENTS': ['DOCUMENTS_REQUIRED'],
-              'SUBMITTED': ['SUBMITTED'],
-              'REVIEW': ['UNDER_REVIEW', 'DOSSIER_VALIDE'],
-              'PAYMENT': ['PAYMENT_PENDING', 'PAID'],
-              'COMPLETED': ['CITA_SCHEDULED', 'IN_PROGRESS', 'COMPLETED'],
-            }
-            const currentIndex = statusOrder.indexOf(currentRequest.status)
-            const stepStatuses = stepToStatus[step.key]
-            const stepMaxIndex = Math.max(...stepStatuses.map(s => statusOrder.indexOf(s)))
-            const isActive = stepStatuses.includes(currentRequest.status)
-            const isDone = currentIndex > stepMaxIndex
-            const isCurrent = isActive && !isDone
+        {currentRequest.workflowCode === 'PASAPORTE' ? (
+          // PASAPORTE workflow uses its specific steps from shared constants
+          <PassportProgressStepper
+            status={currentRequest.status}
+            formData={currentRequest.formData as Record<string, unknown> | undefined}
+            locale={locale}
+          />
+        ) : (
+          // Generic 6-step progress for other workflows
+          <div className="flex items-center justify-between">
+            {[
+              { key: 'DRAFT', label: t('progress.draft') || 'Borrador' },
+              { key: 'DOCUMENTS', label: t('progress.documents') || 'Documentos' },
+              { key: 'SUBMITTED', label: t('progress.submitted') || 'Enviado' },
+              { key: 'REVIEW', label: t('progress.review') || 'Revisión' },
+              { key: 'PAYMENT', label: t('progress.payment') || 'Pago' },
+              { key: 'COMPLETED', label: t('progress.completed') || 'Completado' },
+            ].map((step, index, arr) => {
+              const statusOrder = ['DRAFT', 'DOCUMENTS_REQUIRED', 'SUBMITTED', 'UNDER_REVIEW', 'DOSSIER_VALIDE', 'PAYMENT_PENDING', 'PAID', 'CITA_SCHEDULED', 'IN_PROGRESS', 'COMPLETED']
+              const stepToStatus: Record<string, string[]> = {
+                'DRAFT': ['DRAFT'],
+                'DOCUMENTS': ['DOCUMENTS_REQUIRED'],
+                'SUBMITTED': ['SUBMITTED'],
+                'REVIEW': ['UNDER_REVIEW', 'DOSSIER_VALIDE'],
+                'PAYMENT': ['PAYMENT_PENDING', 'PAID'],
+                'COMPLETED': ['CITA_SCHEDULED', 'IN_PROGRESS', 'COMPLETED'],
+              }
+              const currentIndex = statusOrder.indexOf(currentRequest.status)
+              const stepStatuses = stepToStatus[step.key]
+              const stepMaxIndex = Math.max(...stepStatuses.map(s => statusOrder.indexOf(s)))
+              const isActive = stepStatuses.includes(currentRequest.status)
+              const isDone = currentIndex > stepMaxIndex
+              const isCurrent = isActive && !isDone
 
-            return (
-              <div key={step.key} className="flex items-center flex-1">
-                <div className="flex flex-col items-center">
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                      isDone
-                        ? 'bg-green-500 text-white'
-                        : isCurrent
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-muted text-muted-foreground'
-                    }`}
-                  >
-                    {isDone ? <CheckCircle className="h-4 w-4" /> : index + 1}
+              return (
+                <div key={step.key} className="flex items-center flex-1">
+                  <div className="flex flex-col items-center">
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                        isDone
+                          ? 'bg-green-500 text-white'
+                          : isCurrent
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-muted text-muted-foreground'
+                      }`}
+                    >
+                      {isDone ? <CheckCircle className="h-4 w-4" /> : index + 1}
+                    </div>
+                    <span className={`text-xs mt-1 text-center max-w-[80px] ${isDone ? 'text-green-700 font-medium' : isCurrent ? 'text-blue-700 font-medium' : 'text-muted-foreground'}`}>
+                      {step.label}
+                    </span>
                   </div>
-                  <span className={`text-xs mt-1 text-center max-w-[80px] ${isDone ? 'text-green-700 font-medium' : isCurrent ? 'text-blue-700 font-medium' : 'text-muted-foreground'}`}>
-                    {step.label}
-                  </span>
+                  {index < arr.length - 1 && (
+                    <div className={`flex-1 h-0.5 mx-2 ${isDone ? 'bg-green-500' : 'bg-muted'}`} />
+                  )}
                 </div>
-                {index < arr.length - 1 && (
-                  <div className={`flex-1 h-0.5 mx-2 ${isDone ? 'bg-green-500' : 'bg-muted'}`} />
-                )}
-              </div>
-            )
-          })}
-        </div>
+              )
+            })}
+          </div>
+        )}
       </Card>
+
+      {/* Continue Wizard Button for workflows with dedicated wizard (e.g., PASAPORTE) */}
+      {currentRequest.workflowCode === 'PASAPORTE' && ['DRAFT', 'DOCUMENTS_REQUIRED'].includes(currentRequest.status) && (
+        <Alert className="border-primary/50 bg-primary/5">
+          <FileText className="h-4 w-4 text-primary" />
+          <AlertTitle className="text-primary">
+            {locale === 'es' ? 'Continuar Solicitud' : locale === 'fr' ? 'Continuer la Demande' : 'Continue Request'}
+          </AlertTitle>
+          <AlertDescription className="flex items-center justify-between">
+            <span>
+              {locale === 'es'
+                ? 'Complete los pasos restantes de su solicitud de pasaporte.'
+                : locale === 'fr'
+                  ? 'Complétez les étapes restantes de votre demande de passeport.'
+                  : 'Complete the remaining steps of your passport request.'}
+            </span>
+            <Button size="sm" asChild>
+              <Link href={`/${locale}/dashboard/service-requests/${requestId}/wizard`}>
+                {locale === 'es' ? 'Continuar' : locale === 'fr' ? 'Continuer' : 'Continue'}
+              </Link>
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
@@ -773,6 +811,77 @@ export default function ServiceRequestDetailPage() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  )
+}
+
+// =============================================================================
+// PASSPORT PROGRESS STEPPER - Uses shared constants from types/index.ts
+// =============================================================================
+
+interface PassportProgressStepperProps {
+  status: string
+  formData?: Record<string, unknown>
+  locale: string
+}
+
+function PassportProgressStepper({ status, formData, locale }: PassportProgressStepperProps) {
+  // Use shared functions from types/index.ts
+  const solicitudType = formData?.solicitud_type as string | undefined
+  const visibleSteps = getVisiblePassportSteps(solicitudType)
+  const currentStepIndex = getPassportStepIndex(status, formData)
+
+  // Adjust index for hidden motivo step when not RENOVACION
+  const isRenovacion = solicitudType === 'RENOVACION'
+  const adjustedIndex = !isRenovacion && currentStepIndex > 2
+    ? currentStepIndex - 1
+    : currentStepIndex
+
+  const getLabel = (step: { labelEs: string; labelFr: string; labelEn: string }) => {
+    return locale === 'es' ? step.labelEs : locale === 'fr' ? step.labelFr : step.labelEn
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <div className="flex items-center justify-between min-w-[600px]">
+        {visibleSteps.map((step, index) => {
+          const isDone = index < adjustedIndex
+          const isCurrent = index === adjustedIndex
+
+          return (
+            <div key={step.id} className="flex items-center flex-1">
+              <div className="flex flex-col items-center">
+                <div
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium transition-colors ${
+                    isDone
+                      ? 'bg-green-500 text-white'
+                      : isCurrent
+                        ? 'bg-blue-500 text-white ring-2 ring-blue-200'
+                        : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {isDone ? <CheckCircle className="h-3.5 w-3.5" /> : index + 1}
+                </div>
+                <span className={`text-[10px] mt-1 text-center max-w-[60px] leading-tight ${
+                  isDone ? 'text-green-700 font-medium' : isCurrent ? 'text-blue-700 font-medium' : 'text-muted-foreground'
+                }`}>
+                  {getLabel(step)}
+                </span>
+              </div>
+              {index < visibleSteps.length - 1 && (
+                <div className={`flex-1 h-0.5 mx-1 ${isDone ? 'bg-green-500' : 'bg-muted'}`} />
+              )}
+            </div>
+          )
+        })}
+      </div>
+      {/* Progress percentage */}
+      <div className="mt-3 text-center">
+        <span className="text-xs text-muted-foreground">
+          {Math.round((adjustedIndex / visibleSteps.length) * 100)}%{' '}
+          {locale === 'es' ? 'completado' : locale === 'fr' ? 'complété' : 'completed'}
+        </span>
+      </div>
     </div>
   )
 }

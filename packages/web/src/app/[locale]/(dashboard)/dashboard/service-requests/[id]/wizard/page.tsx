@@ -78,41 +78,28 @@ import type {
   DocumentExtractionPreview,
   FormDataResponse,
   ValidationResult,
+  PassportSolicitudType,
+  PassportRenovacionMotivo,
 } from '@/modules/service-requests'
-import { DocumentConditionType } from '@/modules/service-requests'
+import {
+  DocumentConditionType,
+  PASSPORT_WIZARD_STEPS,
+  PASSPORT_TARIFFS,
+} from '@/modules/service-requests'
 import { PaymentMethod, getPaymentMethodLabel } from '@/types/payment'
 
-// Step definitions
-const WIZARD_STEPS = [
-  { id: 'is_minor', number: 0, titleKey: 'wizard.step_minor' },
-  { id: 'select_type', number: 1, titleKey: 'wizard.step_type' },
-  { id: 'select_motivo', number: 1.5, titleKey: 'wizard.step_motivo' },
-  { id: 'upload_documents', number: 2, titleKey: 'wizard.step_documents' },
-  { id: 'form_review_1', number: 3, titleKey: 'wizard.step_form_1' },
-  { id: 'form_review_2', number: 4, titleKey: 'wizard.step_form_2' },
-  { id: 'validation', number: 5, titleKey: 'wizard.step_validation' },
-  { id: 'payment', number: 6, titleKey: 'wizard.step_payment' },
-  { id: 'appointment', number: 7, titleKey: 'wizard.step_appointment' },
-  { id: 'confirmation', number: 8, titleKey: 'wizard.step_confirmation' },
-]
+// Use shared constants from types/index.ts
+const WIZARD_STEPS = PASSPORT_WIZARD_STEPS
+const TARIFFS = PASSPORT_TARIFFS
 
-// Solicitud types
-type SolicitudType = 'EXPEDICION' | 'RENOVACION'
-type RenovacionMotivo = 'VENCIMIENTO' | 'PERDIDA' | 'ROBO' | 'DETERIORO'
+// Solicitud types - Use shared types
+type SolicitudType = PassportSolicitudType
+type RenovacionMotivo = PassportRenovacionMotivo
 
 interface WizardState {
   isMinor: boolean | null
   solicitudType: SolicitudType | null
   motivo: RenovacionMotivo | null
-}
-
-// Tariffs
-const TARIFFS: Record<string, number> = {
-  EXPEDICION: 7500,
-  VENCIMIENTO: 5000,
-  PERDIDA: 10000,
-  ROBO: 10000,
-  DETERIORO: 7500,
 }
 
 export default function PassportWizardPage() {

@@ -41,8 +41,17 @@ import {
   ArrowRight,
   RefreshCw,
   Trash2,
+  MoreHorizontal,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu'
 import {
   Select,
   SelectContent,
@@ -113,6 +122,11 @@ export default function ServiceRequestsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [requestToDelete, setRequestToDelete] = useState<{ id: string; reference: string } | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false)
 
   // Use the service requests hook
   const {
@@ -197,6 +211,88 @@ export default function ServiceRequestsPage() {
   const handleDeleteCancel = () => {
     setDeleteDialogOpen(false)
     setRequestToDelete(null)
+  }
+
+  // =========================================================================
+  // BULK SELECTION HANDLERS
+  // =========================================================================
+
+  // Get selectable requests (only DRAFT status can be deleted)
+  const selectableRequests = useMemo(() => {
+    return filteredRequests.filter(req => req.status === 'DRAFT')
+  }, [filteredRequests])
+
+  // Check if all selectable items are selected
+  const isAllSelected = useMemo(() => {
+    return selectableRequests.length > 0 && selectableRequests.every(req => selectedIds.has(req.id))
+  }, [selectableRequests, selectedIds])
+
+  // Check if some items are selected
+  const isSomeSelected = useMemo(() => {
+    return selectableRequests.some(req => selectedIds.has(req.id))
+  }, [selectableRequests, selectedIds])
+
+  // Toggle single item selection
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  // Toggle select all
+  const handleSelectAll = () => {
+    if (isAllSelected) {
+      // Deselect all
+      setSelectedIds(new Set())
+    } else {
+      // Select all selectable
+      setSelectedIds(new Set(selectableRequests.map(req => req.id)))
+    }
+  }
+
+  // Clear selection
+  const clearSelection = () => {
+    setSelectedIds(new Set())
+  }
+
+  // Handle bulk delete confirmation
+  const handleBulkDeleteConfirm = async () => {
+    if (selectedIds.size === 0) return
+
+    setIsBulkDeleting(true)
+    let successCount = 0
+    let errorCount = 0
+
+    // Delete each selected request
+    const idsToDelete = Array.from(selectedIds)
+    for (const id of idsToDelete) {
+      try {
+        const success = await deleteRequestById(id)
+        if (success) {
+          successCount++
+        } else {
+          errorCount++
+        }
+      } catch {
+        errorCount++
+      }
+    }
+
+    setIsBulkDeleting(false)
+    setBulkDeleteDialogOpen(false)
+    clearSelection()
+
+    // Optionally show toast with results (successCount, errorCount)
+  }
+
+  const handleBulkDeleteCancel = () => {
+    setBulkDeleteDialogOpen(false)
   }
 
   // Get status badge
@@ -403,10 +499,59 @@ export default function ServiceRequestsPage() {
           </div>
         </CardHeader>
         <CardContent>
+          {/* Bulk Actions Bar - Shows when items are selected */}
+          {selectedIds.size > 0 && (
+            <div className="mb-4 p-3 bg-primary/5 border border-primary/20 rounded-lg flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium">
+                  {selectedIds.size} {selectedIds.size === 1
+                    ? (locale === 'es' ? 'seleccionado' : locale === 'fr' ? 'sélectionné' : 'selected')
+                    : (locale === 'es' ? 'seleccionados' : locale === 'fr' ? 'sélectionnés' : 'selected')}
+                </span>
+                <Button variant="ghost" size="sm" onClick={clearSelection}>
+                  {locale === 'es' ? 'Limpiar selección' : locale === 'fr' ? 'Effacer la sélection' : 'Clear selection'}
+                </Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <MoreHorizontal className="h-4 w-4 mr-2" />
+                      {locale === 'es' ? 'Acciones' : locale === 'fr' ? 'Actions' : 'Actions'}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={() => setBulkDeleteDialogOpen(true)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      {locale === 'es'
+                        ? `Eliminar ${selectedIds.size} solicitud(es)`
+                        : locale === 'fr'
+                          ? `Supprimer ${selectedIds.size} demande(s)`
+                          : `Delete ${selectedIds.size} request(s)`}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          )}
+
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
+                  {/* Checkbox column for bulk selection */}
+                  <TableHead className="w-[40px]">
+                    <Checkbox
+                      checked={isAllSelected}
+                      onCheckedChange={handleSelectAll}
+                      aria-label={locale === 'es' ? 'Seleccionar todo' : locale === 'fr' ? 'Tout sélectionner' : 'Select all'}
+                      disabled={selectableRequests.length === 0}
+                      className={isSomeSelected && !isAllSelected ? 'data-[state=checked]:bg-primary/50' : ''}
+                    />
+                  </TableHead>
                   <TableHead>{t('request_number') || 'Referencia'}</TableHead>
                   <TableHead>{t('workflow') || 'Tipo'}</TableHead>
                   <TableHead>{t('created') || 'Fecha'}</TableHead>
@@ -419,7 +564,7 @@ export default function ServiceRequestsPage() {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
+                    <TableCell colSpan={8} className="text-center py-8">
                       <div className="flex items-center justify-center gap-2 text-muted-foreground">
                         <Loader2 className="h-5 w-5 animate-spin" />
                         {t('loading')}
@@ -428,7 +573,7 @@ export default function ServiceRequestsPage() {
                   </TableRow>
                 ) : error ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
+                    <TableCell colSpan={8} className="text-center py-8">
                       <div className="text-destructive">
                         <AlertCircle className="h-5 w-5 mx-auto mb-2" />
                         <p>{error}</p>
@@ -450,8 +595,22 @@ export default function ServiceRequestsPage() {
                 ) : filteredRequests.length > 0 ? (
                   filteredRequests.map((req) => {
                     const progress = getProgress(req.status)
+                    const isSelectable = req.status === 'DRAFT'
+                    const isSelected = selectedIds.has(req.id)
                     return (
-                      <TableRow key={req.id}>
+                      <TableRow key={req.id} className={isSelected ? 'bg-primary/5' : ''}>
+                        {/* Checkbox cell */}
+                        <TableCell>
+                          {isSelectable ? (
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => handleToggleSelect(req.id)}
+                              aria-label={`${locale === 'es' ? 'Seleccionar' : 'Select'} ${req.requestNumber || req.id}`}
+                            />
+                          ) : (
+                            <span className="w-4 h-4 block" /> // Placeholder for alignment
+                          )}
+                        </TableCell>
                         <TableCell className="font-medium font-mono">
                           {req.requestNumber || req.id?.slice(0, 8)}
                         </TableCell>
@@ -524,7 +683,7 @@ export default function ServiceRequestsPage() {
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                       <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
                       <p className="text-lg font-medium mb-2">{t('no_requests_found') || 'No tienes solicitudes'}</p>
                       <p className="text-sm mb-4">
@@ -576,7 +735,7 @@ export default function ServiceRequestsPage() {
         </CardContent>
       </Card>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Confirmation Dialog (Single) */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -613,6 +772,54 @@ export default function ServiceRequestsPage() {
                 <>
                   <Trash2 className="mr-2 h-4 w-4" />
                   {locale === 'es' ? 'Eliminar' : locale === 'fr' ? 'Supprimer' : 'Delete'}
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {locale === 'es'
+                ? 'Eliminar Solicitudes Seleccionadas'
+                : locale === 'fr'
+                  ? 'Supprimer les Demandes Sélectionnées'
+                  : 'Delete Selected Requests'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {locale === 'es'
+                ? `¿Está seguro de que desea eliminar ${selectedIds.size} solicitud(es)? Esta acción no se puede deshacer.`
+                : locale === 'fr'
+                  ? `Êtes-vous sûr de vouloir supprimer ${selectedIds.size} demande(s) ? Cette action est irréversible.`
+                  : `Are you sure you want to delete ${selectedIds.size} request(s)? This action cannot be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleBulkDeleteCancel} disabled={isBulkDeleting}>
+              {locale === 'es' ? 'Cancelar' : locale === 'fr' ? 'Annuler' : 'Cancel'}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDeleteConfirm}
+              disabled={isBulkDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isBulkDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {locale === 'es' ? 'Eliminando...' : locale === 'fr' ? 'Suppression...' : 'Deleting...'}
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {locale === 'es'
+                    ? `Eliminar ${selectedIds.size} solicitud(es)`
+                    : locale === 'fr'
+                      ? `Supprimer ${selectedIds.size} demande(s)`
+                      : `Delete ${selectedIds.size} request(s)`}
                 </>
               )}
             </AlertDialogAction>

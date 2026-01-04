@@ -698,3 +698,109 @@ export interface ConfirmHoldResponse {
   city?: string // Malabo or Bata (from confirm_appointment_hold function)
   error?: string
 }
+
+// ============================================================================
+// PASSPORT WORKFLOW CONSTANTS
+// Shared between wizard/page.tsx and [id]/page.tsx
+// ============================================================================
+
+/**
+ * SolicitudType - Type de demande de passeport
+ */
+export type PassportSolicitudType = 'EXPEDICION' | 'RENOVACION'
+
+/**
+ * RenovacionMotivo - Motif de renouvellement
+ */
+export type PassportRenovacionMotivo = 'VENCIMIENTO' | 'PERDIDA' | 'ROBO' | 'DETERIORO'
+
+/**
+ * PassportWizardStep - Step definition for passport workflow
+ */
+export interface PassportWizardStep {
+  id: string
+  number: number
+  titleKey: string
+  labelEs: string
+  labelFr: string
+  labelEn: string
+  isConditional?: boolean // true if step depends on previous selection
+}
+
+/**
+ * PASSPORT_WIZARD_STEPS - Step definitions for PASAPORTE workflow
+ * Used in wizard/page.tsx and [id]/page.tsx for consistent step display
+ */
+export const PASSPORT_WIZARD_STEPS: PassportWizardStep[] = [
+  { id: 'is_minor', number: 0, titleKey: 'wizard.step_minor', labelEs: 'Solicitante', labelFr: 'Demandeur', labelEn: 'Applicant' },
+  { id: 'select_type', number: 1, titleKey: 'wizard.step_type', labelEs: 'Tipo', labelFr: 'Type', labelEn: 'Type' },
+  { id: 'select_motivo', number: 1.5, titleKey: 'wizard.step_motivo', labelEs: 'Motivo', labelFr: 'Motif', labelEn: 'Reason', isConditional: true },
+  { id: 'upload_documents', number: 2, titleKey: 'wizard.step_documents', labelEs: 'Documentos', labelFr: 'Documents', labelEn: 'Documents' },
+  { id: 'form_review_1', number: 3, titleKey: 'wizard.step_form_1', labelEs: 'Datos 1', labelFr: 'Données 1', labelEn: 'Data 1' },
+  { id: 'form_review_2', number: 4, titleKey: 'wizard.step_form_2', labelEs: 'Datos 2', labelFr: 'Données 2', labelEn: 'Data 2' },
+  { id: 'validation', number: 5, titleKey: 'wizard.step_validation', labelEs: 'Validación', labelFr: 'Validation', labelEn: 'Validation' },
+  { id: 'payment', number: 6, titleKey: 'wizard.step_payment', labelEs: 'Pago', labelFr: 'Paiement', labelEn: 'Payment' },
+  { id: 'appointment', number: 7, titleKey: 'wizard.step_appointment', labelEs: 'Cita', labelFr: 'RDV', labelEn: 'Appt' },
+  { id: 'confirmation', number: 8, titleKey: 'wizard.step_confirmation', labelEs: 'Confirmación', labelFr: 'Confirmation', labelEn: 'Confirmation' },
+]
+
+/**
+ * PASSPORT_TARIFFS - Tariff amounts for passport services
+ */
+export const PASSPORT_TARIFFS: Record<string, number> = {
+  EXPEDICION: 7500,
+  VENCIMIENTO: 5000,
+  PERDIDA: 10000,
+  ROBO: 10000,
+  DETERIORO: 7500,
+}
+
+/**
+ * getPassportStepIndex - Get current step index based on form data and status
+ */
+export function getPassportStepIndex(
+  status: string,
+  formData?: Record<string, unknown>
+): number {
+  // If not in draft, map status to step
+  if (status !== 'DRAFT' && status !== 'DOCUMENTS_REQUIRED') {
+    const statusToStep: Record<string, number> = {
+      'SUBMITTED': 6,
+      'UNDER_REVIEW': 6,
+      'DOSSIER_VALIDE': 6,
+      'PAYMENT_PENDING': 7,
+      'PAYMENT_PROCESSING': 7,
+      'PAID': 8,
+      'CITA_SCHEDULED': 8,
+      'IN_PROGRESS': 9,
+      'COMPLETED': 9,
+      'REJECTED': 9,
+      'CANCELLED': 9,
+    }
+    return statusToStep[status] || 0
+  }
+
+  // In DRAFT/DOCUMENTS_REQUIRED, determine step from form_data
+  if (!formData) return 0
+
+  const isMinor = formData.is_minor
+  const solicitudType = formData.solicitud_type
+  const motivo = formData.motivo
+
+  if (isMinor === undefined || isMinor === null) return 0
+  if (!solicitudType) return 1
+  if (solicitudType === 'RENOVACION' && !motivo) return 2
+  if (status === 'DOCUMENTS_REQUIRED') return 3
+  return 3 // Documents step
+}
+
+/**
+ * getVisiblePassportSteps - Get visible steps based on solicitud type
+ * Filters out the 'select_motivo' step if not RENOVACION
+ */
+export function getVisiblePassportSteps(
+  solicitudType?: string
+): PassportWizardStep[] {
+  const isRenovacion = solicitudType === 'RENOVACION'
+  return PASSPORT_WIZARD_STEPS.filter(step => !step.isConditional || isRenovacion)
+}

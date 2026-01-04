@@ -288,8 +288,14 @@ export default function NewServiceRequestPage() {
       })
 
       if (request) {
-        // Redirect to the request detail page
-        router.push(`/${locale}/dashboard/service-requests/${request.id}`)
+        // Workflows with dedicated wizard go directly to wizard page
+        const workflowsWithWizard = ['PASAPORTE']
+        if (workflowsWithWizard.includes(workflowCode)) {
+          router.push(`/${locale}/dashboard/service-requests/${request.id}/wizard`)
+        } else {
+          // Other workflows go to detail page
+          router.push(`/${locale}/dashboard/service-requests/${request.id}`)
+        }
       }
     } catch (err) {
       console.error('Failed to start workflow:', err)
