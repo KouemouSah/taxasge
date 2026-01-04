@@ -555,3 +555,77 @@ class CitizenSummaryResponse(BaseModel):
         default_factory=list,
         description="Reasons why submission is blocked"
     )
+
+
+# === Validation Models ===
+
+class ValidationResultResponse(BaseModel):
+    """
+    Result of a validation check for API response.
+    Matches frontend ValidationResult type.
+    """
+    rule_id: str = Field(..., description="Unique identifier for the validation rule")
+    is_valid: bool = Field(..., description="Whether the validation passed")
+    severity: str = Field(
+        default="error",
+        description="Severity level: error, warning, or info"
+    )
+    message_es: str = Field(
+        default="",
+        description="Message in Spanish"
+    )
+    field: Optional[str] = Field(
+        default=None,
+        description="The field being validated"
+    )
+    document_code: Optional[str] = Field(
+        default=None,
+        description="The document being validated"
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "rule_id": "dip_number_format",
+                "is_valid": False,
+                "severity": "error",
+                "message_es": "El numero de DIP no tiene el formato correcto",
+                "field": "numero_dip",
+                "document_code": "dip"
+            }
+        }
+
+
+class PaymentStatusResponse(BaseModel):
+    """
+    Payment status for a service request.
+    Used for polling after initiating payment.
+    """
+    status: str = Field(
+        ...,
+        description="Current payment status: pending, processing, completed, failed"
+    )
+    paid: bool = Field(
+        ...,
+        description="True if payment has been completed"
+    )
+    payment_id: Optional[str] = Field(
+        default=None,
+        description="The payment ID if exists"
+    )
+    amount: Optional[float] = Field(
+        default=None,
+        description="Payment amount"
+    )
+    currency: str = Field(
+        default="XAF",
+        description="Currency code"
+    )
+    payment_method: Optional[str] = Field(
+        default=None,
+        description="Payment method used"
+    )
+    completed_at: Optional[datetime] = Field(
+        default=None,
+        description="When payment was completed"
+    )

@@ -173,6 +173,16 @@ interface BackendCitizenSummaryResponse {
   blockers: string[]
 }
 
+// Backend ValidationResult (snake_case from Python)
+interface BackendValidationResult {
+  rule_id: string
+  is_valid: boolean
+  severity: string
+  message_es: string
+  field?: string
+  document_code?: string
+}
+
 // ============================================================================
 // TRANSFORMATION FUNCTIONS (snake_case -> camelCase)
 // ============================================================================
@@ -331,7 +341,10 @@ function transformCitizenSummaryResponse(backend: BackendCitizenSummaryResponse)
     documentsComplete: backend.documents_complete,
     tariffSummary: backend.tariff_summary ? {
       baseAmount: backend.tariff_summary.base_amount,
-      supplements: [], // Backend uses supplements_total, frontend expects array
+      // Convert supplements_total (number) to supplements array for frontend compatibility
+      supplements: backend.tariff_summary.supplements_total > 0
+        ? [{ name: 'Suplementos', amount: backend.tariff_summary.supplements_total }]
+        : [],
       total: backend.tariff_summary.total_amount,
       currency: backend.tariff_summary.currency,
     } : undefined,
@@ -339,6 +352,20 @@ function transformCitizenSummaryResponse(backend: BackendCitizenSummaryResponse)
     validationWarnings: backend.validation_warnings,
     canSubmit: backend.can_submit,
     blockers: backend.blockers,
+  }
+}
+
+/**
+ * Transform ValidationResult from backend snake_case to frontend camelCase
+ */
+function transformValidationResult(backend: BackendValidationResult): ValidationResult {
+  return {
+    ruleId: backend.rule_id,
+    isValid: backend.is_valid,
+    severity: backend.severity as 'error' | 'warning' | 'info',
+    messageEs: backend.message_es,
+    field: backend.field,
+    documentCode: backend.document_code,
   }
 }
 
@@ -745,9 +772,10 @@ class ServiceRequestsApiClient {
    * Run cross-document validation
    */
   async validateDocuments(requestId: string): Promise<ValidationResult[]> {
-    return this.request<ValidationResult[]>(`/${requestId}/validate-documents`, {
+    const backendResults = await this.request<BackendValidationResult[]>(`/${requestId}/validate-documents`, {
       method: 'POST',
     })
+    return backendResults.map(transformValidationResult)
   }
 
   /**

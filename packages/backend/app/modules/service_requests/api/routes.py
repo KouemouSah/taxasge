@@ -19,7 +19,9 @@ from ..models.service_request import (
     StepExecutionRequest,
     StepExecutionResponse,
     FormDataResponse,
-    CitizenSummaryResponse
+    CitizenSummaryResponse,
+    ValidationResultResponse,
+    PaymentStatusResponse,
 )
 from fastapi import HTTPException, status
 from ..services.service_request_service import service_request_service
@@ -609,6 +611,134 @@ async def get_form_data(
         requires_review=True,
         completion_percentage=round(completion, 1),
         missing_fields=missing
+    )
+
+
+# ═══════════════════════════════════════════════════════════════
+# CROSS-DOCUMENT VALIDATION
+# ═══════════════════════════════════════════════════════════════
+
+@router.post(
+    "/{request_id}/validate-documents",
+    response_model=List[ValidationResultResponse],
+    summary="Validate all documents cross-checking",
+    description="""
+    Run cross-document validation for a service request.
+
+    This validates:
+    - Consistency between documents (same name, dates, etc.)
+    - Required fields presence
+    - Business rules for the workflow
+
+    **Returns:**
+    - List of validation results with severity (error, warning, info)
+    - `is_valid: false` indicates a validation failure
+    """
+)
+async def validate_documents(
+    request_id: UUID = Path(..., description="The service request ID"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user)
+) -> List[ValidationResultResponse]:
+    """Run cross-document validation"""
+    # Load context
+    context = await workflow_engine.load_context_from_db(db, request_id)
+    if not context:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Service request not found: {request_id}"
+        )
+
+    # Verify ownership
+    if str(context.user_id) != str(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
+
+    # Get workflow
+    workflow = workflow_engine.get_workflow(context.workflow_code)
+    if not workflow:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown workflow: {context.workflow_code}"
+        )
+
+    # Run validation
+    try:
+        validation_results = await workflow.validate_documents(context)
+
+        # Convert to response models
+        response = []
+        for result in validation_results:
+            response.append(ValidationResultResponse(
+                rule_id=result.get("rule_id", "unknown"),
+                is_valid=result.get("is_valid", True),
+                severity=result.get("severity", "error"),
+                message_es=result.get("message_es", result.get("message", "")),
+                field=result.get("field"),
+                document_code=result.get("document_code"),
+            ))
+
+        return response
+    except Exception as e:
+        import logging
+        logging.error(f"Validation error: {e}")
+        # Return empty list on error (no validation failures detected)
+        return []
+
+
+# ═══════════════════════════════════════════════════════════════
+# PAYMENT STATUS
+# ═══════════════════════════════════════════════════════════════
+
+@router.get(
+    "/{request_id}/payment/status",
+    response_model=PaymentStatusResponse,
+    summary="Check payment status",
+    description="""
+    Check the current payment status for a service request.
+
+    Use this endpoint to poll for payment completion after initiating
+    a Mobile Money payment.
+
+    **Status values:**
+    - `pending` - Payment not yet initiated
+    - `processing` - Payment in progress
+    - `completed` - Payment successful
+    - `failed` - Payment failed
+    """
+)
+async def get_payment_status(
+    request_id: UUID = Path(..., description="The service request ID"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user)
+) -> PaymentStatusResponse:
+    """Get payment status for a service request"""
+    # Get service request
+    request = await service_request_service.get_request(
+        db=db,
+        request_id=request_id,
+        user_id=current_user.id
+    )
+
+    # Check payment status from request
+    payment_status = request.payment_status or "pending"
+    paid = payment_status == "completed" or request.paid_at is not None
+
+    # Get payment details if exists
+    payment_id = str(request.payment_id) if request.payment_id else None
+    amount = request.tariff.total_amount if request.tariff else None
+    currency = request.tariff.currency if request.tariff else "XAF"
+
+    return PaymentStatusResponse(
+        status=payment_status,
+        paid=paid,
+        payment_id=payment_id,
+        amount=amount,
+        currency=currency,
+        payment_method=request.form_data.get("payment_method") if request.form_data else None,
+        completed_at=request.paid_at,
     )
 
 

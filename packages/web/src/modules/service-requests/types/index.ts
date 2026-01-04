@@ -185,6 +185,7 @@ export interface ValidationResult {
   severity: 'error' | 'warning' | 'info'
   messageEs: string  // Traductions fr/en via module translations
   field?: string
+  documentCode?: string  // The document being validated (if applicable)
 }
 
 export interface TariffCalculation {
