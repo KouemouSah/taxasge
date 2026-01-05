@@ -238,6 +238,15 @@ class RiskAnalysisResult(BaseModel):
         default_factory=dict,
         description="Count of factors by severity"
     )
+    # Identity mismatch fields for cross-document validation
+    identity_mismatches: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="List of identity mismatches between documents (name, DOB, ID number conflicts)"
+    )
+    has_blocking_mismatches: bool = Field(
+        default=False,
+        description="True if critical identity mismatches were detected that should block form submission"
+    )
 
 
 class DocumentExtractionPreview(BaseModel):

@@ -440,8 +440,18 @@ class ServiceRequestService:
                 recommendations=risk_analysis.get("recommendations", []),
                 requires_rejection=risk_analysis.get("requires_rejection", False),
                 requires_review=risk_analysis.get("requires_review", False),
-                factors_count=risk_analysis.get("factors_count", {})
+                factors_count=risk_analysis.get("factors_count", {}),
+                # Identity mismatch fields for cross-document validation
+                identity_mismatches=risk_analysis.get("identity_mismatches", []),
+                has_blocking_mismatches=risk_analysis.get("has_blocking_mismatches", False)
             )
+
+            # Log if blocking mismatches were detected
+            if risk_result.has_blocking_mismatches:
+                logger.warning(
+                    f"BLOCKING identity mismatches detected for {document_code}: "
+                    f"{len(risk_result.identity_mismatches)} mismatches"
+                )
 
         logger.info(
             f"Document preview created: {document_code} for request {request['reference']} "
