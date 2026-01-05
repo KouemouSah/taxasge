@@ -103,14 +103,15 @@ const getSeverityColor = (severity: string): string => {
 
 export function IdentityMismatchBlocker({
   mismatches,
-  hasBlockingMismatches,
+  hasBlockingMismatches: _hasBlockingMismatches,  // Prefixed with _ as it's used by parent
   onGoBack,
   onReuploadDocument,
   documentLabels,
 }: IdentityMismatchBlockerProps) {
   const params = useParams()
   const locale = (params?.locale as string) || 'es'
-  const t = useTranslations('service_requests')
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _t = useTranslations('service_requests')  // Kept for future expansion
 
   // Get blocking mismatches (critical ones)
   const blockingMismatches = mismatches.filter(m => m.is_blocking)
