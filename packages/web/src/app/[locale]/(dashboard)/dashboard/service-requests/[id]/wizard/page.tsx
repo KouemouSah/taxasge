@@ -71,6 +71,7 @@ import type {
   ValidationResult,
   PassportSolicitudType,
   PassportRenovacionMotivo,
+  DocumentExtractionPreview,
 } from '@/modules/service-requests'
 import {
   DocumentConditionType,
@@ -118,8 +119,9 @@ export default function PassportWizardPage() {
     loadRequest,
     saveStepData,
     clearError,
-    // Document methods
-    uploadDocument,
+    // Document methods - using 2-step preview/validate flow
+    previewDocument,
+    validateDocument,
     deleteDocument,
     // Form & validation methods
     getFormData,
@@ -145,7 +147,10 @@ export default function PassportWizardPage() {
   const [paymentComplete, setPaymentComplete] = useState(false)
   const paymentPollRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Document upload state - removed unused state, upload handled by useServiceRequestDocuments hook
+  // Document preview state - stores extraction data from 2-step flow
+  // Key: documentCode, Value: preview data from previewDocument API
+  const [documentPreviews, setDocumentPreviews] = useState<Record<string, DocumentExtractionPreview>>({})
+  const [isUploadingDocument, setIsUploadingDocument] = useState<string | null>(null)
 
   // Form review state - edited data during review steps
   const [editedFormData, setEditedFormData] = useState<Record<string, unknown>>({})
@@ -326,21 +331,34 @@ export default function PassportWizardPage() {
   }
 
   // ==========================================================================
-  // DOCUMENT UPLOAD HANDLERS (Direct upload, no dialog)
+  // DOCUMENT UPLOAD HANDLERS (2-step preview/validate flow)
   // ==========================================================================
 
-  // Upload document directly - no preview dialog, extraction done in background
+  // Upload document using 2-step flow: preview (OCR extraction) → validate (save to DB)
+  // This mirrors the dialog flow but stores preview in wizard state for form_review
   const handleDocumentUpload = async (documentCode: string, file: File) => {
     try {
-      await uploadDocument(documentCode, file)
+      setIsUploadingDocument(documentCode)
+      // Step 1: Preview - OCR extraction without saving to DB
+      const preview = await previewDocument(documentCode, file)
+      if (preview) {
+        // Store preview data in state for use in form_review step
+        setDocumentPreviews(prev => ({
+          ...prev,
+          [documentCode]: preview
+        }))
+        console.log(`[Wizard] Preview stored for ${documentCode}:`, preview.extraction)
+      }
     } catch (err) {
-      console.error('Failed to upload document:', err)
+      console.error('Failed to preview document:', err)
+    } finally {
+      setIsUploadingDocument(null)
     }
   }
 
-  // Continue to form review after all documents uploaded
+  // Continue to form review after all documents have been previewed
   const handleDocumentsContinue = () => {
-    // Proceed directly to form review - extraction data will be loaded there
+    // Proceed to form review - extraction data comes from documentPreviews state
     setCurrentStepIndex(4)
   }
 
@@ -354,6 +372,7 @@ export default function PassportWizardPage() {
   }
 
   // Save form data from review step
+  // This calls validateDocument for each preview to save documents to DB (Step 2 of 2-step flow)
   const handleSaveFormReview = async (stepId: string) => {
     if (!formData) return false
 
@@ -366,6 +385,60 @@ export default function PassportWizardPage() {
         ...editedFormData,
       }
 
+      // Step 2 of 2-step flow: Validate and save each document preview to DB
+      // Only do this on the LAST form review step to avoid duplicate saves
+      if (stepId === 'form_review_2' && Object.keys(documentPreviews).length > 0) {
+        console.log('[Wizard] Validating and saving documents to DB...')
+        for (const [docCode, preview] of Object.entries(documentPreviews)) {
+          if (preview.previewId) {
+            // Build confirmed data for this document
+            // For DIP, include user corrections
+            let confirmedData = preview.extraction as Record<string, unknown>
+            if (docCode === 'dip') {
+              // Apply user edits to the extraction data
+              confirmedData = {
+                ...confirmedData,
+                titular: {
+                  ...(confirmedData.titular as Record<string, unknown> || {}),
+                  apellidos: editedFormData.apellidos || (confirmedData.titular as Record<string, unknown>)?.apellidos,
+                  nombres: editedFormData.nombres || (confirmedData.titular as Record<string, unknown>)?.nombres,
+                  sexo: editedFormData.sexo || (confirmedData.titular as Record<string, unknown>)?.sexo,
+                  fecha_nacimiento: editedFormData.fecha_nacimiento || (confirmedData.titular as Record<string, unknown>)?.fecha_nacimiento,
+                  lugar_nacimiento: editedFormData.lugar_nacimiento || (confirmedData.titular as Record<string, unknown>)?.lugar_nacimiento,
+                  nacionalidad: editedFormData.nacionalidad || (confirmedData.titular as Record<string, unknown>)?.nacionalidad,
+                  estado_civil: editedFormData.estado_civil || (confirmedData.titular as Record<string, unknown>)?.estado_civil,
+                  profesion: editedFormData.profesion || (confirmedData.titular as Record<string, unknown>)?.profesion,
+                  grupo_sanguineo: editedFormData.grupo_sanguineo || (confirmedData.titular as Record<string, unknown>)?.grupo_sanguineo,
+                },
+                domicilio: {
+                  ...(confirmedData.domicilio as Record<string, unknown> || {}),
+                  domicilio: editedFormData.domicilio || (confirmedData.domicilio as Record<string, unknown>)?.domicilio,
+                  ciudad: editedFormData.ciudad || (confirmedData.domicilio as Record<string, unknown>)?.ciudad,
+                },
+                filiacion: {
+                  ...(confirmedData.filiacion as Record<string, unknown> || {}),
+                  nombre_padre: editedFormData.nombre_padre || (confirmedData.filiacion as Record<string, unknown>)?.nombre_padre,
+                  profesion_padre: editedFormData.profesion_padre || (confirmedData.filiacion as Record<string, unknown>)?.profesion_padre,
+                  nombre_madre: editedFormData.nombre_madre || (confirmedData.filiacion as Record<string, unknown>)?.nombre_madre,
+                  profesion_madre: editedFormData.profesion_madre || (confirmedData.filiacion as Record<string, unknown>)?.profesion_madre,
+                }
+              }
+            }
+
+            // Call validateDocument to save to Firebase + DB
+            const result = await validateDocument(preview.previewId, confirmedData)
+            if (result) {
+              console.log(`[Wizard] Document ${docCode} saved to DB:`, result)
+            } else {
+              console.error(`[Wizard] Failed to save document ${docCode}`)
+            }
+          }
+        }
+        // Clear previews after saving
+        setDocumentPreviews({})
+      }
+
+      // Save form data to service request
       await saveStepData(stepId, dataToSave)
       return true
     } catch (err) {
@@ -377,12 +450,94 @@ export default function PassportWizardPage() {
   }
 
   // ==========================================================================
-  // FORM DATA LOADING
+  // FORM DATA LOADING (from preview state, NOT from DB)
   // ==========================================================================
+
+  // Build form data from document previews (2-step flow)
+  // This uses extraction data from previewDocument calls stored in documentPreviews state
+  const buildFormDataFromPreviews = useCallback((): FormDataResponse | null => {
+    // Collect all extraction data from previews
+    const extractedData: Record<string, Record<string, unknown>> = {}
+    const formDataFlat: Record<string, unknown> = {}
+
+    for (const [docCode, preview] of Object.entries(documentPreviews)) {
+      if (preview.extraction) {
+        extractedData[docCode] = preview.extraction as Record<string, unknown>
+
+        // Flatten DIP extraction for form fields
+        if (docCode === 'dip' && preview.extraction) {
+          const dipData = preview.extraction as Record<string, unknown>
+          const titular = dipData.titular as Record<string, unknown> | undefined
+          const documento = dipData.documento as Record<string, unknown> | undefined
+          const domicilio = dipData.domicilio as Record<string, unknown> | undefined
+          const filiacion = dipData.filiacion as Record<string, unknown> | undefined
+
+          if (documento) {
+            formDataFlat.numero_dip = documento.numero_dip
+          }
+          if (titular) {
+            formDataFlat.apellidos = titular.apellidos
+            formDataFlat.nombres = titular.nombres
+            formDataFlat.sexo = titular.sexo
+            formDataFlat.fecha_nacimiento = titular.fecha_nacimiento
+            formDataFlat.lugar_nacimiento = titular.lugar_nacimiento
+            formDataFlat.nacionalidad = titular.nacionalidad
+            formDataFlat.estado_civil = titular.estado_civil
+            formDataFlat.profesion = titular.profesion
+            formDataFlat.grupo_sanguineo = titular.grupo_sanguineo
+          }
+          if (domicilio) {
+            formDataFlat.domicilio = domicilio.domicilio || domicilio.direccion
+            formDataFlat.ciudad = domicilio.ciudad
+          }
+          if (filiacion) {
+            formDataFlat.nombre_padre = filiacion.nombre_padre
+            formDataFlat.profesion_padre = filiacion.profesion_padre
+            formDataFlat.nombre_madre = filiacion.nombre_madre
+            formDataFlat.profesion_madre = filiacion.profesion_madre
+          }
+        }
+
+        // Handle old passport extraction
+        if (docCode === 'pasaporte_antiguo' && preview.extraction) {
+          const passportData = preview.extraction as Record<string, unknown>
+          formDataFlat.numero_pasaporte_antiguo = passportData.numero
+          formDataFlat.fecha_expedicion_antiguo = passportData.fecha_expedicion
+          formDataFlat.fecha_expiracion_antiguo = passportData.fecha_expiracion
+        }
+      }
+    }
+
+    // Calculate completion percentage
+    const requiredFields = ['numero_dip', 'apellidos', 'nombres', 'sexo', 'fecha_nacimiento', 'lugar_nacimiento', 'domicilio']
+    const filledFields = requiredFields.filter(f => formDataFlat[f])
+    const completionPercentage = Math.round((filledFields.length / requiredFields.length) * 100)
+    const missingFields = requiredFields.filter(f => !formDataFlat[f])
+
+    return {
+      formData: formDataFlat,
+      extractedData,
+      requiresReview: true,
+      completionPercentage,
+      missingFields
+    }
+  }, [documentPreviews])
 
   const loadFormDataForReview = useCallback(async () => {
     setIsLoadingFormData(true)
     try {
+      // First, try to build form data from preview state (2-step flow)
+      if (Object.keys(documentPreviews).length > 0) {
+        const previewFormData = buildFormDataFromPreviews()
+        if (previewFormData) {
+          setFormData(previewFormData)
+          console.log('[Wizard] Form data built from previews:', previewFormData)
+          return
+        }
+      }
+
+      // Fallback: load from DB (for existing requests with documents already saved)
+      console.log('[Wizard] No previews available, loading from DB...')
       const data = await getFormData()
       setFormData(data)
     } catch (err) {
@@ -390,7 +545,7 @@ export default function PassportWizardPage() {
     } finally {
       setIsLoadingFormData(false)
     }
-  }, [getFormData])
+  }, [documentPreviews, buildFormDataFromPreviews, getFormData])
 
   // Load form data when entering form review steps
   useEffect(() => {
@@ -622,6 +777,8 @@ export default function PassportWizardPage() {
           solicitudType={wizardState.solicitudType}
           motivo={wizardState.motivo}
           documents={documents}
+          documentPreviews={documentPreviews}
+          isUploadingDocument={isUploadingDocument}
           onUpload={handleDocumentUpload}
           onDelete={async (docId) => { await deleteDocument(docId) }}
           onNext={handleDocumentsContinue}
@@ -1028,6 +1185,8 @@ interface DocumentsStepImprovedProps {
   solicitudType: SolicitudType | null
   motivo: RenovacionMotivo | null
   documents: ServiceRequestDocument[]
+  documentPreviews: Record<string, DocumentExtractionPreview>
+  isUploadingDocument: string | null
   onUpload: (documentCode: string, file: File) => Promise<void>
   onDelete: (documentId: string) => Promise<void>
   onNext: () => void
@@ -1040,6 +1199,8 @@ function DocumentsStepImproved({
   solicitudType,
   motivo,
   documents,
+  documentPreviews,
+  isUploadingDocument,
   onUpload,
   onDelete,
   onNext,
@@ -1137,8 +1298,13 @@ function DocumentsStepImproved({
 
   const requirements = getDocumentRequirements()
 
+  // Check if all required documents have previews (2-step flow)
+  // OR are already saved in DB (for existing requests)
   const allRequiredUploaded = requirements.every(req => {
     if (!req.isRequired) return true
+    // Check preview state first (new 2-step flow)
+    if (documentPreviews[req.documentCode]) return true
+    // Fallback: check if already saved in DB
     return documents.some(doc => doc.documentCode === req.documentCode)
   })
 
@@ -1171,16 +1337,41 @@ function DocumentsStepImproved({
 
         {requirements.map((req) => {
           const uploadedDoc = documents.find(d => d.documentCode === req.documentCode)
+          const preview = documentPreviews[req.documentCode]
+          const isUploading = isUploadingDocument === req.documentCode
+          const hasPreview = !!preview
+
           return (
-            <DocumentUploader
-              key={req.documentCode}
-              requirement={req}
-              uploadedDocument={uploadedDoc}
-              locale={locale as 'es' | 'fr' | 'en'}
-              onUpload={(file) => onUpload(req.documentCode, file)}
-              onDelete={uploadedDoc ? async () => { await onDelete(uploadedDoc.id) } : undefined}
-              maxSizeMB={req.documentCode === 'photo_carnet' ? 2 : 5}
-            />
+            <div key={req.documentCode} className="space-y-2">
+              <DocumentUploader
+                requirement={req}
+                uploadedDocument={uploadedDoc}
+                locale={locale as 'es' | 'fr' | 'en'}
+                onUpload={(file) => onUpload(req.documentCode, file)}
+                onDelete={uploadedDoc ? async () => { await onDelete(uploadedDoc.id) } : undefined}
+                maxSizeMB={req.documentCode === 'photo_carnet' ? 2 : 5}
+              />
+
+              {/* Loading state during OCR extraction */}
+              {isUploading && (
+                <div className="flex items-center gap-2 text-sm text-blue-600 bg-blue-50 p-2 rounded">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {locale === 'es' ? 'Extrayendo datos...' : locale === 'fr' ? 'Extraction en cours...' : 'Extracting data...'}
+                </div>
+              )}
+
+              {/* Preview success indicator */}
+              {hasPreview && !isUploading && (
+                <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-2 rounded">
+                  <CheckCircle className="h-4 w-4" />
+                  {locale === 'es'
+                    ? `Datos extraídos (confianza: ${Math.round((preview.confidence || 0) * 100)}%)`
+                    : locale === 'fr'
+                      ? `Données extraites (confiance: ${Math.round((preview.confidence || 0) * 100)}%)`
+                      : `Data extracted (confidence: ${Math.round((preview.confidence || 0) * 100)}%)`}
+                </div>
+              )}
+            </div>
           )
         })}
 
