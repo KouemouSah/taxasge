@@ -591,14 +591,15 @@ async def get_form_data(
         form_mapping = {}
         final_form_data = {}
         try:
-            logger.debug(f"Applying form mapping, extracted_data keys: {list(context.extracted_data.keys())}")
-            form_mapping = workflow.get_form_mapping(context)
+            extracted_data = context.extracted_data or {}
+            logger.debug(f"Applying form mapping, extracted_data keys: {list(extracted_data.keys())}")
+            form_mapping = workflow.get_form_mapping(context) or {}
             mapped_data = workflow_engine._apply_form_mapping(
-                context.extracted_data,
+                extracted_data,
                 form_mapping
-            )
+            ) or {}
             # Merge with existing form_data (preserves user edits)
-            final_form_data = {**mapped_data, **context.form_data}
+            final_form_data = {**mapped_data, **(context.form_data or {})}
             logger.debug(f"Form mapping applied, {len(mapped_data)} fields mapped")
         except Exception as e:
             logger.warning(f"Error applying form mapping: {e}", exc_info=True)
