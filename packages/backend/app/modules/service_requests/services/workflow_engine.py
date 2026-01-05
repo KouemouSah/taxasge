@@ -8,6 +8,7 @@ Responsibilities:
 - Coordinate with document processor, tariff service, and validators
 """
 import asyncio
+import json
 from typing import Dict, List, Optional, Type, Any, Union
 from uuid import UUID
 from datetime import datetime
@@ -224,7 +225,15 @@ class WorkflowEngine:
             """
             ext_row = await db.fetchrow(ext_query, doc["id"])
             if ext_row and ext_row["extraction_data"]:
-                context.extracted_data[doc["document_code"]] = ext_row["extraction_data"]
+                # extraction_data is stored as JSON string, parse it
+                data = ext_row["extraction_data"]
+                if isinstance(data, str):
+                    try:
+                        data = json.loads(data)
+                    except json.JSONDecodeError:
+                        logging.warning(f"Failed to parse extraction_data for doc {doc['id']}")
+                        data = {}
+                context.extracted_data[doc["document_code"]] = data
 
         return context
 
