@@ -561,57 +561,79 @@ async def get_form_data(
     current_user=Depends(get_current_user)
 ):
     """Get pre-filled form data from document extraction"""
-    # Load context
-    context = await workflow_engine.load_context_from_db(db, request_id)
-    if not context:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Service request not found: {request_id}"
-        )
-
-    # Verify ownership
-    if str(context.user_id) != str(current_user.id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied"
-        )
-
-    # Get workflow
-    workflow = workflow_engine.get_workflow(context.workflow_code)
-    if not workflow:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unknown workflow: {context.workflow_code}"
-        )
-
-    # Get form mapping and apply it
     try:
-        form_mapping = workflow.get_form_mapping(context)
-        mapped_data = workflow_engine._apply_form_mapping(
-            context.extracted_data,
-            form_mapping
-        )
-        # Merge with existing form_data (preserves user edits)
-        final_form_data = {**mapped_data, **context.form_data}
-    except Exception as e:
-        import logging
-        logging.warning(f"Error applying form mapping: {e}")
-        final_form_data = context.form_data
+        # Load context
+        logger.debug(f"Loading context for request {request_id}")
+        context = await workflow_engine.load_context_from_db(db, request_id)
+        if not context:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Service request not found: {request_id}"
+            )
+
+        # Verify ownership
+        if str(context.user_id) != str(current_user.id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied"
+            )
+
+        # Get workflow
+        logger.debug(f"Getting workflow for code: {context.workflow_code}")
+        workflow = workflow_engine.get_workflow(context.workflow_code)
+        if not workflow:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Unknown workflow: {context.workflow_code}"
+            )
+
+        # Get form mapping and apply it
         form_mapping = {}
+        final_form_data = {}
+        try:
+            logger.debug(f"Applying form mapping, extracted_data keys: {list(context.extracted_data.keys())}")
+            form_mapping = workflow.get_form_mapping(context)
+            mapped_data = workflow_engine._apply_form_mapping(
+                context.extracted_data,
+                form_mapping
+            )
+            # Merge with existing form_data (preserves user edits)
+            final_form_data = {**mapped_data, **context.form_data}
+            logger.debug(f"Form mapping applied, {len(mapped_data)} fields mapped")
+        except Exception as e:
+            logger.warning(f"Error applying form mapping: {e}", exc_info=True)
+            final_form_data = context.form_data or {}
 
-    # Calculate completion
-    required_fields = list(form_mapping.keys()) if form_mapping else []
-    filled_fields = [f for f in required_fields if f in final_form_data and final_form_data[f]]
-    missing = [f for f in required_fields if f not in final_form_data or not final_form_data[f]]
-    completion = (len(filled_fields) / len(required_fields) * 100) if required_fields else 100
+        # Calculate completion
+        required_fields = list(form_mapping.keys()) if form_mapping else []
+        filled_fields = [f for f in required_fields if f in final_form_data and final_form_data[f]]
+        missing = [f for f in required_fields if f not in final_form_data or not final_form_data[f]]
+        completion = (len(filled_fields) / len(required_fields) * 100) if required_fields else 100
 
-    return FormDataResponse(
-        form_data=final_form_data,
-        extracted_data=context.extracted_data,
-        requires_review=True,
-        completion_percentage=round(completion, 1),
-        missing_fields=missing
-    )
+        # Ensure extracted_data is JSON-serializable
+        extracted_data_safe = {}
+        for doc_code, doc_data in (context.extracted_data or {}).items():
+            if isinstance(doc_data, dict):
+                extracted_data_safe[doc_code] = doc_data
+            else:
+                logger.warning(f"Non-dict extracted_data for {doc_code}: {type(doc_data)}")
+                extracted_data_safe[doc_code] = {}
+
+        return FormDataResponse(
+            form_data=final_form_data,
+            extracted_data=extracted_data_safe,
+            requires_review=True,
+            completion_percentage=round(completion, 1),
+            missing_fields=missing
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in get_form_data for {request_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error loading form data: {str(e)}"
+        )
 
 
 # ═══════════════════════════════════════════════════════════════
