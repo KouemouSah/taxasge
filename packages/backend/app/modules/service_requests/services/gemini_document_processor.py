@@ -806,6 +806,8 @@ class RiskAnalyzer:
             return False
 
         # Iterate over all existing documents and compare
+        logger.info(f"Identity check: comparing {document_code} with existing docs: {list(existing_documents.keys())}")
+
         for doc_code, doc_data in existing_documents.items():
             # Skip if comparing document with itself
             if doc_code.lower() == document_code.lower():
@@ -813,7 +815,10 @@ class RiskAnalyzer:
 
             existing_extraction = doc_data.get("extraction", {})
             if not existing_extraction:
+                logger.warning(f"No extraction found for {doc_code}")
                 continue
+
+            logger.info(f"Comparing {document_code} with {doc_code}")
 
             # Check each configured identity field
             for field_config in identity_config.critical_fields:
@@ -823,15 +828,27 @@ class RiskAnalyzer:
                 # Get existing document value
                 existing_value = get_nested_value(existing_extraction, field_config.field_paths)
 
+                # Log the comparison for debugging
+                logger.debug(
+                    f"Field '{field_config.field_name}': "
+                    f"{document_code}='{current_value}' vs {doc_code}='{existing_value}'"
+                )
+
                 # Compare if both exist - use fuzzy matching for name fields
                 if current_value and existing_value:
                     # Check if values match (exact or fuzzy for names)
                     if current_value == existing_value:
+                        logger.debug(f"  → MATCH (exact)")
                         continue  # Exact match, no mismatch
 
                     if names_match_fuzzy(current_value, existing_value, field_config.field_name):
+                        logger.debug(f"  → MATCH (fuzzy)")
                         continue  # Fuzzy match for names, no mismatch
 
+                    logger.warning(
+                        f"  → MISMATCH: {field_config.field_name} - "
+                        f"'{current_value}' != '{existing_value}'"
+                    )
                     # Values don't match - this is a real mismatch
                     # Determine risk code based on field name
                     risk_code = {
