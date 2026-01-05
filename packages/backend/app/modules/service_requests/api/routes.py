@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, File, UploadFile, Query, Form, Path, Bod
 from typing import List, Optional
 from uuid import UUID
 import asyncpg
+from loguru import logger
 
 from ..models.service_request import (
     ServiceRequestCreate,
