@@ -752,9 +752,11 @@ class ServiceRequestsApiClient {
       fileUrl: doc.file_path, // Firebase Storage path can be used as URL
       fileSize: doc.file_size || 0,
       mimeType: doc.mime_type || 'application/octet-stream',
-      extractionStatus: (doc.extraction_status === 'completed' ? ExtractionStatus.COMPLETED :
+      // Map backend status values to frontend enum
+      // Backend returns: success, validated, failed, manual_review, low_confidence, pending
+      extractionStatus: (['success', 'validated', 'completed'].includes(doc.extraction_status) ? ExtractionStatus.COMPLETED :
                          doc.extraction_status === 'failed' ? ExtractionStatus.FAILED :
-                         doc.extraction_status === 'manual_review' ? ExtractionStatus.MANUAL_REVIEW :
+                         ['manual_review', 'low_confidence'].includes(doc.extraction_status) ? ExtractionStatus.MANUAL_REVIEW :
                          ExtractionStatus.PENDING) as ExtractionStatus,
       extractedData: doc.extraction_data,
       extractionConfidence: doc.extraction_confidence,

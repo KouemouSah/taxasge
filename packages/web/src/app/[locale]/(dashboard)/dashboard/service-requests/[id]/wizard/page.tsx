@@ -518,17 +518,32 @@ export default function PassportWizardPage() {
     )
   }
 
-  // Error state
+  // Error state with improved retry functionality
   if (error) {
+    const isNetworkError = error.toLowerCase().includes('failed to fetch') || error.toLowerCase().includes('network')
     return (
-      <div className="space-y-4">
+      <div className="max-w-md mx-auto space-y-4">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>
+            {isNetworkError ? (
+              locale === 'es'
+                ? 'Error de conexión. Verifique su conexión a internet e intente de nuevo.'
+                : locale === 'fr'
+                  ? 'Erreur de connexion. Vérifiez votre connexion internet et réessayez.'
+                  : 'Connection error. Check your internet connection and try again.'
+            ) : error}
+          </AlertDescription>
         </Alert>
-        <Button variant="outline" onClick={clearError}>
-          {t('retry')}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => { clearError(); loadRequest(requestId); }} className="flex-1">
+            <RefreshCw className="mr-2 h-4 w-4" />
+            {locale === 'es' ? 'Reintentar' : locale === 'fr' ? 'Réessayer' : 'Retry'}
+          </Button>
+          <Button variant="ghost" onClick={() => router.push(`/${locale}/dashboard/service-requests/${requestId}`)}>
+            {locale === 'es' ? 'Volver' : locale === 'fr' ? 'Retour' : 'Back'}
+          </Button>
+        </div>
       </div>
     )
   }
@@ -629,6 +644,7 @@ export default function PassportWizardPage() {
             if (success) setCurrentStepIndex(prev => prev + 1)
           }}
           onBack={handleBack}
+          onRetry={loadFormDataForReview}
         />
       )}
 
@@ -1208,6 +1224,7 @@ interface FormReviewStepEditableProps {
   onSave: () => Promise<boolean>
   onNext: () => Promise<void>
   onBack: () => void
+  onRetry?: () => void
 }
 
 function FormReviewStepEditable({
@@ -1220,6 +1237,7 @@ function FormReviewStepEditable({
   onFieldEdit,
   onNext,
   onBack,
+  onRetry,
 }: FormReviewStepEditableProps) {
   const isStep1 = step === 'form_review_1'
 
@@ -1424,14 +1442,24 @@ function FormReviewStepEditable({
             )}
           </>
         ) : (
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              {locale === 'es'
-                ? 'No se pudieron cargar los datos. Los documentos pueden no haberse procesado.'
-                : 'Could not load data. Documents may not have been processed.'}
-            </AlertDescription>
-          </Alert>
+          <div className="space-y-4">
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                {locale === 'es'
+                  ? 'No se pudieron cargar los datos extraídos. Verifique su conexión e intente de nuevo.'
+                  : locale === 'fr'
+                    ? 'Impossible de charger les données extraites. Vérifiez votre connexion et réessayez.'
+                    : 'Could not load extracted data. Check your connection and try again.'}
+              </AlertDescription>
+            </Alert>
+            {onRetry && (
+              <Button variant="outline" onClick={onRetry} className="w-full">
+                <RefreshCw className="mr-2 h-4 w-4" />
+                {locale === 'es' ? 'Reintentar' : locale === 'fr' ? 'Réessayer' : 'Retry'}
+              </Button>
+            )}
+          </div>
         )}
 
         <div className="flex justify-between pt-4">
