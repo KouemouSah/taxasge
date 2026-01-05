@@ -7,7 +7,7 @@ NEW FLOW (User validation before Firebase upload):
 2. validate_document() - User confirms, then upload to Firebase
 """
 import asyncpg
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
 from fastapi import HTTPException, UploadFile, status
 from datetime import datetime, timedelta
