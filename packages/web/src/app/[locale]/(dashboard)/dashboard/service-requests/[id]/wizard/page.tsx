@@ -108,7 +108,9 @@ export default function PassportWizardPage() {
     solicitudType: null,
     motivo: null,
   })
-  const [isSaving, setIsSaving] = useState(false)
+  // isSaving is kept for UI components but no longer set during step transitions
+  // Step transitions are now synchronous (data stored locally, saved at final validation)
+  const [isSaving] = useState(false)
 
   // Service requests hook
   const {
@@ -276,22 +278,6 @@ export default function PassportWizardPage() {
     }
     return 0
   }
-
-  // Handle step data save
-  const handleSaveStepData = useCallback(async (data: Record<string, unknown>) => {
-    if (!currentRequest) return false
-
-    setIsSaving(true)
-    try {
-      await saveStepData(currentStep.id, data)
-      return true
-    } catch (err) {
-      console.error('Failed to save step data:', err)
-      return false
-    } finally {
-      setIsSaving(false)
-    }
-  }, [currentRequest, currentStep, saveStepData])
 
   // Handle minor selection
   // Data is only stored locally - NOT saved to DB until final validation
