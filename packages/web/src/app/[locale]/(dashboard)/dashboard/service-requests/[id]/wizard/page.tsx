@@ -333,8 +333,19 @@ export default function PassportWizardPage() {
   const handleDocumentUpload = async (documentCode: string, file: File) => {
     try {
       setIsUploadingDocument(documentCode)
+
+      // Build existing extractions from preview cache for cross-document risk analysis
+      // This enables DIP vs Passport comparison even before documents are saved to DB
+      const existingExtractions: Record<string, Record<string, unknown>> = {}
+      for (const [code, prev] of Object.entries(documentPreviewsRef.current)) {
+        if (code !== documentCode && prev.extraction) {
+          existingExtractions[code] = prev.extraction as Record<string, unknown>
+        }
+      }
+
       // Step 1: Preview - OCR extraction without saving to DB
-      const preview = await previewDocument(documentCode, file)
+      // Pass existing extractions for cross-document risk analysis
+      const preview = await previewDocument(documentCode, file, existingExtractions)
       if (preview) {
         // Store preview data in state AND ref synchronously
         // The ref is updated immediately to avoid stale closure issues
@@ -346,6 +357,14 @@ export default function PassportWizardPage() {
         setDocumentPreviews(newPreviews)           // Update state for UI re-render
         console.log(`[Wizard] Preview stored for ${documentCode}:`, preview.extraction)
         console.log('[Wizard] All previews now:', Object.keys(newPreviews))
+
+        // Log risk analysis results if present
+        if (preview.riskAnalysis) {
+          console.log(`[Wizard] Risk analysis for ${documentCode}:`, preview.riskAnalysis)
+          if (preview.riskAnalysis.riskFactors?.length > 0) {
+            console.warn(`[Wizard] Risk factors detected:`, preview.riskAnalysis.riskFactors)
+          }
+        }
       }
     } catch (err) {
       console.error('Failed to preview document:', err)
@@ -527,8 +546,10 @@ export default function PassportWizardPage() {
       { formField: 'estado_civil', possibleKeys: ['titular.estado_civil', 'estado_civil'] },
       { formField: 'profesion', possibleKeys: ['titular.profesion', 'profesion'] },
       { formField: 'grupo_sanguineo', possibleKeys: ['titular.grupo_sanguineo', 'grupo_sanguineo'] },
-      { formField: 'domicilio', possibleKeys: ['titular.domiciliacion', 'domicilio.domicilio', 'domicilio.direccion', 'domicilio', 'domiciliacion'] },
-      { formField: 'ciudad', possibleKeys: ['domicilio.ciudad', 'ciudad'] },
+      // Address fields - prefer new separated fields from backend post-processing
+      { formField: 'domicilio', possibleKeys: ['domiciliacion_barrio', 'titular.domiciliacion', 'domicilio.domicilio', 'domicilio.direccion', 'domicilio', 'domiciliacion'] },
+      { formField: 'ciudad', possibleKeys: ['domiciliacion_ciudad', 'domicilio.ciudad', 'ciudad'] },
+      { formField: 'departamento', possibleKeys: ['domiciliacion_departamento', 'domicilio.departamento', 'departamento'] },
       { formField: 'nombre_padre', possibleKeys: ['filiacion.nombre_padre', 'nombre_padre'] },
       { formField: 'profesion_padre', possibleKeys: ['filiacion.profesion_padre', 'profesion_padre'] },
       { formField: 'nombre_madre', possibleKeys: ['filiacion.nombre_madre', 'nombre_madre'] },

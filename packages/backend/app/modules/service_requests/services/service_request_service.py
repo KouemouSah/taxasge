@@ -262,7 +262,8 @@ class ServiceRequestService:
         request_id: UUID,
         user_id: UUID,
         document_code: str,
-        file: UploadFile
+        file: UploadFile,
+        frontend_extractions: Optional[Dict[str, Dict[str, Any]]] = None
     ) -> DocumentExtractionPreview:
         """
         STEP 1: Extract document data WITHOUT uploading to Firebase.
@@ -276,6 +277,9 @@ class ServiceRequestService:
             user_id: The user ID
             document_code: Document type code
             file: The uploaded file
+            frontend_extractions: Optional dict of existing document extractions from
+                                  frontend preview cache for cross-document risk analysis.
+                                  Format: {doc_code: {extraction: {...}, confidence: float}}
 
         Returns:
             DocumentExtractionPreview with extracted data for user validation
@@ -327,6 +331,7 @@ class ServiceRequestService:
                 break
 
         # Get existing documents for identity consistency checks
+        # Merge DB documents with frontend preview cache for cross-document validation
         existing_docs_raw = await document_repository.find_by_request(db, request_id)
         existing_documents = {
             d["document_code"]: {
@@ -335,6 +340,21 @@ class ServiceRequestService:
             }
             for d in existing_docs_raw
         }
+
+        # Merge frontend preview extractions (prioritize frontend for unsaved previews)
+        # This enables cross-document risk analysis even before documents are saved to DB
+        if frontend_extractions:
+            for doc_code, doc_data in frontend_extractions.items():
+                # Only add if not already in DB (DB documents take precedence)
+                if doc_code not in existing_documents:
+                    existing_documents[doc_code] = {
+                        "extraction": doc_data.get("extraction", doc_data),
+                        "confidence": doc_data.get("confidence", 0.5)
+                    }
+            logger.info(
+                f"Merged {len(frontend_extractions)} frontend previews for cross-document validation. "
+                f"Total documents for comparison: {list(existing_documents.keys())}"
+            )
 
         # Get form data from request
         form_data = request.get("form_data", {})

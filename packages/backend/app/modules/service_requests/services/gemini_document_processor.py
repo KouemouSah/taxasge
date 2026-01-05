@@ -1197,6 +1197,14 @@ class GeminiDocumentProcessor:
             }
 
         # ═══════════════════════════════════════════════════════════════════
+        # POST-PROCESSING (address separation, field normalization)
+        # ═══════════════════════════════════════════════════════════════════
+        extraction_result["extraction"] = self._post_process_extraction(
+            extraction_result.get("extraction", {}),
+            document_code
+        )
+
+        # ═══════════════════════════════════════════════════════════════════
         # RISK ANALYSIS
         # ═══════════════════════════════════════════════════════════════════
         risk_analysis = self.risk_analyzer.analyze(
@@ -1222,6 +1230,129 @@ class GeminiDocumentProcessor:
         extraction_result["risk_analysis"] = risk_analysis
 
         return extraction_result
+
+    # ═══════════════════════════════════════════════════════════════════════════════
+    # POST-PROCESSING METHODS
+    # ═══════════════════════════════════════════════════════════════════════════════
+
+    def _post_process_extraction(
+        self,
+        extraction: Dict[str, Any],
+        document_code: str
+    ) -> Dict[str, Any]:
+        """
+        Post-process extraction to normalize and separate composite fields.
+
+        Args:
+            extraction: Raw extraction dict from Gemini/Tesseract
+            document_code: Document type code (e.g., 'DIP', 'PASAPORTE')
+
+        Returns:
+            Processed extraction with separated fields
+        """
+        if not extraction:
+            return extraction
+
+        result = extraction.copy()
+
+        # DIP-specific: Parse domiciliacion into address components
+        if document_code.upper() in ("DIP", "DIP_GQ", "DNI"):
+            domiciliacion = extraction.get("domiciliacion") or extraction.get("domiciliación")
+            if domiciliacion:
+                address_parts = self._parse_domiciliacion(domiciliacion)
+                result.update(address_parts)
+                logger.debug(f"Parsed domiciliacion: {domiciliacion} -> {address_parts}")
+
+        return result
+
+    def _parse_domiciliacion(self, domiciliacion: str) -> Dict[str, str]:
+        """
+        Parse domiciliacion field into address components.
+
+        DIP format: "B/[BARRIO]\n[CIUDAD], [DEPARTAMENTO]"
+        Example: "B/ TIMBABE\nMALABO, BIOKO NORTE"
+
+        Sometimes Gemini extracts without newline:
+        "B/ TIMBABEMALABO, BIOKO NORTE"
+
+        Args:
+            domiciliacion: Raw domiciliacion string from DIP
+
+        Returns:
+            Dict with keys: domiciliacion_barrio, domiciliacion_ciudad, domiciliacion_departamento
+        """
+        result = {
+            "domiciliacion_barrio": "",
+            "domiciliacion_ciudad": "",
+            "domiciliacion_departamento": ""
+        }
+
+        if not domiciliacion or not isinstance(domiciliacion, str):
+            return result
+
+        # Clean and normalize
+        domiciliacion = domiciliacion.strip()
+
+        # Case 1: Has newline separator (ideal case)
+        if '\n' in domiciliacion:
+            parts = domiciliacion.split('\n', 1)
+            result["domiciliacion_barrio"] = parts[0].strip()
+            city_dept = parts[1].strip() if len(parts) > 1 else ""
+        else:
+            # Case 2: No newline - try to detect pattern
+            # Pattern: "B/XXXXX" followed by city name (usually all caps)
+            # Known cities in GQ: MALABO, BATA, ELA NGUEMA, MONGOMO, EBIBEYIN, etc.
+            known_cities = [
+                "MALABO", "BATA", "ELA NGUEMA", "MONGOMO", "EBIBEYIN",
+                "LUBA", "RIABA", "ANNOBON", "ACONIBE", "ANISOK", "NIEFANG",
+                "EBEBIYIN", "MICOMESENG", "NSORK", "EVINAYONG"
+            ]
+
+            # Try to find a known city in the string
+            city_found = None
+            city_pos = -1
+            for city in known_cities:
+                pos = domiciliacion.upper().find(city)
+                if pos > 0:  # Must not be at start
+                    if city_pos == -1 or pos < city_pos:
+                        city_pos = pos
+                        city_found = city
+
+            if city_found and city_pos > 0:
+                result["domiciliacion_barrio"] = domiciliacion[:city_pos].strip()
+                city_dept = domiciliacion[city_pos:].strip()
+            else:
+                # Fallback: Look for comma as separator between city and department
+                # If there's a comma, split there and assume last part is city,dept
+                if ',' in domiciliacion:
+                    # Try regex: capture everything before a capitalized word followed by comma
+                    match = re.match(
+                        r'^(.*?)\s*([A-Z][A-Z\s]+,\s*[A-Z][A-Z\s]+)$',
+                        domiciliacion,
+                        re.IGNORECASE
+                    )
+                    if match:
+                        result["domiciliacion_barrio"] = match.group(1).strip()
+                        city_dept = match.group(2).strip()
+                    else:
+                        # Just use the whole thing as barrio
+                        result["domiciliacion_barrio"] = domiciliacion
+                        return result
+                else:
+                    # No comma, no newline, no known city - keep as barrio
+                    result["domiciliacion_barrio"] = domiciliacion
+                    return result
+
+        # Parse city and department from "CIUDAD, DEPARTAMENTO"
+        if ',' in city_dept:
+            parts = city_dept.split(',', 1)
+            result["domiciliacion_ciudad"] = parts[0].strip()
+            result["domiciliacion_departamento"] = parts[1].strip() if len(parts) > 1 else ""
+        else:
+            # No comma - entire string is city
+            result["domiciliacion_ciudad"] = city_dept.strip()
+
+        return result
 
     async def _process_with_gemini(
         self,

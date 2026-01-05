@@ -1083,15 +1083,29 @@ class ServiceRequestsApiClient {
   /**
    * Preview document extraction before upload (Step 1 of 2)
    * Document is NOT uploaded to storage yet - just extracted for user review
+   *
+   * @param requestId - The service request ID
+   * @param documentCode - The document type code
+   * @param file - The file to extract data from
+   * @param existingExtractions - Optional: Previously extracted data from other documents
+   *                              (from preview cache) for cross-document risk analysis.
+   *                              This enables DIP vs Passport comparison even before
+   *                              documents are saved to DB.
    */
   async previewDocumentExtraction(
     requestId: string,
     documentCode: string,
-    file: File
+    file: File,
+    existingExtractions?: Record<string, Record<string, unknown>>
   ): Promise<DocumentExtractionPreview> {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('document_code', documentCode)
+
+    // Pass existing extractions for cross-document risk analysis
+    if (existingExtractions && Object.keys(existingExtractions).length > 0) {
+      formData.append('existing_extractions', JSON.stringify(existingExtractions))
+    }
 
     const backend = await this.uploadRequest<BackendDocumentExtractionPreview>(
       `/${requestId}/documents/preview`,

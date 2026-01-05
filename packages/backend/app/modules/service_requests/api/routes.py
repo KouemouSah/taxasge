@@ -208,16 +208,27 @@ async def preview_document_extraction(
     request_id: UUID = Path(..., description="The service request ID"),
     document_code: str = Form(..., description="The document type code (e.g., dip_gq, pasaporte_gq)"),
     file: UploadFile = File(..., description="The document file (PDF, JPG, PNG)"),
+    existing_extractions: Optional[str] = Form(None, description="JSON string of existing document extractions from frontend cache for cross-document validation"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user)
 ):
     """Extract document data and return preview for user validation"""
+    # Parse existing extractions from frontend cache (for cross-document risk analysis)
+    frontend_extractions = None
+    if existing_extractions:
+        try:
+            import json
+            frontend_extractions = json.loads(existing_extractions)
+        except json.JSONDecodeError:
+            pass  # Ignore invalid JSON, will use DB documents only
+
     return await service_request_service.preview_document_extraction(
         db=db,
         request_id=request_id,
         user_id=current_user.id,
         document_code=document_code,
-        file=file
+        file=file,
+        frontend_extractions=frontend_extractions
     )
 
 

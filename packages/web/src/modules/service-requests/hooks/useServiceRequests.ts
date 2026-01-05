@@ -68,7 +68,7 @@ export interface UseServiceRequestsReturn {
   loadDocuments: () => Promise<void>
 
   // Document actions (NEW - preview/validate two-step flow)
-  previewDocument: (documentCode: string, file: File) => Promise<DocumentExtractionPreview | null>
+  previewDocument: (documentCode: string, file: File, existingExtractions?: Record<string, Record<string, unknown>>) => Promise<DocumentExtractionPreview | null>
   validateDocument: (previewId: string, confirmedData: Record<string, unknown>, userNotes?: string) => Promise<DocumentValidationResponse | null>
   currentPreview: DocumentExtractionPreview | null
   clearPreview: () => void
@@ -431,7 +431,8 @@ export function useServiceRequests(): UseServiceRequestsReturn {
 
   const previewDocument = useCallback(async (
     documentCode: string,
-    file: File
+    file: File,
+    existingExtractions?: Record<string, Record<string, unknown>>
   ): Promise<DocumentExtractionPreview | null> => {
     if (!currentRequest) return null
 
@@ -441,7 +442,8 @@ export function useServiceRequests(): UseServiceRequestsReturn {
       const preview = await serviceRequestsApi.previewDocumentExtraction(
         currentRequest.id,
         documentCode,
-        file
+        file,
+        existingExtractions
       )
       setCurrentPreview(preview)
       return preview
