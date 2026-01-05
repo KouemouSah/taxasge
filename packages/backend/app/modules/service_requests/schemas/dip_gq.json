@@ -6,8 +6,10 @@
   "description": "Schema d'extraction pour le DIP de Guinee Equatoriale - 2 faces",
   "document_type": "DIP",
   "country": "GQ",
-  "faces": ["recto", "verso"],
-
+  "faces": [
+    "recto",
+    "verso"
+  ],
   "extraction": {
     "documento": {
       "description": "Informations du document",
@@ -76,7 +78,6 @@
         }
       }
     },
-
     "titular": {
       "description": "Informations du titulaire",
       "fields": {
@@ -105,7 +106,10 @@
         },
         "sexo": {
           "type": "string",
-          "enum": ["M", "F"],
+          "enum": [
+            "M",
+            "F"
+          ],
           "required": true,
           "description": "Sexo: M=Masculino, F=Femenino",
           "field_label": "Sexo",
@@ -152,7 +156,12 @@
         },
         "estado_civil": {
           "type": "string",
-          "enum": ["SOLTERO/A", "CASADO/A", "DIVORCIADO/A", "VIUDO/A"],
+          "enum": [
+            "SOLTERO/A",
+            "CASADO/A",
+            "DIVORCIADO/A",
+            "VIUDO/A"
+          ],
           "required": true,
           "description": "Estado civil del titular",
           "field_label": "ESTADO CIVIL",
@@ -175,7 +184,16 @@
         },
         "grupo_sanguineo": {
           "type": "string",
-          "enum": ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"],
+          "enum": [
+            "A+",
+            "A-",
+            "B+",
+            "B-",
+            "AB+",
+            "AB-",
+            "O+",
+            "O-"
+          ],
           "required": false,
           "description": "Grupo sanguineo del titular",
           "field_label": "GRUPO SANGUÍNEO",
@@ -183,7 +201,6 @@
         }
       }
     },
-
     "filiacion": {
       "description": "Informations de filiation",
       "fields": {
@@ -196,7 +213,6 @@
         }
       }
     },
-
     "mrz": {
       "description": "Zone MRZ (Machine Readable Zone) - 3 lignes TD1",
       "format": "TD1",
@@ -228,7 +244,6 @@
       }
     }
   },
-
   "validations": [
     {
       "id": "dip_not_expired",
@@ -259,7 +274,6 @@
       "severity": "warning"
     }
   ],
-
   "gemini_hints": {
     "document_description": "Documento de Identidad Personal (DIP) de Guinea Ecuatorial - documento de identidad para ciudadanos",
     "language": "es",
@@ -287,10 +301,41 @@
       "Photo de mauvaise qualite",
       "Document use ou endommage",
       "MRZ partiellement visible",
-      "Deux faces a traiter separement"
-    ]
+      "Deux faces a traiter separement",
+      "IMPORTANT: Nombre et Lugar de emision sont sur la MEME LIGNE - extraire separement"
+    ],
+    "critical_field_separation": {
+      "description": "ATTENTION: Sur le recto du DIP, certains champs sont sur la MEME LIGNE et doivent etre extraits SEPAREMENT",
+      "same_line_fields": [
+        {
+          "line": "Nombre + Lugar de emision",
+          "example_raw": "BERNARDO NDJOMO                    MALABO",
+          "extract_as": {
+            "nombres": "BERNARDO NDJOMO (uniquement le prenom, SANS la ville)",
+            "lugar_emision": "MALABO (uniquement la ville)"
+          },
+          "warning": "NE PAS inclure la ville (MALABO, BATA, etc.) dans le champ nombres"
+        }
+      ],
+      "known_emission_cities": [
+        "MALABO",
+        "BATA",
+        "MONGOMO",
+        "EBIBEYIN",
+        "LUBA",
+        "ELA NGUEMA",
+        "ACONIBE",
+        "ANISOK",
+        "NIEFANG",
+        "EBEBIYIN",
+        "MICOMESENG",
+        "NSORK",
+        "EVINAYONG",
+        "RIABA",
+        "ANNOBON"
+      ]
+    }
   },
-
   "tesseract_patterns": {
     "numero_dip": [
       "N[°o]?\\s*D\\.?I\\.?P\\.?\\s*[:#]?\\s*([0-9]{9})",

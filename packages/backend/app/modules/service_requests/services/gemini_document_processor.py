@@ -240,46 +240,50 @@ class WorkflowIdentityConfig:
 
 
 # Default identity fields for all workflows
+# STRATEGY: Document numbers and dates are BLOCKING (reliable OCR)
+#           Names are WARNING only (prone to OCR errors like mixing with adjacent fields)
 DEFAULT_IDENTITY_FIELDS = [
+    # ══════════════════════════════════════════════════════════════════════════
+    # BLOCKING FIELDS (reliable extraction, must match exactly)
+    # ══════════════════════════════════════════════════════════════════════════
     IdentityFieldConfig(
-        field_name="apellidos",
-        # Matches wizard fieldMappings
-        field_paths=["titular.apellidos", "apellidos"],
+        field_name="numero_dip",
+        # DIP: documento.numero_dip | Passport: titular.numero_dip (Personal No.)
+        field_paths=["documento.numero_dip", "titular.numero_dip", "numero_dip"],
         is_blocking=True,
-        label_es="Apellidos",
-        label_fr="Nom de famille",
-        label_en="Surname"
-    ),
-    IdentityFieldConfig(
-        field_name="nombres",
-        # Matches wizard fieldMappings
-        field_paths=["titular.nombres", "nombres"],
-        is_blocking=True,
-        label_es="Nombres",
-        label_fr="Prénoms",
-        label_en="First names"
-    ),
-    IdentityFieldConfig(
-        field_name="numero_documento",
-        # Matches wizard fieldMappings
-        field_paths=["documento.numero_dip", "numero_dip"],
-        is_blocking=True,
-        label_es="Número de documento",
-        label_fr="Numéro de document",
-        label_en="Document number"
+        label_es="N° DIP",
+        label_fr="N° DIP",
+        label_en="DIP Number"
     ),
     IdentityFieldConfig(
         field_name="fecha_nacimiento",
-        # Matches wizard fieldMappings
         field_paths=["titular.fecha_nacimiento", "fecha_nacimiento"],
         is_blocking=True,
         label_es="Fecha de nacimiento",
         label_fr="Date de naissance",
         label_en="Date of birth"
     ),
+    # ══════════════════════════════════════════════════════════════════════════
+    # WARNING FIELDS (prone to OCR errors, informational only)
+    # ══════════════════════════════════════════════════════════════════════════
+    IdentityFieldConfig(
+        field_name="apellidos",
+        field_paths=["titular.apellidos", "apellidos"],
+        is_blocking=False,  # WARNING only - OCR can mix with adjacent fields
+        label_es="Apellidos",
+        label_fr="Nom de famille",
+        label_en="Surname"
+    ),
+    IdentityFieldConfig(
+        field_name="nombres",
+        field_paths=["titular.nombres", "nombres"],
+        is_blocking=False,  # WARNING only - OCR can mix with lugar_emision on DIP
+        label_es="Nombres",
+        label_fr="Prénoms",
+        label_en="First names"
+    ),
     IdentityFieldConfig(
         field_name="nacionalidad",
-        # Matches wizard fieldMappings
         field_paths=["titular.nacionalidad", "nacionalidad"],
         is_blocking=False,
         label_es="Nacionalidad",
@@ -1783,6 +1787,8 @@ class GeminiDocumentProcessor:
         """
         Build extraction + risk analysis prompt for Gemini.
         """
+        critical_separation_text = ""
+
         if schema:
             hints = schema.get("gemini_hints", {})
             doc_description = hints.get("document_description", document_code)
@@ -1809,6 +1815,33 @@ class GeminiDocumentProcessor:
                     fields_description.append(field_desc)
 
             fields_text = "\n".join(fields_description)
+
+            # Build critical field separation warnings if present
+            critical_sep = hints.get("critical_field_separation", {})
+            if critical_sep:
+                sep_lines = [
+                    "\n═══════════════════════════════════════════════════════════════════════════════",
+                    "⚠️  SEPARACIÓN CRÍTICA DE CAMPOS - MUY IMPORTANTE:",
+                    "═══════════════════════════════════════════════════════════════════════════════",
+                    critical_sep.get("description", ""),
+                    ""
+                ]
+                for field_info in critical_sep.get("same_line_fields", []):
+                    sep_lines.append(f"LÍNEA: {field_info.get('line', '')}")
+                    sep_lines.append(f"  Ejemplo raw: \"{field_info.get('example_raw', '')}\"")
+                    extract_as = field_info.get("extract_as", {})
+                    for field, instruction in extract_as.items():
+                        sep_lines.append(f"  → {field}: {instruction}")
+                    if field_info.get("warning"):
+                        sep_lines.append(f"  ⚠️ {field_info.get('warning')}")
+                    sep_lines.append("")
+
+                known_cities = critical_sep.get("known_emission_cities", [])
+                if known_cities:
+                    sep_lines.append(f"Ciudades de emisión conocidas (NO incluir en nombres): {', '.join(known_cities)}")
+                    sep_lines.append("")
+
+                critical_separation_text = "\n".join(sep_lines)
         else:
             doc_description = document_code
             language = "es"
@@ -1826,7 +1859,7 @@ IDIOMA DEL DOCUMENTO: {language}
 
 CAMPOS A EXTRAER:
 {fields_text}
-
+{critical_separation_text}
 ═══════════════════════════════════════════════════════════════════════════════
 ANÁLISIS DE RIESGO Y FRAUDE - DETECTAR:
 ═══════════════════════════════════════════════════════════════════════════════
