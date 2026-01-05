@@ -355,15 +355,14 @@ class RiskAnalyzer:
         validity_risks = self._check_document_validity(extraction)
         risk_factors.extend(validity_risks)
 
-        # 4. Identity Consistency
-        if existing_documents:
-            identity_risks = self._check_identity_consistency(extraction, existing_documents)
-            risk_factors.extend(identity_risks)
+        # 4. Identity Consistency (always check - compares with other documents if available)
+        # Even without existing_documents, logs that cross-document check was skipped
+        identity_risks = self._check_identity_consistency(extraction, existing_documents or {})
+        risk_factors.extend(identity_risks)
 
-        # 5. Form Data Consistency
-        if form_data:
-            form_risks = self._check_form_consistency(extraction, form_data)
-            risk_factors.extend(form_risks)
+        # 5. Form Data Consistency (always check - compares with user form data if available)
+        form_risks = self._check_form_consistency(extraction, form_data or {})
+        risk_factors.extend(form_risks)
 
         # 6. Data Validation
         data_risks = self._check_data_validation(extraction, document_code)
@@ -377,10 +376,10 @@ class RiskAnalyzer:
         coherence_risks = self._check_coherence(extraction)
         risk_factors.extend(coherence_risks)
 
-        # 9. Gemini-detected fraud indicators
-        if gemini_risk_hints:
-            fraud_risks = self._process_gemini_risk_hints(gemini_risk_hints)
-            risk_factors.extend(fraud_risks)
+        # 9. Gemini-detected fraud indicators (always process, even if empty)
+        # This ensures we check for low authenticity scores, altered dates, etc.
+        fraud_risks = self._process_gemini_risk_hints(gemini_risk_hints or {})
+        risk_factors.extend(fraud_risks)
 
         # Calculate overall risk score and level
         risk_score, risk_level = self._calculate_risk_score(risk_factors)
@@ -773,6 +772,23 @@ class RiskAnalyzer:
                 except (ValueError, TypeError) as e:
                     logger.warning(f"Error parsing amount: {e}")
 
+        # Check for currency mismatch (expected XAF for GQ documents)
+        currency_fields = ["moneda", "currency", "divisa"]
+        for field in currency_fields:
+            if field in extraction and extraction[field]:
+                currency = str(extraction[field]).upper().strip()
+                if currency not in ["XAF", "FCFA", "CFA", "FRANCS CFA"]:
+                    risks.append({
+                        "code": RiskFactorCode.CURRENCY_MISMATCH.value,
+                        "severity": RISK_FACTOR_SEVERITY[RiskFactorCode.CURRENCY_MISMATCH],
+                        "message": f"Unexpected currency: {currency} (expected XAF)",
+                        "detail": {
+                            "detected_currency": currency,
+                            "expected_currency": "XAF"
+                        },
+                        "action": "review"
+                    })
+
         return risks
 
     def _check_coherence(
@@ -893,6 +909,51 @@ class RiskAnalyzer:
                 "severity": RISK_FACTOR_SEVERITY[RiskFactorCode.MISSING_STAMP],
                 "message": "Document appears to be missing an official stamp",
                 "detail": {},
+                "action": "review"
+            })
+
+        # Altered dates detection
+        if gemini_hints.get("altered_dates_detected"):
+            risks.append({
+                "code": RiskFactorCode.ALTERED_DATES.value,
+                "severity": RISK_FACTOR_SEVERITY[RiskFactorCode.ALTERED_DATES],
+                "message": "Dates on document appear to have been altered",
+                "detail": gemini_hints.get("altered_dates_details", {}),
+                "action": "reject"
+            })
+
+        # Photo manipulation detection
+        if gemini_hints.get("photo_appears_manipulated"):
+            risks.append({
+                "code": RiskFactorCode.PHOTO_MISMATCH.value,
+                "severity": RISK_FACTOR_SEVERITY[RiskFactorCode.PHOTO_MISMATCH],
+                "message": "Photo on document appears manipulated or altered",
+                "detail": {"source": "gemini_visual_analysis"},
+                "action": "review"
+            })
+
+        # Document expiry from visual analysis
+        if gemini_hints.get("document_appears_expired"):
+            expiry_date = gemini_hints.get("expiry_date_detected")
+            risks.append({
+                "code": RiskFactorCode.DOC_EXPIRED.value,
+                "severity": RISK_FACTOR_SEVERITY[RiskFactorCode.DOC_EXPIRED],
+                "message": "Document appears to be expired based on visual analysis",
+                "detail": {"expiry_date_detected": expiry_date},
+                "action": "reject"
+            })
+
+        # Low authenticity score
+        authenticity_score = gemini_hints.get("authenticity_score", 1.0)
+        if isinstance(authenticity_score, (int, float)) and authenticity_score < 0.6:
+            risks.append({
+                "code": RiskFactorCode.SUSPICIOUS_PATTERNS.value,
+                "severity": "high" if authenticity_score < 0.4 else "medium",
+                "message": f"Document has low authenticity score: {authenticity_score:.0%}",
+                "detail": {
+                    "authenticity_score": authenticity_score,
+                    "notes": gemini_hints.get("notes", "")
+                },
                 "action": "review"
             })
 
@@ -1502,19 +1563,33 @@ RESPONDE ÚNICAMENTE con JSON válido (sin explicaciones):
         "missing_signature": false,
         "missing_stamp": false,
         "suspicious_patterns": [],
+        "altered_dates_detected": false,
+        "altered_dates_details": {{}},
+        "photo_appears_manipulated": false,
+        "document_appears_expired": false,
+        "expiry_date_detected": null,
         "overall_authenticity": "high|medium|low",
+        "authenticity_score": 0.9,
         "notes": ""
     }},
     "campo1": "valor1",
     "campo2": "valor2"
 }}
 
-INSTRUCCIONES ADICIONALES:
+INSTRUCCIONES CRÍTICAS:
+- _risk_hints es OBLIGATORIO - SIEMPRE debe estar presente con TODOS los campos
 - Si un campo no es visible o legible, usa null
 - Para fechas, usa formato ISO (YYYY-MM-DD)
 - Para números de documento, elimina espacios
 - Sé conservador con _confidence: baja si hay dudas
+- authenticity_score: 0.0 (muy sospechoso) a 1.0 (completamente auténtico)
 - Si detectas CUALQUIER indicio de fraude, marca los campos correspondientes en _risk_hints
+- altered_dates_detected: true si las fechas parecen modificadas visualmente
+- photo_appears_manipulated: true si la foto parece editada o pegada
+- document_appears_expired: true si la fecha de expiración ya pasó
+- expiry_date_detected: la fecha de expiración si es visible (formato ISO)
+
+IMPORTANTE: Analiza TODOS los aspectos de seguridad del documento, incluso si parece legítimo.
 """
 
         return prompt
