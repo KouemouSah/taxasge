@@ -198,6 +198,7 @@ export function useServiceRequests(): UseServiceRequestsReturn {
   }, [handleError])
 
   const loadRequest = useCallback(async (requestId: string): Promise<void> => {
+    console.log('[ServiceRequests] loadRequest called for:', requestId)
     try {
       setIsLoading(true)
       setError(null)
@@ -214,7 +215,9 @@ export function useServiceRequests(): UseServiceRequestsReturn {
       const wf = await serviceRequestsApi.getWorkflowSteps(request.workflowCode, request.subType)
       setWorkflow(wf)
       updateCurrentStep(request, wf)
+      console.log('[ServiceRequests] loadRequest completed successfully')
     } catch (err) {
+      console.error('[ServiceRequests] loadRequest failed:', err)
       handleError(err)
     } finally {
       setIsLoading(false)
@@ -274,22 +277,29 @@ export function useServiceRequests(): UseServiceRequestsReturn {
     stepId: string,
     data: Record<string, unknown>
   ): Promise<boolean> => {
-    if (!currentRequest) return false
+    console.log('[ServiceRequests] saveStepData called:', { stepId, data })
+    if (!currentRequest) {
+      console.warn('[ServiceRequests] saveStepData: no currentRequest')
+      return false
+    }
 
     try {
       setIsSaving(true)
       setError(null)
       // Pass existing formData to avoid extra API call
       const existingFormData = currentRequest.formData || {}
+      console.log('[ServiceRequests] saveStepData: calling API...')
       const request = await serviceRequestsApi.saveStepData(
         currentRequest.id,
         stepId,
         data,
         existingFormData
       )
+      console.log('[ServiceRequests] saveStepData: API success, updating state')
       setCurrentRequest(request)
       return true
     } catch (err) {
+      console.error('[ServiceRequests] saveStepData failed:', err)
       handleError(err)
       return false
     } finally {
