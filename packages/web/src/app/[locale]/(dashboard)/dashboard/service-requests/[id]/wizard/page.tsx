@@ -59,7 +59,9 @@ import {
   AppointmentSelection,
   CitizenSummaryForm,
   notificationService,
+  IdentityMismatchBlocker,
 } from '@/modules/service-requests'
+import type { IdentityMismatch } from '@/modules/service-requests'
 import type {
   DocumentRequirement,
   ServiceRequestDocument,
@@ -178,6 +180,10 @@ export default function PassportWizardPage() {
 
   // Notification state
   const [notificationsSent, setNotificationsSent] = useState(false)
+
+  // Identity mismatch state - for blocking when documents don't match
+  const [identityMismatches, setIdentityMismatches] = useState<IdentityMismatch[]>([])
+  const [showMismatchBlocker, setShowMismatchBlocker] = useState(false)
 
   // Load request on mount
   useEffect(() => {
@@ -374,8 +380,46 @@ export default function PassportWizardPage() {
   }
 
   // Continue to form review after all documents have been previewed
+  // CHECKS FOR BLOCKING IDENTITY MISMATCHES BEFORE PROCEEDING
   const handleDocumentsContinue = () => {
     clearError()  // Clear any existing error before transition
+
+    // Collect all identity mismatches from document previews
+    const allMismatches: IdentityMismatch[] = []
+    let hasBlockingMismatches = false
+
+    const previews = documentPreviewsRef.current
+    console.log('[Wizard] Checking identity mismatches in previews:', Object.keys(previews))
+
+    for (const [docCode, preview] of Object.entries(previews)) {
+      const riskAnalysis = preview.riskAnalysis
+      if (riskAnalysis) {
+        // Check for identity mismatches in risk analysis
+        const mismatches = riskAnalysis.identityMismatches as IdentityMismatch[] | undefined
+        if (mismatches && mismatches.length > 0) {
+          console.log(`[Wizard] Found ${mismatches.length} identity mismatches in ${docCode}:`, mismatches)
+          allMismatches.push(...mismatches)
+        }
+
+        // Check blocking flag
+        if (riskAnalysis.hasBlockingMismatches) {
+          hasBlockingMismatches = true
+          console.warn(`[Wizard] BLOCKING mismatch detected in ${docCode}`)
+        }
+      }
+    }
+
+    // If we have blocking mismatches, show the blocker instead of proceeding
+    if (hasBlockingMismatches && allMismatches.length > 0) {
+      console.warn(`[Wizard] BLOCKING: ${allMismatches.length} identity mismatches detected`)
+      setIdentityMismatches(allMismatches)
+      setShowMismatchBlocker(true)
+      return  // Don't proceed to form_review
+    }
+
+    // Clear any previous mismatch state
+    setIdentityMismatches([])
+    setShowMismatchBlocker(false)
 
     // Build form data BEFORE navigating (avoid timing issues with effects/refs)
     // This is the key difference with dialog - dialog receives data as prop directly,
@@ -390,6 +434,24 @@ export default function PassportWizardPage() {
 
     // Proceed to form review
     setCurrentStepIndex(4)
+  }
+
+  // Handle going back from mismatch blocker to documents step
+  const handleMismatchBlockerBack = () => {
+    setShowMismatchBlocker(false)
+    setIdentityMismatches([])
+    // Stay on documents step (currentStepIndex is already 3)
+  }
+
+  // Handle re-uploading a specific document from mismatch blocker
+  const handleReuploadFromBlocker = (documentCode: string) => {
+    setShowMismatchBlocker(false)
+    setIdentityMismatches([])
+    // Clear the preview for this document so user can re-upload
+    const newPreviews = { ...documentPreviewsRef.current }
+    delete newPreviews[documentCode]
+    documentPreviewsRef.current = newPreviews
+    setDocumentPreviews(newPreviews)
   }
 
   // ==========================================================================
@@ -857,7 +919,7 @@ export default function PassportWizardPage() {
         />
       )}
 
-      {currentStep.id === 'upload_documents' && (
+      {currentStep.id === 'upload_documents' && !showMismatchBlocker && (
         <DocumentsStepImproved
           locale={locale}
           isMinor={wizardState.isMinor || false}
@@ -870,6 +932,16 @@ export default function PassportWizardPage() {
           onDelete={async (docId) => { await deleteDocument(docId) }}
           onNext={handleDocumentsContinue}
           onBack={handleBack}
+        />
+      )}
+
+      {/* Identity Mismatch Blocker - shown when documents have conflicting identity data */}
+      {currentStep.id === 'upload_documents' && showMismatchBlocker && (
+        <IdentityMismatchBlocker
+          mismatches={identityMismatches}
+          hasBlockingMismatches={identityMismatches.some(m => m.is_blocking)}
+          onGoBack={handleMismatchBlockerBack}
+          onReuploadDocument={handleReuploadFromBlocker}
         />
       )}
 

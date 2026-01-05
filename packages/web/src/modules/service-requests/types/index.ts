@@ -318,6 +318,30 @@ export interface FieldIndicator {
 }
 
 /**
+ * IdentityMismatch - Represents a mismatch in identity data between documents
+ * Used for blocking when documents belong to different people
+ */
+export interface IdentityMismatchData {
+  field_name: string
+  field_label: {
+    es: string
+    fr: string
+    en: string
+  }
+  is_blocking: boolean
+  source_document: {
+    code: string
+    value: string
+  }
+  compared_document: {
+    code: string
+    value: string
+  }
+  risk_code: string
+  severity: string
+}
+
+/**
  * RiskAnalysisResult - Complete risk analysis from Gemini
  */
 export interface RiskAnalysisResult {
@@ -332,6 +356,9 @@ export interface RiskAnalysisResult {
   requiresRejection: boolean
   requiresReview: boolean
   factorsCount: Record<string, number>
+  // New: Identity mismatch data for blocking
+  identityMismatches?: IdentityMismatchData[]
+  hasBlockingMismatches?: boolean
 }
 
 /**

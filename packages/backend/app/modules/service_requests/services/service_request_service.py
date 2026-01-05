@@ -356,11 +356,13 @@ class ServiceRequestService:
                 f"Total documents for comparison: {list(existing_documents.keys())}"
             )
 
-        # Get form data from request
+        # Get form data and workflow code from request
         form_data = request.get("form_data", {})
+        workflow_code = request.get("workflow_code", "")
 
         # Process document with Gemini/Tesseract + Risk Analysis (NO Firebase upload yet)
         # Pass extraction_schema_key for proper schema lookup
+        # Pass workflow_code for identity verification config
         processing_result = await self._process_document(
             content=content,
             mime_type=file.content_type,
@@ -369,7 +371,8 @@ class ServiceRequestService:
             user_id=str(user_id),
             existing_documents=existing_documents if existing_documents else None,
             form_data=form_data if form_data else None,
-            extraction_schema_key=extraction_schema_key
+            extraction_schema_key=extraction_schema_key,
+            workflow_code=workflow_code
         )
 
         # Generate preview ID (unique for this extraction session)
@@ -1105,7 +1108,8 @@ class ServiceRequestService:
         user_id: str = "",
         existing_documents: Optional[Dict[str, Dict]] = None,
         form_data: Optional[Dict] = None,
-        extraction_schema_key: Optional[str] = None
+        extraction_schema_key: Optional[str] = None,
+        workflow_code: Optional[str] = None
     ) -> Dict:
         """
         Process document for extraction + risk analysis using Gemini + Tesseract fallback.
@@ -1114,7 +1118,7 @@ class ServiceRequestService:
         1. Gemini AI (primary) - 70% confidence threshold + fraud detection
         2. Tesseract OCR (fallback) - 60% confidence threshold
         3. Manual review if both fail
-        4. Comprehensive risk analysis
+        4. Comprehensive risk analysis with identity mismatch detection
 
         Args:
             content: Document file bytes
@@ -1125,9 +1129,10 @@ class ServiceRequestService:
             existing_documents: Previously uploaded documents for consistency checks
             form_data: User form data for consistency checks
             extraction_schema_key: Database key for schema lookup (e.g., 'DIP_GQ_V1')
+            workflow_code: Workflow code for identity verification config (e.g., 'PASAPORTE_NUEVO')
 
         Returns:
-            Dict with extraction, confidence, processor, status, risk_analysis
+            Dict with extraction, confidence, processor, status, risk_analysis including identity_mismatches
         """
         try:
             # Use the production Gemini document processor with full risk analysis
@@ -1139,7 +1144,8 @@ class ServiceRequestService:
                 user_id=user_id,
                 existing_documents=existing_documents,
                 form_data=form_data,
-                extraction_schema_key=extraction_schema_key
+                extraction_schema_key=extraction_schema_key,
+                workflow_code=workflow_code
             )
 
             # Log summary

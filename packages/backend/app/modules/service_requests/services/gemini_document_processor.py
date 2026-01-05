@@ -28,6 +28,7 @@ import hashlib
 import json
 import re
 import time
+from dataclasses import dataclass, field
 from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime, date
 from enum import Enum
@@ -210,6 +211,153 @@ AMOUNT_RANGES: Dict[str, Tuple[float, float]] = {
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# IDENTITY VERIFICATION CONFIGURATION (Per-Workflow)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@dataclass
+class IdentityFieldConfig:
+    """Configuration for an identity field to compare."""
+    field_name: str  # Field name in extraction (e.g., "apellidos")
+    field_paths: List[str]  # Possible paths to find the field (e.g., ["titular.apellidos", "apellidos"])
+    is_blocking: bool = True  # If True, mismatch blocks progress
+    label_es: str = ""  # Display label in Spanish
+    label_fr: str = ""  # Display label in French
+    label_en: str = ""  # Display label in English
+
+
+@dataclass
+class WorkflowIdentityConfig:
+    """
+    Identity verification configuration for a workflow.
+
+    Defines which documents to compare and which fields must match.
+    """
+    reference_document: str  # Main document to compare against (e.g., "dip")
+    compare_documents: List[str]  # Documents to compare with reference (e.g., ["pasaporte", "pasaporte_danado"])
+    critical_fields: List[IdentityFieldConfig]  # Fields that must match
+    is_blocking: bool = True  # If True, any critical mismatch blocks progress
+    workflow_patterns: List[str] = None  # Workflow patterns this config applies to (e.g., ["PASAPORTE_*"])
+
+
+# Default identity fields for all workflows
+DEFAULT_IDENTITY_FIELDS = [
+    IdentityFieldConfig(
+        field_name="apellidos",
+        field_paths=["titular.apellidos", "apellidos", "surname", "last_name"],
+        is_blocking=True,
+        label_es="Apellidos",
+        label_fr="Nom de famille",
+        label_en="Surname"
+    ),
+    IdentityFieldConfig(
+        field_name="nombres",
+        field_paths=["titular.nombres", "nombres", "first_name", "given_name", "nombre"],
+        is_blocking=True,
+        label_es="Nombres",
+        label_fr="Prénoms",
+        label_en="First names"
+    ),
+    IdentityFieldConfig(
+        field_name="numero_documento",
+        field_paths=["documento.numero_dip", "numero_documento", "numero_dip", "dni", "id_number", "document_number"],
+        is_blocking=True,
+        label_es="Número de documento",
+        label_fr="Numéro de document",
+        label_en="Document number"
+    ),
+    IdentityFieldConfig(
+        field_name="fecha_nacimiento",
+        field_paths=["titular.fecha_nacimiento", "fecha_nacimiento", "birthdate", "date_of_birth"],
+        is_blocking=True,
+        label_es="Fecha de nacimiento",
+        label_fr="Date de naissance",
+        label_en="Date of birth"
+    ),
+    IdentityFieldConfig(
+        field_name="nacionalidad",
+        field_paths=["titular.nacionalidad", "nacionalidad", "nationality"],
+        is_blocking=False,
+        label_es="Nacionalidad",
+        label_fr="Nationalité",
+        label_en="Nationality"
+    ),
+]
+
+# Per-workflow identity verification configurations
+WORKFLOW_IDENTITY_CONFIGS: Dict[str, WorkflowIdentityConfig] = {
+    # Passport workflows - DIP is reference, compare with old passport
+    "PASAPORTE": WorkflowIdentityConfig(
+        reference_document="dip",
+        compare_documents=["pasaporte", "pasaporte_antiguo", "pasaporte_danado"],
+        critical_fields=DEFAULT_IDENTITY_FIELDS,
+        is_blocking=True,
+        workflow_patterns=["PASAPORTE_*", "PASAPORTE_NUEVO", "PASAPORTE_RENOVACION", "PASAPORTE_DETERIORO"]
+    ),
+    # Driver's license workflows
+    "CONDUCIR": WorkflowIdentityConfig(
+        reference_document="dip",
+        compare_documents=["licencia_conducir", "permiso_conducir"],
+        critical_fields=DEFAULT_IDENTITY_FIELDS,
+        is_blocking=True,
+        workflow_patterns=["CONDUCIR_*", "PERMISO_CONDUCIR_*"]
+    ),
+    # Residence permit workflows
+    "RESIDENCIA": WorkflowIdentityConfig(
+        reference_document="pasaporte",
+        compare_documents=["certificado_nacimiento", "contrato_trabajo"],
+        critical_fields=DEFAULT_IDENTITY_FIELDS,
+        is_blocking=True,
+        workflow_patterns=["RESIDENCIA_*", "PERMISO_RESIDENCIA_*"]
+    ),
+    # Default fallback for any workflow
+    "DEFAULT": WorkflowIdentityConfig(
+        reference_document="dip",
+        compare_documents=[],  # Compare with any other identity document
+        critical_fields=DEFAULT_IDENTITY_FIELDS,
+        is_blocking=True,
+        workflow_patterns=["*"]
+    ),
+}
+
+
+def get_identity_config_for_workflow(workflow_code: Optional[str] = None) -> WorkflowIdentityConfig:
+    """
+    Get identity verification configuration for a workflow.
+
+    Args:
+        workflow_code: Workflow code (e.g., "PASAPORTE_NUEVO", "CONDUCIR_RENOVACION")
+
+    Returns:
+        Matching WorkflowIdentityConfig or default config
+    """
+    if not workflow_code:
+        return WORKFLOW_IDENTITY_CONFIGS["DEFAULT"]
+
+    workflow_upper = workflow_code.upper()
+
+    # Check for exact match first
+    if workflow_upper in WORKFLOW_IDENTITY_CONFIGS:
+        return WORKFLOW_IDENTITY_CONFIGS[workflow_upper]
+
+    # Check for pattern match (e.g., "PASAPORTE_NUEVO" matches "PASAPORTE")
+    for config_key, config in WORKFLOW_IDENTITY_CONFIGS.items():
+        if config_key == "DEFAULT":
+            continue
+        if workflow_upper.startswith(config_key):
+            return config
+        if config.workflow_patterns:
+            for pattern in config.workflow_patterns:
+                if pattern.endswith("*"):
+                    prefix = pattern[:-1]
+                    if workflow_upper.startswith(prefix):
+                        return config
+                elif pattern == workflow_upper:
+                    return config
+
+    return WORKFLOW_IDENTITY_CONFIGS["DEFAULT"]
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # DOCUMENT HASH REGISTRY (In-Memory for now, can be moved to Redis/DB)
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -320,7 +468,8 @@ class RiskAnalyzer:
         user_id: str,
         existing_documents: Optional[Dict[str, Dict[str, Any]]] = None,
         form_data: Optional[Dict[str, Any]] = None,
-        gemini_risk_hints: Optional[Dict[str, Any]] = None
+        gemini_risk_hints: Optional[Dict[str, Any]] = None,
+        workflow_code: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Perform comprehensive risk analysis.
@@ -335,9 +484,10 @@ class RiskAnalyzer:
             existing_documents: Previously uploaded documents for this request
             form_data: User-submitted form data
             gemini_risk_hints: Risk hints from Gemini analysis
+            workflow_code: Workflow code for identity verification config (e.g., "PASAPORTE_NUEVO")
 
         Returns:
-            Complete risk analysis result
+            Complete risk analysis result including identity_mismatches
         """
         risk_factors: List[Dict[str, Any]] = []
 
@@ -355,10 +505,17 @@ class RiskAnalyzer:
         validity_risks = self._check_document_validity(extraction)
         risk_factors.extend(validity_risks)
 
-        # 4. Identity Consistency (always check - compares with other documents if available)
-        # Even without existing_documents, logs that cross-document check was skipped
-        identity_risks = self._check_identity_consistency(extraction, existing_documents or {})
-        risk_factors.extend(identity_risks)
+        # 4. Identity Consistency with workflow-specific config
+        # Returns both risk_factors AND structured identity_mismatches
+        identity_result = self._check_identity_consistency_v2(
+            extraction=extraction,
+            document_code=document_code,
+            existing_documents=existing_documents or {},
+            workflow_code=workflow_code
+        )
+        risk_factors.extend(identity_result["risk_factors"])
+        identity_mismatches = identity_result["identity_mismatches"]
+        has_blocking_mismatches = identity_result["has_blocking_mismatches"]
 
         # 5. Form Data Consistency (always check - compares with user form data if available)
         form_risks = self._check_form_consistency(extraction, form_data or {})
@@ -408,7 +565,10 @@ class RiskAnalyzer:
                 "high": sum(1 for rf in risk_factors if rf["severity"] == "high"),
                 "medium": sum(1 for rf in risk_factors if rf["severity"] == "medium"),
                 "low": sum(1 for rf in risk_factors if rf["severity"] == "low")
-            }
+            },
+            # New: Structured identity mismatch data for frontend blocking
+            "identity_mismatches": identity_mismatches,
+            "has_blocking_mismatches": has_blocking_mismatches
         }
 
     def _check_document_type_mismatch(
@@ -551,63 +711,137 @@ class RiskAnalyzer:
         extraction: Dict[str, Any],
         existing_documents: Dict[str, Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
-        """Check identity consistency across documents"""
-        risks = []
+        """Check identity consistency across documents (legacy method)"""
+        # Use v2 method for backwards compatibility
+        result = self._check_identity_consistency_v2(extraction, "", existing_documents, None)
+        return result["risk_factors"]
 
-        # Fields to compare
-        identity_fields = {
-            "name": ["nombres", "nombre", "first_name", "given_name"],
-            "surname": ["apellidos", "apellido", "last_name", "surname"],
-            "full_name": ["nombre_completo", "full_name"],
-            "id_number": ["numero_documento", "dni", "nif", "id_number", "document_number"],
-            "birthdate": ["fecha_nacimiento", "birthdate", "date_of_birth"],
-            "nationality": ["nacionalidad", "nationality"]
-        }
+    def _check_identity_consistency_v2(
+        self,
+        extraction: Dict[str, Any],
+        document_code: str,
+        existing_documents: Dict[str, Dict[str, Any]],
+        workflow_code: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Check identity consistency across documents with workflow-specific configuration.
 
+        Returns structured data for frontend blocking:
+        - risk_factors: List of risk factors (same as before)
+        - identity_mismatches: List of detailed mismatch info with sources
+        - has_blocking_mismatches: Boolean flag indicating if critical mismatches were found
+
+        Args:
+            extraction: Current document extraction data
+            document_code: Current document code (e.g., "dip", "pasaporte")
+            existing_documents: Previously uploaded documents for this request
+            workflow_code: Workflow code for identity verification config
+
+        Returns:
+            Dict with risk_factors, identity_mismatches, and has_blocking_mismatches
+        """
+        risks: List[Dict[str, Any]] = []
+        identity_mismatches: List[Dict[str, Any]] = []
+        has_blocking_mismatches = False
+
+        # Get workflow-specific identity config
+        identity_config = get_identity_config_for_workflow(workflow_code)
+
+        # Helper function to extract value from nested dict using dot notation
+        def get_nested_value(data: Dict[str, Any], paths: List[str]) -> Optional[str]:
+            for path in paths:
+                parts = path.split(".")
+                current = data
+                for part in parts:
+                    if isinstance(current, dict):
+                        current = current.get(part)
+                    else:
+                        current = None
+                        break
+                if current is not None and current != "":
+                    return str(current).strip().upper()
+            return None
+
+        # Iterate over all existing documents and compare
         for doc_code, doc_data in existing_documents.items():
+            # Skip if comparing document with itself
+            if doc_code.lower() == document_code.lower():
+                continue
+
             existing_extraction = doc_data.get("extraction", {})
+            if not existing_extraction:
+                continue
 
-            for field_type, field_names in identity_fields.items():
-                current_value = None
-                existing_value = None
+            # Check each configured identity field
+            for field_config in identity_config.critical_fields:
+                # Get current document value
+                current_value = get_nested_value(extraction, field_config.field_paths)
 
-                # Find current value
-                for fname in field_names:
-                    if fname in extraction and extraction[fname]:
-                        current_value = str(extraction[fname]).strip().upper()
-                        break
-
-                # Find existing value
-                for fname in field_names:
-                    if fname in existing_extraction and existing_extraction[fname]:
-                        existing_value = str(existing_extraction[fname]).strip().upper()
-                        break
+                # Get existing document value
+                existing_value = get_nested_value(existing_extraction, field_config.field_paths)
 
                 # Compare if both exist
                 if current_value and existing_value and current_value != existing_value:
+                    # Determine risk code based on field name
                     risk_code = {
-                        "name": RiskFactorCode.NAME_MISMATCH,
-                        "surname": RiskFactorCode.NAME_MISMATCH,
-                        "full_name": RiskFactorCode.NAME_MISMATCH,
-                        "id_number": RiskFactorCode.ID_NUMBER_MISMATCH,
-                        "birthdate": RiskFactorCode.BIRTHDATE_MISMATCH,
-                        "nationality": RiskFactorCode.NATIONALITY_MISMATCH
-                    }.get(field_type, RiskFactorCode.CROSS_FIELD_MISMATCH)
+                        "nombres": RiskFactorCode.NAME_MISMATCH,
+                        "apellidos": RiskFactorCode.NAME_MISMATCH,
+                        "numero_documento": RiskFactorCode.ID_NUMBER_MISMATCH,
+                        "fecha_nacimiento": RiskFactorCode.BIRTHDATE_MISMATCH,
+                        "nacionalidad": RiskFactorCode.NATIONALITY_MISMATCH
+                    }.get(field_config.field_name, RiskFactorCode.CROSS_FIELD_MISMATCH)
 
+                    # Create risk factor
+                    severity = RISK_FACTOR_SEVERITY.get(risk_code, "high")
                     risks.append({
                         "code": risk_code.value,
-                        "severity": RISK_FACTOR_SEVERITY[risk_code],
-                        "message": f"{field_type.title()} mismatch with {doc_code}",
+                        "severity": severity,
+                        "message": f"{field_config.field_name.title()} mismatch between {document_code} and {doc_code}",
                         "detail": {
-                            "field": field_type,
+                            "field": field_config.field_name,
+                            "current_document": document_code,
                             "current_value": current_value,
-                            "existing_value": existing_value,
-                            "compared_with": doc_code
+                            "compared_document": doc_code,
+                            "compared_value": existing_value,
+                            "is_blocking": field_config.is_blocking
                         },
-                        "action": "review"
+                        "action": "block" if field_config.is_blocking else "review"
                     })
 
-        return risks
+                    # Create structured identity mismatch
+                    identity_mismatches.append({
+                        "field_name": field_config.field_name,
+                        "field_label": {
+                            "es": field_config.label_es or field_config.field_name,
+                            "fr": field_config.label_fr or field_config.field_name,
+                            "en": field_config.label_en or field_config.field_name
+                        },
+                        "is_blocking": field_config.is_blocking,
+                        "source_document": {
+                            "code": document_code,
+                            "value": current_value
+                        },
+                        "compared_document": {
+                            "code": doc_code,
+                            "value": existing_value
+                        },
+                        "risk_code": risk_code.value,
+                        "severity": severity
+                    })
+
+                    # Update blocking flag
+                    if field_config.is_blocking and identity_config.is_blocking:
+                        has_blocking_mismatches = True
+                        logger.warning(
+                            f"BLOCKING identity mismatch: {field_config.field_name} - "
+                            f"{document_code}:{current_value} vs {doc_code}:{existing_value}"
+                        )
+
+        return {
+            "risk_factors": risks,
+            "identity_mismatches": identity_mismatches,
+            "has_blocking_mismatches": has_blocking_mismatches
+        }
 
     def _check_form_consistency(
         self,
@@ -1158,7 +1392,8 @@ class GeminiDocumentProcessor:
         user_id: str = "",
         existing_documents: Optional[Dict[str, Dict[str, Any]]] = None,
         form_data: Optional[Dict[str, Any]] = None,
-        extraction_schema_key: Optional[str] = None
+        extraction_schema_key: Optional[str] = None,
+        workflow_code: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Process document for classification, extraction, and RISK ANALYSIS.
@@ -1172,6 +1407,7 @@ class GeminiDocumentProcessor:
             existing_documents: Previously uploaded documents for identity consistency
             form_data: User form data for consistency checks
             extraction_schema_key: Database key for schema lookup (e.g., 'DIP_GQ_V1')
+            workflow_code: Workflow code for identity verification config (e.g., 'PASAPORTE_NUEVO')
 
         Returns:
             Dict with:
@@ -1183,7 +1419,7 @@ class GeminiDocumentProcessor:
             - processing_time_ms: Processing time
             - has_error: Boolean
             - error_message: Optional error message
-            - risk_analysis: Complete risk assessment
+            - risk_analysis: Complete risk assessment with identity_mismatches
         """
         start_time = time.time()
 
@@ -1277,7 +1513,8 @@ class GeminiDocumentProcessor:
             user_id=user_id,
             existing_documents=existing_documents,
             form_data=form_data,
-            gemini_risk_hints=gemini_risk_hints
+            gemini_risk_hints=gemini_risk_hints,
+            workflow_code=workflow_code
         )
 
         # Update status based on risk analysis
