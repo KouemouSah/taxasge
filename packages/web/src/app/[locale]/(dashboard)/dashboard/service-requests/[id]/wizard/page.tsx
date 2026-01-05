@@ -465,7 +465,7 @@ export default function PassportWizardPage() {
   // ==========================================================================
 
   // Build form data from document previews (2-step flow)
-  // Uses ref to access latest documentPreviews (avoids stale closure issues)
+  // Uses SAME approach as DocumentPreviewDialog: dynamic flattening
   const buildFormDataFromPreviews = useCallback((): FormDataResponse | null => {
     // Use ref to get latest previews (avoids stale closure)
     const previews = documentPreviewsRef.current
@@ -476,66 +476,80 @@ export default function PassportWizardPage() {
       return null
     }
 
+    // Helper: Flatten nested object recursively (SAME as dialog)
+    const flattenObject = (
+      obj: Record<string, unknown>,
+      prefix = ''
+    ): Record<string, unknown> => {
+      const result: Record<string, unknown> = {}
+      for (const [key, value] of Object.entries(obj)) {
+        const fullKey = prefix ? `${prefix}.${key}` : key
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+          Object.assign(result, flattenObject(value as Record<string, unknown>, fullKey))
+        } else {
+          result[fullKey] = value
+        }
+      }
+      return result
+    }
+
     // Collect all extraction data from previews
     const extractedData: Record<string, Record<string, unknown>> = {}
-    const formDataFlat: Record<string, unknown> = {}
+    const allFlattenedData: Record<string, unknown> = {}
 
     for (const [docCode, preview] of Object.entries(previews)) {
       console.log(`[Wizard] Processing preview for ${docCode}:`, preview.extraction)
       if (preview.extraction) {
         extractedData[docCode] = preview.extraction as Record<string, unknown>
 
-        // Flatten DIP extraction for form fields
-        if (docCode === 'dip' && preview.extraction) {
-          const dipData = preview.extraction as Record<string, unknown>
-          const titular = dipData.titular as Record<string, unknown> | undefined
-          const documento = dipData.documento as Record<string, unknown> | undefined
-          const domicilio = dipData.domicilio as Record<string, unknown> | undefined
-          const filiacion = dipData.filiacion as Record<string, unknown> | undefined
+        // Flatten ALL extraction data dynamically (like dialog does)
+        const flattened = flattenObject(preview.extraction as Record<string, unknown>)
+        console.log(`[Wizard] Flattened ${docCode} data:`, flattened)
+        Object.assign(allFlattenedData, flattened)
+      }
+    }
 
-          console.log('[Wizard] DIP extraction sections:', { titular, documento, domicilio, filiacion })
+    console.log('[Wizard] All flattened extraction data:', allFlattenedData)
 
-          if (documento) {
-            formDataFlat.numero_dip = documento.numero_dip
-          }
-          if (titular) {
-            formDataFlat.apellidos = titular.apellidos
-            formDataFlat.nombres = titular.nombres
-            formDataFlat.sexo = titular.sexo
-            formDataFlat.fecha_nacimiento = titular.fecha_nacimiento
-            formDataFlat.lugar_nacimiento = titular.lugar_nacimiento
-            formDataFlat.nacionalidad = titular.nacionalidad
-            formDataFlat.estado_civil = titular.estado_civil
-            formDataFlat.profesion = titular.profesion
-            formDataFlat.grupo_sanguineo = titular.grupo_sanguineo
-            // Also handle domiciliacion from titular section (DIP schema)
-            if (titular.domiciliacion) {
-              formDataFlat.domicilio = titular.domiciliacion
-            }
-          }
-          if (domicilio) {
-            formDataFlat.domicilio = domicilio.domicilio || domicilio.direccion || formDataFlat.domicilio
-            formDataFlat.ciudad = domicilio.ciudad
-          }
-          if (filiacion) {
-            formDataFlat.nombre_padre = filiacion.nombre_padre
-            formDataFlat.profesion_padre = filiacion.profesion_padre
-            formDataFlat.nombre_madre = filiacion.nombre_madre
-            formDataFlat.profesion_madre = filiacion.profesion_madre
-          }
-        }
+    // Map flattened keys to form field names
+    // This handles both nested keys (documento.numero_dip) and flat keys (numero_dip)
+    const formDataFlat: Record<string, unknown> = {}
 
-        // Handle old passport extraction
-        if (docCode === 'pasaporte_antiguo' && preview.extraction) {
-          const passportData = preview.extraction as Record<string, unknown>
-          formDataFlat.numero_pasaporte_antiguo = passportData.numero
-          formDataFlat.fecha_expedicion_antiguo = passportData.fecha_expedicion
-          formDataFlat.fecha_expiracion_antiguo = passportData.fecha_expiracion
+    // Field mapping: flattened key patterns -> form field name
+    const fieldMappings: Array<{ formField: string; possibleKeys: string[] }> = [
+      { formField: 'numero_dip', possibleKeys: ['documento.numero_dip', 'numero_dip'] },
+      { formField: 'apellidos', possibleKeys: ['titular.apellidos', 'apellidos'] },
+      { formField: 'nombres', possibleKeys: ['titular.nombres', 'nombres'] },
+      { formField: 'sexo', possibleKeys: ['titular.sexo', 'sexo'] },
+      { formField: 'fecha_nacimiento', possibleKeys: ['titular.fecha_nacimiento', 'fecha_nacimiento'] },
+      { formField: 'lugar_nacimiento', possibleKeys: ['titular.lugar_nacimiento', 'lugar_nacimiento'] },
+      { formField: 'nacionalidad', possibleKeys: ['titular.nacionalidad', 'nacionalidad'] },
+      { formField: 'estado_civil', possibleKeys: ['titular.estado_civil', 'estado_civil'] },
+      { formField: 'profesion', possibleKeys: ['titular.profesion', 'profesion'] },
+      { formField: 'grupo_sanguineo', possibleKeys: ['titular.grupo_sanguineo', 'grupo_sanguineo'] },
+      { formField: 'domicilio', possibleKeys: ['titular.domiciliacion', 'domicilio.domicilio', 'domicilio.direccion', 'domicilio', 'domiciliacion'] },
+      { formField: 'ciudad', possibleKeys: ['domicilio.ciudad', 'ciudad'] },
+      { formField: 'nombre_padre', possibleKeys: ['filiacion.nombre_padre', 'nombre_padre'] },
+      { formField: 'profesion_padre', possibleKeys: ['filiacion.profesion_padre', 'profesion_padre'] },
+      { formField: 'nombre_madre', possibleKeys: ['filiacion.nombre_madre', 'nombre_madre'] },
+      { formField: 'profesion_madre', possibleKeys: ['filiacion.profesion_madre', 'profesion_madre'] },
+      { formField: 'numero_pasaporte_antiguo', possibleKeys: ['numero', 'numero_pasaporte', 'numero_pasaporte_antiguo'] },
+      { formField: 'fecha_expedicion_antiguo', possibleKeys: ['fecha_expedicion', 'fecha_expedicion_antiguo'] },
+      { formField: 'fecha_expiracion_antiguo', possibleKeys: ['fecha_expiracion', 'fecha_expiracion_antiguo'] },
+    ]
+
+    // Apply mappings - first match wins
+    for (const { formField, possibleKeys } of fieldMappings) {
+      for (const key of possibleKeys) {
+        if (allFlattenedData[key] !== undefined && allFlattenedData[key] !== null && allFlattenedData[key] !== '') {
+          formDataFlat[formField] = allFlattenedData[key]
+          console.log(`[Wizard] Mapped ${key} -> ${formField}:`, allFlattenedData[key])
+          break
         }
       }
     }
 
-    console.log('[Wizard] Built formDataFlat:', formDataFlat)
+    console.log('[Wizard] Final formDataFlat:', formDataFlat)
 
     // Calculate completion percentage
     const requiredFields = ['numero_dip', 'apellidos', 'nombres', 'sexo', 'fecha_nacimiento', 'lugar_nacimiento', 'domicilio']
