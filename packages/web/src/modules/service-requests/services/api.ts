@@ -33,6 +33,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const API_VERSION = '/api/v1'
 const ENDPOINT_BASE = '/service-requests'
 
+
 // ============================================================================
 // BACKEND RESPONSE TYPES (snake_case from Python)
 // ============================================================================
@@ -393,32 +394,45 @@ class ServiceRequestsApiClient {
       ...options.headers,
     }
 
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      ...options,
-      headers,
-    })
+    const url = `${this.baseUrl}${endpoint}`
+    console.log(`[ServiceRequests] ${options.method || 'GET'} ${url}`)
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      // Handle error.detail that could be string or object
-      let errorMessage = `API Error: ${response.status}`
-      if (errorData.detail) {
-        if (typeof errorData.detail === 'string') {
-          errorMessage = errorData.detail
-        } else if (typeof errorData.detail === 'object') {
-          // FastAPI can return detail as object: {"message": "...", "code": "..."}
-          errorMessage = errorData.detail.message || errorData.detail.msg || JSON.stringify(errorData.detail)
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
+      })
+
+      console.log(`[ServiceRequests] Response status: ${response.status}`)
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        // Handle error.detail that could be string or object
+        let errorMessage = `API Error: ${response.status}`
+        if (errorData.detail) {
+          if (typeof errorData.detail === 'string') {
+            errorMessage = errorData.detail
+          } else if (typeof errorData.detail === 'object') {
+            // FastAPI can return detail as object: {"message": "...", "code": "..."}
+            errorMessage = errorData.detail.message || errorData.detail.msg || JSON.stringify(errorData.detail)
+          }
         }
+        console.error(`[ServiceRequests] Error: ${errorMessage}`)
+        throw new Error(errorMessage)
       }
-      throw new Error(errorMessage)
-    }
 
-    // Handle 204 No Content
-    if (response.status === 204) {
-      return {} as T
-    }
+      // Handle 204 No Content
+      if (response.status === 204) {
+        return {} as T
+      }
 
-    return response.json()
+      const data = await response.json()
+      console.log(`[ServiceRequests] Success`)
+      return data
+    } catch (error) {
+      console.error(`[ServiceRequests] Fetch error:`, error)
+      throw error
+    }
   }
 
   private async uploadRequest<T>(

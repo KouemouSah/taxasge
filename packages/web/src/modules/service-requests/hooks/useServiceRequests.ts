@@ -150,7 +150,9 @@ export function useServiceRequests(): UseServiceRequestsReturn {
   const handleError = useCallback((err: unknown) => {
     const message = err instanceof Error ? err.message : 'An error occurred'
     setError(message)
-    console.error('[ServiceRequests]', message)
+    // Log with stack trace to identify where the error is coming from
+    console.error('[ServiceRequests] Error set:', message)
+    console.error('[ServiceRequests] Stack:', new Error().stack)
   }, [])
 
   const updateCurrentStep = useCallback((request: ServiceRequest, wf: WorkflowConfig) => {
