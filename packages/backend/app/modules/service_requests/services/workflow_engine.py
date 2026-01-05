@@ -225,14 +225,26 @@ class WorkflowEngine:
             """
             ext_row = await db.fetchrow(ext_query, doc["id"])
             if ext_row and ext_row["extraction_data"]:
-                # extraction_data is stored as JSON string, parse it
+                # Handle both old (double-encoded string) and new (dict) formats
                 data = ext_row["extraction_data"]
-                if isinstance(data, str):
+
+                # Keep parsing while data is a string (handles double-encoding)
+                max_iterations = 3  # Safety limit
+                iteration = 0
+                while isinstance(data, str) and iteration < max_iterations:
                     try:
                         data = json.loads(data)
+                        iteration += 1
                     except json.JSONDecodeError:
-                        logging.warning(f"Failed to parse extraction_data for doc {doc['id']}")
+                        logger.warning(f"Failed to parse extraction_data for doc {doc['id']}")
                         data = {}
+                        break
+
+                # Ensure we have a dict
+                if not isinstance(data, dict):
+                    logger.warning(f"extraction_data is not a dict for doc {doc['id']}: {type(data)}")
+                    data = {}
+
                 context.extracted_data[doc["document_code"]] = data
 
         return context

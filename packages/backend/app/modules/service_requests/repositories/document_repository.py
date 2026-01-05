@@ -65,14 +65,22 @@ class DocumentRepository:
         extraction_confidence: float,
         extraction_status: str
     ) -> None:
-        """Update extraction results for a document"""
+        """Update extraction results for a document.
+
+        Note: We use json.dumps() + ::jsonb cast to properly store the dict as JSONB.
+        This ensures the data is stored as a JSON object, not as a JSON string.
+        When reading back, asyncpg returns a dict (parsed JSON).
+        """
+        # Serialize dict to JSON string, then cast to jsonb in PostgreSQL
+        # This prevents double-encoding issues
+        json_str = json.dumps(extraction_data) if extraction_data else '{}'
         await db.execute(
             """UPDATE service_request_documents
-               SET extraction_data = $2, extraction_confidence = $3,
+               SET extraction_data = $2::jsonb, extraction_confidence = $3,
                    extraction_status = $4, updated_at = NOW()
                WHERE id = $1""",
             document_id,
-            json.dumps(extraction_data),
+            json_str,
             extraction_confidence,
             extraction_status
         )
