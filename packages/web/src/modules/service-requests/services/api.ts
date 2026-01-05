@@ -103,6 +103,17 @@ interface BackendRiskAnalysis {
   requires_rejection: boolean
   requires_review: boolean
   factors_count: Record<string, number>
+  // Identity mismatch fields for cross-document validation
+  identity_mismatches?: Array<{
+    field_name: string
+    field_label: { es: string; fr: string; en: string }
+    is_blocking: boolean
+    source_document: { code: string; value: string }
+    compared_document: { code: string; value: string }
+    risk_code: string
+    severity: string
+  }>
+  has_blocking_mismatches?: boolean
 }
 
 interface BackendDocumentExtractionPreview {
@@ -268,6 +279,17 @@ function transformRiskAnalysis(backend: BackendRiskAnalysis): RiskAnalysisResult
     requiresRejection: backend.requires_rejection,
     requiresReview: backend.requires_review,
     factorsCount: backend.factors_count,
+    // Transform identity mismatch fields (snake_case -> camelCase)
+    identityMismatches: backend.identity_mismatches?.map((m) => ({
+      field_name: m.field_name,
+      field_label: m.field_label,
+      is_blocking: m.is_blocking,
+      source_document: m.source_document,
+      compared_document: m.compared_document,
+      risk_code: m.risk_code,
+      severity: m.severity,
+    })),
+    hasBlockingMismatches: backend.has_blocking_mismatches ?? false,
   }
 }
 
