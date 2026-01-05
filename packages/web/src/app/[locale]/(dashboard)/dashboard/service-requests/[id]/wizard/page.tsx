@@ -294,18 +294,18 @@ export default function PassportWizardPage() {
   }, [currentRequest, currentStep, saveStepData])
 
   // Handle minor selection
-  const handleMinorSelect = async (isMinor: boolean) => {
+  // Data is only stored locally - NOT saved to DB until final validation
+  const handleMinorSelect = (isMinor: boolean) => {
+    clearError()
     setWizardState(prev => ({ ...prev, isMinor }))
-    const success = await handleSaveStepData({ is_minor: isMinor })
-    if (success) {
-      setCurrentStepIndex(1)
-    }
+    setCurrentStepIndex(1)
   }
 
   // Handle type selection
-  const handleTypeSelect = async (type: SolicitudType) => {
+  // Data is only stored locally - NOT saved to DB until final validation
+  const handleTypeSelect = (type: SolicitudType) => {
+    clearError()
     setWizardState(prev => ({ ...prev, solicitudType: type, motivo: null }))
-    await handleSaveStepData({ solicitud_type: type })
 
     if (type === 'RENOVACION') {
       setCurrentStepIndex(2)
@@ -315,9 +315,10 @@ export default function PassportWizardPage() {
   }
 
   // Handle motivo selection
-  const handleMotivoSelect = async (motivo: RenovacionMotivo) => {
+  // Data is only stored locally - NOT saved to DB until final validation
+  const handleMotivoSelect = (motivo: RenovacionMotivo) => {
+    clearError()
     setWizardState(prev => ({ ...prev, motivo }))
-    await handleSaveStepData({ motivo })
     setCurrentStepIndex(3)
   }
 
@@ -369,6 +370,8 @@ export default function PassportWizardPage() {
 
   // Continue to form review after all documents have been previewed
   const handleDocumentsContinue = () => {
+    clearError()  // Clear any existing error before transition
+
     // Build form data BEFORE navigating (avoid timing issues with effects/refs)
     // This is the key difference with dialog - dialog receives data as prop directly,
     // wizard needs to prepare data synchronously before step change
