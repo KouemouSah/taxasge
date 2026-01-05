@@ -243,7 +243,8 @@ class WorkflowIdentityConfig:
 DEFAULT_IDENTITY_FIELDS = [
     IdentityFieldConfig(
         field_name="apellidos",
-        field_paths=["titular.apellidos", "apellidos", "surname", "last_name"],
+        # Matches wizard fieldMappings
+        field_paths=["titular.apellidos", "apellidos"],
         is_blocking=True,
         label_es="Apellidos",
         label_fr="Nom de famille",
@@ -251,7 +252,8 @@ DEFAULT_IDENTITY_FIELDS = [
     ),
     IdentityFieldConfig(
         field_name="nombres",
-        field_paths=["titular.nombres", "nombres", "first_name", "given_name", "nombre"],
+        # Matches wizard fieldMappings
+        field_paths=["titular.nombres", "nombres"],
         is_blocking=True,
         label_es="Nombres",
         label_fr="Prénoms",
@@ -259,7 +261,8 @@ DEFAULT_IDENTITY_FIELDS = [
     ),
     IdentityFieldConfig(
         field_name="numero_documento",
-        field_paths=["documento.numero_dip", "numero_documento", "numero_dip", "dni", "id_number", "document_number"],
+        # Matches wizard fieldMappings
+        field_paths=["documento.numero_dip", "numero_dip"],
         is_blocking=True,
         label_es="Número de documento",
         label_fr="Numéro de document",
@@ -267,7 +270,8 @@ DEFAULT_IDENTITY_FIELDS = [
     ),
     IdentityFieldConfig(
         field_name="fecha_nacimiento",
-        field_paths=["titular.fecha_nacimiento", "fecha_nacimiento", "birthdate", "date_of_birth"],
+        # Matches wizard fieldMappings
+        field_paths=["titular.fecha_nacimiento", "fecha_nacimiento"],
         is_blocking=True,
         label_es="Fecha de nacimiento",
         label_fr="Date de naissance",
@@ -275,7 +279,8 @@ DEFAULT_IDENTITY_FIELDS = [
     ),
     IdentityFieldConfig(
         field_name="nacionalidad",
-        field_paths=["titular.nacionalidad", "nacionalidad", "nationality"],
+        # Matches wizard fieldMappings
+        field_paths=["titular.nacionalidad", "nacionalidad"],
         is_blocking=False,
         label_es="Nacionalidad",
         label_fr="Nationalité",
