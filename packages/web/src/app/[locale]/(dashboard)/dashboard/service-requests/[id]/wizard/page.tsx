@@ -152,6 +152,13 @@ export default function PassportWizardPage() {
   const [documentPreviews, setDocumentPreviews] = useState<Record<string, DocumentExtractionPreview>>({})
   const [isUploadingDocument, setIsUploadingDocument] = useState<string | null>(null)
 
+  // Ref to access latest documentPreviews (avoids stale closures in callbacks)
+  const documentPreviewsRef = useRef<Record<string, DocumentExtractionPreview>>(documentPreviews)
+  useEffect(() => {
+    documentPreviewsRef.current = documentPreviews
+    console.log('[Wizard] documentPreviews updated:', Object.keys(documentPreviews))
+  }, [documentPreviews])
+
   // Form review state - edited data during review steps
   const [editedFormData, setEditedFormData] = useState<Record<string, unknown>>({})
   const [isSavingFormData, setIsSavingFormData] = useState(false)
@@ -342,12 +349,16 @@ export default function PassportWizardPage() {
       // Step 1: Preview - OCR extraction without saving to DB
       const preview = await previewDocument(documentCode, file)
       if (preview) {
-        // Store preview data in state for use in form_review step
-        setDocumentPreviews(prev => ({
-          ...prev,
+        // Store preview data in state AND ref synchronously
+        // The ref is updated immediately to avoid stale closure issues
+        const newPreviews = {
+          ...documentPreviewsRef.current,
           [documentCode]: preview
-        }))
+        }
+        documentPreviewsRef.current = newPreviews  // Update ref synchronously
+        setDocumentPreviews(newPreviews)           // Update state for UI re-render
         console.log(`[Wizard] Preview stored for ${documentCode}:`, preview.extraction)
+        console.log('[Wizard] All previews now:', Object.keys(newPreviews))
       }
     } catch (err) {
       console.error('Failed to preview document:', err)
@@ -358,7 +369,18 @@ export default function PassportWizardPage() {
 
   // Continue to form review after all documents have been previewed
   const handleDocumentsContinue = () => {
-    // Proceed to form review - extraction data comes from documentPreviews state
+    // Build form data BEFORE navigating (avoid timing issues with effects/refs)
+    // This is the key difference with dialog - dialog receives data as prop directly,
+    // wizard needs to prepare data synchronously before step change
+    const previewFormData = buildFormDataFromPreviews()
+    if (previewFormData) {
+      console.log('[Wizard] Form data prepared before navigation:', previewFormData)
+      setFormData(previewFormData)
+    } else {
+      console.warn('[Wizard] No preview data available when navigating to form_review')
+    }
+
+    // Proceed to form review
     setCurrentStepIndex(4)
   }
 
@@ -454,13 +476,23 @@ export default function PassportWizardPage() {
   // ==========================================================================
 
   // Build form data from document previews (2-step flow)
-  // This uses extraction data from previewDocument calls stored in documentPreviews state
+  // Uses ref to access latest documentPreviews (avoids stale closure issues)
   const buildFormDataFromPreviews = useCallback((): FormDataResponse | null => {
+    // Use ref to get latest previews (avoids stale closure)
+    const previews = documentPreviewsRef.current
+    console.log('[Wizard] buildFormDataFromPreviews called, previews:', Object.keys(previews))
+
+    if (Object.keys(previews).length === 0) {
+      console.log('[Wizard] No previews available to build form data')
+      return null
+    }
+
     // Collect all extraction data from previews
     const extractedData: Record<string, Record<string, unknown>> = {}
     const formDataFlat: Record<string, unknown> = {}
 
-    for (const [docCode, preview] of Object.entries(documentPreviews)) {
+    for (const [docCode, preview] of Object.entries(previews)) {
+      console.log(`[Wizard] Processing preview for ${docCode}:`, preview.extraction)
       if (preview.extraction) {
         extractedData[docCode] = preview.extraction as Record<string, unknown>
 
@@ -471,6 +503,8 @@ export default function PassportWizardPage() {
           const documento = dipData.documento as Record<string, unknown> | undefined
           const domicilio = dipData.domicilio as Record<string, unknown> | undefined
           const filiacion = dipData.filiacion as Record<string, unknown> | undefined
+
+          console.log('[Wizard] DIP extraction sections:', { titular, documento, domicilio, filiacion })
 
           if (documento) {
             formDataFlat.numero_dip = documento.numero_dip
@@ -485,9 +519,13 @@ export default function PassportWizardPage() {
             formDataFlat.estado_civil = titular.estado_civil
             formDataFlat.profesion = titular.profesion
             formDataFlat.grupo_sanguineo = titular.grupo_sanguineo
+            // Also handle domiciliacion from titular section (DIP schema)
+            if (titular.domiciliacion) {
+              formDataFlat.domicilio = titular.domiciliacion
+            }
           }
           if (domicilio) {
-            formDataFlat.domicilio = domicilio.domicilio || domicilio.direccion
+            formDataFlat.domicilio = domicilio.domicilio || domicilio.direccion || formDataFlat.domicilio
             formDataFlat.ciudad = domicilio.ciudad
           }
           if (filiacion) {
@@ -508,11 +546,15 @@ export default function PassportWizardPage() {
       }
     }
 
+    console.log('[Wizard] Built formDataFlat:', formDataFlat)
+
     // Calculate completion percentage
     const requiredFields = ['numero_dip', 'apellidos', 'nombres', 'sexo', 'fecha_nacimiento', 'lugar_nacimiento', 'domicilio']
     const filledFields = requiredFields.filter(f => formDataFlat[f])
     const completionPercentage = Math.round((filledFields.length / requiredFields.length) * 100)
     const missingFields = requiredFields.filter(f => !formDataFlat[f])
+
+    console.log('[Wizard] Completion:', completionPercentage, '%, missing:', missingFields)
 
     return {
       formData: formDataFlat,
@@ -521,17 +563,22 @@ export default function PassportWizardPage() {
       completionPercentage,
       missingFields
     }
-  }, [documentPreviews])
+  }, []) // No dependencies - uses ref
 
   const loadFormDataForReview = useCallback(async () => {
+    console.log('[Wizard] loadFormDataForReview called')
     setIsLoadingFormData(true)
     try {
       // First, try to build form data from preview state (2-step flow)
-      if (Object.keys(documentPreviews).length > 0) {
+      // Check ref directly to avoid stale closure
+      const previews = documentPreviewsRef.current
+      console.log('[Wizard] Current previews in ref:', Object.keys(previews))
+
+      if (Object.keys(previews).length > 0) {
         const previewFormData = buildFormDataFromPreviews()
         if (previewFormData) {
           setFormData(previewFormData)
-          console.log('[Wizard] Form data built from previews:', previewFormData)
+          console.log('[Wizard] Form data built from previews successfully')
           return
         }
       }
@@ -539,17 +586,33 @@ export default function PassportWizardPage() {
       // Fallback: load from DB (for existing requests with documents already saved)
       console.log('[Wizard] No previews available, loading from DB...')
       const data = await getFormData()
-      setFormData(data)
+      if (data) {
+        setFormData(data)
+        console.log('[Wizard] Form data loaded from DB:', data)
+      } else {
+        console.log('[Wizard] No form data returned from DB')
+      }
     } catch (err) {
-      console.error('Failed to load form data:', err)
+      console.error('[Wizard] Failed to load form data:', err)
+      // Set empty form data on error to show the form fields anyway
+      setFormData({
+        formData: {},
+        extractedData: {},
+        requiresReview: true,
+        completionPercentage: 0,
+        missingFields: ['numero_dip', 'apellidos', 'nombres', 'sexo', 'fecha_nacimiento', 'lugar_nacimiento', 'domicilio']
+      })
     } finally {
       setIsLoadingFormData(false)
     }
-  }, [documentPreviews, buildFormDataFromPreviews, getFormData])
+  }, [buildFormDataFromPreviews, getFormData]) // Removed documentPreviews - uses ref
 
   // Load form data when entering form review steps
   useEffect(() => {
-    if ((currentStep.id === 'form_review_1' || currentStep.id === 'form_review_2') && !formData) {
+    const isFormReviewStep = currentStep.id === 'form_review_1' || currentStep.id === 'form_review_2'
+    console.log('[Wizard] Form review effect:', { stepId: currentStep.id, isFormReviewStep, hasFormData: !!formData })
+
+    if (isFormReviewStep && !formData) {
       loadFormDataForReview()
     }
   }, [currentStep.id, formData, loadFormDataForReview])
