@@ -762,6 +762,49 @@ class RiskAnalyzer:
                     return str(current).strip().upper()
             return None
 
+        # Helper function for fuzzy name matching
+        # Handles cases where extraction adds extra data (e.g., city in name field)
+        def names_match_fuzzy(value1: str, value2: str, field_name: str) -> bool:
+            """
+            Fuzzy matching for name fields.
+            Returns True if names are considered equivalent despite minor differences.
+
+            Rules:
+            1. Exact match → True
+            2. One value contains the other → True (handles extraction adding extra data)
+            3. All words of shorter value are in longer value → True
+            4. Otherwise → False
+            """
+            if value1 == value2:
+                return True
+
+            # Only apply fuzzy matching to name-related fields
+            name_fields = ["nombres", "apellidos", "nombre", "apellido", "name", "surname"]
+            if field_name.lower() not in name_fields:
+                return False
+
+            # Normalize: remove extra spaces, convert to uppercase
+            v1 = " ".join(value1.split()).upper()
+            v2 = " ".join(value2.split()).upper()
+
+            # Check if one contains the other
+            if v1 in v2 or v2 in v1:
+                logger.info(f"Fuzzy name match: '{v1}' ≈ '{v2}' (containment)")
+                return True
+
+            # Check if all words of shorter value are in longer value
+            words1 = set(v1.split())
+            words2 = set(v2.split())
+            shorter = words1 if len(words1) <= len(words2) else words2
+            longer = words2 if len(words1) <= len(words2) else words1
+
+            # If all words from shorter are in longer, consider it a match
+            if shorter.issubset(longer):
+                logger.info(f"Fuzzy name match: '{v1}' ≈ '{v2}' (word subset)")
+                return True
+
+            return False
+
         # Iterate over all existing documents and compare
         for doc_code, doc_data in existing_documents.items():
             # Skip if comparing document with itself
@@ -780,8 +823,16 @@ class RiskAnalyzer:
                 # Get existing document value
                 existing_value = get_nested_value(existing_extraction, field_config.field_paths)
 
-                # Compare if both exist
-                if current_value and existing_value and current_value != existing_value:
+                # Compare if both exist - use fuzzy matching for name fields
+                if current_value and existing_value:
+                    # Check if values match (exact or fuzzy for names)
+                    if current_value == existing_value:
+                        continue  # Exact match, no mismatch
+
+                    if names_match_fuzzy(current_value, existing_value, field_config.field_name):
+                        continue  # Fuzzy match for names, no mismatch
+
+                    # Values don't match - this is a real mismatch
                     # Determine risk code based on field name
                     risk_code = {
                         "nombres": RiskFactorCode.NAME_MISMATCH,
