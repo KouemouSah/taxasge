@@ -599,58 +599,62 @@ class ServiceRequestService:
             logger.warning("storage_service not available, using placeholder path")
             file_path = f"service-requests/{request_id}/{preview['file_name']}"
 
-        # Save document record with USER-VALIDATED extraction data
-        doc = await document_repository.add_document(
-            db=db,
-            service_request_id=request_id,
-            document_code=preview["document_code"],
-            document_name=preview["document_name"],
-            file_path=file_path,
-            file_name=preview["file_name"],
-            file_size=preview["file_size"],
-            mime_type=preview["mime_type"],
-            uploaded_by=user_id
-        )
-
-        # Update with user-validated extraction data
+        # Use transaction to ensure atomicity - all DB operations succeed or none
         validated_at = datetime.utcnow()
-        await document_repository.update_extraction(
-            db=db,
-            document_id=doc["id"],
-            extraction_data=validation.confirmed_data,  # User's confirmed data!
-            extraction_confidence=preview["confidence"],
-            extraction_status="validated"
-        )
+        doc = None
 
-        # Mark document as validated by user
-        await document_repository.validate_document(
-            db=db,
-            document_id=doc["id"],
-            is_valid=True,
-            validation_errors=[],
-            validated_by=user_id
-        )
+        async with db.transaction():
+            # Save document record with USER-VALIDATED extraction data
+            doc = await document_repository.add_document(
+                db=db,
+                service_request_id=request_id,
+                document_code=preview["document_code"],
+                document_name=preview["document_name"],
+                file_path=file_path,
+                file_name=preview["file_name"],
+                file_size=preview["file_size"],
+                mime_type=preview["mime_type"],
+                uploaded_by=user_id
+            )
 
-        # Log to gemini_processing_logs
-        await self._log_processing(
-            db=db,
-            service_request_id=request_id,
-            document_id=doc["id"],
-            user_id=user_id,
-            result={
-                "processor": preview["processor"],
-                "confidence": preview["confidence"],
-                "extraction": validation.confirmed_data,
-                "document_type": preview["document_code"],
-                "user_validated": True
-            }
-        )
+            # Update with user-validated extraction data
+            await document_repository.update_extraction(
+                db=db,
+                document_id=doc["id"],
+                extraction_data=validation.confirmed_data,  # User's confirmed data!
+                extraction_confidence=preview["confidence"],
+                extraction_status="validated"
+            )
 
-        # Remove preview from cache
+            # Mark document as validated by user
+            await document_repository.validate_document(
+                db=db,
+                document_id=doc["id"],
+                is_valid=True,
+                validation_errors=[],
+                validated_by=user_id
+            )
+
+            # Log to gemini_processing_logs
+            await self._log_processing(
+                db=db,
+                service_request_id=request_id,
+                document_id=doc["id"],
+                user_id=user_id,
+                result={
+                    "processor": preview["processor"],
+                    "confidence": preview["confidence"],
+                    "extraction": validation.confirmed_data,
+                    "document_type": preview["document_code"],
+                    "user_validated": True
+                }
+            )
+
+            # Check if all documents are now provided (within transaction)
+            await self._check_completion(db, request_id, user_id)
+
+        # Only delete preview from cache AFTER transaction commits successfully
         await preview_cache.delete(validation.preview_id)
-
-        # Check if all documents are now provided
-        await self._check_completion(db, request_id, user_id)
 
         logger.info(
             f"Document validated and uploaded: {preview['document_code']} "
