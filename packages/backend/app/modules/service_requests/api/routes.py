@@ -789,21 +789,44 @@ async def validate_documents(
             detail=f"Unknown workflow: {context.workflow_code}"
         )
 
-    # Run validation
+    # Run validation - both document presence AND cross-document validation
     try:
-        validation_results = await workflow.validate_documents(context)
+        all_results = []
+
+        # 1. Validate document presence (required docs uploaded)
+        presence_results = workflow.validate_documents(context)
+        all_results.extend(presence_results)
+
+        # 2. Validate cross-document consistency (extracted data matching)
+        # _validate_cross_documents checks consistency across documents
+        if hasattr(workflow, '_validate_cross_documents'):
+            cross_results = workflow._validate_cross_documents(context)
+            all_results.extend(cross_results)
 
         # Convert to response models
         response = []
-        for result in validation_results:
-            response.append(ValidationResultResponse(
-                rule_id=result.get("rule_id", "unknown"),
-                is_valid=result.get("is_valid", True),
-                severity=result.get("severity", "error"),
-                message_es=result.get("message_es", result.get("message", "")),
-                field=result.get("field"),
-                document_code=result.get("document_code"),
-            ))
+        for result in all_results:
+            # Handle both ValidationResult objects and dicts
+            if hasattr(result, 'rule_id'):
+                # ValidationResult object
+                response.append(ValidationResultResponse(
+                    rule_id=result.rule_id,
+                    is_valid=result.is_valid,
+                    severity=result.severity,
+                    message_es=result.message_es or "",
+                    field=result.field,
+                    document_code=result.document_code,
+                ))
+            else:
+                # Dict format (legacy)
+                response.append(ValidationResultResponse(
+                    rule_id=result.get("rule_id", "unknown"),
+                    is_valid=result.get("is_valid", True),
+                    severity=result.get("severity", "error"),
+                    message_es=result.get("message_es", result.get("message", "")),
+                    field=result.get("field"),
+                    document_code=result.get("document_code"),
+                ))
 
         return response
     except Exception as e:

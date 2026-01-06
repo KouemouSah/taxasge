@@ -47,6 +47,7 @@ AnyWorkflow = Union[BaseWorkflow, PredefinedWorkflow]
 from .schema_loader import schema_loader
 from .gemini_document_processor import gemini_document_processor
 from .tariff_service import tariff_service
+from .tariff_calculator import tariff_calculator
 
 logger = logging.getLogger(__name__)
 
@@ -623,21 +624,14 @@ class WorkflowEngine:
                     "required_status": requires_status
                 }
 
-        # Use TariffService for unified calculation
-        try:
-            tariff_result = await tariff_service.calculate(
-                db=db,
-                workflow_code=context.workflow_code.value,
-                solicitud_type=context.solicitud_type.value if context.solicitud_type else "expedicion",
-                extracted_data=context.form_data
-            )
-        except Exception as e:
-            logger.warning(f"TariffService calculation failed: {e}, falling back to workflow")
-            # Fallback to workflow calculation
-            tariff_result = {
-                "total_amount": workflow.calculate_tariff(context),
-                "currency": "XAF"
-            }
+        # Use TariffCalculator for explicit workflow-type handling
+        # - PredefinedWorkflow: uses hardcoded tariffs from workflow code
+        # - GenericWorkflow: uses database (workflow_tariffs table)
+        tariff_result = await tariff_calculator.calculate(
+            db=db,
+            workflow=workflow,
+            context=context
+        )
 
         if not step_data:
             # Return payment info
@@ -645,11 +639,7 @@ class WorkflowEngine:
                 "amount": tariff_result.get("total_amount", 0),
                 "tariff_breakdown": tariff_result,
                 "currency": tariff_result.get("currency", "XAF"),
-                "payment_methods": step.config.get(
-                    "payment_methods",
-                    ["MTN_MOBILE_MONEY", "ORANGE_MONEY", "BANGE_WALLET"]
-                ),
-                "requires_payment": True
+                "requires_payment": tariff_result.get("total_amount", 0) > 0
             }
 
         # Payment processing is handled by payment module

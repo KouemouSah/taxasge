@@ -306,13 +306,44 @@ class WorkflowContext:
 
 
 @dataclass
+class SupplementDefinition:
+    """
+    Hardcoded supplement definition for PredefinedWorkflows.
+
+    Structure aligned with DB tables:
+    - code: tariff_supplements.code
+    - name_es: tariff_supplements.name_es
+    - unit_price: tariff_supplements.amount
+    - quantity: workflow_supplement_config.quantity_per_request
+    - is_required: workflow_supplement_config.is_required
+    """
+    code: str              # e.g., "TIMBRE_FISCAL", "CEDULA_PERSONAL"
+    name_es: str           # Display name in Spanish
+    unit_price: int        # Amount in XAF
+    quantity: int = 1      # Number per request
+    is_required: bool = True
+
+    @property
+    def subtotal(self) -> int:
+        """Calculate subtotal."""
+        return self.unit_price * self.quantity
+
+
+@dataclass
 class TariffConfig:
-    """Tariff configuration for a workflow."""
+    """
+    Tariff configuration for a workflow.
+
+    For PredefinedWorkflows: Define fixed_amounts AND supplements here.
+    For GenericWorkflows: Tariffs/supplements come from DB via TariffService.
+    """
     tariff_type: TariffType
     fixed_amounts: Dict[str, int] = field(default_factory=dict)  # key -> amount
     percentage: Optional[float] = None
     rbc_params: Dict[str, Any] = field(default_factory=dict)
     currency: str = "XAF"
+    # Supplements for PredefinedWorkflows (hardcoded)
+    supplements: List[SupplementDefinition] = field(default_factory=list)
     extra: Dict[str, Any] = field(default_factory=dict)
 
     def get_amount(self, key: str, value: Optional[float] = None) -> int:
@@ -330,6 +361,15 @@ class TariffConfig:
             return 0  # Determined by Nota
 
         return 0
+
+    @property
+    def supplements_total(self) -> int:
+        """Calculate total of all supplements."""
+        return sum(s.subtotal for s in self.supplements)
+
+    def get_total(self, key: str, value: Optional[float] = None) -> int:
+        """Get total amount including supplements."""
+        return self.get_amount(key, value) + self.supplements_total
 
 
 # =============================================================================
@@ -683,6 +723,63 @@ class PredefinedWorkflow(ABC):
             key = solicitud_type.value.upper()
 
         return self._tariff_config.get_amount(key)
+
+    def get_tariff_breakdown(
+        self,
+        solicitud_type: SolicitudType,
+        motivo: Optional[RenovacionMotivo] = None,
+        context: Optional[WorkflowContext] = None,
+        base_description: str = ""
+    ) -> Dict[str, Any]:
+        """
+        Get complete tariff breakdown including supplements.
+
+        Returns a dict compatible with TariffBreakdown.from_dict():
+        {
+            "base_amount": int,
+            "base_description": str,
+            "supplements": [{"code", "name_es", "unit_price", "quantity", "subtotal"}],
+            "supplements_total": int,
+            "penalties_amount": int,
+            "total_amount": int,
+            "currency": str,
+            "tariff_type": str,
+            "workflow_code": str,
+            "solicitud_type": str
+        }
+        """
+        config = self.get_tariff_config()
+        base_amount = self.get_tariff(solicitud_type, motivo, context)
+
+        # Convert SupplementDefinition list to dict format
+        supplements = [
+            {
+                "code": s.code,
+                "name_es": s.name_es,
+                "unit_price": s.unit_price,
+                "quantity": s.quantity,
+                "subtotal": s.subtotal,
+                "is_required": s.is_required
+            }
+            for s in config.supplements
+        ]
+
+        supplements_total = sum(s["subtotal"] for s in supplements)
+        total_amount = base_amount + supplements_total
+
+        return {
+            "base_amount": base_amount,
+            "base_description": base_description or self.service_name_es,
+            "supplements": supplements,
+            "supplements_total": supplements_total,
+            "penalties_amount": 0,
+            "penalty_reason": None,
+            "total_amount": total_amount,
+            "currency": config.currency,
+            "tariff_type": config.tariff_type.value,
+            "workflow_code": self.workflow_code.value,
+            "solicitud_type": solicitud_type.value
+        }
 
     # === Validation ===
 

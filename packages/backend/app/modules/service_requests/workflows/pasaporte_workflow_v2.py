@@ -39,6 +39,7 @@ from .workflow_interface import (
     WorkflowContext,
     DocumentRequirement,
     TariffConfig,
+    SupplementDefinition,
     ValidationResult,
     StepType,
     RenovacionMotivo,
@@ -430,12 +431,14 @@ class PasaporteWorkflow(PredefinedWorkflow):
         """
         Setup tariff configuration.
 
-        ALIGNED WITH SolicitudType + RenovacionMotivo:
+        Base Tariffs (ALIGNED WITH SolicitudType + RenovacionMotivo):
         - SolicitudType.EXPEDICION: 7,500 XAF
         - RenovacionMotivo.VENCIMIENTO: 5,000 XAF
         - RenovacionMotivo.PERDIDA: 10,000 XAF (includes penalty)
         - RenovacionMotivo.ROBO: 10,000 XAF (includes penalty)
         - RenovacionMotivo.DETERIORO: 7,500 XAF
+
+        Supplements: None for pasaporte (quantity=0)
         """
         self.set_tariff_config(TariffConfig(
             tariff_type=TariffType.FIXED,
@@ -448,7 +451,9 @@ class PasaporteWorkflow(PredefinedWorkflow):
                 RenovacionMotivo.ROBO.value: 10000,        # 10,000 XAF (penalty)
                 RenovacionMotivo.DETERIORO.value: 7500,    # 7,500 XAF
             },
-            currency="XAF"
+            currency="XAF",
+            # No supplements for pasaporte (quantity=0 in DB config)
+            supplements=[]
         ))
 
     # === Document Requirements ===

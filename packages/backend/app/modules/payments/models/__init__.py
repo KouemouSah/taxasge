@@ -14,7 +14,28 @@ from app.modules.payments.models.payment import (
     InstallmentResponse,
 )
 
+from app.modules.payments.models.service_payment import (
+    PaymentWorkflowStatus,
+    ServicePaymentBase,
+    ServicePaymentCreate,
+    ServicePaymentResponse,
+    ServicePaymentListResponse,
+    PendingValidationResponse,
+    PaymentValidationRequest,
+    PaymentRejectionRequest,
+    PaymentLockRequest,
+)
+
+from app.modules.payments.models.tariff_breakdown import (
+    SupplementItem,
+    TariffBreakdown,
+)
+
 __all__ = [
+    # Tariff breakdown models
+    "SupplementItem",
+    "TariffBreakdown",
+    # Base payment models
     "PaymentType",
     "PaymentStatus",
     "PaymentMethod",
@@ -26,4 +47,14 @@ __all__ = [
     "PaymentPlanCreate",
     "PaymentPlanResponse",
     "InstallmentResponse",
+    # Service payment models
+    "PaymentWorkflowStatus",
+    "ServicePaymentBase",
+    "ServicePaymentCreate",
+    "ServicePaymentResponse",
+    "ServicePaymentListResponse",
+    "PendingValidationResponse",
+    "PaymentValidationRequest",
+    "PaymentRejectionRequest",
+    "PaymentLockRequest",
 ]

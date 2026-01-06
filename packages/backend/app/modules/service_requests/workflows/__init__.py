@@ -13,6 +13,7 @@ from .workflow_interface import (
     ValidationResult,
     DocumentRequirement,
     TariffConfig,
+    SupplementDefinition,
     StepType,
     RenovacionMotivo,
 )
@@ -80,6 +81,7 @@ __all__ = [
     "ValidationResult",
     "DocumentRequirement",
     "TariffConfig",
+    "SupplementDefinition",
     "StepType",
     "RenovacionMotivo",
     # Pasaporte v2
