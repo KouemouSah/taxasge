@@ -91,7 +91,7 @@ class BangeProcessor(PaymentProcessorBase):
             )
 
             # 3. Build callback URLs
-            callback_url = f"{self.settings.api_base_url}/api/v1/webhooks/bange/callback"
+            callback_url = f"{self.settings.api_base_url}/api/v1/webhooks/bange"
             return_url = f"{self.settings.frontend_url}/dashboard/service-requests/{context.service_request_id}/payment/result"
 
             # 4. Create BANGE payment request

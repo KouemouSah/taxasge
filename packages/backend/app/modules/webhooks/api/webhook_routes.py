@@ -105,17 +105,28 @@ async def bange_webhook_callback(
 
     logger.info(f"BANGE webhook received: {payload.bank_reference}, transaction_id: {transaction_id}")
 
-    # Try auto-reconciliation (match by bank_reference)
-    if payload.merchant_reference:  # Our payment.bank_reference
+    # Try auto-reconciliation (match by merchant_reference)
+    if payload.merchant_reference:
         try:
+            # First try service_payments (service requests - passport, residence, etc.)
+            service_reconciled = await reconcile_service_payment(
+                db,
+                payload.merchant_reference,
+                payload.bank_reference
+            )
+            if service_reconciled:
+                logger.info(f"Auto-reconciled transaction {transaction_id} with service_payment")
+                return {"message": "Transaction processed and reconciled (service_payment)", "transaction_id": transaction_id}
+
+            # Then try payments table (tax declarations)
             reconciled = await repository.auto_reconcile_by_reference(db, payload.merchant_reference)
             if reconciled:
                 logger.info(f"Auto-reconciled transaction {transaction_id} with payment")
-                
+
                 # Confirm appointment hold if this payment is for a service_request
                 if reconciled.get("payment_id"):
                     await confirm_appointment_for_payment(db, str(reconciled["payment_id"]))
-                
+
                 return {"message": "Transaction processed and reconciled", "transaction_id": transaction_id}
         except Exception as e:
             logger.warning(f"Auto-reconciliation failed: {e}, will require manual reconciliation")
@@ -152,6 +163,55 @@ async def confirm_appointment_for_payment(db, payment_id: str):
     except Exception as e:
         logger.error(f"Error confirming appointment for payment {payment_id}: {e}")
 
+
+
+
+async def reconcile_service_payment(db, merchant_reference: str, bange_transaction_id: str) -> bool:
+    """
+    Reconcile a service_payment based on merchant_reference (our payment_reference).
+    Called by BANGE webhook to mark payments as completed.
+    """
+    try:
+        query = """
+            SELECT id, service_request_id, status
+            FROM service_payments
+            WHERE payment_reference = $1
+            AND status IN ('pending', 'processing')
+        """
+        payment = await db.fetchrow(query, merchant_reference)
+
+        if not payment:
+            logger.debug(f"No pending service_payment found with reference {merchant_reference}")
+            return False
+
+        payment_id = str(payment["id"])
+        service_request_id = payment["service_request_id"]
+
+        update_query = """
+            UPDATE service_payments
+            SET status = 'completed',
+                workflow_status = 'completed',
+                paid_at = NOW(),
+                bange_transaction_id = $2,
+                updated_at = NOW()
+            WHERE id = $1
+        """
+        await db.execute(update_query, payment_id, bange_transaction_id)
+
+        if service_request_id:
+            await db.execute(
+                "UPDATE service_requests SET payment_status = 'completed', paid_at = NOW(), updated_at = NOW() WHERE id = $1",
+                service_request_id
+            )
+            logger.info(f"Updated service_request {service_request_id} payment_status to completed")
+            await confirm_appointment_for_payment(db, payment_id)
+
+        logger.info(f"Service payment {payment_id} reconciled with BANGE transaction {bange_transaction_id}")
+        return True
+
+    except Exception as e:
+        logger.error(f"Error reconciling service_payment with reference {merchant_reference}: {e}")
+        return False
 
 @router.get("/transactions/unreconciled", response_model=BankTransactionListResponse)
 async def list_unreconciled_transactions(

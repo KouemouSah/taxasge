@@ -23,6 +23,7 @@ import type {
   EntityLocation,
   AvailableSlot,
   AppointmentHoldStatus,
+  PaymentMethodsResponse,
 } from '../types'
 
 // ============================================================================
@@ -84,6 +85,7 @@ export interface UseServiceRequestsReturn {
 
   // Submission
   submitRequest: () => Promise<boolean>
+  getPaymentMethods: () => Promise<PaymentMethodsResponse | null>
   initiatePayment: (method: string, phone?: string) => Promise<{ paymentId: string; redirectUrl?: string } | null>
   checkPaymentStatus: () => Promise<{ status: string; paid: boolean } | null>
 
@@ -595,6 +597,21 @@ export function useServiceRequests(): UseServiceRequestsReturn {
     }
   }, [currentRequest, handleError])
 
+  const getPaymentMethods = useCallback(async (): Promise<PaymentMethodsResponse | null> => {
+    if (!currentRequest) return null
+
+    try {
+      setIsLoading(true)
+      setError(null)
+      return await serviceRequestsApi.getPaymentMethods(currentRequest.id)
+    } catch (err) {
+      handleError(err)
+      return null
+    } finally {
+      setIsLoading(false)
+    }
+  }, [currentRequest, handleError])
+
   const initiatePayment = useCallback(async (
     method: string,
     phone?: string
@@ -968,6 +985,7 @@ export function useServiceRequests(): UseServiceRequestsReturn {
 
     // Submission
     submitRequest,
+    getPaymentMethods,
     initiatePayment,
     checkPaymentStatus,
 

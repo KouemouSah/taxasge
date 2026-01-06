@@ -602,6 +602,32 @@ export function getStepTypeIcon(stepType: StepType): string {
 }
 
 // ============================================================================
+// PAYMENT METHOD TYPES
+// ============================================================================
+
+/**
+ * PaymentMethodInfo - Information about a payment method from the API
+ */
+export interface PaymentMethodInfo {
+  code: string
+  labelEs: string
+  labelEn: string
+  labelFr: string
+  processorType: 'bange_api' | 'manual'
+  requiresPhone: boolean
+  requiresRedirect: boolean
+  requiresAgentValidation: boolean
+}
+
+/**
+ * PaymentMethodsResponse - Response from GET /payment/methods
+ */
+export interface PaymentMethodsResponse {
+  methods: PaymentMethodInfo[]
+  defaultMethod: string | null
+}
+
+// ============================================================================
 // APPOINTMENT TYPES (Citizen-First Flow)
 // ============================================================================
 

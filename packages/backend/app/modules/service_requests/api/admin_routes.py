@@ -2180,3 +2180,439 @@ async def cleanup_abandoned_requests(
     )
 
     return CleanupResponse(**stats)
+
+
+# ═══════════════════════════════════════════════════════════════
+# TREASURY AGENT - Payment Validation
+# ═══════════════════════════════════════════════════════════════
+
+class PaymentValidationRequest(BaseModel):
+    """Request model for agent validation."""
+    comment: Optional[str] = Field(None, max_length=500, description="Validation comment")
+
+
+class PaymentRejectionRequest(BaseModel):
+    """Request model for agent rejection."""
+    reason: str = Field(..., min_length=10, max_length=500, description="Rejection reason")
+
+
+class PaymentLockRequest(BaseModel):
+    """Request model for agent lock."""
+    duration_minutes: int = Field(
+        default=15,
+        ge=5,
+        le=60,
+        description="Lock duration in minutes (5-60)"
+    )
+
+
+class PendingPaymentResponse(BaseModel):
+    """Response for a pending payment."""
+    payment_id: str
+    payment_reference: str
+    service_request_id: Optional[str] = None
+    request_reference: Optional[str] = None
+    workflow_code: Optional[str] = None
+    user_id: str
+    user_name: Optional[str] = None
+    user_email: Optional[str] = None
+    payment_method: str
+    total_amount: float
+    currency: str = "XAF"
+    calculation_details: Optional[Dict[str, Any]] = None
+    workflow_status: str
+    locked_by_agent_id: Optional[int] = None
+    lock_expires_at: Optional[str] = None
+    created_at: str
+    hours_waiting: float
+
+
+class PendingPaymentsListResponse(BaseModel):
+    """List of pending payments."""
+    payments: List[PendingPaymentResponse]
+    total: int
+
+
+class PaymentActionResponse(BaseModel):
+    """Response for payment actions."""
+    success: bool
+    payment_id: str
+    status: str
+    message_es: Optional[str] = None
+    error: Optional[str] = None
+
+
+@router.get(
+    "/treasury/payments/pending",
+    response_model=PendingPaymentsListResponse,
+    summary="Get pending payments for validation",
+    description="""
+    Get list of payments pending Treasury Agent validation.
+
+    **Filters:**
+    - payment_method: 'cash' or 'check' (default: all manual methods)
+    - workflow_status: Filter by workflow status
+
+    **Permissions:**
+    - Requires 'treasury:validate_payments' permission
+    """
+)
+async def get_pending_payments(
+    payment_method: Optional[str] = Query(None, description="Filter by payment method"),
+    workflow_status: Optional[str] = Query(
+        "pending_agent_review",
+        description="Filter by workflow status"
+    ),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury:validate_payments"))
+):
+    """Get payments pending Treasury Agent validation"""
+    from datetime import datetime
+
+    # Build query
+    where_clauses = ["sp.workflow_status = $1"]
+    params = [workflow_status or "pending_agent_review"]
+    param_idx = 2
+
+    if payment_method:
+        where_clauses.append(f"sp.payment_method = ${param_idx}")
+        params.append(payment_method)
+        param_idx += 1
+    else:
+        # Default: only manual validation methods
+        where_clauses.append(f"sp.payment_method IN ('cash', 'check')")
+
+    where_sql = " AND ".join(where_clauses)
+
+    query = f"""
+        SELECT
+            sp.id AS payment_id,
+            sp.payment_reference,
+            sp.service_request_id,
+            sr.reference_number AS request_reference,
+            sr.workflow_code,
+            sp.user_id,
+            u.first_name || ' ' || u.last_name AS user_name,
+            u.email AS user_email,
+            sp.payment_method,
+            sp.total_amount,
+            sp.currency,
+            sp.calculation_details,
+            sp.workflow_status,
+            sp.locked_by_agent_id,
+            sp.lock_expires_at,
+            sp.created_at,
+            EXTRACT(EPOCH FROM (NOW() - sp.created_at)) / 3600 AS hours_waiting
+        FROM service_payments sp
+        LEFT JOIN service_requests sr ON sr.id = sp.service_request_id
+        LEFT JOIN users u ON u.id = sp.user_id
+        WHERE {where_sql}
+        ORDER BY sp.created_at ASC
+        LIMIT ${param_idx} OFFSET ${param_idx + 1}
+    """
+    params.extend([limit, offset])
+
+    rows = await db.fetch(query, *params)
+
+    # Get total count
+    count_query = f"""
+        SELECT COUNT(*) FROM service_payments sp
+        WHERE {where_sql}
+    """
+    total = await db.fetchval(count_query, *params[:param_idx-1])
+
+    payments = []
+    for row in rows:
+        payments.append(PendingPaymentResponse(
+            payment_id=str(row["payment_id"]),
+            payment_reference=row["payment_reference"],
+            service_request_id=str(row["service_request_id"]) if row["service_request_id"] else None,
+            request_reference=row["request_reference"],
+            workflow_code=row["workflow_code"],
+            user_id=str(row["user_id"]),
+            user_name=row["user_name"],
+            user_email=row["user_email"],
+            payment_method=row["payment_method"],
+            total_amount=float(row["total_amount"]),
+            currency=row["currency"],
+            calculation_details=row["calculation_details"],
+            workflow_status=row["workflow_status"],
+            locked_by_agent_id=row["locked_by_agent_id"],
+            lock_expires_at=row["lock_expires_at"].isoformat() if row["lock_expires_at"] else None,
+            created_at=row["created_at"].isoformat(),
+            hours_waiting=float(row["hours_waiting"] or 0),
+        ))
+
+    return PendingPaymentsListResponse(
+        payments=payments,
+        total=total or 0
+    )
+
+
+@router.post(
+    "/treasury/payments/{payment_id}/lock",
+    response_model=PaymentActionResponse,
+    summary="Lock payment for review",
+    description="""
+    Lock a payment for exclusive review by this agent.
+
+    **Behavior:**
+    - Sets locked_by_agent_id to current user
+    - Sets lock_expires_at to now + duration_minutes
+    - Prevents other agents from modifying
+
+    **Permissions:**
+    - Requires 'treasury:validate_payments' permission
+    """
+)
+async def lock_payment(
+    payment_id: str = Path(..., description="Payment UUID"),
+    body: PaymentLockRequest = Body(default=PaymentLockRequest()),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury:validate_payments"))
+):
+    """Lock payment for exclusive review"""
+    from datetime import datetime, timedelta
+
+    # Check if payment exists and is pending
+    payment = await db.fetchrow(
+        "SELECT id, workflow_status, locked_by_agent_id, lock_expires_at FROM service_payments WHERE id = $1",
+        payment_id
+    )
+
+    if not payment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Payment not found: {payment_id}"
+        )
+
+    # Check if already locked by another agent
+    if payment["locked_by_agent_id"] and payment["locked_by_agent_id"] != current_user.id:
+        if payment["lock_expires_at"] and payment["lock_expires_at"] > datetime.utcnow():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Payment is locked by another agent"
+            )
+
+    # Lock the payment
+    lock_expires = datetime.utcnow() + timedelta(minutes=body.duration_minutes)
+
+    await db.execute(
+        """
+        UPDATE service_payments
+        SET locked_by_agent_id = $1, lock_expires_at = $2, workflow_status = 'locked_by_agent'
+        WHERE id = $3
+        """,
+        current_user.id, lock_expires, payment_id
+    )
+
+    return PaymentActionResponse(
+        success=True,
+        payment_id=payment_id,
+        status="locked_by_agent",
+        message_es=f"Pago bloqueado hasta {lock_expires.strftime('%H:%M')}"
+    )
+
+
+@router.post(
+    "/treasury/payments/{payment_id}/validate",
+    response_model=PaymentActionResponse,
+    summary="Validate payment",
+    description="""
+    Validate (approve) a cash/check payment.
+
+    **Behavior:**
+    - Sets workflow_status to 'approved'
+    - Sets validated_by_agent_id and validated_at
+    - Generates receipt_number
+    - Updates service_request payment_status
+
+    **Permissions:**
+    - Requires 'treasury:validate_payments' permission
+    - Must have lock on the payment
+    """
+)
+async def validate_payment(
+    payment_id: str = Path(..., description="Payment UUID"),
+    body: PaymentValidationRequest = Body(default=PaymentValidationRequest()),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury:validate_payments"))
+):
+    """Validate (approve) a payment"""
+    from app.modules.payments.services.processors import payment_processor_registry
+
+    # Verify lock ownership
+    payment = await db.fetchrow(
+        "SELECT id, locked_by_agent_id, service_request_id FROM service_payments WHERE id = $1",
+        payment_id
+    )
+
+    if not payment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Payment not found: {payment_id}"
+        )
+
+    if payment["locked_by_agent_id"] != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You must lock the payment before validating"
+        )
+
+    # Validate via registry
+    result = await payment_processor_registry.validate_manual_payment(
+        db=db,
+        payment_id=payment_id,
+        agent_id=current_user.id,
+        comment=body.comment
+    )
+
+    if not result.paid:
+        return PaymentActionResponse(
+            success=False,
+            payment_id=payment_id,
+            status=result.status.value,
+            error=result.error
+        )
+
+    # Update service_request if linked
+    if payment["service_request_id"]:
+        await db.execute(
+            """
+            UPDATE service_requests
+            SET payment_status = 'completed', paid_at = NOW(), updated_at = NOW()
+            WHERE id = $1
+            """,
+            payment["service_request_id"]
+        )
+
+    return PaymentActionResponse(
+        success=True,
+        payment_id=payment_id,
+        status="approved",
+        message_es="Pago validado correctamente. Recibo generado."
+    )
+
+
+@router.post(
+    "/treasury/payments/{payment_id}/reject",
+    response_model=PaymentActionResponse,
+    summary="Reject payment",
+    description="""
+    Reject a cash/check payment.
+
+    **Behavior:**
+    - Sets workflow_status to 'rejected'
+    - Records rejection reason
+    - Notifies user
+
+    **Permissions:**
+    - Requires 'treasury:validate_payments' permission
+    - Must have lock on the payment
+    """
+)
+async def reject_payment(
+    payment_id: str = Path(..., description="Payment UUID"),
+    body: PaymentRejectionRequest = ...,
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury:validate_payments"))
+):
+    """Reject a payment"""
+    from app.modules.payments.services.processors import payment_processor_registry
+
+    # Verify lock ownership
+    payment = await db.fetchrow(
+        "SELECT id, locked_by_agent_id FROM service_payments WHERE id = $1",
+        payment_id
+    )
+
+    if not payment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Payment not found: {payment_id}"
+        )
+
+    if payment["locked_by_agent_id"] != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You must lock the payment before rejecting"
+        )
+
+    # Reject via registry
+    result = await payment_processor_registry.reject_manual_payment(
+        db=db,
+        payment_id=payment_id,
+        agent_id=current_user.id,
+        reason=body.reason
+    )
+
+    return PaymentActionResponse(
+        success=True,
+        payment_id=payment_id,
+        status="rejected",
+        message_es="Pago rechazado."
+    )
+
+
+@router.post(
+    "/treasury/payments/{payment_id}/unlock",
+    response_model=PaymentActionResponse,
+    summary="Release payment lock",
+    description="""
+    Release lock on a payment without validating.
+
+    **Behavior:**
+    - Clears locked_by_agent_id and lock_expires_at
+    - Returns status to 'pending_agent_review'
+
+    **Permissions:**
+    - Requires 'treasury:validate_payments' permission
+    - Must be the agent who locked it
+    """
+)
+async def unlock_payment(
+    payment_id: str = Path(..., description="Payment UUID"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury:validate_payments"))
+):
+    """Release lock on a payment"""
+    # Verify ownership
+    payment = await db.fetchrow(
+        "SELECT id, locked_by_agent_id FROM service_payments WHERE id = $1",
+        payment_id
+    )
+
+    if not payment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Payment not found: {payment_id}"
+        )
+
+    if payment["locked_by_agent_id"] != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only unlock payments you locked"
+        )
+
+    await db.execute(
+        """
+        UPDATE service_payments
+        SET locked_by_agent_id = NULL, lock_expires_at = NULL, workflow_status = 'pending_agent_review'
+        WHERE id = $1
+        """,
+        payment_id
+    )
+
+    return PaymentActionResponse(
+        success=True,
+        payment_id=payment_id,
+        status="pending_agent_review",
+        message_es="Bloqueo liberado."
+    )

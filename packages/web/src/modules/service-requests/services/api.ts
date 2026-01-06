@@ -26,6 +26,8 @@ import type {
   CitizenSummaryResponse,
   FieldIndicator,
   RiskAnalysisResult,
+  // Payment types
+  PaymentMethodsResponse,
 } from '../types'
 import { ExtractionStatus } from '../types'
 
@@ -898,6 +900,42 @@ class ServiceRequestsApiClient {
       method: 'POST',
     })
     return transformServiceRequest(backend)
+  }
+
+  /**
+   * Get available payment methods for request
+   */
+  async getPaymentMethods(requestId: string): Promise<PaymentMethodsResponse> {
+    interface BackendPaymentMethod {
+      code: string
+      label_es: string
+      label_en: string
+      label_fr: string
+      processor_type: string
+      requires_phone: boolean
+      requires_redirect: boolean
+      requires_agent_validation: boolean
+    }
+    interface BackendResponse {
+      methods: BackendPaymentMethod[]
+      default_method: string | null
+    }
+
+    const backend = await this.request<BackendResponse>(`/${requestId}/payment/methods`)
+
+    return {
+      methods: backend.methods.map(m => ({
+        code: m.code,
+        labelEs: m.label_es,
+        labelEn: m.label_en,
+        labelFr: m.label_fr,
+        processorType: m.processor_type as 'bange_api' | 'manual',
+        requiresPhone: m.requires_phone,
+        requiresRedirect: m.requires_redirect,
+        requiresAgentValidation: m.requires_agent_validation,
+      })),
+      defaultMethod: backend.default_method,
+    }
   }
 
   /**
