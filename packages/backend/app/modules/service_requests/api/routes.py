@@ -268,6 +268,78 @@ async def validate_document(
     )
 
 
+@router.delete(
+    "/{request_id}/documents/{document_code}",
+    status_code=204,
+    summary="Delete a document from service request",
+    description="""
+    Delete a specific document from a service request.
+
+    **Requirements:**
+    - Request must be in DRAFT status
+    - User must own the service request
+
+    **Effects:**
+    - Removes the document from the database
+    - Removes the file from storage (if applicable)
+    """
+)
+async def delete_document(
+    request_id: UUID = Path(..., description="The service request ID"),
+    document_code: str = Path(..., description="The document code to delete (e.g., dip, pasaporte_antiguo)"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user)
+):
+    """Delete a specific document from a service request"""
+    from ..repositories.service_request_repository import service_request_repository
+    from ..repositories.document_repository import document_repository
+
+    # Verify request exists and user owns it
+    request = await service_request_repository.find_by_id(db, request_id)
+    if not request:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Service request not found: {request_id}"
+        )
+
+    if str(request["user_id"]) != str(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
+
+    # Only allow deletion in DRAFT status
+    if request["status"] != "DRAFT":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot delete documents in status: {request['status']}"
+        )
+
+    # Find the document
+    docs = await document_repository.find_by_request(db, request_id)
+    target_doc = next((d for d in docs if d["document_code"] == document_code), None)
+
+    if not target_doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Document not found: {document_code}"
+        )
+
+    # Delete from storage if file exists
+    if target_doc.get("file_path"):
+        try:
+            from app.modules.documents.services.storage_service import storage_service
+            await storage_service.delete_file(target_doc["file_path"])
+        except Exception as e:
+            logger.warning(f"Failed to delete file from storage: {e}")
+
+    # Delete from database
+    await document_repository.delete_document(db, target_doc["id"])
+
+    logger.info(f"Deleted document {document_code} from request {request['reference']}")
+    return None
+
+
 # ═══════════════════════════════════════════════════════════════
 # READ
 # ═══════════════════════════════════════════════════════════════
