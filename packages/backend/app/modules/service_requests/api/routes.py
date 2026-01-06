@@ -23,7 +23,12 @@ from ..models.service_request import (
     CitizenSummaryResponse,
     ValidationResultResponse,
     PaymentStatusResponse,
+    PaymentMethodInfo,
+    PaymentMethodsResponse,
+    PaymentInitiateRequest,
+    PaymentInitiateResponse,
 )
+from ..models.enums import ServiceRequestStatus
 from fastapi import HTTPException, status
 from ..services.service_request_service import service_request_service
 from app.database.connection import get_database
@@ -887,6 +892,183 @@ async def get_payment_status(
         currency=currency,
         payment_method=request.form_data.get("payment_method") if request.form_data else None,
         completed_at=request.paid_at,
+    )
+
+
+# ═══════════════════════════════════════════════════════════════
+# PAYMENT METHODS & INITIATION
+# ═══════════════════════════════════════════════════════════════
+
+@router.get(
+    "/{request_id}/payment/methods",
+    response_model=PaymentMethodsResponse,
+    summary="Get available payment methods",
+    description="""
+    Get the list of available payment methods for this service request.
+
+    Returns all payment methods that can be used to pay for this request,
+    with labels in multiple languages and processor information.
+    """
+)
+async def get_payment_methods(
+    request_id: UUID = Path(..., description="The service request ID"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user)
+) -> PaymentMethodsResponse:
+    """Get available payment methods for this service request"""
+    from app.modules.payments.services.processors import payment_processor_registry
+
+    # Verify request exists and belongs to user
+    request = await service_request_service.get_request(
+        db=db,
+        request_id=request_id,
+        user_id=current_user.id
+    )
+
+    if not request:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Service request not found: {request_id}"
+        )
+
+    # Get available methods from registry
+    methods_info = payment_processor_registry.get_methods_info()
+
+    # Convert to response models
+    methods = [
+        PaymentMethodInfo(
+            code=m["code"],
+            label_es=m["label_es"],
+            label_en=m["label_en"],
+            label_fr=m["label_fr"],
+            processor_type=m["processor_type"],
+            requires_phone=m["requires_phone"],
+            requires_redirect=m["requires_redirect"],
+            requires_agent_validation=m["requires_agent_validation"],
+        )
+        for m in methods_info
+    ]
+
+    # Default to mobile_money if available
+    default_method = "mobile_money" if any(m.code == "mobile_money" for m in methods) else None
+
+    return PaymentMethodsResponse(
+        methods=methods,
+        default_method=default_method
+    )
+
+
+@router.post(
+    "/{request_id}/payment/initiate",
+    response_model=PaymentInitiateResponse,
+    summary="Initiate payment",
+    description="""
+    Initiate payment for a service request.
+
+    **Payment Methods:**
+    - `mobile_money`: MTN/Orange Mobile Money via BANGE API (requires phone_number)
+    - `card`: Bank card via BANGE Gateway (returns redirect_url)
+    - `bank_transfer`: Bank transfer via BANGE
+    - `cash`: Cash payment (requires agent validation)
+    - `check`: Check payment (requires agent validation)
+
+    **Response:**
+    - For BANGE payments: `redirect_url` to complete payment
+    - For cash/check: `action_type='agent_validation'`, wait for agent confirmation
+    """
+)
+async def initiate_payment(
+    request_id: UUID = Path(..., description="The service request ID"),
+    body: PaymentInitiateRequest = ...,
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user)
+) -> PaymentInitiateResponse:
+    """Initiate payment for a service request"""
+    from app.modules.payments.services.processors import payment_processor_registry
+    from app.modules.payments.services.processors.base import PaymentContext
+    from app.modules.payments.models.payment import PaymentMethod
+
+    # Load context
+    context = await workflow_engine.load_context_from_db(db, request_id)
+    if not context:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Service request not found: {request_id}"
+        )
+
+    # Verify ownership
+    if str(context.user_id) != str(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
+
+    # Verify request is in correct status for payment
+    if context.status not in [ServiceRequestStatus.PAYMENT_PENDING]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot initiate payment in status: {context.status.value}"
+        )
+
+    # Validate payment method
+    try:
+        payment_method = PaymentMethod(body.payment_method)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid payment method: {body.payment_method}"
+        )
+
+    # Validate phone for mobile money
+    if payment_method == PaymentMethod.MOBILE_MONEY and not body.phone_number:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Phone number is required for Mobile Money payments"
+        )
+
+    # Get tariff amount from context
+    from ..services.tariff_calculator import tariff_calculator
+    workflow = workflow_engine.get_workflow(context.workflow_code)
+    tariff_breakdown = await tariff_calculator.calculate(db, workflow, context)
+    total_amount = tariff_breakdown.get("total_amount", 0)
+
+    if total_amount <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No payment required for this request"
+        )
+
+    # Create payment context
+    from decimal import Decimal
+    payment_context = PaymentContext(
+        service_request_id=str(request_id),
+        user_id=str(current_user.id),
+        amount=Decimal(str(total_amount)),
+        currency=tariff_breakdown.get("currency", "XAF"),
+        payment_method=payment_method,
+        tariff_breakdown=tariff_breakdown,
+        user_email=current_user.email,
+        user_phone=body.phone_number or current_user.phone,
+        user_name=f"{current_user.first_name} {current_user.last_name}".strip(),
+        workflow_code=context.workflow_code.value,
+        service_name=workflow.service_name_es if workflow else None,
+        reference_number=context.reference_number,
+    )
+
+    # Initiate payment via registry
+    result = await payment_processor_registry.initiate_payment(db, payment_context)
+
+    return PaymentInitiateResponse(
+        success=result.success,
+        payment_id=result.payment_id,
+        payment_reference=result.external_reference,
+        status=result.status.value if hasattr(result.status, "value") else str(result.status),
+        redirect_url=result.redirect_url,
+        requires_action=result.requires_action,
+        action_type=result.action_type,
+        message_es=result.message_es,
+        expires_at=result.expires_at,
+        error=result.error,
     )
 
 

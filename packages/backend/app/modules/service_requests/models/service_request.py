@@ -638,3 +638,46 @@ class PaymentStatusResponse(BaseModel):
         default=None,
         description="When payment was completed"
     )
+
+
+# ===================================================================
+# PAYMENT METHODS & INITIATION
+# ===================================================================
+
+class PaymentMethodInfo(BaseModel):
+    """Information about a single payment method."""
+    code: str = Field(..., description="Payment method code")
+    label_es: str = Field(..., description="Spanish label")
+    label_en: str = Field(..., description="English label")
+    label_fr: str = Field(..., description="French label")
+    processor_type: str = Field(..., description="Processor type: bange_api or manual")
+    requires_phone: bool = Field(default=False, description="Whether phone number is required")
+    requires_redirect: bool = Field(default=False, description="Whether redirect to payment gateway")
+    requires_agent_validation: bool = Field(default=False, description="Whether agent validation needed")
+
+
+class PaymentMethodsResponse(BaseModel):
+    """Response with available payment methods."""
+    methods: List[PaymentMethodInfo] = Field(..., description="List of available payment methods")
+    default_method: Optional[str] = Field(default=None, description="Recommended default method")
+
+
+class PaymentInitiateRequest(BaseModel):
+    """Request to initiate a payment."""
+    payment_method: str = Field(..., description="Payment method code")
+    phone_number: Optional[str] = Field(None, description="Phone number for Mobile Money")
+    return_url: Optional[str] = Field(None, description="URL to redirect after payment")
+
+
+class PaymentInitiateResponse(BaseModel):
+    """Response after initiating payment."""
+    success: bool = Field(..., description="Whether initiation was successful")
+    payment_id: str = Field(..., description="Internal payment ID")
+    payment_reference: Optional[str] = Field(None, description="External reference")
+    status: str = Field(..., description="Initial payment status")
+    redirect_url: Optional[str] = Field(None, description="URL to redirect for payment")
+    requires_action: bool = Field(default=False, description="Whether user action is required")
+    action_type: Optional[str] = Field(None, description="Type of action required")
+    message_es: Optional[str] = Field(None, description="Message for user in Spanish")
+    expires_at: Optional[datetime] = Field(None, description="When this payment request expires")
+    error: Optional[str] = Field(None, description="Error message if success=false")

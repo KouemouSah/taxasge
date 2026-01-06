@@ -74,13 +74,14 @@ import type {
   PassportSolicitudType,
   PassportRenovacionMotivo,
   DocumentExtractionPreview,
+  PaymentMethodInfo,
 } from '@/modules/service-requests'
 import {
   DocumentConditionType,
   PASSPORT_WIZARD_STEPS,
   PASSPORT_TARIFFS,
 } from '@/modules/service-requests'
-import { PaymentMethod, getPaymentMethodLabel } from '@/types/payment'
+import { PaymentMethod } from '@/types/payment'
 
 // Use shared constants from types/index.ts
 const WIZARD_STEPS = PASSPORT_WIZARD_STEPS
@@ -134,6 +135,7 @@ export default function PassportWizardPage() {
     getCitizenSummary,
     downloadSummaryPDF,
     // Payment methods
+    getPaymentMethods,
     initiatePayment,
     checkPaymentStatus,
     // Appointment methods
@@ -149,6 +151,8 @@ export default function PassportWizardPage() {
   const [phoneNumber, setPhoneNumber] = useState('')
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
   const [paymentComplete, setPaymentComplete] = useState(false)
+  const [availablePaymentMethods, setAvailablePaymentMethods] = useState<PaymentMethodInfo[]>([])
+  const [isLoadingPaymentMethods, setIsLoadingPaymentMethods] = useState(false)
   const paymentPollRef = useRef<NodeJS.Timeout | null>(null)
 
   // Document preview state - stores extraction data from 2-step flow
@@ -730,6 +734,38 @@ export default function PassportWizardPage() {
   // PAYMENT WITH STATUS POLLING
   // ==========================================================================
 
+  // Load payment methods when step becomes payment
+  const loadPaymentMethods = useCallback(async () => {
+    setIsLoadingPaymentMethods(true)
+    try {
+      const response = await getPaymentMethods()
+      if (response) {
+        setAvailablePaymentMethods(response.methods)
+        // Set default if specified
+        if (response.defaultMethod) {
+          setSelectedPaymentMethod(response.defaultMethod as PaymentMethod)
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load payment methods:', err)
+      // Fallback to default methods
+      setAvailablePaymentMethods([
+        { code: PaymentMethod.MOBILE_MONEY, labelEs: 'Mobile Money', labelEn: 'Mobile Money', labelFr: 'Mobile Money', processorType: 'bange_api', requiresPhone: true, requiresRedirect: true, requiresAgentValidation: false },
+        { code: PaymentMethod.CASH, labelEs: 'Efectivo', labelEn: 'Cash', labelFr: 'Especes', processorType: 'manual', requiresPhone: false, requiresRedirect: false, requiresAgentValidation: true },
+      ])
+    } finally {
+      setIsLoadingPaymentMethods(false)
+    }
+  }, [getPaymentMethods])
+
+  // Load payment methods when reaching payment step
+  useEffect(() => {
+    const step = WIZARD_STEPS[currentStepIndex]
+    if (step?.id === 'payment' && availablePaymentMethods.length === 0 && !isLoadingPaymentMethods) {
+      loadPaymentMethods()
+    }
+  }, [currentStepIndex, availablePaymentMethods.length, isLoadingPaymentMethods, loadPaymentMethods])
+
   const handlePayment = async () => {
     if (!selectedPaymentMethod) return
 
@@ -979,6 +1015,8 @@ export default function PassportWizardPage() {
         <PaymentStepImproved
           locale={locale}
           tariff={getTariff()}
+          availableMethods={availablePaymentMethods}
+          isLoadingMethods={isLoadingPaymentMethods}
           selectedMethod={selectedPaymentMethod}
           phoneNumber={phoneNumber}
           isProcessing={isProcessingPayment}
@@ -1981,6 +2019,8 @@ function ValidationStepImproved({ locale, validationResults, isValidating, onRev
 interface PaymentStepImprovedProps {
   locale: string
   tariff: number
+  availableMethods: PaymentMethodInfo[]
+  isLoadingMethods: boolean
   selectedMethod: PaymentMethod | null
   phoneNumber: string
   isProcessing: boolean
@@ -1995,6 +2035,8 @@ interface PaymentStepImprovedProps {
 function PaymentStepImproved({
   locale,
   tariff,
+  availableMethods,
+  isLoadingMethods,
   selectedMethod,
   phoneNumber,
   isProcessing,
@@ -2005,10 +2047,17 @@ function PaymentStepImproved({
   onNext,
   onBack,
 }: PaymentStepImprovedProps) {
-  const availableMethods = [
-    { method: PaymentMethod.MOBILE_MONEY, icon: Smartphone, requiresPhone: true },
-    { method: PaymentMethod.CASH, icon: Banknote, requiresPhone: false },
-  ]
+  // Get icon for method code
+  const getMethodIcon = (code: string) => {
+    const icons: Record<string, React.ComponentType<{ className?: string }>> = {
+      mobile_money: Smartphone,
+      cash: Banknote,
+      check: Banknote,
+      card: CreditCard,
+      bank_transfer: Banknote,
+    }
+    return icons[code] || Banknote
+  }
 
   const texts = {
     es: {
@@ -2054,8 +2103,9 @@ function PaymentStepImproved({
 
   const t = texts[locale as keyof typeof texts] || texts.es
 
+  const selectedMethodInfo = availableMethods.find(m => m.code === selectedMethod)
   const canPay = selectedMethod !== null &&
-    (!availableMethods.find(m => m.method === selectedMethod)?.requiresPhone || phoneNumber.length >= 9)
+    (!selectedMethodInfo?.requiresPhone || phoneNumber.length >= 9)
 
   if (paymentComplete) {
     return (
@@ -2091,25 +2141,41 @@ function PaymentStepImproved({
         {/* Payment Method Selection */}
         <div className="space-y-3">
           <Label>{t.selectMethod}</Label>
-          <RadioGroup
-            value={selectedMethod || ''}
-            onValueChange={(value) => onMethodSelect(value as PaymentMethod)}
-            disabled={isProcessing}
-          >
-            {availableMethods.map(({ method, icon: Icon }) => (
-              <div key={method} className="flex items-center space-x-3">
-                <RadioGroupItem value={method} id={method} />
-                <Label htmlFor={method} className="flex items-center gap-2 cursor-pointer">
-                  <Icon className="h-5 w-5" />
-                  {getPaymentMethodLabel(method)}
-                </Label>
-              </div>
-            ))}
-          </RadioGroup>
+          {isLoadingMethods ? (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>{locale === 'es' ? 'Cargando metodos...' : locale === 'fr' ? 'Chargement...' : 'Loading methods...'}</span>
+            </div>
+          ) : (
+            <RadioGroup
+              value={selectedMethod || ''}
+              onValueChange={(value) => onMethodSelect(value as PaymentMethod)}
+              disabled={isProcessing}
+            >
+              {availableMethods.map((method) => {
+                const Icon = getMethodIcon(method.code)
+                const label = locale === 'es' ? method.labelEs : locale === 'fr' ? method.labelFr : method.labelEn
+                return (
+                  <div key={method.code} className="flex items-center space-x-3">
+                    <RadioGroupItem value={method.code} id={method.code} />
+                    <Label htmlFor={method.code} className="flex items-center gap-2 cursor-pointer">
+                      <Icon className="h-5 w-5" />
+                      {label}
+                      {method.requiresAgentValidation && (
+                        <span className="text-xs text-muted-foreground">
+                          ({locale === 'es' ? 'validacion manual' : locale === 'fr' ? 'validation manuelle' : 'manual validation'})
+                        </span>
+                      )}
+                    </Label>
+                  </div>
+                )
+              })}
+            </RadioGroup>
+          )}
         </div>
 
-        {/* Phone Number (for Mobile Money) */}
-        {selectedMethod === PaymentMethod.MOBILE_MONEY && (
+        {/* Phone Number (for methods requiring phone) */}
+        {selectedMethodInfo?.requiresPhone && (
           <div className="space-y-2">
             <Label htmlFor="phone">{t.phoneLabel}</Label>
             <Input
