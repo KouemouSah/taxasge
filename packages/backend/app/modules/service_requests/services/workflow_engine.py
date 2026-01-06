@@ -188,7 +188,19 @@ class WorkflowEngine:
             return None
 
         # Get sub_type from form_data if present
+        # Handle legacy double-encoded form_data (stored as JSON string instead of object)
         form_data = row["form_data"] or {}
+        if isinstance(form_data, str):
+            try:
+                form_data = json.loads(form_data)
+                # Handle double-encoding
+                if isinstance(form_data, str):
+                    form_data = json.loads(form_data)
+            except json.JSONDecodeError:
+                logger.warning(f"Failed to parse form_data for request {service_request_id}")
+                form_data = {}
+        if not isinstance(form_data, dict):
+            form_data = {}
         sub_type = form_data.get("tipo") or form_data.get("sub_type")
 
         context = WorkflowContext(

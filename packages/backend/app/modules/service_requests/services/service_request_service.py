@@ -54,6 +54,41 @@ PREVIEW_EXPIRY_SECONDS = PREVIEW_EXPIRY_MINUTES * 60
 from .preview_cache import preview_cache
 
 
+def _parse_jsonb_field(value: Any, field_name: str = "field") -> Dict:
+    """
+    Safely parse a JSONB field that might be stored as a double-encoded string.
+
+    Handles legacy data where json.dumps() was used without ::jsonb cast,
+    causing the dict to be stored as a JSON string instead of a JSON object.
+
+    Args:
+        value: The value from the database (could be dict, str, or None)
+        field_name: Name of the field for logging purposes
+
+    Returns:
+        A dictionary (empty dict if parsing fails)
+    """
+    if value is None:
+        return {}
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+            # Handle double-encoding (string within string)
+            if isinstance(parsed, str):
+                parsed = json.loads(parsed)
+            if isinstance(parsed, dict):
+                return parsed
+            logger.warning(f"Parsed {field_name} is not a dict: {type(parsed)}")
+            return {}
+        except json.JSONDecodeError:
+            logger.warning(f"Failed to parse {field_name} as JSON")
+            return {}
+    logger.warning(f"Unexpected type for {field_name}: {type(value)}")
+    return {}
+
+
 class ServiceRequestService:
     """
     Main orchestration service for service requests.
@@ -1446,11 +1481,11 @@ class ServiceRequestService:
                     file_name=d["file_name"],
                     file_size=d.get("file_size"),
                     mime_type=d.get("mime_type"),
-                    extraction_data=d.get("extraction_data", {}),
+                    extraction_data=_parse_jsonb_field(d.get("extraction_data"), "extraction_data"),
                     extraction_confidence=d.get("extraction_confidence"),
                     extraction_status=d.get("extraction_status", "pending"),
                     is_valid=d.get("is_valid"),
-                    validation_errors=d.get("validation_errors", []),
+                    validation_errors=d.get("validation_errors") if isinstance(d.get("validation_errors"), list) else [],
                     validated_by=d.get("validated_by"),
                     validated_at=d.get("validated_at"),
                     source=d.get("source", "user_upload"),
@@ -1462,10 +1497,10 @@ class ServiceRequestService:
             ],
             missing_documents=missing,
             documents_progress=f"{len(provided)}/{len(required_docs)}",
-            form_data=request.get("form_data", {}),
-            extracted_data=request.get("extracted_data", {}),
+            form_data=_parse_jsonb_field(request.get("form_data"), "form_data"),
+            extracted_data=_parse_jsonb_field(request.get("extracted_data"), "extracted_data"),
             extraction_confidence=request.get("extraction_confidence"),
-            validations=request.get("validations", {}),
+            validations=_parse_jsonb_field(request.get("validations"), "validations"),
             tariff=tariff,
             assigned_to=request.get("assigned_to"),
             assigned_at=request.get("assigned_at"),
