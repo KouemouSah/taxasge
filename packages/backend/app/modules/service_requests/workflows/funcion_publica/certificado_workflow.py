@@ -214,8 +214,7 @@ class CertificadoAdministrativoWorkflow(BaseWorkflow):
             description_es="Tasa de emisión del certificado",
             is_inherited=False,
             config={
-                "payment_methods": ["MTN_MOBILE_MONEY", "ORANGE_MONEY", "BANGE_WALLET"],
-                "currency": "XAF",
+                                "currency": "XAF",
                 "dynamic_amount": True  # Calculated based on type, copies, urgency
             }
         ))

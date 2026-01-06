@@ -174,8 +174,7 @@ class PermisoExtraordinarioWorkflow(BaseWorkflow):
             description_es=f"Tasa de tramitación: {self.TARIFF} XAF",
             is_inherited=False,
             config={
-                "payment_methods": ["MTN_MOBILE_MONEY", "ORANGE_MONEY", "BANGE_WALLET"],
-                "currency": "XAF",
+                                "currency": "XAF",
                 "amount": self.TARIFF
             }
         ))

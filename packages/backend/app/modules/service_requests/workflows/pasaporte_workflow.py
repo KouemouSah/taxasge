@@ -92,8 +92,7 @@ class PasaporteWorkflow(BaseWorkflow):
             description_es="Realice el pago mediante Mobile Money",
             is_inherited=False,
             config={
-                "payment_methods": ["MTN_MOBILE_MONEY", "ORANGE_MONEY", "BANGE_WALLET"],
-                "currency": "XAF"
+                                "currency": "XAF"
             }
         ))
 

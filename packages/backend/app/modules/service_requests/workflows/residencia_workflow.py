@@ -125,7 +125,6 @@ class ResidenciaWorkflow(BaseWorkflow):
             is_inherited=False,
             config={
                 "phase": "PHASE_0_STAMPS",
-                "payment_methods": ["MTN_MOBILE_MONEY", "ORANGE_MONEY", "BANGE_WALLET"],
                 "currency": "XAF",
                 "stamp_prices": {
                     "cedula_personal": self.CEDULA_PERSONAL_XAF,
@@ -206,7 +205,6 @@ class ResidenciaWorkflow(BaseWorkflow):
             is_inherited=False,
             config={
                 "phase": "PHASE_2_NOTA_INGRESO",
-                "payment_methods": ["MTN_MOBILE_MONEY", "ORANGE_MONEY", "BANGE_WALLET", "BANK_TRANSFER"],
                 "currency": "XAF",
                 "amount_source": "nota_ingreso.monto_total"
             }

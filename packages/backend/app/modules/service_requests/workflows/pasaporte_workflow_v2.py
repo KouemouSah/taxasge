@@ -368,11 +368,7 @@ class PasaporteWorkflow(PredefinedWorkflow):
         ))
 
         # === Step 6: Payment (BEFORE Appointment) ===
-        # Payment methods from payments module - only Mobile Money and Cash for passport
-        available_payment_methods = [
-            PaymentMethod.MOBILE_MONEY.value,  # Primary: Mobile Money (BANGE integration)
-            PaymentMethod.CASH.value,          # Secondary: Cash at CNEDOGE office
-        ]
+        # Payment methods loaded dynamically via GET /payment/methods endpoint
         self.add_step(WorkflowStep(
             step_number=6,
             step_id="payment",
@@ -380,8 +376,6 @@ class PasaporteWorkflow(PredefinedWorkflow):
             title_es="Pago de Tasas",
             description_es="Realice el pago mediante Mobile Money o en efectivo",
             config={
-                "payment_methods": available_payment_methods,
-                "primary_method": PaymentMethod.MOBILE_MONEY.value,
                 "currency": "XAF",
                 "show_breakdown": True,
                 "dynamic_tariff": True  # Tariff based on solicitud_type/motivo
