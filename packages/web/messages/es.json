@@ -3764,5 +3764,42 @@
     "all_documents_uploaded": "Todos los documentos requeridos han sido cargados",
     "documents_pending": "Quedan documentos por cargar",
     "continue_to_verification": "Continuar a verificacion"
+  },
+  "treasury": {
+    "pageTitle": "Panel de Tesoreria",
+    "dashboardDescription": "Gestion de pagos y validaciones",
+    "nav": {
+      "dashboard": "Panel",
+      "payments": "Pagos",
+      "validation": "Validacion",
+      "reconciliation": "Reconciliacion",
+      "transactions": "Historial",
+      "settings": "Configuracion",
+      "banks": "Bancos"
+    },
+    "stats": {
+      "pendingValidation": "Pendientes Validacion",
+      "unreconciled": "Sin Reconciliar",
+      "todayValidated": "Validados Hoy",
+      "todayAmount": "Monto Hoy"
+    },
+    "validation": {
+      "title": "Validacion de Pagos",
+      "description": "Revisar y validar pagos en efectivo y cheque"
+    },
+    "reconciliation": {
+      "title": "Reconciliacion Bancaria",
+      "description": "Vincular transacciones bancarias con pagos del sistema"
+    },
+    "transactions": {
+      "title": "Historial de Transacciones",
+      "description": "Registro completo de pagos procesados"
+    },
+    "settings": {
+      "banks": {
+        "title": "Configuracion de Bancos",
+        "description": "Administrar integraciones bancarias"
+      }
+    }
   }
 }

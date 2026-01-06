@@ -5,7 +5,18 @@
  */
 
 // User Role Enum (aligned with user_role_enum from schema_taxage.sql)
-export type UserRole = 'citizen' | 'business' | 'accountant' | 'admin' | 'dgi_agent';
+export type UserRole =
+  | 'citizen'
+  | 'business'
+  | 'accountant'
+  | 'admin'
+  | 'dgi_agent'
+  | 'ministry_agent'
+  | 'supervisor'
+  | 'supervisor_junior_dgi'
+  | 'supervisor_dgi'
+  | 'supervisor_senior'
+  | 'supervisor_readonly';
 
 // User Status Enum (aligned with backend UserStatus)
 export type UserStatus = 'active' | 'inactive' | 'suspended' | 'pending_verification';

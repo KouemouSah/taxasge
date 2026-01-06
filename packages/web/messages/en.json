@@ -3856,5 +3856,42 @@
     "all_documents_uploaded": "All required documents have been uploaded",
     "documents_pending": "Some documents still need to be uploaded",
     "continue_to_verification": "Continue to verification"
+  },
+  "treasury": {
+    "pageTitle": "Treasury Dashboard",
+    "dashboardDescription": "Payment management and validations",
+    "nav": {
+      "dashboard": "Dashboard",
+      "payments": "Payments",
+      "validation": "Validation",
+      "reconciliation": "Reconciliation",
+      "transactions": "History",
+      "settings": "Settings",
+      "banks": "Banks"
+    },
+    "stats": {
+      "pendingValidation": "Pending Validation",
+      "unreconciled": "Unreconciled",
+      "todayValidated": "Validated Today",
+      "todayAmount": "Today Amount"
+    },
+    "validation": {
+      "title": "Payment Validation",
+      "description": "Review and validate cash and check payments"
+    },
+    "reconciliation": {
+      "title": "Bank Reconciliation",
+      "description": "Match bank transactions with system payments"
+    },
+    "transactions": {
+      "title": "Transaction History",
+      "description": "Complete record of processed payments"
+    },
+    "settings": {
+      "banks": {
+        "title": "Bank Configuration",
+        "description": "Manage bank integrations"
+      }
+    }
   }
 }

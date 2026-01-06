@@ -3856,5 +3856,42 @@
     "all_documents_uploaded": "Tous les documents requis sont telecharges",
     "documents_pending": "Il reste des documents a telecharger",
     "continue_to_verification": "Continuer vers la verification"
+  },
+  "treasury": {
+    "pageTitle": "Tableau de Bord Tresorerie",
+    "dashboardDescription": "Gestion des paiements et validations",
+    "nav": {
+      "dashboard": "Tableau de Bord",
+      "payments": "Paiements",
+      "validation": "Validation",
+      "reconciliation": "Reconciliation",
+      "transactions": "Historique",
+      "settings": "Parametres",
+      "banks": "Banques"
+    },
+    "stats": {
+      "pendingValidation": "En Attente Validation",
+      "unreconciled": "Non Reconcilies",
+      "todayValidated": "Valides Aujourd hui",
+      "todayAmount": "Montant Aujourd hui"
+    },
+    "validation": {
+      "title": "Validation des Paiements",
+      "description": "Examiner et valider les paiements en especes et cheques"
+    },
+    "reconciliation": {
+      "title": "Reconciliation Bancaire",
+      "description": "Associer les transactions bancaires aux paiements systeme"
+    },
+    "transactions": {
+      "title": "Historique des Transactions",
+      "description": "Registre complet des paiements traites"
+    },
+    "settings": {
+      "banks": {
+        "title": "Configuration des Banques",
+        "description": "Gerer les integrations bancaires"
+      }
+    }
   }
 }
