@@ -2129,3 +2129,54 @@ async def remove_workflow_supplement(
         )
 
     return None
+
+
+# ═══════════════════════════════════════════════════════════════
+# MAINTENANCE - Cleanup Operations
+# ═══════════════════════════════════════════════════════════════
+
+class CleanupResponse(BaseModel):
+    """Response model for cleanup operations"""
+    deleted_requests: int = Field(..., description="Number of service requests deleted")
+    deleted_documents: int = Field(..., description="Number of documents deleted")
+    deleted_files: int = Field(..., description="Number of files deleted from storage")
+    errors: List[str] = Field(default=[], description="Any errors encountered during cleanup")
+
+
+@router.post(
+    "/maintenance/cleanup-abandoned",
+    response_model=CleanupResponse,
+    summary="Clean up abandoned service requests",
+    description="""
+    Delete service requests that have been in DRAFT status for too long.
+
+    **Purpose:**
+    - Free up storage space from abandoned sessions
+    - Remove orphan data from users who started but never completed requests
+    - Maintain database hygiene
+
+    **Default behavior:**
+    - Deletes DRAFT requests older than 2 hours
+    - Deletes associated documents from database
+    - Deletes files from Firebase Storage
+
+    **Recommended:**
+    - Call this endpoint via Cloud Scheduler every hour
+    - Or trigger manually when needed
+    """
+)
+async def cleanup_abandoned_requests(
+    max_age_hours: int = Query(2, ge=1, le=168, description="Maximum age in hours for DRAFT requests (1-168)"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("admin:manage_system"))
+):
+    """Clean up abandoned DRAFT requests older than max_age_hours"""
+    from ..services.service_request_service import service_request_service
+
+    stats = await service_request_service.cleanup_abandoned_requests(
+        db=db,
+        max_age_hours=max_age_hours
+    )
+
+    return CleanupResponse(**stats)

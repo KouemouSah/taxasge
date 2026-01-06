@@ -684,6 +684,101 @@ class ServiceRequestService:
         """
         return await preview_cache.cleanup_expired()
 
+    async def cleanup_abandoned_requests(
+        self,
+        db: asyncpg.Connection,
+        max_age_hours: int = 2
+    ) -> Dict[str, Any]:
+        """
+        Clean up abandoned service requests that have been in DRAFT status
+        for longer than the specified time.
+
+        This helps prevent orphan data from accumulating when users abandon
+        their sessions without completing or canceling their requests.
+
+        Args:
+            db: Database connection
+            max_age_hours: Maximum age in hours for DRAFT requests (default: 2)
+
+        Returns:
+            Dict with cleanup statistics:
+            - deleted_requests: Number of requests deleted
+            - deleted_documents: Number of documents deleted
+            - deleted_files: Number of files deleted from storage
+            - errors: List of any errors encountered
+        """
+        stats = {
+            "deleted_requests": 0,
+            "deleted_documents": 0,
+            "deleted_files": 0,
+            "errors": []
+        }
+
+        try:
+            # Find abandoned DRAFT requests older than max_age_hours
+            cutoff_time = datetime.utcnow() - timedelta(hours=max_age_hours)
+
+            query = """
+                SELECT sr.id, sr.reference, sr.user_id, sr.created_at
+                FROM service_requests sr
+                WHERE sr.status = 'DRAFT'
+                  AND sr.created_at < $1
+                ORDER BY sr.created_at ASC
+            """
+            abandoned_requests = await db.fetch(query, cutoff_time)
+
+            logger.info(f"Found {len(abandoned_requests)} abandoned DRAFT requests older than {max_age_hours}h")
+
+            for request in abandoned_requests:
+                request_id = request["id"]
+                reference = request["reference"]
+
+                try:
+                    # Get documents for this request
+                    docs = await document_repository.find_by_request(db, request_id)
+
+                    # Delete files from storage
+                    for doc in docs:
+                        if doc.get("file_path"):
+                            try:
+                                from app.modules.documents.services.storage_service import storage_service
+                                await storage_service.delete_file(doc["file_path"])
+                                stats["deleted_files"] += 1
+                            except Exception as e:
+                                stats["errors"].append(f"Failed to delete file for doc {doc['id']}: {str(e)}")
+
+                    # Delete documents from database
+                    await db.execute(
+                        "DELETE FROM service_request_documents WHERE service_request_id = $1",
+                        request_id
+                    )
+                    stats["deleted_documents"] += len(docs)
+
+                    # Delete the service request
+                    await db.execute(
+                        "DELETE FROM service_requests WHERE id = $1",
+                        request_id
+                    )
+                    stats["deleted_requests"] += 1
+
+                    logger.info(f"Cleaned up abandoned request {reference} ({len(docs)} docs)")
+
+                except Exception as e:
+                    error_msg = f"Failed to cleanup request {reference}: {str(e)}"
+                    logger.error(error_msg)
+                    stats["errors"].append(error_msg)
+
+        except Exception as e:
+            error_msg = f"Cleanup job failed: {str(e)}"
+            logger.error(error_msg, exc_info=True)
+            stats["errors"].append(error_msg)
+
+        logger.info(
+            f"Cleanup completed: {stats['deleted_requests']} requests, "
+            f"{stats['deleted_documents']} documents, {stats['deleted_files']} files deleted"
+        )
+        return stats
+
     def _get_expected_fields(
         self,
         document_code: str,
