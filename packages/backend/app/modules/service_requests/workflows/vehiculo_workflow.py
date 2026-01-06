@@ -161,8 +161,7 @@ class VehiculoWorkflow(BaseWorkflow):
             description_es="El monto se calcula automáticamente según el vehículo y tipo de trámite",
             is_inherited=False,
             config={
-                "payment_methods": ["MTN_MOBILE_MONEY", "ORANGE_MONEY", "BANGE_WALLET", "BANK_TRANSFER"],
-                "currency": "XAF",
+                                "currency": "XAF",
                 "tariff_source": "rbc-calculator",
                 "tariff_params": ["service_category", "request_type", "vehicle_type", "vehicle_service", "vehicle_power"]
             }

@@ -119,8 +119,7 @@ class PromocionAdministrativaWorkflow(BaseWorkflow):
             description_es="Tasa de tramitación de la promoción",
             is_inherited=False,
             config={
-                "payment_methods": ["MTN_MOBILE_MONEY", "ORANGE_MONEY", "BANGE_WALLET"],
-                "currency": "XAF"
+                                "currency": "XAF"
             }
         ))
 

@@ -124,8 +124,7 @@ class ContratoWorkflow(BaseWorkflow):
             description_es="Tasa de registro: 0.5% del valor del contrato (validado por ONRC)",
             is_inherited=False,
             config={
-                "payment_methods": ["MTN_MOBILE_MONEY", "ORANGE_MONEY", "BANGE_WALLET", "BANK_TRANSFER"],
-                "currency": "XAF",
+                                "currency": "XAF",
                 "calculation_note": "0.5% del valor del contrato",
                 "requires_status": "DOSSIER_VALIDE",  # CRITICAL: Payment blocked until validated
                 "blocked_message_es": "El pago está bloqueado hasta que un agente ONRC valide su dossier."
