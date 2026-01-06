@@ -30,7 +30,7 @@ class ServiceRequestRepository:
                 user_id, workflow_code, solicitud_type,
                 fiscal_service_id, priority, form_data, created_by
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $1)
+            VALUES ($1, $2, $3, $4, $5, $6::jsonb, $1)
             RETURNING *
         """
         row = await db.fetchrow(
@@ -181,7 +181,7 @@ class ServiceRequestRepository:
         """Update extracted data from documents"""
         await db.execute(
             """UPDATE service_requests
-               SET extracted_data = $2, extraction_confidence = $3,
+               SET extracted_data = $2::jsonb, extraction_confidence = $3,
                    updated_at = NOW()
                WHERE id = $1""",
             request_id, json.dumps(extracted_data), extraction_confidence

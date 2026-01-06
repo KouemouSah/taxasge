@@ -96,7 +96,7 @@ class DocumentRepository:
         """Mark document as validated or invalid"""
         await db.execute(
             """UPDATE service_request_documents
-               SET is_valid = $2, validation_errors = $3,
+               SET is_valid = $2, validation_errors = $3::jsonb,
                    validated_by = $4, validated_at = NOW(),
                    updated_at = NOW()
                WHERE id = $1""",

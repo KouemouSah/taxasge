@@ -264,7 +264,7 @@ class WorkflowEngine:
             UPDATE service_requests
             SET
                 status = $2,
-                form_data = $3,
+                form_data = $3::jsonb,
                 entity_code = $4,
                 assigned_to = $5,
                 updated_at = NOW()

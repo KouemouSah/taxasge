@@ -775,7 +775,7 @@ class ServiceRequestService:
         update_values = []
 
         if form_data is not None:
-            update_fields.append("form_data = $1")
+            update_fields.append("form_data = $1::jsonb")
             update_values.append(json.dumps(form_data))
 
         if notes is not None:
