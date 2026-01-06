@@ -275,13 +275,17 @@ async def validate_document(
     description="""
     Delete a specific document from a service request.
 
+    **IMPORTANT:** Once a document is validated and uploaded to Firebase Storage,
+    it CANNOT be deleted. You must re-upload a new document to replace it.
+
     **Requirements:**
     - Request must be in DRAFT status
+    - Document must NOT be validated (not yet uploaded to storage)
     - User must own the service request
 
-    **Effects:**
-    - Removes the document from the database
-    - Removes the file from storage (if applicable)
+    **To replace a validated document:**
+    Use the upload/preview/validate flow again with the same document_code.
+    The system will automatically replace the old document (UPSERT behavior).
     """
 )
 async def delete_document(
@@ -290,7 +294,7 @@ async def delete_document(
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user)
 ):
-    """Delete a specific document from a service request"""
+    """Delete a specific document from a service request (only unvalidated documents)"""
     from ..repositories.service_request_repository import service_request_repository
     from ..repositories.document_repository import document_repository
 
@@ -325,7 +329,21 @@ async def delete_document(
             detail=f"Document not found: {document_code}"
         )
 
-    # Delete from storage if file exists
+    # CRITICAL: Block deletion of validated documents
+    # Once uploaded to Firebase Storage, documents can only be REPLACED, not deleted
+    if target_doc.get("validated_at") or target_doc.get("is_valid"):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "error": "Cannot delete validated document",
+                "message": "Ce document a déjà été validé et uploadé. Pour le modifier, veuillez télécharger un nouveau fichier qui remplacera l'ancien.",
+                "suggestion": "re-upload",
+                "document_code": document_code
+            }
+        )
+
+    # Only delete unvalidated documents (edge case: document in DB but not validated)
+    # This should rarely happen in normal flow
     if target_doc.get("file_path"):
         try:
             from app.modules.documents.services.storage_service import storage_service
@@ -336,7 +354,7 @@ async def delete_document(
     # Delete from database
     await document_repository.delete_document(db, target_doc["id"])
 
-    logger.info(f"Deleted document {document_code} from request {request['reference']}")
+    logger.info(f"Deleted unvalidated document {document_code} from request {request['reference']}")
     return None
 
 
