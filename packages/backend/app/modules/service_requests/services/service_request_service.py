@@ -7,6 +7,7 @@ NEW FLOW (User validation before Firebase upload):
 2. validate_document() - User confirms, then upload to Firebase
 """
 import asyncpg
+import json
 from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
 from fastapi import HTTPException, UploadFile, status
@@ -775,7 +776,7 @@ class ServiceRequestService:
 
         if form_data is not None:
             update_fields.append("form_data = $1")
-            update_values.append(form_data)
+            update_values.append(json.dumps(form_data))
 
         if notes is not None:
             update_fields.append(f"notes = ${len(update_values) + 1}")

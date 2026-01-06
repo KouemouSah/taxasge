@@ -274,7 +274,7 @@ class WorkflowEngine:
             query,
             context.service_request_id,
             context.status.value,
-            form_data,
+            json.dumps(form_data),
             context.entity_code,
             context.assigned_to
         )
