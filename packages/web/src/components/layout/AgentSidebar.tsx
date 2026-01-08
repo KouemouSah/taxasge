@@ -21,11 +21,18 @@ import {
   History,
   Settings,
   Building2,
+  Banknote,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
   LogOut,
   Wallet,
+  FileSearch,
+  BarChart3,
+  ShieldAlert,
+  FileSpreadsheet,
+  TrendingUp,
+  Activity,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { clearAuthData } from '@/core/auth/storage';
@@ -103,6 +110,43 @@ export function AgentSidebar() {
         ],
       },
       {
+        id: 'reports',
+        title: 'Reportes',
+        icon: BarChart3,
+        items: [
+          {
+            title: t('nav.stats'),
+            href: `/${locale}/dashboard/agent/treasury/stats`,
+            icon: TrendingUp,
+          },
+          {
+            title: t('nav.analytics'),
+            href: `/${locale}/dashboard/agent/treasury/analytics`,
+            icon: Activity,
+          },
+          {
+            title: t('nav.audit'),
+            href: `/${locale}/dashboard/agent/treasury/audit`,
+            icon: FileSearch,
+          },
+          {
+            title: t('nav.slaStats'),
+            href: `/${locale}/dashboard/agent/treasury/stats/sla`,
+            icon: BarChart3,
+          },
+          {
+            title: t('nav.anomalies'),
+            href: `/${locale}/dashboard/agent/treasury/anomalies`,
+            icon: ShieldAlert,
+          },
+          {
+            title: t('nav.exports'),
+            href: `/${locale}/dashboard/agent/treasury/exports`,
+            icon: FileSpreadsheet,
+          },
+        ],
+      },
+      {
         id: 'settings',
         title: t('nav.settings'),
         icon: Settings,
@@ -111,6 +155,11 @@ export function AgentSidebar() {
             title: t('nav.banks'),
             href: `/${locale}/dashboard/agent/treasury/settings/banks`,
             icon: Building2,
+          },
+          {
+            title: t('nav.paymentMethods'),
+            href: `/${locale}/dashboard/agent/treasury/settings/payment-methods`,
+            icon: Banknote,
           },
         ],
       },

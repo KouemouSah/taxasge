@@ -3866,8 +3866,13 @@
       "validation": "Validation",
       "reconciliation": "Reconciliation",
       "transactions": "History",
+      "audit": "Audit",
+      "slaStats": "SLA Statistics",
       "settings": "Settings",
-      "banks": "Banks"
+      "banks": "Banks",
+      "paymentMethods": "Payment Methods",
+      "analytics": "Analytics",
+      "stats": "KPIs"
     },
     "stats": {
       "pendingValidation": "Pending Validation",
@@ -3885,12 +3890,460 @@
     },
     "transactions": {
       "title": "Transaction History",
-      "description": "Complete record of processed payments"
+      "description": "Complete record of processed payments",
+      "noRecords": "No transactions",
+      "noRecordsDescription": "No transactions found with selected filters",
+      "loadError": "Error loading history",
+      "export": "Export",
+      "dateRange": "Date range",
+      "searchPlaceholder": "Search by reference, citizen...",
+      "stats": {
+        "total": "Total transactions",
+        "totalAmount": "Total amount",
+        "approved": "Approved",
+        "rejected": "Rejected"
+      },
+      "filters": {
+        "status": "Status",
+        "statusAll": "All statuses",
+        "pending": "Pending",
+        "completed": "Completed",
+        "failed": "Failed",
+        "refunded": "Refunded",
+        "method": "Method",
+        "methodAll": "All methods",
+        "cash": "Cash",
+        "mobile_money": "Mobile Money",
+        "bank_transfer": "Bank transfer",
+        "card": "Card"
+      },
+      "table": {
+        "reference": "Reference",
+        "citizen": "Citizen",
+        "amount": "Amount",
+        "method": "Method",
+        "paymentStatus": "Payment Status",
+        "workflowStatus": "Workflow Status",
+        "date": "Date"
+      }
     },
     "settings": {
       "banks": {
         "title": "Bank Configuration",
         "description": "Manage bank integrations"
+      }
+    },
+    "paymentMethods": {
+      "title": "Payment Methods",
+      "description": "Configure available payment methods for citizens",
+      "add": "Add Method",
+      "configuredMethods": "Configured Methods",
+      "methodsConfigured": "methods configured",
+      "code": "Code",
+      "name": "Name",
+      "processor": "Processor",
+      "validation": "Validation",
+      "fees": "Fees",
+      "active": "Active",
+      "addMethod": "Add Payment Method",
+      "editMethod": "Edit Payment Method",
+      "addDescription": "Configure a new payment method for citizens",
+      "editDescription": "Modify the payment method configuration",
+      "deleteConfirmTitle": "Delete Payment Method",
+      "deleteConfirmDescription": "Are you sure you want to delete this payment method? This action cannot be undone."
+    },
+    "audit": {
+      "title": "Payment Audit",
+      "description": "Complete history of payment actions",
+      "noRecords": "No audit records",
+      "noRecordsDescription": "No actions recorded with the selected filters",
+      "loadError": "Error loading audit history",
+      "history": "Action History",
+      "filters": "Filters",
+      "filtersDescription": "Filter action history",
+      "searchPlaceholder": "Search by reference, agent...",
+      "actionFilter": {
+        "label": "Action type",
+        "all": "All actions",
+        "lock_for_review": "Lock",
+        "approve": "Approve",
+        "reject": "Reject",
+        "request_documents": "Request docs",
+        "escalate": "Escalate",
+        "unlock_release": "Unlock"
+      },
+      "actions": {
+        "lock_for_review": "Locked",
+        "approve": "Approved",
+        "reject": "Rejected",
+        "request_documents": "Docs requested",
+        "escalate": "Escalated",
+        "unlock_release": "Unlocked",
+        "assign_to_colleague": "Reassigned"
+      },
+      "table": {
+        "dateTime": "Date/Time",
+        "paymentRef": "Payment Reference",
+        "serviceRequest": "Request",
+        "action": "Action",
+        "agent": "Agent",
+        "transition": "Transition",
+        "duration": "Duration",
+        "comment": "Comment",
+        "system": "System"
+      },
+      "records": "{count} records"
+    },
+    "sla": {
+      "title": "SLA Statistics",
+      "description": "Service level agreement compliance metrics",
+      "complianceRate": "Compliance Rate",
+      "totalPending": "Total Pending",
+      "avgProcessingTime": "Average Processing Time",
+      "breached": "Breached",
+      "status": {
+        "on_time": "On time",
+        "warning": "Warning",
+        "critical": "Critical",
+        "breached": "Breached",
+        "completed": "Completed"
+      },
+      "thresholds": {
+        "title": "SLA Thresholds",
+        "onTime": "More than 6 hours",
+        "warning": "Between 2-6 hours",
+        "critical": "Less than 2 hours",
+        "breached": "Time exceeded"
+      }
+    },
+    "anomalies": {
+      "title": "Payment Anomalies",
+      "description": "Detect and manage payment anomalies",
+      "noRecords": "No anomalies detected",
+      "history": "Anomaly History",
+      "detail": "Anomaly Detail",
+      "changeStatus": "Change Status",
+      "changeStatusDescription": "Change the status of this anomaly",
+      "newStatus": "New Status",
+      "comment": "Comment",
+      "resolution": "Resolution",
+      "resolutionPlaceholder": "Describe how the anomaly was resolved...",
+      "actions": "Actions",
+      "viewDetails": "View details",
+      "actionHistory": "Action History",
+      "filters": "Filters",
+      "severity": {
+        "label": "Severity",
+        "all": "All severities",
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "critical": "Critical"
+      },
+      "status": {
+        "label": "Status",
+        "all": "All statuses",
+        "open": "Open",
+        "investigating": "Investigating",
+        "resolved": "Resolved",
+        "false_positive": "False positive",
+        "escalated": "Escalated"
+      },
+      "types": {
+        "label": "Type",
+        "all": "All types",
+        "duplicate_payment": "Duplicate payment",
+        "amount_mismatch": "Amount mismatch",
+        "reference_missing": "Missing reference",
+        "orphan_transaction": "Orphan transaction",
+        "late_validation": "Late validation",
+        "suspicious_pattern": "Suspicious pattern",
+        "high_amount": "High amount",
+        "other": "Other"
+      },
+      "table": {
+        "date": "Date",
+        "title": "Title",
+        "type": "Type",
+        "severity": "Severity",
+        "status": "Status",
+        "reference": "Reference",
+        "amount": "Affected Amount",
+        "actions": "Actions"
+      },
+      "fields": {
+        "detectedAt": "Detected",
+        "paymentReference": "Payment Reference",
+        "serviceRequestReference": "Request Reference",
+        "affectedAmount": "Affected Amount",
+        "relatedEntities": "Related Entities"
+      }
+    },
+    "exports": {
+      "title": "Accounting Exports",
+      "description": "Generate and download accounting exports",
+      "noRecords": "No exports generated",
+      "noRecordsDescription": "No exports generated. Create a new one to start.",
+      "history": "Export History",
+      "newExport": "New Export",
+      "generateExport": "Generate Export",
+      "detail": "Export Detail",
+      "templates": "Available Templates",
+      "templatesDescription": "Use these predefined templates to quickly generate exports",
+      "filters": "Filters",
+      "records": "records",
+      "status": {
+        "label": "Status",
+        "all": "All statuses",
+        "pending": "Pending",
+        "processing": "Processing",
+        "completed": "Completed",
+        "failed": "Failed"
+      },
+      "types": {
+        "label": "Export Type",
+        "all": "All types",
+        "sage_x3": "SAGE X3",
+        "ministry_report": "Ministry Report",
+        "bank_central": "BEAC",
+        "audit_report": "Audit",
+        "reconciliation": "Reconciliation",
+        "custom": "Custom"
+      },
+      "typeDescriptions": {
+        "sage_x3": "Export for accounting integration",
+        "ministry_report": "Monthly report for ministries",
+        "bank_central": "Central Bank format",
+        "audit_report": "Internal audit report",
+        "reconciliation": "Bank reconciliation export",
+        "custom": "Custom export"
+      },
+      "formats": {
+        "label": "Format",
+        "csv": "CSV",
+        "xlsx": "Excel",
+        "pdf": "PDF",
+        "xml": "XML",
+        "json": "JSON"
+      },
+      "table": {
+        "date": "Date",
+        "type": "Type",
+        "format": "Format",
+        "period": "Period",
+        "status": "Status",
+        "records": "Records",
+        "totalAmount": "Total Amount",
+        "size": "Size",
+        "actions": "Actions"
+      },
+      "fields": {
+        "progress": "Progress",
+        "requestedBy": "Requested by",
+        "downloads": "Downloads",
+        "file": "File",
+        "requested": "Requested",
+        "started": "Started",
+        "completed": "Completed",
+        "periodStart": "Start date",
+        "periodEnd": "End date"
+      },
+      "messages": {
+        "exportStarted": "Export started",
+        "exportStartedDescription": "The export is being generated. You can see the progress in the list.",
+        "exportNotAvailable": "Export not available",
+        "exportNotAvailableDescription": "The export has not finished processing yet.",
+        "downloadStarted": "Download started",
+        "errorLoading": "Error loading exports",
+        "errorGenerating": "Could not start the export.",
+        "errorDownloading": "Could not download the file."
+      }
+    },
+    "kpis": {
+      "title": "Executive Dashboard",
+      "description": "KPIs and financial metrics",
+      "loadError": "Error loading KPIs",
+      "noData": "No data for the selected period",
+      "periods": {
+        "day": "Today",
+        "week": "This week",
+        "month": "This month",
+        "year": "This year"
+      },
+      "cards": {
+        "totalCollected": "Total Collected",
+        "totalTransactions": "Transactions",
+        "avgAmount": "Average",
+        "slaRate": "SLA Compliance"
+      },
+      "slaStatus": {
+        "excellent": "Excellent",
+        "good": "Good",
+        "needsImprovement": "Needs Improvement"
+      },
+      "charts": {
+        "dailyTrend": "Daily Trend",
+        "dailyTrendDescription": "Collection and transaction evolution",
+        "byPaymentMethod": "By Payment Method",
+        "byPaymentMethodDescription": "Amount distribution by method",
+        "topMinistries": "Top 10 Ministries",
+        "topMinistriesDescription": "Ministries with highest collections",
+        "amount": "Amount",
+        "count": "Count"
+      },
+      "transactions": "transactions",
+      "successRate": "Success rate",
+      "tables": {
+        "paymentMethods": "Payment Method Breakdown",
+        "paymentMethodsDescription": "Detailed statistics by method",
+        "method": "Method",
+        "transactions": "Transactions",
+        "amount": "Amount",
+        "percentage": "Percentage",
+        "successRate": "Success Rate",
+        "avgTime": "Avg. Time",
+        "date": "Date"
+      }
+    },
+    "agents": {
+      "title": "Agent Performance",
+      "description": "Productivity statistics by agent",
+      "loadError": "Error loading agent data",
+      "validations": "validations",
+      "pending": "pending",
+      "noAgents": "No agents",
+      "noAgentsDescription": "No agent data for the selected period",
+      "cards": {
+        "totalAgents": "Total Agents",
+        "totalValidations": "Validations",
+        "totalRejections": "Rejections",
+        "topPerformer": "Top Performer"
+      },
+      "workload": {
+        "low": "Low",
+        "normal": "Normal",
+        "high": "High",
+        "overloaded": "Overloaded"
+      },
+      "charts": {
+        "performance": "Performance by Agent",
+        "performanceDescription": "Validations and rejections by agent",
+        "validations": "Validations",
+        "rejections": "Rejections"
+      },
+      "table": {
+        "title": "Agent Detail",
+        "description": "Individual performance metrics",
+        "agent": "Agent",
+        "validations": "Validations",
+        "rejections": "Rejections",
+        "avgTime": "Avg. Time",
+        "slaRate": "SLA",
+        "workload": "Workload"
+      }
+    },
+    "analytics": {
+      "title": "Statistical Analysis",
+      "description": "Predictive analysis and automatic reports",
+      "loadError": "Error loading analytics data",
+      "tabs": {
+        "report": "Report",
+        "explore": "Explore"
+      },
+      "periods": {
+        "week": "Week",
+        "month": "Month",
+        "year": "Year"
+      },
+      "healthScore": "Health Score",
+      "healthScoreDescription": "Overall indicator based on findings and thresholds",
+      "totalRecords": "Records",
+      "totalAmount": "Total Amount",
+      "alerts": "Alerts",
+      "warnings": "Warnings",
+      "findings": "Findings and Recommendations",
+      "findingsDescription": "Automatically detected issues with action suggestions",
+      "trendsAnalysis": "Trend Analysis",
+      "trendsDescription": "Direction and projections based on linear regression",
+      "correlationsAnalysis": "Correlation Analysis",
+      "correlationsDescription": "Relationship between variables using Pearson coefficient",
+      "predictionsChart": "Predictions",
+      "predictionsDescription": "Future projections with confidence intervals",
+      "predictions": "Prediction",
+      "upperBound": "Upper bound",
+      "lowerBound": "Lower bound",
+      "anomaliesDetected": "Anomalies Detected",
+      "anomaliesDescription": "Outlier values identified via Z-score",
+      "descriptiveStats": "Descriptive Statistics",
+      "descriptiveStatsDescription": "Statistical summary of main metrics",
+      "selectVariables": "Select Variables",
+      "selectVariablesDescription": "Choose variables to analyze their relationship",
+      "primaryVariable": "Primary Variable",
+      "secondaryVariable": "Secondary Variable",
+      "optional": "optional",
+      "selectSecondary": "Select...",
+      "noSecondary": "No secondary variable",
+      "analysisFor": "Analysis for",
+      "period": "Period",
+      "records": "Records",
+      "statistics": "Statistics",
+      "trend": "Trend",
+      "correlation": "Correlation",
+      "metric": "Metric",
+      "direction": "Direction",
+      "change": "Change",
+      "projection7d": "7d Projection",
+      "projection30d": "30d Projection",
+      "variable1": "Variable 1",
+      "variable2": "Variable 2",
+      "coefficient": "Coefficient",
+      "strength": "Strength",
+      "significant": "Significant",
+      "date": "Date",
+      "value": "Value",
+      "expected": "Expected",
+      "deviation": "Deviation",
+      "type": "Type",
+      "mean": "Mean",
+      "median": "Median",
+      "std": "Std. Dev.",
+      "anomalyHigh": "High",
+      "anomalyLow": "Low",
+      "trendDirection": {
+        "growing": "Growing",
+        "stable": "Stable",
+        "declining": "Declining"
+      },
+      "correlationStrength": {
+        "weak": "Weak",
+        "moderate": "Moderate",
+        "strong": "Strong"
+      }
+    },
+    "common": {
+      "refresh": "Refresh",
+      "cancel": "Cancel",
+      "save": "Save",
+      "close": "Close",
+      "download": "Download",
+      "search": "Search",
+      "searchPlaceholder": "Search...",
+      "filters": "Filters",
+      "actions": "Actions",
+      "viewDetails": "View details",
+      "loading": "Loading...",
+      "noResults": "No results",
+      "dateFrom": "From",
+      "dateTo": "To",
+      "all": "All",
+      "error": "Error",
+      "success": "Success",
+      "pagination": {
+        "page": "Page {page} of {totalPages}",
+        "previous": "Previous",
+        "next": "Next",
+        "showing": "Showing {from} to {to} of {total}",
+        "noData": "No data"
       }
     }
   }

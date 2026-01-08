@@ -10,6 +10,10 @@ from .appointment_scheduler import appointment_scheduler, AppointmentSchedulerSe
 from .agent_queue_service import agent_queue_service, AgentQueueService
 from .summary_pdf_service import summary_pdf_service, SummaryPDFService
 
+# Treasury services
+from .treasury_export_service import treasury_export_service, TreasuryExportService
+from .treasury_anomaly_service import treasury_anomaly_service, TreasuryAnomalyService
+
 # Validations (re-export for convenience)
 from ..validations import cross_document_validator, CrossDocumentValidator
 
@@ -31,5 +35,10 @@ __all__ = [
     "summary_pdf_service",
     "SummaryPDFService",
     "cross_document_validator",
-    "CrossDocumentValidator"
+    "CrossDocumentValidator",
+    # Treasury
+    "treasury_export_service",
+    "TreasuryExportService",
+    "treasury_anomaly_service",
+    "TreasuryAnomalyService",
 ]

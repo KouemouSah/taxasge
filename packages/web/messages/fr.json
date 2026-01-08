@@ -3866,8 +3866,13 @@
       "validation": "Validation",
       "reconciliation": "Reconciliation",
       "transactions": "Historique",
+      "audit": "Audit",
+      "slaStats": "Statistiques SLA",
       "settings": "Parametres",
-      "banks": "Banques"
+      "banks": "Banques",
+      "paymentMethods": "Modes de Paiement",
+      "analytics": "Analyse",
+      "stats": "KPIs"
     },
     "stats": {
       "pendingValidation": "En Attente Validation",
@@ -3885,12 +3890,460 @@
     },
     "transactions": {
       "title": "Historique des Transactions",
-      "description": "Registre complet des paiements traites"
+      "description": "Registre complet des paiements traites",
+      "noRecords": "Aucune transaction",
+      "noRecordsDescription": "Aucune transaction trouvee avec les filtres selectionnes",
+      "loadError": "Erreur lors du chargement de l'historique",
+      "export": "Exporter",
+      "dateRange": "Plage de dates",
+      "searchPlaceholder": "Rechercher par reference, citoyen...",
+      "stats": {
+        "total": "Total transactions",
+        "totalAmount": "Montant total",
+        "approved": "Approuves",
+        "rejected": "Rejetes"
+      },
+      "filters": {
+        "status": "Statut",
+        "statusAll": "Tous les statuts",
+        "pending": "En attente",
+        "completed": "Complete",
+        "failed": "Echoue",
+        "refunded": "Rembourse",
+        "method": "Methode",
+        "methodAll": "Toutes les methodes",
+        "cash": "Especes",
+        "mobile_money": "Mobile Money",
+        "bank_transfer": "Virement",
+        "card": "Carte"
+      },
+      "table": {
+        "reference": "Reference",
+        "citizen": "Citoyen",
+        "amount": "Montant",
+        "method": "Methode",
+        "paymentStatus": "Statut Paiement",
+        "workflowStatus": "Statut Workflow",
+        "date": "Date"
+      }
     },
     "settings": {
       "banks": {
         "title": "Configuration des Banques",
         "description": "Gerer les integrations bancaires"
+      }
+    },
+    "paymentMethods": {
+      "title": "Modes de Paiement",
+      "description": "Configurer les modes de paiement disponibles pour les citoyens",
+      "add": "Ajouter Mode",
+      "configuredMethods": "Modes Configures",
+      "methodsConfigured": "modes configures",
+      "code": "Code",
+      "name": "Nom",
+      "processor": "Processeur",
+      "validation": "Validation",
+      "fees": "Frais",
+      "active": "Actif",
+      "addMethod": "Ajouter Mode de Paiement",
+      "editMethod": "Modifier Mode de Paiement",
+      "addDescription": "Configurez un nouveau mode de paiement pour les citoyens",
+      "editDescription": "Modifiez la configuration du mode de paiement",
+      "deleteConfirmTitle": "Supprimer Mode de Paiement",
+      "deleteConfirmDescription": "Etes-vous sur de supprimer ce mode de paiement? Cette action est irreversible."
+    },
+    "audit": {
+      "title": "Audit des Paiements",
+      "description": "Historique complet des actions sur les paiements",
+      "noRecords": "Aucun enregistrement d'audit",
+      "noRecordsDescription": "Aucune action enregistree avec les filtres selectionnes",
+      "loadError": "Erreur lors du chargement de l'historique d'audit",
+      "history": "Historique des Actions",
+      "filters": "Filtres",
+      "filtersDescription": "Filtrer l'historique des actions",
+      "searchPlaceholder": "Rechercher par reference, agent...",
+      "actionFilter": {
+        "label": "Type d'action",
+        "all": "Toutes les actions",
+        "lock_for_review": "Verrouiller",
+        "approve": "Approuver",
+        "reject": "Rejeter",
+        "request_documents": "Demander docs",
+        "escalate": "Escalader",
+        "unlock_release": "Deverrouiller"
+      },
+      "actions": {
+        "lock_for_review": "Verrouille",
+        "approve": "Approuve",
+        "reject": "Rejete",
+        "request_documents": "Docs demandes",
+        "escalate": "Escalade",
+        "unlock_release": "Deverrouille",
+        "assign_to_colleague": "Reassigne"
+      },
+      "table": {
+        "dateTime": "Date/Heure",
+        "paymentRef": "Reference Paiement",
+        "serviceRequest": "Demande",
+        "action": "Action",
+        "agent": "Agent",
+        "transition": "Transition",
+        "duration": "Duree",
+        "comment": "Commentaire",
+        "system": "Systeme"
+      },
+      "records": "{count} enregistrements"
+    },
+    "sla": {
+      "title": "Statistiques SLA",
+      "description": "Metriques de respect du niveau de service",
+      "complianceRate": "Taux de Conformite",
+      "totalPending": "Total en Attente",
+      "avgProcessingTime": "Temps Moyen",
+      "breached": "Depasses",
+      "status": {
+        "on_time": "Dans les delais",
+        "warning": "Alerte",
+        "critical": "Critique",
+        "breached": "Depasse",
+        "completed": "Termine"
+      },
+      "thresholds": {
+        "title": "Seuils SLA",
+        "onTime": "Plus de 6 heures",
+        "warning": "Entre 2-6 heures",
+        "critical": "Moins de 2 heures",
+        "breached": "Delai depasse"
+      }
+    },
+    "anomalies": {
+      "title": "Anomalies de Paiements",
+      "description": "Detecter et gerer les anomalies de paiements",
+      "noRecords": "Aucune anomalie detectee",
+      "history": "Historique des Anomalies",
+      "detail": "Detail de l Anomalie",
+      "changeStatus": "Changer le Statut",
+      "changeStatusDescription": "Changer le statut de cette anomalie",
+      "newStatus": "Nouveau Statut",
+      "comment": "Commentaire",
+      "resolution": "Resolution",
+      "resolutionPlaceholder": "Decrivez comment l anomalie a ete resolue...",
+      "actions": "Actions",
+      "viewDetails": "Voir details",
+      "actionHistory": "Historique des Actions",
+      "filters": "Filtres",
+      "severity": {
+        "label": "Severite",
+        "all": "Toutes les severites",
+        "low": "Faible",
+        "medium": "Moyenne",
+        "high": "Haute",
+        "critical": "Critique"
+      },
+      "status": {
+        "label": "Statut",
+        "all": "Tous les statuts",
+        "open": "Ouverte",
+        "investigating": "En cours",
+        "resolved": "Resolue",
+        "false_positive": "Faux positif",
+        "escalated": "Escaladee"
+      },
+      "types": {
+        "label": "Type",
+        "all": "Tous les types",
+        "duplicate_payment": "Paiement duplique",
+        "amount_mismatch": "Ecart de montant",
+        "reference_missing": "Reference manquante",
+        "orphan_transaction": "Transaction orpheline",
+        "late_validation": "Validation tardive",
+        "suspicious_pattern": "Motif suspect",
+        "high_amount": "Montant eleve",
+        "other": "Autre"
+      },
+      "table": {
+        "date": "Date",
+        "title": "Titre",
+        "type": "Type",
+        "severity": "Severite",
+        "status": "Statut",
+        "reference": "Reference",
+        "amount": "Montant Affecte",
+        "actions": "Actions"
+      },
+      "fields": {
+        "detectedAt": "Detectee",
+        "paymentReference": "Reference Paiement",
+        "serviceRequestReference": "Reference Demande",
+        "affectedAmount": "Montant Affecte",
+        "relatedEntities": "Entites Liees"
+      }
+    },
+    "exports": {
+      "title": "Exports Comptables",
+      "description": "Generer et telecharger les exports comptables",
+      "noRecords": "Aucun export genere",
+      "noRecordsDescription": "Aucun export genere. Creez-en un nouveau pour commencer.",
+      "history": "Historique des Exports",
+      "newExport": "Nouvel Export",
+      "generateExport": "Generer Export",
+      "detail": "Detail de l Export",
+      "templates": "Modeles Disponibles",
+      "templatesDescription": "Utilisez ces modeles predefinis pour generer des exports rapidement",
+      "filters": "Filtres",
+      "records": "enregistrements",
+      "status": {
+        "label": "Statut",
+        "all": "Tous les statuts",
+        "pending": "En attente",
+        "processing": "En cours",
+        "completed": "Termine",
+        "failed": "Erreur"
+      },
+      "types": {
+        "label": "Type d Export",
+        "all": "Tous les types",
+        "sage_x3": "SAGE X3",
+        "ministry_report": "Rapport Ministeriel",
+        "bank_central": "BEAC",
+        "audit_report": "Audit",
+        "reconciliation": "Reconciliation",
+        "custom": "Personnalise"
+      },
+      "typeDescriptions": {
+        "sage_x3": "Export pour integration comptable",
+        "ministry_report": "Rapport mensuel pour les ministeres",
+        "bank_central": "Format Banque Centrale",
+        "audit_report": "Rapport d audit interne",
+        "reconciliation": "Export de reconciliation bancaire",
+        "custom": "Export personnalise"
+      },
+      "formats": {
+        "label": "Format",
+        "csv": "CSV",
+        "xlsx": "Excel",
+        "pdf": "PDF",
+        "xml": "XML",
+        "json": "JSON"
+      },
+      "table": {
+        "date": "Date",
+        "type": "Type",
+        "format": "Format",
+        "period": "Periode",
+        "status": "Statut",
+        "records": "Enregistrements",
+        "totalAmount": "Montant Total",
+        "size": "Taille",
+        "actions": "Actions"
+      },
+      "fields": {
+        "progress": "Progression",
+        "requestedBy": "Demande par",
+        "downloads": "Telechargements",
+        "file": "Fichier",
+        "requested": "Demande",
+        "started": "Demarre",
+        "completed": "Termine",
+        "periodStart": "Date debut",
+        "periodEnd": "Date fin"
+      },
+      "messages": {
+        "exportStarted": "Export demarre",
+        "exportStartedDescription": "L export est en cours de generation. Vous pouvez voir la progression dans la liste.",
+        "exportNotAvailable": "Export non disponible",
+        "exportNotAvailableDescription": "L export n a pas encore termine son traitement.",
+        "downloadStarted": "Telechargement demarre",
+        "errorLoading": "Erreur lors du chargement des exports",
+        "errorGenerating": "Impossible de demarrer l export.",
+        "errorDownloading": "Impossible de telecharger le fichier."
+      }
+    },
+    "kpis": {
+      "title": "Tableau de Bord Executif",
+      "description": "KPIs et metriques financieres",
+      "loadError": "Erreur lors du chargement des KPIs",
+      "noData": "Aucune donnee pour la periode selectionnee",
+      "periods": {
+        "day": "Aujourd'hui",
+        "week": "Cette semaine",
+        "month": "Ce mois",
+        "year": "Cette annee"
+      },
+      "cards": {
+        "totalCollected": "Total Encaisse",
+        "totalTransactions": "Transactions",
+        "avgAmount": "Moyenne",
+        "slaRate": "Respect SLA"
+      },
+      "slaStatus": {
+        "excellent": "Excellent",
+        "good": "Bon",
+        "needsImprovement": "A ameliorer"
+      },
+      "charts": {
+        "dailyTrend": "Tendance Journaliere",
+        "dailyTrendDescription": "Evolution des encaissements et transactions",
+        "byPaymentMethod": "Par Methode de Paiement",
+        "byPaymentMethodDescription": "Repartition des montants par methode",
+        "topMinistries": "Top 10 Ministeres",
+        "topMinistriesDescription": "Ministeres avec le plus d encaissements",
+        "amount": "Montant",
+        "count": "Nombre"
+      },
+      "transactions": "transactions",
+      "successRate": "Taux reussite",
+      "tables": {
+        "paymentMethods": "Detail par Methode de Paiement",
+        "paymentMethodsDescription": "Statistiques detaillees par methode",
+        "method": "Methode",
+        "transactions": "Transactions",
+        "amount": "Montant",
+        "percentage": "Pourcentage",
+        "successRate": "Taux Succes",
+        "avgTime": "Temps Moy.",
+        "date": "Date"
+      }
+    },
+    "agents": {
+      "title": "Performance des Agents",
+      "description": "Statistiques de productivite par agent",
+      "loadError": "Erreur lors du chargement des donnees agents",
+      "validations": "validations",
+      "pending": "en attente",
+      "noAgents": "Aucun agent",
+      "noAgentsDescription": "Aucune donnee d agent pour la periode selectionnee",
+      "cards": {
+        "totalAgents": "Total Agents",
+        "totalValidations": "Validations",
+        "totalRejections": "Rejets",
+        "topPerformer": "Meilleure Performance"
+      },
+      "workload": {
+        "low": "Faible",
+        "normal": "Normal",
+        "high": "Eleve",
+        "overloaded": "Surcharge"
+      },
+      "charts": {
+        "performance": "Performance par Agent",
+        "performanceDescription": "Validations et rejets par agent",
+        "validations": "Validations",
+        "rejections": "Rejets"
+      },
+      "table": {
+        "title": "Detail par Agent",
+        "description": "Metriques individuelles de performance",
+        "agent": "Agent",
+        "validations": "Validations",
+        "rejections": "Rejets",
+        "avgTime": "Temps Moy.",
+        "slaRate": "SLA",
+        "workload": "Charge"
+      }
+    },
+    "analytics": {
+      "title": "Analyse Statistique",
+      "description": "Analyse predictive et rapports automatiques",
+      "loadError": "Erreur lors du chargement des donnees analytiques",
+      "tabs": {
+        "report": "Rapport",
+        "explore": "Explorer"
+      },
+      "periods": {
+        "week": "Semaine",
+        "month": "Mois",
+        "year": "Annee"
+      },
+      "healthScore": "Score de Sante",
+      "healthScoreDescription": "Indicateur global base sur les constats et les seuils",
+      "totalRecords": "Enregistrements",
+      "totalAmount": "Montant Total",
+      "alerts": "Alertes",
+      "warnings": "Avertissements",
+      "findings": "Constats et Recommandations",
+      "findingsDescription": "Problemes detectes automatiquement avec suggestions d'action",
+      "trendsAnalysis": "Analyse des Tendances",
+      "trendsDescription": "Direction et projections basees sur la regression lineaire",
+      "correlationsAnalysis": "Analyse des Correlations",
+      "correlationsDescription": "Relation entre les variables par coefficient de Pearson",
+      "predictionsChart": "Predictions",
+      "predictionsDescription": "Projections futures avec intervalles de confiance",
+      "predictions": "Prediction",
+      "upperBound": "Limite superieure",
+      "lowerBound": "Limite inferieure",
+      "anomaliesDetected": "Anomalies Detectees",
+      "anomaliesDescription": "Valeurs atypiques identifiees par Z-score",
+      "descriptiveStats": "Statistiques Descriptives",
+      "descriptiveStatsDescription": "Resume statistique des principales metriques",
+      "selectVariables": "Selectionner les Variables",
+      "selectVariablesDescription": "Choisissez les variables pour analyser leur relation",
+      "primaryVariable": "Variable Primaire",
+      "secondaryVariable": "Variable Secondaire",
+      "optional": "optionnel",
+      "selectSecondary": "Selectionner...",
+      "noSecondary": "Sans variable secondaire",
+      "analysisFor": "Analyse pour",
+      "period": "Periode",
+      "records": "Enregistrements",
+      "statistics": "Statistiques",
+      "trend": "Tendance",
+      "correlation": "Correlation",
+      "metric": "Metrique",
+      "direction": "Direction",
+      "change": "Changement",
+      "projection7d": "Projection 7j",
+      "projection30d": "Projection 30j",
+      "variable1": "Variable 1",
+      "variable2": "Variable 2",
+      "coefficient": "Coefficient",
+      "strength": "Force",
+      "significant": "Significatif",
+      "date": "Date",
+      "value": "Valeur",
+      "expected": "Attendu",
+      "deviation": "Ecart",
+      "type": "Type",
+      "mean": "Moyenne",
+      "median": "Mediane",
+      "std": "Ecart-type",
+      "anomalyHigh": "Eleve",
+      "anomalyLow": "Faible",
+      "trendDirection": {
+        "growing": "Croissante",
+        "stable": "Stable",
+        "declining": "Decroissante"
+      },
+      "correlationStrength": {
+        "weak": "Faible",
+        "moderate": "Moderee",
+        "strong": "Forte"
+      }
+    },
+    "common": {
+      "refresh": "Actualiser",
+      "cancel": "Annuler",
+      "save": "Enregistrer",
+      "close": "Fermer",
+      "download": "Telecharger",
+      "search": "Rechercher",
+      "searchPlaceholder": "Rechercher...",
+      "filters": "Filtres",
+      "actions": "Actions",
+      "viewDetails": "Voir details",
+      "loading": "Chargement...",
+      "noResults": "Aucun resultat",
+      "dateFrom": "Du",
+      "dateTo": "Au",
+      "all": "Tous",
+      "error": "Erreur",
+      "success": "Succes",
+      "pagination": {
+        "page": "Page {page} sur {totalPages}",
+        "previous": "Precedent",
+        "next": "Suivant",
+        "showing": "Affichage {from} a {to} sur {total}",
+        "noData": "Aucune donnee"
       }
     }
   }

@@ -18,6 +18,12 @@ import {
   ArrowRight,
   Loader2,
   AlertCircle,
+  History,
+  BarChart3,
+  ShieldAlert,
+  FileSpreadsheet,
+  Activity,
+  TrendingUp,
 } from 'lucide-react';
 import { useTreasuryStats } from '@/modules/treasury/hooks';
 
@@ -212,6 +218,132 @@ export default function TreasuryDashboardPage() {
             <Link href={`/${locale}/dashboard/agent/treasury/transactions`}>
               <Button variant="outline" className="w-full">
                 Ver Historial
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        {/* Audit */}
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <History className="h-5 w-5 text-orange-500" />
+              {t('nav.audit')}
+            </CardTitle>
+            <CardDescription>
+              {t('audit.description')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href={`/${locale}/dashboard/agent/treasury/audit`}>
+              <Button variant="outline" className="w-full">
+                Ver Auditoria
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        {/* SLA Stats */}
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-indigo-500" />
+              {t('nav.slaStats')}
+            </CardTitle>
+            <CardDescription>
+              {t('sla.description')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href={`/${locale}/dashboard/agent/treasury/stats/sla`}>
+              <Button variant="outline" className="w-full">
+                Ver Estadisticas
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        {/* Anomalies */}
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-red-500" />
+              {t('nav.anomalies')}
+            </CardTitle>
+            <CardDescription>
+              {t('anomalies.description')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href={`/${locale}/dashboard/agent/treasury/anomalies`}>
+              <Button variant="outline" className="w-full">
+                Ver Anomalias
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        {/* Exports */}
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileSpreadsheet className="h-5 w-5 text-green-600" />
+              {t('nav.exports')}
+            </CardTitle>
+            <CardDescription>
+              {t('exports.description')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href={`/${locale}/dashboard/agent/treasury/exports`}>
+              <Button variant="outline" className="w-full">
+                Ver Exportaciones
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        {/* KPIs Dashboard */}
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-emerald-500" />
+              {t('nav.stats')}
+            </CardTitle>
+            <CardDescription>
+              {t('kpis.description')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href={`/${locale}/dashboard/agent/treasury/stats`}>
+              <Button variant="outline" className="w-full">
+                Ver KPIs
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        {/* Analytics */}
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-violet-500" />
+              {t('nav.analytics')}
+            </CardTitle>
+            <CardDescription>
+              {t('analytics.description')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href={`/${locale}/dashboard/agent/treasury/analytics`}>
+              <Button variant="outline" className="w-full">
+                Ver Analisis
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>

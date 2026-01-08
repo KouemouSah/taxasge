@@ -7,14 +7,14 @@ RESTful endpoints for administrators to manage:
 - Tariff Configurations
 - Appointment Settings
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Path, Body
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Path, Body, BackgroundTasks
 from typing import List, Optional, Dict, Any
 import asyncpg
 import json
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
@@ -2231,6 +2231,8 @@ class PendingPaymentsListResponse(BaseModel):
     """List of pending payments."""
     payments: List[PendingPaymentResponse]
     total: int
+    page: int = 1
+    page_size: int = 20
 
 
 class PaymentActionResponse(BaseModel):
@@ -2346,9 +2348,85 @@ async def get_pending_payments(
             hours_waiting=float(row["hours_waiting"] or 0),
         ))
 
+    # Calculate page from offset and limit
+    current_page = (offset // limit) + 1 if limit else 1
+
     return PendingPaymentsListResponse(
         payments=payments,
-        total=total or 0
+        total=total or 0,
+        page=current_page,
+        page_size=limit
+    )
+
+
+@router.get(
+    "/treasury/payments/{payment_id}",
+    response_model=PendingPaymentResponse,
+    summary="Get single payment details",
+    description="""
+    Get details of a specific payment by ID.
+
+    **Permissions:**
+    - Requires 'treasury:validate_payments' permission
+    """
+)
+async def get_payment_details(
+    payment_id: str = Path(..., description="Payment UUID"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury:validate_payments"))
+):
+    """Get single payment details for Treasury Agent review"""
+    query = """
+        SELECT
+            sp.id AS payment_id,
+            sp.payment_reference,
+            sp.service_request_id,
+            sr.reference_number AS request_reference,
+            sr.workflow_code,
+            sp.user_id,
+            u.first_name || ' ' || u.last_name AS user_name,
+            u.email AS user_email,
+            sp.payment_method,
+            sp.total_amount,
+            sp.currency,
+            sp.calculation_details,
+            sp.workflow_status,
+            sp.locked_by_agent_id,
+            sp.lock_expires_at,
+            sp.created_at,
+            EXTRACT(EPOCH FROM (NOW() - sp.created_at)) / 3600 AS hours_waiting
+        FROM service_payments sp
+        LEFT JOIN service_requests sr ON sr.id = sp.service_request_id
+        LEFT JOIN users u ON u.id = sp.user_id
+        WHERE sp.id = $1
+    """
+    row = await db.fetchrow(query, payment_id)
+
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Payment not found: {payment_id}"
+        )
+
+    return PendingPaymentResponse(
+        payment_id=str(row["payment_id"]),
+        payment_reference=row["payment_reference"],
+        service_request_id=str(row["service_request_id"]) if row["service_request_id"] else None,
+        request_reference=row["request_reference"],
+        workflow_code=row["workflow_code"],
+        user_id=str(row["user_id"]),
+        user_name=row["user_name"],
+        user_email=row["user_email"],
+        payment_method=row["payment_method"],
+        total_amount=float(row["total_amount"]),
+        currency=row["currency"],
+        calculation_details=row["calculation_details"],
+        workflow_status=row["workflow_status"],
+        locked_by_agent_id=row["locked_by_agent_id"],
+        lock_expires_at=row["lock_expires_at"].isoformat() if row["lock_expires_at"] else None,
+        created_at=row["created_at"].isoformat(),
+        hours_waiting=float(row["hours_waiting"] or 0),
     )
 
 
@@ -2616,3 +2694,2839 @@ async def unlock_payment(
         status="pending_agent_review",
         message_es="Bloqueo liberado."
     )
+
+
+# ═══════════════════════════════════════════════════════════════
+# PAYMENT METHOD CONFIGURATIONS
+# ═══════════════════════════════════════════════════════════════
+
+class PaymentMethodConfigResponse(BaseModel):
+    """Response model for payment method configuration.
+    Note: Translations (FR/EN) are managed via entity_translations table.
+    """
+    id: int
+    code: str
+    label_es: str
+    processor_type: str
+    requires_phone: bool = False
+    requires_redirect: bool = False
+    requires_agent_validation: bool = False
+    is_active: bool = True
+    display_order: int = 0
+    icon: str = "credit-card"
+    min_amount: Optional[float] = None
+    max_amount: Optional[float] = None
+    fees_percentage: float = 0
+    fees_fixed: float = 0
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class PaymentMethodConfigCreate(BaseModel):
+    """Create model for payment method configuration.
+    Note: Translations (FR/EN) are managed via entity_translations table.
+    """
+    code: str = Field(..., pattern=r'^[a-z_]+$', max_length=50)
+    label_es: str = Field(..., max_length=100)
+    processor_type: str = Field(default="manual", pattern="^(bange_api|manual)$")
+    requires_phone: bool = False
+    requires_redirect: bool = False
+    requires_agent_validation: bool = False
+    is_active: bool = True
+    display_order: int = Field(default=0, ge=0)
+    icon: str = Field(default="credit-card", max_length=50)
+    min_amount: Optional[float] = Field(None, ge=0)
+    max_amount: Optional[float] = Field(None, ge=0)
+    fees_percentage: float = Field(default=0, ge=0, le=100)
+    fees_fixed: float = Field(default=0, ge=0)
+
+
+class PaymentMethodConfigUpdate(BaseModel):
+    """Update model for payment method configuration.
+    Note: Translations (FR/EN) are managed via entity_translations table.
+    """
+    label_es: Optional[str] = Field(None, max_length=100)
+    processor_type: Optional[str] = Field(None, pattern="^(bange_api|manual)$")
+    requires_phone: Optional[bool] = None
+    requires_redirect: Optional[bool] = None
+    requires_agent_validation: Optional[bool] = None
+    is_active: Optional[bool] = None
+    display_order: Optional[int] = Field(None, ge=0)
+    icon: Optional[str] = Field(None, max_length=50)
+    min_amount: Optional[float] = Field(None, ge=0)
+    max_amount: Optional[float] = Field(None, ge=0)
+    fees_percentage: Optional[float] = Field(None, ge=0, le=100)
+    fees_fixed: Optional[float] = Field(None, ge=0)
+
+
+class PaymentMethodReorderRequest(BaseModel):
+    """Request model for reordering payment methods."""
+    order: List[str] = Field(..., description="List of method codes in desired order")
+
+
+@router.get(
+    "/payment-methods",
+    response_model=List[PaymentMethodConfigResponse],
+    summary="List payment method configurations",
+    description="""
+    Get all payment method configurations.
+
+    **Permissions:**
+    - Requires 'webhooks.view' permission
+    """
+)
+async def list_payment_methods(
+    active_only: bool = Query(False, description="Show only active methods"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("webhooks.view"))
+):
+    """List all payment method configurations"""
+    query = """
+        SELECT
+            id, code, label_es,
+            processor_type, requires_phone, requires_redirect,
+            requires_agent_validation, is_active, display_order,
+            icon, min_amount, max_amount, fees_percentage, fees_fixed,
+            created_at, updated_at
+        FROM payment_method_configurations
+    """
+    if active_only:
+        query += " WHERE is_active = TRUE"
+    query += " ORDER BY display_order ASC, code ASC"
+
+    rows = await db.fetch(query)
+
+    return [
+        PaymentMethodConfigResponse(
+            id=row["id"],
+            code=row["code"],
+            label_es=row["label_es"],
+            processor_type=row["processor_type"],
+            requires_phone=row["requires_phone"],
+            requires_redirect=row["requires_redirect"],
+            requires_agent_validation=row["requires_agent_validation"],
+            is_active=row["is_active"],
+            display_order=row["display_order"],
+            icon=row["icon"],
+            min_amount=float(row["min_amount"]) if row["min_amount"] else None,
+            max_amount=float(row["max_amount"]) if row["max_amount"] else None,
+            fees_percentage=float(row["fees_percentage"]) if row["fees_percentage"] else 0,
+            fees_fixed=float(row["fees_fixed"]) if row["fees_fixed"] else 0,
+            created_at=row["created_at"].isoformat() if row["created_at"] else None,
+            updated_at=row["updated_at"].isoformat() if row["updated_at"] else None,
+        )
+        for row in rows
+    ]
+
+
+@router.get(
+    "/payment-methods/{code}",
+    response_model=PaymentMethodConfigResponse,
+    summary="Get payment method by code",
+    description="""
+    Get a specific payment method configuration by code.
+
+    **Permissions:**
+    - Requires 'webhooks.view' permission
+    """
+)
+async def get_payment_method(
+    code: str = Path(..., description="Payment method code"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("webhooks.view"))
+):
+    """Get payment method configuration by code"""
+    query = """
+        SELECT
+            id, code, label_es,
+            processor_type, requires_phone, requires_redirect,
+            requires_agent_validation, is_active, display_order,
+            icon, min_amount, max_amount, fees_percentage, fees_fixed,
+            created_at, updated_at
+        FROM payment_method_configurations
+        WHERE code = $1
+    """
+    row = await db.fetchrow(query, code)
+
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Payment method not found: {code}"
+        )
+
+    return PaymentMethodConfigResponse(
+        id=row["id"],
+        code=row["code"],
+        label_es=row["label_es"],
+        processor_type=row["processor_type"],
+        requires_phone=row["requires_phone"],
+        requires_redirect=row["requires_redirect"],
+        requires_agent_validation=row["requires_agent_validation"],
+        is_active=row["is_active"],
+        display_order=row["display_order"],
+        icon=row["icon"],
+        min_amount=float(row["min_amount"]) if row["min_amount"] else None,
+        max_amount=float(row["max_amount"]) if row["max_amount"] else None,
+        fees_percentage=float(row["fees_percentage"]) if row["fees_percentage"] else 0,
+        fees_fixed=float(row["fees_fixed"]) if row["fees_fixed"] else 0,
+        created_at=row["created_at"].isoformat() if row["created_at"] else None,
+        updated_at=row["updated_at"].isoformat() if row["updated_at"] else None,
+    )
+
+
+@router.post(
+    "/payment-methods",
+    response_model=PaymentMethodConfigResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create payment method configuration",
+    description="""
+    Create a new payment method configuration.
+
+    **Permissions:**
+    - Requires 'webhooks.create' permission
+    """
+)
+async def create_payment_method(
+    body: PaymentMethodConfigCreate,
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("webhooks.create"))
+):
+    """Create new payment method configuration"""
+    # Check if code already exists
+    existing = await db.fetchval(
+        "SELECT id FROM payment_method_configurations WHERE code = $1",
+        body.code
+    )
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Payment method with code '{body.code}' already exists"
+        )
+
+    query = """
+        INSERT INTO payment_method_configurations (
+            code, label_es,
+            processor_type, requires_phone, requires_redirect,
+            requires_agent_validation, is_active, display_order,
+            icon, min_amount, max_amount, fees_percentage, fees_fixed
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        RETURNING id, created_at, updated_at
+    """
+    row = await db.fetchrow(
+        query,
+        body.code, body.label_es,
+        body.processor_type, body.requires_phone, body.requires_redirect,
+        body.requires_agent_validation, body.is_active, body.display_order,
+        body.icon, body.min_amount, body.max_amount, body.fees_percentage, body.fees_fixed
+    )
+
+    return PaymentMethodConfigResponse(
+        id=row["id"],
+        code=body.code,
+        label_es=body.label_es,
+        processor_type=body.processor_type,
+        requires_phone=body.requires_phone,
+        requires_redirect=body.requires_redirect,
+        requires_agent_validation=body.requires_agent_validation,
+        is_active=body.is_active,
+        display_order=body.display_order,
+        icon=body.icon,
+        min_amount=body.min_amount,
+        max_amount=body.max_amount,
+        fees_percentage=body.fees_percentage,
+        fees_fixed=body.fees_fixed,
+        created_at=row["created_at"].isoformat() if row["created_at"] else None,
+        updated_at=row["updated_at"].isoformat() if row["updated_at"] else None,
+    )
+
+
+@router.put(
+    "/payment-methods/{code}",
+    response_model=PaymentMethodConfigResponse,
+    summary="Update payment method configuration",
+    description="""
+    Update an existing payment method configuration.
+
+    **Permissions:**
+    - Requires 'webhooks.update' permission
+    """
+)
+async def update_payment_method(
+    code: str = Path(..., description="Payment method code"),
+    body: PaymentMethodConfigUpdate = ...,
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("webhooks.update"))
+):
+    """Update payment method configuration"""
+    # Check if exists
+    existing = await db.fetchrow(
+        "SELECT id FROM payment_method_configurations WHERE code = $1",
+        code
+    )
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Payment method not found: {code}"
+        )
+
+    # Build dynamic update query
+    updates = []
+    params = []
+    param_idx = 1
+
+    update_fields = body.model_dump(exclude_unset=True)
+    for field, value in update_fields.items():
+        if value is not None:
+            updates.append(f"{field} = ${param_idx}")
+            params.append(value)
+            param_idx += 1
+
+    if not updates:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No fields to update"
+        )
+
+    updates.append(f"updated_at = NOW()")
+    params.append(code)
+
+    query = f"""
+        UPDATE payment_method_configurations
+        SET {', '.join(updates)}
+        WHERE code = ${param_idx}
+        RETURNING id, code, label_es,
+            processor_type, requires_phone, requires_redirect,
+            requires_agent_validation, is_active, display_order,
+            icon, min_amount, max_amount, fees_percentage, fees_fixed,
+            created_at, updated_at
+    """
+    row = await db.fetchrow(query, *params)
+
+    return PaymentMethodConfigResponse(
+        id=row["id"],
+        code=row["code"],
+        label_es=row["label_es"],
+        processor_type=row["processor_type"],
+        requires_phone=row["requires_phone"],
+        requires_redirect=row["requires_redirect"],
+        requires_agent_validation=row["requires_agent_validation"],
+        is_active=row["is_active"],
+        display_order=row["display_order"],
+        icon=row["icon"],
+        min_amount=float(row["min_amount"]) if row["min_amount"] else None,
+        max_amount=float(row["max_amount"]) if row["max_amount"] else None,
+        fees_percentage=float(row["fees_percentage"]) if row["fees_percentage"] else 0,
+        fees_fixed=float(row["fees_fixed"]) if row["fees_fixed"] else 0,
+        created_at=row["created_at"].isoformat() if row["created_at"] else None,
+        updated_at=row["updated_at"].isoformat() if row["updated_at"] else None,
+    )
+
+
+@router.delete(
+    "/payment-methods/{code}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete payment method configuration",
+    description="""
+    Delete a payment method configuration.
+
+    **Note:** Cannot delete default system methods (mobile_money, card, bank_transfer, cash, check).
+
+    **Permissions:**
+    - Requires 'webhooks.delete' permission
+    """
+)
+async def delete_payment_method(
+    code: str = Path(..., description="Payment method code"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("webhooks.delete"))
+):
+    """Delete payment method configuration"""
+    # Prevent deletion of default methods
+    default_methods = {"mobile_money", "card", "bank_transfer", "cash", "check"}
+    if code in default_methods:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Cannot delete default payment method: {code}"
+        )
+
+    result = await db.execute(
+        "DELETE FROM payment_method_configurations WHERE code = $1",
+        code
+    )
+
+    if result == "DELETE 0":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Payment method not found: {code}"
+        )
+
+
+@router.patch(
+    "/payment-methods/reorder",
+    response_model=List[PaymentMethodConfigResponse],
+    summary="Reorder payment methods",
+    description="""
+    Update the display order of payment methods.
+
+    **Permissions:**
+    - Requires 'webhooks.update' permission
+    """
+)
+async def reorder_payment_methods(
+    body: PaymentMethodReorderRequest,
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("webhooks.update"))
+):
+    """Reorder payment methods by updating display_order"""
+    # Update display_order for each method in the list
+    for idx, code in enumerate(body.order):
+        await db.execute(
+            "UPDATE payment_method_configurations SET display_order = $1, updated_at = NOW() WHERE code = $2",
+            idx + 1, code
+        )
+
+    # Return updated list
+    return await list_payment_methods(active_only=False, db=db, current_user=current_user, _=None)
+
+
+# ═══════════════════════════════════════════════════════════════
+# TREASURY AUDIT (Phase 1A)
+# ═══════════════════════════════════════════════════════════════
+
+class AuditEntryResponse(BaseModel):
+    """Response for a single audit entry."""
+    id: str
+    payment_id: str
+    payment_reference: str
+    service_request_id: Optional[str] = None
+    service_request_reference: Optional[str] = None
+    action: str
+    from_status: Optional[str] = None
+    to_status: Optional[str] = None
+    comment: Optional[str] = None
+    agent_id: Optional[int] = None
+    agent_name: Optional[str] = None
+    agent_email: Optional[str] = None
+    action_duration_seconds: Optional[int] = None
+    ip_address: Optional[str] = None
+    created_at: str
+
+
+class AuditListResponse(BaseModel):
+    """List of audit entries."""
+    entries: List[AuditEntryResponse]
+    total: int
+    page: int = 1
+    page_size: int = 50
+
+
+class PaymentAuditDetailResponse(BaseModel):
+    """Detailed audit history for a single payment."""
+    payment_id: str
+    payment_reference: str
+    service_request_id: Optional[str] = None
+    service_request_reference: Optional[str] = None
+    workflow_code: Optional[str] = None
+    current_status: str
+    created_at: str
+    timeline: List[AuditEntryResponse]
+    total_processing_minutes: Optional[float] = None
+    lock_count: int = 0
+
+
+@router.get(
+    "/treasury/audit",
+    response_model=AuditListResponse,
+    summary="Get Treasury audit history",
+    description="""
+    Get audit trail of all Treasury actions (lock, validate, reject, etc.)
+
+    **Filters:**
+    - payment_id: Filter by specific payment
+    - agent_id: Filter by agent who performed action
+    - action: Filter by action type (lock_for_review, approve, reject, etc.)
+    - date_from / date_to: Filter by date range
+
+    **Permissions:**
+    - Requires 'treasury.audit.view' permission
+    """
+)
+async def get_treasury_audit(
+    payment_id: Optional[str] = Query(None, description="Filter by payment ID"),
+    agent_id: Optional[int] = Query(None, description="Filter by agent ID"),
+    action: Optional[str] = Query(None, description="Filter by action type"),
+    date_from: Optional[date] = Query(None, description="Start date"),
+    date_to: Optional[date] = Query(None, description="End date"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.audit.view"))
+):
+    """Get Treasury audit trail"""
+    # Build dynamic WHERE clause
+    where_clauses = ["1=1"]
+    params = []
+    param_idx = 1
+
+    if payment_id:
+        where_clauses.append(f"pva.payment_id = ${param_idx}::uuid")
+        params.append(payment_id)
+        param_idx += 1
+
+    if agent_id:
+        where_clauses.append(f"pva.agent_id = ${param_idx}")
+        params.append(agent_id)
+        param_idx += 1
+
+    if action:
+        where_clauses.append(f"pva.action::text = ${param_idx}")
+        params.append(action)
+        param_idx += 1
+
+    if date_from:
+        where_clauses.append(f"pva.created_at >= ${param_idx}")
+        params.append(date_from)
+        param_idx += 1
+
+    if date_to:
+        where_clauses.append(f"pva.created_at < ${param_idx} + INTERVAL '1 day'")
+        params.append(date_to)
+        param_idx += 1
+
+    where_sql = " AND ".join(where_clauses)
+    offset = (page - 1) * page_size
+
+    query = f"""
+        SELECT
+            pva.id,
+            pva.payment_id,
+            sp.payment_reference,
+            sp.service_request_id,
+            sr.reference AS service_request_reference,
+            pva.action::text AS action,
+            pva.from_status::text AS from_status,
+            pva.to_status::text AS to_status,
+            pva.comment,
+            pva.agent_id,
+            u.full_name AS agent_name,
+            u.email AS agent_email,
+            pva.action_duration_seconds,
+            pva.ip_address::text AS ip_address,
+            pva.created_at
+        FROM payment_validation_audit pva
+        JOIN service_payments sp ON sp.id = pva.payment_id
+        LEFT JOIN service_requests sr ON sr.id = sp.service_request_id
+        LEFT JOIN ministry_agents ma ON ma.id = pva.agent_id
+        LEFT JOIN users u ON u.id = pva.agent_user_id
+        WHERE {where_sql}
+        ORDER BY pva.created_at DESC
+        LIMIT ${param_idx} OFFSET ${param_idx + 1}
+    """
+    params.extend([page_size, offset])
+
+    rows = await db.fetch(query, *params)
+
+    # Get total count
+    count_query = f"""
+        SELECT COUNT(*)
+        FROM payment_validation_audit pva
+        WHERE {where_sql}
+    """
+    total = await db.fetchval(count_query, *params[:param_idx - 1])
+
+    entries = []
+    for row in rows:
+        entries.append(AuditEntryResponse(
+            id=str(row["id"]),
+            payment_id=str(row["payment_id"]),
+            payment_reference=row["payment_reference"],
+            service_request_id=str(row["service_request_id"]) if row["service_request_id"] else None,
+            service_request_reference=row["service_request_reference"],
+            action=row["action"],
+            from_status=row["from_status"],
+            to_status=row["to_status"],
+            comment=row["comment"],
+            agent_id=row["agent_id"],
+            agent_name=row["agent_name"],
+            agent_email=row["agent_email"],
+            action_duration_seconds=row["action_duration_seconds"],
+            ip_address=row["ip_address"],
+            created_at=row["created_at"].isoformat(),
+        ))
+
+    return AuditListResponse(
+        entries=entries,
+        total=total or 0,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get(
+    "/treasury/payments/{payment_id}/audit",
+    response_model=PaymentAuditDetailResponse,
+    summary="Get payment audit history",
+    description="""
+    Get complete audit history for a specific payment.
+
+    Returns timeline of all actions with processing time metrics.
+
+    **Permissions:**
+    - Requires 'treasury.audit.view' permission
+    """
+)
+async def get_payment_audit_history(
+    payment_id: str = Path(..., description="Payment ID"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.audit.view"))
+):
+    """Get complete audit history for a payment"""
+    # Get payment info
+    payment = await db.fetchrow("""
+        SELECT
+            sp.id,
+            sp.payment_reference,
+            sp.service_request_id,
+            sr.reference AS service_request_reference,
+            sr.workflow_code,
+            sp.workflow_status,
+            sp.created_at
+        FROM service_payments sp
+        LEFT JOIN service_requests sr ON sr.id = sp.service_request_id
+        WHERE sp.id = $1::uuid
+    """, payment_id)
+
+    if not payment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Payment not found: {payment_id}"
+        )
+
+    # Get audit entries
+    audit_rows = await db.fetch("""
+        SELECT
+            pva.id,
+            pva.payment_id,
+            pva.action::text AS action,
+            pva.from_status::text AS from_status,
+            pva.to_status::text AS to_status,
+            pva.comment,
+            pva.agent_id,
+            u.full_name AS agent_name,
+            u.email AS agent_email,
+            pva.action_duration_seconds,
+            pva.ip_address::text AS ip_address,
+            pva.created_at
+        FROM payment_validation_audit pva
+        LEFT JOIN ministry_agents ma ON ma.id = pva.agent_id
+        LEFT JOIN users u ON u.id = pva.agent_user_id
+        WHERE pva.payment_id = $1::uuid
+        ORDER BY pva.created_at ASC
+    """, payment_id)
+
+    # Get lock count
+    lock_count = await db.fetchval("""
+        SELECT COUNT(*) FROM payment_lock_history
+        WHERE payment_id = $1::uuid
+    """, payment_id)
+
+    # Calculate total processing time
+    total_processing = await db.fetchval("""
+        SELECT EXTRACT(EPOCH FROM (
+            COALESCE(sp.validated_at, NOW()) - sp.created_at
+        )) / 60
+        FROM service_payments sp
+        WHERE sp.id = $1::uuid
+          AND sp.validated_at IS NOT NULL
+    """, payment_id)
+
+    timeline = []
+    for row in audit_rows:
+        timeline.append(AuditEntryResponse(
+            id=str(row["id"]),
+            payment_id=str(row["payment_id"]),
+            payment_reference=payment["payment_reference"],
+            action=row["action"],
+            from_status=row["from_status"],
+            to_status=row["to_status"],
+            comment=row["comment"],
+            agent_id=row["agent_id"],
+            agent_name=row["agent_name"],
+            agent_email=row["agent_email"],
+            action_duration_seconds=row["action_duration_seconds"],
+            ip_address=row["ip_address"],
+            created_at=row["created_at"].isoformat(),
+        ))
+
+    return PaymentAuditDetailResponse(
+        payment_id=str(payment["id"]),
+        payment_reference=payment["payment_reference"],
+        service_request_id=str(payment["service_request_id"]) if payment["service_request_id"] else None,
+        service_request_reference=payment["service_request_reference"],
+        workflow_code=payment["workflow_code"],
+        current_status=payment["workflow_status"],
+        created_at=payment["created_at"].isoformat(),
+        timeline=timeline,
+        total_processing_minutes=float(total_processing) if total_processing else None,
+        lock_count=lock_count or 0,
+    )
+
+
+# ═══════════════════════════════════════════════════════════════
+# TREASURY SLA STATS (Phase 1B)
+# ═══════════════════════════════════════════════════════════════
+
+class SLAStatsResponse(BaseModel):
+    """SLA statistics for Treasury dashboard."""
+    total_pending: int
+    on_time: int
+    warning: int
+    critical: int
+    breached: int
+    avg_processing_minutes: Optional[float] = None
+    max_processing_minutes: Optional[float] = None
+    sla_respect_rate: float
+    by_payment_method: Optional[Dict[str, Dict[str, int]]] = None
+
+
+@router.get(
+    "/treasury/stats/sla",
+    response_model=SLAStatsResponse,
+    summary="Get SLA statistics",
+    description="""
+    Get SLA statistics for pending payments.
+
+    **SLA Status Categories:**
+    - on_time: SLA deadline > 6 hours from now
+    - warning: SLA deadline 2-6 hours from now
+    - critical: SLA deadline < 2 hours from now
+    - breached: SLA deadline passed
+
+    **Permissions:**
+    - Requires 'treasury.stats.view' permission
+    """
+)
+async def get_sla_stats(
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.stats.view"))
+):
+    """Get SLA statistics for Treasury dashboard"""
+    # Get SLA breakdown for pending payments
+    sla_stats = await db.fetchrow("""
+        WITH pending_payments AS (
+            SELECT
+                id,
+                payment_method,
+                sla_target_date,
+                created_at,
+                CASE
+                    WHEN sla_target_date IS NULL THEN 'on_time'
+                    WHEN sla_target_date < NOW() THEN 'breached'
+                    WHEN sla_target_date - NOW() < INTERVAL '2 hours' THEN 'critical'
+                    WHEN sla_target_date - NOW() < INTERVAL '6 hours' THEN 'warning'
+                    ELSE 'on_time'
+                END AS sla_status
+            FROM service_payments
+            WHERE workflow_status NOT IN (
+                'completed', 'cancelled_by_user', 'cancelled_by_agent', 'expired'
+            )
+        )
+        SELECT
+            COUNT(*) AS total_pending,
+            COUNT(*) FILTER (WHERE sla_status = 'on_time') AS on_time,
+            COUNT(*) FILTER (WHERE sla_status = 'warning') AS warning,
+            COUNT(*) FILTER (WHERE sla_status = 'critical') AS critical,
+            COUNT(*) FILTER (WHERE sla_status = 'breached') AS breached
+        FROM pending_payments
+    """)
+
+    # Get processing time stats for completed payments
+    time_stats = await db.fetchrow("""
+        SELECT
+            AVG(EXTRACT(EPOCH FROM (validated_at - created_at)) / 60) AS avg_minutes,
+            MAX(EXTRACT(EPOCH FROM (validated_at - created_at)) / 60) AS max_minutes
+        FROM service_payments
+        WHERE workflow_status = 'completed'
+          AND validated_at IS NOT NULL
+          AND validated_at >= NOW() - INTERVAL '30 days'
+    """)
+
+    # Calculate SLA respect rate from completed payments
+    sla_rate = await db.fetchrow("""
+        SELECT
+            COUNT(*) AS total_completed,
+            COUNT(*) FILTER (WHERE sla_escalated = false OR sla_escalated IS NULL) AS respected
+        FROM service_payments
+        WHERE workflow_status = 'completed'
+          AND validated_at >= NOW() - INTERVAL '30 days'
+    """)
+
+    # Get breakdown by payment method
+    method_breakdown = await db.fetch("""
+        WITH pending_payments AS (
+            SELECT
+                payment_method::text AS method,
+                CASE
+                    WHEN sla_target_date IS NULL THEN 'on_time'
+                    WHEN sla_target_date < NOW() THEN 'breached'
+                    WHEN sla_target_date - NOW() < INTERVAL '2 hours' THEN 'critical'
+                    WHEN sla_target_date - NOW() < INTERVAL '6 hours' THEN 'warning'
+                    ELSE 'on_time'
+                END AS sla_status
+            FROM service_payments
+            WHERE workflow_status NOT IN (
+                'completed', 'cancelled_by_user', 'cancelled_by_agent', 'expired'
+            )
+        )
+        SELECT
+            method,
+            COUNT(*) AS total,
+            COUNT(*) FILTER (WHERE sla_status = 'on_time') AS on_time,
+            COUNT(*) FILTER (WHERE sla_status = 'warning') AS warning,
+            COUNT(*) FILTER (WHERE sla_status = 'critical') AS critical,
+            COUNT(*) FILTER (WHERE sla_status = 'breached') AS breached
+        FROM pending_payments
+        GROUP BY method
+    """)
+
+    by_method = {}
+    for row in method_breakdown:
+        by_method[row["method"]] = {
+            "total": row["total"],
+            "on_time": row["on_time"],
+            "warning": row["warning"],
+            "critical": row["critical"],
+            "breached": row["breached"],
+        }
+
+    # Calculate SLA respect rate
+    total_completed = sla_rate["total_completed"] or 0
+    respected = sla_rate["respected"] or 0
+    respect_rate = (respected / total_completed * 100) if total_completed > 0 else 100.0
+
+    return SLAStatsResponse(
+        total_pending=sla_stats["total_pending"] or 0,
+        on_time=sla_stats["on_time"] or 0,
+        warning=sla_stats["warning"] or 0,
+        critical=sla_stats["critical"] or 0,
+        breached=sla_stats["breached"] or 0,
+        avg_processing_minutes=float(time_stats["avg_minutes"]) if time_stats["avg_minutes"] else None,
+        max_processing_minutes=float(time_stats["max_minutes"]) if time_stats["max_minutes"] else None,
+        sla_respect_rate=round(respect_rate, 2),
+        by_payment_method=by_method if by_method else None,
+    )
+
+
+# ═══════════════════════════════════════════════════════════════
+# TREASURY KPIs (Phase 4)
+# ═══════════════════════════════════════════════════════════════
+
+
+class PaymentMethodKPI(BaseModel):
+    method: str
+    count: int
+    amount: float
+    percentage: float
+    success_rate: float
+    avg_processing_minutes: Optional[float] = None
+
+
+class MinistryKPI(BaseModel):
+    ministry_id: int
+    ministry_name: str
+    count: int
+    amount: float
+    percentage: float
+
+
+class DailyTrend(BaseModel):
+    date: str
+    count: int
+    amount: float
+
+
+class PeriodComparison(BaseModel):
+    total_collected_change: float
+    transactions_change: float
+    trend: str  # 'up', 'down', 'stable'
+
+
+class KPIResponse(BaseModel):
+    period: str
+    date_from: str
+    date_to: str
+    total_collected: float
+    total_transactions: int
+    avg_transaction_amount: float
+    sla_respect_rate: float
+    by_payment_method: List[PaymentMethodKPI]
+    by_ministry: List[MinistryKPI]
+    daily_trend: List[DailyTrend]
+    previous_period: Optional[PeriodComparison] = None
+
+
+class AgentStats(BaseModel):
+    agent_id: int
+    agent_name: str
+    agent_email: Optional[str] = None
+    validations_count: int
+    rejections_count: int
+    avg_processing_minutes: float
+    sla_respect_rate: float
+    current_workload: int
+
+
+class AgentPerformanceResponse(BaseModel):
+    period: str
+    date_from: str
+    date_to: str
+    agents: List[AgentStats]
+    total_validations: int
+    total_rejections: int
+
+
+@router.get(
+    "/treasury/stats/kpis",
+    response_model=KPIResponse,
+    summary="Get Treasury KPIs",
+    description="""
+    Get comprehensive Treasury KPIs for the dashboard.
+
+    **Period Options:**
+    - day: Current day
+    - week: Current week (Mon-Sun)
+    - month: Current month
+    - year: Current year
+    - custom: Use date_from and date_to
+
+    **Returns:**
+    - Total collected amount and transaction count
+    - Breakdown by payment method
+    - Top 10 ministries by amount
+    - Daily trend for the period
+    - Comparison with previous period
+
+    **Permissions:**
+    - Requires 'treasury.stats.view' permission
+    """
+)
+async def get_treasury_kpis(
+    period: str = Query("month", regex="^(day|week|month|year|custom)$"),
+    date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD) for custom period"),
+    date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD) for custom period"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.stats.view"))
+):
+    """Get Treasury KPIs for executive dashboard"""
+    from datetime import datetime, timedelta
+
+    # Calculate date range based on period
+    now = datetime.now()
+    if period == "day":
+        start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = now
+    elif period == "week":
+        start_date = now - timedelta(days=now.weekday())
+        start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = now
+    elif period == "month":
+        start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        end_date = now
+    elif period == "year":
+        start_date = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+        end_date = now
+    else:  # custom
+        if not date_from or not date_to:
+            raise HTTPException(status_code=400, detail="date_from and date_to required for custom period")
+        start_date = datetime.strptime(date_from, "%Y-%m-%d")
+        end_date = datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+
+    # Get main KPIs
+    main_stats = await db.fetchrow("""
+        SELECT
+            COALESCE(SUM(total_amount), 0) AS total_collected,
+            COUNT(*) AS total_transactions,
+            COALESCE(AVG(total_amount), 0) AS avg_amount
+        FROM service_payments
+        WHERE workflow_status = 'completed'
+          AND completed_at BETWEEN $1 AND $2
+    """, start_date, end_date)
+
+    # Get SLA respect rate
+    sla_stats = await db.fetchrow("""
+        SELECT
+            COUNT(*) AS total,
+            COUNT(*) FILTER (WHERE sla_escalated = false OR sla_escalated IS NULL) AS respected
+        FROM service_payments
+        WHERE workflow_status = 'completed'
+          AND completed_at BETWEEN $1 AND $2
+    """, start_date, end_date)
+
+    total_for_sla = sla_stats["total"] or 0
+    sla_rate = (sla_stats["respected"] / total_for_sla * 100) if total_for_sla > 0 else 100.0
+
+    # Get breakdown by payment method
+    method_stats = await db.fetch("""
+        SELECT
+            payment_method::text AS method,
+            COUNT(*) AS count,
+            COALESCE(SUM(total_amount), 0) AS amount,
+            AVG(EXTRACT(EPOCH FROM (completed_at - created_at)) / 60) AS avg_minutes,
+            COUNT(*) FILTER (WHERE sla_escalated = false OR sla_escalated IS NULL)::float /
+                NULLIF(COUNT(*), 0) * 100 AS success_rate
+        FROM service_payments
+        WHERE workflow_status = 'completed'
+          AND completed_at BETWEEN $1 AND $2
+        GROUP BY payment_method
+        ORDER BY amount DESC
+    """, start_date, end_date)
+
+    total_amount = float(main_stats["total_collected"]) or 1
+    by_payment_method = [
+        PaymentMethodKPI(
+            method=row["method"] or "unknown",
+            count=row["count"],
+            amount=float(row["amount"]),
+            percentage=round(float(row["amount"]) / total_amount * 100, 1),
+            success_rate=round(float(row["success_rate"]) if row["success_rate"] else 100.0, 1),
+            avg_processing_minutes=round(float(row["avg_minutes"]), 1) if row["avg_minutes"] else None
+        )
+        for row in method_stats
+    ]
+
+    # Get top 10 ministries
+    ministry_stats = await db.fetch("""
+        SELECT
+            sp.ministry_id,
+            COALESCE(m.name_es, 'Sin Ministerio') AS ministry_name,
+            COUNT(*) AS count,
+            COALESCE(SUM(sp.total_amount), 0) AS amount
+        FROM service_payments sp
+        LEFT JOIN ministries m ON m.id = sp.ministry_id
+        WHERE sp.workflow_status = 'completed'
+          AND sp.completed_at BETWEEN $1 AND $2
+        GROUP BY sp.ministry_id, m.name_es
+        ORDER BY amount DESC
+        LIMIT 10
+    """, start_date, end_date)
+
+    by_ministry = [
+        MinistryKPI(
+            ministry_id=row["ministry_id"] or 0,
+            ministry_name=row["ministry_name"],
+            count=row["count"],
+            amount=float(row["amount"]),
+            percentage=round(float(row["amount"]) / total_amount * 100, 1) if total_amount > 0 else 0
+        )
+        for row in ministry_stats
+    ]
+
+    # Get daily trend
+    daily_stats = await db.fetch("""
+        SELECT
+            DATE(completed_at) AS date,
+            COUNT(*) AS count,
+            COALESCE(SUM(total_amount), 0) AS amount
+        FROM service_payments
+        WHERE workflow_status = 'completed'
+          AND completed_at BETWEEN $1 AND $2
+        GROUP BY DATE(completed_at)
+        ORDER BY date
+    """, start_date, end_date)
+
+    daily_trend = [
+        DailyTrend(
+            date=str(row["date"]),
+            count=row["count"],
+            amount=float(row["amount"])
+        )
+        for row in daily_stats
+    ]
+
+    # Get previous period comparison
+    period_duration = end_date - start_date
+    prev_start = start_date - period_duration - timedelta(days=1)
+    prev_end = start_date - timedelta(days=1)
+
+    prev_stats = await db.fetchrow("""
+        SELECT
+            COALESCE(SUM(total_amount), 0) AS total_collected,
+            COUNT(*) AS total_transactions
+        FROM service_payments
+        WHERE workflow_status = 'completed'
+          AND completed_at BETWEEN $1 AND $2
+    """, prev_start, prev_end)
+
+    prev_collected = float(prev_stats["total_collected"]) if prev_stats["total_collected"] else 0
+    prev_transactions = prev_stats["total_transactions"] or 0
+
+    previous_period = None
+    if prev_collected > 0 or prev_transactions > 0:
+        collected_change = ((float(main_stats["total_collected"]) - prev_collected) / prev_collected * 100) if prev_collected > 0 else 0
+        trans_change = ((main_stats["total_transactions"] - prev_transactions) / prev_transactions * 100) if prev_transactions > 0 else 0
+
+        trend = "stable"
+        if collected_change > 5:
+            trend = "up"
+        elif collected_change < -5:
+            trend = "down"
+
+        previous_period = PeriodComparison(
+            total_collected_change=round(collected_change, 1),
+            transactions_change=round(trans_change, 1),
+            trend=trend
+        )
+
+    return KPIResponse(
+        period=period,
+        date_from=str(start_date.date()),
+        date_to=str(end_date.date()),
+        total_collected=float(main_stats["total_collected"]),
+        total_transactions=main_stats["total_transactions"],
+        avg_transaction_amount=float(main_stats["avg_amount"]),
+        sla_respect_rate=round(sla_rate, 1),
+        by_payment_method=by_payment_method,
+        by_ministry=by_ministry,
+        daily_trend=daily_trend,
+        previous_period=previous_period
+    )
+
+
+@router.get(
+    "/treasury/stats/agents",
+    response_model=AgentPerformanceResponse,
+    summary="Get Agent Performance Statistics",
+    description="""
+    Get performance statistics for Treasury agents.
+
+    **Returns:**
+    - Validations and rejections per agent
+    - Average processing time
+    - SLA respect rate
+    - Current workload
+
+    **Permissions:**
+    - Requires 'treasury.stats.view' permission
+    """
+)
+async def get_agent_performance(
+    period: str = Query("month", regex="^(day|week|month|year|custom)$"),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.stats.view"))
+):
+    """Get agent performance statistics"""
+    from datetime import datetime, timedelta
+
+    # Calculate date range
+    now = datetime.now()
+    if period == "day":
+        start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = now
+    elif period == "week":
+        start_date = now - timedelta(days=now.weekday())
+        start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = now
+    elif period == "month":
+        start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        end_date = now
+    elif period == "year":
+        start_date = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+        end_date = now
+    else:  # custom
+        if not date_from or not date_to:
+            raise HTTPException(status_code=400, detail="date_from and date_to required for custom period")
+        start_date = datetime.strptime(date_from, "%Y-%m-%d")
+        end_date = datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+
+    # Get agent performance from audit log
+    agent_stats = await db.fetch("""
+        WITH agent_actions AS (
+            SELECT
+                pva.agent_id,
+                pva.agent_user_id,
+                u.full_name AS agent_name,
+                u.email AS agent_email,
+                pva.action,
+                pva.action_duration_seconds,
+                sp.sla_escalated
+            FROM payment_validation_audit pva
+            JOIN users u ON u.id = pva.agent_user_id
+            JOIN service_payments sp ON sp.id = pva.payment_id
+            WHERE pva.created_at BETWEEN $1 AND $2
+              AND pva.agent_user_id IS NOT NULL
+        ),
+        agent_summary AS (
+            SELECT
+                agent_id,
+                agent_user_id,
+                agent_name,
+                agent_email,
+                COUNT(*) FILTER (WHERE action = 'approve') AS validations,
+                COUNT(*) FILTER (WHERE action = 'reject') AS rejections,
+                AVG(action_duration_seconds) / 60.0 AS avg_minutes,
+                COUNT(*) FILTER (WHERE sla_escalated = false OR sla_escalated IS NULL)::float /
+                    NULLIF(COUNT(*), 0) * 100 AS sla_rate
+            FROM agent_actions
+            GROUP BY agent_id, agent_user_id, agent_name, agent_email
+        )
+        SELECT
+            as2.agent_id,
+            as2.agent_user_id,
+            as2.agent_name,
+            as2.agent_email,
+            as2.validations,
+            as2.rejections,
+            as2.avg_minutes,
+            as2.sla_rate,
+            COALESCE(aw.current_load, 0) AS current_workload
+        FROM agent_summary as2
+        LEFT JOIN agent_workloads aw ON aw.agent_id = as2.agent_id
+        ORDER BY (as2.validations + as2.rejections) DESC
+    """, start_date, end_date)
+
+    agents = [
+        AgentStats(
+            agent_id=row["agent_id"] or row["agent_user_id"] or 0,
+            agent_name=row["agent_name"] or "Unknown",
+            agent_email=row["agent_email"],
+            validations_count=row["validations"] or 0,
+            rejections_count=row["rejections"] or 0,
+            avg_processing_minutes=round(float(row["avg_minutes"]) if row["avg_minutes"] else 0, 1),
+            sla_respect_rate=round(float(row["sla_rate"]) if row["sla_rate"] else 100.0, 1),
+            current_workload=row["current_workload"] or 0
+        )
+        for row in agent_stats
+    ]
+
+    total_validations = sum(a.validations_count for a in agents)
+    total_rejections = sum(a.rejections_count for a in agents)
+
+    return AgentPerformanceResponse(
+        period=period,
+        date_from=str(start_date.date()),
+        date_to=str(end_date.date()),
+        agents=agents,
+        total_validations=total_validations,
+        total_rejections=total_rejections
+    )
+
+
+# ═══════════════════════════════════════════════════════════════
+# TREASURY ANOMALIES (Phase 2A)
+# ═══════════════════════════════════════════════════════════════
+
+class AnomalyType(str):
+    AMOUNT_MISMATCH = "amount_mismatch"
+    DUPLICATE_SUSPECTED = "duplicate_suspected"
+    RECONCILIATION_FAILED = "reconciliation_failed"
+    VALIDATED_NOT_RECEIVED = "validated_not_received"
+    SLA_BREACHED = "sla_breached"
+    HIGH_AMOUNT = "high_amount"
+    SUSPICIOUS_PATTERN = "suspicious_pattern"
+    MANUAL_FLAG = "manual_flag"
+
+
+class AnomalyStatus(str):
+    OPEN = "open"
+    INVESTIGATING = "investigating"
+    RESOLVED = "resolved"
+    FALSE_POSITIVE = "false_positive"
+    ESCALATED = "escalated"
+
+
+class AnomalySeverity(str):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+class AnomalyResponse(BaseModel):
+    """Response for a single anomaly."""
+    id: str
+    entity_type: str
+    entity_id: str
+    payment_reference: Optional[str] = None
+    service_request_id: Optional[str] = None
+    service_request_reference: Optional[str] = None
+    anomaly_type: str
+    severity: str
+    status: str
+    title: str
+    description: Optional[str] = None
+    detection_rule: Optional[str] = None
+    expected_amount: Optional[float] = None
+    actual_amount: Optional[float] = None
+    difference_amount: Optional[float] = None
+    resolution_notes: Optional[str] = None
+    resolved_at: Optional[str] = None
+    resolved_by_name: Optional[str] = None
+    detected_at: str
+    detected_by: str
+    updated_at: str
+
+
+class AnomalySummary(BaseModel):
+    """Summary counts by status."""
+    open: int = 0
+    investigating: int = 0
+    resolved: int = 0
+    false_positive: int = 0
+    escalated: int = 0
+    total: int = 0
+
+
+class AnomalyListResponse(BaseModel):
+    """List of anomalies with summary."""
+    anomalies: List[AnomalyResponse]
+    total: int
+    page: int = 1
+    page_size: int = 20
+    summary: AnomalySummary
+
+
+class AnomalyCreate(BaseModel):
+    """Create anomaly request."""
+    entity_type: str = Field(..., pattern="^(service_payment|bank_transaction|payment)$")
+    entity_id: str
+    anomaly_type: str
+    severity: str = "medium"
+    title: str = Field(..., max_length=255)
+    description: Optional[str] = None
+    expected_amount: Optional[float] = None
+    actual_amount: Optional[float] = None
+
+
+class AnomalyStatusUpdate(BaseModel):
+    """Update anomaly status."""
+    status: str
+    comment: Optional[str] = None
+    resolution_notes: Optional[str] = None
+
+
+class AnomalyActionResponse(BaseModel):
+    """Response after an action on anomaly."""
+    id: str
+    anomaly_id: str
+    action: str
+    from_status: Optional[str] = None
+    to_status: Optional[str] = None
+    comment: Optional[str] = None
+    performed_by_name: Optional[str] = None
+    performed_at: str
+
+
+@router.get(
+    "/treasury/anomalies",
+    response_model=AnomalyListResponse,
+    summary="List payment anomalies",
+    description="""
+    Get list of payment anomalies with filters.
+
+    **Filters:**
+    - status: Filter by anomaly status
+    - severity: Filter by severity level
+    - anomaly_type: Filter by type of anomaly
+    - date_from / date_to: Filter by detection date range
+
+    **Permissions:**
+    - Requires 'treasury.anomalies.view' permission
+    """
+)
+async def list_anomalies(
+    status: Optional[str] = Query(None, description="Filter by status"),
+    severity: Optional[str] = Query(None, description="Filter by severity"),
+    anomaly_type: Optional[str] = Query(None, description="Filter by type"),
+    date_from: Optional[date] = Query(None, description="Start date"),
+    date_to: Optional[date] = Query(None, description="End date"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.anomalies.view"))
+):
+    """Get list of payment anomalies."""
+    # Build dynamic WHERE clause
+    where_clauses = ["1=1"]
+    params = []
+    param_idx = 1
+
+    if status:
+        where_clauses.append(f"pa.status::text = ${param_idx}")
+        params.append(status)
+        param_idx += 1
+
+    if severity:
+        where_clauses.append(f"pa.severity::text = ${param_idx}")
+        params.append(severity)
+        param_idx += 1
+
+    if anomaly_type:
+        where_clauses.append(f"pa.anomaly_type::text = ${param_idx}")
+        params.append(anomaly_type)
+        param_idx += 1
+
+    if date_from:
+        where_clauses.append(f"pa.detected_at >= ${param_idx}")
+        params.append(date_from)
+        param_idx += 1
+
+    if date_to:
+        where_clauses.append(f"pa.detected_at < ${param_idx} + INTERVAL '1 day'")
+        params.append(date_to)
+        param_idx += 1
+
+    where_sql = " AND ".join(where_clauses)
+    offset = (page - 1) * page_size
+
+    # Main query
+    query = f"""
+        SELECT
+            pa.id,
+            pa.entity_type,
+            pa.entity_id,
+            pa.payment_reference,
+            pa.service_request_id,
+            sr.reference AS service_request_reference,
+            pa.anomaly_type::text AS anomaly_type,
+            pa.severity::text AS severity,
+            pa.status::text AS status,
+            pa.title,
+            pa.description,
+            pa.detection_rule,
+            pa.expected_amount,
+            pa.actual_amount,
+            pa.difference_amount,
+            pa.resolution_notes,
+            pa.resolved_at,
+            u.full_name AS resolved_by_name,
+            pa.detected_at,
+            pa.detected_by,
+            pa.updated_at
+        FROM payment_anomalies pa
+        LEFT JOIN service_requests sr ON sr.id = pa.service_request_id
+        LEFT JOIN users u ON u.id = pa.resolved_by
+        WHERE {where_sql}
+        ORDER BY
+            CASE pa.status
+                WHEN 'open' THEN 1
+                WHEN 'investigating' THEN 2
+                WHEN 'escalated' THEN 3
+                ELSE 4
+            END,
+            CASE pa.severity
+                WHEN 'critical' THEN 1
+                WHEN 'high' THEN 2
+                WHEN 'medium' THEN 3
+                ELSE 4
+            END,
+            pa.detected_at DESC
+        LIMIT ${param_idx} OFFSET ${param_idx + 1}
+    """
+    params.extend([page_size, offset])
+
+    rows = await db.fetch(query, *params)
+
+    # Get total count
+    count_query = f"""
+        SELECT COUNT(*) FROM payment_anomalies pa WHERE {where_sql}
+    """
+    total = await db.fetchval(count_query, *params[:param_idx - 1])
+
+    # Get summary
+    summary_query = """
+        SELECT
+            status::text,
+            COUNT(*) as count
+        FROM payment_anomalies
+        GROUP BY status
+    """
+    summary_rows = await db.fetch(summary_query)
+    summary = AnomalySummary()
+    for row in summary_rows:
+        setattr(summary, row["status"], row["count"])
+        summary.total += row["count"]
+
+    # Build response
+    anomalies = []
+    for row in rows:
+        anomalies.append(AnomalyResponse(
+            id=str(row["id"]),
+            entity_type=row["entity_type"],
+            entity_id=str(row["entity_id"]),
+            payment_reference=row["payment_reference"],
+            service_request_id=str(row["service_request_id"]) if row["service_request_id"] else None,
+            service_request_reference=row["service_request_reference"],
+            anomaly_type=row["anomaly_type"],
+            severity=row["severity"],
+            status=row["status"],
+            title=row["title"],
+            description=row["description"],
+            detection_rule=row["detection_rule"],
+            expected_amount=float(row["expected_amount"]) if row["expected_amount"] else None,
+            actual_amount=float(row["actual_amount"]) if row["actual_amount"] else None,
+            difference_amount=float(row["difference_amount"]) if row["difference_amount"] else None,
+            resolution_notes=row["resolution_notes"],
+            resolved_at=row["resolved_at"].isoformat() if row["resolved_at"] else None,
+            resolved_by_name=row["resolved_by_name"],
+            detected_at=row["detected_at"].isoformat(),
+            detected_by=row["detected_by"],
+            updated_at=row["updated_at"].isoformat(),
+        ))
+
+    return AnomalyListResponse(
+        anomalies=anomalies,
+        total=total or 0,
+        page=page,
+        page_size=page_size,
+        summary=summary,
+    )
+
+
+@router.get(
+    "/treasury/anomalies/{anomaly_id}",
+    response_model=AnomalyResponse,
+    summary="Get anomaly details",
+    description="""
+    Get detailed information for a specific anomaly.
+
+    **Permissions:**
+    - Requires 'treasury.anomalies.view' permission
+    """
+)
+async def get_anomaly(
+    anomaly_id: str = Path(..., description="Anomaly ID"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.anomalies.view"))
+):
+    """Get anomaly by ID."""
+    row = await db.fetchrow("""
+        SELECT
+            pa.id,
+            pa.entity_type,
+            pa.entity_id,
+            pa.payment_reference,
+            pa.service_request_id,
+            sr.reference AS service_request_reference,
+            pa.anomaly_type::text AS anomaly_type,
+            pa.severity::text AS severity,
+            pa.status::text AS status,
+            pa.title,
+            pa.description,
+            pa.detection_rule,
+            pa.expected_amount,
+            pa.actual_amount,
+            pa.difference_amount,
+            pa.resolution_notes,
+            pa.resolved_at,
+            u.full_name AS resolved_by_name,
+            pa.detected_at,
+            pa.detected_by,
+            pa.updated_at
+        FROM payment_anomalies pa
+        LEFT JOIN service_requests sr ON sr.id = pa.service_request_id
+        LEFT JOIN users u ON u.id = pa.resolved_by
+        WHERE pa.id = $1::uuid
+    """, anomaly_id)
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Anomaly not found")
+
+    return AnomalyResponse(
+        id=str(row["id"]),
+        entity_type=row["entity_type"],
+        entity_id=str(row["entity_id"]),
+        payment_reference=row["payment_reference"],
+        service_request_id=str(row["service_request_id"]) if row["service_request_id"] else None,
+        service_request_reference=row["service_request_reference"],
+        anomaly_type=row["anomaly_type"],
+        severity=row["severity"],
+        status=row["status"],
+        title=row["title"],
+        description=row["description"],
+        detection_rule=row["detection_rule"],
+        expected_amount=float(row["expected_amount"]) if row["expected_amount"] else None,
+        actual_amount=float(row["actual_amount"]) if row["actual_amount"] else None,
+        difference_amount=float(row["difference_amount"]) if row["difference_amount"] else None,
+        resolution_notes=row["resolution_notes"],
+        resolved_at=row["resolved_at"].isoformat() if row["resolved_at"] else None,
+        resolved_by_name=row["resolved_by_name"],
+        detected_at=row["detected_at"].isoformat(),
+        detected_by=row["detected_by"],
+        updated_at=row["updated_at"].isoformat(),
+    )
+
+
+@router.post(
+    "/treasury/anomalies",
+    response_model=AnomalyResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create manual anomaly",
+    description="""
+    Create a new anomaly manually (flagged by agent).
+
+    **Permissions:**
+    - Requires 'treasury.anomalies.create' permission
+    """
+)
+async def create_anomaly(
+    body: AnomalyCreate,
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.anomalies.create"))
+):
+    """Create manual anomaly."""
+    # Get payment reference if entity is service_payment
+    payment_reference = None
+    service_request_id = None
+    if body.entity_type == "service_payment":
+        payment = await db.fetchrow(
+            "SELECT payment_reference, service_request_id FROM service_payments WHERE id = $1::uuid",
+            body.entity_id
+        )
+        if payment:
+            payment_reference = payment["payment_reference"]
+            service_request_id = payment["service_request_id"]
+
+    # Insert anomaly
+    row = await db.fetchrow("""
+        INSERT INTO payment_anomalies (
+            entity_type, entity_id, payment_reference, service_request_id,
+            anomaly_type, severity, title, description,
+            expected_amount, actual_amount, detected_by
+        ) VALUES (
+            $1, $2::uuid, $3, $4,
+            $5::anomaly_type_enum, $6::anomaly_severity_enum, $7, $8,
+            $9, $10, $11
+        )
+        RETURNING id, detected_at, updated_at
+    """,
+        body.entity_type,
+        body.entity_id,
+        payment_reference,
+        service_request_id,
+        body.anomaly_type,
+        body.severity,
+        body.title,
+        body.description,
+        body.expected_amount,
+        body.actual_amount,
+        str(current_user["id"]),
+    )
+
+    # Record action
+    await db.execute("""
+        INSERT INTO anomaly_actions (anomaly_id, action, to_status, comment, performed_by)
+        VALUES ($1, 'status_change', 'open', 'Anomalia creada manualmente', $2::uuid)
+    """, row["id"], current_user["id"])
+
+    return AnomalyResponse(
+        id=str(row["id"]),
+        entity_type=body.entity_type,
+        entity_id=body.entity_id,
+        payment_reference=payment_reference,
+        service_request_id=str(service_request_id) if service_request_id else None,
+        service_request_reference=None,
+        anomaly_type=body.anomaly_type,
+        severity=body.severity,
+        status="open",
+        title=body.title,
+        description=body.description,
+        detection_rule=None,
+        expected_amount=body.expected_amount,
+        actual_amount=body.actual_amount,
+        difference_amount=abs(body.expected_amount - body.actual_amount) if body.expected_amount and body.actual_amount else None,
+        resolution_notes=None,
+        resolved_at=None,
+        resolved_by_name=None,
+        detected_at=row["detected_at"].isoformat(),
+        detected_by=str(current_user["id"]),
+        updated_at=row["updated_at"].isoformat(),
+    )
+
+
+@router.patch(
+    "/treasury/anomalies/{anomaly_id}/status",
+    response_model=AnomalyResponse,
+    summary="Update anomaly status",
+    description="""
+    Update the status of an anomaly.
+
+    **Valid transitions:**
+    - open → investigating, resolved, false_positive, escalated
+    - investigating → resolved, false_positive, escalated
+    - escalated → resolved, false_positive
+
+    **Permissions:**
+    - Requires 'treasury.anomalies.update' permission
+    """
+)
+async def update_anomaly_status(
+    anomaly_id: str = Path(..., description="Anomaly ID"),
+    body: AnomalyStatusUpdate = Body(...),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.anomalies.update"))
+):
+    """Update anomaly status."""
+    # Get current anomaly
+    current = await db.fetchrow(
+        "SELECT status::text as status FROM payment_anomalies WHERE id = $1::uuid",
+        anomaly_id
+    )
+    if not current:
+        raise HTTPException(status_code=404, detail="Anomaly not found")
+
+    from_status = current["status"]
+    to_status = body.status
+
+    # Validate transition
+    valid_transitions = {
+        "open": ["investigating", "resolved", "false_positive", "escalated"],
+        "investigating": ["resolved", "false_positive", "escalated", "open"],
+        "escalated": ["resolved", "false_positive", "investigating"],
+        "resolved": [],
+        "false_positive": [],
+    }
+    if to_status not in valid_transitions.get(from_status, []):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid transition from {from_status} to {to_status}"
+        )
+
+    # Update anomaly
+    update_fields = ["status = $2::anomaly_status_enum", "updated_at = NOW()"]
+    params = [anomaly_id, to_status]
+    param_idx = 3
+
+    if to_status in ("resolved", "false_positive"):
+        if not body.resolution_notes:
+            raise HTTPException(
+                status_code=400,
+                detail="Resolution notes required when resolving anomaly"
+            )
+        update_fields.append(f"resolved_at = NOW()")
+        update_fields.append(f"resolved_by = ${param_idx}::uuid")
+        params.append(current_user["id"])
+        param_idx += 1
+        update_fields.append(f"resolution_notes = ${param_idx}")
+        params.append(body.resolution_notes)
+        param_idx += 1
+
+    await db.execute(f"""
+        UPDATE payment_anomalies
+        SET {', '.join(update_fields)}
+        WHERE id = $1::uuid
+    """, *params)
+
+    # Record action
+    await db.execute("""
+        INSERT INTO anomaly_actions (anomaly_id, action, from_status, to_status, comment, performed_by)
+        VALUES ($1::uuid, 'status_change', $2::anomaly_status_enum, $3::anomaly_status_enum, $4, $5::uuid)
+    """, anomaly_id, from_status, to_status, body.comment, current_user["id"])
+
+    # Return updated anomaly
+    return await get_anomaly(anomaly_id, db, current_user, None)
+
+
+@router.get(
+    "/treasury/anomalies/{anomaly_id}/actions",
+    response_model=List[AnomalyActionResponse],
+    summary="Get anomaly action history",
+    description="""
+    Get the history of actions performed on an anomaly.
+
+    **Permissions:**
+    - Requires 'treasury.anomalies.view' permission
+    """
+)
+async def get_anomaly_actions(
+    anomaly_id: str = Path(..., description="Anomaly ID"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.anomalies.view"))
+):
+    """Get anomaly action history."""
+    rows = await db.fetch("""
+        SELECT
+            aa.id,
+            aa.anomaly_id,
+            aa.action,
+            aa.from_status::text AS from_status,
+            aa.to_status::text AS to_status,
+            aa.comment,
+            u.full_name AS performed_by_name,
+            aa.performed_at
+        FROM anomaly_actions aa
+        LEFT JOIN users u ON u.id = aa.performed_by
+        WHERE aa.anomaly_id = $1::uuid
+        ORDER BY aa.performed_at DESC
+    """, anomaly_id)
+
+    return [
+        AnomalyActionResponse(
+            id=str(row["id"]),
+            anomaly_id=str(row["anomaly_id"]),
+            action=row["action"],
+            from_status=row["from_status"],
+            to_status=row["to_status"],
+            comment=row["comment"],
+            performed_by_name=row["performed_by_name"],
+            performed_at=row["performed_at"].isoformat(),
+        )
+        for row in rows
+    ]
+
+
+@router.post(
+    "/treasury/anomalies/{anomaly_id}/comment",
+    response_model=AnomalyActionResponse,
+    summary="Add comment to anomaly",
+    description="""
+    Add a comment to an anomaly without changing its status.
+
+    **Permissions:**
+    - Requires 'treasury.anomalies.update' permission
+    """
+)
+async def add_anomaly_comment(
+    anomaly_id: str = Path(..., description="Anomaly ID"),
+    body: Dict[str, str] = Body(..., example={"comment": "Comment text"}),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.anomalies.update"))
+):
+    """Add comment to anomaly."""
+    comment = body.get("comment")
+    if not comment:
+        raise HTTPException(status_code=400, detail="Comment is required")
+
+    # Verify anomaly exists
+    exists = await db.fetchval(
+        "SELECT 1 FROM payment_anomalies WHERE id = $1::uuid",
+        anomaly_id
+    )
+    if not exists:
+        raise HTTPException(status_code=404, detail="Anomaly not found")
+
+    # Insert comment action
+    row = await db.fetchrow("""
+        INSERT INTO anomaly_actions (anomaly_id, action, comment, performed_by)
+        VALUES ($1::uuid, 'comment', $2, $3::uuid)
+        RETURNING id, performed_at
+    """, anomaly_id, comment, current_user["id"])
+
+    return AnomalyActionResponse(
+        id=str(row["id"]),
+        anomaly_id=anomaly_id,
+        action="comment",
+        from_status=None,
+        to_status=None,
+        comment=comment,
+        performed_by_name=current_user.get("full_name"),
+        performed_at=row["performed_at"].isoformat(),
+    )
+
+
+class AnomalyDetectionRequest(BaseModel):
+    """Request to run anomaly detection."""
+    detection_types: Optional[List[str]] = Field(
+        None,
+        description="Specific detection types to run. If null, runs all.",
+        example=["duplicate_payment", "amount_mismatch"]
+    )
+
+
+class AnomalyDetectionResponse(BaseModel):
+    """Response from anomaly detection run."""
+    detected_at: str
+    anomalies_found: int
+    by_type: Dict[str, Any]
+
+
+@router.post(
+    "/treasury/anomalies/detect",
+    response_model=AnomalyDetectionResponse,
+    summary="Run anomaly detection",
+    description="""
+    Trigger automatic anomaly detection algorithms.
+
+    **Detection types:**
+    - duplicate_payment: Same user, amount, service within 24h
+    - amount_mismatch: >1% difference between payment and bank transaction
+    - orphan_transaction: Bank transactions without matching payments
+    - late_validation: Payments exceeding 24h SLA threshold
+    - suspicious_pattern: Users with 5+ payments in 24 hours
+
+    **Permissions:**
+    - Requires 'treasury.anomalies.create' permission
+    """
+)
+async def run_anomaly_detection(
+    body: Optional[AnomalyDetectionRequest] = Body(None),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.anomalies.create"))
+):
+    """Run automatic anomaly detection."""
+    from app.modules.service_requests.services.treasury_anomaly_service import treasury_anomaly_service
+
+    detection_types = body.detection_types if body else None
+
+    try:
+        results = await treasury_anomaly_service.run_detection(
+            db=db,
+            detection_types=detection_types
+        )
+
+        return AnomalyDetectionResponse(
+            detected_at=results["detected_at"],
+            anomalies_found=results["anomalies_found"],
+            by_type=results["by_type"]
+        )
+    except Exception as e:
+        logger.error(f"Anomaly detection failed: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Anomaly detection failed: {str(e)}"
+        )
+
+
+# ============================================================================
+# TREASURY EXPORTS (Phase 2B)
+# ============================================================================
+
+class ExportType(str, Enum):
+    """Export type enum matching DB."""
+    SAGE_X3 = "sage_x3"
+    MINISTRY_REPORT = "ministry_report"
+    BANK_CENTRAL = "bank_central"
+    AUDIT_REPORT = "audit_report"
+    RECONCILIATION = "reconciliation"
+    CUSTOM = "custom"
+
+
+class ExportFormat(str, Enum):
+    """Export format enum."""
+    CSV = "csv"
+    XLSX = "xlsx"
+    PDF = "pdf"
+    XML = "xml"
+    JSON = "json"
+
+
+class ExportStatus(str, Enum):
+    """Export status enum matching DB."""
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class ExportFilters(BaseModel):
+    """Filters for export generation."""
+    ministry_id: Optional[str] = None
+    payment_method: Optional[str] = None
+    workflow_code: Optional[str] = None
+    status: Optional[str] = None
+
+
+class ExportCreateRequest(BaseModel):
+    """Request to create a new export."""
+    export_type: ExportType
+    export_format: ExportFormat = ExportFormat.CSV
+    period_start: str  # YYYY-MM-DD
+    period_end: str  # YYYY-MM-DD
+    filters: Optional[ExportFilters] = None
+    template_code: Optional[str] = None
+
+    @field_validator('period_start', 'period_end')
+    @classmethod
+    def validate_date_format(cls, v):
+        try:
+            datetime.strptime(v, '%Y-%m-%d')
+        except ValueError:
+            raise ValueError('Date must be in YYYY-MM-DD format')
+        return v
+
+
+class ExportResponse(BaseModel):
+    """Export response model."""
+    id: str
+    export_type: str
+    export_format: str
+    period_start: str
+    period_end: str
+    filters: Optional[Dict[str, Any]] = None
+    status: str
+    progress_percentage: int = 0
+    total_records: Optional[int] = None
+    total_amount: Optional[float] = None
+    currency: str = "XAF"
+    file_name: Optional[str] = None
+    file_size_bytes: Optional[int] = None
+    error_message: Optional[str] = None
+    requested_by_name: Optional[str] = None
+    requested_at: str
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    download_count: int = 0
+
+
+class ExportListResponse(BaseModel):
+    """Response for export list."""
+    exports: List[ExportResponse]
+    total: int
+
+
+class ExportTemplateResponse(BaseModel):
+    """Export template response."""
+    id: int
+    code: str
+    name: str
+    export_type: str
+    export_format: str
+    description: Optional[str] = None
+    is_active: bool = True
+
+
+@router.get(
+    "/treasury/exports",
+    response_model=ExportListResponse,
+    summary="List treasury exports",
+    description="""
+    List export jobs with filters.
+
+    **Permissions:**
+    - Requires 'treasury.exports.view' permission
+    """
+)
+async def list_treasury_exports(
+    status: Optional[ExportStatus] = Query(None, description="Filter by status"),
+    export_type: Optional[ExportType] = Query(None, description="Filter by type"),
+    period_start: Optional[str] = Query(None, description="Filter by period start (YYYY-MM-DD)"),
+    period_end: Optional[str] = Query(None, description="Filter by period end (YYYY-MM-DD)"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.exports.view"))
+):
+    """List treasury exports with filters."""
+    conditions = []
+    params = []
+    param_count = 0
+
+    if status:
+        param_count += 1
+        conditions.append(f"te.status = ${param_count}::export_status_enum")
+        params.append(status.value)
+
+    if export_type:
+        param_count += 1
+        conditions.append(f"te.export_type = ${param_count}::export_type_enum")
+        params.append(export_type.value)
+
+    if period_start:
+        param_count += 1
+        conditions.append(f"te.period_start >= ${param_count}::date")
+        params.append(period_start)
+
+    if period_end:
+        param_count += 1
+        conditions.append(f"te.period_end <= ${param_count}::date")
+        params.append(period_end)
+
+    where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
+
+    # Count total
+    count_query = f"""
+        SELECT COUNT(*) FROM treasury_exports te
+        {where_clause}
+    """
+    total = await db.fetchval(count_query, *params)
+
+    # Fetch exports with pagination
+    offset = (page - 1) * page_size
+    param_count += 1
+    limit_param = param_count
+    param_count += 1
+    offset_param = param_count
+
+    query = f"""
+        SELECT
+            te.id,
+            te.export_type::text,
+            te.export_format,
+            te.period_start,
+            te.period_end,
+            te.filters,
+            te.status::text,
+            te.progress_percentage,
+            te.total_records,
+            te.total_amount,
+            te.currency,
+            te.file_name,
+            te.file_size_bytes,
+            te.error_message,
+            te.requested_at,
+            te.started_at,
+            te.completed_at,
+            te.download_count,
+            u.full_name as requested_by_name
+        FROM treasury_exports te
+        LEFT JOIN users u ON u.id = te.requested_by
+        {where_clause}
+        ORDER BY te.requested_at DESC
+        LIMIT ${limit_param} OFFSET ${offset_param}
+    """
+    params.extend([page_size, offset])
+    rows = await db.fetch(query, *params)
+
+    exports = []
+    for row in rows:
+        exports.append(ExportResponse(
+            id=str(row["id"]),
+            export_type=row["export_type"],
+            export_format=row["export_format"],
+            period_start=row["period_start"].isoformat() if row["period_start"] else None,
+            period_end=row["period_end"].isoformat() if row["period_end"] else None,
+            filters=row["filters"],
+            status=row["status"],
+            progress_percentage=row["progress_percentage"] or 0,
+            total_records=row["total_records"],
+            total_amount=float(row["total_amount"]) if row["total_amount"] else None,
+            currency=row["currency"] or "XAF",
+            file_name=row["file_name"],
+            file_size_bytes=row["file_size_bytes"],
+            error_message=row["error_message"],
+            requested_by_name=row["requested_by_name"],
+            requested_at=row["requested_at"].isoformat() if row["requested_at"] else None,
+            started_at=row["started_at"].isoformat() if row["started_at"] else None,
+            completed_at=row["completed_at"].isoformat() if row["completed_at"] else None,
+            download_count=row["download_count"] or 0,
+        ))
+
+    return ExportListResponse(exports=exports, total=total or 0)
+
+
+@router.get(
+    "/treasury/exports/templates",
+    response_model=List[ExportTemplateResponse],
+    summary="List export templates",
+    description="""
+    List available export templates.
+
+    **Permissions:**
+    - Requires 'treasury.exports.view' permission
+    """
+)
+async def list_export_templates(
+    export_type: Optional[ExportType] = Query(None, description="Filter by type"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.exports.view"))
+):
+    """List available export templates."""
+    if export_type:
+        rows = await db.fetch("""
+            SELECT id, code, name_es, export_type::text, export_format, description_es, is_active
+            FROM export_templates
+            WHERE is_active = true AND export_type = $1::export_type_enum
+            ORDER BY name_es
+        """, export_type.value)
+    else:
+        rows = await db.fetch("""
+            SELECT id, code, name_es, export_type::text, export_format, description_es, is_active
+            FROM export_templates
+            WHERE is_active = true
+            ORDER BY export_type, name_es
+        """)
+
+    return [
+        ExportTemplateResponse(
+            id=row["id"],
+            code=row["code"],
+            name=row["name_es"],
+            export_type=row["export_type"],
+            export_format=row["export_format"],
+            description=row["description_es"],
+            is_active=row["is_active"],
+        )
+        for row in rows
+    ]
+
+
+@router.post(
+    "/treasury/exports/generate",
+    response_model=ExportResponse,
+    status_code=201,
+    summary="Generate new export",
+    description="""
+    Request generation of a new export. The export is generated synchronously
+    and the file is available for download once the response is returned.
+
+    **Permissions:**
+    - Requires 'treasury.exports.create' permission
+
+    **Export Types:**
+    - sage_x3: SAGE X3 accounting integration (CSV format)
+    - ministry_report: Ministry monthly report (PDF/XLSX)
+    - bank_central: BEAC format
+    - audit_report: Internal audit report
+    - reconciliation: Bank reconciliation export
+    - custom: Custom export
+
+    **Formats:**
+    - csv: Comma-separated values (SAGE X3 compatible)
+    - xlsx: Microsoft Excel
+    - pdf: PDF report (ministry_report only)
+    - json: JSON format
+    """
+)
+async def generate_treasury_export(
+    request: ExportCreateRequest,
+    background_tasks: BackgroundTasks,
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.exports.create"))
+):
+    """Generate a new treasury export."""
+    from ..services.treasury_export_service import treasury_export_service
+
+    # Validate period
+    start_date = datetime.strptime(request.period_start, '%Y-%m-%d').date()
+    end_date = datetime.strptime(request.period_end, '%Y-%m-%d').date()
+
+    if end_date < start_date:
+        raise HTTPException(
+            status_code=400,
+            detail="period_end must be >= period_start"
+        )
+
+    # Validate format for export type
+    if request.export_type.value == "ministry_report" and request.export_format.value not in ["pdf", "xlsx"]:
+        request.export_format = ExportFormat.PDF
+
+    # Generate filename using DB function
+    file_name = await db.fetchval("""
+        SELECT generate_export_filename($1::export_type_enum, $2::date, $3::date, $4)
+    """, request.export_type.value, start_date, end_date, request.export_format.value)
+
+    # Insert export request
+    filters_json = request.filters.model_dump() if request.filters else None
+
+    row = await db.fetchrow("""
+        INSERT INTO treasury_exports (
+            export_type, export_format, period_start, period_end,
+            filters, status, requested_by, file_name
+        )
+        VALUES (
+            $1::export_type_enum, $2, $3::date, $4::date,
+            $5::jsonb, 'pending'::export_status_enum, $6::uuid, $7
+        )
+        RETURNING
+            id, export_type::text, export_format, period_start, period_end,
+            filters, status::text, progress_percentage, requested_at
+    """, request.export_type.value, request.export_format.value,
+        start_date, end_date, json.dumps(filters_json) if filters_json else None,
+        current_user["id"], file_name)
+
+    export_id = str(row["id"])
+
+    # Generate export file synchronously (could be moved to background task for large exports)
+    try:
+        result = await treasury_export_service.generate_export(
+            db=db,
+            export_id=export_id,
+            export_type=request.export_type.value,
+            export_format=request.export_format.value,
+            period_start=start_date,
+            period_end=end_date,
+            filters=filters_json,
+            requested_by=current_user["id"],
+        )
+
+        # Fetch updated record
+        updated_row = await db.fetchrow("""
+            SELECT
+                id, export_type::text, export_format, period_start, period_end,
+                filters, status::text, progress_percentage, total_records,
+                total_amount, currency, file_name, file_size_bytes,
+                requested_at, completed_at
+            FROM treasury_exports
+            WHERE id = $1::uuid
+        """, export_id)
+
+        return ExportResponse(
+            id=str(updated_row["id"]),
+            export_type=updated_row["export_type"],
+            export_format=updated_row["export_format"],
+            period_start=updated_row["period_start"].isoformat(),
+            period_end=updated_row["period_end"].isoformat(),
+            filters=updated_row["filters"],
+            status=updated_row["status"],
+            progress_percentage=updated_row["progress_percentage"] or 100,
+            total_records=updated_row["total_records"],
+            total_amount=float(updated_row["total_amount"]) if updated_row["total_amount"] else None,
+            currency=updated_row["currency"] or "XAF",
+            file_name=updated_row["file_name"],
+            file_size_bytes=updated_row["file_size_bytes"],
+            requested_by_name=current_user.get("full_name"),
+            requested_at=updated_row["requested_at"].isoformat(),
+            completed_at=updated_row["completed_at"].isoformat() if updated_row["completed_at"] else None,
+        )
+
+    except Exception as e:
+        # Return with error status
+        error_row = await db.fetchrow("""
+            SELECT
+                id, export_type::text, export_format, period_start, period_end,
+                filters, status::text, progress_percentage, error_message,
+                requested_at
+            FROM treasury_exports
+            WHERE id = $1::uuid
+        """, export_id)
+
+        return ExportResponse(
+            id=str(error_row["id"]),
+            export_type=error_row["export_type"],
+            export_format=error_row["export_format"],
+            period_start=error_row["period_start"].isoformat(),
+            period_end=error_row["period_end"].isoformat(),
+            filters=error_row["filters"],
+            status=error_row["status"],
+            progress_percentage=error_row["progress_percentage"] or 0,
+            error_message=error_row["error_message"],
+            requested_by_name=current_user.get("full_name"),
+            requested_at=error_row["requested_at"].isoformat(),
+        )
+
+
+@router.get(
+    "/treasury/exports/{export_id}",
+    response_model=ExportResponse,
+    summary="Get export details",
+    description="""
+    Get details of a specific export.
+
+    **Permissions:**
+    - Requires 'treasury.exports.view' permission
+    """
+)
+async def get_treasury_export(
+    export_id: str = Path(..., description="Export ID"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.exports.view"))
+):
+    """Get treasury export details."""
+    row = await db.fetchrow("""
+        SELECT
+            te.id,
+            te.export_type::text,
+            te.export_format,
+            te.period_start,
+            te.period_end,
+            te.filters,
+            te.status::text,
+            te.progress_percentage,
+            te.total_records,
+            te.total_amount,
+            te.currency,
+            te.file_name,
+            te.file_size_bytes,
+            te.error_message,
+            te.requested_at,
+            te.started_at,
+            te.completed_at,
+            te.download_count,
+            u.full_name as requested_by_name
+        FROM treasury_exports te
+        LEFT JOIN users u ON u.id = te.requested_by
+        WHERE te.id = $1::uuid
+    """, export_id)
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Export not found")
+
+    return ExportResponse(
+        id=str(row["id"]),
+        export_type=row["export_type"],
+        export_format=row["export_format"],
+        period_start=row["period_start"].isoformat() if row["period_start"] else None,
+        period_end=row["period_end"].isoformat() if row["period_end"] else None,
+        filters=row["filters"],
+        status=row["status"],
+        progress_percentage=row["progress_percentage"] or 0,
+        total_records=row["total_records"],
+        total_amount=float(row["total_amount"]) if row["total_amount"] else None,
+        currency=row["currency"] or "XAF",
+        file_name=row["file_name"],
+        file_size_bytes=row["file_size_bytes"],
+        error_message=row["error_message"],
+        requested_by_name=row["requested_by_name"],
+        requested_at=row["requested_at"].isoformat() if row["requested_at"] else None,
+        started_at=row["started_at"].isoformat() if row["started_at"] else None,
+        completed_at=row["completed_at"].isoformat() if row["completed_at"] else None,
+        download_count=row["download_count"] or 0,
+    )
+
+
+@router.get(
+    "/treasury/exports/{export_id}/download",
+    summary="Download export file",
+    description="""
+    Download the generated export file.
+
+    **Permissions:**
+    - Requires 'treasury.exports.download' permission
+
+    Returns the file as a streaming response.
+    """
+)
+async def download_treasury_export(
+    export_id: str = Path(..., description="Export ID"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.exports.download"))
+):
+    """Download treasury export file."""
+    # Get export details
+    row = await db.fetchrow("""
+        SELECT
+            id, status::text, file_path, file_name, file_mime_type, export_format
+        FROM treasury_exports
+        WHERE id = $1::uuid
+    """, export_id)
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Export not found")
+
+    if row["status"] != "completed":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Export is not ready for download. Status: {row['status']}"
+        )
+
+    if not row["file_path"]:
+        raise HTTPException(
+            status_code=404,
+            detail="Export file not found"
+        )
+
+    # Update download count
+    await db.execute("""
+        UPDATE treasury_exports
+        SET download_count = download_count + 1,
+            downloaded_at = NOW(),
+            downloaded_by = $2::uuid
+        WHERE id = $1::uuid
+    """, export_id, current_user["id"])
+
+    # Determine MIME type
+    mime_types = {
+        "csv": "text/csv",
+        "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "pdf": "application/pdf",
+        "xml": "application/xml",
+        "json": "application/json",
+    }
+    content_type = row["file_mime_type"] or mime_types.get(row["export_format"], "application/octet-stream")
+
+    # Get signed download URL from Firebase Storage
+    file_path = row["file_path"]
+    download_url = file_path  # Default to path
+
+    if file_path and file_path.startswith("treasury-exports/"):
+        try:
+            from app.modules.service_requests.services.treasury_export_service import treasury_export_service
+            download_url = await treasury_export_service.get_download_url(
+                file_path=file_path,
+                expiration_hours=24
+            )
+        except Exception as e:
+            logger.error(f"Failed to get download URL: {e}")
+            # Fall back to returning the path
+            download_url = file_path
+
+    return {
+        "file_name": row["file_name"] or f"export_{export_id}.{row['export_format']}",
+        "download_url": download_url,
+        "content_type": content_type,
+        "expires_in_hours": 24
+    }
+
+
+# ═══════════════════════════════════════════════════════════════
+# TREASURY ANALYTICS (Phase 5)
+# Advanced statistical analysis with pandas/scipy/sklearn
+# ═══════════════════════════════════════════════════════════════
+
+from app.modules.service_requests.models.analytics_models import (
+    StatisticsResponse,
+    CorrelationMatrix,
+    TrendsResponse,
+    AnomaliesResponse as AnalyticsAnomaliesResponse,
+    PredictionsResponse,
+    AnalyticsReport,
+)
+from app.modules.service_requests.services.treasury_analytics import treasury_analytics_service
+
+
+@router.get(
+    "/treasury/analytics/statistics",
+    response_model=StatisticsResponse,
+    summary="Get Descriptive Statistics",
+    description="""
+    Get descriptive statistics for treasury metrics.
+
+    **Metrics analyzed:**
+    - total_amount: Revenue statistics
+    - transaction_count: Volume statistics
+    - avg_processing_minutes: Processing time statistics
+
+    **Returns:**
+    - count, mean, median, std, min, max, q1, q3, iqr
+
+    **Permissions:**
+    - Requires 'treasury.stats.view' permission
+    """
+)
+async def get_analytics_statistics(
+    period: str = Query("month", regex="^(day|week|month|year)$"),
+    date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.stats.view"))
+):
+    """Get descriptive statistics for treasury data."""
+    return await treasury_analytics_service.get_statistics(
+        db=db,
+        period=period,
+        date_from=date_from,
+        date_to=date_to,
+    )
+
+
+@router.get(
+    "/treasury/analytics/correlations",
+    response_model=CorrelationMatrix,
+    summary="Get Correlation Matrix",
+    description="""
+    Get Pearson correlations between treasury metrics.
+
+    **Pairs analyzed:**
+    - total_amount ↔ transaction_count
+    - total_amount ↔ avg_processing_minutes
+    - transaction_count ↔ avg_processing_minutes
+
+    **Returns:**
+    - Correlation coefficient (-1 to 1)
+    - P-value (statistical significance)
+    - Strength interpretation (weak/moderate/strong)
+
+    **Permissions:**
+    - Requires 'treasury.stats.view' permission
+    """
+)
+async def get_analytics_correlations(
+    period: str = Query("month", regex="^(day|week|month|year)$"),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.stats.view"))
+):
+    """Get correlation analysis for treasury data."""
+    return await treasury_analytics_service.get_correlations(
+        db=db,
+        period=period,
+        date_from=date_from,
+        date_to=date_to,
+    )
+
+
+@router.get(
+    "/treasury/analytics/trends",
+    response_model=TrendsResponse,
+    summary="Get Trend Analysis",
+    description="""
+    Get trend analysis using linear regression.
+
+    **Metrics analyzed:**
+    - total_amount: Revenue trend
+    - transaction_count: Volume trend
+
+    **Returns:**
+    - Slope and intercept of trend line
+    - R-squared (model fit quality)
+    - Direction (declining/stable/growing)
+    - 7-day and 30-day projections
+
+    **Permissions:**
+    - Requires 'treasury.stats.view' permission
+    """
+)
+async def get_analytics_trends(
+    period: str = Query("month", regex="^(day|week|month|year)$"),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.stats.view"))
+):
+    """Get trend analysis for treasury data."""
+    return await treasury_analytics_service.get_trends(
+        db=db,
+        period=period,
+        date_from=date_from,
+        date_to=date_to,
+    )
+
+
+@router.get(
+    "/treasury/analytics/anomalies",
+    response_model=AnalyticsAnomaliesResponse,
+    summary="Get Statistical Anomalies",
+    description="""
+    Detect statistical anomalies using Z-score method.
+
+    **Detection method:**
+    - Z-score > 2 or < -2 indicates anomaly
+    - Applied to: total_amount, transaction_count
+
+    **Returns:**
+    - List of anomaly points with dates
+    - Z-score and deviation percentage
+    - Anomaly type (high/low)
+
+    **Permissions:**
+    - Requires 'treasury.stats.view' permission
+    """
+)
+async def get_analytics_anomalies(
+    period: str = Query("month", regex="^(day|week|month|year)$"),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.stats.view"))
+):
+    """Get statistical anomalies in treasury data."""
+    return await treasury_analytics_service.get_anomalies(
+        db=db,
+        period=period,
+        date_from=date_from,
+        date_to=date_to,
+    )
+
+
+@router.get(
+    "/treasury/analytics/predictions",
+    response_model=PredictionsResponse,
+    summary="Get Revenue Predictions",
+    description="""
+    Get revenue predictions using linear regression.
+
+    **Model:**
+    - Linear regression on historical daily revenue
+    - Confidence intervals at 95% level
+
+    **Parameters:**
+    - horizon_days: Number of days to predict (1-90)
+
+    **Returns:**
+    - Predicted values with confidence intervals
+    - Model R-squared (quality indicator)
+    - Warning if R² < 0.7
+
+    **Permissions:**
+    - Requires 'treasury.stats.view' permission
+    """
+)
+async def get_analytics_predictions(
+    period: str = Query("month", regex="^(day|week|month|year)$"),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
+    horizon_days: int = Query(7, ge=1, le=90, description="Days to predict"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.stats.view"))
+):
+    """Get revenue predictions."""
+    return await treasury_analytics_service.get_predictions(
+        db=db,
+        period=period,
+        date_from=date_from,
+        date_to=date_to,
+        horizon_days=horizon_days,
+    )
+
+
+@router.get(
+    "/treasury/analytics/report",
+    response_model=AnalyticsReport,
+    summary="Get Complete Analytics Report",
+    description="""
+    Get comprehensive analytics report with all analyses.
+
+    **Includes:**
+    - Descriptive statistics
+    - Correlation analysis
+    - Trend analysis with projections
+    - Anomaly detection
+    - Revenue predictions
+    - Automated findings and recommendations
+
+    **Fixed Variables Analyzed:**
+    - total_amount (revenue)
+    - transaction_count (volume)
+    - avg_processing_minutes (performance)
+    - sla_respect_rate (quality)
+
+    **Report sections:**
+    - Executive summary with health score
+    - Detailed analysis per metric
+    - Findings with severity levels
+    - Business recommendations
+
+    **Permissions:**
+    - Requires 'treasury.stats.view' permission
+    """
+)
+async def get_analytics_report(
+    period: str = Query("month", regex="^(day|week|month|year)$"),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
+    language: str = Query("es", regex="^(es|fr|en)$", description="Report language"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.stats.view"))
+):
+    """Get complete analytics report."""
+    return await treasury_analytics_service.generate_report(
+        db=db,
+        period=period,
+        date_from=date_from,
+        date_to=date_to,
+        language=language,
+    )
+
+
+@router.get(
+    "/treasury/analytics/explore",
+    summary="Explore Custom Variables",
+    description="""
+    Explore correlations and statistics for custom variable pairs.
+
+    **Use case:**
+    - Ad-hoc investigation
+    - Custom correlation analysis
+    - Detailed metric exploration
+
+    **Available variables:**
+    - total_amount, transaction_count, avg_processing_minutes
+    - success_rate, sla_respect_rate, workload_score
+
+    **Permissions:**
+    - Requires 'treasury.stats.view' permission
+    """
+)
+async def explore_analytics(
+    primary_variable: str = Query(..., description="Primary variable to analyze"),
+    secondary_variable: Optional[str] = Query(None, description="Variable for correlation"),
+    period: str = Query("month", regex="^(day|week|month|year)$"),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.stats.view"))
+):
+    """Explore custom variable analysis."""
+    # Validate variables
+    valid_variables = [
+        "total_amount", "transaction_count", "avg_processing_minutes",
+        "success_count", "failed_count"
+    ]
+
+    if primary_variable not in valid_variables:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid primary_variable. Must be one of: {valid_variables}"
+        )
+
+    if secondary_variable and secondary_variable not in valid_variables:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid secondary_variable. Must be one of: {valid_variables}"
+        )
+
+    # Get data
+    df = await treasury_analytics_service.get_kpi_data(
+        db=db,
+        period=period,
+        date_from=date_from,
+        date_to=date_to,
+    )
+
+    if df.empty:
+        return {
+            "primary_variable": primary_variable,
+            "secondary_variable": secondary_variable,
+            "period": period,
+            "statistics": None,
+            "trend": None,
+            "correlation": None,
+            "anomalies": [],
+            "message": "No data available for the selected period"
+        }
+
+    # Calculate statistics for primary variable
+    stats = treasury_analytics_service.calculate_descriptive_stats(df, [primary_variable])
+
+    # Calculate trend for primary variable
+    trend = treasury_analytics_service.analyze_trend(df, "report_date", primary_variable)
+
+    # Calculate anomalies for primary variable
+    anomalies = treasury_analytics_service.detect_anomalies(
+        df, "report_date", primary_variable,
+        treasury_analytics_service.THRESHOLDS["anomaly"]["z_score"]
+    )
+
+    # Calculate correlation if secondary variable provided
+    correlation = None
+    if secondary_variable:
+        correlations = treasury_analytics_service.calculate_correlations(
+            df, [primary_variable, secondary_variable]
+        )
+        if correlations:
+            correlation = correlations[0]
+
+    return {
+        "primary_variable": primary_variable,
+        "secondary_variable": secondary_variable,
+        "period": period,
+        "date_from": date_from or (df["report_date"].min().strftime("%Y-%m-%d") if not df.empty else None),
+        "date_to": date_to or (df["report_date"].max().strftime("%Y-%m-%d") if not df.empty else None),
+        "statistics": stats[0].model_dump() if stats else None,
+        "trend": trend.model_dump() if trend else None,
+        "correlation": correlation.model_dump() if correlation else None,
+        "anomalies": [a.model_dump() for a in anomalies],
+        "total_records": len(df)
+    }
