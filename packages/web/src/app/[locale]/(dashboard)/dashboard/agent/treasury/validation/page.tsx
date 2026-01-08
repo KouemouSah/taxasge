@@ -40,10 +40,11 @@ import {
   Eye,
 } from 'lucide-react';
 import { usePendingPayments, usePaymentActions } from '@/modules/treasury/hooks';
-import { PaymentMethodBadge, WorkflowStatusBadge } from '@/modules/treasury/components';
+import { PaymentMethodBadge, WorkflowStatusBadge, SLABadge } from '@/modules/treasury/components';
 import { PaymentValidationDialog } from '@/modules/treasury/components';
 import { PaymentRejectionDialog } from '@/modules/treasury/components';
-import type { PendingPayment } from '@/modules/treasury/types';
+import type { PendingPayment, SLAStatus } from '@/modules/treasury/types';
+import { calculateSLAStatus } from '@/modules/treasury/types';
 
 export default function TreasuryValidationPage() {
   const t = useTranslations('treasury');
@@ -52,6 +53,7 @@ export default function TreasuryValidationPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [methodFilter, setMethodFilter] = useState<string>('all');
+  const [slaFilter, setSlaFilter] = useState<string>('all');
 
   // Dialogs
   const [selectedPayment, setSelectedPayment] = useState<PendingPayment | null>(null);
@@ -79,17 +81,30 @@ export default function TreasuryValidationPage() {
     isUnlocking,
   } = usePaymentActions();
 
-  // Filter payments by search term
+  // Filter payments by search term and SLA status
   const filteredPayments = useMemo(() => {
-    if (!searchTerm) return payments;
+    let filtered = payments;
 
-    const term = searchTerm.toLowerCase();
-    return payments.filter((p: PendingPayment) =>
-      p.paymentReference.toLowerCase().includes(term) ||
-      p.userName?.toLowerCase().includes(term) ||
-      p.serviceRequestId?.toLowerCase().includes(term)
-    );
-  }, [payments, searchTerm]);
+    // Search filter
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter((p: PendingPayment) =>
+        p.paymentReference.toLowerCase().includes(term) ||
+        p.userName?.toLowerCase().includes(term) ||
+        p.serviceRequestId?.toLowerCase().includes(term)
+      );
+    }
+
+    // SLA filter
+    if (slaFilter !== 'all') {
+      filtered = filtered.filter((p: PendingPayment) => {
+        const slaStatus = calculateSLAStatus(p.slaTargetDate, p.workflowStatus);
+        return slaStatus === slaFilter;
+      });
+    }
+
+    return filtered;
+  }, [payments, searchTerm, slaFilter]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-GQ', {
@@ -169,7 +184,7 @@ export default function TreasuryValidationPage() {
           <CardTitle className="text-lg">Filtros</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -203,6 +218,20 @@ export default function TreasuryValidationPage() {
                 <SelectItem value="cash">Efectivo</SelectItem>
                 <SelectItem value="check">Cheque</SelectItem>
                 <SelectItem value="bank_transfer">Transferencia</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* SLA Filter */}
+            <Select value={slaFilter} onValueChange={setSlaFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Estado SLA" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los SLA</SelectItem>
+                <SelectItem value="on_time">En plazo</SelectItem>
+                <SelectItem value="warning">Alerta</SelectItem>
+                <SelectItem value="critical">Critico</SelectItem>
+                <SelectItem value="breached">Vencido</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -245,6 +274,7 @@ export default function TreasuryValidationPage() {
                     <TableHead>Monto</TableHead>
                     <TableHead>Metodo</TableHead>
                     <TableHead>Estado</TableHead>
+                    <TableHead>SLA</TableHead>
                     <TableHead>Fecha</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
@@ -273,6 +303,12 @@ export default function TreasuryValidationPage() {
                       </TableCell>
                       <TableCell>
                         <WorkflowStatusBadge status={payment.workflowStatus} />
+                      </TableCell>
+                      <TableCell>
+                        <SLABadge
+                          slaTargetDate={payment.slaTargetDate}
+                          workflowStatus={payment.workflowStatus}
+                        />
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {formatDate(payment.submittedAt || payment.createdAt)}

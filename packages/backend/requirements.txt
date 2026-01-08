@@ -89,6 +89,12 @@ mypy>=1.7.1
 # PDF Generation
 xhtml2pdf>=0.2.15
 
+# Excel Export Support
+openpyxl>=3.1.2
+
+# XML Export Support
+lxml>=5.1.0
+
 # Documentation
 mkdocs>=1.5.3
 mkdocs-material>=9.4.8

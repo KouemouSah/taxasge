@@ -132,11 +132,11 @@ export default function TreasuryTransactionsPage() {
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleExport}>
             <Download className="mr-2 h-4 w-4" />
-            Exportar
+            {t('transactions.export')}
           </Button>
           <Button onClick={() => refetch()} disabled={isLoading}>
             <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Actualizar
+            {t('common.refresh')}
           </Button>
         </div>
       </div>
@@ -146,7 +146,7 @@ export default function TreasuryTransactionsPage() {
         <Card className="border-red-200 bg-red-50">
           <CardContent className="flex items-center gap-3 py-4">
             <AlertCircle className="h-5 w-5 text-red-500" />
-            <p className="text-red-700">Error al cargar el historial</p>
+            <p className="text-red-700">{t('transactions.loadError')}</p>
           </CardContent>
         </Card>
       )}
@@ -156,7 +156,7 @@ export default function TreasuryTransactionsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Filter className="h-5 w-5" />
-            Filtros
+            {t('common.filters')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -165,7 +165,7 @@ export default function TreasuryTransactionsPage() {
             <div className="relative lg:col-span-2">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Buscar por referencia, ciudadano..."
+                placeholder={t('transactions.searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -178,14 +178,14 @@ export default function TreasuryTransactionsPage() {
               onValueChange={(v) => updateFilter('status', v)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Estado" />
+                <SelectValue placeholder={t('transactions.filters.status')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos los estados</SelectItem>
-                <SelectItem value="pending">Pendiente</SelectItem>
-                <SelectItem value="completed">Completado</SelectItem>
-                <SelectItem value="failed">Fallido</SelectItem>
-                <SelectItem value="refunded">Reembolsado</SelectItem>
+                <SelectItem value="all">{t('transactions.filters.statusAll')}</SelectItem>
+                <SelectItem value="pending">{t('transactions.filters.pending')}</SelectItem>
+                <SelectItem value="completed">{t('transactions.filters.completed')}</SelectItem>
+                <SelectItem value="failed">{t('transactions.filters.failed')}</SelectItem>
+                <SelectItem value="refunded">{t('transactions.filters.refunded')}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -195,21 +195,21 @@ export default function TreasuryTransactionsPage() {
               onValueChange={(v) => updateFilter('method', v)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Metodo" />
+                <SelectValue placeholder={t('transactions.filters.method')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos los metodos</SelectItem>
-                <SelectItem value="cash">Efectivo</SelectItem>
-                <SelectItem value="mobile_money">Mobile Money</SelectItem>
-                <SelectItem value="bank_transfer">Transferencia</SelectItem>
-                <SelectItem value="card">Tarjeta</SelectItem>
+                <SelectItem value="all">{t('transactions.filters.methodAll')}</SelectItem>
+                <SelectItem value="cash">{t('transactions.filters.cash')}</SelectItem>
+                <SelectItem value="mobile_money">{t('transactions.filters.mobile_money')}</SelectItem>
+                <SelectItem value="bank_transfer">{t('transactions.filters.bank_transfer')}</SelectItem>
+                <SelectItem value="card">{t('transactions.filters.card')}</SelectItem>
               </SelectContent>
             </Select>
 
             {/* Date Range - Placeholder */}
             <Button variant="outline" className="w-full">
               <Calendar className="mr-2 h-4 w-4" />
-              Rango de fechas
+              {t('transactions.dateRange')}
             </Button>
           </div>
         </CardContent>
@@ -220,7 +220,7 @@ export default function TreasuryTransactionsPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">{filteredTransactions.length}</div>
-            <p className="text-xs text-muted-foreground">Total transacciones</p>
+            <p className="text-xs text-muted-foreground">{t('transactions.stats.total')}</p>
           </CardContent>
         </Card>
         <Card>
@@ -228,7 +228,7 @@ export default function TreasuryTransactionsPage() {
             <div className="text-2xl font-bold">
               {formatCurrency(totalAmount)}
             </div>
-            <p className="text-xs text-muted-foreground">Monto total</p>
+            <p className="text-xs text-muted-foreground">{t('transactions.stats.totalAmount')}</p>
           </CardContent>
         </Card>
         <Card>
@@ -236,7 +236,7 @@ export default function TreasuryTransactionsPage() {
             <div className="text-2xl font-bold text-green-600">
               {approvedCount}
             </div>
-            <p className="text-xs text-muted-foreground">Aprobados</p>
+            <p className="text-xs text-muted-foreground">{t('transactions.stats.approved')}</p>
           </CardContent>
         </Card>
         <Card>
@@ -244,7 +244,7 @@ export default function TreasuryTransactionsPage() {
             <div className="text-2xl font-bold text-red-600">
               {rejectedCount}
             </div>
-            <p className="text-xs text-muted-foreground">Rechazados</p>
+            <p className="text-xs text-muted-foreground">{t('transactions.stats.rejected')}</p>
           </CardContent>
         </Card>
       </div>
@@ -254,13 +254,13 @@ export default function TreasuryTransactionsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <History className="h-5 w-5" />
-            Historial de Transacciones
+            {t('transactions.title')}
             <Badge variant="secondary" className="ml-2">
               {filteredTransactions.length}
             </Badge>
           </CardTitle>
           <CardDescription>
-            Registro completo de todas las transacciones procesadas
+            {t('transactions.description')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -271,9 +271,9 @@ export default function TreasuryTransactionsPage() {
           ) : filteredTransactions.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <History className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold">Sin transacciones</h3>
+              <h3 className="text-lg font-semibold">{t('transactions.noRecords')}</h3>
               <p className="text-muted-foreground">
-                No se encontraron transacciones con los filtros seleccionados.
+                {t('transactions.noRecordsDescription')}
               </p>
             </div>
           ) : (
@@ -282,13 +282,13 @@ export default function TreasuryTransactionsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Referencia</TableHead>
-                      <TableHead>Ciudadano</TableHead>
-                      <TableHead>Monto</TableHead>
-                      <TableHead>Metodo</TableHead>
-                      <TableHead>Estado Pago</TableHead>
-                      <TableHead>Estado Workflow</TableHead>
-                      <TableHead>Fecha</TableHead>
+                      <TableHead>{t('transactions.table.reference')}</TableHead>
+                      <TableHead>{t('transactions.table.citizen')}</TableHead>
+                      <TableHead>{t('transactions.table.amount')}</TableHead>
+                      <TableHead>{t('transactions.table.method')}</TableHead>
+                      <TableHead>{t('transactions.table.paymentStatus')}</TableHead>
+                      <TableHead>{t('transactions.table.workflowStatus')}</TableHead>
+                      <TableHead>{t('transactions.table.date')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -334,9 +334,11 @@ export default function TreasuryTransactionsPage() {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between mt-4 pt-4 border-t">
                   <p className="text-sm text-muted-foreground">
-                    Mostrando {(filters.page - 1) * filters.limit + 1} -{' '}
-                    {Math.min(filters.page * filters.limit, filteredTransactions.length)} de{' '}
-                    {filteredTransactions.length}
+                    {t('common.pagination.showing', {
+                      from: (filters.page - 1) * filters.limit + 1,
+                      to: Math.min(filters.page * filters.limit, filteredTransactions.length),
+                      total: filteredTransactions.length,
+                    })}
                   </p>
                   <div className="flex gap-2">
                     <Button
@@ -346,7 +348,7 @@ export default function TreasuryTransactionsPage() {
                       disabled={filters.page === 1}
                     >
                       <ChevronLeft className="h-4 w-4" />
-                      Anterior
+                      {t('common.pagination.previous')}
                     </Button>
                     <Button
                       variant="outline"
@@ -354,7 +356,7 @@ export default function TreasuryTransactionsPage() {
                       onClick={() => setFilters((p) => ({ ...p, page: p.page + 1 }))}
                       disabled={filters.page === totalPages}
                     >
-                      Siguiente
+                      {t('common.pagination.next')}
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
