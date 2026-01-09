@@ -95,6 +95,10 @@ class Settings(BaseSettings):
     # Frontend URL (for email links, password reset, etc.)
     # Production domain: taxasge.emacsah.com
     FRONTEND_URL: str = Field(default="https://taxasge.emacsah.com", env="FRONTEND_URL")
+
+    # Backend API Base URL (for webhooks callbacks)
+    # Cloud Run URL or custom domain
+    API_BASE_URL: str = Field(default="https://taxasge-backend-staging-677954753182.europe-west1.run.app", env="API_BASE_URL")
     
     # ========================================================================
     # SECURITY SETTINGS
@@ -253,6 +257,7 @@ class Settings(BaseSettings):
     BANGE_API_URL: Optional[str] = Field(default=None, env="BANGE_API_URL")
     BANGE_API_KEY: Optional[str] = Field(default=None, env="BANGE_API_KEY")
     BANGE_MERCHANT_ID: Optional[str] = Field(default=None, env="BANGE_MERCHANT_ID")
+    BANGE_WEBHOOK_SECRET: Optional[str] = Field(default=None, env="BANGE_WEBHOOK_SECRET")
     
     # Email Service (MODULE_02)
     SMTP_HOST: Optional[str] = Field(default=None, env="SMTP_HOST")

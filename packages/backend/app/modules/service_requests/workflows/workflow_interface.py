@@ -247,6 +247,9 @@ class WorkflowContext:
     entity_code: Optional[str] = None
     assigned_to: Optional[UUID] = None
 
+    # Reference number (for payment descriptions, receipts, etc.)
+    reference_number: Optional[str] = None
+
     def get_user_age(self) -> Optional[int]:
         """Calculate user age from extracted data (DIP fecha_nacimiento)."""
         dip_data = self.extracted_data.get("dip", {})

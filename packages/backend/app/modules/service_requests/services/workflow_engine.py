@@ -163,6 +163,7 @@ class WorkflowEngine:
         query = """
             SELECT
                 sr.id,
+                sr.reference,
                 sr.user_id,
                 sr.workflow_code,
                 sr.solicitud_type,
@@ -228,7 +229,8 @@ class WorkflowEngine:
             payment_id=row["payment_id"],
             created_at=row["created_at"],
             updated_at=row["updated_at"],
-            submitted_at=row["submitted_at"]
+            submitted_at=row["submitted_at"],
+            reference_number=row["reference"],
         )
 
         # Load documents
