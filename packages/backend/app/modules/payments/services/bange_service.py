@@ -6,7 +6,7 @@ Integration with BANGE payment gateway for Equatorial Guinea
 import httpx
 import hashlib
 import hmac
-from typing import Dict, Optional, Any
+from typing import Dict, List, Optional, Any
 from decimal import Decimal
 from datetime import datetime, timedelta
 from loguru import logger

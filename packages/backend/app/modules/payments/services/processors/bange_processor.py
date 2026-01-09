@@ -23,7 +23,7 @@ from app.modules.payments.models.payment import (
     BANGEPaymentRequest,
 )
 from app.modules.payments.services.bange_service import BANGEService
-from app.core.config import get_settings
+from app.config import get_settings
 
 from .base import (
     PaymentProcessorBase,
