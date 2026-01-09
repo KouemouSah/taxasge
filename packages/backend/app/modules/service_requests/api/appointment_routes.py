@@ -12,7 +12,7 @@ Flow: DRAFT → DOCUMENTS → REVIEW → SELECT_LOCATION → SELECT_SLOT → PAY
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional
-from datetime import date
+from datetime import date, datetime
 from uuid import UUID
 import asyncpg
 import logging
@@ -498,6 +498,7 @@ async def confirm_appointment_hold(
                     "appointment_date": str(result.appointment_date) if result.appointment_date else None,
                     "appointment_time": str(result.appointment_time) if result.appointment_time else None,
                     "location": result.location_name,
+                    "timestamp": datetime.now().isoformat(),
                 }
             )
         except Exception:

@@ -13,7 +13,35 @@ from app.modules.communications.models.notification_template import (
     NotificationTemplateCreate,
     NotificationTemplateUpdate,
     NotificationTemplateResponse,
+    NotificationType,
+    NotificationPriority,
 )
+
+
+def _row_to_response(row: dict) -> NotificationTemplateResponse:
+    """
+    Convert database row to NotificationTemplateResponse.
+    Handles nullable fields and enum conversions.
+    """
+    data = dict(row)
+
+    # Handle nullable notification_type - default to 'info' if None
+    if data.get('notification_type') is None:
+        data['notification_type'] = 'info'
+
+    # Handle nullable priority - default to 'normal' if None
+    if data.get('priority') is None:
+        data['priority'] = 'normal'
+
+    # Handle nullable variables - default to empty list if None
+    if data.get('variables') is None:
+        data['variables'] = []
+
+    # Handle nullable is_active - default to True if None
+    if data.get('is_active') is None:
+        data['is_active'] = True
+
+    return NotificationTemplateResponse(**data)
 
 
 class NotificationTemplateRepository:
@@ -83,7 +111,7 @@ class NotificationTemplateRepository:
             )
 
             logger.info(f"Created notification template: {template_data.template_code}")
-            return NotificationTemplateResponse(**dict(row))
+            return _row_to_response(row)
 
         except asyncpg.UniqueViolationError:
             logger.error(f"Duplicate template_code: {template_data.template_code}")
@@ -118,7 +146,7 @@ class NotificationTemplateRepository:
         """
 
         row = await db.fetchrow(query, template_id)
-        return NotificationTemplateResponse(**dict(row)) if row else None
+        return _row_to_response(row) if row else None
 
     async def find_by_code(
         self,
@@ -149,7 +177,7 @@ class NotificationTemplateRepository:
         """
 
         row = await db.fetchrow(query, template_code.lower())
-        return NotificationTemplateResponse(**dict(row)) if row else None
+        return _row_to_response(row) if row else None
 
     async def find_all(
         self,
@@ -228,7 +256,7 @@ class NotificationTemplateRepository:
         """
 
         rows = await db.fetch(data_query, *params, limit, offset)
-        templates = [NotificationTemplateResponse(**dict(row)) for row in rows]
+        templates = [_row_to_response(row) for row in rows]
 
         return templates, total
 
@@ -293,7 +321,7 @@ class NotificationTemplateRepository:
             row = await db.fetchrow(query, *params)
             if row:
                 logger.info(f"Updated notification template ID: {template_id}")
-                return NotificationTemplateResponse(**dict(row))
+                return _row_to_response(row)
             return None
 
         except Exception as e:
@@ -358,4 +386,4 @@ class NotificationTemplateRepository:
         """
 
         rows = await db.fetch(query)
-        return [NotificationTemplateResponse(**dict(row)) for row in rows]
+        return [_row_to_response(row) for row in rows]

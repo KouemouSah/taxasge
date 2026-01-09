@@ -335,7 +335,8 @@ class PushTemplateRepository:
 
     def _row_to_model(self, row: asyncpg.Record) -> PushTemplateResponse:
         """
-        Convert database row to Pydantic model
+        Convert database row to Pydantic model.
+        Handles nullable fields with sensible defaults.
 
         Args:
             row: Database row
@@ -343,6 +344,9 @@ class PushTemplateRepository:
         Returns:
             PushTemplateResponse model
         """
+        # Handle nullable platform - default to 'all'
+        platform_value = row["platform"] or "all"
+
         return PushTemplateResponse(
             id=row["id"],
             template_code=row["template_code"],
@@ -360,9 +364,9 @@ class PushTemplateRepository:
             click_action=row["click_action"],
             data_payload=row["data_payload"] or {},
             variables=row["variables"] or [],
-            platform=PlatformEnum(row["platform"]),
-            ttl_seconds=row["ttl_seconds"],
-            is_active=row["is_active"],
+            platform=PlatformEnum(platform_value),
+            ttl_seconds=row["ttl_seconds"] if row["ttl_seconds"] is not None else 86400,
+            is_active=row["is_active"] if row["is_active"] is not None else True,
             created_at=row["created_at"],
             updated_at=row["updated_at"],
             created_by=row["created_by"]

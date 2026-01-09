@@ -1,6 +1,11 @@
 -- Migration: Event-Based Notification Templates
 -- Date: 2026-01-09
 -- Description: Seed notification templates for EventBus events (payment, request, appointment)
+--
+-- NOTE: This migration reuses existing templates where possible:
+-- - SMS: PAYMENT_RECEIVED (012) → reused for payment_completed event
+-- - SMS: APPOINTMENT_REMINDER (012) → reused for appointment_reminder event
+-- New templates are added only where no existing template exists.
 
 -- =============================================================================
 -- EMAIL TEMPLATES
@@ -159,7 +164,7 @@ VALUES (
     true
 ) ON CONFLICT (template_code) DO UPDATE SET updated_at = NOW();
 
--- Appointment Reminder
+-- Appointment Reminder (email version - SMS version exists in 012)
 INSERT INTO email_templates (template_code, name_es, name_fr, name_en, subject_es, subject_fr, subject_en, description_es, html_file_path, variables, category, is_active)
 VALUES (
     'appointment_reminder',
@@ -195,103 +200,107 @@ VALUES (
 
 -- =============================================================================
 -- SMS TEMPLATES
+-- NOTE: Reusing existing templates from migration 012:
+--   - PAYMENT_RECEIVED → for PAYMENT_COMPLETED event
+--   - APPOINTMENT_REMINDER → for APPOINTMENT_REMINDER event
+-- Only adding NEW templates below that don't exist in 012.
 -- =============================================================================
 
--- Payment Completed SMS
+-- Payment Cash Validated SMS (NEW)
 INSERT INTO sms_templates (template_code, name_es, name_fr, name_en, content_es, content_fr, content_en, variables, category, max_segments, is_active)
 VALUES (
-    'payment_completed',
-    'Pago completado',
-    'Paiement effectué',
-    'Payment completed',
-    'TaxasGE: Su pago de {amount} {currency} ha sido procesado. Recibo: {receipt_number}',
-    'TaxasGE: Votre paiement de {amount} {currency} a été traité. Reçu: {receipt_number}',
-    'TaxasGE: Your payment of {amount} {currency} has been processed. Receipt: {receipt_number}',
-    '["amount", "currency", "receipt_number"]',
-    'payment',
-    1,
-    true
-) ON CONFLICT (template_code) DO UPDATE SET updated_at = NOW();
-
--- Payment Cash Validated SMS
-INSERT INTO sms_templates (template_code, name_es, name_fr, name_en, content_es, content_fr, content_en, variables, category, max_segments, is_active)
-VALUES (
-    'payment_cash_validated',
+    'PAYMENT_CASH_VALIDATED',
     'Pago en efectivo validado',
     'Paiement en espèces validé',
     'Cash payment validated',
-    'TaxasGE: Su pago en efectivo de {amount} {currency} ha sido validado. Recibo: {receipt_number}',
-    'TaxasGE: Votre paiement en espèces de {amount} {currency} a été validé. Reçu: {receipt_number}',
-    'TaxasGE: Your cash payment of {amount} {currency} has been validated. Receipt: {receipt_number}',
-    '["amount", "currency", "receipt_number"]',
-    'payment',
+    'TaxasGE: Su pago en efectivo de {{amount}} XAF ha sido validado. Recibo: {{receipt_number}}.',
+    'TaxasGE: Votre paiement en espèces de {{amount}} XAF a été validé. Reçu: {{receipt_number}}.',
+    'TaxasGE: Your cash payment of {{amount}} XAF has been validated. Receipt: {{receipt_number}}.',
+    '["amount", "receipt_number"]'::jsonb,
+    'payments',
     1,
     true
-) ON CONFLICT (template_code) DO UPDATE SET updated_at = NOW();
+) ON CONFLICT (template_code) DO NOTHING;
 
--- Request Approved SMS
+-- Payment Cash Rejected SMS (NEW)
 INSERT INTO sms_templates (template_code, name_es, name_fr, name_en, content_es, content_fr, content_en, variables, category, max_segments, is_active)
 VALUES (
-    'request_approved',
+    'PAYMENT_CASH_REJECTED',
+    'Pago en efectivo rechazado',
+    'Paiement en espèces refusé',
+    'Cash payment rejected',
+    'TaxasGE: Su pago en efectivo ha sido rechazado. Motivo: {{reason}}. Consulte su cuenta.',
+    'TaxasGE: Votre paiement en espèces a été refusé. Raison: {{reason}}. Consultez votre compte.',
+    'TaxasGE: Your cash payment has been rejected. Reason: {{reason}}. Check your account.',
+    '["reason"]'::jsonb,
+    'payments',
+    1,
+    true
+) ON CONFLICT (template_code) DO NOTHING;
+
+-- Request Approved SMS (NEW)
+INSERT INTO sms_templates (template_code, name_es, name_fr, name_en, content_es, content_fr, content_en, variables, category, max_segments, is_active)
+VALUES (
+    'REQUEST_APPROVED',
     'Solicitud aprobada',
     'Demande approuvée',
     'Request approved',
-    'TaxasGE: Su solicitud ha sido aprobada. Cita: {appointment_date} {appointment_time} en {location}',
-    'TaxasGE: Votre demande a été approuvée. RDV: {appointment_date} {appointment_time} à {location}',
-    'TaxasGE: Your request has been approved. Appointment: {appointment_date} {appointment_time} at {location}',
-    '["appointment_date", "appointment_time", "location"]',
-    'request',
+    'TaxasGE: Su solicitud ha sido aprobada. Cita: {{appointment_date}} {{appointment_time}} en {{location}}.',
+    'TaxasGE: Votre demande a été approuvée. RDV: {{appointment_date}} {{appointment_time}} à {{location}}.',
+    'TaxasGE: Your request has been approved. Appointment: {{appointment_date}} {{appointment_time}} at {{location}}.',
+    '["appointment_date", "appointment_time", "location"]'::jsonb,
+    'requests',
     1,
     true
-) ON CONFLICT (template_code) DO UPDATE SET updated_at = NOW();
+) ON CONFLICT (template_code) DO NOTHING;
 
--- Request Rejected SMS
+-- Request Rejected SMS (NEW)
 INSERT INTO sms_templates (template_code, name_es, name_fr, name_en, content_es, content_fr, content_en, variables, category, max_segments, is_active)
 VALUES (
-    'request_rejected',
+    'REQUEST_REJECTED',
     'Solicitud rechazada',
     'Demande refusée',
     'Request rejected',
-    'TaxasGE: Su solicitud ha sido rechazada. Motivo: {reason}. Consulte su cuenta para más detalles.',
-    'TaxasGE: Votre demande a été refusée. Raison: {reason}. Consultez votre compte pour plus de détails.',
-    'TaxasGE: Your request has been rejected. Reason: {reason}. Check your account for more details.',
-    '["reason"]',
-    'request',
+    'TaxasGE: Su solicitud ha sido rechazada. Motivo: {{reason}}. Consulte su cuenta.',
+    'TaxasGE: Votre demande a été refusée. Raison: {{reason}}. Consultez votre compte.',
+    'TaxasGE: Your request has been rejected. Reason: {{reason}}. Check your account.',
+    '["reason"]'::jsonb,
+    'requests',
     2,
     true
-) ON CONFLICT (template_code) DO UPDATE SET updated_at = NOW();
+) ON CONFLICT (template_code) DO NOTHING;
 
--- Appointment Booked SMS
+-- Appointment Booked SMS (NEW)
 INSERT INTO sms_templates (template_code, name_es, name_fr, name_en, content_es, content_fr, content_en, variables, category, max_segments, is_active)
 VALUES (
-    'appointment_booked',
+    'APPOINTMENT_BOOKED',
     'Cita confirmada',
     'Rendez-vous confirmé',
     'Appointment confirmed',
-    'TaxasGE: Cita confirmada para {appointment_date} a las {appointment_time} en {location}',
-    'TaxasGE: Rendez-vous confirmé pour le {appointment_date} à {appointment_time} à {location}',
-    'TaxasGE: Appointment confirmed for {appointment_date} at {appointment_time} at {location}',
-    '["appointment_date", "appointment_time", "location"]',
-    'appointment',
+    'TaxasGE: Cita confirmada para {{appointment_date}} a las {{appointment_time}} en {{location}}.',
+    'TaxasGE: Rendez-vous confirmé pour le {{appointment_date}} à {{appointment_time}} à {{location}}.',
+    'TaxasGE: Appointment confirmed for {{appointment_date}} at {{appointment_time}} at {{location}}.',
+    '["appointment_date", "appointment_time", "location"]'::jsonb,
+    'reminders',
     1,
     true
-) ON CONFLICT (template_code) DO UPDATE SET updated_at = NOW();
+) ON CONFLICT (template_code) DO NOTHING;
 
--- Appointment Reminder SMS
+-- Appointment Cancelled SMS (NEW)
 INSERT INTO sms_templates (template_code, name_es, name_fr, name_en, content_es, content_fr, content_en, variables, category, max_segments, is_active)
 VALUES (
-    'appointment_reminder',
-    'Recordatorio de cita',
-    'Rappel de rendez-vous',
-    'Appointment reminder',
-    'TaxasGE: Recordatorio - Cita mañana {appointment_date} a las {appointment_time} en {location}',
-    'TaxasGE: Rappel - Rendez-vous demain {appointment_date} à {appointment_time} à {location}',
-    'TaxasGE: Reminder - Appointment tomorrow {appointment_date} at {appointment_time} at {location}',
-    '["appointment_date", "appointment_time", "location"]',
-    'appointment',
+    'APPOINTMENT_CANCELLED',
+    'Cita cancelada',
+    'Rendez-vous annulé',
+    'Appointment cancelled',
+    'TaxasGE: Su cita del {{appointment_date}} ha sido cancelada. Motivo: {{reason}}.',
+    'TaxasGE: Votre rendez-vous du {{appointment_date}} a été annulé. Raison: {{reason}}.',
+    'TaxasGE: Your appointment on {{appointment_date}} has been cancelled. Reason: {{reason}}.',
+    '["appointment_date", "reason"]'::jsonb,
+    'reminders',
     1,
     true
-) ON CONFLICT (template_code) DO UPDATE SET updated_at = NOW();
+) ON CONFLICT (template_code) DO NOTHING;
 
 -- =============================================================================
 -- NOTIFICATION TEMPLATES (In-app)

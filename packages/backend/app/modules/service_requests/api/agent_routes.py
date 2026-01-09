@@ -7,7 +7,7 @@ Includes queue management, approval/rejection, and appointment scheduling.
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Path, Body
 from typing import List, Optional
 from uuid import UUID
-from datetime import date, time
+from datetime import date, time, datetime
 import asyncpg
 
 from pydantic import BaseModel, Field
@@ -425,6 +425,7 @@ async def make_decision(
                         "appointment_date": appointment_info['date'] if appointment_info else None,
                         "appointment_time": appointment_info['time'] if appointment_info else None,
                         "location": appointment_info['location'] if appointment_info else None,
+                        "timestamp": datetime.now().isoformat(),
                     }
                 )
         except Exception:
@@ -482,6 +483,7 @@ async def make_decision(
                         "workflow_code": request['workflow_code'],
                         "agent_id": str(current_user.id),
                         "reason": decision.rejection_reason,
+                        "timestamp": datetime.now().isoformat(),
                     }
                 )
         except Exception:

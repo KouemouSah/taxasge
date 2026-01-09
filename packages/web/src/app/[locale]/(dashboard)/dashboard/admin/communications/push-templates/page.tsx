@@ -68,7 +68,7 @@ export default function PushTemplatesPage() {
     templates,
     total,
     isLoading,
-    error: _error,
+    error,
     stats,
     fetchTemplates,
     fetchStats,
@@ -304,14 +304,26 @@ export default function PushTemplatesPage() {
             </div>
           )}
 
-          {!isLoading && templates.length === 0 && (
+          {error && (
+            <div className="flex flex-col items-center justify-center py-8 text-destructive">
+              <Bell className="h-12 w-12 mb-4 opacity-50" />
+              <p className="font-medium">{t('errorTitle')}</p>
+              <p className="text-sm text-muted-foreground mt-1">{error}</p>
+              <Button variant="outline" size="sm" className="mt-4" onClick={handleRefresh}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                {tCommon('retry')}
+              </Button>
+            </div>
+          )}
+
+          {!isLoading && !error && templates.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <Bell className="h-12 w-12 mb-4 opacity-50" />
               <p>{t('noTemplatesFound')}</p>
             </div>
           )}
 
-          {!isLoading && templates.length > 0 && (
+          {!isLoading && !error && templates.length > 0 && (
             <Table>
               <TableHeader>
                 <TableRow>

@@ -38,6 +38,7 @@ class NotificationConfig:
     priority: str = "normal"  # low, normal, high, critical
     subject_key: Optional[str] = None  # i18n key for email subject
     requires_user_prefs: bool = True  # Check user notification preferences
+    sms_template_code: Optional[str] = None  # Override template code for SMS (uses UPPERCASE codes)
 
 
 # =============================================================================
@@ -46,11 +47,13 @@ class NotificationConfig:
 
 EVENT_NOTIFICATION_MAP: Dict[EventType, NotificationConfig] = {
     # Payment Events
+    # Note: sms_template_code uses UPPERCASE to match existing templates from migration 012
     EventType.PAYMENT_COMPLETED: NotificationConfig(
         template_code="payment_completed",
         channels=[NotificationChannel.EMAIL, NotificationChannel.SMS, NotificationChannel.PUSH],
         priority="high",
-        subject_key="notifications.payment.completed.subject"
+        subject_key="notifications.payment.completed.subject",
+        sms_template_code="PAYMENT_RECEIVED"  # Reuses existing template from migration 012
     ),
     EventType.PAYMENT_FAILED: NotificationConfig(
         template_code="payment_failed",
@@ -68,13 +71,15 @@ EVENT_NOTIFICATION_MAP: Dict[EventType, NotificationConfig] = {
         template_code="payment_cash_validated",
         channels=[NotificationChannel.EMAIL, NotificationChannel.SMS, NotificationChannel.PUSH],
         priority="high",
-        subject_key="notifications.payment.cash_validated.subject"
+        subject_key="notifications.payment.cash_validated.subject",
+        sms_template_code="PAYMENT_CASH_VALIDATED"
     ),
     EventType.PAYMENT_CASH_REJECTED: NotificationConfig(
         template_code="payment_cash_rejected",
         channels=[NotificationChannel.EMAIL, NotificationChannel.SMS],
         priority="high",
-        subject_key="notifications.payment.cash_rejected.subject"
+        subject_key="notifications.payment.cash_rejected.subject",
+        sms_template_code="PAYMENT_CASH_REJECTED"
     ),
 
     # Service Request Events
@@ -88,13 +93,15 @@ EVENT_NOTIFICATION_MAP: Dict[EventType, NotificationConfig] = {
         template_code="request_approved",
         channels=[NotificationChannel.EMAIL, NotificationChannel.SMS, NotificationChannel.PUSH],
         priority="high",
-        subject_key="notifications.request.approved.subject"
+        subject_key="notifications.request.approved.subject",
+        sms_template_code="REQUEST_APPROVED"
     ),
     EventType.REQUEST_REJECTED: NotificationConfig(
         template_code="request_rejected",
         channels=[NotificationChannel.EMAIL, NotificationChannel.SMS],
         priority="high",
-        subject_key="notifications.request.rejected.subject"
+        subject_key="notifications.request.rejected.subject",
+        sms_template_code="REQUEST_REJECTED"
     ),
     EventType.REQUEST_COMPLETED: NotificationConfig(
         template_code="request_completed",
@@ -122,7 +129,8 @@ EVENT_NOTIFICATION_MAP: Dict[EventType, NotificationConfig] = {
         template_code="appointment_booked",
         channels=[NotificationChannel.EMAIL, NotificationChannel.SMS, NotificationChannel.PUSH],
         priority="high",
-        subject_key="notifications.appointment.booked.subject"
+        subject_key="notifications.appointment.booked.subject",
+        sms_template_code="APPOINTMENT_BOOKED"
     ),
     EventType.APPOINTMENT_CONFIRMED: NotificationConfig(
         template_code="appointment_confirmed",
@@ -134,13 +142,15 @@ EVENT_NOTIFICATION_MAP: Dict[EventType, NotificationConfig] = {
         template_code="appointment_cancelled",
         channels=[NotificationChannel.EMAIL, NotificationChannel.SMS],
         priority="high",
-        subject_key="notifications.appointment.cancelled.subject"
+        subject_key="notifications.appointment.cancelled.subject",
+        sms_template_code="APPOINTMENT_CANCELLED"
     ),
     EventType.APPOINTMENT_REMINDER: NotificationConfig(
         template_code="appointment_reminder",
         channels=[NotificationChannel.EMAIL, NotificationChannel.SMS, NotificationChannel.PUSH],
         priority="high",
-        subject_key="notifications.appointment.reminder.subject"
+        subject_key="notifications.appointment.reminder.subject",
+        sms_template_code="APPOINTMENT_REMINDER"  # Reuses existing template from migration 012
     ),
 
     # Declaration Events
@@ -154,13 +164,15 @@ EVENT_NOTIFICATION_MAP: Dict[EventType, NotificationConfig] = {
         template_code="declaration_validated",
         channels=[NotificationChannel.EMAIL, NotificationChannel.SMS, NotificationChannel.PUSH],
         priority="high",
-        subject_key="notifications.declaration.validated.subject"
+        subject_key="notifications.declaration.validated.subject",
+        sms_template_code="DECLARATION_STATUS"  # Reuses existing template from migration 012
     ),
     EventType.DECLARATION_REJECTED: NotificationConfig(
         template_code="declaration_rejected",
         channels=[NotificationChannel.EMAIL, NotificationChannel.SMS],
         priority="high",
-        subject_key="notifications.declaration.rejected.subject"
+        subject_key="notifications.declaration.rejected.subject",
+        sms_template_code="DECLARATION_STATUS"  # Reuses existing template from migration 012
     ),
 
     # SLA Events
@@ -176,7 +188,8 @@ EVENT_NOTIFICATION_MAP: Dict[EventType, NotificationConfig] = {
         channels=[NotificationChannel.EMAIL, NotificationChannel.SMS, NotificationChannel.PUSH],
         priority="critical",
         subject_key="notifications.sla.breach.subject",
-        requires_user_prefs=False  # Always notify agents
+        requires_user_prefs=False,  # Always notify agents
+        sms_template_code="SECURITY_ALERT"  # Reuses existing template from migration 012
     ),
 }
 
@@ -336,9 +349,15 @@ class NotificationEventHandler:
                 logger.debug("Cannot send SMS: no phone number")
                 return False
 
+            # Use specific SMS template code if defined, otherwise fall back to email template code
+            sms_template_code = config.sms_template_code or config.template_code.upper()
+
             # SMS sending would be implemented here
-            logger.info(f"SMS notification queued for {user_phone}")
-            # TODO: Implement SMS sending via sms_provider_service
+            logger.info(
+                f"SMS notification queued for {user_phone} "
+                f"(template: {sms_template_code})"
+            )
+            # TODO: Implement SMS sending via sms_provider_service with sms_template_code
             return True
 
         elif channel == NotificationChannel.PUSH:
@@ -359,36 +378,70 @@ class NotificationEventHandler:
         """
         Build template context from event payload.
 
+        Provides both new-style variable names (appointment_date, receipt_number)
+        AND legacy names (date, time, reference) for backwards compatibility
+        with existing SMS templates from migration 012.
+
         Args:
             payload: Event payload
 
         Returns:
             Dictionary of template variables
         """
+        from datetime import datetime
+
+        # Get appointment date/time
+        appointment_date = payload.get("appointment_date")
+        appointment_time = payload.get("appointment_time")
+
+        # Generate formatted date for payments (PAYMENT_RECEIVED uses {{date}})
+        payment_date = None
+        if payload.get("timestamp"):
+            try:
+                ts = payload.get("timestamp")
+                if isinstance(ts, str):
+                    payment_date = ts[:10]  # Extract YYYY-MM-DD
+                elif isinstance(ts, datetime):
+                    payment_date = ts.strftime("%Y-%m-%d")
+            except Exception:
+                payment_date = datetime.now().strftime("%Y-%m-%d")
+        else:
+            payment_date = datetime.now().strftime("%Y-%m-%d")
+
         return {
             # User info
             "user_name": payload.get("user_name", "Usuario"),
             "user_email": payload.get("user_email", ""),
 
-            # Payment info
+            # Payment info - new style
             "amount": payload.get("amount"),
             "currency": payload.get("currency", "XAF"),
             "payment_method": payload.get("payment_method"),
             "receipt_number": payload.get("receipt_number"),
+            "payment_id": payload.get("payment_id"),
+
+            # Payment info - legacy style (for PAYMENT_RECEIVED template)
+            "reference": payload.get("receipt_number"),  # Maps receipt_number → reference
+            "date": payment_date,  # For PAYMENT_RECEIVED {{date}}
 
             # Request info
             "request_id": payload.get("request_id"),
             "service_code": payload.get("service_code"),
             "workflow_code": payload.get("workflow_code"),
+            "service": payload.get("workflow_code"),  # For APPOINTMENT_REMINDER {{service}}
 
             # Document info
             "document_type": payload.get("document_type"),
             "file_name": payload.get("file_name"),
 
-            # Appointment info
-            "appointment_date": payload.get("appointment_date"),
-            "appointment_time": payload.get("appointment_time"),
+            # Appointment info - new style
+            "appointment_date": appointment_date,
+            "appointment_time": appointment_time,
             "location": payload.get("location"),
+
+            # Appointment info - legacy style (for APPOINTMENT_REMINDER template)
+            # Note: Only set these if we have appointment data (not payment date)
+            "time": appointment_time,  # For {{time}} in SMS templates
 
             # Reason/notes
             "reason": payload.get("reason"),

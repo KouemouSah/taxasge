@@ -2604,6 +2604,7 @@ async def validate_payment(
                     "receipt_number": payment_info["receipt_number"],
                     "payment_method": payment_info["payment_method"],
                     "agent_id": current_user.id,
+                    "timestamp": datetime.now().isoformat(),
                 }
             )
     except Exception as e:
@@ -2702,6 +2703,7 @@ async def reject_payment(
                     "payment_method": user_info["payment_method"],
                     "reason": body.reason,
                     "agent_id": current_user.id,
+                    "timestamp": datetime.now().isoformat(),
                 }
             )
     except Exception:

@@ -137,6 +137,7 @@ async def create_service_request(
                 "preferred_language": getattr(current_user, 'preferred_language', 'es'),
                 "workflow_code": data.workflow_code,
                 "service_code": data.service_code,
+                "timestamp": result.created_at.isoformat() if hasattr(result, 'created_at') and result.created_at else None,
             }
         )
     except Exception:
