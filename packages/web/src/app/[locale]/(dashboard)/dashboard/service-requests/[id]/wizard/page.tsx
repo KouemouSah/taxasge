@@ -1898,7 +1898,9 @@ function ValidationStepImproved({ locale, validationResults, isValidating, onRev
   const warnings = validationResults.filter(r => r.severity === 'warning')
   const passed = validationResults.filter(r => r.isValid)
 
-  const canProceed = errors.length === 0
+  // Validation is informative only - never blocks payment
+  // Users can proceed even with errors/warnings
+  const canProceed = true
 
   if (isValidating) {
     return (
@@ -2006,11 +2008,14 @@ function ValidationStepImproved({ locale, validationResults, isValidating, onRev
           </Button>
         </div>
 
-        {!canProceed && (
-          <p className="text-sm text-red-600 text-center">
+        {/* Validation errors are shown but don't block progression */}
+        {errors.length > 0 && (
+          <p className="text-sm text-yellow-600 text-center">
             {locale === 'es'
-              ? 'Corrija los errores antes de continuar'
-              : 'Fix errors before continuing'}
+              ? 'Se detectaron errores de validacion. Puede continuar, pero verifique sus documentos.'
+              : locale === 'fr'
+                ? 'Des erreurs de validation ont ete detectees. Vous pouvez continuer, mais verifiez vos documents.'
+                : 'Validation errors detected. You can continue, but please verify your documents.'}
           </p>
         )}
       </CardContent>
