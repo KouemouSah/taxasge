@@ -795,7 +795,14 @@ export default function PassportWizardPage() {
     try {
       const result = await initiatePayment(selectedPaymentMethod, phoneNumber)
       if (result) {
-        // Start polling for payment status
+        // For BANGE electronic payments, redirect to payment page
+        if (result.redirectUrl) {
+          // Open BANGE payment page in new window/tab
+          // User will complete payment there and return
+          window.open(result.redirectUrl, '_blank')
+        }
+
+        // Start polling for payment status (works for both BANGE and manual payments)
         paymentPollRef.current = setInterval(async () => {
           try {
             const status = await checkPaymentStatus()
@@ -812,13 +819,13 @@ export default function PassportWizardPage() {
           }
         }, 3000) // Poll every 3 seconds
 
-        // Stop polling after 5 minutes
+        // Stop polling after 10 minutes (increased from 5 for BANGE payments)
         setTimeout(() => {
           if (paymentPollRef.current) {
             clearInterval(paymentPollRef.current)
             setIsProcessingPayment(false)
           }
-        }, 300000)
+        }, 600000)
       }
     } catch (err) {
       console.error('Payment failed:', err)
