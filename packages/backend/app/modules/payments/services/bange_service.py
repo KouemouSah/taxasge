@@ -24,10 +24,11 @@ class BANGEService:
 
     def __init__(self):
         self.settings = get_settings()
-        self.base_url = self.settings.bange_api_url or "https://api.bange.gq"
-        self.merchant_id = self.settings.bange_merchant_id
-        self.api_key = self.settings.bange_api_key
-        self.webhook_secret = self.settings.bange_webhook_secret
+        # Note: Settings fields are UPPERCASE in config.py
+        self.base_url = self.settings.BANGE_API_URL or "https://api.bange.gq"
+        self.merchant_id = self.settings.BANGE_MERCHANT_ID
+        self.api_key = self.settings.BANGE_API_KEY
+        self.webhook_secret = self.settings.BANGE_WEBHOOK_SECRET
         self.timeout = 30  # 30 seconds timeout
 
     async def create_payment(self, payment_request: BANGEPaymentRequest) -> Optional[BANGEPaymentResponse]:
