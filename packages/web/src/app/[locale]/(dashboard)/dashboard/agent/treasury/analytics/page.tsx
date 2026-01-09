@@ -72,11 +72,8 @@ import {
   formatVariableName,
 } from '@/modules/treasury/types/analytics';
 import type {
-  AnalyticsReport,
-  ExploreResponse,
   FindingSeverity,
   TrendDirection,
-  CorrelationStrength,
 } from '@/modules/treasury/types/analytics';
 
 // Register Chart.js components

@@ -12,7 +12,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Clock, AlertTriangle, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+import { Clock, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import type { SLAStatus, PaymentWorkflowStatus } from '../types';
 import { calculateSLAStatus } from '../types';
 

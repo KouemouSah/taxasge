@@ -43,7 +43,7 @@ import { usePendingPayments, usePaymentActions } from '@/modules/treasury/hooks'
 import { PaymentMethodBadge, WorkflowStatusBadge, SLABadge } from '@/modules/treasury/components';
 import { PaymentValidationDialog } from '@/modules/treasury/components';
 import { PaymentRejectionDialog } from '@/modules/treasury/components';
-import type { PendingPayment, SLAStatus } from '@/modules/treasury/types';
+import type { PendingPayment } from '@/modules/treasury/types';
 import { calculateSLAStatus } from '@/modules/treasury/types';
 
 export default function TreasuryValidationPage() {

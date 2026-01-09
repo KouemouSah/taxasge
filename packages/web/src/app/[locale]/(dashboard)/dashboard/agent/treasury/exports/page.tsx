@@ -75,8 +75,8 @@ const statusStyles: Record<ExportStatus, { color: string; Icon: typeof Clock }> 
   failed: { color: 'bg-red-100 text-red-800 border-red-200', Icon: XCircle },
 };
 
-// Format icons
-const formatIcons: Record<ExportFormat, typeof FileSpreadsheet> = {
+// Format icons (prefixed to indicate intentional non-use for future expansion)
+const _formatIcons: Record<ExportFormat, typeof FileSpreadsheet> = {
   csv: FileSpreadsheet,
   xlsx: FileSpreadsheet,
   pdf: FileText,

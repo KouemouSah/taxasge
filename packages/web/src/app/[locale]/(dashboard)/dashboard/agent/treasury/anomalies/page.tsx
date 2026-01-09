@@ -116,7 +116,7 @@ export default function TreasuryAnomaliesPage() {
   const [severityFilter, setSeverityFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [dateTo, _setDateTo] = useState('');
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
