@@ -4,6 +4,7 @@ Notification Template Repository
 Data access layer for notification templates
 """
 
+import json
 import asyncpg
 from typing import Optional, List, Dict, Any
 from datetime import datetime
@@ -34,8 +35,15 @@ def _row_to_response(row: dict) -> NotificationTemplateResponse:
         data['priority'] = 'normal'
 
     # Handle nullable variables - default to empty list if None
-    if data.get('variables') is None:
+    # Also parse JSON string if stored as string in database
+    variables = data.get('variables')
+    if variables is None:
         data['variables'] = []
+    elif isinstance(variables, str):
+        try:
+            data['variables'] = json.loads(variables)
+        except json.JSONDecodeError:
+            data['variables'] = []
 
     # Handle nullable is_active - default to True if None
     if data.get('is_active') is None:

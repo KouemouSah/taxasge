@@ -10,6 +10,7 @@ Handles:
 Module: Communications
 """
 
+import json
 import asyncpg
 from typing import Optional, List, Dict, Any
 from datetime import datetime
@@ -333,6 +334,28 @@ class PushTemplateRepository:
             }
         }
 
+    def _parse_json_field(self, value: Any, default: Any) -> Any:
+        """
+        Parse a JSON field that might be stored as a string in the database.
+
+        Args:
+            value: The field value (could be None, string, list, or dict)
+            default: Default value if parsing fails or value is None
+
+        Returns:
+            Parsed value or default
+        """
+        if value is None:
+            return default
+        if isinstance(value, (list, dict)):
+            return value
+        if isinstance(value, str):
+            try:
+                return json.loads(value)
+            except json.JSONDecodeError:
+                return default
+        return default
+
     def _row_to_model(self, row: asyncpg.Record) -> PushTemplateResponse:
         """
         Convert database row to Pydantic model.
@@ -362,8 +385,8 @@ class PushTemplateRepository:
             image_url=row["image_url"],
             icon_url=row["icon_url"],
             click_action=row["click_action"],
-            data_payload=row["data_payload"] or {},
-            variables=row["variables"] or [],
+            data_payload=self._parse_json_field(row["data_payload"], {}),
+            variables=self._parse_json_field(row["variables"], []),
             platform=PlatformEnum(platform_value),
             ttl_seconds=row["ttl_seconds"] if row["ttl_seconds"] is not None else 86400,
             is_active=row["is_active"] if row["is_active"] is not None else True,
