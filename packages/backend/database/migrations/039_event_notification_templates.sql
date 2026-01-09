@@ -296,6 +296,8 @@ VALUES (
 -- =============================================================================
 -- NOTIFICATION TEMPLATES (In-app)
 -- Schema: template_code, name_*, title_*, body_*, icon, action_url, variables, notification_type, priority, is_active
+-- notification_type: 'info', 'success', 'warning', 'error' (CHECK constraint)
+-- priority: 'low', 'normal', 'high', 'urgent' (CHECK constraint)
 -- =============================================================================
 
 -- Payment Completed Notification
@@ -314,7 +316,7 @@ VALUES (
     'check-circle',
     '/payments/{payment_id}',
     '["amount", "currency", "receipt_number", "payment_id"]',
-    'payment',
+    'success',
     'high',
     true
 ) ON CONFLICT (template_code) DO UPDATE SET updated_at = NOW();
@@ -335,7 +337,7 @@ VALUES (
     'file-text',
     '/requests/{request_id}',
     '["request_id"]',
-    'request',
+    'info',
     'normal',
     true
 ) ON CONFLICT (template_code) DO UPDATE SET updated_at = NOW();
@@ -356,7 +358,7 @@ VALUES (
     'check',
     '/requests/{request_id}',
     '["request_id"]',
-    'request',
+    'success',
     'high',
     true
 ) ON CONFLICT (template_code) DO UPDATE SET updated_at = NOW();
@@ -377,7 +379,7 @@ VALUES (
     'x-circle',
     '/requests/{request_id}',
     '["request_id", "reason"]',
-    'request',
+    'error',
     'high',
     true
 ) ON CONFLICT (template_code) DO UPDATE SET updated_at = NOW();
@@ -398,7 +400,7 @@ VALUES (
     'calendar-check',
     '/appointments/{request_id}',
     '["request_id", "appointment_date", "appointment_time", "location"]',
-    'appointment',
+    'success',
     'high',
     true
 ) ON CONFLICT (template_code) DO UPDATE SET updated_at = NOW();
@@ -419,7 +421,7 @@ VALUES (
     'file-check',
     '/requests/{request_id}/documents',
     '["request_id"]',
-    'document',
+    'success',
     'normal',
     true
 ) ON CONFLICT (template_code) DO UPDATE SET updated_at = NOW();
@@ -440,7 +442,7 @@ VALUES (
     'file-x',
     '/requests/{request_id}/documents',
     '["request_id"]',
-    'document',
+    'error',
     'high',
     true
 ) ON CONFLICT (template_code) DO UPDATE SET updated_at = NOW();
