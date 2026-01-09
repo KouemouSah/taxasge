@@ -104,9 +104,9 @@ class FirebaseStorageService:
 
             # Initialize Firebase Admin SDK
             if not firebase_admin._apps:
-                if settings.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV:
+                if settings.FIREBASE_SERVICE_ACCOUNT_DEV:
                     # Use service account from environment
-                    service_account_info = json.loads(settings.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV)
+                    service_account_info = json.loads(settings.FIREBASE_SERVICE_ACCOUNT_DEV)
                     cred = credentials.Certificate(service_account_info)
                 else:
                     # Use default credentials (for local development)
@@ -117,8 +117,8 @@ class FirebaseStorageService:
                 })
 
             # Initialize Google Cloud Storage client
-            if settings.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV:
-                service_account_info = json.loads(settings.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV)
+            if settings.FIREBASE_SERVICE_ACCOUNT_DEV:
+                service_account_info = json.loads(settings.FIREBASE_SERVICE_ACCOUNT_DEV)
                 self.client = gcs.Client.from_service_account_info(service_account_info)
                 # Store service account credentials for signing URLs
                 from google.oauth2 import service_account as sa_credentials

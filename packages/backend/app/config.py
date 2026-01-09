@@ -140,7 +140,7 @@ class Settings(BaseSettings):
     
     # Firebase Project Configuration
     FIREBASE_PROJECT_ID: str = Field(default="taxasge-dev", env="FIREBASE_PROJECT_ID")
-    FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV: Optional[str] = Field(default=None, env="FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV")
+    FIREBASE_SERVICE_ACCOUNT_DEV: Optional[str] = Field(default=None, env="FIREBASE_SERVICE_ACCOUNT_DEV")
     
     # Firebase Android App Configuration
     FIREBASE_ANDROID_APP_ID: Optional[str] = Field(default=None, env="FIREBASE_ANDROID_APP_ID")
@@ -374,7 +374,7 @@ class Settings(BaseSettings):
         """Get Firebase configuration using actual secret names"""
         return {
             "project_id": self.FIREBASE_PROJECT_ID,
-            "service_account": self.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV,
+            "service_account": self.FIREBASE_SERVICE_ACCOUNT_DEV,
             "android_app_id": self.FIREBASE_ANDROID_APP_ID,
             "storage_bucket": self.FIREBASE_STORAGE_BUCKET
         }
