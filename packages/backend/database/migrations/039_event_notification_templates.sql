@@ -295,10 +295,11 @@ VALUES (
 
 -- =============================================================================
 -- NOTIFICATION TEMPLATES (In-app)
+-- Schema: template_code, name_*, title_*, body_*, icon, action_url, variables, notification_type, priority, is_active
 -- =============================================================================
 
 -- Payment Completed Notification
-INSERT INTO notification_templates (template_code, name_es, name_fr, name_en, title_es, title_fr, title_en, body_es, body_fr, body_en, icon, action_url, category, is_active)
+INSERT INTO notification_templates (template_code, name_es, name_fr, name_en, title_es, title_fr, title_en, body_es, body_fr, body_en, icon, action_url, variables, notification_type, priority, is_active)
 VALUES (
     'payment_completed',
     'Pago completado',
@@ -312,12 +313,14 @@ VALUES (
     'Your payment of {amount} {currency} has been processed successfully. Receipt number: {receipt_number}',
     'check-circle',
     '/payments/{payment_id}',
+    '["amount", "currency", "receipt_number", "payment_id"]',
     'payment',
+    'high',
     true
 ) ON CONFLICT (template_code) DO UPDATE SET updated_at = NOW();
 
 -- Request Submitted Notification
-INSERT INTO notification_templates (template_code, name_es, name_fr, name_en, title_es, title_fr, title_en, body_es, body_fr, body_en, icon, action_url, category, is_active)
+INSERT INTO notification_templates (template_code, name_es, name_fr, name_en, title_es, title_fr, title_en, body_es, body_fr, body_en, icon, action_url, variables, notification_type, priority, is_active)
 VALUES (
     'request_submitted',
     'Solicitud recibida',
@@ -331,12 +334,14 @@ VALUES (
     'Your request has been received and is being processed.',
     'file-text',
     '/requests/{request_id}',
+    '["request_id"]',
     'request',
+    'normal',
     true
 ) ON CONFLICT (template_code) DO UPDATE SET updated_at = NOW();
 
 -- Request Approved Notification
-INSERT INTO notification_templates (template_code, name_es, name_fr, name_en, title_es, title_fr, title_en, body_es, body_fr, body_en, icon, action_url, category, is_active)
+INSERT INTO notification_templates (template_code, name_es, name_fr, name_en, title_es, title_fr, title_en, body_es, body_fr, body_en, icon, action_url, variables, notification_type, priority, is_active)
 VALUES (
     'request_approved',
     'Solicitud aprobada',
@@ -350,12 +355,14 @@ VALUES (
     'Your request has been approved. Check your appointment details.',
     'check',
     '/requests/{request_id}',
+    '["request_id"]',
     'request',
+    'high',
     true
 ) ON CONFLICT (template_code) DO UPDATE SET updated_at = NOW();
 
 -- Request Rejected Notification
-INSERT INTO notification_templates (template_code, name_es, name_fr, name_en, title_es, title_fr, title_en, body_es, body_fr, body_en, icon, action_url, category, is_active)
+INSERT INTO notification_templates (template_code, name_es, name_fr, name_en, title_es, title_fr, title_en, body_es, body_fr, body_en, icon, action_url, variables, notification_type, priority, is_active)
 VALUES (
     'request_rejected',
     'Solicitud rechazada',
@@ -369,12 +376,14 @@ VALUES (
     'Your request has been rejected. Reason: {reason}',
     'x-circle',
     '/requests/{request_id}',
+    '["request_id", "reason"]',
     'request',
+    'high',
     true
 ) ON CONFLICT (template_code) DO UPDATE SET updated_at = NOW();
 
 -- Appointment Booked Notification
-INSERT INTO notification_templates (template_code, name_es, name_fr, name_en, title_es, title_fr, title_en, body_es, body_fr, body_en, icon, action_url, category, is_active)
+INSERT INTO notification_templates (template_code, name_es, name_fr, name_en, title_es, title_fr, title_en, body_es, body_fr, body_en, icon, action_url, variables, notification_type, priority, is_active)
 VALUES (
     'appointment_booked',
     'Cita confirmada',
@@ -388,12 +397,14 @@ VALUES (
     'Your appointment has been confirmed for {appointment_date} at {appointment_time} at {location}.',
     'calendar-check',
     '/appointments/{request_id}',
+    '["request_id", "appointment_date", "appointment_time", "location"]',
     'appointment',
+    'high',
     true
 ) ON CONFLICT (template_code) DO UPDATE SET updated_at = NOW();
 
 -- Document Validated Notification
-INSERT INTO notification_templates (template_code, name_es, name_fr, name_en, title_es, title_fr, title_en, body_es, body_fr, body_en, icon, action_url, category, is_active)
+INSERT INTO notification_templates (template_code, name_es, name_fr, name_en, title_es, title_fr, title_en, body_es, body_fr, body_en, icon, action_url, variables, notification_type, priority, is_active)
 VALUES (
     'document_validated',
     'Documento validado',
@@ -407,12 +418,14 @@ VALUES (
     'Your document has been validated successfully.',
     'file-check',
     '/requests/{request_id}/documents',
+    '["request_id"]',
     'document',
+    'normal',
     true
 ) ON CONFLICT (template_code) DO UPDATE SET updated_at = NOW();
 
 -- Document Rejected Notification
-INSERT INTO notification_templates (template_code, name_es, name_fr, name_en, title_es, title_fr, title_en, body_es, body_fr, body_en, icon, action_url, category, is_active)
+INSERT INTO notification_templates (template_code, name_es, name_fr, name_en, title_es, title_fr, title_en, body_es, body_fr, body_en, icon, action_url, variables, notification_type, priority, is_active)
 VALUES (
     'document_rejected',
     'Documento rechazado',
@@ -426,16 +439,19 @@ VALUES (
     'Your document has been rejected. Please upload a new document.',
     'file-x',
     '/requests/{request_id}/documents',
+    '["request_id"]',
     'document',
+    'high',
     true
 ) ON CONFLICT (template_code) DO UPDATE SET updated_at = NOW();
 
 -- =============================================================================
 -- PUSH TEMPLATES
+-- Schema: template_code, name_*, title_*, body_*, image_url, icon_url, click_action, data_payload, variables, platform, ttl_seconds, is_active
 -- =============================================================================
 
 -- Payment Completed Push
-INSERT INTO push_templates (template_code, name_es, name_fr, name_en, title_es, title_fr, title_en, body_es, body_fr, body_en, icon, action_url, category, is_active)
+INSERT INTO push_templates (template_code, name_es, name_fr, name_en, title_es, title_fr, title_en, body_es, body_fr, body_en, icon_url, click_action, variables, platform, is_active)
 VALUES (
     'payment_completed',
     'Pago completado',
@@ -447,14 +463,15 @@ VALUES (
     'Su pago ha sido procesado exitosamente.',
     'Votre paiement a été traité avec succès.',
     'Your payment has been processed successfully.',
-    'payment_success',
+    '/icons/payment_success.png',
     '/payments',
-    'payment',
+    '["payment_id"]',
+    'all',
     true
 ) ON CONFLICT (template_code) DO UPDATE SET updated_at = NOW();
 
 -- Request Approved Push
-INSERT INTO push_templates (template_code, name_es, name_fr, name_en, title_es, title_fr, title_en, body_es, body_fr, body_en, icon, action_url, category, is_active)
+INSERT INTO push_templates (template_code, name_es, name_fr, name_en, title_es, title_fr, title_en, body_es, body_fr, body_en, icon_url, click_action, variables, platform, is_active)
 VALUES (
     'request_approved',
     'Solicitud aprobada',
@@ -466,14 +483,15 @@ VALUES (
     'Su solicitud ha sido aprobada.',
     'Votre demande a été approuvée.',
     'Your request has been approved.',
-    'request_approved',
+    '/icons/request_approved.png',
     '/requests',
-    'request',
+    '["request_id"]',
+    'all',
     true
 ) ON CONFLICT (template_code) DO UPDATE SET updated_at = NOW();
 
 -- Appointment Reminder Push
-INSERT INTO push_templates (template_code, name_es, name_fr, name_en, title_es, title_fr, title_en, body_es, body_fr, body_en, icon, action_url, category, is_active)
+INSERT INTO push_templates (template_code, name_es, name_fr, name_en, title_es, title_fr, title_en, body_es, body_fr, body_en, icon_url, click_action, variables, platform, is_active)
 VALUES (
     'appointment_reminder',
     'Recordatorio de cita',
@@ -485,14 +503,15 @@ VALUES (
     'Tiene una cita programada para mañana.',
     'Vous avez un rendez-vous prévu pour demain.',
     'You have an appointment scheduled for tomorrow.',
-    'calendar_reminder',
+    '/icons/calendar_reminder.png',
     '/appointments',
-    'appointment',
+    '["request_id", "appointment_date"]',
+    'all',
     true
 ) ON CONFLICT (template_code) DO UPDATE SET updated_at = NOW();
 
 -- Appointment Booked Push
-INSERT INTO push_templates (template_code, name_es, name_fr, name_en, title_es, title_fr, title_en, body_es, body_fr, body_en, icon, action_url, category, is_active)
+INSERT INTO push_templates (template_code, name_es, name_fr, name_en, title_es, title_fr, title_en, body_es, body_fr, body_en, icon_url, click_action, variables, platform, is_active)
 VALUES (
     'appointment_booked',
     'Cita confirmada',
@@ -504,8 +523,9 @@ VALUES (
     'Su cita ha sido confirmada.',
     'Votre rendez-vous a été confirmé.',
     'Your appointment has been confirmed.',
-    'calendar_check',
+    '/icons/calendar_check.png',
     '/appointments',
-    'appointment',
+    '["request_id"]',
+    'all',
     true
 ) ON CONFLICT (template_code) DO UPDATE SET updated_at = NOW();
