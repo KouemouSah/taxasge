@@ -132,12 +132,13 @@ export default function TreasuryAuditPage() {
   // Data fetching
   const { data: auditData, isLoading, error, refetch } = useAuditEntries(queryParams);
 
-  const entries = auditData?.entries || [];
   const total = auditData?.total || 0;
   const totalPages = Math.ceil(total / pageSize);
 
   // Filter by search term (client-side)
   const filteredEntries = useMemo(() => {
+    // Extract entries array inside useMemo to avoid dependency issues
+    const entries = auditData?.entries || [];
     if (!searchTerm) return entries;
 
     const term = searchTerm.toLowerCase();
@@ -146,7 +147,7 @@ export default function TreasuryAuditPage() {
       e.agentName?.toLowerCase().includes(term) ||
       e.serviceRequestReference?.toLowerCase().includes(term)
     );
-  }, [entries, searchTerm]);
+  }, [auditData?.entries, searchTerm]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('es-GQ', {

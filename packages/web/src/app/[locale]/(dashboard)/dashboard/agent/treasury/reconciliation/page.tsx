@@ -59,11 +59,10 @@ export default function TreasuryReconciliationPage() {
   const reconcileMutation = useReconcileTransaction();
   const isReconciling = reconcileMutation.isPending;
 
-  // Extract transactions array from response
-  const transactions = transactionsData?.transactions || [];
-
   // Filter transactions by search term
   const filteredTransactions = useMemo(() => {
+    // Extract transactions array inside useMemo to avoid dependency issues
+    const transactions = transactionsData?.transactions || [];
     if (!searchTerm) return transactions;
 
     const term = searchTerm.toLowerCase();
@@ -72,7 +71,7 @@ export default function TreasuryReconciliationPage() {
       tx.accountHolderName?.toLowerCase().includes(term) ||
       tx.accountNumber?.includes(term)
     );
-  }, [transactions, searchTerm]);
+  }, [transactionsData?.transactions, searchTerm]);
 
   const formatCurrency = (amount: number, currency: string = 'XAF') => {
     return new Intl.NumberFormat('es-GQ', {

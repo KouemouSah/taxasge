@@ -67,11 +67,10 @@ export default function TreasuryTransactionsPage() {
     method: filters.method,
   });
 
-  // Extract payments array
-  const transactions = paymentsData?.payments || [];
-
   // Filter by search term
   const filteredTransactions = useMemo(() => {
+    // Extract transactions array inside useMemo to avoid dependency issues
+    const transactions = paymentsData?.payments || [];
     if (!searchTerm) return transactions;
 
     const term = searchTerm.toLowerCase();
@@ -79,7 +78,7 @@ export default function TreasuryTransactionsPage() {
       tx.paymentReference.toLowerCase().includes(term) ||
       tx.userName?.toLowerCase().includes(term)
     );
-  }, [transactions, searchTerm]);
+  }, [paymentsData?.payments, searchTerm]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-GQ', {

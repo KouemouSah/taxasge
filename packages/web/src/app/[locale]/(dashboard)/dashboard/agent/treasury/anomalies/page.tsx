@@ -144,13 +144,14 @@ export default function TreasuryAnomaliesPage() {
   const { data: actions, isLoading: actionsLoading } = useAnomalyActions(selectedAnomaly?.id);
   const updateStatus = useUpdateAnomalyStatus();
 
-  const anomalies = anomalyData?.anomalies || [];
   const total = anomalyData?.total || 0;
   const summary = anomalyData?.summary;
   const totalPages = Math.ceil(total / pageSize);
 
   // Filter by search term (client-side)
   const filteredAnomalies = useMemo(() => {
+    // Extract anomalies array inside useMemo to avoid dependency issues
+    const anomalies = anomalyData?.anomalies || [];
     if (!searchTerm) return anomalies;
     const term = searchTerm.toLowerCase();
     return anomalies.filter((a: Anomaly) =>
@@ -159,7 +160,7 @@ export default function TreasuryAnomaliesPage() {
       a.serviceRequestReference?.toLowerCase().includes(term) ||
       a.entityId.toLowerCase().includes(term)
     );
-  }, [anomalies, searchTerm]);
+  }, [anomalyData?.anomalies, searchTerm]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('es-GQ', {

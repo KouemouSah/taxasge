@@ -66,9 +66,6 @@ export default function TreasuryValidationPage() {
     method: methodFilter !== 'all' ? methodFilter : undefined,
   });
 
-  // Extract payments array from response
-  const payments = paymentsData?.payments || [];
-
   // Actions
   const {
     lockPayment,
@@ -83,6 +80,8 @@ export default function TreasuryValidationPage() {
 
   // Filter payments by search term and SLA status
   const filteredPayments = useMemo(() => {
+    // Extract payments array inside useMemo to avoid dependency issues
+    const payments = paymentsData?.payments || [];
     let filtered = payments;
 
     // Search filter
@@ -104,7 +103,7 @@ export default function TreasuryValidationPage() {
     }
 
     return filtered;
-  }, [payments, searchTerm, slaFilter]);
+  }, [paymentsData?.payments, searchTerm, slaFilter]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-GQ', {
