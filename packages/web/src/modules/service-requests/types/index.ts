@@ -695,6 +695,24 @@ export interface PaymentMethodsResponse {
   defaultMethod: string | null
 }
 
+/**
+ * PaymentInitiateResult - Response from POST /payment/initiate
+ * Contains all necessary info for both electronic (BANGE) and manual (cash/check) payments
+ */
+export interface PaymentInitiateResult {
+  success: boolean
+  paymentId: string
+  paymentReference?: string  // e.g., "CSH-20260109-ABCD1234" for cash payments
+  status: string
+  redirectUrl?: string       // Only for electronic payments (BANGE)
+  requiresAction: boolean
+  actionType?: string        // 'agent_validation_cash' or 'agent_validation_check' for manual
+  messageEs?: string         // Instructions message in Spanish
+  messageFr?: string         // Instructions message in French (optional)
+  expiresAt?: string
+  error?: string
+}
+
 // ============================================================================
 // APPOINTMENT TYPES (Citizen-First Flow)
 // ============================================================================

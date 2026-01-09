@@ -114,7 +114,13 @@ class Settings(BaseSettings):
     
     # Password hashing
     BCRYPT_ROUNDS: int = 12
-    
+
+    # Receipt verification (HMAC key for QR code security)
+    RECEIPT_VERIFICATION_SECRET: str = Field(
+        default_factory=lambda: secrets.token_urlsafe(32),
+        env="RECEIPT_VERIFICATION_SECRET"
+    )
+
     # ========================================================================
     # DATABASE SETTINGS
     # ========================================================================

@@ -189,7 +189,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
         """
         Validate a manual payment (called by Treasury agent).
 
-        Updates status to completed and generates receipt.
+        Updates status to completed, generates receipt PDF, and notifies user.
 
         Args:
             db: Database connection
@@ -200,8 +200,11 @@ class ManualValidationProcessor(PaymentProcessorBase):
         Returns:
             PaymentStatusResult with updated status
         """
+        from app.modules.payments.services.receipt_service import receipt_service
+        from app.core.events import EventBus, EventType
+
         try:
-            # 1. Get payment
+            # 1. Get payment with user and service request data
             payment = await self._get_payment(db, payment_id)
             if not payment:
                 return PaymentStatusResult(
@@ -218,33 +221,107 @@ class ManualValidationProcessor(PaymentProcessorBase):
                     error="Payment is not pending validation"
                 )
 
-            # 3. Generate receipt number
-            receipt_number = await self._generate_receipt_number(db)
+            # 3. Get user data for receipt
+            user_query = """
+                SELECT id, email, phone, first_name, last_name, dni
+                FROM users WHERE id = $1
+            """
+            user_data = await db.fetchrow(user_query, payment["user_id"])
+            if not user_data:
+                user_data = {"email": "N/A", "first_name": "", "last_name": ""}
 
-            # 4. Update payment
-            query = """
+            # 4. Get service request data for receipt (workflow_code, entity_code, solicitud_type)
+            service_query = """
+                SELECT sr.id, sr.reference, sr.workflow_code, sr.solicitud_type, sr.entity_code
+                FROM service_requests sr
+                WHERE sr.id = $1
+            """
+            service_data = await db.fetchrow(service_query, payment["service_request_id"])
+
+            # 5. Get agent data for receipt
+            agent_query = """
+                SELECT u.first_name, u.last_name
+                FROM users u
+                JOIN ministry_agents ma ON ma.user_id = u.id
+                WHERE ma.id = $1
+            """
+            agent_data = await db.fetchrow(agent_query, agent_id)
+            agent_name = None
+            if agent_data:
+                agent_name = f"{agent_data['first_name'] or ''} {agent_data['last_name'] or ''}".strip()
+
+            # 6. Update payment status first
+            paid_at = datetime.utcnow()
+            update_query = """
                 UPDATE service_payments
                 SET status = 'completed',
                     workflow_status = 'completed',
-                    paid_at = NOW(),
-                    validated_by_agent_id = $2,
+                    paid_at = $2,
+                    validated_by_agent_id = $3,
                     validated_at = NOW(),
-                    validation_comment = $3,
-                    receipt_number = $4,
+                    validation_comment = $4,
                     updated_at = NOW()
                 WHERE id = $1
                 RETURNING *
             """
             updated = await db.fetchrow(
-                query,
+                update_query,
                 payment_id,
+                paid_at,
                 agent_id,
-                validation_comment,
-                receipt_number
+                validation_comment
             )
 
-            # 5. TODO: Generate receipt PDF and store URL
-            # receipt_url = await receipt_service.generate_pdf(payment_id)
+            # 7. Generate and store receipt PDF
+            receipt_number = None
+            receipt_url = None
+            try:
+                payment_data = dict(updated)
+                receipt_result = await receipt_service.generate_and_store_receipt(
+                    db=db,
+                    payment_id=payment_id,
+                    user_id=str(payment["user_id"]),
+                    payment_data=payment_data,
+                    user_data=dict(user_data) if user_data else {},
+                    service_data=dict(service_data) if service_data else None,
+                    validated_by=str(agent_id),
+                    validated_by_name=agent_name,
+                    validated_at=paid_at,
+                    language="es",  # TODO: Get user's preferred language
+                )
+                receipt_number = receipt_result["receipt_number"]
+                receipt_url = receipt_result["receipt_url"]
+                logger.info(f"Receipt generated: {receipt_number}")
+            except Exception as e:
+                # Log but don't fail the validation
+                logger.error(f"Failed to generate receipt for payment {payment_id}: {e}")
+                # Generate a simple receipt number as fallback
+                receipt_number = await self._generate_receipt_number(db)
+                # Update payment with fallback receipt number
+                await db.execute(
+                    "UPDATE service_payments SET receipt_number = $1 WHERE id = $2",
+                    receipt_number, payment_id
+                )
+
+            # 8. Publish PAYMENT_COMPLETED event to trigger notifications
+            try:
+                await EventBus.publish(EventType.PAYMENT_COMPLETED, {
+                    "payment_id": payment_id,
+                    "user_id": str(payment["user_id"]),
+                    "service_request_id": str(payment["service_request_id"]),
+                    "amount": float(updated["total_amount"]),
+                    "currency": updated["currency"],
+                    "payment_method": updated["payment_method"],
+                    "receipt_number": receipt_number,
+                    "receipt_url": receipt_url,
+                    "validated_by_agent_id": agent_id,
+                    "user_email": user_data["email"] if user_data else None,
+                    "user_phone": user_data["phone"] if user_data else None,
+                })
+                logger.info(f"PAYMENT_COMPLETED event published for {payment_id}")
+            except Exception as e:
+                # Log but don't fail the validation
+                logger.error(f"Failed to publish PAYMENT_COMPLETED event: {e}")
 
             logger.info(
                 f"Manual payment {payment_id} validated by agent {agent_id}. "
@@ -259,6 +336,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
                 amount=updated["total_amount"],
                 currency=updated["currency"],
                 receipt_number=receipt_number,
+                receipt_url=receipt_url,
                 validated_by=str(agent_id),
             )
 

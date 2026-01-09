@@ -52,6 +52,8 @@ import {
   FileCheck,
   RefreshCw,
   Bell,
+  Building2,
+  Clock,
 } from 'lucide-react'
 import {
   useServiceRequests,
@@ -152,6 +154,14 @@ export default function PassportWizardPage() {
   const [availablePaymentMethods, setAvailablePaymentMethods] = useState<PaymentMethodInfo[]>([])
   const [isLoadingPaymentMethods, setIsLoadingPaymentMethods] = useState(false)
   const [paymentMethodsError, setPaymentMethodsError] = useState<string | null>(null)
+  // Store payment result for cash payments (reference number, instructions)
+  const [pendingPaymentResult, setPendingPaymentResult] = useState<{
+    paymentReference?: string
+    messageEs?: string
+    messageFr?: string
+    actionType?: string
+    isManualPayment: boolean
+  } | null>(null)
   const paymentPollRef = useRef<NodeJS.Timeout | null>(null)
 
   // Document preview state - stores extraction data from 2-step flow
@@ -792,9 +802,24 @@ export default function PassportWizardPage() {
     if (!selectedPaymentMethod) return
 
     setIsProcessingPayment(true)
+    setPendingPaymentResult(null)
     try {
       const result = await initiatePayment(selectedPaymentMethod, phoneNumber)
       if (result) {
+        // Check if this is a manual payment (cash/check) requiring agent validation
+        const isManualPayment = result.actionType?.startsWith('agent_validation') || false
+
+        // Store payment result for display (especially for cash payments)
+        if (isManualPayment) {
+          setPendingPaymentResult({
+            paymentReference: result.paymentReference,
+            messageEs: result.messageEs,
+            messageFr: result.messageFr,
+            actionType: result.actionType,
+            isManualPayment: true,
+          })
+        }
+
         // For BANGE electronic payments, redirect to payment page
         if (result.redirectUrl) {
           // Open BANGE payment page in new window/tab
@@ -812,6 +837,7 @@ export default function PassportWizardPage() {
               }
               setPaymentComplete(true)
               setIsProcessingPayment(false)
+              setPendingPaymentResult(null)
               setCurrentStepIndex(7) // Go to appointment (index 7 after validation step removal)
             }
           } catch (err) {
@@ -1045,6 +1071,7 @@ export default function PassportWizardPage() {
           phoneNumber={phoneNumber}
           isProcessing={isProcessingPayment}
           paymentComplete={paymentComplete}
+          pendingPaymentResult={pendingPaymentResult}
           onMethodSelect={setSelectedPaymentMethod}
           onPhoneChange={setPhoneNumber}
           onPay={handlePayment}
@@ -1929,6 +1956,14 @@ interface PaymentStepImprovedProps {
   phoneNumber: string
   isProcessing: boolean
   paymentComplete: boolean
+  // Cash payment result with reference and instructions
+  pendingPaymentResult: {
+    paymentReference?: string
+    messageEs?: string
+    messageFr?: string
+    actionType?: string
+    isManualPayment: boolean
+  } | null
   onMethodSelect: (method: PaymentMethod) => void
   onPhoneChange: (phone: string) => void
   onPay: () => Promise<void>
@@ -1947,6 +1982,7 @@ function PaymentStepImproved({
   phoneNumber,
   isProcessing,
   paymentComplete,
+  pendingPaymentResult,
   onMethodSelect,
   onPhoneChange,
   onPay,
@@ -2122,12 +2158,69 @@ function PaymentStepImproved({
 
         {/* Processing State */}
         {isProcessing && (
-          <Alert className="border-blue-200 bg-blue-50">
-            <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
-            <AlertDescription className="text-blue-700">
-              {t.waitingConfirmation}
-            </AlertDescription>
-          </Alert>
+          pendingPaymentResult?.isManualPayment ? (
+            // Cash/Check Payment: Show reference and Treasury office instructions
+            <div className="space-y-4">
+              {/* Reference Number Display */}
+              <Alert className="border-amber-200 bg-amber-50">
+                <Building2 className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-800 space-y-2">
+                  <p className="font-medium">
+                    {locale === 'es' ? 'Referencia de Pago:' :
+                     locale === 'fr' ? 'Reference de paiement:' :
+                     'Payment Reference:'}
+                  </p>
+                  <p className="text-xl font-bold font-mono">
+                    {pendingPaymentResult.paymentReference}
+                  </p>
+                </AlertDescription>
+              </Alert>
+
+              {/* Instructions */}
+              <Alert className="border-blue-200 bg-blue-50">
+                <Clock className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-700">
+                  {locale === 'es' ? (
+                    <>
+                      <p className="font-medium mb-1">Instrucciones:</p>
+                      <p>Presente este comprobante en la oficina del Tesoro junto con el monto de <strong>{tariff.toLocaleString()} XAF</strong>.</p>
+                      <p className="mt-2 text-sm opacity-80">Esperando validacion del agente...</p>
+                    </>
+                  ) : locale === 'fr' ? (
+                    <>
+                      <p className="font-medium mb-1">Instructions:</p>
+                      <p>Presentez ce recu au bureau du Tresor avec le montant de <strong>{tariff.toLocaleString()} XAF</strong>.</p>
+                      <p className="mt-2 text-sm opacity-80">En attente de validation par l&apos;agent...</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-medium mb-1">Instructions:</p>
+                      <p>Present this receipt at the Treasury office with the amount of <strong>{tariff.toLocaleString()} XAF</strong>.</p>
+                      <p className="mt-2 text-sm opacity-80">Waiting for agent validation...</p>
+                    </>
+                  )}
+                </AlertDescription>
+              </Alert>
+
+              {/* Status Indicator */}
+              <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">
+                  {locale === 'es' ? 'Esperando validacion...' :
+                   locale === 'fr' ? 'En attente de validation...' :
+                   'Waiting for validation...'}
+                </span>
+              </div>
+            </div>
+          ) : (
+            // Electronic Payment: Standard waiting message
+            <Alert className="border-blue-200 bg-blue-50">
+              <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+              <AlertDescription className="text-blue-700">
+                {t.waitingConfirmation}
+              </AlertDescription>
+            </Alert>
+          )
         )}
 
         {/* Action Buttons */}

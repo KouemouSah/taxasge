@@ -28,6 +28,7 @@ import type {
   RiskAnalysisResult,
   // Payment types
   PaymentMethodsResponse,
+  PaymentInitiateResult,
 } from '../types'
 import { ExtractionStatus } from '../types'
 
@@ -970,19 +971,49 @@ class ServiceRequestsApiClient {
 
   /**
    * Initiate payment for request
+   * Returns full payment info including reference number and instructions for cash payments
    */
   async initiatePayment(
     requestId: string,
     paymentMethod: string,
     phoneNumber?: string
-  ): Promise<{ paymentId: string; redirectUrl?: string }> {
-    return this.request<{ paymentId: string; redirectUrl?: string }>(
+  ): Promise<PaymentInitiateResult> {
+    interface BackendResponse {
+      success: boolean
+      payment_id: string
+      payment_reference?: string
+      status: string
+      redirect_url?: string
+      requires_action: boolean
+      action_type?: string
+      message_es?: string
+      message_fr?: string
+      expires_at?: string
+      error?: string
+    }
+
+    const backend = await this.request<BackendResponse>(
       `/${requestId}/payment/initiate`,
       {
         method: 'POST',
         body: JSON.stringify({ payment_method: paymentMethod, phone_number: phoneNumber }),
       }
     )
+
+    // Transform snake_case to camelCase
+    return {
+      success: backend.success,
+      paymentId: backend.payment_id,
+      paymentReference: backend.payment_reference,
+      status: backend.status,
+      redirectUrl: backend.redirect_url,
+      requiresAction: backend.requires_action,
+      actionType: backend.action_type,
+      messageEs: backend.message_es,
+      messageFr: backend.message_fr,
+      expiresAt: backend.expires_at,
+      error: backend.error,
+    }
   }
 
   /**

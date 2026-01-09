@@ -776,6 +776,16 @@ except Exception as e:
     logger.error(f"❌ Payments router failed: {e}")
     logger.error(traceback.format_exc())
 
+# Try to load receipt verification router (PUBLIC - no auth required)
+try:
+    from app.modules.payments.api import verify_router
+    app.include_router(verify_router, prefix="/api/v1/verify", tags=["verification"])
+    routers_loaded.append("verify")
+    logger.info("✅ Verification router loaded (receipt authenticity)")
+except Exception as e:
+    logger.error(f"❌ Verification router failed: {e}")
+    logger.error(traceback.format_exc())
+
 # Try to load webhooks router (Module - Webhooks System - Phase 3 - BANGE Callbacks)
 try:
     from app.modules.webhooks.api import webhook_router

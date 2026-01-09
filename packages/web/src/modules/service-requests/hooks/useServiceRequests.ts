@@ -24,6 +24,7 @@ import type {
   AvailableSlot,
   AppointmentHoldStatus,
   PaymentMethodsResponse,
+  PaymentInitiateResult,
 } from '../types'
 
 // ============================================================================
@@ -86,7 +87,7 @@ export interface UseServiceRequestsReturn {
   // Submission
   submitRequest: () => Promise<boolean>
   getPaymentMethods: () => Promise<PaymentMethodsResponse | null>
-  initiatePayment: (method: string, phone?: string) => Promise<{ paymentId: string; redirectUrl?: string } | null>
+  initiatePayment: (method: string, phone?: string) => Promise<PaymentInitiateResult | null>
   checkPaymentStatus: () => Promise<{ status: string; paid: boolean } | null>
 
   // List actions
@@ -615,7 +616,7 @@ export function useServiceRequests(): UseServiceRequestsReturn {
   const initiatePayment = useCallback(async (
     method: string,
     phone?: string
-  ): Promise<{ paymentId: string; redirectUrl?: string } | null> => {
+  ): Promise<PaymentInitiateResult | null> => {
     if (!currentRequest) return null
 
     try {

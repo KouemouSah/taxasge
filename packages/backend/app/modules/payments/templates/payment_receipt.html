@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="{{ language or 'es' }}">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ texts.receipt_title }} - {{ receipt_number }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1.5cm;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 10pt;
+            line-height: 1.4;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Header with official styling */
+        .header {
+            border-bottom: 3px solid #1e40af;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+        }
+
+        .logo-placeholder {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, #1e40af, #3b82f6);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 16pt;
+            margin-right: 15px;
+        }
+
+        .ministry-info h1 {
+            margin: 0;
+            font-size: 12pt;
+            color: #1e40af;
+            text-transform: uppercase;
+        }
+
+        .ministry-info h2 {
+            margin: 3px 0 0 0;
+            font-size: 10pt;
+            color: #333;
+            font-weight: normal;
+        }
+
+        .ministry-info p {
+            margin: 2px 0 0 0;
+            font-size: 8pt;
+            color: #666;
+        }
+
+        .receipt-badge {
+            background: #059669;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .receipt-badge h3 {
+            margin: 0;
+            font-size: 12pt;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .receipt-badge p {
+            margin: 5px 0 0 0;
+            font-size: 14pt;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Receipt Info */
+        .receipt-info {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .receipt-info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-label {
+            font-size: 8pt;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 3px;
+        }
+
+        .info-value {
+            font-size: 11pt;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        /* Payer Section */
+        .section {
+            margin-bottom: 20px;
+        }
+
+        .section-header {
+            background: #1e40af;
+            color: white;
+            padding: 8px 12px;
+            font-weight: bold;
+            font-size: 10pt;
+            border-radius: 4px 4px 0 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .section-content {
+            border: 1px solid #e2e8f0;
+            border-top: none;
+            padding: 15px;
+            border-radius: 0 0 4px 4px;
+        }
+
+        .payer-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .payer-item {
+            padding: 5px 0;
+        }
+
+        .payer-label {
+            font-size: 8pt;
+            color: #64748b;
+        }
+
+        .payer-value {
+            font-size: 10pt;
+            font-weight: 500;
+        }
+
+        /* Breakdown Table */
+        .breakdown-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .breakdown-table th {
+            background: #f1f5f9;
+            padding: 10px 12px;
+            text-align: left;
+            font-size: 9pt;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .breakdown-table th.amount {
+            text-align: right;
+        }
+
+        .breakdown-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 10pt;
+        }
+
+        .breakdown-table td.amount {
+            text-align: right;
+            font-family: 'Courier New', monospace;
+            font-weight: 500;
+        }
+
+        .breakdown-table tr.supplement td {
+            padding-left: 25px;
+            font-size: 9pt;
+            color: #64748b;
+        }
+
+        .breakdown-table tr.total-row {
+            background: #1e40af;
+            color: white;
+        }
+
+        .breakdown-table tr.total-row td {
+            font-weight: bold;
+            font-size: 12pt;
+            border-bottom: none;
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 10pt;
+            text-transform: uppercase;
+        }
+
+        .status-completed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: #b45309;
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 2px solid #e2e8f0;
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 20px;
+            align-items: flex-end;
+        }
+
+        .footer-info {
+            font-size: 8pt;
+            color: #64748b;
+        }
+
+        .footer-info p {
+            margin: 3px 0;
+        }
+
+        .qr-section {
+            text-align: center;
+        }
+
+        .qr-code {
+            width: 80px;
+            height: 80px;
+            border: 1px solid #e2e8f0;
+            padding: 5px;
+            background: white;
+        }
+
+        .qr-code img {
+            width: 100%;
+            height: 100%;
+        }
+
+        .qr-label {
+            font-size: 7pt;
+            color: #64748b;
+            margin-top: 3px;
+        }
+
+        /* Validation Section */
+        .validation-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fafafa;
+            border: 1px dashed #ccc;
+            border-radius: 4px;
+        }
+
+        .validation-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .validation-item h4 {
+            margin: 0 0 5px 0;
+            font-size: 8pt;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .signature-line {
+            border-bottom: 1px solid #333;
+            height: 40px;
+            margin-top: 10px;
+        }
+
+        /* Legal Notice */
+        .legal-notice {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f8fafc;
+            border-left: 3px solid #1e40af;
+            font-size: 8pt;
+            color: #64748b;
+        }
+
+        /* Print optimization */
+        @media print {
+            body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="header-top">
+            <div class="logo-section">
+                <div class="logo-placeholder">GE</div>
+                <div class="ministry-info">
+                    <h1>{{ treasury.ministry }}</h1>
+                    <h2>{{ treasury.name }}</h2>
+                    <p>{{ treasury.address }} | NIF: {{ treasury.nif }}</p>
+                </div>
+            </div>
+            <div class="receipt-badge">
+                <h3>{{ texts.receipt_title }}</h3>
+                <p>{{ receipt_number }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Receipt Info -->
+    <div class="receipt-info">
+        <div class="receipt-info-grid">
+            <div class="info-item">
+                <span class="info-label">{{ texts.payment_date }}</span>
+                <span class="info-value">{{ payment_date }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">{{ texts.payment_method }}</span>
+                <span class="info-value">{{ payment_method_label }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">{{ texts.reference }}</span>
+                <span class="info-value">{{ payment_reference }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">{{ texts.status }}</span>
+                <span class="status-badge status-completed">{{ texts.status_completed }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payer Information -->
+    <div class="section">
+        <div class="section-header">{{ texts.payer_info }}</div>
+        <div class="section-content">
+            <div class="payer-grid">
+                <div class="payer-item">
+                    <div class="payer-label">{{ texts.payer_name }}</div>
+                    <div class="payer-value">{{ payer.name }}</div>
+                </div>
+                <div class="payer-item">
+                    <div class="payer-label">{{ texts.payer_dni }}</div>
+                    <div class="payer-value">{{ payer.dni or '-' }}</div>
+                </div>
+                <div class="payer-item">
+                    <div class="payer-label">{{ texts.payer_email }}</div>
+                    <div class="payer-value">{{ payer.email or '-' }}</div>
+                </div>
+                <div class="payer-item">
+                    <div class="payer-label">{{ texts.payer_phone }}</div>
+                    <div class="payer-value">{{ payer.phone or '-' }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Service Information -->
+    <div class="section">
+        <div class="section-header">{{ texts.service_info }}</div>
+        <div class="section-content">
+            <div class="payer-grid">
+                <div class="payer-item">
+                    <div class="payer-label">{{ texts.workflow_code }}</div>
+                    <div class="payer-value">{{ workflow_code or '-' }}</div>
+                </div>
+                {% if entity_code %}
+                <div class="payer-item">
+                    <div class="payer-label">{{ texts.entity_code }}</div>
+                    <div class="payer-value">{{ entity_code }}</div>
+                </div>
+                {% endif %}
+                {% if service_request_reference %}
+                <div class="payer-item">
+                    <div class="payer-label">{{ texts.request_reference }}</div>
+                    <div class="payer-value">{{ service_request_reference }}</div>
+                </div>
+                {% endif %}
+                {% if solicitud_type %}
+                <div class="payer-item">
+                    <div class="payer-label">{{ texts.solicitud_type }}</div>
+                    <div class="payer-value">{{ solicitud_type_label }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Breakdown -->
+    <div class="section">
+        <div class="section-header">{{ texts.payment_breakdown }}</div>
+        <div class="section-content">
+            <table class="breakdown-table">
+                <thead>
+                    <tr>
+                        <th>{{ texts.concept }}</th>
+                        <th>{{ texts.quantity }}</th>
+                        <th class="amount">{{ texts.unit_price }}</th>
+                        <th class="amount">{{ texts.subtotal }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Base Amount -->
+                    <tr>
+                        <td>{{ breakdown.base_description or texts.base_tariff }}</td>
+                        <td>1</td>
+                        <td class="amount">{{ breakdown.base_amount_formatted }}</td>
+                        <td class="amount">{{ breakdown.base_amount_formatted }}</td>
+                    </tr>
+
+                    <!-- Supplements -->
+                    {% for supplement in breakdown.supplements %}
+                    <tr class="supplement">
+                        <td>{{ supplement.name_es }}</td>
+                        <td>{{ supplement.quantity }}</td>
+                        <td class="amount">{{ supplement.unit_price_formatted }}</td>
+                        <td class="amount">{{ supplement.subtotal_formatted }}</td>
+                    </tr>
+                    {% endfor %}
+
+                    <!-- Penalties (if any) -->
+                    {% if breakdown.penalties_amount > 0 %}
+                    <tr>
+                        <td>{{ breakdown.penalty_reason or texts.penalties }}</td>
+                        <td>1</td>
+                        <td class="amount">{{ breakdown.penalties_formatted }}</td>
+                        <td class="amount">{{ breakdown.penalties_formatted }}</td>
+                    </tr>
+                    {% endif %}
+
+                    <!-- Total -->
+                    <tr class="total-row">
+                        <td colspan="3">{{ texts.total }}</td>
+                        <td class="amount">{{ breakdown.total_formatted }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Validation Section (Digital Stamp - applies to all payments) -->
+    {% if validated_by %}
+    <div class="validation-section" style="border: 2px solid #059669; background: #ecfdf5;">
+        <div class="validation-grid">
+            <div class="validation-item">
+                <h4>{{ texts.validated_by }}</h4>
+                <p style="font-weight: 600;">{{ validated_by_name or validated_by }}</p>
+                <p style="font-size: 8pt; color: #666;">{{ validated_at }}</p>
+            </div>
+            <div class="validation-item" style="text-align: center;">
+                <h4>{{ texts.digital_stamp }}</h4>
+                <div style="border: 2px solid #059669; border-radius: 50%; width: 70px; height: 70px; margin: 0 auto; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #d1fae5, #a7f3d0);">
+                    <div style="text-align: center; font-size: 8pt; color: #065f46; font-weight: bold;">
+                        <div>VALIDADO</div>
+                        <div style="font-size: 6pt;">TESORO PUBLICO</div>
+                    </div>
+                </div>
+                <p style="font-size: 7pt; color: #666; margin-top: 5px;">{{ texts.validation_code }}: {{ receipt_number[-8:] if receipt_number else '-' }}</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Footer -->
+    <div class="footer">
+        <div class="footer-grid">
+            <div class="footer-info">
+                <p><strong>{{ texts.receipt_number }}:</strong> {{ receipt_number }}</p>
+                <p><strong>{{ texts.generated_on }}:</strong> {{ generated_at }}</p>
+                <p>{{ texts.verification_url }}</p>
+                {% if verification_url %}
+                <p style="font-size: 7pt; color: #1e40af; word-break: break-all;">{{ verification_url }}</p>
+                {% endif %}
+                <p style="margin-top: 10px;">{{ texts.legal_disclaimer }}</p>
+            </div>
+            <div class="qr-section">
+                {% if qr_code_base64 %}
+                <div class="qr-code">
+                    <img src="data:image/png;base64,{{ qr_code_base64 }}" alt="QR Code">
+                </div>
+                <div class="qr-label">{{ texts.scan_to_verify }}</div>
+                {% else %}
+                <div class="qr-code" style="display: flex; align-items: center; justify-content: center; font-size: 8pt; color: #999;">
+                    QR
+                </div>
+                <div class="qr-label">{{ texts.scan_to_verify }}</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Legal Notice -->
+    <div class="legal-notice">
+        {{ texts.legal_notice }}
+    </div>
+</body>
+</html>

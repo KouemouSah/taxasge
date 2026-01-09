@@ -170,13 +170,27 @@ async def reconcile_service_payment(db, merchant_reference: str, bange_transacti
     """
     Reconcile a service_payment based on merchant_reference (our payment_reference).
     Called by BANGE webhook to mark payments as completed.
+
+    Flow:
+    1. Find pending payment by reference
+    2. Update status to completed
+    3. Generate receipt PDF and store in Firebase
+    4. Publish PAYMENT_COMPLETED event for notifications
+    5. Confirm appointment if applicable
     """
+    from app.modules.payments.services.receipt_service import receipt_service
+    from app.core.events import EventBus, EventType
+    from datetime import datetime
+
     try:
+        # 1. Get payment with all necessary data
         query = """
-            SELECT id, service_request_id, status
-            FROM service_payments
-            WHERE payment_reference = $1
-            AND status IN ('pending', 'processing')
+            SELECT sp.id, sp.service_request_id, sp.status, sp.user_id,
+                   sp.payment_method, sp.total_amount, sp.currency,
+                   sp.calculation_details
+            FROM service_payments sp
+            WHERE sp.payment_reference = $1
+            AND sp.status IN ('pending', 'processing')
         """
         payment = await db.fetchrow(query, merchant_reference)
 
@@ -186,18 +200,66 @@ async def reconcile_service_payment(db, merchant_reference: str, bange_transacti
 
         payment_id = str(payment["id"])
         service_request_id = payment["service_request_id"]
+        user_id = payment["user_id"]
 
+        # 2. Get user data for receipt
+        user_query = """
+            SELECT id, email, phone, first_name, last_name, dni
+            FROM users WHERE id = $1
+        """
+        user_data = await db.fetchrow(user_query, user_id)
+
+        # 3. Get service request data for receipt (workflow_code, entity_code, solicitud_type)
+        service_data = None
+        if service_request_id:
+            service_query = """
+                SELECT sr.id, sr.reference, sr.workflow_code, sr.solicitud_type, sr.entity_code
+                FROM service_requests sr
+                WHERE sr.id = $1
+            """
+            service_data = await db.fetchrow(service_query, service_request_id)
+
+        # 4. Update payment status
+        paid_at = datetime.utcnow()
         update_query = """
             UPDATE service_payments
             SET status = 'completed',
                 workflow_status = 'completed',
-                paid_at = NOW(),
-                bange_transaction_id = $2,
+                paid_at = $2,
+                bange_transaction_id = $3,
                 updated_at = NOW()
             WHERE id = $1
+            RETURNING *
         """
-        await db.execute(update_query, payment_id, bange_transaction_id)
+        updated = await db.fetchrow(update_query, payment_id, paid_at, bange_transaction_id)
 
+        # 5. Generate and store receipt PDF
+        receipt_number = None
+        receipt_url = None
+        try:
+            payment_data = dict(updated)
+            receipt_result = await receipt_service.generate_and_store_receipt(
+                db=db,
+                payment_id=payment_id,
+                user_id=str(user_id),
+                payment_data=payment_data,
+                user_data=dict(user_data) if user_data else {},
+                service_data=dict(service_data) if service_data else None,
+                language="es",
+            )
+            receipt_number = receipt_result["receipt_number"]
+            receipt_url = receipt_result["receipt_url"]
+            logger.info(f"BANGE payment receipt generated: {receipt_number}")
+        except Exception as e:
+            logger.error(f"Failed to generate receipt for BANGE payment {payment_id}: {e}")
+            # Generate fallback receipt number
+            year = datetime.utcnow().year
+            count_query = "SELECT COUNT(*) + 1 as n FROM service_payments WHERE receipt_number IS NOT NULL AND EXTRACT(YEAR FROM paid_at) = $1"
+            result = await db.fetchrow(count_query, year)
+            receipt_number = f"REC-{year}-{result['n']:06d}" if result else f"REC-{year}-000001"
+            await db.execute("UPDATE service_payments SET receipt_number = $1 WHERE id = $2", receipt_number, payment_id)
+
+        # 6. Update service_request payment status
         if service_request_id:
             await db.execute(
                 "UPDATE service_requests SET payment_status = 'completed', paid_at = NOW(), updated_at = NOW() WHERE id = $1",
@@ -205,6 +267,25 @@ async def reconcile_service_payment(db, merchant_reference: str, bange_transacti
             )
             logger.info(f"Updated service_request {service_request_id} payment_status to completed")
             await confirm_appointment_for_payment(db, payment_id)
+
+        # 7. Publish PAYMENT_COMPLETED event for notifications
+        try:
+            await EventBus.publish(EventType.PAYMENT_COMPLETED, {
+                "payment_id": payment_id,
+                "user_id": str(user_id),
+                "service_request_id": str(service_request_id) if service_request_id else None,
+                "amount": float(payment["total_amount"]),
+                "currency": payment["currency"],
+                "payment_method": payment["payment_method"],
+                "receipt_number": receipt_number,
+                "receipt_url": receipt_url,
+                "bange_transaction_id": bange_transaction_id,
+                "user_email": user_data["email"] if user_data else None,
+                "user_phone": user_data["phone"] if user_data else None,
+            })
+            logger.info(f"PAYMENT_COMPLETED event published for BANGE payment {payment_id}")
+        except Exception as e:
+            logger.error(f"Failed to publish PAYMENT_COMPLETED event for BANGE payment: {e}")
 
         logger.info(f"Service payment {payment_id} reconciled with BANGE transaction {bange_transaction_id}")
         return True
