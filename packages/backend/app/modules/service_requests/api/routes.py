@@ -373,8 +373,8 @@ async def delete_document(
     # This should rarely happen in normal flow
     if target_doc.get("file_path"):
         try:
-            from app.modules.documents.services.storage_service import storage_service
-            await storage_service.delete_file(target_doc["file_path"])
+            from app.modules.documents.services.storage_service import firebase_storage_service
+            await firebase_storage_service.delete_file(target_doc["file_path"])
         except Exception as e:
             logger.warning(f"Failed to delete file from storage: {e}")
 

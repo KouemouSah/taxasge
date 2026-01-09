@@ -1085,6 +1085,9 @@ class FirebaseStorageService:
 # Global service instance
 firebase_storage_service = FirebaseStorageService()
 
+# Backwards-compatible alias
+storage_service = firebase_storage_service
+
 
 # ============================================================================
 # UTILITY FUNCTIONS

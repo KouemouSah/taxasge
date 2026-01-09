@@ -208,9 +208,9 @@ class ServiceRequestService:
 
         # Import storage service (avoid circular import)
         try:
-            from app.modules.documents.services.storage_service import storage_service
+            from app.modules.documents.services.storage_service import firebase_storage_service
             # Upload to Firebase Storage
-            file_path = await storage_service.upload_user_document(
+            file_path = await firebase_storage_service.upload_user_document(
                 file_content=content,
                 filename=file.filename,
                 content_type=file.content_type,
@@ -589,8 +589,8 @@ class ServiceRequestService:
         # Upload to Firebase Storage FIRST - fail fast if storage fails
         # This ensures we don't save DB records pointing to non-existent files
         try:
-            from app.modules.documents.services.storage_service import storage_service
-            upload_result = await storage_service.upload_user_document(
+            from app.modules.documents.services.storage_service import firebase_storage_service
+            upload_result = await firebase_storage_service.upload_user_document(
                 user_id=str(user_id),
                 application_id=str(request_id),
                 file=content,  # bytes from decoded base64
@@ -760,8 +760,8 @@ class ServiceRequestService:
                     for doc in docs:
                         if doc.get("file_path"):
                             try:
-                                from app.modules.documents.services.storage_service import storage_service
-                                await storage_service.delete_file(doc["file_path"])
+                                from app.modules.documents.services.storage_service import firebase_storage_service
+                                await firebase_storage_service.delete_file(doc["file_path"])
                                 stats["deleted_files"] += 1
                             except Exception as e:
                                 stats["errors"].append(f"Failed to delete file for doc {doc['id']}: {str(e)}")

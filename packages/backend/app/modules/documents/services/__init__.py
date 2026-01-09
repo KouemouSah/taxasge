@@ -28,7 +28,7 @@ from app.modules.documents.services.ocr_service import (
 from app.modules.documents.services.document_service import DocumentService
 from app.modules.documents.services.storage_service import (
     FirebaseStorageService, UploadResult, DownloadResult, StorageConfig,
-    firebase_storage_service, get_taxasge_folder_info
+    firebase_storage_service, storage_service, get_taxasge_folder_info
 )
 from app.modules.documents.services.extraction_service import (
     ExtractionService, ExtractionResult, extraction_service
@@ -41,7 +41,7 @@ __all__ = [
     "DocumentService",
     # Storage Service (REAL implementation)
     "FirebaseStorageService", "UploadResult", "DownloadResult", "StorageConfig",
-    "firebase_storage_service", "get_taxasge_folder_info",
+    "firebase_storage_service", "storage_service", "get_taxasge_folder_info",
     # Extraction Service (REAL implementation)
     "ExtractionService", "ExtractionResult", "extraction_service"
 ]
