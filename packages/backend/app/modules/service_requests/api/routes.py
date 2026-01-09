@@ -34,6 +34,7 @@ from ..services.service_request_service import service_request_service
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from ..services.workflow_engine import workflow_engine
+from app.core.events import EventBus, EventType
 
 router = APIRouter(prefix="/service-requests", tags=["Service Requests"])
 
@@ -117,11 +118,31 @@ async def create_service_request(
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user)
 ):
-    return await service_request_service.create_request(
+    result = await service_request_service.create_request(
         db=db,
         user_id=current_user.id,
         data=data
     )
+
+    # Publish REQUEST_SUBMITTED event
+    try:
+        EventBus.publish_nowait(
+            EventType.REQUEST_SUBMITTED,
+            {
+                "request_id": str(result.id),
+                "user_id": current_user.id,
+                "user_email": current_user.email,
+                "user_name": f"{current_user.first_name} {current_user.last_name}",
+                "user_phone": getattr(current_user, 'phone_number', None),
+                "preferred_language": getattr(current_user, 'preferred_language', 'es'),
+                "workflow_code": data.workflow_code,
+                "service_code": data.service_code,
+            }
+        )
+    except Exception:
+        pass  # Non-blocking
+
+    return result
 
 
 # ═══════════════════════════════════════════════════════════════

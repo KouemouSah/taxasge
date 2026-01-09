@@ -20,6 +20,7 @@ from ..services.appointment_scheduler import appointment_scheduler
 from ..services.service_request_service import service_request_service
 from ..services.workflow_engine import workflow_engine
 from ..models.service_request import ServiceRequestResponse
+from app.core.events import EventBus, EventType
 
 
 router = APIRouter(
@@ -403,6 +404,32 @@ async def make_decision(
                 "location": reservation.appointment_location
             }
 
+        # Publish REQUEST_APPROVED event
+        try:
+            user_info = await db.fetchrow(
+                "SELECT id, email, first_name, last_name, phone_number, preferred_language FROM users WHERE id = $1",
+                request['user_id']
+            )
+            if user_info:
+                EventBus.publish_nowait(
+                    EventType.REQUEST_APPROVED,
+                    {
+                        "request_id": str(request_id),
+                        "user_id": str(user_info['id']),
+                        "user_email": user_info['email'],
+                        "user_name": f"{user_info['first_name']} {user_info['last_name']}",
+                        "user_phone": user_info['phone_number'],
+                        "preferred_language": user_info['preferred_language'] or 'es',
+                        "workflow_code": request['workflow_code'],
+                        "agent_id": str(current_user.id),
+                        "appointment_date": appointment_info['date'] if appointment_info else None,
+                        "appointment_time": appointment_info['time'] if appointment_info else None,
+                        "location": appointment_info['location'] if appointment_info else None,
+                    }
+                )
+        except Exception:
+            pass  # Non-blocking
+
         return {
             "message": "Service request approved",
             "new_status": new_status,
@@ -435,6 +462,30 @@ async def make_decision(
             agent_id=str(current_user.id),
             result_status="rejected"
         )
+
+        # Publish REQUEST_REJECTED event
+        try:
+            user_info = await db.fetchrow(
+                "SELECT id, email, first_name, last_name, phone_number, preferred_language FROM users WHERE id = $1",
+                request['user_id']
+            )
+            if user_info:
+                EventBus.publish_nowait(
+                    EventType.REQUEST_REJECTED,
+                    {
+                        "request_id": str(request_id),
+                        "user_id": str(user_info['id']),
+                        "user_email": user_info['email'],
+                        "user_name": f"{user_info['first_name']} {user_info['last_name']}",
+                        "user_phone": user_info['phone_number'],
+                        "preferred_language": user_info['preferred_language'] or 'es',
+                        "workflow_code": request['workflow_code'],
+                        "agent_id": str(current_user.id),
+                        "reason": decision.rejection_reason,
+                    }
+                )
+        except Exception:
+            pass  # Non-blocking
 
         return {
             "message": "Service request rejected",

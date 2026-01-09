@@ -35,6 +35,7 @@ from ..models.appointments import (
     AppointmentSlotsListResponse,
 )
 from ..services.appointment_service import appointment_service
+from app.core.events import EventBus, EventType
 
 logger = logging.getLogger(__name__)
 
@@ -480,6 +481,27 @@ async def confirm_appointment_hold(
 
     # Confirm hold
     result = await appointment_service.confirm_hold(db, request_id)
+
+    # Publish APPOINTMENT_BOOKED event if successful
+    if result.success:
+        try:
+            EventBus.publish_nowait(
+                EventType.APPOINTMENT_BOOKED,
+                {
+                    "request_id": str(request_id),
+                    "user_id": str(request['user_id']),
+                    "user_email": current_user.email,
+                    "user_name": f"{current_user.first_name} {current_user.last_name}",
+                    "user_phone": getattr(current_user, 'phone_number', None),
+                    "preferred_language": getattr(current_user, 'preferred_language', 'es'),
+                    "workflow_code": request['workflow_code'],
+                    "appointment_date": str(result.appointment_date) if result.appointment_date else None,
+                    "appointment_time": str(result.appointment_time) if result.appointment_time else None,
+                    "location": result.location_name,
+                }
+            )
+        except Exception:
+            pass  # Non-blocking
 
     return ConfirmHoldResponse(
         success=result.success,
