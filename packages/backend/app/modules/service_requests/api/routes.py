@@ -385,6 +385,91 @@ async def delete_document(
     return None
 
 
+@router.get(
+    "/{request_id}/documents/{document_code}/url",
+    summary="Get document download URL",
+    description="""
+    Get a signed download URL for a specific document.
+
+    The URL is valid for 24 hours and can be used to view/download the document.
+
+    **Access:**
+    - Document owner (citizen who uploaded)
+    - Agents with requests.view permission
+    - Admins
+    """
+)
+async def get_document_url(
+    request_id: UUID = Path(..., description="The service request ID"),
+    document_code: str = Path(..., description="The document code (e.g., dip, pasaporte_antiguo)"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user)
+):
+    """Get signed download URL for a service request document"""
+    from ..repositories.service_request_repository import service_request_repository
+    from ..repositories.document_repository import document_repository
+    from app.modules.documents.services.storage_service import firebase_storage_service
+    from app.modules.permissions.services.permission_service import permission_service
+
+    # Get the request
+    request = await service_request_repository.find_by_id(db, request_id)
+    if not request:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Service request not found: {request_id}"
+        )
+
+    # Check access: owner OR agent with permission
+    is_owner = str(request["user_id"]) == str(current_user.id)
+    has_view_permission = await permission_service.has_permission(
+        str(current_user.id), "requests.view"
+    )
+
+    if not is_owner and not has_view_permission:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
+
+    # Find the document
+    doc = await document_repository.find_by_code(db, request_id, document_code)
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Document not found: {document_code}"
+        )
+
+    # Check if document has a file path
+    file_path = doc.get("file_path")
+    if not file_path:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document file not yet uploaded to storage"
+        )
+
+    # Generate signed URL (24h validity)
+    try:
+        signed_url = await firebase_storage_service.get_signed_url(
+            file_path=file_path,
+            expiration_hours=24
+        )
+
+        return {
+            "document_code": document_code,
+            "document_name": doc.get("document_name"),
+            "file_name": doc.get("file_name"),
+            "mime_type": doc.get("mime_type"),
+            "download_url": signed_url,
+            "expires_in_hours": 24
+        }
+    except Exception as e:
+        logger.error(f"Failed to generate signed URL for {document_code}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate download URL"
+        )
+
+
 # ═══════════════════════════════════════════════════════════════
 # READ
 # ═══════════════════════════════════════════════════════════════
