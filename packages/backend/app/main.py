@@ -76,6 +76,26 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning(f"⚠️ Failed to initialize permissions (non-blocking): {e}")
 
+        # Initialize Event Bus and register handlers
+        try:
+            from app.core.events import EventBus
+            from app.modules.communications.handlers import register_notification_handlers
+            from app.modules.admin.handlers import register_audit_handlers
+
+            # Initialize the EventBus
+            EventBus.initialize()
+
+            # Register event handlers
+            notification_handler = register_notification_handlers()
+            audit_handler = register_audit_handlers()
+
+            logger.info(
+                f"✅ EventBus initialized with {EventBus.handler_count()} handlers "
+                f"for {len(EventBus.get_subscribed_events())} event types"
+            )
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to initialize EventBus (non-blocking): {e}")
+
         # Initialize Redis connection (optional - graceful fallback if unavailable)
         if settings.redis_url and settings.redis_url != "redis://localhost:6379":
             try:

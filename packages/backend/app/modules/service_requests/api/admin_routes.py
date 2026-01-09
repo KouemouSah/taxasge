@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field, field_validator
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.permissions.middleware.permission_middleware import permission_required
+from app.core.events import EventBus, EventType
 
 
 router = APIRouter(
@@ -2569,6 +2570,46 @@ async def validate_payment(
             payment["service_request_id"]
         )
 
+    # Publish PAYMENT_CASH_VALIDATED event
+    try:
+        # Get user info for notification
+        user_info = await db.fetchrow(
+            """
+            SELECT u.id, u.email, u.first_name, u.last_name, u.phone_number, u.preferred_language
+            FROM service_payments sp
+            JOIN service_requests sr ON sr.id = sp.service_request_id
+            JOIN users u ON u.id = sr.user_id
+            WHERE sp.id = $1
+            """,
+            payment_id
+        )
+        payment_info = await db.fetchrow(
+            "SELECT amount, currency, receipt_number, payment_method FROM service_payments WHERE id = $1",
+            payment_id
+        )
+
+        if user_info:
+            EventBus.publish_nowait(
+                EventType.PAYMENT_CASH_VALIDATED,
+                {
+                    "payment_id": payment_id,
+                    "user_id": user_info["id"],
+                    "user_email": user_info["email"],
+                    "user_name": f"{user_info['first_name']} {user_info['last_name']}",
+                    "user_phone": user_info["phone_number"],
+                    "preferred_language": user_info["preferred_language"] or "es",
+                    "request_id": payment["service_request_id"],
+                    "amount": float(payment_info["amount"]) if payment_info["amount"] else None,
+                    "currency": payment_info["currency"] or "XAF",
+                    "receipt_number": payment_info["receipt_number"],
+                    "payment_method": payment_info["payment_method"],
+                    "agent_id": current_user.id,
+                }
+            )
+    except Exception as e:
+        # Non-blocking - log but don't fail the request
+        pass
+
     return PaymentActionResponse(
         success=True,
         payment_id=payment_id,
@@ -2629,6 +2670,43 @@ async def reject_payment(
         agent_id=current_user.id,
         reason=body.reason
     )
+
+    # Publish PAYMENT_CASH_REJECTED event
+    try:
+        # Get user and payment info for notification
+        user_info = await db.fetchrow(
+            """
+            SELECT u.id, u.email, u.first_name, u.last_name, u.phone_number, u.preferred_language,
+                   sp.service_request_id, sp.amount, sp.currency, sp.payment_method
+            FROM service_payments sp
+            JOIN service_requests sr ON sr.id = sp.service_request_id
+            JOIN users u ON u.id = sr.user_id
+            WHERE sp.id = $1
+            """,
+            payment_id
+        )
+
+        if user_info:
+            EventBus.publish_nowait(
+                EventType.PAYMENT_CASH_REJECTED,
+                {
+                    "payment_id": payment_id,
+                    "user_id": user_info["id"],
+                    "user_email": user_info["email"],
+                    "user_name": f"{user_info['first_name']} {user_info['last_name']}",
+                    "user_phone": user_info["phone_number"],
+                    "preferred_language": user_info["preferred_language"] or "es",
+                    "request_id": user_info["service_request_id"],
+                    "amount": float(user_info["amount"]) if user_info["amount"] else None,
+                    "currency": user_info["currency"] or "XAF",
+                    "payment_method": user_info["payment_method"],
+                    "reason": body.reason,
+                    "agent_id": current_user.id,
+                }
+            )
+    except Exception:
+        # Non-blocking
+        pass
 
     return PaymentActionResponse(
         success=True,
