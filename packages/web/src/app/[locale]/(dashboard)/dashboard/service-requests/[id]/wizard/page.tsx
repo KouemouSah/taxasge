@@ -7,7 +7,7 @@
  * 1. Two-step document preview/validate flow (recommended)
  * 2. ExtractionPreview component for confidence/risk display
  * 3. getFormData() integration for pre-filled forms
- * 4. validateDocuments() for cross-document validation
+ * 4. Cross-document validation during extraction (Gemini processor)
  * 5. checkPaymentStatus() polling
  * 6. SMS/Email notifications for appointments
  *
@@ -70,7 +70,6 @@ import type {
   AvailableSlot,
   AppointmentHoldStatus,
   FormDataResponse,
-  ValidationResult,
   PassportSolicitudType,
   PassportRenovacionMotivo,
   DocumentExtractionPreview,
@@ -128,9 +127,8 @@ export default function PassportWizardPage() {
     previewDocument,
     validateDocument,
     deleteDocument,
-    // Form & validation methods
+    // Form methods
     getFormData,
-    validateDocuments,
     // Summary & PDF
     getCitizenSummary,
     downloadSummaryPDF,
@@ -176,10 +174,6 @@ export default function PassportWizardPage() {
   // Form data state
   const [formData, setFormData] = useState<FormDataResponse | null>(null)
   const [isLoadingFormData, setIsLoadingFormData] = useState(false)
-
-  // Validation state
-  const [validationResults, setValidationResults] = useState<ValidationResult[]>([])
-  const [isValidating, setIsValidating] = useState(false)
 
   // Confirmation state
   const [citizenSummary, setCitizenSummary] = useState<CitizenSummaryResponse | null>(null)
@@ -744,25 +738,6 @@ export default function PassportWizardPage() {
       loadFormDataForReview()
     }
   }, [currentStep.id, formData, loadFormDataForReview])
-
-  // ==========================================================================
-  // VALIDATION
-  // ==========================================================================
-
-  const runDocumentValidation = useCallback(async () => {
-    setIsValidating(true)
-    try {
-      const results = await validateDocuments()
-      setValidationResults(results)
-    } catch (err) {
-      console.error('Failed to validate documents:', err)
-    } finally {
-      setIsValidating(false)
-    }
-  }, [validateDocuments])
-
-  // NOTE: Validation step removed - cross-document validation is now done during extraction
-  // The runDocumentValidation callback is kept in case we need manual re-validation in the future
 
   // ==========================================================================
   // PAYMENT WITH STATUS POLLING
