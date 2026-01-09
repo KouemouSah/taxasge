@@ -33,6 +33,7 @@ from ..models.service_request import (
 )
 from ..models.enums import ServiceRequestStatus, SolicitudType
 from .tariff_service import tariff_service
+from .tariff_calculator import tariff_calculator
 from .schema_loader import schema_loader
 from .gemini_document_processor import gemini_document_processor
 from .workflow_engine import workflow_engine
@@ -1519,11 +1520,21 @@ class ServiceRequestService:
         if required_codes <= provided_codes:
             # All required documents provided - calculate tariff for display
             # but DO NOT change status - user must complete all wizard steps
-            tariff = await tariff_service.calculate(
-                db=db,
-                workflow_code=request["workflow_code"],
-                solicitud_type=request["solicitud_type"]
-            )
+
+            # Use tariff_calculator for unified tariff calculation
+            # This handles both PredefinedWorkflows (hardcoded) and GenericWorkflows (DB)
+            context = await workflow_engine.load_context_from_db(db, request_id)
+            workflow = workflow_engine.get_workflow(request["workflow_code"])
+
+            if context and workflow:
+                tariff = await tariff_calculator.calculate(db, workflow, context)
+            else:
+                # Fallback to tariff_service for legacy workflows
+                tariff = await tariff_service.calculate(
+                    db=db,
+                    workflow_code=request["workflow_code"],
+                    solicitud_type=request["solicitud_type"]
+                )
 
             await service_request_repository.update_amounts(
                 db=db,
@@ -1536,7 +1547,7 @@ class ServiceRequestService:
 
             # Status stays DRAFT - user must complete form review, validation,
             # and confirmation steps before request can be SUBMITTED
-            logger.info(f"Request {request['reference']} has all documents, tariff calculated. Status remains {request['status']}")
+            logger.info(f"Request {request['reference']} has all documents, tariff calculated: {tariff['total_amount']} XAF. Status remains {request['status']}")
 
     async def _build_response(
         self,

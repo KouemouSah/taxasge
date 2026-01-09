@@ -188,7 +188,7 @@ class WorkflowEngine:
             logger.error(f"Unknown workflow_code in DB: {row['workflow_code']}")
             return None
 
-        # Get sub_type from form_data if present
+        # Get sub_type and motivo from form_data if present
         # Handle legacy double-encoded form_data (stored as JSON string instead of object)
         form_data = row["form_data"] or {}
         if isinstance(form_data, str):
@@ -204,12 +204,23 @@ class WorkflowEngine:
             form_data = {}
         sub_type = form_data.get("tipo") or form_data.get("sub_type")
 
+        # Extract motivo for RENOVACION tariff calculation
+        # motivo can be: VENCIMIENTO, PERDIDA, ROBO, DETERIORO
+        motivo_value = form_data.get("motivo")
+        motivo = None
+        if motivo_value:
+            try:
+                motivo = RenovacionMotivo(motivo_value)
+            except ValueError:
+                logger.warning(f"Invalid motivo value: {motivo_value}")
+
         context = WorkflowContext(
             service_request_id=row["id"],
             user_id=row["user_id"],
             workflow_code=workflow_code,
             solicitud_type=SolicitudType(row["solicitud_type"]) if row["solicitud_type"] else SolicitudType.EXPEDICION,
             sub_type=sub_type,
+            motivo=motivo,  # NEW: Pass motivo for tariff calculation
             status=ServiceRequestStatus(row["status"]),
             form_data=form_data,
             entity_code=row["entity_code"],

@@ -475,10 +475,16 @@ export default function PassportWizardPage() {
     setIsSavingFormData(true)
     try {
       // Merge extracted data with user edits
+      // IMPORTANT: Include wizardState values (solicitud_type, motivo, is_minor)
+      // These are needed for tariff calculation in backend
       const dataToSave = {
         ...formData.extractedData,
         ...formData.formData,
         ...editedFormData,
+        // Add wizard selections for tariff calculation
+        solicitud_type: wizardState.solicitudType,
+        motivo: wizardState.motivo,
+        is_minor: wizardState.isMinor,
       }
 
       // Step 2 of 2-step flow: Validate and save each document preview to DB
