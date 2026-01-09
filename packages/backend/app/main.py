@@ -89,6 +89,14 @@ async def lifespan(app: FastAPI):
             notification_handler = register_notification_handlers()
             audit_handler = register_audit_handlers()
 
+            # Register verification event handlers (external document verification)
+            try:
+                from app.modules.verified_identifiers.handlers import setup_verification_handlers
+                await setup_verification_handlers()
+                logger.info("✅ Verification event handlers registered")
+            except Exception as ve:
+                logger.warning(f"⚠️ Failed to register verification handlers: {ve}")
+
             logger.info(
                 f"✅ EventBus initialized with {EventBus.handler_count()} handlers "
                 f"for {len(EventBus.get_subscribed_events())} event types"
@@ -716,6 +724,16 @@ try:
     logger.info("✅ Service Requests router loaded (citizen, agent, admin, appointments)")
 except Exception as e:
     logger.error(f"❌ Service Requests router failed: {e}")
+    logger.error(traceback.format_exc())
+
+# Try to load verified identifiers router (Module - External Document Verification)
+try:
+    from app.modules.verified_identifiers.api import router as verified_identifiers_router
+    app.include_router(verified_identifiers_router, prefix="/api/v1", tags=["verified-identifiers"])
+    routers_loaded.append("verified_identifiers")
+    logger.info("✅ Verified Identifiers router loaded (external document verification)")
+except Exception as e:
+    logger.error(f"❌ Verified Identifiers router failed: {e}")
     logger.error(traceback.format_exc())
 
 # Try to load declarations router (Module - Declarations System - Phase 3)

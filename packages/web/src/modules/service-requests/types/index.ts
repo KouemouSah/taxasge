@@ -79,6 +79,39 @@ export enum ExtractionStatus {
   MANUAL_REVIEW = 'manual_review',
 }
 
+/**
+ * VerificationStatus - Status of document identifier verification
+ * Matches database verification_status_enum from migration 040
+ */
+export type VerificationStatus =
+  | 'pending'
+  | 'in_progress'
+  | 'verified'
+  | 'partial_verification'
+  | 'not_found'
+  | 'verified_manually'
+  | 'verification_failed'
+
+/**
+ * VerificationDetailItem - Verification result for a single identifier type
+ */
+export interface VerificationDetailItem {
+  verified: boolean
+  verifiedAt?: string
+  source?: string
+  reason?: string
+  documentCode?: string
+  isRequired?: boolean
+}
+
+/**
+ * VerificationDetails - Complete verification details for a service request
+ * Maps identifier_type to verification result
+ */
+export interface VerificationDetails {
+  [identifierType: string]: VerificationDetailItem
+}
+
 // ============================================================================
 // WORKFLOW TYPES
 // ============================================================================
@@ -160,6 +193,9 @@ export interface ServiceRequest {
   userEmail?: string
   agentName?: string
   documentCount?: number
+  // Verification fields (from migration 040)
+  verificationStatus?: VerificationStatus
+  verificationDetails?: VerificationDetails
 }
 
 export interface ServiceRequestDocument {
@@ -601,6 +637,38 @@ export function getStepTypeIcon(stepType: StepType): string {
   return icons[stepType] || 'circle'
 }
 
+/**
+ * Get color class for verification status badge
+ */
+export function getVerificationStatusColor(status: VerificationStatus | string): string {
+  const colors: Record<string, string> = {
+    'pending': 'bg-gray-100 text-gray-800',
+    'in_progress': 'bg-blue-100 text-blue-800',
+    'verified': 'bg-green-100 text-green-800',
+    'partial_verification': 'bg-yellow-100 text-yellow-800',
+    'not_found': 'bg-orange-100 text-orange-800',
+    'verified_manually': 'bg-teal-100 text-teal-800',
+    'verification_failed': 'bg-red-100 text-red-800',
+  }
+  return colors[status] || 'bg-gray-100 text-gray-800'
+}
+
+/**
+ * Get localized label for verification status
+ */
+export function getVerificationStatusLabel(status: VerificationStatus | string, locale: 'es' | 'fr' | 'en' = 'es'): string {
+  const labels: Record<string, Record<string, string>> = {
+    'pending': { es: 'Pendiente', fr: 'En attente', en: 'Pending' },
+    'in_progress': { es: 'Verificando', fr: 'En cours', en: 'Verifying' },
+    'verified': { es: 'Verificado', fr: 'Verifie', en: 'Verified' },
+    'partial_verification': { es: 'Parcialmente verificado', fr: 'Partiellement verifie', en: 'Partial' },
+    'not_found': { es: 'No encontrado', fr: 'Non trouve', en: 'Not Found' },
+    'verified_manually': { es: 'Verificado manualmente', fr: 'Verifie manuellement', en: 'Manual' },
+    'verification_failed': { es: 'Error', fr: 'Erreur', en: 'Failed' },
+  }
+  return labels[status]?.[locale] || status
+}
+
 // ============================================================================
 // PAYMENT METHOD TYPES
 // ============================================================================
@@ -791,10 +859,11 @@ export const PASSPORT_WIZARD_STEPS: PassportWizardStep[] = [
   { id: 'upload_documents', number: 2, titleKey: 'wizard.step_documents', labelEs: 'Documentos', labelFr: 'Documents', labelEn: 'Documents' },
   { id: 'form_review_1', number: 3, titleKey: 'wizard.step_form_1', labelEs: 'Datos 1', labelFr: 'Données 1', labelEn: 'Data 1' },
   { id: 'form_review_2', number: 4, titleKey: 'wizard.step_form_2', labelEs: 'Datos 2', labelFr: 'Données 2', labelEn: 'Data 2' },
-  { id: 'validation', number: 5, titleKey: 'wizard.step_validation', labelEs: 'Validación', labelFr: 'Validation', labelEn: 'Validation' },
-  { id: 'payment', number: 6, titleKey: 'wizard.step_payment', labelEs: 'Pago', labelFr: 'Paiement', labelEn: 'Payment' },
-  { id: 'appointment', number: 7, titleKey: 'wizard.step_appointment', labelEs: 'Cita', labelFr: 'RDV', labelEn: 'Appt' },
-  { id: 'confirmation', number: 8, titleKey: 'wizard.step_confirmation', labelEs: 'Confirmación', labelFr: 'Confirmation', labelEn: 'Confirmation' },
+  // NOTE: Validation step removed - cross-document validation is now done during extraction
+  // by Gemini processor with identity mismatch blocking (Step 3: upload_documents)
+  { id: 'payment', number: 5, titleKey: 'wizard.step_payment', labelEs: 'Pago', labelFr: 'Paiement', labelEn: 'Payment' },
+  { id: 'appointment', number: 6, titleKey: 'wizard.step_appointment', labelEs: 'Cita', labelFr: 'RDV', labelEn: 'Appt' },
+  { id: 'confirmation', number: 7, titleKey: 'wizard.step_confirmation', labelEs: 'Confirmación', labelFr: 'Confirmation', labelEn: 'Confirmation' },
 ]
 
 /**

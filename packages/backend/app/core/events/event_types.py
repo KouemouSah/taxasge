@@ -74,6 +74,19 @@ class EventType(str, Enum):
     """Service request assigned to agent"""
 
     # ==========================================================================
+    # VERIFICATION EVENTS
+    # ==========================================================================
+
+    VERIFICATION_REQUIRED = "verification.required"
+    """Document identifiers need manual verification (not found in external DB)"""
+
+    VERIFICATION_COMPLETED = "verification.completed"
+    """Verification process completed for a service request"""
+
+    VERIFICATION_MANUAL = "verification.manual"
+    """Agent manually verified a service request"""
+
+    # ==========================================================================
     # DOCUMENT EVENTS
     # ==========================================================================
 

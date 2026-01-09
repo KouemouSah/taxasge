@@ -24,6 +24,9 @@ import {
   MoreHorizontal,
   SortAsc,
   SortDesc,
+  AlertTriangle,
+  ShieldCheck,
+  Info,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -53,17 +56,26 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 import { useServiceRequests } from '../hooks/useServiceRequests'
 import {
   ServiceRequestStatus,
   getStatusColor,
   getStatusLabel,
+  getVerificationStatusColor,
+  getVerificationStatusLabel,
 } from '../types'
 import type {
   ServiceRequest,
   WorkflowCategory,
   ServiceRequestFilters,
+  VerificationStatus,
 } from '../types'
 
 // ============================================================================
@@ -80,6 +92,7 @@ interface AgentDashboardProps {
   onReject?: (request: ServiceRequest) => void
   onRequestInfo?: (request: ServiceRequest) => void
   onScheduleAppointment?: (request: ServiceRequest) => void
+  onManualVerification?: (request: ServiceRequest) => void
 }
 
 interface StatCardProps {
@@ -123,6 +136,7 @@ interface RequestRowProps {
   onReject?: () => void
   onRequestInfo?: () => void
   onScheduleAppointment?: () => void
+  onManualVerification?: () => void
 }
 
 function RequestRow({
@@ -133,6 +147,7 @@ function RequestRow({
   onReject,
   onRequestInfo,
   onScheduleAppointment,
+  onManualVerification,
 }: RequestRowProps) {
   const t = useTranslations('service_requests')
 
@@ -140,6 +155,7 @@ function RequestRow({
   const canReject = [ServiceRequestStatus.UNDER_REVIEW, ServiceRequestStatus.SUBMITTED].includes(request.status as ServiceRequestStatus)
   const canRequestInfo = [ServiceRequestStatus.UNDER_REVIEW, ServiceRequestStatus.SUBMITTED].includes(request.status as ServiceRequestStatus)
   const canSchedule = request.status === ServiceRequestStatus.DOSSIER_VALIDE
+  const canManualVerify = request.verificationStatus === 'not_found' || request.verificationStatus === 'partial_verification'
 
   return (
     <TableRow className="cursor-pointer hover:bg-muted/50">
@@ -164,6 +180,42 @@ function RequestRow({
         <Badge className={getStatusColor(request.status)}>
           {getStatusLabel(request.status as ServiceRequestStatus, locale)}
         </Badge>
+      </TableCell>
+
+      {/* Verification Status Column */}
+      <TableCell onClick={onView}>
+        <div className="flex items-center gap-2">
+          <Badge className={getVerificationStatusColor(request.verificationStatus || 'pending')}>
+            {request.verificationStatus === 'not_found' && (
+              <AlertTriangle className="h-3 w-3 mr-1" />
+            )}
+            {request.verificationStatus === 'verified' && (
+              <ShieldCheck className="h-3 w-3 mr-1" />
+            )}
+            {request.verificationStatus === 'verified_manually' && (
+              <CheckCircle className="h-3 w-3 mr-1" />
+            )}
+            {getVerificationStatusLabel(request.verificationStatus || 'pending', locale)}
+          </Badge>
+          {(request.verificationStatus === 'not_found' || request.verificationStatus === 'partial_verification') && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info className="h-4 w-4 text-orange-500" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">
+                    {locale === 'es'
+                      ? 'Documento no verificado en base de datos externa. Requiere verificacion manual.'
+                      : locale === 'fr'
+                      ? 'Document non verifie dans la base de donnees externe. Verification manuelle requise.'
+                      : 'Document not verified in external database. Manual verification required.'}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
       </TableCell>
 
       <TableCell onClick={onView}>
@@ -224,6 +276,16 @@ function RequestRow({
                 {t('schedule_appointment')}
               </DropdownMenuItem>
             )}
+
+            {canManualVerify && onManualVerification && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onManualVerification} className="text-teal-600">
+                  <ShieldCheck className="h-4 w-4 mr-2" />
+                  {locale === 'es' ? 'Verificar manualmente' : locale === 'fr' ? 'Verifier manuellement' : 'Verify Manually'}
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </TableCell>
@@ -245,6 +307,7 @@ export function AgentDashboard({
   onReject,
   onRequestInfo,
   onScheduleAppointment,
+  onManualVerification,
 }: AgentDashboardProps) {
   const t = useTranslations('service_requests')
   const [searchTerm, setSearchTerm] = useState('')
@@ -442,6 +505,9 @@ export function AgentDashboard({
                         {sortField === 'status' && <SortIcon className="h-3 w-3" />}
                       </button>
                     </TableHead>
+                    <TableHead className="w-[140px]">
+                      {locale === 'es' ? 'Verificacion' : locale === 'fr' ? 'Verification' : 'Verification'}
+                    </TableHead>
                     <TableHead>{t('documents')}</TableHead>
                     <TableHead>
                       <button
@@ -466,6 +532,7 @@ export function AgentDashboard({
                       onReject={() => onReject?.(request)}
                       onRequestInfo={() => onRequestInfo?.(request)}
                       onScheduleAppointment={() => onScheduleAppointment?.(request)}
+                      onManualVerification={() => onManualVerification?.(request)}
                     />
                   ))}
                 </TableBody>

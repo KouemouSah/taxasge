@@ -82,6 +82,16 @@ interface BackendServiceRequest {
   assigned_to?: string
   current_step?: number
   tariff?: Record<string, unknown>
+  // Verification fields (from migration 040)
+  verification_status?: string
+  verification_details?: Record<string, {
+    verified: boolean
+    verified_at?: string
+    source?: string
+    reason?: string
+    document_code?: string
+    is_required?: boolean
+  }>
 }
 
 
@@ -234,6 +244,23 @@ function transformServiceRequest(backend: BackendServiceRequest): ServiceRequest
   // solicitud_type is the enum (expedicion/renovacion/duplicado)
   // Workflow-specific logic (like document requirements) needs the original sub_type
   const subType = (backend.form_data?.sub_type as string) || backend.solicitud_type
+
+  // Transform verification details from snake_case to camelCase
+  let verificationDetails: ServiceRequest['verificationDetails'] = undefined
+  if (backend.verification_details) {
+    verificationDetails = {}
+    for (const [key, val] of Object.entries(backend.verification_details)) {
+      verificationDetails[key] = {
+        verified: val.verified,
+        verifiedAt: val.verified_at,
+        source: val.source,
+        reason: val.reason,
+        documentCode: val.document_code,
+        isRequired: val.is_required,
+      }
+    }
+  }
+
   return {
     id: backend.id,
     requestNumber: backend.reference,
@@ -250,6 +277,9 @@ function transformServiceRequest(backend: BackendServiceRequest): ServiceRequest
     updatedAt: backend.updated_at,
     submittedAt: backend.submitted_at,
     completedAt: backend.completed_at,
+    // Verification fields
+    verificationStatus: backend.verification_status as ServiceRequest['verificationStatus'],
+    verificationDetails,
   }
 }
 
