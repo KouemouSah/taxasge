@@ -108,24 +108,15 @@ class PasaporteWorkflow(BaseWorkflow):
         ))
 
     def _setup_tariffs(self) -> None:
-        """Setup tariff configuration for passport.
-
-        Keys must match:
-        - SolicitudType enum values (EXPEDICION, RENOVACION, DUPLICADO)
-        - RenovacionMotivo enum values (VENCIMIENTO, PERDIDA, ROBO, DETERIORO)
-
-        For RENOVACION type, the motivo value is used as the key.
-        """
+        """Setup tariff configuration for passport."""
         self._tariff_config = TariffConfig(
             tariff_type=TariffType.FIXED,
             fixed_amounts={
-                # SolicitudType.EXPEDICION
-                "EXPEDICION": 7500,   # 7500 XAF - Primera expedicion
-                # RenovacionMotivo values (used when solicitud_type=RENOVACION)
-                "VENCIMIENTO": 5000,  # 5000 XAF - Pasaporte vencido
-                "PERDIDA": 10000,     # 10000 XAF - Pasaporte perdido (includes penalty)
-                "ROBO": 10000,        # 10000 XAF - Pasaporte robado (includes penalty)
-                "DETERIORO": 7500,    # 7500 XAF - Pasaporte deteriorado
+                "NUEVO": 7500,       # 7500 XAF
+                "RENOVACION": 5000,  # 5000 XAF
+                "PERDIDA": 10000,    # 10000 XAF (includes penalty)
+                "ROBO": 10000,       # 10000 XAF (includes penalty)
+                "DETERIORO": 7500    # 7500 XAF
             },
             currency="XAF"
         )
