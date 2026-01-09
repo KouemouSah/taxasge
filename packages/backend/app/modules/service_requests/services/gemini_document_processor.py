@@ -530,8 +530,8 @@ class RiskAnalyzer:
         form_risks = self._check_form_consistency(extraction, form_data or {})
         risk_factors.extend(form_risks)
 
-        # 6. Data Validation
-        data_risks = self._check_data_validation(extraction, document_code)
+        # 6. Data Validation (with workflow context for conditional rules)
+        data_risks = self._check_data_validation(extraction, document_code, workflow_code)
         risk_factors.extend(data_risks)
 
         # 7. Amount Validation
@@ -976,11 +976,20 @@ class RiskAnalyzer:
     def _check_data_validation(
         self,
         extraction: Dict[str, Any],
-        document_code: str
+        document_code: str,
+        workflow_code: Optional[str] = None
     ) -> List[Dict[str, Any]]:
-        """Validate extracted data formats and logical constraints"""
+        """
+        Validate extracted data formats and logical constraints.
+
+        Includes workflow-aware validations:
+        - DIP number format (9 digits for GQ)
+        - Denuncia policial date (< 30 days for PERDIDA/ROBO)
+        - Passport expiry (< 12 months for RENOVACION)
+        """
         risks = []
         today = date.today()
+        workflow_upper = (workflow_code or "").upper()
 
         # Birthdate validation
         birthdate_fields = ["fecha_nacimiento", "birthdate", "date_of_birth"]
@@ -1032,6 +1041,88 @@ class RiskAnalyzer:
                             "message": "ID number format appears invalid",
                             "detail": {"id_value": id_value, "expected_pattern": "6-12 alphanumeric characters"},
                             "action": "review"
+                        })
+
+        # ══════════════════════════════════════════════════════════════════════════
+        # WORKFLOW-SPECIFIC VALIDATIONS (moved from Step 6 validation)
+        # ══════════════════════════════════════════════════════════════════════════
+
+        # 1. DIP Number Format: Must be exactly 9 digits (GQ requirement)
+        if document_code in ["dip", "dip_gq"]:
+            numero_dip = None
+            # Check nested paths
+            if "documento" in extraction and isinstance(extraction["documento"], dict):
+                numero_dip = extraction["documento"].get("numero_dip")
+            if not numero_dip:
+                numero_dip = extraction.get("numero_dip")
+
+            if numero_dip:
+                numero_str = str(numero_dip).strip()
+                if not re.match(r'^\d{9}$', numero_str):
+                    risks.append({
+                        "code": RiskFactorCode.INVALID_ID_FORMAT.value,
+                        "severity": "error",
+                        "message": "El número de DIP debe tener exactamente 9 dígitos",
+                        "detail": {
+                            "numero_dip": numero_str,
+                            "expected_format": "9 dígitos numéricos"
+                        },
+                        "action": "reject"
+                    })
+
+        # 2. Denuncia Policial: Must be issued within last 30 days (for PERDIDA/ROBO)
+        if document_code in ["denuncia_policial", "denuncia"]:
+            fecha_emision = None
+            # Check various possible field names
+            for field in ["fecha_emision", "fecha", "fecha_denuncia", "date"]:
+                if field in extraction and extraction[field]:
+                    fecha_emision = self._parse_date(extraction[field])
+                    if fecha_emision:
+                        break
+
+            if fecha_emision:
+                days_old = (today - fecha_emision).days
+                if days_old > 30:
+                    risks.append({
+                        "code": RiskFactorCode.DOC_EXPIRED.value,
+                        "severity": "error",
+                        "message": f"La denuncia policial tiene más de 30 días ({days_old} días)",
+                        "detail": {
+                            "fecha_emision": fecha_emision.isoformat(),
+                            "dias_antiguedad": days_old,
+                            "maximo_permitido": 30
+                        },
+                        "action": "reject"
+                    })
+
+        # 3. Passport Expiry for RENOVACION: Must expire within 12 months
+        if document_code in ["pasaporte", "pasaporte_antiguo", "pasaporte_danado"]:
+            # Only check for RENOVACION workflows
+            is_renovacion = "RENOVACION" in workflow_upper or "VENCIMIENTO" in workflow_upper
+
+            if is_renovacion:
+                fecha_expiracion = None
+                for field in ["fecha_expiracion", "fecha_caducidad", "expiry_date", "valid_until"]:
+                    if "documento" in extraction and isinstance(extraction["documento"], dict):
+                        fecha_expiracion = self._parse_date(extraction["documento"].get(field))
+                    if not fecha_expiracion and field in extraction:
+                        fecha_expiracion = self._parse_date(extraction[field])
+                    if fecha_expiracion:
+                        break
+
+                if fecha_expiracion:
+                    months_until_expiry = (fecha_expiracion - today).days / 30
+                    if months_until_expiry > 12:
+                        risks.append({
+                            "code": RiskFactorCode.LOGICAL_INCONSISTENCY.value,
+                            "severity": "warning",
+                            "message": f"El pasaporte no expira en los próximos 12 meses (expira en {int(months_until_expiry)} meses)",
+                            "detail": {
+                                "fecha_expiracion": fecha_expiracion.isoformat(),
+                                "meses_hasta_expiracion": int(months_until_expiry),
+                                "requisito": "Debe expirar en menos de 12 meses para renovación"
+                            },
+                            "action": "warn"
                         })
 
         return risks

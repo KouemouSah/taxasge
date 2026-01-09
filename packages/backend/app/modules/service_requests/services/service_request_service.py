@@ -586,7 +586,8 @@ class ServiceRequestService:
         # Decode file content
         content = base64.b64decode(preview["content_b64"])
 
-        # NOW upload to Firebase Storage
+        # Upload to Firebase Storage FIRST - fail fast if storage fails
+        # This ensures we don't save DB records pointing to non-existent files
         try:
             from app.modules.documents.services.storage_service import storage_service
             upload_result = await storage_service.upload_user_document(
@@ -602,12 +603,20 @@ class ServiceRequestService:
             )
             file_path = upload_result.file_path
             logger.info(f"Document uploaded to Firebase: {file_path}")
-        except ImportError:
-            logger.warning("storage_service not available, using placeholder path")
-            file_path = f"service-requests/{request_id}/{preview['file_name']}"
+        except ImportError as import_err:
+            # storage_service not available - this is a configuration error
+            logger.error(f"storage_service module not available: {import_err}")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Document storage service is not available. Please contact support."
+            )
         except Exception as storage_err:
-            logger.error(f"Firebase upload failed: {storage_err}")
-            file_path = f"service-requests/{request_id}/{preview['file_name']}"
+            # Firebase upload failed - don't proceed with DB save
+            logger.error(f"Firebase upload failed for {preview['document_code']}: {storage_err}")
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Failed to upload document to storage. Please try again. Error: {str(storage_err)}"
+            )
 
         # Use transaction to ensure atomicity - all DB operations succeed or none
         validated_at = datetime.utcnow()

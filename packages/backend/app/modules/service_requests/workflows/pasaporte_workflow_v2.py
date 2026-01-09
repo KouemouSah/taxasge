@@ -353,24 +353,12 @@ class PasaporteWorkflow(PredefinedWorkflow):
             }
         ))
 
-        # === Step 5: Validation ===
-        self.add_step(WorkflowStep(
-            step_number=5,
-            step_id="validation",
-            step_type=StepType.VALIDATION,
-            title_es="Validacion de Documentos",
-            description_es="El sistema verifica la coherencia de sus documentos",
-            config={
-                "auto_validate": True,
-                "show_results": True,
-                "allow_proceed_with_warnings": True
-            }
-        ))
-
-        # === Step 6: Payment (BEFORE Appointment) ===
+        # === Step 5: Payment (BEFORE Appointment) ===
+        # NOTE: Cross-document validation is now done during extraction (Step 3)
+        # by Gemini processor with identity mismatch blocking. No separate validation step needed.
         # Payment methods loaded dynamically via GET /payment/methods endpoint
         self.add_step(WorkflowStep(
-            step_number=6,
+            step_number=5,
             step_id="payment",
             step_type=StepType.PAYMENT,
             title_es="Pago de Tasas",
@@ -382,9 +370,9 @@ class PasaporteWorkflow(PredefinedWorkflow):
             }
         ))
 
-        # === Step 7: Appointment (AFTER Payment, with 15min hold) ===
+        # === Step 6: Appointment (AFTER Payment, with 15min hold) ===
         self.add_step(WorkflowStep(
-            step_number=7,
+            step_number=6,
             step_id="appointment",
             step_type=StepType.APPOINTMENT,
             title_es="Programar Cita",
@@ -398,9 +386,9 @@ class PasaporteWorkflow(PredefinedWorkflow):
             }
         ))
 
-        # === Step 8: Confirmation ===
+        # === Step 7: Confirmation ===
         self.add_step(WorkflowStep(
-            step_number=8,
+            step_number=7,
             step_id="confirmation",
             step_type=StepType.CONFIRMATION,
             title_es="Confirmacion",

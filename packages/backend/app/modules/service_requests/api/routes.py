@@ -857,10 +857,18 @@ async def validate_documents(
 
         return response
     except Exception as e:
-        import logging
-        logging.error(f"Validation error: {e}")
-        # Return empty list on error (no validation failures detected)
-        return []
+        logger.error(f"Validation error for request {request_id}: {e}", exc_info=True)
+        # Return a validation error result instead of swallowing the exception
+        return [
+            ValidationResultResponse(
+                rule_id="validation_error",
+                is_valid=False,
+                severity="error",
+                message_es=f"Error durante la validación: {str(e)}. Verifique que todos los documentos estén correctamente cargados.",
+                field=None,
+                document_code=None,
+            )
+        ]
 
 
 # ═══════════════════════════════════════════════════════════════

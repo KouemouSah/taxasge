@@ -153,6 +153,7 @@ export default function PassportWizardPage() {
   const [paymentComplete, setPaymentComplete] = useState(false)
   const [availablePaymentMethods, setAvailablePaymentMethods] = useState<PaymentMethodInfo[]>([])
   const [isLoadingPaymentMethods, setIsLoadingPaymentMethods] = useState(false)
+  const [paymentMethodsError, setPaymentMethodsError] = useState<string | null>(null)
   const paymentPollRef = useRef<NodeJS.Timeout | null>(null)
 
   // Document preview state - stores extraction data from 2-step flow
@@ -170,6 +171,7 @@ export default function PassportWizardPage() {
   // Form review state - edited data during review steps
   const [editedFormData, setEditedFormData] = useState<Record<string, unknown>>({})
   const [isSavingFormData, setIsSavingFormData] = useState(false)
+  const [formSaveError, setFormSaveError] = useState<string | null>(null)
 
   // Form data state
   const [formData, setFormData] = useState<FormDataResponse | null>(null)
@@ -290,36 +292,18 @@ export default function PassportWizardPage() {
   }
 
   // Handle minor selection
-  // IMMEDIATE persistence to ensure data is not lost
-  const handleMinorSelect = async (isMinor: boolean) => {
+  // Data kept in memory until form_review validation (as per user requirement)
+  const handleMinorSelect = (isMinor: boolean) => {
     clearError()
     setWizardState(prev => ({ ...prev, isMinor }))
-
-    // Persist immediately to database
-    try {
-      await saveStepData('is_minor', { is_minor: isMinor })
-    } catch (err) {
-      console.error('Failed to persist is_minor:', err)
-    }
-
     setCurrentStepIndex(1)
   }
 
   // Handle type selection
-  // IMMEDIATE persistence to ensure data is not lost
-  const handleTypeSelect = async (type: SolicitudType) => {
+  // Data kept in memory until form_review validation (as per user requirement)
+  const handleTypeSelect = (type: SolicitudType) => {
     clearError()
     setWizardState(prev => ({ ...prev, solicitudType: type, motivo: null }))
-
-    // Persist immediately to database
-    try {
-      await saveStepData('select_type', {
-        solicitud_type: type,
-        motivo: null
-      })
-    } catch (err) {
-      console.error('Failed to persist solicitud_type:', err)
-    }
 
     if (type === 'RENOVACION') {
       setCurrentStepIndex(2)
@@ -329,18 +313,10 @@ export default function PassportWizardPage() {
   }
 
   // Handle motivo selection
-  // IMMEDIATE persistence to ensure data is not lost
-  const handleMotivoSelect = async (motivo: RenovacionMotivo) => {
+  // Data kept in memory until form_review validation (as per user requirement)
+  const handleMotivoSelect = (motivo: RenovacionMotivo) => {
     clearError()
     setWizardState(prev => ({ ...prev, motivo }))
-
-    // Persist immediately to database
-    try {
-      await saveStepData('select_motivo', { motivo })
-    } catch (err) {
-      console.error('Failed to persist motivo:', err)
-    }
-
     setCurrentStepIndex(3)
   }
 
@@ -499,6 +475,7 @@ export default function PassportWizardPage() {
     if (!formData) return false
 
     setIsSavingFormData(true)
+    setFormSaveError(null) // Clear previous errors
     try {
       // Merge extracted data with user edits
       // IMPORTANT: Include wizardState values (solicitud_type, motivo, is_minor)
@@ -515,8 +492,11 @@ export default function PassportWizardPage() {
 
       // Step 2 of 2-step flow: Validate and save each document preview to DB
       // Only do this on the LAST form review step to avoid duplicate saves
+      // CRITICAL: If any document fails to save, the entire operation fails
       if (stepId === 'form_review_2' && Object.keys(documentPreviews).length > 0) {
         console.log('[Wizard] Validating and saving documents to DB...')
+        const failedDocuments: string[] = []
+
         for (const [docCode, preview] of Object.entries(documentPreviews)) {
           if (preview.previewId) {
             // Build confirmed data for this document
@@ -554,15 +534,34 @@ export default function PassportWizardPage() {
             }
 
             // Call validateDocument to save to Firebase + DB
-            const result = await validateDocument(preview.previewId, confirmedData)
-            if (result) {
-              console.log(`[Wizard] Document ${docCode} saved to DB:`, result)
-            } else {
-              console.error(`[Wizard] Failed to save document ${docCode}`)
+            // This will throw an error if Firebase upload fails (fail-fast)
+            try {
+              const result = await validateDocument(preview.previewId, confirmedData)
+              if (result) {
+                console.log(`[Wizard] Document ${docCode} saved to DB:`, result)
+              } else {
+                // validateDocument returned null - something went wrong
+                console.error(`[Wizard] Failed to save document ${docCode} - null response`)
+                failedDocuments.push(docCode)
+              }
+            } catch (docErr) {
+              console.error(`[Wizard] Failed to save document ${docCode}:`, docErr)
+              failedDocuments.push(docCode)
             }
           }
         }
-        // Clear previews after saving
+
+        // If any documents failed to save, abort the entire operation
+        if (failedDocuments.length > 0) {
+          const docNames = failedDocuments.join(', ')
+          throw new Error(
+            locale === 'es' ? `Error al guardar documentos: ${docNames}. Por favor reintente.` :
+            locale === 'fr' ? `Erreur lors de la sauvegarde des documents: ${docNames}. Veuillez réessayer.` :
+            `Failed to save documents: ${docNames}. Please try again.`
+          )
+        }
+
+        // Clear previews only after ALL documents saved successfully
         setDocumentPreviews({})
       }
 
@@ -571,6 +570,13 @@ export default function PassportWizardPage() {
       return true
     } catch (err) {
       console.error('Failed to save form data:', err)
+      // Set error message for display to user
+      const errorMessage = err instanceof Error ? err.message : (
+        locale === 'es' ? 'Error al guardar los datos. Por favor reintente.' :
+        locale === 'fr' ? 'Erreur lors de la sauvegarde. Veuillez réessayer.' :
+        'Failed to save data. Please try again.'
+      )
+      setFormSaveError(errorMessage)
       return false
     } finally {
       setIsSavingFormData(false)
@@ -755,50 +761,49 @@ export default function PassportWizardPage() {
     }
   }, [validateDocuments])
 
-  // Run validation when entering validation step
-  useEffect(() => {
-    if (currentStep.id === 'validation' && validationResults.length === 0) {
-      runDocumentValidation()
-    }
-  }, [currentStep.id, validationResults.length, runDocumentValidation])
+  // NOTE: Validation step removed - cross-document validation is now done during extraction
+  // The runDocumentValidation callback is kept in case we need manual re-validation in the future
 
   // ==========================================================================
   // PAYMENT WITH STATUS POLLING
   // ==========================================================================
 
-  // Default payment methods fallback
-  const DEFAULT_PAYMENT_METHODS: PaymentMethodInfo[] = [
-    { code: PaymentMethod.MOBILE_MONEY, labelEs: 'Mobile Money', labelEn: 'Mobile Money', labelFr: 'Mobile Money', processorType: 'bange_api', requiresPhone: true, requiresRedirect: true, requiresAgentValidation: false },
-    { code: PaymentMethod.CASH, labelEs: 'Efectivo', labelEn: 'Cash', labelFr: 'Especes', processorType: 'manual', requiresPhone: false, requiresRedirect: false, requiresAgentValidation: true },
-    { code: PaymentMethod.CHECK, labelEs: 'Cheque', labelEn: 'Check', labelFr: 'Cheque', processorType: 'manual', requiresPhone: false, requiresRedirect: false, requiresAgentValidation: true },
-  ]
-
   // Load payment methods when step becomes payment
+  // Payment methods must come from the API - no hardcoded fallback
   const loadPaymentMethods = useCallback(async () => {
     setIsLoadingPaymentMethods(true)
+    setPaymentMethodsError(null)
     try {
       const response = await getPaymentMethods()
       if (response && response.methods && response.methods.length > 0) {
         setAvailablePaymentMethods(response.methods)
+        setPaymentMethodsError(null)
         // Set default if specified
         if (response.defaultMethod) {
           setSelectedPaymentMethod(response.defaultMethod as PaymentMethod)
         }
       } else {
-        // Response is null or empty - use fallback
-        console.warn('No payment methods returned from API, using defaults')
-        setAvailablePaymentMethods(DEFAULT_PAYMENT_METHODS)
-        setSelectedPaymentMethod(PaymentMethod.MOBILE_MONEY)
+        // Response is null or empty - show error
+        console.error('No payment methods returned from API')
+        setAvailablePaymentMethods([])
+        setPaymentMethodsError(
+          locale === 'es' ? 'No se encontraron métodos de pago disponibles.' :
+          locale === 'fr' ? 'Aucune méthode de paiement disponible.' :
+          'No payment methods available.'
+        )
       }
     } catch (err) {
       console.error('Failed to load payment methods:', err)
-      // Fallback to default methods
-      setAvailablePaymentMethods(DEFAULT_PAYMENT_METHODS)
-      setSelectedPaymentMethod(PaymentMethod.MOBILE_MONEY)
+      setAvailablePaymentMethods([])
+      setPaymentMethodsError(
+        locale === 'es' ? 'Error al cargar los métodos de pago. Por favor, reintente.' :
+        locale === 'fr' ? 'Erreur lors du chargement des méthodes de paiement. Veuillez réessayer.' :
+        'Failed to load payment methods. Please try again.'
+      )
     } finally {
       setIsLoadingPaymentMethods(false)
     }
-  }, [getPaymentMethods])
+  }, [getPaymentMethods, locale])
 
   // Load payment methods when reaching payment step
   useEffect(() => {
@@ -825,7 +830,7 @@ export default function PassportWizardPage() {
               }
               setPaymentComplete(true)
               setIsProcessingPayment(false)
-              setCurrentStepIndex(8) // Go to appointment
+              setCurrentStepIndex(7) // Go to appointment (index 7 after validation step removal)
             }
           } catch (err) {
             console.error('Payment status check failed:', err)
@@ -1031,6 +1036,7 @@ export default function PassportWizardPage() {
           editedData={editedFormData}
           isLoading={isLoadingFormData}
           isSaving={isSavingFormData}
+          saveError={formSaveError}
           onFieldEdit={handleFormFieldEdit}
           onSave={() => handleSaveFormReview(currentStep.id)}
           onNext={async () => {
@@ -1042,16 +1048,8 @@ export default function PassportWizardPage() {
         />
       )}
 
-      {currentStep.id === 'validation' && (
-        <ValidationStepImproved
-          locale={locale}
-          validationResults={validationResults}
-          isValidating={isValidating}
-          onRevalidate={runDocumentValidation}
-          onNext={() => setCurrentStepIndex(7)}
-          onBack={handleBack}
-        />
-      )}
+      {/* NOTE: Validation step removed - cross-document validation is now done during extraction
+          by Gemini processor with identity mismatch blocking (Step 3: upload_documents) */}
 
       {currentStep.id === 'payment' && (
         <PaymentStepImproved
@@ -1059,6 +1057,8 @@ export default function PassportWizardPage() {
           tariff={getTariff()}
           availableMethods={availablePaymentMethods}
           isLoadingMethods={isLoadingPaymentMethods}
+          methodsError={paymentMethodsError}
+          onRetryLoadMethods={loadPaymentMethods}
           selectedMethod={selectedPaymentMethod}
           phoneNumber={phoneNumber}
           isProcessing={isProcessingPayment}
@@ -1066,7 +1066,7 @@ export default function PassportWizardPage() {
           onMethodSelect={setSelectedPaymentMethod}
           onPhoneChange={setPhoneNumber}
           onPay={handlePayment}
-          onNext={() => setCurrentStepIndex(8)}
+          onNext={() => setCurrentStepIndex(7)} // Appointment is now index 7 after validation step removal
           onBack={handleBack}
         />
       )}
@@ -1650,6 +1650,7 @@ interface FormReviewStepEditableProps {
   editedData: Record<string, unknown>
   isLoading: boolean
   isSaving: boolean
+  saveError: string | null
   onFieldEdit: (field: string, value: unknown) => void
   onSave: () => Promise<boolean>
   onNext: () => Promise<void>
@@ -1664,6 +1665,7 @@ function FormReviewStepEditable({
   editedData,
   isLoading,
   isSaving,
+  saveError,
   onFieldEdit,
   onNext,
   onBack,
@@ -1892,6 +1894,14 @@ function FormReviewStepEditable({
           </div>
         )}
 
+        {/* Save Error Display */}
+        {saveError && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{saveError}</AlertDescription>
+          </Alert>
+        )}
+
         <div className="flex justify-between pt-4">
           <Button variant="outline" onClick={onBack} disabled={isSaving}>
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -1917,150 +1927,13 @@ function FormReviewStepEditable({
 }
 
 // =============================================================================
-// STEP 5: Validation - IMPROVED with validateDocuments()
+// NOTE: ValidationStepImproved component REMOVED
+// Cross-document validation is now done during extraction (Step 3: upload_documents)
+// by Gemini processor with identity mismatch blocking. No separate validation step needed.
 // =============================================================================
 
-interface ValidationStepImprovedProps {
-  locale: string
-  validationResults: ValidationResult[]
-  isValidating: boolean
-  onRevalidate: () => void
-  onNext: () => void
-  onBack: () => void
-}
-
-function ValidationStepImproved({ locale, validationResults, isValidating, onRevalidate, onNext, onBack }: ValidationStepImprovedProps) {
-  const errors = validationResults.filter(r => r.severity === 'error')
-  const warnings = validationResults.filter(r => r.severity === 'warning')
-  const passed = validationResults.filter(r => r.isValid)
-
-  // Validation ERRORS are blocking - must be resolved before payment
-  // Warnings are informative only and don't block
-  const canProceed = errors.length === 0
-
-  if (isValidating) {
-    return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">
-            {locale === 'es' ? 'Validando documentos...' : locale === 'fr' ? 'Validation en cours...' : 'Validating documents...'}
-          </p>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {locale === 'es' ? 'Validacion de Documentos' : locale === 'fr' ? 'Validation des Documents' : 'Document Validation'}
-        </CardTitle>
-        <CardDescription>
-          {locale === 'es'
-            ? 'El sistema verifica la coherencia de sus documentos'
-            : locale === 'fr'
-              ? 'Le systeme verifie la coherence de vos documents'
-              : 'The system verifies the consistency of your documents'}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Summary */}
-        <div className="flex gap-4 justify-center">
-          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-            <CheckCircle className="h-3 w-3 mr-1" /> {passed.length} OK
-          </Badge>
-          {warnings.length > 0 && (
-            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-              <AlertTriangle className="h-3 w-3 mr-1" /> {warnings.length} {locale === 'es' ? 'Advertencias' : 'Warnings'}
-            </Badge>
-          )}
-          {errors.length > 0 && (
-            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-              <AlertCircle className="h-3 w-3 mr-1" /> {errors.length} {locale === 'es' ? 'Errores' : 'Errors'}
-            </Badge>
-          )}
-        </div>
-
-        {/* Validation Results */}
-        <div className="space-y-2">
-          {validationResults.map((result, i) => (
-            <div
-              key={i}
-              className={`p-3 rounded-lg flex items-start gap-3 ${
-                result.severity === 'error' ? 'bg-red-50 border border-red-200' :
-                result.severity === 'warning' ? 'bg-yellow-50 border border-yellow-200' :
-                'bg-green-50 border border-green-200'
-              }`}
-            >
-              {result.severity === 'error' ? (
-                <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
-              ) : result.severity === 'warning' ? (
-                <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0" />
-              ) : (
-                <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
-              )}
-              <div>
-                <p className={`text-sm font-medium ${
-                  result.severity === 'error' ? 'text-red-700' :
-                  result.severity === 'warning' ? 'text-yellow-700' : 'text-green-700'
-                }`}>
-                  {result.field}
-                </p>
-                <p className="text-sm text-muted-foreground">{result.messageEs}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {validationResults.length === 0 && (
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              {locale === 'es'
-                ? 'No hay resultados de validacion disponibles.'
-                : 'No validation results available.'}
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Revalidate Button */}
-        <div className="flex justify-center">
-          <Button variant="outline" size="sm" onClick={onRevalidate}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            {locale === 'es' ? 'Revalidar' : locale === 'fr' ? 'Revalider' : 'Revalidate'}
-          </Button>
-        </div>
-
-        <div className="flex justify-between pt-4">
-          <Button variant="outline" onClick={onBack}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            {locale === 'es' ? 'Anterior' : locale === 'fr' ? 'Precedent' : 'Back'}
-          </Button>
-          <Button onClick={onNext} disabled={!canProceed}>
-            {locale === 'es' ? 'Continuar al Pago' : locale === 'fr' ? 'Continuer au Paiement' : 'Continue to Payment'}
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        </div>
-
-        {/* Validation errors are shown but don't block progression */}
-        {errors.length > 0 && (
-          <p className="text-sm text-yellow-600 text-center">
-            {locale === 'es'
-              ? 'Se detectaron errores de validacion. Puede continuar, pero verifique sus documentos.'
-              : locale === 'fr'
-                ? 'Des erreurs de validation ont ete detectees. Vous pouvez continuer, mais verifiez vos documents.'
-                : 'Validation errors detected. You can continue, but please verify your documents.'}
-          </p>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
 // =============================================================================
-// STEP 6: Payment - IMPROVED with status polling
+// STEP 5: Payment - IMPROVED with status polling (was Step 6 before validation removal)
 // =============================================================================
 
 interface PaymentStepImprovedProps {
@@ -2068,6 +1941,8 @@ interface PaymentStepImprovedProps {
   tariff: number
   availableMethods: PaymentMethodInfo[]
   isLoadingMethods: boolean
+  methodsError: string | null
+  onRetryLoadMethods: () => void
   selectedMethod: PaymentMethod | null
   phoneNumber: string
   isProcessing: boolean
@@ -2084,6 +1959,8 @@ function PaymentStepImproved({
   tariff,
   availableMethods,
   isLoadingMethods,
+  methodsError,
+  onRetryLoadMethods,
   selectedMethod,
   phoneNumber,
   isProcessing,
@@ -2193,6 +2070,31 @@ function PaymentStepImproved({
               <Loader2 className="h-4 w-4 animate-spin" />
               <span>{locale === 'es' ? 'Cargando metodos...' : locale === 'fr' ? 'Chargement...' : 'Loading methods...'}</span>
             </div>
+          ) : methodsError ? (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="flex items-center justify-between">
+                <span>{methodsError}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onRetryLoadMethods}
+                  className="ml-4"
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  {locale === 'es' ? 'Reintentar' : locale === 'fr' ? 'Réessayer' : 'Retry'}
+                </Button>
+              </AlertDescription>
+            </Alert>
+          ) : availableMethods.length === 0 ? (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                {locale === 'es' ? 'No hay métodos de pago disponibles.' :
+                 locale === 'fr' ? 'Aucune méthode de paiement disponible.' :
+                 'No payment methods available.'}
+              </AlertDescription>
+            </Alert>
           ) : (
             <RadioGroup
               value={selectedMethod || ''}

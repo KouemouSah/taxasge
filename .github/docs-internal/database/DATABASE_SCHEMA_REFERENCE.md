@@ -3,7 +3,7 @@
 TAXASGE DATABASE SCHEMA - COMPLETE REFERENCE
 ====================================================================================================
 
-Extracted on: 2026-01-03 21:41:47
+Extracted on: 2026-01-08 15:51:05
 Database: Supabase PostgreSQL
 Project: taxasge-dev
 
@@ -59,6 +59,7 @@ Project: taxasge-dev
   - ocr_extraction_results                   Résultats bruts de l'extraction OCR Tesseract (JSONB temporaire avant validation)
   - payment_installments                     Acomptes individuels d'un plan de paiement
   - payment_lock_history                     No description
+  - payment_method_configurations            Payment method configurations. Translations for labels are managed via entity_translations table with entity_type=payment_method
   - payment_plans                            Plans de paiement (échéanciers) pour les déclarations fiscales
   - payment_receipts                         Reçus de paiement générés au format PDF
   - payment_validation_audit                 No description
@@ -2576,6 +2577,39 @@ Foreign Keys:
   - payment_id → service_payments.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
 
 ----------------------------------------------------------------------------------------------------
+Table: PAYMENT_METHOD_CONFIGURATIONS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  integer                   NO         nextval('payment_method_config
+code                                varchar(50)               NO                                       
+label_es                            varchar(100)              NO                                       
+processor_type                      varchar(50)               NO         'manual'::character varying   
+requires_phone                      boolean                   YES        false                         
+requires_redirect                   boolean                   YES        false                         
+requires_agent_validation           boolean                   YES        false                         
+is_active                           boolean                   YES        true                          
+display_order                       integer                   YES        0                             
+icon                                varchar(50)               YES        'credit-card'::character varyi
+min_amount                          numeric                   YES                                      
+max_amount                          numeric                   YES                                      
+fees_percentage                     numeric                   YES        0                             
+fees_fixed                          numeric                   YES        0                             
+created_at                          timestamp with time zone  YES        now()                         
+updated_at                          timestamp with time zone  YES        now()                         
+
+Primary Key: id
+
+Unique Constraints:
+  - payment_method_configurations_code_key: (code)
+
+Indexes:
+  - payment_method_configurations_code_key
+    CREATE UNIQUE INDEX payment_method_configurations_code_key ON public.payment_method_configurations USING btree (code)
+
+----------------------------------------------------------------------------------------------------
 Table: PAYMENT_PLANS
 ----------------------------------------------------------------------------------------------------
 
@@ -3277,6 +3311,8 @@ receipt_url                         text                      YES
 supporting_documents                jsonb                     YES        '[]'::jsonb                   
 created_at                          timestamp with time zone  YES        now()                         
 updated_at                          timestamp with time zone  YES        now()                         
+service_request_id                  uuid                      YES                                      
+  └─ Description: FK to service_requests. XOR with fiscal_service_code - one must be set.
 
 Primary Key: id
 
@@ -3286,6 +3322,7 @@ Foreign Keys:
   - escalated_to_agent_id → ministry_agents.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
   - fiscal_service_code → fiscal_services.service_code (ON UPDATE NO ACTION, ON DELETE RESTRICT)
   - locked_by_agent_id → ministry_agents.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - service_request_id → service_requests.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
   - user_id → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
   - validated_by_agent_id → ministry_agents.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
 
@@ -3295,6 +3332,8 @@ Unique Constraints:
   - service_payments_receipt_number_key: (receipt_number)
 
 Indexes:
+  - idx_service_payments_service_request
+    CREATE INDEX idx_service_payments_service_request ON public.service_payments USING btree (service_request_id) WHERE (service_request_id IS NOT NULL)
   - service_payments_payment_reference_key
     CREATE UNIQUE INDEX service_payments_payment_reference_key ON public.service_payments USING btree (payment_reference)
   - service_payments_bange_transaction_id_key
@@ -3313,6 +3352,10 @@ Indexes:
     CREATE INDEX idx_service_payments_assigned_agent ON public.service_payments USING btree (assigned_agent_id, workflow_status) WHERE (assigned_agent_id IS NOT NULL)
   - idx_service_payments_expired_locks
     CREATE INDEX idx_service_payments_expired_locks ON public.service_payments USING btree (lock_expires_at) WHERE (locked_by_agent_id IS NOT NULL)
+  - idx_service_payments_request_status
+    CREATE INDEX idx_service_payments_request_status ON public.service_payments USING btree (service_request_id, status, workflow_status) WHERE (service_request_id IS NOT NULL)
+  - idx_service_payments_pending_validation
+    CREATE INDEX idx_service_payments_pending_validation ON public.service_payments USING btree (workflow_status, payment_method, created_at) WHERE (workflow_status = 'pending_agent_review'::payment_workflow_status)
 
 ----------------------------------------------------------------------------------------------------
 Table: SERVICE_PROCEDURE_ASSIGNMENTS
@@ -4986,6 +5029,16 @@ Definition:  SELECT p.id AS payment_id,
     d.declaration_type,
     d.fiscal_yea...
 
+View: v_pending_payment_validations
+Definition:  SELECT sp.id AS payment_id,
+    sp.payment_reference,
+    sp.service_request_id,
+    sr.reference AS request_reference,
+    sr.workflow_code,
+    sp.user_id,
+    u.full_name AS user_name,
+    u.email...
+
 View: v_permission_gaps_analysis
 Definition:  WITH role_expected_permissions AS (
          SELECT 'ministry_agent'::text AS role,
@@ -5060,6 +5113,17 @@ Definition:  SELECT nl.id,
     nl.template_code,
     nl.subject,
     nl.content_prev...
+
+View: v_service_request_payments
+Definition:  SELECT sp.id,
+    sp.payment_reference,
+    sp.service_request_id,
+    sr.reference AS request_reference,
+    sr.workflow_code,
+    sr.solicitud_type,
+    sp.user_id,
+    u.email AS user_email,
+    u...
 
 View: v_service_requests_by_city
 Definition:  SELECT COALESCE(el.city, 'Non specifie'::character varying) AS city,
@@ -6204,6 +6268,7 @@ service_payments.company_id → companies.id
 service_payments.escalated_to_agent_id → ministry_agents.id
 service_payments.fiscal_service_code → fiscal_services.service_code
 service_payments.locked_by_agent_id → ministry_agents.id
+service_payments.service_request_id → service_requests.id
 service_payments.user_id → users.id
 service_payments.validated_by_agent_id → ministry_agents.id
 service_procedure_assignments.fiscal_service_id → fiscal_services.id
