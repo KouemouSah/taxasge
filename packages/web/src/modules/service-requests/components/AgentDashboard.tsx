@@ -75,7 +75,6 @@ import type {
   ServiceRequest,
   WorkflowCategory,
   ServiceRequestFilters,
-  VerificationStatus,
 } from '../types'
 
 // ============================================================================
