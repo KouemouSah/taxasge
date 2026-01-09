@@ -589,15 +589,24 @@ class ServiceRequestService:
         # NOW upload to Firebase Storage
         try:
             from app.modules.documents.services.storage_service import storage_service
-            file_path = await storage_service.upload_user_document(
-                file_content=content,
-                filename=preview["file_name"],
-                content_type=preview["mime_type"],
+            upload_result = await storage_service.upload_user_document(
                 user_id=str(user_id),
-                folder=f"service-requests/{request_id}"
+                application_id=str(request_id),
+                file=content,  # bytes from decoded base64
+                metadata={
+                    "filename": preview["file_name"],
+                    "mime_type": preview["mime_type"],
+                    "document_code": preview["document_code"],
+                    "document_name": preview["document_name"]
+                }
             )
+            file_path = upload_result.file_path
+            logger.info(f"Document uploaded to Firebase: {file_path}")
         except ImportError:
             logger.warning("storage_service not available, using placeholder path")
+            file_path = f"service-requests/{request_id}/{preview['file_name']}"
+        except Exception as storage_err:
+            logger.error(f"Firebase upload failed: {storage_err}")
             file_path = f"service-requests/{request_id}/{preview['file_name']}"
 
         # Use transaction to ensure atomicity - all DB operations succeed or none

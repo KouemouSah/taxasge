@@ -290,18 +290,36 @@ export default function PassportWizardPage() {
   }
 
   // Handle minor selection
-  // Data is only stored locally - NOT saved to DB until final validation
-  const handleMinorSelect = (isMinor: boolean) => {
+  // IMMEDIATE persistence to ensure data is not lost
+  const handleMinorSelect = async (isMinor: boolean) => {
     clearError()
     setWizardState(prev => ({ ...prev, isMinor }))
+
+    // Persist immediately to database
+    try {
+      await saveStepData('is_minor', { is_minor: isMinor })
+    } catch (err) {
+      console.error('Failed to persist is_minor:', err)
+    }
+
     setCurrentStepIndex(1)
   }
 
   // Handle type selection
-  // Data is only stored locally - NOT saved to DB until final validation
-  const handleTypeSelect = (type: SolicitudType) => {
+  // IMMEDIATE persistence to ensure data is not lost
+  const handleTypeSelect = async (type: SolicitudType) => {
     clearError()
     setWizardState(prev => ({ ...prev, solicitudType: type, motivo: null }))
+
+    // Persist immediately to database
+    try {
+      await saveStepData('select_type', {
+        solicitud_type: type,
+        motivo: null
+      })
+    } catch (err) {
+      console.error('Failed to persist solicitud_type:', err)
+    }
 
     if (type === 'RENOVACION') {
       setCurrentStepIndex(2)
@@ -311,10 +329,18 @@ export default function PassportWizardPage() {
   }
 
   // Handle motivo selection
-  // Data is only stored locally - NOT saved to DB until final validation
-  const handleMotivoSelect = (motivo: RenovacionMotivo) => {
+  // IMMEDIATE persistence to ensure data is not lost
+  const handleMotivoSelect = async (motivo: RenovacionMotivo) => {
     clearError()
     setWizardState(prev => ({ ...prev, motivo }))
+
+    // Persist immediately to database
+    try {
+      await saveStepData('select_motivo', { motivo })
+    } catch (err) {
+      console.error('Failed to persist motivo:', err)
+    }
+
     setCurrentStepIndex(3)
   }
 
@@ -740,25 +766,35 @@ export default function PassportWizardPage() {
   // PAYMENT WITH STATUS POLLING
   // ==========================================================================
 
+  // Default payment methods fallback
+  const DEFAULT_PAYMENT_METHODS: PaymentMethodInfo[] = [
+    { code: PaymentMethod.MOBILE_MONEY, labelEs: 'Mobile Money', labelEn: 'Mobile Money', labelFr: 'Mobile Money', processorType: 'bange_api', requiresPhone: true, requiresRedirect: true, requiresAgentValidation: false },
+    { code: PaymentMethod.CASH, labelEs: 'Efectivo', labelEn: 'Cash', labelFr: 'Especes', processorType: 'manual', requiresPhone: false, requiresRedirect: false, requiresAgentValidation: true },
+    { code: PaymentMethod.CHECK, labelEs: 'Cheque', labelEn: 'Check', labelFr: 'Cheque', processorType: 'manual', requiresPhone: false, requiresRedirect: false, requiresAgentValidation: true },
+  ]
+
   // Load payment methods when step becomes payment
   const loadPaymentMethods = useCallback(async () => {
     setIsLoadingPaymentMethods(true)
     try {
       const response = await getPaymentMethods()
-      if (response) {
+      if (response && response.methods && response.methods.length > 0) {
         setAvailablePaymentMethods(response.methods)
         // Set default if specified
         if (response.defaultMethod) {
           setSelectedPaymentMethod(response.defaultMethod as PaymentMethod)
         }
+      } else {
+        // Response is null or empty - use fallback
+        console.warn('No payment methods returned from API, using defaults')
+        setAvailablePaymentMethods(DEFAULT_PAYMENT_METHODS)
+        setSelectedPaymentMethod(PaymentMethod.MOBILE_MONEY)
       }
     } catch (err) {
       console.error('Failed to load payment methods:', err)
       // Fallback to default methods
-      setAvailablePaymentMethods([
-        { code: PaymentMethod.MOBILE_MONEY, labelEs: 'Mobile Money', labelEn: 'Mobile Money', labelFr: 'Mobile Money', processorType: 'bange_api', requiresPhone: true, requiresRedirect: true, requiresAgentValidation: false },
-        { code: PaymentMethod.CASH, labelEs: 'Efectivo', labelEn: 'Cash', labelFr: 'Especes', processorType: 'manual', requiresPhone: false, requiresRedirect: false, requiresAgentValidation: true },
-      ])
+      setAvailablePaymentMethods(DEFAULT_PAYMENT_METHODS)
+      setSelectedPaymentMethod(PaymentMethod.MOBILE_MONEY)
     } finally {
       setIsLoadingPaymentMethods(false)
     }
@@ -1898,9 +1934,9 @@ function ValidationStepImproved({ locale, validationResults, isValidating, onRev
   const warnings = validationResults.filter(r => r.severity === 'warning')
   const passed = validationResults.filter(r => r.isValid)
 
-  // Validation is informative only - never blocks payment
-  // Users can proceed even with errors/warnings
-  const canProceed = true
+  // Validation ERRORS are blocking - must be resolved before payment
+  // Warnings are informative only and don't block
+  const canProceed = errors.length === 0
 
   if (isValidating) {
     return (

@@ -31,8 +31,7 @@ from .pasaporte_workflow_v2 import (
 # Legacy BaseWorkflow (still used by some workflows)
 from .base_workflow import BaseWorkflow
 
-# Legacy pasaporte workflow (for backward compatibility during migration)
-from .pasaporte_workflow import PasaporteWorkflow as PasaporteWorkflowLegacy
+# Legacy pasaporte workflow removed - now using v2 exclusively
 
 # Other legacy workflows (to be migrated to v2)
 from .contrato_workflow import ContratoWorkflow
@@ -90,7 +89,6 @@ __all__ = [
 
     # === LEGACY (v1) ===
     "BaseWorkflow",
-    "PasaporteWorkflowLegacy",
 
     # Contrato workflow
     "ContratoWorkflow",

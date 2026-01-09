@@ -673,6 +673,15 @@ class PasaporteWorkflow(PredefinedWorkflow):
                 "severity": "error"
             },
 
+            # Birthdate coherent between DIP and old passport (for VENCIMIENTO and DETERIORO)
+            {
+                "id": "fecha_nacimiento_dip_pasaporte",
+                "condition": f"motivo IN ['{RenovacionMotivo.VENCIMIENTO.value}', '{RenovacionMotivo.DETERIORO.value}']",
+                "rule": "DIP.titular.fecha_nacimiento == PASAPORTE.titular.fecha_nacimiento",
+                "error_es": "La fecha de nacimiento del DIP no coincide con el pasaporte antiguo.",
+                "severity": "error"
+            },
+
             # Birthdate coherent for EXPEDICION
             {
                 "id": "fecha_nacimiento_coherente",
