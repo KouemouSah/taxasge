@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from loguru import logger
 from uuid import uuid4
 
-from app.core.config import get_settings
+from app.config import get_settings
 from app.modules.payments.models.payment import (
     BANGEPaymentRequest, BANGEPaymentResponse, BANGEWebhookData,
     PaymentResponse, PaymentStatus

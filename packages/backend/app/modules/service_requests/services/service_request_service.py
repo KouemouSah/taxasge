@@ -931,6 +931,15 @@ class ServiceRequestService:
             update_fields.append("form_data = $1::jsonb")
             update_values.append(json.dumps(form_data))
 
+            # Also update solicitud_type if present in form_data
+            if "solicitud_type" in form_data:
+                solicitud_type_value = form_data["solicitud_type"]
+                # Normalize to lowercase for database
+                if isinstance(solicitud_type_value, str):
+                    solicitud_type_value = solicitud_type_value.lower()
+                update_fields.append(f"solicitud_type = ${len(update_values) + 1}")
+                update_values.append(solicitud_type_value)
+
         if notes is not None:
             update_fields.append(f"notes = ${len(update_values) + 1}")
             update_values.append(notes)
