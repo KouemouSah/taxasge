@@ -458,9 +458,9 @@ class ManualValidationProcessor(PaymentProcessorBase):
         if context.tariff_breakdown:
             base_amount = Decimal(str(context.tariff_breakdown.get('base_amount', context.amount)))
 
-        # For service request payments, fiscal_service_code should be NULL
-        # per migration 032 XOR constraint: (fiscal_service_code IS NULL AND service_request_id IS NOT NULL)
-        # The service_request_id provides the link to workflow_code via the service_requests table
+        # Derive fiscal_service_code from workflow_code (truncate to 10 chars max)
+        # Required because the column is NOT NULL in the database schema
+        fiscal_service_code = (context.workflow_code or 'SERVICE')[:10]
 
         query = """
             INSERT INTO service_payments (
@@ -472,9 +472,9 @@ class ManualValidationProcessor(PaymentProcessorBase):
                 created_at, updated_at
             ) VALUES (
                 $1::uuid, $2, $3::uuid, $4::uuid,
-                NULL, 'full',
-                $5, $6, $7, $8,
-                $9::jsonb,
+                $5, 'full',
+                $6, $7, $8, $9,
+                $10::jsonb,
                 'pending', 'pending_agent_review', true,
                 NOW(), NOW()
             )
@@ -485,6 +485,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
             payment_reference,
             context.user_id,
             context.service_request_id,
+            fiscal_service_code,
             context.payment_method.value,
             base_amount,
             total_amount,
