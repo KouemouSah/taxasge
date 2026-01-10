@@ -289,8 +289,7 @@ export interface AppointmentSlotConfig {
 }
 
 export interface AppointmentSlotConfigCreate {
-  entity_code: string
-  entity_location_id: string
+  entity_location_id: string  // FK to entity_locations - entity_code is resolved on backend
   day_of_week: number
   start_time: string
   end_time: string

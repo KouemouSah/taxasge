@@ -72,14 +72,13 @@ export default function NewSlotConfigPage() {
     return availableLocations.find((loc) => loc.id === selectedLocationId)
   }, [availableLocations, selectedLocationId])
 
-  // Form state
+  // Form state (entity_code is resolved on backend from entity_location_id)
   const [formData, setFormData] = useState<Omit<AppointmentSlotConfigCreate, 'day_of_week'>>({
-    entity_code: urlEntity || '',
+    entity_location_id: '',
     start_time: '08:00',
     end_time: '16:00',
     slot_duration_minutes: 30,
     max_appointments_per_slot: 1,
-    entity_location_id: '',
     is_active: true,
   })
 
@@ -93,19 +92,17 @@ export default function NewSlotConfigPage() {
         setSelectedLocationId(matchingLocation.id)
         setFormData((prev) => ({
           ...prev,
-          entity_code: matchingLocation.entity_code,
           entity_location_id: matchingLocation.id,
         }))
       }
     }
   }, [urlCity, urlEntity, availableLocations])
 
-  // Update form data when location changes
+  // Update form data when location changes (entity_code resolved on backend)
   useEffect(() => {
     if (selectedLocation) {
       setFormData((prev) => ({
         ...prev,
-        entity_code: selectedLocation.entity_code,
         entity_location_id: selectedLocation.id,
       }))
     }

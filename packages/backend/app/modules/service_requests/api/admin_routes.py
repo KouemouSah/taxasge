@@ -243,32 +243,31 @@ class WorkflowTariffResponse(BaseModel):
 from datetime import time as Time
 
 class AppointmentSlotConfigCreate(BaseModel):
-    """Create appointment slot config - matches DB schema"""
-    entity_code: str = Field(..., max_length=50)
+    """Create appointment slot config - aligned with migration 030 (entity_locations)"""
+    entity_location_id: str = Field(..., description="FK to entity_locations table")
     day_of_week: int = Field(..., ge=0, le=6, description="0=Monday, 6=Sunday")
     start_time: Time
     end_time: Time
     slot_duration_minutes: int = Field(default=30, ge=5, le=120)
     max_appointments_per_slot: int = Field(default=10, ge=1, le=100)
-    location_name: Optional[str] = Field(None, max_length=255)
-    location_address: Optional[str] = None
     is_active: bool = True
+    # Note: entity_code, location_name, location_address are resolved from entity_locations FK
 
 
 class AppointmentSlotConfigUpdate(BaseModel):
     """Update appointment slot config"""
+    entity_location_id: Optional[str] = Field(None, description="FK to entity_locations table")
     start_time: Optional[Time] = None
     end_time: Optional[Time] = None
     slot_duration_minutes: Optional[int] = Field(None, ge=5, le=120)
     max_appointments_per_slot: Optional[int] = Field(None, ge=1, le=100)
-    location_name: Optional[str] = Field(None, max_length=255)
-    location_address: Optional[str] = None
     is_active: Optional[bool] = None
 
 
 class AppointmentSlotConfigResponse(BaseModel):
     """Appointment slot config response"""
     id: str  # UUID
+    entity_location_id: Optional[str] = None  # FK to entity_locations
     entity_code: str
     day_of_week: int
     start_time: str
@@ -1182,10 +1181,11 @@ async def delete_tariff(
     "/appointments/slot-configs",
     response_model=List[AppointmentSlotConfigResponse],
     summary="List appointment slot configurations",
-    description="Get all appointment slot configurations by entity."
+    description="Get all appointment slot configurations by entity or location."
 )
 async def list_slot_configs(
-    entity_code: Optional[str] = Query(None, description="Filter by entity"),
+    entity_code: Optional[str] = Query(None, description="Filter by entity code"),
+    entity_location_id: Optional[str] = Query(None, description="Filter by entity location ID"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
@@ -1193,6 +1193,10 @@ async def list_slot_configs(
 ):
     query = "SELECT * FROM appointment_slot_configs WHERE 1=1"
     params = []
+
+    if entity_location_id:
+        params.append(entity_location_id)
+        query += f" AND entity_location_id = ${len(params)}::uuid"
 
     if entity_code:
         params.append(entity_code)
@@ -1209,6 +1213,7 @@ async def list_slot_configs(
     return [
         AppointmentSlotConfigResponse(
             id=str(row['id']),
+            entity_location_id=str(row['entity_location_id']) if row.get('entity_location_id') else None,
             entity_code=row['entity_code'],
             day_of_week=row['day_of_week'],
             start_time=str(row['start_time']),
@@ -1228,7 +1233,7 @@ async def list_slot_configs(
     response_model=AppointmentSlotConfigResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create appointment slot configuration",
-    description="Create a new appointment slot configuration."
+    description="Create a new appointment slot configuration using entity_location_id."
 )
 async def create_slot_config(
     slot: AppointmentSlotConfigCreate = Body(...),
@@ -1236,19 +1241,55 @@ async def create_slot_config(
     current_user=Depends(get_current_user),
     _=Depends(permission_required("admin:manage_appointments"))
 ):
+    # 1. Fetch entity_location to resolve entity_code, location_name, location_address
+    location = await db.fetchrow("""
+        SELECT id, entity_code, location_name, location_address
+        FROM entity_locations
+        WHERE id = $1::uuid AND is_active = TRUE
+    """, slot.entity_location_id)
+
+    if not location:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Entity location not found or inactive: {slot.entity_location_id}"
+        )
+
+    # 2. Check for duplicate (same location + day + start_time)
+    existing = await db.fetchrow("""
+        SELECT id FROM appointment_slot_configs
+        WHERE entity_location_id = $1::uuid AND day_of_week = $2 AND start_time = $3
+    """, slot.entity_location_id, slot.day_of_week, slot.start_time)
+
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Slot configuration already exists for this location, day, and start time"
+        )
+
+    # 3. Insert the slot config with resolved values
     row = await db.fetchrow("""
         INSERT INTO appointment_slot_configs (
-            entity_code, day_of_week, start_time, end_time,
+            entity_location_id, entity_code, day_of_week, start_time, end_time,
             slot_duration_minutes, max_appointments_per_slot,
             location_name, location_address, is_active
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        ) VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING *
-    """, slot.entity_code, slot.day_of_week, slot.start_time, slot.end_time,
-        slot.slot_duration_minutes, slot.max_appointments_per_slot,
-        slot.location_name, slot.location_address, slot.is_active)
+    """,
+        slot.entity_location_id,
+        location['entity_code'],
+        slot.day_of_week,
+        slot.start_time,
+        slot.end_time,
+        slot.slot_duration_minutes,
+        slot.max_appointments_per_slot,
+        location['location_name'],
+        location['location_address'],
+        slot.is_active
+    )
 
     return AppointmentSlotConfigResponse(
         id=str(row['id']),
+        entity_location_id=str(row['entity_location_id']) if row.get('entity_location_id') else None,
         entity_code=row['entity_code'],
         day_of_week=row['day_of_week'],
         start_time=str(row['start_time']),
@@ -1278,8 +1319,43 @@ async def update_slot_config(
     params = [slot_id]
     param_idx = 2
 
-    for field, value in slot.model_dump(exclude_unset=True).items():
-        if value is not None:
+    # Handle entity_location_id change - need to also update entity_code, location_name, location_address
+    slot_data = slot.model_dump(exclude_unset=True)
+    if 'entity_location_id' in slot_data and slot_data['entity_location_id']:
+        # Fetch the new location data
+        new_location = await db.fetchrow("""
+            SELECT id, entity_code, location_name, location_address
+            FROM entity_locations
+            WHERE id = $1::uuid AND is_active = TRUE
+        """, slot_data['entity_location_id'])
+
+        if not new_location:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Entity location not found or inactive: {slot_data['entity_location_id']}"
+            )
+
+        # Add entity_location_id update
+        updates.append(f"entity_location_id = ${param_idx}::uuid")
+        params.append(slot_data['entity_location_id'])
+        param_idx += 1
+
+        # Also update derived fields
+        updates.append(f"entity_code = ${param_idx}")
+        params.append(new_location['entity_code'])
+        param_idx += 1
+
+        updates.append(f"location_name = ${param_idx}")
+        params.append(new_location['location_name'])
+        param_idx += 1
+
+        updates.append(f"location_address = ${param_idx}")
+        params.append(new_location['location_address'])
+        param_idx += 1
+
+    # Handle other fields
+    for field, value in slot_data.items():
+        if field != 'entity_location_id' and value is not None:
             updates.append(f"{field} = ${param_idx}")
             params.append(value)
             param_idx += 1
@@ -1295,6 +1371,7 @@ async def update_slot_config(
             )
         return AppointmentSlotConfigResponse(
             id=str(row['id']),
+            entity_location_id=str(row['entity_location_id']) if row.get('entity_location_id') else None,
             entity_code=row['entity_code'],
             day_of_week=row['day_of_week'],
             start_time=str(row['start_time']),
@@ -1325,6 +1402,7 @@ async def update_slot_config(
 
     return AppointmentSlotConfigResponse(
         id=str(row['id']),
+        entity_location_id=str(row['entity_location_id']) if row.get('entity_location_id') else None,
         entity_code=row['entity_code'],
         day_of_week=row['day_of_week'],
         start_time=str(row['start_time']),
