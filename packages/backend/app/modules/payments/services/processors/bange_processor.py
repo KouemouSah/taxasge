@@ -322,22 +322,19 @@ class BangeProcessor(PaymentProcessorBase):
         if context.tariff_breakdown:
             base_amount = Decimal(str(context.tariff_breakdown.get('base_amount', context.amount)))
 
-        # For service request payments, fiscal_service_code is NULL per XOR constraint
-        # (migration 032 + 041: fiscal_service_code XOR service_request_id)
-        # The workflow info is accessible via JOIN to service_requests table
+        # fiscal_service_code column removed in migration 041
+        # All payments now link via service_request_id
 
         query = """
             INSERT INTO service_payments (
                 id, payment_reference, user_id, service_request_id,
-                fiscal_service_code, payment_type,
-                payment_method, base_amount, total_amount, currency,
+                payment_type, payment_method, base_amount, total_amount, currency,
                 calculation_details,
                 status, workflow_status, requires_agent_validation,
                 created_at, updated_at
             ) VALUES (
                 $1, $2, $3, $4,
-                NULL, 'full',
-                $5, $6, $7, $8,
+                'full', $5, $6, $7, $8,
                 $9::jsonb,
                 'processing', 'submitted', false,
                 NOW(), NOW()

@@ -5,7 +5,7 @@ Models for payments associated with service_requests (passport, residence, etc.)
 Uses the service_payments table with agent workflow support.
 """
 
-from pydantic import BaseModel, Field, validator, computed_field
+from pydantic import BaseModel, Field, computed_field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from decimal import Decimal
@@ -47,14 +47,10 @@ class PaymentWorkflowStatus(str, Enum):
 class ServicePaymentBase(BaseModel):
     """Base model for service payments."""
 
-    # Identifiers - XOR: service_request_id OR fiscal_service_code
-    service_request_id: Optional[str] = Field(
-        None,
-        description="FK to service_requests (XOR with fiscal_service_code)"
-    )
-    fiscal_service_code: Optional[str] = Field(
-        None,
-        description="FK to fiscal_services (XOR with service_request_id)"
+    # Identifier - links to service_request
+    service_request_id: str = Field(
+        ...,
+        description="FK to service_requests (required)"
     )
 
     user_id: str = Field(..., description="User UUID")
@@ -68,18 +64,6 @@ class ServicePaymentBase(BaseModel):
     discounts: Decimal = Field(default=Decimal("0"), ge=0)
     total_amount: Decimal = Field(..., ge=0, description="Final amount to pay")
     currency: str = Field(default="XAF")
-
-    @validator('service_request_id', 'fiscal_service_code')
-    def validate_xor(cls, v, values):
-        """Validate XOR constraint."""
-        sr_id = values.get('service_request_id')
-        fs_code = values.get('fiscal_service_code')
-
-        # Allow both None during construction
-        if sr_id and fs_code:
-            raise ValueError("Cannot set both service_request_id and fiscal_service_code")
-
-        return v
 
 
 class ServicePaymentCreate(BaseModel):
@@ -104,7 +88,6 @@ class ServicePaymentResponse(BaseModel):
 
     # Target
     service_request_id: Optional[str] = None
-    fiscal_service_code: Optional[str] = None
 
     # User
     user_id: str
