@@ -120,7 +120,7 @@ export default function PassportWizardPage() {
   const {
     currentRequest,
     documents,
-    isLoading,
+    isLoading: _isLoading,
     error,
     loadRequest,
     saveStepData,
