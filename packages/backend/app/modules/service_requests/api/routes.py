@@ -1215,7 +1215,7 @@ async def initiate_payment(
             payment_method=payment_method,
             tariff_breakdown=tariff_breakdown,
             user_email=current_user.email,
-            user_phone=body.phone_number or current_user.phone,
+            user_phone=body.phone_number or current_user.phone_number,
             user_name=f"{current_user.first_name} {current_user.last_name}".strip(),
             workflow_code=context.workflow_code.value,
             service_name=workflow.service_name_es if workflow else None,
