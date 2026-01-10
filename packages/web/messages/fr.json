@@ -855,7 +855,8 @@
           "createMultiple": "Créer {count} Créneaux",
           "createSuccess": {
             "single": "Créneau créé avec succès",
-            "multiple": "{count} créneaux créés avec succès"
+            "multiple": "{count} créneaux créés avec succès",
+            "partial": "{created} créneau(x) créé(s), {skipped} omis (existaient déjà)"
           },
           "createError": "Erreur lors de la création",
           "validation": {

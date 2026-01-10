@@ -855,7 +855,8 @@
           "createMultiple": "Create {count} Slots",
           "createSuccess": {
             "single": "Slot created successfully",
-            "multiple": "{count} slots created successfully"
+            "multiple": "{count} slots created successfully",
+            "partial": "{created} slot(s) created, {skipped} skipped (already existed)"
           },
           "createError": "Error creating slot(s)",
           "validation": {

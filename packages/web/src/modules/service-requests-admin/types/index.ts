@@ -298,6 +298,23 @@ export interface AppointmentSlotConfigCreate {
   is_active?: boolean
 }
 
+export interface AppointmentSlotConfigBatchCreate {
+  entity_location_id: string  // FK to entity_locations - entity_code is resolved on backend
+  days_of_week: number[]  // Multiple days in one request
+  start_time: string
+  end_time: string
+  slot_duration_minutes?: number
+  max_appointments_per_slot?: number
+  is_active?: boolean
+}
+
+export interface AppointmentSlotConfigBatchResponse {
+  created: AppointmentSlotConfig[]
+  skipped: { day_of_week: number; reason: string }[]
+  total_created: number
+  total_skipped: number
+}
+
 export interface AppointmentSlotConfigUpdate {
   entity_location_id?: string
   day_of_week?: number

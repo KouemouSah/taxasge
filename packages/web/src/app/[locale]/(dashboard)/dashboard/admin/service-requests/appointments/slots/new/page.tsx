@@ -26,9 +26,9 @@ import {
   Users,
   MapPin,
 } from 'lucide-react'
-import { useCreateSlotConfig } from '@/modules/service-requests-admin'
+import { useCreateSlotConfigBatch } from '@/modules/service-requests-admin'
 import { DAY_OF_WEEK_LABELS } from '@/modules/service-requests-admin'
-import type { AppointmentSlotConfigCreate } from '@/modules/service-requests-admin'
+import type { AppointmentSlotConfigBatchCreate } from '@/modules/service-requests-admin'
 import { toast } from 'sonner'
 import { useEntityLocations } from '@/modules/entity-locations/hooks'
 import {
@@ -73,7 +73,7 @@ export default function NewSlotConfigPage() {
   }, [availableLocations, selectedLocationId])
 
   // Form state (entity_code is resolved on backend from entity_location_id)
-  const [formData, setFormData] = useState<Omit<AppointmentSlotConfigCreate, 'day_of_week'>>({
+  const [formData, setFormData] = useState<Omit<AppointmentSlotConfigBatchCreate, 'days_of_week'>>({
     entity_location_id: '',
     start_time: '08:00',
     end_time: '16:00',
@@ -108,8 +108,8 @@ export default function NewSlotConfigPage() {
     }
   }, [selectedLocation])
 
-  // Mutation
-  const createMutation = useCreateSlotConfig()
+  // Batch mutation (creates all days in one request)
+  const createMutation = useCreateSlotConfigBatch()
 
   // Toggle day selection
   const toggleDay = (day: number) => {
@@ -133,7 +133,7 @@ export default function NewSlotConfigPage() {
     router.push(`/${locale}/dashboard/admin/service-requests/appointments?tab=slots`)
   }
 
-  // Handle form submission - creates one slot per selected day
+  // Handle form submission - creates all slots in one batch request
   const handleSubmit = async () => {
     if (!selectedLocationId || selectedDays.length === 0) {
       toast.error(t('validation.requiredFields'))
@@ -141,20 +141,28 @@ export default function NewSlotConfigPage() {
     }
 
     try {
-      // Create a slot for each selected day
-      for (const day of selectedDays) {
-        await createMutation.mutateAsync({
-          ...formData,
-          entity_location_id: selectedLocationId,
-          day_of_week: day,
-        })
-      }
+      // Create all slots in one batch request
+      const result = await createMutation.mutateAsync({
+        ...formData,
+        entity_location_id: selectedLocationId,
+        days_of_week: selectedDays,
+      })
 
-      toast.success(
-        selectedDays.length > 1
-          ? t('createSuccess.multiple', { count: selectedDays.length })
-          : t('createSuccess.single')
-      )
+      // Show appropriate success message
+      if (result.total_skipped > 0) {
+        toast.success(
+          t('createSuccess.partial', {
+            created: result.total_created,
+            skipped: result.total_skipped
+          })
+        )
+      } else {
+        toast.success(
+          result.total_created > 1
+            ? t('createSuccess.multiple', { count: result.total_created })
+            : t('createSuccess.single')
+        )
+      }
       handleBack()
     } catch (error) {
       toast.error(t('createError'))

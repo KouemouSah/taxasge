@@ -342,6 +342,46 @@ class AppointmentSlotConfigResponse(BaseModel):
     # Get from entity_locations table via entity_location_id FK
 
 
+class AppointmentSlotConfigBatchCreate(BaseModel):
+    """Batch create appointment slot configs - for multiple days at once"""
+    entity_location_id: str = Field(..., description="FK to entity_locations table")
+    days_of_week: List[int] = Field(..., min_length=1, max_length=7, description="List of days (0=Monday, 6=Sunday)")
+    start_time: str = Field(..., description="Start time in HH:MM format")
+    end_time: str = Field(..., description="End time in HH:MM format")
+    slot_duration_minutes: int = Field(default=30, ge=5, le=120)
+    max_appointments_per_slot: int = Field(default=10, ge=1, le=100)
+    is_active: bool = True
+
+    @field_validator('days_of_week')
+    @classmethod
+    def validate_days(cls, v):
+        """Validate each day is between 0-6 and unique"""
+        if not all(0 <= d <= 6 for d in v):
+            raise ValueError("Each day must be between 0 (Monday) and 6 (Sunday)")
+        if len(v) != len(set(v)):
+            raise ValueError("Days must be unique")
+        return sorted(v)
+
+    @field_validator('start_time', 'end_time', mode='before')
+    @classmethod
+    def validate_time(cls, v):
+        """Accept time as string and validate format"""
+        if isinstance(v, Time):
+            return v.strftime('%H:%M:%S')
+        if isinstance(v, str):
+            t = parse_time_string(v)
+            return t.strftime('%H:%M:%S')
+        raise ValueError(f"Invalid time: {v}")
+
+
+class AppointmentSlotConfigBatchResponse(BaseModel):
+    """Response for batch slot creation"""
+    created: List[AppointmentSlotConfigResponse]
+    skipped: List[dict] = []  # Days that were skipped (already exist)
+    total_created: int
+    total_skipped: int
+
+
 # ─────────────────────────────────────────────────────────────────
 # APPOINTMENT_BLOCKED_DATES (table: appointment_blocked_dates)
 # ─────────────────────────────────────────────────────────────────
@@ -1373,6 +1413,118 @@ async def create_slot_config(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create slot configuration: {str(e)}"
+        )
+
+
+@router.post(
+    "/appointments/slot-configs/batch",
+    response_model=AppointmentSlotConfigBatchResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Batch create appointment slot configurations",
+    description="Create multiple appointment slot configurations for different days in a single request."
+)
+async def create_slot_configs_batch(
+    batch: AppointmentSlotConfigBatchCreate = Body(...),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("admin:manage_appointments"))
+):
+    """
+    Create slot configurations for multiple days at once.
+
+    This is more efficient than creating slots one by one when you want
+    the same schedule for multiple days (e.g., Monday-Friday).
+
+    Slots that already exist will be skipped (not cause an error).
+    """
+    from loguru import logger
+
+    try:
+        # Parse time strings
+        start_time_obj = parse_time_string(batch.start_time)
+        end_time_obj = parse_time_string(batch.end_time)
+
+        # 1. Fetch entity_location
+        location = await db.fetchrow("""
+            SELECT id, entity_code, location_name, location_address
+            FROM entity_locations
+            WHERE id = $1::uuid AND is_active = TRUE
+        """, batch.entity_location_id)
+
+        if not location:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Entity location not found or inactive: {batch.entity_location_id}"
+            )
+
+        created = []
+        skipped = []
+
+        # 2. Create slot for each day
+        for day in batch.days_of_week:
+            # Check if already exists
+            existing = await db.fetchrow("""
+                SELECT id FROM appointment_slot_configs
+                WHERE entity_location_id = $1::uuid AND day_of_week = $2 AND start_time = $3::time
+            """, batch.entity_location_id, day, start_time_obj)
+
+            if existing:
+                skipped.append({
+                    "day_of_week": day,
+                    "reason": "already_exists",
+                    "existing_id": str(existing['id'])
+                })
+                continue
+
+            # Insert
+            row = await db.fetchrow("""
+                INSERT INTO appointment_slot_configs (
+                    entity_location_id, entity_code, day_of_week, start_time, end_time,
+                    slot_duration_minutes, max_appointments_per_slot, is_active
+                ) VALUES ($1::uuid, $2, $3, $4::time, $5::time, $6, $7, $8)
+                RETURNING *
+            """,
+                batch.entity_location_id,
+                location['entity_code'],
+                day,
+                start_time_obj,
+                end_time_obj,
+                batch.slot_duration_minutes,
+                batch.max_appointments_per_slot,
+                batch.is_active
+            )
+
+            created.append(AppointmentSlotConfigResponse(
+                id=str(row['id']),
+                entity_location_id=str(row['entity_location_id']) if row.get('entity_location_id') else None,
+                entity_code=row['entity_code'],
+                day_of_week=row['day_of_week'],
+                start_time=str(row['start_time']),
+                end_time=str(row['end_time']),
+                slot_duration_minutes=row['slot_duration_minutes'],
+                max_appointments_per_slot=row['max_appointments_per_slot'],
+                is_active=row['is_active']
+            ))
+
+        logger.info(
+            f"Batch created {len(created)} slot configs for {location['entity_code']}, "
+            f"skipped {len(skipped)} (already exist)"
+        )
+
+        return AppointmentSlotConfigBatchResponse(
+            created=created,
+            skipped=skipped,
+            total_created=len(created),
+            total_skipped=len(skipped)
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in batch slot config creation: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create slot configurations: {str(e)}"
         )
 
 

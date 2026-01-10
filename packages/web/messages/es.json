@@ -855,7 +855,8 @@
           "createMultiple": "Crear {count} Horarios",
           "createSuccess": {
             "single": "Horario creado exitosamente",
-            "multiple": "{count} horarios creados exitosamente"
+            "multiple": "{count} horarios creados exitosamente",
+            "partial": "{created} horario(s) creado(s), {skipped} omitido(s) (ya existían)"
           },
           "createError": "Error al crear horario(s)",
           "validation": {

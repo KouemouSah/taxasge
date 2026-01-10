@@ -33,6 +33,8 @@ import type {
   AppointmentSlotConfig,
   AppointmentSlotConfigCreate,
   AppointmentSlotConfigUpdate,
+  AppointmentSlotConfigBatchCreate,
+  AppointmentSlotConfigBatchResponse,
   SlotConfigFilters,
   AppointmentBlockedDate,
   AppointmentBlockedDateCreate,
@@ -313,6 +315,14 @@ export const slotConfigsApi = {
    */
   create: async (data: AppointmentSlotConfigCreate): Promise<AppointmentSlotConfig> => {
     return fetchClient.post<AppointmentSlotConfig>(`${ADMIN_BASE}/appointments/slot-configs`, data)
+  },
+
+  /**
+   * Create multiple slot configurations in batch (one request for multiple days)
+   * BACKEND: POST /api/v1/admin/service-requests/appointments/slot-configs/batch
+   */
+  createBatch: async (data: AppointmentSlotConfigBatchCreate): Promise<AppointmentSlotConfigBatchResponse> => {
+    return fetchClient.post<AppointmentSlotConfigBatchResponse>(`${ADMIN_BASE}/appointments/slot-configs/batch`, data)
   },
 
   /**

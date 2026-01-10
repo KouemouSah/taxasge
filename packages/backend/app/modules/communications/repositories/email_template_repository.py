@@ -9,6 +9,40 @@ import json
 class EmailTemplateRepository:
     """Repository for email templates CRUD operations"""
 
+    def _normalize_variables(self, variables: list) -> list:
+        """
+        Normalize variables to TemplateVariable format.
+        Handles legacy data where variables were stored as simple strings.
+
+        Legacy format: ['user_name', 'appointment_date']
+        Expected format: [{'name': 'user_name', 'description': 'user_name', 'required': True}, ...]
+        """
+        if not variables:
+            return []
+
+        normalized = []
+        for var in variables:
+            if isinstance(var, str):
+                # Legacy format - convert string to TemplateVariable dict
+                normalized.append({
+                    "name": var,
+                    "description": var.replace("_", " ").title(),
+                    "example": None,
+                    "required": True
+                })
+            elif isinstance(var, dict):
+                # Already in correct format, ensure all fields exist
+                normalized.append({
+                    "name": var.get("name", "unknown"),
+                    "description": var.get("description", var.get("name", "unknown")),
+                    "example": var.get("example"),
+                    "required": var.get("required", True)
+                })
+            else:
+                # Unknown format, skip
+                continue
+        return normalized
+
     async def create(
         self, conn: asyncpg.Connection, data: Dict[str, Any], user_id: int
     ) -> Dict[str, Any]:
@@ -50,11 +84,12 @@ class EmailTemplateRepository:
 
         template_dict = dict(result)
 
-        # Parse JSONB variables back to list
+        # Parse JSONB variables back to list and normalize
         if isinstance(template_dict.get("variables"), str):
             template_dict["variables"] = json.loads(template_dict["variables"])
-        elif not isinstance(template_dict.get("variables"), list):
+        if not isinstance(template_dict.get("variables"), list):
             template_dict["variables"] = []
+        template_dict["variables"] = self._normalize_variables(template_dict["variables"])
 
         return template_dict
 
@@ -79,11 +114,12 @@ class EmailTemplateRepository:
 
         template_dict = dict(result)
 
-        # Parse JSONB variables
+        # Parse JSONB variables and normalize
         if isinstance(template_dict.get("variables"), str):
             template_dict["variables"] = json.loads(template_dict["variables"])
-        elif not isinstance(template_dict.get("variables"), list):
+        if not isinstance(template_dict.get("variables"), list):
             template_dict["variables"] = []
+        template_dict["variables"] = self._normalize_variables(template_dict["variables"])
 
         return template_dict
 
@@ -108,11 +144,12 @@ class EmailTemplateRepository:
 
         template_dict = dict(result)
 
-        # Parse JSONB variables
+        # Parse JSONB variables and normalize
         if isinstance(template_dict.get("variables"), str):
             template_dict["variables"] = json.loads(template_dict["variables"])
-        elif not isinstance(template_dict.get("variables"), list):
+        if not isinstance(template_dict.get("variables"), list):
             template_dict["variables"] = []
+        template_dict["variables"] = self._normalize_variables(template_dict["variables"])
 
         return template_dict
 
@@ -164,11 +201,12 @@ class EmailTemplateRepository:
         templates = []
         for r in results:
             template = dict(r)
-            # Parse JSONB variables
+            # Parse JSONB variables and normalize
             if isinstance(template.get("variables"), str):
                 template["variables"] = json.loads(template["variables"])
-            elif not isinstance(template.get("variables"), list):
+            if not isinstance(template.get("variables"), list):
                 template["variables"] = []
+            template["variables"] = self._normalize_variables(template["variables"])
             templates.append(template)
 
         return templates, total
@@ -265,11 +303,12 @@ class EmailTemplateRepository:
         templates = []
         for r in results:
             template = dict(r)
-            # Parse JSONB variables
+            # Parse JSONB variables and normalize
             if isinstance(template.get("variables"), str):
                 template["variables"] = json.loads(template["variables"])
-            elif not isinstance(template.get("variables"), list):
+            if not isinstance(template.get("variables"), list):
                 template["variables"] = []
+            template["variables"] = self._normalize_variables(template["variables"])
             templates.append(template)
 
         return templates, total
@@ -294,11 +333,12 @@ class EmailTemplateRepository:
         templates = []
         for r in results:
             template = dict(r)
-            # Parse JSONB variables
+            # Parse JSONB variables and normalize
             if isinstance(template.get("variables"), str):
                 template["variables"] = json.loads(template["variables"])
-            elif not isinstance(template.get("variables"), list):
+            if not isinstance(template.get("variables"), list):
                 template["variables"] = []
+            template["variables"] = self._normalize_variables(template["variables"])
             templates.append(template)
 
         return templates

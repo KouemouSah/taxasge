@@ -36,6 +36,7 @@ import type {
   SlotConfigFilters,
   AppointmentSlotConfigCreate,
   AppointmentSlotConfigUpdate,
+  AppointmentSlotConfigBatchCreate,
   BlockedDateFilters,
   AppointmentBlockedDateCreate,
   AppointmentBlockedDateUpdate,
@@ -609,6 +610,32 @@ export function useCreateSlotConfig() {
       toast({
         title: 'Error',
         description: error.message || 'No se pudo crear el horario.',
+        variant: 'destructive',
+      })
+    },
+  })
+}
+
+export function useCreateSlotConfigBatch() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: (data: AppointmentSlotConfigBatchCreate) => slotConfigsApi.createBatch(data),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.slotConfigs.all })
+      const message = result.total_skipped > 0
+        ? `${result.total_created} horario(s) creado(s), ${result.total_skipped} omitido(s) (ya existían).`
+        : `${result.total_created} horario(s) creado(s) correctamente.`
+      toast({
+        title: 'Horarios creados',
+        description: message,
+      })
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'No se pudo crear los horarios.',
         variant: 'destructive',
       })
     },
