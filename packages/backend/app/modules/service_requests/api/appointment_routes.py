@@ -274,6 +274,8 @@ async def get_available_slots(
     The hold is valid for 15 minutes while user completes payment.
     After 15 minutes without payment, the hold expires automatically.
     Any previous hold for this request is released.
+
+    Migration 030: Now uses entity_location_id FK instead of location_name/address.
     """
 )
 async def hold_appointment_slot(
@@ -300,20 +302,14 @@ async def hold_appointment_slot(
     # Validate status allows appointment access
     validate_appointment_access(request['status'], "hold appointment slot")
 
-    # Get entity code
-    entity_code = await appointment_service.get_entity_code_for_workflow(
-        db, request['workflow_code']
-    )
-
-    # Create hold
+    # Create hold (migration 030: uses entity_location_id)
     result = await appointment_service.hold_slot(
         db=db,
         service_request_id=request_id,
-        entity_code=entity_code,
-        location_name=hold_request.location_name,
-        location_address=hold_request.location_address,
+        entity_location_id=hold_request.entity_location_id,
         appointment_date=hold_request.appointment_date,
-        appointment_time=hold_request.appointment_time
+        appointment_time=hold_request.appointment_time,
+        slot_config_id=hold_request.slot_config_id
     )
 
     if result.success and result.hold:
@@ -457,6 +453,8 @@ async def release_hold(
 
     User selects their preferred location, and an agent will assign
     an appointment later. Used when all slots are booked.
+
+    Migration 030: Now uses entity_location_id FK instead of location name.
     """
 )
 async def submit_without_appointment(
@@ -483,11 +481,11 @@ async def submit_without_appointment(
     # Validate status allows appointment access
     validate_appointment_access(request['status'], "submit without appointment")
 
-    # Submit without appointment
+    # Submit without appointment (migration 030: uses entity_location_id)
     result = await appointment_service.submit_without_appointment(
         db=db,
         service_request_id=request_id,
-        location_name=fallback_request.preferred_location
+        entity_location_id=fallback_request.entity_location_id
     )
 
     if result.success:

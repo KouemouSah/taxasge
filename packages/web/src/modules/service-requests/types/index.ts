@@ -719,8 +719,8 @@ export interface PaymentInitiateResult {
 
 /**
  * EntityLocation - Physical location for appointments
- * NOTE: Data comes from appointment_slot_configs table (DISTINCT ON city, location_name)
- * The entity_locations table was planned but NOT created. Fields like phone/email are always null.
+ * NOTE: Data comes from entity_locations table (migration 030).
+ * appointment_slot_configs references entity_locations via entity_location_id FK.
  */
 export interface EntityLocation {
   id: string
@@ -750,13 +750,13 @@ export interface AvailableSlot {
 
 /**
  * HoldSlotRequest - Request to hold an appointment slot before payment
+ * Migration 030: Now uses entityLocationId FK instead of locationName/Address.
  */
 export interface HoldSlotRequest {
-  locationId?: string
-  locationName: string
-  locationAddress?: string
-  appointmentDate: string // ISO date string
-  appointmentTime: string // HH:mm:ss format
+  entityLocationId: string // FK to entity_locations table
+  slotConfigId?: string    // Optional slot config ID
+  appointmentDate: string  // ISO date string
+  appointmentTime: string  // HH:mm:ss format
 }
 
 /**
@@ -811,9 +811,10 @@ export interface AppointmentSlotsResponse {
 
 /**
  * SubmitWithoutAppointmentRequest - Fallback when no slots available
+ * Migration 030: Now uses entityLocationId FK instead of location name.
  */
 export interface SubmitWithoutAppointmentRequest {
-  preferredLocation: string
+  entityLocationId: string // FK to entity_locations table
 }
 
 /**

@@ -74,14 +74,14 @@ interface AppointmentSelectionProps {
     hasAvailability: boolean
   }>
   holdSlot: (requestId: string, data: {
-    locationName: string
-    locationAddress?: string
+    entityLocationId: string // FK to entity_locations table (migration 030)
+    slotConfigId?: string    // Optional slot config ID
     appointmentDate: string
     appointmentTime: string
   }) => Promise<HoldSlotResponse>
   getHoldStatus: (requestId: string) => Promise<AppointmentHoldStatus>
   releaseHold: (requestId: string) => Promise<{ success: boolean; message: string }>
-  submitWithoutAppointment: (requestId: string, preferredLocation: string) => Promise<{
+  submitWithoutAppointment: (requestId: string, entityLocationId: string) => Promise<{
     success: boolean
     locationName?: string
     message: string
@@ -342,9 +342,9 @@ export function AppointmentSelection({
     setError(null)
 
     try {
+      // Migration 030: Use entityLocationId FK instead of locationName/Address
       const holdResponse = await holdSlot(requestId, {
-        locationName: slot.locationName,
-        locationAddress: slot.locationAddress,
+        entityLocationId: selectedLocation.id,
         appointmentDate: slot.slotDate,
         appointmentTime: slot.slotTime,
       })
@@ -406,7 +406,8 @@ export function AppointmentSelection({
     setError(null)
 
     try {
-      const response = await submitWithoutAppointment(requestId, selectedLocation.locationName)
+      // Migration 030: Use entityLocationId FK instead of locationName
+      const response = await submitWithoutAppointment(requestId, selectedLocation.id)
 
       if (response.success) {
         onComplete({

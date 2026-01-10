@@ -333,13 +333,15 @@ class AppointmentSchedulerService:
 
         while current_time < end_time:
             # Count existing reservations for this slot
+            # Migration 030: appointment_reservations uses entity_location_id FK, not entity_code
             reservation_count = await db.fetchval("""
                 SELECT COUNT(*)
-                FROM appointment_reservations
-                WHERE entity_code = $1
-                AND appointment_date = $2
-                AND appointment_time = $3
-                AND status != 'cancelled'
+                FROM appointment_reservations ar
+                JOIN entity_locations el ON ar.entity_location_id = el.id
+                WHERE el.entity_code = $1
+                AND ar.appointment_date = $2
+                AND ar.appointment_time = $3
+                AND ar.status != 'cancelled'
             """, entity_code, target_date, current_time)
 
             slots_available = max_slots - (reservation_count or 0)
@@ -406,14 +408,6 @@ class AppointmentSchedulerService:
         This should be called after agent validation (DOSSIER_VALIDE status).
         """
 
-        # Calculate optimal date/time
-        appointment_date, appointment_time, location = await self.calculate_appointment_date(
-            db=db,
-            workflow_code=workflow_code,
-            validation_date=validation_date,
-            workflow_instance=workflow_instance
-        )
-
         # Get entity code
         entity_code = await self._get_appointment_entity(
             db=db,
@@ -422,21 +416,42 @@ class AppointmentSchedulerService:
             workflow_instance=workflow_instance
         )
 
+        # Get default entity_location_id for this entity (main office)
+        # Migration 030: appointment_reservations uses entity_location_id FK
+        entity_location = await db.fetchrow("""
+            SELECT id, location_name, location_address
+            FROM entity_locations
+            WHERE entity_code = $1
+            AND is_active = TRUE
+            ORDER BY is_main_office DESC, created_at ASC
+            LIMIT 1
+        """, entity_code)
+
+        entity_location_id = entity_location['id'] if entity_location else None
+        location = entity_location['location_name'] if entity_location else await self._get_entity_location(db, entity_code)
+
+        # Calculate optimal date/time
+        appointment_date, appointment_time, _ = await self.calculate_appointment_date(
+            db=db,
+            workflow_code=workflow_code,
+            validation_date=validation_date,
+            workflow_instance=workflow_instance
+        )
+
         # Create reservation
+        # Migration 030: Uses entity_location_id FK instead of entity_code/location columns
         row = await db.fetchrow("""
             INSERT INTO appointment_reservations (
                 service_request_id,
-                entity_code,
+                entity_location_id,
                 appointment_date,
                 appointment_time,
-                location,
                 status
-            ) VALUES ($1, $2, $3, $4, $5, 'reserved')
-            RETURNING id, service_request_id, entity_code, appointment_date,
-                      appointment_time, location, created_at,
+            ) VALUES ($1, $2, $3, $4, 'scheduled')
+            RETURNING id, service_request_id, entity_location_id, appointment_date,
+                      appointment_time, created_at,
                       (status = 'confirmed') as is_confirmed
-        """, service_request_id, entity_code, appointment_date,
-            appointment_time, location)
+        """, service_request_id, entity_location_id, appointment_date, appointment_time)
 
         # Update service_request with appointment info
         await db.execute("""
@@ -444,17 +459,18 @@ class AppointmentSchedulerService:
             SET cita_date = $1,
                 cita_time = $2,
                 cita_location = $3,
+                entity_location_id = $4,
                 updated_at = NOW()
-            WHERE id = $4
-        """, appointment_date, appointment_time, location, service_request_id)
+            WHERE id = $5
+        """, appointment_date, appointment_time, location, entity_location_id, service_request_id)
 
         return AppointmentReservation(
             id=row['id'],
             service_request_id=row['service_request_id'],
-            entity_code=row['entity_code'],
+            entity_code=entity_code,
             appointment_date=row['appointment_date'],
             appointment_time=row['appointment_time'],
-            appointment_location=row['location'],
+            appointment_location=location,
             created_at=row['created_at'],
             is_confirmed=row['is_confirmed']
         )
@@ -528,13 +544,15 @@ class AppointmentSchedulerService:
         current_time = start_time
 
         while current_time < end_time:
+            # Migration 030: appointment_reservations uses entity_location_id FK, not entity_code
             reservation_count = await db.fetchval("""
                 SELECT COUNT(*)
-                FROM appointment_reservations
-                WHERE entity_code = $1
-                AND appointment_date = $2
-                AND appointment_time = $3
-                AND status != 'cancelled'
+                FROM appointment_reservations ar
+                JOIN entity_locations el ON ar.entity_location_id = el.id
+                WHERE el.entity_code = $1
+                AND ar.appointment_date = $2
+                AND ar.appointment_time = $3
+                AND ar.status != 'cancelled'
             """, entity_code, target_date, current_time)
 
             slots_available = max_slots - (reservation_count or 0)
@@ -592,13 +610,15 @@ class AppointmentSchedulerService:
     ) -> AppointmentReservation:
         """Reschedule an existing appointment to a new date/time."""
 
-        # Get current reservation
+        # Get current reservation with entity location details
+        # Migration 030: appointment_reservations uses entity_location_id FK
         current = await db.fetchrow("""
-            SELECT entity_code, location
-            FROM appointment_reservations
-            WHERE service_request_id = $1
-            AND status != 'cancelled'
-            ORDER BY created_at DESC
+            SELECT ar.entity_location_id, el.entity_code, el.location_name
+            FROM appointment_reservations ar
+            LEFT JOIN entity_locations el ON ar.entity_location_id = el.id
+            WHERE ar.service_request_id = $1
+            AND ar.status != 'cancelled'
+            ORDER BY ar.created_at DESC
             LIMIT 1
         """, service_request_id)
 
@@ -609,20 +629,19 @@ class AppointmentSchedulerService:
         await self.cancel_appointment(db, service_request_id, f"Rescheduled: {reason or 'User request'}")
 
         # Create new reservation
+        # Migration 030: Uses entity_location_id FK instead of entity_code/location columns
         row = await db.fetchrow("""
             INSERT INTO appointment_reservations (
                 service_request_id,
-                entity_code,
+                entity_location_id,
                 appointment_date,
                 appointment_time,
-                location,
                 status
-            ) VALUES ($1, $2, $3, $4, $5, 'reserved')
-            RETURNING id, service_request_id, entity_code, appointment_date,
-                      appointment_time, location, created_at,
+            ) VALUES ($1, $2, $3, $4, 'scheduled')
+            RETURNING id, service_request_id, entity_location_id, appointment_date,
+                      appointment_time, created_at,
                       (status = 'confirmed') as is_confirmed
-        """, service_request_id, current['entity_code'], new_date,
-            new_time, current['location'])
+        """, service_request_id, current['entity_location_id'], new_date, new_time)
 
         # Update service_request
         await db.execute("""
@@ -636,10 +655,10 @@ class AppointmentSchedulerService:
         return AppointmentReservation(
             id=row['id'],
             service_request_id=row['service_request_id'],
-            entity_code=row['entity_code'],
+            entity_code=current['entity_code'],
             appointment_date=row['appointment_date'],
             appointment_time=row['appointment_time'],
-            appointment_location=row['location'],
+            appointment_location=current['location_name'],
             created_at=row['created_at'],
             is_confirmed=row['is_confirmed']
         )

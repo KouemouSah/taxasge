@@ -36,9 +36,10 @@ class HoldStatus(str, Enum):
 
 @dataclass
 class EntityLocation:
-    """Represents a physical location for an entity"""
-    entity_code: str
-    location_name: str
+    """Represents a physical location for an entity (from entity_locations table)"""
+    id: Optional[UUID] = None
+    entity_code: str = ""
+    location_name: str = ""
     location_address: Optional[str] = None
     city: Optional[str] = None
     region: Optional[str] = None
@@ -53,24 +54,34 @@ class AvailableSlot:
     location_address: Optional[str] = None
     slots_remaining: int = 1
     city: Optional[str] = None
+    slot_config_id: Optional[UUID] = None
+    entity_location_id: Optional[UUID] = None
 
 
 @dataclass
 class AppointmentHold:
-    """Represents a temporary appointment hold (before payment)"""
+    """
+    Represents a temporary appointment hold (before payment).
+
+    Migration 030: location_name/location_address/city removed from appointment_holds.
+    Now uses entity_location_id FK to entity_locations table.
+    """
     id: UUID
     service_request_id: UUID
-    entity_code: str
-    location_name: str
-    location_address: Optional[str]
+    slot_config_id: Optional[UUID]
+    entity_location_id: Optional[UUID]
     appointment_date: Optional[date]
     appointment_time: Optional[time]
     expires_at: datetime
     status: HoldStatus
     created_at: datetime
+    # Resolved from entity_locations table via JOIN
+    location_name: Optional[str] = None
+    location_address: Optional[str] = None
     city: Optional[str] = None
+    region: Optional[str] = None
+    entity_code: Optional[str] = None
     confirmed_at: Optional[datetime] = None
-    expired_at: Optional[datetime] = None
     released_at: Optional[datetime] = None
 
 
@@ -211,12 +222,10 @@ class AppointmentService:
         self,
         db: asyncpg.Connection,
         service_request_id: UUID,
-        entity_code: str,
-        location_name: str,
-        location_address: Optional[str],
+        entity_location_id: UUID,
         appointment_date: date,
         appointment_time: time,
-        hold_minutes: int = DEFAULT_HOLD_MINUTES
+        slot_config_id: Optional[UUID] = None
     ) -> HoldResult:
         """
         Create a temporary hold on an appointment slot.
@@ -225,50 +234,69 @@ class AppointmentService:
         Hold expires after 15 minutes if payment not completed.
         Releases any previous hold for this request.
 
+        Migration 030: Uses entity_location_id FK instead of location_name/address.
+
         Args:
             db: Database connection
             service_request_id: Service request UUID
-            entity_code: Entity code
-            location_name: Location name
-            location_address: Location address
+            entity_location_id: FK to entity_locations table
             appointment_date: Selected date
             appointment_time: Selected time
-            hold_minutes: Hold duration (default 15)
+            slot_config_id: Optional slot config ID (resolved if not provided)
 
         Returns:
             HoldResult with success status and hold details
         """
         try:
-            # Use the PostgreSQL function
+            # If slot_config_id not provided, find matching slot config
+            if not slot_config_id:
+                day_of_week = appointment_date.weekday()  # 0=Monday, 6=Sunday
+                slot_config = await db.fetchrow("""
+                    SELECT id FROM appointment_slot_configs
+                    WHERE entity_location_id = $1
+                    AND day_of_week = $2
+                    AND start_time <= $3::time
+                    AND end_time > $3::time
+                    AND is_active = TRUE
+                """, entity_location_id, day_of_week, appointment_time)
+                slot_config_id = slot_config['id'] if slot_config else None
+
+            # Call the PostgreSQL function (migration 030 signature)
             row = await db.fetchrow("""
                 SELECT * FROM hold_appointment_slot(
-                    $1, $2, $3, $4, $5, $6, $7
+                    $1, $2, $3, $4, $5
                 )
             """,
                 service_request_id,
-                entity_code,
-                location_name,
-                location_address,
+                slot_config_id,
                 appointment_date,
                 appointment_time,
-                hold_minutes
+                entity_location_id
             )
 
-            if row:
+            if row and row['success']:
+                # Get location details for response
+                location = await db.fetchrow("""
+                    SELECT entity_code, location_name, location_address, city, region
+                    FROM entity_locations WHERE id = $1
+                """, entity_location_id)
+
                 hold = AppointmentHold(
-                    id=row['id'],
-                    service_request_id=row['service_request_id'],
-                    entity_code=row['entity_code'],
-                    location_name=row['location_name'],
-                    location_address=row['location_address'],
-                    appointment_date=row['appointment_date'],
-                    appointment_time=row['appointment_time'],
+                    id=row['hold_id'],
+                    service_request_id=service_request_id,
+                    slot_config_id=slot_config_id,
+                    entity_location_id=entity_location_id,
+                    appointment_date=appointment_date,
+                    appointment_time=appointment_time,
                     expires_at=row['expires_at'],
-                    status=HoldStatus(row['status']),
-                    created_at=row['created_at'],
-                    confirmed_at=row['confirmed_at'],
-                    expired_at=row['expired_at'],
-                    released_at=row['released_at']
+                    status=HoldStatus.HELD,
+                    created_at=datetime.utcnow(),
+                    # Resolved from entity_locations
+                    location_name=location['location_name'] if location else None,
+                    location_address=location['location_address'] if location else None,
+                    city=location['city'] if location else None,
+                    region=location['region'] if location else None,
+                    entity_code=location['entity_code'] if location else None,
                 )
 
                 # Calculate seconds until expiry
@@ -278,7 +306,7 @@ class AppointmentService:
                 logger.info(
                     f"Appointment slot held: request={service_request_id}, "
                     f"date={appointment_date}, time={appointment_time}, "
-                    f"location={location_name}, expires_in={expires_in}s"
+                    f"location_id={entity_location_id}, expires_in={expires_in}s"
                 )
 
                 return HoldResult(
@@ -287,9 +315,10 @@ class AppointmentService:
                     expires_in_seconds=max(0, int(expires_in))
                 )
             else:
+                error_msg = row['error_message'] if row else "Failed to create appointment hold"
                 return HoldResult(
                     success=False,
-                    error="Failed to create appointment hold"
+                    error=error_msg
                 )
 
         except Exception as e:
@@ -310,6 +339,8 @@ class AppointmentService:
         Called by payment webhook after successful payment.
         Creates permanent reservation and updates service_request.
 
+        Migration 030: Function now returns table with location_id instead of location_name.
+
         Args:
             db: Database connection
             service_request_id: Service request UUID
@@ -318,61 +349,67 @@ class AppointmentService:
             ConfirmResult with success status and appointment details
         """
         try:
-            # Use the PostgreSQL function
-            success = await db.fetchval("""
-                SELECT confirm_appointment_hold($1)
+            # Use the PostgreSQL function (migration 030 returns table)
+            result = await db.fetchrow("""
+                SELECT * FROM confirm_appointment_hold($1)
             """, service_request_id)
 
-            if success:
-                # Get the confirmed appointment details (including city from migration 029)
-                row = await db.fetchrow("""
-                    SELECT
-                        cita_date,
-                        cita_time,
-                        cita_location,
-                        selected_city
-                    FROM service_requests
-                    WHERE id = $1
-                """, service_request_id)
+            if result and result['success']:
+                # Get location details from entity_locations via FK
+                location_id = result['location_id']
+                location = await db.fetchrow("""
+                    SELECT location_name, city, region
+                    FROM entity_locations WHERE id = $1
+                """, location_id)
+
+                location_name = location['location_name'] if location else None
+                city = location['city'] if location else None
+
+                # Also update cita_location for legacy compatibility
+                if location_name:
+                    await db.execute("""
+                        UPDATE service_requests
+                        SET cita_location = $2
+                        WHERE id = $1
+                    """, service_request_id, location_name)
 
                 logger.info(
                     f"Appointment confirmed: request={service_request_id}, "
-                    f"date={row['cita_date']}, time={row['cita_time']}, "
-                    f"location={row['cita_location']}, city={row['selected_city']}"
+                    f"date={result['appointment_date']}, time={result['appointment_time']}, "
+                    f"location={location_name}, city={city}"
                 )
 
                 return ConfirmResult(
                     success=True,
-                    appointment_date=row['cita_date'],
-                    appointment_time=row['cita_time'],
-                    location_name=row['cita_location'],
-                    city=row['selected_city']
+                    appointment_date=result['appointment_date'],
+                    appointment_time=result['appointment_time'],
+                    location_name=location_name,
+                    city=city
                 )
             else:
-                # Check if hold expired
-                hold = await db.fetchrow("""
-                    SELECT status, expires_at
-                    FROM appointment_holds
-                    WHERE service_request_id = $1
-                    ORDER BY created_at DESC
-                    LIMIT 1
-                """, service_request_id)
+                error_msg = result['error_message'] if result else None
 
-                if hold and hold['status'] == 'expired':
-                    return ConfirmResult(
-                        success=False,
-                        error="Appointment hold expired. Please select a new slot."
-                    )
-                elif not hold:
-                    return ConfirmResult(
-                        success=False,
-                        error="No appointment hold found for this request."
-                    )
-                else:
-                    return ConfirmResult(
-                        success=False,
-                        error=f"Hold status is '{hold['status']}', cannot confirm."
-                    )
+                # Check if hold expired
+                if not error_msg:
+                    hold = await db.fetchrow("""
+                        SELECT status, expires_at
+                        FROM appointment_holds
+                        WHERE service_request_id = $1
+                        ORDER BY created_at DESC
+                        LIMIT 1
+                    """, service_request_id)
+
+                    if hold and hold['status'] == 'expired':
+                        error_msg = "Appointment hold expired. Please select a new slot."
+                    elif not hold:
+                        error_msg = "No appointment hold found for this request."
+                    else:
+                        error_msg = f"Hold status is '{hold['status']}', cannot confirm."
+
+                return ConfirmResult(
+                    success=False,
+                    error=error_msg
+                )
 
         except Exception as e:
             logger.error(f"Error confirming hold: {e}")
@@ -385,7 +422,7 @@ class AppointmentService:
         self,
         db: asyncpg.Connection,
         service_request_id: UUID,
-        location_name: str
+        entity_location_id: UUID
     ) -> ConfirmResult:
         """
         Submit a request without an appointment (fallback).
@@ -393,34 +430,48 @@ class AppointmentService:
         Called when no slots are available.
         Agent will assign appointment later.
 
+        Migration 030: Now uses entity_location_id instead of location_name.
+
         Args:
             db: Database connection
             service_request_id: Service request UUID
-            location_name: Preferred location
+            entity_location_id: FK to entity_locations table
 
         Returns:
             ConfirmResult with success status
         """
         try:
-            success = await db.fetchval("""
-                SELECT submit_without_appointment($1, $2)
-            """, service_request_id, location_name)
+            # Call the PostgreSQL function (migration 030 returns table)
+            result = await db.fetchrow("""
+                SELECT * FROM submit_without_appointment($1, $2)
+            """, service_request_id, entity_location_id)
 
-            if success:
+            if result and result['success']:
+                # Get location details from entity_locations
+                location = await db.fetchrow("""
+                    SELECT location_name, city, region
+                    FROM entity_locations WHERE id = $1
+                """, entity_location_id)
+
+                location_name = location['location_name'] if location else None
+                city = location['city'] if location else None
+
                 logger.info(
                     f"Request submitted without appointment: request={service_request_id}, "
-                    f"location={location_name}"
+                    f"location_id={entity_location_id}, location={location_name}"
                 )
 
                 return ConfirmResult(
                     success=True,
                     location_name=location_name,
+                    city=city,
                     error=None
                 )
             else:
+                error_msg = result['error_message'] if result else "Failed to submit request without appointment"
                 return ConfirmResult(
                     success=False,
-                    error="Failed to submit request without appointment"
+                    error=error_msg
                 )
 
         except Exception as e:
@@ -493,6 +544,8 @@ class AppointmentService:
         """
         Get the current hold status for a service request.
 
+        Migration 030: JOINs entity_locations to get location details.
+
         Args:
             db: Database connection
             service_request_id: Service request UUID
@@ -501,10 +554,28 @@ class AppointmentService:
             AppointmentHold if exists, None otherwise
         """
         row = await db.fetchrow("""
-            SELECT *
-            FROM appointment_holds
-            WHERE service_request_id = $1
-            ORDER BY created_at DESC
+            SELECT
+                ah.id,
+                ah.service_request_id,
+                ah.slot_config_id,
+                ah.entity_location_id,
+                ah.appointment_date,
+                ah.appointment_time,
+                ah.expires_at,
+                ah.status,
+                ah.created_at,
+                ah.confirmed_at,
+                ah.released_at,
+                -- Resolved from entity_locations
+                el.entity_code,
+                el.location_name,
+                el.location_address,
+                el.city,
+                el.region
+            FROM appointment_holds ah
+            LEFT JOIN entity_locations el ON ah.entity_location_id = el.id
+            WHERE ah.service_request_id = $1
+            ORDER BY ah.created_at DESC
             LIMIT 1
         """, service_request_id)
 
@@ -512,17 +583,21 @@ class AppointmentService:
             return AppointmentHold(
                 id=row['id'],
                 service_request_id=row['service_request_id'],
-                entity_code=row['entity_code'],
-                location_name=row['location_name'],
-                location_address=row['location_address'],
+                slot_config_id=row['slot_config_id'],
+                entity_location_id=row['entity_location_id'],
                 appointment_date=row['appointment_date'],
                 appointment_time=row['appointment_time'],
                 expires_at=row['expires_at'],
                 status=HoldStatus(row['status']),
                 created_at=row['created_at'],
                 confirmed_at=row['confirmed_at'],
-                expired_at=row['expired_at'],
-                released_at=row['released_at']
+                released_at=row['released_at'],
+                # Resolved from entity_locations
+                entity_code=row['entity_code'],
+                location_name=row['location_name'],
+                location_address=row['location_address'],
+                city=row['city'],
+                region=row['region'],
             )
 
         return None

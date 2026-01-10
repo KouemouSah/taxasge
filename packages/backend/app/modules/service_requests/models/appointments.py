@@ -20,8 +20,8 @@ class EntityLocationResponse(BaseModel):
     """
     Location available for appointments.
 
-    NOTE: Data comes from appointment_slot_configs table (DISTINCT ON city, location_name).
-    The entity_locations table was planned but NOT created. Fields phone/email are always null.
+    NOTE: Data comes from entity_locations table (migration 030).
+    appointment_slot_configs references entity_locations via FK.
 
     Entity codes: CNEDOGE, DGT, EXTRANJERIA, MINFP, ONRC, MINHV
     Cities: Malabo (capital, insular) or Bata (continental)
@@ -86,18 +86,16 @@ class HoldSlotRequest(BaseModel):
 
     The hold is valid for 15 minutes while user completes payment.
     After 15 minutes without payment, the hold expires automatically.
+
+    Migration 030: Now uses entity_location_id FK instead of location_name/address.
     """
-    location_id: Optional[UUID] = Field(
+    entity_location_id: UUID = Field(
+        ...,
+        description="FK to entity_locations table"
+    )
+    slot_config_id: Optional[UUID] = Field(
         None,
         description="Optional slot_config_id from appointment_slot_configs table"
-    )
-    location_name: str = Field(
-        ...,
-        description="Location name (e.g., 'CNEDOGE Malabo')"
-    )
-    location_address: Optional[str] = Field(
-        None,
-        description="Location address for display"
     )
     appointment_date: date = Field(
         ...,
@@ -111,8 +109,8 @@ class HoldSlotRequest(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "location_name": "CNEDOGE Malabo",
-                "location_address": "Malabo, Bioko Norte",
+                "entity_location_id": "550e8400-e29b-41d4-a716-446655440000",
+                "slot_config_id": "550e8400-e29b-41d4-a716-446655440001",
                 "appointment_date": "2025-01-15",
                 "appointment_time": "09:00:00"
             }
@@ -211,16 +209,18 @@ class SubmitWithoutAppointmentRequest(BaseModel):
     Request to submit without appointment (fallback when no slots available).
 
     User selects preferred location, agent will assign appointment later.
+
+    Migration 030: Now uses entity_location_id FK instead of location name.
     """
-    preferred_location: str = Field(
+    entity_location_id: UUID = Field(
         ...,
-        description="Preferred location for agent to schedule later"
+        description="FK to entity_locations table"
     )
 
     class Config:
         json_schema_extra = {
             "example": {
-                "preferred_location": "CNEDOGE Bata"
+                "entity_location_id": "550e8400-e29b-41d4-a716-446655440000"
             }
         }
 

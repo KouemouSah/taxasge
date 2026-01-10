@@ -1393,12 +1393,13 @@ class ServiceRequestsApiClient {
 
   /**
    * Hold an appointment slot before payment
+   * Migration 030: Now uses entity_location_id FK instead of location_name/address
    */
   async holdAppointmentSlot(
     requestId: string,
     data: {
-      locationName: string
-      locationAddress?: string
+      entityLocationId: string  // FK to entity_locations table
+      slotConfigId?: string     // Optional slot config ID
       appointmentDate: string
       appointmentTime: string
     }
@@ -1426,8 +1427,8 @@ class ServiceRequestsApiClient {
     }>(`/${requestId}/appointments/hold`, {
       method: 'POST',
       body: JSON.stringify({
-        location_name: data.locationName,
-        location_address: data.locationAddress,
+        entity_location_id: data.entityLocationId,
+        slot_config_id: data.slotConfigId,
         appointment_date: data.appointmentDate,
         appointment_time: data.appointmentTime,
       }),
@@ -1496,10 +1497,11 @@ class ServiceRequestsApiClient {
 
   /**
    * Submit without appointment (fallback when no slots available)
+   * Migration 030: Now uses entity_location_id FK instead of location name
    */
   async submitWithoutAppointment(
     requestId: string,
-    preferredLocation: string
+    entityLocationId: string  // FK to entity_locations table
   ): Promise<{
     success: boolean
     locationName?: string
@@ -1514,7 +1516,7 @@ class ServiceRequestsApiClient {
     }>(`/${requestId}/appointments/fallback`, {
       method: 'POST',
       body: JSON.stringify({
-        preferred_location: preferredLocation,
+        entity_location_id: entityLocationId,
       }),
     })
 
