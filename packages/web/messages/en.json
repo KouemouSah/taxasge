@@ -800,6 +800,8 @@
           "createTitle": "Create New Slot",
           "createSubtitle": "Configure appointment times for a location",
           "createDescription": "Configure a new appointment slot",
+          "editTitle": "Edit Slot",
+          "editSubtitle": "Modify the appointment slot configuration",
           "slotConfiguration": "Slot Configuration",
           "slotConfigDescription": "Define the location, days and times for appointments",
           "edit": "Edit Slot",

@@ -800,6 +800,8 @@
           "createTitle": "Créer Nouveau Créneau",
           "createSubtitle": "Configurez les horaires de rendez-vous pour un emplacement",
           "createDescription": "Configurer un nouveau créneau de rendez-vous",
+          "editTitle": "Modifier le Créneau",
+          "editSubtitle": "Modifiez la configuration du créneau de rendez-vous",
           "slotConfiguration": "Configuration du Créneau",
           "slotConfigDescription": "Définissez l'emplacement, les jours et les horaires",
           "edit": "Modifier Créneau",

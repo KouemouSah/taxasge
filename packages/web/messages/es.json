@@ -800,6 +800,8 @@
           "createTitle": "Crear Nuevo Horario",
           "createSubtitle": "Configure los horarios de cita para una ubicación",
           "createDescription": "Configurar un nuevo horario de citas",
+          "editTitle": "Editar Horario",
+          "editSubtitle": "Modifique la configuración del horario de citas",
           "slotConfiguration": "Configuración del Horario",
           "slotConfigDescription": "Defina la ubicación, días y horarios para las citas",
           "edit": "Editar Horario",
