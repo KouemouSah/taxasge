@@ -5,13 +5,31 @@ Models for payments associated with service_requests (passport, residence, etc.)
 Uses the service_payments table with agent workflow support.
 """
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, validator, computed_field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 
 from .payment import PaymentMethod, PaymentStatus
+
+
+# =============================================================================
+# HELPER: Supplement extraction from calculation_details JSON
+# =============================================================================
+
+def extract_supplements_amount(calculation_details: Optional[Dict[str, Any]]) -> Decimal:
+    """Extract supplements_total from calculation_details JSON."""
+    if calculation_details:
+        return Decimal(str(calculation_details.get("supplements_total", 0)))
+    return Decimal("0")
+
+
+def extract_supplements_list(calculation_details: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Extract supplements array from calculation_details JSON."""
+    if calculation_details:
+        return calculation_details.get("supplements", [])
+    return []
 
 
 class PaymentWorkflowStatus(str, Enum):
@@ -108,6 +126,19 @@ class ServicePaymentResponse(BaseModel):
         description="Itemized tariff breakdown: base_amount, supplements[], penalties, total"
     )
 
+    # Computed fields for supplements (extracted from calculation_details)
+    @computed_field
+    @property
+    def supplements_amount(self) -> Decimal:
+        """Total supplements amount extracted from calculation_details JSON."""
+        return extract_supplements_amount(self.calculation_details)
+
+    @computed_field
+    @property
+    def supplements(self) -> List[Dict[str, Any]]:
+        """List of supplements extracted from calculation_details JSON."""
+        return extract_supplements_list(self.calculation_details)
+
     # Status
     status: PaymentStatus
     workflow_status: PaymentWorkflowStatus
@@ -170,6 +201,19 @@ class PendingValidationResponse(BaseModel):
         None,
         description="Itemized tariff breakdown: base_amount, supplements[], penalties, total"
     )
+
+    # Computed fields for supplements (extracted from calculation_details)
+    @computed_field
+    @property
+    def supplements_amount(self) -> Decimal:
+        """Total supplements amount extracted from calculation_details JSON."""
+        return extract_supplements_amount(self.calculation_details)
+
+    @computed_field
+    @property
+    def supplements(self) -> List[Dict[str, Any]]:
+        """List of supplements extracted from calculation_details JSON."""
+        return extract_supplements_list(self.calculation_details)
 
     # Status
     workflow_status: PaymentWorkflowStatus

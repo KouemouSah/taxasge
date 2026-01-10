@@ -108,6 +108,15 @@ export interface PendingPayment {
   ministryName?: string;
   serviceRequestId?: string;
   calculationDetails?: TariffBreakdown;
+  // Computed fields from backend (extracted from calculationDetails)
+  supplementsAmount?: number;
+  supplements?: Array<{
+    code: string;
+    nameEs: string;
+    unitPrice: number;
+    quantity: number;
+    subtotal: number;
+  }>;
 }
 
 export interface PendingPaymentsListResponse {
