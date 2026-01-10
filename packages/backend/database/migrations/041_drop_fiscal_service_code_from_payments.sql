@@ -7,18 +7,20 @@
 --
 -- Dependencies handled:
 -- 1. mv_treasury_daily_kpis (materialized view)
--- 2. chk_payment_target_xor (CHECK constraint)
--- 3. FK to fiscal_services.service_code
--- 4. idx_service_payments_service_code (index)
+-- 2. agent_payments_dashboard (materialized view)
+-- 3. chk_payment_target_xor (CHECK constraint)
+-- 4. FK to fiscal_services.service_code
+-- 5. idx_service_payments_service_code (index)
 -- ============================================================================
 
 BEGIN;
 
 -- ============================================================================
--- 1. Drop materialized view (will be recreated without fiscal_service_code)
+-- 1. Drop materialized views that depend on fiscal_service_code
 -- ============================================================================
 
 DROP MATERIALIZED VIEW IF EXISTS mv_treasury_daily_kpis CASCADE;
+DROP MATERIALIZED VIEW IF EXISTS agent_payments_dashboard CASCADE;
 
 -- ============================================================================
 -- 2. Drop constraints that reference fiscal_service_code
