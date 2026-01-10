@@ -80,7 +80,7 @@ export interface TariffBreakdown {
 export interface PendingPayment {
   id: string;
   paymentReference: string;
-  fiscalServiceCode: string;
+  serviceRequestId?: string;
   userId: string;
   companyId?: string;
   paymentType: string;
@@ -106,7 +106,6 @@ export interface PendingPayment {
   userEmail?: string;
   serviceName?: string;
   ministryName?: string;
-  serviceRequestId?: string;
   calculationDetails?: TariffBreakdown;
   // Computed fields from backend (extracted from calculationDetails)
   supplementsAmount?: number;
