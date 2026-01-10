@@ -220,7 +220,14 @@ def get_preview_cache() -> PreviewCache:
     try:
         from app.config import settings
         redis_url = getattr(settings, 'REDIS_URL', None)
-    except Exception:
+        if redis_url:
+            # Mask password in log for security
+            masked_url = redis_url.split('@')[-1] if '@' in redis_url else 'configured'
+            logger.info(f"REDIS_URL detected: ...@{masked_url}")
+        else:
+            logger.warning("REDIS_URL not configured - preview cache will use in-memory (not suitable for multi-instance)")
+    except Exception as e:
+        logger.error(f"Error loading REDIS_URL from settings: {e}")
         redis_url = None
     return PreviewCache(redis_url)
 
