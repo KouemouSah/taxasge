@@ -21,7 +21,7 @@ env:
   SERVICE_NAME: taxasge-frontend-staging
   REGION: us-central1
   DOMAIN: taxasge.emacsah.com
-  BACKEND_URL: https://taxasge-backend-staging-xrlbgdr5eq-uc.a.run.app
+  BACKEND_URL: https://taxasge-backend-staging-392159428433.us-central1.run.app
 
 jobs:
   # Job 1: Pre-deployment checks
