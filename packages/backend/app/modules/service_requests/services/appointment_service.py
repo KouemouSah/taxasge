@@ -129,19 +129,20 @@ class AppointmentService:
         Returns:
             List of EntityLocation objects with city and region
         """
-        # Use city column added in migration 029
+        # Migration 030: Get locations from entity_locations via FK
         rows = await db.fetch("""
-            SELECT DISTINCT ON (city, location_name)
-                entity_code,
-                location_name,
-                location_address,
-                city,
-                region
-            FROM appointment_slot_configs
-            WHERE entity_code = $1
-            AND is_active = TRUE
-            AND city IS NOT NULL
-            ORDER BY city, location_name
+            SELECT DISTINCT ON (el.city, el.location_name)
+                el.entity_code,
+                el.location_name,
+                el.location_address,
+                el.city,
+                el.region
+            FROM entity_locations el
+            INNER JOIN appointment_slot_configs asc ON asc.entity_location_id = el.id
+            WHERE el.entity_code = $1
+            AND el.is_active = TRUE
+            AND asc.is_active = TRUE
+            ORDER BY el.city, el.location_name
         """, entity_code)
 
         return [
