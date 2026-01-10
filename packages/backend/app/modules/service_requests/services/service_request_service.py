@@ -1129,15 +1129,16 @@ class ServiceRequestService:
         """
         Prepare a service request for payment.
 
-        This transitions the request from DRAFT to PAYMENT_PENDING status.
-        Called when the user completes form review and is ready to pay.
+        This validates documents and calculates tariff, but does NOT change status.
+        Status will change to PAYMENT_PENDING only when payment is actually initiated
+        and recorded in service_payments table.
 
-        Flow: DRAFT → PAYMENT_PENDING → (payment) → PAID → SUBMITTED
+        Flow: DRAFT (validate docs, calc tariff) → initiate_payment() → PAYMENT_PENDING
 
         Requirements:
         - Request must be in DRAFT status
         - All required documents must be uploaded and validated
-        - Tariff must be calculated
+        - Tariff will be calculated if not already done
 
         Args:
             db: Database connection
@@ -1145,7 +1146,7 @@ class ServiceRequestService:
             user_id: The requesting user's ID
 
         Returns:
-            Updated service request response
+            Service request response (status remains DRAFT)
         """
         request = await service_request_repository.find_by_id(db, request_id)
         if not request:
@@ -1199,18 +1200,12 @@ class ServiceRequestService:
                     total_amount=tariff["total_amount"]
                 )
 
-        # Transition to PAYMENT_PENDING
-        await service_request_repository.update_status(
-            db=db,
-            request_id=request_id,
-            new_status=ServiceRequestStatus.PAYMENT_PENDING.value,
-            performed_by=user_id,
-            comment="User ready for payment - documents validated"
-        )
+        # NOTE: Status remains DRAFT - will change to PAYMENT_PENDING only after
+        # successful payment initiation in initiate_payment() endpoint
 
         # Refresh request data
         updated = await service_request_repository.find_by_id(db, request_id)
-        logger.info(f"Service request prepared for payment: {request['reference']}")
+        logger.info(f"Service request prepared for payment (DRAFT): {request['reference']}")
 
         return await self._build_response(db, updated, required_docs)
 

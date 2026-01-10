@@ -1085,7 +1085,9 @@ export default function PassportWizardPage() {
           onNext={async () => {
             const success = await handleSaveFormReview(currentStep.id)
             if (success) {
-              // If completing form_review_2, prepare for payment (DRAFT -> PAYMENT_PENDING)
+              // If completing form_review_2, prepare for payment (validates docs, calculates tariff)
+              // NOTE: Status stays DRAFT - will change to PAYMENT_PENDING only after
+              // initiatePayment() successfully creates a payment record in the database
               if (currentStep.id === 'form_review_2') {
                 console.log('[Wizard] Form review complete, preparing for payment...')
                 const prepared = await prepareForPayment()
@@ -1100,7 +1102,7 @@ export default function PassportWizardPage() {
                   )
                   return
                 }
-                console.log('[Wizard] Request prepared for payment, navigating to payment step')
+                console.log('[Wizard] Request validated for payment, navigating to payment step')
               }
               setCurrentStepIndex(prev => prev + 1)
             }

@@ -660,10 +660,11 @@ async def submit_service_request(
     description="""
     Prepare a service request for payment.
 
-    This transitions the request from DRAFT to PAYMENT_PENDING status.
-    Called when the user completes document upload and form review.
+    This validates documents and calculates tariff, but does NOT change status.
+    Status changes to PAYMENT_PENDING only when payment is actually initiated
+    via the /payment/initiate endpoint and recorded in service_payments table.
 
-    **Flow:** DRAFT → PAYMENT_PENDING → (payment) → PAID
+    **Flow:** DRAFT (prepare) → DRAFT (initiate) → PAYMENT_PENDING → PAID
 
     **Requirements:**
     - Request must be in DRAFT status
@@ -673,8 +674,7 @@ async def submit_service_request(
     **Effects:**
     - Validates all documents are uploaded
     - Calculates tariff if needed
-    - Changes status to PAYMENT_PENDING
-    - Enables payment initiation
+    - Status remains DRAFT (changes on payment initiation)
     """
 )
 async def prepare_for_payment(
@@ -1165,8 +1165,10 @@ async def initiate_payment(
             )
 
         # Verify request is in correct status for payment
-        if context.status not in [ServiceRequestStatus.PAYMENT_PENDING]:
-            logger.error(f"[PAYMENT] Wrong status: {context.status.value}, expected PAYMENT_PENDING")
+        # Accept DRAFT (normal flow) or PAYMENT_PENDING (retry after failed payment)
+        allowed_statuses = [ServiceRequestStatus.DRAFT, ServiceRequestStatus.PAYMENT_PENDING]
+        if context.status not in allowed_statuses:
+            logger.error(f"[PAYMENT] Wrong status: {context.status.value}, expected DRAFT or PAYMENT_PENDING")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Cannot initiate payment in status: {context.status.value}"
@@ -1226,6 +1228,23 @@ async def initiate_payment(
         # Initiate payment via registry
         result = await payment_processor_registry.initiate_payment(db, payment_context)
         logger.info(f"[PAYMENT] Processor result: success={result.success}, payment_id={result.payment_id}, status={result.status}")
+
+        # Only update service_request status if payment was successfully created
+        if result.success:
+            # Import repository for status update
+            from ..repositories.service_request_repository import service_request_repository
+
+            # Update service_request status to PAYMENT_PENDING only after successful INSERT
+            # This ensures consistency: PAYMENT_PENDING = payment record exists in DB
+            if context.status == ServiceRequestStatus.DRAFT:
+                await service_request_repository.update_status(
+                    db=db,
+                    request_id=request_id,
+                    new_status=ServiceRequestStatus.PAYMENT_PENDING.value,
+                    performed_by=current_user.id,
+                    comment=f"Payment initiated: {result.payment_id} ({payment_method.value})"
+                )
+                logger.info(f"[PAYMENT] Service request status updated: DRAFT → PAYMENT_PENDING")
 
         response = PaymentInitiateResponse(
             success=result.success,
