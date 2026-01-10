@@ -99,71 +99,78 @@ class InMemoryCache(CacheBackend):
         return len(expired_keys)
 
 
-class RedisCache(CacheBackend):
+class UpstashRedisCache(CacheBackend):
     """
-    Redis cache implementation.
+    Upstash Redis cache implementation using REST API.
 
-    Suitable for production with multiple instances.
-    Requires redis-py[async] package.
+    Suitable for production with multiple instances and serverless.
+    Requires upstash-redis package: pip install upstash-redis
+
+    Environment variables:
+    - UPSTASH_REDIS_REST_URL: REST API URL (https://xxx.upstash.io)
+    - UPSTASH_REDIS_REST_TOKEN: REST API token
     """
 
-    def __init__(self, redis_url: Optional[str] = None):
-        self._redis_url = redis_url
+    def __init__(self, rest_url: Optional[str] = None, rest_token: Optional[str] = None):
+        self._rest_url = rest_url
+        self._rest_token = rest_token
         self._client = None
         self._prefix = "preview:"
 
-    async def _get_client(self):
-        """Get or create Redis client."""
+    def _get_client(self):
+        """Get or create Upstash Redis client."""
         if self._client is None:
             try:
-                from redis import asyncio as aioredis
-                self._client = await aioredis.from_url(
-                    self._redis_url or "redis://localhost:6379",
-                    encoding="utf-8",
-                    decode_responses=True
+                from upstash_redis import Redis
+                self._client = Redis(
+                    url=self._rest_url,
+                    token=self._rest_token
                 )
+                logger.info(f"Upstash Redis client initialized: {self._rest_url}")
             except ImportError:
-                logger.error("redis package not installed. Install with: pip install redis")
+                logger.error("upstash-redis package not installed. Install with: pip install upstash-redis")
                 raise
             except Exception as e:
-                logger.error(f"Failed to connect to Redis: {e}")
+                logger.error(f"Failed to initialize Upstash Redis: {e}")
                 raise
         return self._client
 
     async def get(self, key: str) -> Optional[Dict[str, Any]]:
-        """Get value from Redis."""
+        """Get value from Upstash Redis."""
         try:
-            client = await self._get_client()
-            data = await client.get(f"{self._prefix}{key}")
+            client = self._get_client()
+            data = client.get(f"{self._prefix}{key}")
             if data:
-                return json.loads(data)
+                if isinstance(data, str):
+                    return json.loads(data)
+                return data
             return None
         except Exception as e:
-            logger.error(f"Redis GET error: {e}")
+            logger.error(f"Upstash Redis GET error: {e}")
             return None
 
     async def set(self, key: str, value: Dict[str, Any], ttl_seconds: int) -> bool:
-        """Set value in Redis with expiration."""
+        """Set value in Upstash Redis with expiration."""
         try:
-            client = await self._get_client()
-            await client.setex(
+            client = self._get_client()
+            client.setex(
                 f"{self._prefix}{key}",
                 ttl_seconds,
                 json.dumps(value, default=str)
             )
             return True
         except Exception as e:
-            logger.error(f"Redis SET error: {e}")
+            logger.error(f"Upstash Redis SET error: {e}")
             return False
 
     async def delete(self, key: str) -> bool:
-        """Delete key from Redis."""
+        """Delete key from Upstash Redis."""
         try:
-            client = await self._get_client()
-            result = await client.delete(f"{self._prefix}{key}")
+            client = self._get_client()
+            result = client.delete(f"{self._prefix}{key}")
             return result > 0
         except Exception as e:
-            logger.error(f"Redis DELETE error: {e}")
+            logger.error(f"Upstash Redis DELETE error: {e}")
             return False
 
     async def cleanup_expired(self) -> int:
@@ -175,25 +182,34 @@ class PreviewCache:
     """
     Preview cache with automatic backend selection.
 
-    Uses Redis if REDIS_URL is configured, otherwise falls back to in-memory.
+    Uses Upstash Redis if configured, otherwise falls back to in-memory.
+
+    Configuration (in order of preference):
+    1. UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN (Upstash REST API)
+    2. In-memory cache (fallback, not suitable for production)
     """
 
-    def __init__(self, redis_url: Optional[str] = None):
-        self._redis_url = redis_url
+    def __init__(
+        self,
+        upstash_url: Optional[str] = None,
+        upstash_token: Optional[str] = None
+    ):
+        self._upstash_url = upstash_url
+        self._upstash_token = upstash_token
         self._backend: Optional[CacheBackend] = None
 
     def _get_backend(self) -> CacheBackend:
         """Get or create the appropriate cache backend."""
         if self._backend is None:
-            if self._redis_url:
+            if self._upstash_url and self._upstash_token:
                 try:
-                    self._backend = RedisCache(self._redis_url)
-                    logger.info("Using Redis cache for previews")
+                    self._backend = UpstashRedisCache(self._upstash_url, self._upstash_token)
+                    logger.info(f"Using Upstash Redis cache for previews: {self._upstash_url}")
                 except Exception as e:
-                    logger.warning(f"Redis unavailable, falling back to in-memory: {e}")
+                    logger.warning(f"Upstash Redis unavailable, falling back to in-memory: {e}")
                     self._backend = InMemoryCache()
             else:
-                logger.warning("No REDIS_URL configured, using in-memory cache (not suitable for production)")
+                logger.warning("Upstash Redis not configured, using in-memory cache (not suitable for production)")
                 self._backend = InMemoryCache()
         return self._backend
 
@@ -217,19 +233,25 @@ class PreviewCache:
 # Singleton instance - will be configured based on app settings
 def get_preview_cache() -> PreviewCache:
     """Get the preview cache singleton."""
+    upstash_url = None
+    upstash_token = None
+
     try:
         from app.config import settings
-        redis_url = getattr(settings, 'REDIS_URL', None)
-        if redis_url:
-            # Mask password in log for security
-            masked_url = redis_url.split('@')[-1] if '@' in redis_url else 'configured'
-            logger.info(f"REDIS_URL detected: ...@{masked_url}")
+        upstash_url = getattr(settings, 'UPSTASH_REDIS_REST_URL', None)
+        upstash_token = getattr(settings, 'UPSTASH_REDIS_REST_TOKEN', None)
+
+        if upstash_url and upstash_token:
+            logger.info(f"Upstash Redis configured: {upstash_url}")
         else:
-            logger.warning("REDIS_URL not configured - preview cache will use in-memory (not suitable for multi-instance)")
+            logger.warning(
+                "Upstash Redis not configured - preview cache will use in-memory "
+                "(set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN for production)"
+            )
     except Exception as e:
-        logger.error(f"Error loading REDIS_URL from settings: {e}")
-        redis_url = None
-    return PreviewCache(redis_url)
+        logger.error(f"Error loading Upstash config from settings: {e}")
+
+    return PreviewCache(upstash_url=upstash_url, upstash_token=upstash_token)
 
 
 # Create singleton

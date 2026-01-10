@@ -292,6 +292,10 @@ class Settings(BaseSettings):
     
     REDIS_URL: Optional[str] = Field(default=None, env="REDIS_URL")
     CACHE_TTL: int = Field(default=3600, env="CACHE_TTL")  # 1 hour
+
+    # Upstash Redis (REST API) - for preview cache in multi-instance Cloud Run
+    UPSTASH_REDIS_REST_URL: Optional[str] = Field(default=None, env="UPSTASH_REDIS_REST_URL")
+    UPSTASH_REDIS_REST_TOKEN: Optional[str] = Field(default=None, env="UPSTASH_REDIS_REST_TOKEN")
     
     # ========================================================================
     # RATE LIMITING
