@@ -241,27 +241,90 @@ class WorkflowTariffResponse(BaseModel):
 # ─────────────────────────────────────────────────────────────────
 
 from datetime import time as Time
+from pydantic import field_validator
+
+
+def parse_time_string(value: str) -> Time:
+    """Parse time string in formats: HH:MM, HH:MM:SS, or HH:MM AM/PM"""
+    if isinstance(value, Time):
+        return value
+    if not isinstance(value, str):
+        raise ValueError(f"Invalid time format: {value}")
+
+    value = value.strip()
+
+    # Handle AM/PM format (e.g., "08:00 AM", "04:00 PM")
+    is_pm = False
+    if value.upper().endswith(' AM'):
+        value = value[:-3].strip()
+    elif value.upper().endswith(' PM'):
+        value = value[:-3].strip()
+        is_pm = True
+
+    parts = value.split(':')
+    if len(parts) == 2:
+        hour, minute = int(parts[0]), int(parts[1])
+        second = 0
+    elif len(parts) == 3:
+        hour, minute, second = int(parts[0]), int(parts[1]), int(parts[2])
+    else:
+        raise ValueError(f"Invalid time format: {value}")
+
+    # Convert PM to 24-hour
+    if is_pm and hour < 12:
+        hour += 12
+    elif not is_pm and hour == 12:
+        hour = 0
+
+    return Time(hour, minute, second)
+
 
 class AppointmentSlotConfigCreate(BaseModel):
     """Create appointment slot config - aligned with migration 030 (entity_locations)"""
     entity_location_id: str = Field(..., description="FK to entity_locations table")
     day_of_week: int = Field(..., ge=0, le=6, description="0=Monday, 6=Sunday")
-    start_time: Time
-    end_time: Time
+    start_time: str = Field(..., description="Start time in HH:MM format")
+    end_time: str = Field(..., description="End time in HH:MM format")
     slot_duration_minutes: int = Field(default=30, ge=5, le=120)
     max_appointments_per_slot: int = Field(default=10, ge=1, le=100)
     is_active: bool = True
     # Note: entity_code, location_name, location_address are resolved from entity_locations FK
 
+    @field_validator('start_time', 'end_time', mode='before')
+    @classmethod
+    def validate_time(cls, v):
+        """Accept time as string and validate format"""
+        if isinstance(v, Time):
+            return v.strftime('%H:%M:%S')
+        if isinstance(v, str):
+            # Validate by parsing, then return normalized format
+            t = parse_time_string(v)
+            return t.strftime('%H:%M:%S')
+        raise ValueError(f"Invalid time: {v}")
+
 
 class AppointmentSlotConfigUpdate(BaseModel):
     """Update appointment slot config"""
     entity_location_id: Optional[str] = Field(None, description="FK to entity_locations table")
-    start_time: Optional[Time] = None
-    end_time: Optional[Time] = None
+    start_time: Optional[str] = Field(None, description="Start time in HH:MM format")
+    end_time: Optional[str] = Field(None, description="End time in HH:MM format")
     slot_duration_minutes: Optional[int] = Field(None, ge=5, le=120)
     max_appointments_per_slot: Optional[int] = Field(None, ge=1, le=100)
     is_active: Optional[bool] = None
+
+    @field_validator('start_time', 'end_time', mode='before')
+    @classmethod
+    def validate_time(cls, v):
+        """Accept time as string and validate format"""
+        if v is None:
+            return None
+        if isinstance(v, Time):
+            return v.strftime('%H:%M:%S')
+        if isinstance(v, str):
+            # Validate by parsing, then return normalized format
+            t = parse_time_string(v)
+            return t.strftime('%H:%M:%S')
+        raise ValueError(f"Invalid time: {v}")
 
 
 class AppointmentSlotConfigResponse(BaseModel):
@@ -1241,65 +1304,83 @@ async def create_slot_config(
     current_user=Depends(get_current_user),
     _=Depends(permission_required("admin:manage_appointments"))
 ):
-    # 1. Fetch entity_location to resolve entity_code, location_name, location_address
-    location = await db.fetchrow("""
-        SELECT id, entity_code, location_name, location_address
-        FROM entity_locations
-        WHERE id = $1::uuid AND is_active = TRUE
-    """, slot.entity_location_id)
+    from loguru import logger
 
-    if not location:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Entity location not found or inactive: {slot.entity_location_id}"
+    try:
+        # Parse time strings to datetime.time objects for database
+        start_time_obj = parse_time_string(slot.start_time)
+        end_time_obj = parse_time_string(slot.end_time)
+
+        # 1. Fetch entity_location to resolve entity_code, location_name, location_address
+        location = await db.fetchrow("""
+            SELECT id, entity_code, location_name, location_address
+            FROM entity_locations
+            WHERE id = $1::uuid AND is_active = TRUE
+        """, slot.entity_location_id)
+
+        if not location:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Entity location not found or inactive: {slot.entity_location_id}"
+            )
+
+        # 2. Check for duplicate (same location + day + start_time)
+        existing = await db.fetchrow("""
+            SELECT id FROM appointment_slot_configs
+            WHERE entity_location_id = $1::uuid AND day_of_week = $2 AND start_time = $3::time
+        """, slot.entity_location_id, slot.day_of_week, start_time_obj)
+
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Slot configuration already exists for this location, day, and start time"
+            )
+
+        # 3. Insert the slot config with resolved values
+        row = await db.fetchrow("""
+            INSERT INTO appointment_slot_configs (
+                entity_location_id, entity_code, day_of_week, start_time, end_time,
+                slot_duration_minutes, max_appointments_per_slot,
+                location_name, location_address, is_active
+            ) VALUES ($1::uuid, $2, $3, $4::time, $5::time, $6, $7, $8, $9, $10)
+            RETURNING *
+        """,
+            slot.entity_location_id,
+            location['entity_code'],
+            slot.day_of_week,
+            start_time_obj,
+            end_time_obj,
+            slot.slot_duration_minutes,
+            slot.max_appointments_per_slot,
+            location['location_name'],
+            location['location_address'],
+            slot.is_active
         )
 
-    # 2. Check for duplicate (same location + day + start_time)
-    existing = await db.fetchrow("""
-        SELECT id FROM appointment_slot_configs
-        WHERE entity_location_id = $1::uuid AND day_of_week = $2 AND start_time = $3
-    """, slot.entity_location_id, slot.day_of_week, slot.start_time)
+        logger.info(f"Created slot config: {row['id']} for {location['entity_code']} day={slot.day_of_week}")
 
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Slot configuration already exists for this location, day, and start time"
+        return AppointmentSlotConfigResponse(
+            id=str(row['id']),
+            entity_location_id=str(row['entity_location_id']) if row.get('entity_location_id') else None,
+            entity_code=row['entity_code'],
+            day_of_week=row['day_of_week'],
+            start_time=str(row['start_time']),
+            end_time=str(row['end_time']),
+            slot_duration_minutes=row['slot_duration_minutes'],
+            max_appointments_per_slot=row['max_appointments_per_slot'],
+            location_name=row['location_name'],
+            location_address=row['location_address'],
+            is_active=row['is_active']
         )
 
-    # 3. Insert the slot config with resolved values
-    row = await db.fetchrow("""
-        INSERT INTO appointment_slot_configs (
-            entity_location_id, entity_code, day_of_week, start_time, end_time,
-            slot_duration_minutes, max_appointments_per_slot,
-            location_name, location_address, is_active
-        ) VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        RETURNING *
-    """,
-        slot.entity_location_id,
-        location['entity_code'],
-        slot.day_of_week,
-        slot.start_time,
-        slot.end_time,
-        slot.slot_duration_minutes,
-        slot.max_appointments_per_slot,
-        location['location_name'],
-        location['location_address'],
-        slot.is_active
-    )
-
-    return AppointmentSlotConfigResponse(
-        id=str(row['id']),
-        entity_location_id=str(row['entity_location_id']) if row.get('entity_location_id') else None,
-        entity_code=row['entity_code'],
-        day_of_week=row['day_of_week'],
-        start_time=str(row['start_time']),
-        end_time=str(row['end_time']),
-        slot_duration_minutes=row['slot_duration_minutes'],
-        max_appointments_per_slot=row['max_appointments_per_slot'],
-        location_name=row['location_name'],
-        location_address=row['location_address'],
-        is_active=row['is_active']
-    )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating slot config: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create slot configuration: {str(e)}"
+        )
 
 
 @router.put(
