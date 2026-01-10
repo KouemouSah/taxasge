@@ -272,6 +272,21 @@ class ManualValidationProcessor(PaymentProcessorBase):
                 validation_comment
             )
 
+            # 6b. Update service_requests payment_status to keep tables in sync
+            # This is critical for checkPaymentStatus endpoint to return correct status
+            await db.execute(
+                """
+                UPDATE service_requests
+                SET payment_status = 'completed',
+                    paid_at = $2,
+                    updated_at = NOW()
+                WHERE id = $1
+                """,
+                payment["service_request_id"],
+                paid_at
+            )
+            logger.info(f"Updated service_requests {payment['service_request_id']} payment_status to completed")
+
             # 7. Generate and store receipt PDF
             receipt_number = None
             receipt_url = None
