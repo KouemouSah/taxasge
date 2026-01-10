@@ -327,6 +327,10 @@ export default function PassportWizardPage() {
 
   // Navigate back
   const handleBack = () => {
+    // Clear any error state before navigation to prevent UI flicker
+    setFormSaveError(null)
+    clearError()
+
     if (currentStepIndex === 0) {
       // At step 0, go back to service requests list (not detail page)
       router.push(`/${locale}/dashboard/service-requests`)
@@ -552,14 +556,30 @@ export default function PassportWizardPage() {
               }
             } catch (docErr) {
               console.error(`[Wizard] Failed to save document ${docCode}:`, docErr)
-              failedDocuments.push(docCode)
+              // Extract localized error message if available from API response
+              const apiError = docErr as { response?: { data?: { detail?: { code?: string; message_es?: string; message_fr?: string; message_en?: string } | string } } }
+              const detail = apiError?.response?.data?.detail
+              let errorMsg = ''
+              if (detail && typeof detail === 'object') {
+                // Backend returned localized error (e.g., PREVIEW_EXPIRED)
+                errorMsg = locale === 'es' ? detail.message_es || '' :
+                           locale === 'fr' ? detail.message_fr || '' :
+                           detail.message_en || ''
+              }
+              failedDocuments.push({ code: docCode, error: errorMsg })
             }
           }
         }
 
         // If any documents failed to save, abort the entire operation
         if (failedDocuments.length > 0) {
-          const docNames = failedDocuments.join(', ')
+          // Check if we have a specific error message (e.g., preview expired)
+          const firstError = failedDocuments[0] as { code: string; error?: string }
+          if (firstError.error) {
+            throw new Error(firstError.error)
+          }
+          // Fallback to generic message
+          const docNames = failedDocuments.map((d: { code: string }) => d.code).join(', ')
           throw new Error(
             locale === 'es' ? `Error al guardar documentos: ${docNames}. Por favor reintente.` :
             locale === 'fr' ? `Erreur lors de la sauvegarde des documents: ${docNames}. Veuillez réessayer.` :

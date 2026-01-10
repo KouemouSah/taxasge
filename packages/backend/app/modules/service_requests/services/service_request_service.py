@@ -539,9 +539,15 @@ class ServiceRequestService:
         # Get preview from cache
         preview = await preview_cache.get(validation.preview_id)
         if not preview:
+            # Preview not found - likely expired (30 min TTL) or server instance changed
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Preview not found or expired. Please upload the document again."
+                detail={
+                    "code": "PREVIEW_EXPIRED",
+                    "message_en": f"Document preview session expired (max {PREVIEW_EXPIRY_MINUTES} minutes). Please re-upload the document.",
+                    "message_es": f"La sesión de vista previa del documento ha expirado (máximo {PREVIEW_EXPIRY_MINUTES} minutos). Por favor, vuelva a cargar el documento.",
+                    "message_fr": f"La session de prévisualisation du document a expiré (max {PREVIEW_EXPIRY_MINUTES} minutes). Veuillez recharger le document.",
+                }
             )
 
         # Verify preview belongs to this request and user
@@ -562,7 +568,12 @@ class ServiceRequestService:
             await preview_cache.delete(validation.preview_id)
             raise HTTPException(
                 status_code=status.HTTP_410_GONE,
-                detail="Preview has expired. Please upload the document again."
+                detail={
+                    "code": "PREVIEW_EXPIRED",
+                    "message_en": f"Document preview session expired (max {PREVIEW_EXPIRY_MINUTES} minutes). Please re-upload the document.",
+                    "message_es": f"La sesión de vista previa del documento ha expirado (máximo {PREVIEW_EXPIRY_MINUTES} minutos). Por favor, vuelva a cargar el documento.",
+                    "message_fr": f"La session de prévisualisation du document a expiré (max {PREVIEW_EXPIRY_MINUTES} minutes). Veuillez recharger le document.",
+                }
             )
 
         # Verify request still exists and is in valid state

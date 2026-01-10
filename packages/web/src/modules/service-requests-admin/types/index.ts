@@ -300,6 +300,7 @@ export interface AppointmentSlotConfigCreate {
 
 export interface AppointmentSlotConfigUpdate {
   entity_location_id?: string
+  day_of_week?: number
   start_time?: string
   end_time?: string
   slot_duration_minutes?: number
