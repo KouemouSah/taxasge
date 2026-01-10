@@ -86,6 +86,7 @@ export interface UseServiceRequestsReturn {
 
   // Submission
   submitRequest: () => Promise<boolean>
+  prepareForPayment: () => Promise<boolean>
   getPaymentMethods: () => Promise<PaymentMethodsResponse | null>
   initiatePayment: (method: string, phone?: string) => Promise<PaymentInitiateResult | null>
   checkPaymentStatus: () => Promise<{ status: string; paid: boolean } | null>
@@ -598,6 +599,23 @@ export function useServiceRequests(): UseServiceRequestsReturn {
     }
   }, [currentRequest, handleError])
 
+  const prepareForPayment = useCallback(async (): Promise<boolean> => {
+    if (!currentRequest) return false
+
+    try {
+      setIsSaving(true)
+      setError(null)
+      const request = await serviceRequestsApi.prepareForPayment(currentRequest.id)
+      setCurrentRequest(request)
+      return true
+    } catch (err) {
+      handleError(err)
+      return false
+    } finally {
+      setIsSaving(false)
+    }
+  }, [currentRequest, handleError])
+
   const getPaymentMethods = useCallback(async (): Promise<PaymentMethodsResponse | null> => {
     if (!currentRequest) return null
 
@@ -986,6 +1004,7 @@ export function useServiceRequests(): UseServiceRequestsReturn {
 
     // Submission
     submitRequest,
+    prepareForPayment,
     getPaymentMethods,
     initiatePayment,
     checkPaymentStatus,

@@ -135,6 +135,7 @@ export default function PassportWizardPage() {
     getCitizenSummary,
     downloadSummaryPDF,
     // Payment methods
+    prepareForPayment,
     getPaymentMethods,
     initiatePayment,
     checkPaymentStatus,
@@ -1049,7 +1050,26 @@ export default function PassportWizardPage() {
           onSave={() => handleSaveFormReview(currentStep.id)}
           onNext={async () => {
             const success = await handleSaveFormReview(currentStep.id)
-            if (success) setCurrentStepIndex(prev => prev + 1)
+            if (success) {
+              // If completing form_review_2, prepare for payment (DRAFT -> PAYMENT_PENDING)
+              if (currentStep.id === 'form_review_2') {
+                console.log('[Wizard] Form review complete, preparing for payment...')
+                const prepared = await prepareForPayment()
+                if (!prepared) {
+                  console.error('[Wizard] Failed to prepare for payment')
+                  setFormSaveError(
+                    locale === 'es'
+                      ? 'Error al preparar el pago. Verifique que todos los documentos esten validados.'
+                      : locale === 'fr'
+                        ? 'Erreur lors de la preparation du paiement. Verifiez que tous les documents sont valides.'
+                        : 'Error preparing payment. Verify all documents are validated.'
+                  )
+                  return
+                }
+                console.log('[Wizard] Request prepared for payment, navigating to payment step')
+              }
+              setCurrentStepIndex(prev => prev + 1)
+            }
           }}
           onBack={handleBack}
           onRetry={loadFormDataForReview}

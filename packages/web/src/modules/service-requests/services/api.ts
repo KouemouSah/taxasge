@@ -934,6 +934,18 @@ class ServiceRequestsApiClient {
   }
 
   /**
+   * Prepare request for payment.
+   * Transitions status from DRAFT to PAYMENT_PENDING.
+   * Called after form review validation, before payment step.
+   */
+  async prepareForPayment(requestId: string): Promise<ServiceRequest> {
+    const backend = await this.request<BackendServiceRequest>(`/${requestId}/prepare-payment`, {
+      method: 'POST',
+    })
+    return transformServiceRequest(backend)
+  }
+
+  /**
    * Get available payment methods for request
    */
   async getPaymentMethods(requestId: string): Promise<PaymentMethodsResponse> {

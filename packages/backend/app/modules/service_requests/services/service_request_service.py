@@ -1109,6 +1109,100 @@ class ServiceRequestService:
 
         return await self._build_response(db, updated, required_docs)
 
+    async def prepare_for_payment(
+        self,
+        db: asyncpg.Connection,
+        request_id: UUID,
+        user_id: UUID
+    ) -> ServiceRequestResponse:
+        """
+        Prepare a service request for payment.
+
+        This transitions the request from DRAFT to PAYMENT_PENDING status.
+        Called when the user completes form review and is ready to pay.
+
+        Flow: DRAFT → PAYMENT_PENDING → (payment) → PAID → SUBMITTED
+
+        Requirements:
+        - Request must be in DRAFT status
+        - All required documents must be uploaded and validated
+        - Tariff must be calculated
+
+        Args:
+            db: Database connection
+            request_id: The service request ID
+            user_id: The requesting user's ID
+
+        Returns:
+            Updated service request response
+        """
+        request = await service_request_repository.find_by_id(db, request_id)
+        if not request:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Service request not found"
+            )
+
+        if str(request["user_id"]) != str(user_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied"
+            )
+
+        # Only allow from DRAFT status
+        if request["status"] != ServiceRequestStatus.DRAFT.value:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot prepare for payment in status: {request['status']}"
+            )
+
+        # Check all required documents are provided and validated
+        required_docs = await self._get_required_documents(db, request["workflow_code"])
+        provided_docs = await document_repository.find_by_request(db, request_id)
+
+        required_codes = {doc.document_code for doc in required_docs if doc.is_required}
+        provided_codes = {doc["document_code"] for doc in provided_docs if doc.get("is_valid")}
+
+        missing_docs = required_codes - provided_codes
+        if missing_docs:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "error": "Missing required documents",
+                    "missing": list(missing_docs),
+                    "message_es": f"Faltan documentos requeridos: {', '.join(missing_docs)}",
+                    "message_fr": f"Documents requis manquants: {', '.join(missing_docs)}"
+                }
+            )
+
+        # Calculate tariff if not already calculated
+        if not request.get("total_amount") or request["total_amount"] == 0:
+            tariff = await self._calculate_tariff(db, request)
+            if tariff:
+                await service_request_repository.update_amounts(
+                    db=db,
+                    request_id=request_id,
+                    base_amount=tariff["base_amount"],
+                    supplements_amount=tariff["supplements_total"],
+                    penalties_amount=tariff["penalties_amount"],
+                    total_amount=tariff["total_amount"]
+                )
+
+        # Transition to PAYMENT_PENDING
+        await service_request_repository.update_status(
+            db=db,
+            request_id=request_id,
+            new_status=ServiceRequestStatus.PAYMENT_PENDING.value,
+            performed_by=user_id,
+            comment="User ready for payment - documents validated"
+        )
+
+        # Refresh request data
+        updated = await service_request_repository.find_by_id(db, request_id)
+        logger.info(f"Service request prepared for payment: {request['reference']}")
+
+        return await self._build_response(db, updated, required_docs)
+
     async def cancel_request(
         self,
         db: asyncpg.Connection,

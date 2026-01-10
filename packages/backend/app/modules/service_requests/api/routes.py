@@ -654,6 +654,42 @@ async def submit_service_request(
 
 
 @router.post(
+    "/{request_id}/prepare-payment",
+    response_model=ServiceRequestResponse,
+    summary="Prepare service request for payment",
+    description="""
+    Prepare a service request for payment.
+
+    This transitions the request from DRAFT to PAYMENT_PENDING status.
+    Called when the user completes document upload and form review.
+
+    **Flow:** DRAFT → PAYMENT_PENDING → (payment) → PAID
+
+    **Requirements:**
+    - Request must be in DRAFT status
+    - All required documents must be uploaded and validated
+    - Tariff will be calculated if not already done
+
+    **Effects:**
+    - Validates all documents are uploaded
+    - Calculates tariff if needed
+    - Changes status to PAYMENT_PENDING
+    - Enables payment initiation
+    """
+)
+async def prepare_for_payment(
+    request_id: UUID = Path(..., description="The service request ID"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user)
+):
+    return await service_request_service.prepare_for_payment(
+        db=db,
+        request_id=request_id,
+        user_id=current_user.id
+    )
+
+
+@router.post(
     "/{request_id}/cancel",
     response_model=ServiceRequestResponse,
     summary="Cancel a service request",
