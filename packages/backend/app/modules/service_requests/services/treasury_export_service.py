@@ -375,7 +375,7 @@ class TreasuryExportService:
                 m.name_es as ministry_name
             FROM service_payments sp
             JOIN service_requests sr ON sr.id = sp.service_request_id
-            JOIN fiscal_services fs ON fs.code = sr.fiscal_service_code
+            LEFT JOIN fiscal_services fs ON fs.id = sr.fiscal_service_id
             LEFT JOIN users u ON u.id = sr.user_id
             LEFT JOIN ministries m ON m.id = sr.ministry_id
             WHERE {where_clause}
@@ -444,7 +444,7 @@ class TreasuryExportService:
                 SUM(sp.total_amount) as total_amount
             FROM service_payments sp
             JOIN service_requests sr ON sr.id = sp.service_request_id
-            JOIN fiscal_services fs ON fs.code = sr.fiscal_service_code
+            LEFT JOIN fiscal_services fs ON fs.id = sr.fiscal_service_id
             WHERE {where_clause} {ministry_filter}
             GROUP BY fs.code, fs.name_es
             ORDER BY total_amount DESC
@@ -464,7 +464,7 @@ class TreasuryExportService:
                 u.full_name as user_name
             FROM service_payments sp
             JOIN service_requests sr ON sr.id = sp.service_request_id
-            JOIN fiscal_services fs ON fs.code = sr.fiscal_service_code
+            LEFT JOIN fiscal_services fs ON fs.id = sr.fiscal_service_id
             LEFT JOIN users u ON u.id = sr.user_id
             WHERE {where_clause} {ministry_filter}
             ORDER BY sp.completed_at DESC
@@ -571,7 +571,7 @@ class TreasuryExportService:
                 m.name_es as ministry_name
             FROM service_payments sp
             JOIN service_requests sr ON sr.id = sp.service_request_id
-            JOIN fiscal_services fs ON fs.code = sr.fiscal_service_code
+            LEFT JOIN fiscal_services fs ON fs.id = sr.fiscal_service_id
             LEFT JOIN users u ON u.id = sr.user_id
             LEFT JOIN ministries m ON m.id = sr.ministry_id
             WHERE sp.created_at >= $1::date
@@ -621,7 +621,7 @@ class TreasuryExportService:
                 m.code as code_ministere
             FROM service_payments sp
             JOIN service_requests sr ON sr.id = sp.service_request_id
-            JOIN fiscal_services fs ON fs.code = sr.fiscal_service_code
+            LEFT JOIN fiscal_services fs ON fs.id = sr.fiscal_service_id
             LEFT JOIN users u ON u.id = sr.user_id
             LEFT JOIN ministries m ON m.id = sr.ministry_id
             WHERE sp.workflow_status = 'completed'

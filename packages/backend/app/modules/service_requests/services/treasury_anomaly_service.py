@@ -172,22 +172,22 @@ class TreasuryAnomalyService:
                     sp1.created_at,
                     sp1.payment_method,
                     sr1.user_id,
-                    sr1.fiscal_service_code,
+                    sr1.workflow_code,
                     sr1.id as service_request_id,
                     sr1.reference as service_request_reference,
                     -- Count duplicates within time window
                     COUNT(*) OVER (
-                        PARTITION BY sr1.user_id, sp1.total_amount, sr1.fiscal_service_code
+                        PARTITION BY sr1.user_id, sp1.total_amount, sr1.workflow_code
                     ) as duplicate_count,
                     -- Get time span of potential duplicates
                     MAX(sp1.created_at) OVER (
-                        PARTITION BY sr1.user_id, sp1.total_amount, sr1.fiscal_service_code
+                        PARTITION BY sr1.user_id, sp1.total_amount, sr1.workflow_code
                     ) - MIN(sp1.created_at) OVER (
-                        PARTITION BY sr1.user_id, sp1.total_amount, sr1.fiscal_service_code
+                        PARTITION BY sr1.user_id, sp1.total_amount, sr1.workflow_code
                     ) as time_span,
                     -- Row number to identify first in group
                     ROW_NUMBER() OVER (
-                        PARTITION BY sr1.user_id, sp1.total_amount, sr1.fiscal_service_code
+                        PARTITION BY sr1.user_id, sp1.total_amount, sr1.workflow_code
                         ORDER BY sp1.created_at
                     ) as rn
                 FROM service_payments sp1
@@ -233,7 +233,7 @@ class TreasuryAnomalyService:
                 related_entities={
                     "duplicate_count": row["duplicate_count"],
                     "payment_method": row["payment_method"],
-                    "fiscal_service_code": row["fiscal_service_code"],
+                    "workflow_code": row["workflow_code"],
                 },
             )
             anomalies_created += 1
@@ -599,13 +599,13 @@ class TreasuryAnomalyService:
                 sp.workflow_status::text,
                 sr.id as service_request_id,
                 sr.reference as service_request_reference,
-                sr.fiscal_service_code,
+                sr.workflow_code,
                 fs.name_es as service_name,
                 u.full_name as user_name,
                 (sp.total_amount - $1) / NULLIF($2, 0) as std_deviations_above
             FROM service_payments sp
             JOIN service_requests sr ON sr.id = sp.service_request_id
-            JOIN fiscal_services fs ON fs.code = sr.fiscal_service_code
+            LEFT JOIN fiscal_services fs ON fs.id = sr.fiscal_service_id
             LEFT JOIN users u ON u.id = sr.user_id
             WHERE sp.created_at > NOW() - INTERVAL '{self.DETECTION_LOOKBACK_DAYS} days'
               AND sp.total_amount >= $3
@@ -652,7 +652,7 @@ class TreasuryAnomalyService:
                 ),
                 affected_amount=amount,
                 related_entities={
-                    "service_code": row["fiscal_service_code"],
+                    "workflow_code": row["workflow_code"],
                     "service_name": row["service_name"],
                     "user_name": row["user_name"],
                     "payment_method": row["payment_method"],
