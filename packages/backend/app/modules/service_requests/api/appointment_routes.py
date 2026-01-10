@@ -2,16 +2,22 @@
 Appointment Routes for Citizen-First Flow.
 
 This router handles the NEW workflow where citizens:
-1. Select a location (Malabo or Bata) BEFORE payment
-2. Select from available appointment slots BEFORE payment
-3. Slot is temporarily held during payment (15 min)
-4. Hold is confirmed after payment success
-5. Fallback: submit without appointment if no slots available
+1. Complete documents and form review
+2. Pay for the service (PAYMENT_PENDING → PAID)
+3. Select appointment location and slot AFTER payment
+4. Slot is temporarily held during confirmation (15 min)
+5. Hold is confirmed automatically
+6. Fallback: submit without appointment if no slots available
 
-Flow: DRAFT → DOCUMENTS → REVIEW → SELECT_LOCATION → SELECT_SLOT → PAYMENT → SUBMITTED
+Flow: DRAFT → DOCUMENTS → REVIEW → PAYMENT_PENDING → PAID → APPOINTMENT → SUBMITTED
+
+Status Validation:
+- Appointment selection is ONLY available after payment is initiated
+- Allowed statuses: PAYMENT_PENDING, PAID, SUBMITTED, UNDER_REVIEW, APPROVED
+- This prevents users from reserving slots before paying
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
-from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from typing import Optional, List
 from datetime import date, datetime
 from uuid import UUID
 import asyncpg
@@ -43,6 +49,45 @@ router = APIRouter(
     prefix="/service-requests",
     tags=["Service Requests - Appointments"]
 )
+
+
+# =============================================================================
+# STATUS VALIDATION HELPER
+# =============================================================================
+
+# Statuses that allow appointment selection (after payment is initiated)
+APPOINTMENT_ALLOWED_STATUSES: List[str] = [
+    'PAYMENT_PENDING',  # Payment initiated, waiting for confirmation
+    'PAID',             # Payment completed (for electronic payments)
+    'SUBMITTED',        # Request submitted (appointment can be modified)
+    'UNDER_REVIEW',     # Agent reviewing (appointment can be viewed)
+    'DOSSIER_VALIDE',   # Approved (appointment confirmed)
+    'APPROVED',         # Legacy status
+]
+
+
+def validate_appointment_access(request_status: str, action: str = "access appointments") -> None:
+    """
+    Validate that the service request status allows appointment operations.
+
+    Args:
+        request_status: Current status of the service request
+        action: Description of the action being attempted (for error message)
+
+    Raises:
+        HTTPException: If status doesn't allow appointment operations
+    """
+    if request_status not in APPOINTMENT_ALLOWED_STATUSES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": f"Cannot {action} in status: {request_status}",
+                "message_es": f"No puede acceder a citas en estado: {request_status}. Complete el pago primero.",
+                "message_fr": f"Impossible d'accéder aux rendez-vous en statut: {request_status}. Veuillez d'abord effectuer le paiement.",
+                "allowed_statuses": APPOINTMENT_ALLOWED_STATUSES,
+                "current_status": request_status,
+            }
+        )
 
 
 # =============================================================================
@@ -82,6 +127,9 @@ async def get_appointment_locations(
     # Verify ownership
     if str(request['user_id']) != str(current_user.id):
         raise HTTPException(status_code=403, detail="Access denied")
+
+    # Validate status allows appointment access
+    validate_appointment_access(request['status'], "view appointment locations")
 
     # Get entity code for this workflow
     entity_code = await appointment_service.get_entity_code_for_workflow(
@@ -168,6 +216,9 @@ async def get_available_slots(
     if str(request['user_id']) != str(current_user.id):
         raise HTTPException(status_code=403, detail="Access denied")
 
+    # Validate status allows appointment access
+    validate_appointment_access(request['status'], "view appointment slots")
+
     # Get entity code
     entity_code = await appointment_service.get_entity_code_for_workflow(
         db, request['workflow_code']
@@ -241,6 +292,9 @@ async def hold_appointment_slot(
     if str(request['user_id']) != str(current_user.id):
         raise HTTPException(status_code=403, detail="Access denied")
 
+    # Validate status allows appointment access
+    validate_appointment_access(request['status'], "hold appointment slot")
+
     # Get entity code
     entity_code = await appointment_service.get_entity_code_for_workflow(
         db, request['workflow_code']
@@ -305,6 +359,9 @@ async def get_hold_status(
     if str(request['user_id']) != str(current_user.id):
         raise HTTPException(status_code=403, detail="Access denied")
 
+    # Validate status allows appointment access
+    validate_appointment_access(request['status'], "check appointment hold status")
+
     # Get hold status
     hold = await appointment_service.get_hold_status(db, request_id)
 
@@ -364,6 +421,9 @@ async def release_hold(
     if str(request['user_id']) != str(current_user.id):
         raise HTTPException(status_code=403, detail="Access denied")
 
+    # Validate status allows appointment access
+    validate_appointment_access(request['status'], "release appointment hold")
+
     # Release hold
     released = await appointment_service.release_hold(db, request_id)
 
@@ -414,6 +474,9 @@ async def submit_without_appointment(
     # Verify ownership
     if str(request['user_id']) != str(current_user.id):
         raise HTTPException(status_code=403, detail="Access denied")
+
+    # Validate status allows appointment access
+    validate_appointment_access(request['status'], "submit without appointment")
 
     # Submit without appointment
     result = await appointment_service.submit_without_appointment(
@@ -478,6 +541,9 @@ async def confirm_appointment_hold(
 
     if not is_owner and not is_admin:
         raise HTTPException(status_code=403, detail="Access denied")
+
+    # Validate status allows appointment confirmation (payment must be at least pending)
+    validate_appointment_access(request['status'], "confirm appointment hold")
 
     # Confirm hold
     result = await appointment_service.confirm_hold(db, request_id)

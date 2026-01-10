@@ -549,13 +549,23 @@ class AppointmentService:
 
         if not entity:
             # Fallback mapping based on workflow prefix
+            # This handles predefined workflows that may not be in the DB workflows table
+            # Maps align with WorkflowCode enum in models/enums.py
             prefix_mapping = {
+                # PASAPORTE (5 types) → CNEDOGE
                 'PASAPORTE': 'CNEDOGE',
                 'DIP': 'CNEDOGE',
-                'CONDUCIR': 'DGT',
-                'VEHICULO': 'DGT',
+                # RESIDENCIA (5 types) → EXTRANJERIA
                 'RESIDENCIA': 'EXTRANJERIA',
                 'VISA': 'EXTRANJERIA',
+                # VEHICULO (7 types) → DGT
+                'VEHICULO': 'DGT',
+                # CONDUCIR (5 types) → DGT
+                'CONDUCIR': 'DGT',
+                # CONTRATO (7 types) → ONRC (no appointments needed)
+                'CONTRATO': 'ONRC',
+                # FUNCION PUBLICA (5 types) → MINFP
+                'FP_': 'MINFP',
                 'FUNCIONARIO': 'MINFP',
                 'CARNET': 'MINFP',
             }
@@ -563,8 +573,10 @@ class AppointmentService:
             workflow_upper = workflow_code.upper()
             for prefix, code in prefix_mapping.items():
                 if workflow_upper.startswith(prefix):
+                    logger.info(f"Resolved entity_code for {workflow_code} via fallback mapping: {code}")
                     return code
 
+            logger.warning(f"No entity_code mapping found for workflow: {workflow_code}, defaulting to CNEDOGE")
             return 'CNEDOGE'  # Default
 
         return entity
