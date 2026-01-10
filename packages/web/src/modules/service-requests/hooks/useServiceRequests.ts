@@ -107,12 +107,13 @@ export interface UseServiceRequestsReturn {
   addAgentNote: (note: string) => Promise<boolean>
 
   // Appointment actions (citizen-first flow)
+  // Migration 030: Uses entityLocationId FK instead of locationName
   getAppointmentLocations: (requestId: string) => Promise<{ entityCode: string; locations: EntityLocation[]; count: number }>
-  getAppointmentSlots: (requestId: string, locationName: string, fromDate?: string, limit?: number) => Promise<{ entityCode: string; locationName: string; fromDate: string; slots: AvailableSlot[]; count: number; hasAvailability: boolean }>
-  holdAppointmentSlot: (requestId: string, data: { locationName: string; locationAddress?: string; appointmentDate: string; appointmentTime: string }) => Promise<{ success: boolean; holdId?: string; expiresInSeconds: number; expiresAt?: string; error?: string }>
+  getAppointmentSlots: (requestId: string, entityLocationId: string, fromDate?: string, limit?: number) => Promise<{ entityCode: string; locationName: string; fromDate: string; slots: AvailableSlot[]; count: number; hasAvailability: boolean }>
+  holdAppointmentSlot: (requestId: string, data: { entityLocationId: string; slotConfigId?: string; appointmentDate: string; appointmentTime: string }) => Promise<{ success: boolean; holdId?: string; expiresInSeconds: number; expiresAt?: string; error?: string }>
   getAppointmentHoldStatus: (requestId: string) => Promise<AppointmentHoldStatus>
   releaseAppointmentHold: (requestId: string) => Promise<{ success: boolean; message: string }>
-  submitWithoutAppointment: (requestId: string, preferredLocation: string) => Promise<{ success: boolean; locationName?: string; message: string; error?: string }>
+  submitWithoutAppointment: (requestId: string, entityLocationId: string) => Promise<{ success: boolean; locationName?: string; message: string; error?: string }>
   confirmAppointmentHold: (requestId: string) => Promise<{ success: boolean; appointmentDate?: string; appointmentTime?: string; locationName?: string; error?: string }>
 
   // Utility
@@ -913,20 +914,21 @@ export function useServiceRequests(): UseServiceRequestsReturn {
     return serviceRequestsApi.getAppointmentLocations(requestId)
   }, [])
 
+  // Migration 030: Uses entityLocationId FK instead of locationName
   const getAppointmentSlots = useCallback(async (
     requestId: string,
-    locationName: string,
+    entityLocationId: string,
     fromDate?: string,
     limit: number = 6
   ) => {
-    return serviceRequestsApi.getAppointmentSlots(requestId, locationName, fromDate, limit)
+    return serviceRequestsApi.getAppointmentSlots(requestId, entityLocationId, fromDate, limit)
   }, [])
 
   const holdAppointmentSlot = useCallback(async (
     requestId: string,
     data: {
-      locationName: string
-      locationAddress?: string
+      entityLocationId: string
+      slotConfigId?: string
       appointmentDate: string
       appointmentTime: string
     }
@@ -942,8 +944,8 @@ export function useServiceRequests(): UseServiceRequestsReturn {
     return serviceRequestsApi.releaseHold(requestId)
   }, [])
 
-  const submitWithoutAppointment = useCallback(async (requestId: string, preferredLocation: string) => {
-    return serviceRequestsApi.submitWithoutAppointment(requestId, preferredLocation)
+  const submitWithoutAppointment = useCallback(async (requestId: string, entityLocationId: string) => {
+    return serviceRequestsApi.submitWithoutAppointment(requestId, entityLocationId)
   }, [])
 
   const confirmAppointmentHold = useCallback(async (requestId: string) => {

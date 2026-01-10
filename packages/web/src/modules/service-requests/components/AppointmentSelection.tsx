@@ -65,7 +65,8 @@ interface AppointmentSelectionProps {
     locations: EntityLocation[]
     count: number
   }>
-  getSlots: (requestId: string, locationName: string, fromDate?: string, limit?: number) => Promise<{
+  // Migration 030: Uses entityLocationId FK instead of locationName
+  getSlots: (requestId: string, entityLocationId: string, fromDate?: string, limit?: number) => Promise<{
     entityCode: string
     locationName: string
     fromDate: string
@@ -319,7 +320,8 @@ export function AppointmentSelection({
     setError(null)
 
     try {
-      const slotsResponse = await getSlots(requestId, location.locationName)
+      // Migration 030: Pass entity_location_id instead of location_name
+      const slotsResponse = await getSlots(requestId, location.id)
       setSlots(slotsResponse.slots)
       setHasAvailability(slotsResponse.hasAvailability)
 

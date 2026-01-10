@@ -505,7 +505,7 @@ export default function PassportWizardPage() {
       // CRITICAL: If any document fails to save, the entire operation fails
       if (stepId === 'form_review_2' && Object.keys(documentPreviews).length > 0) {
         console.log('[Wizard] Validating and saving documents to DB...')
-        const failedDocuments: string[] = []
+        const failedDocuments: { code: string; error?: string }[] = []
 
         for (const [docCode, preview] of Object.entries(documentPreviews)) {
           if (preview.previewId) {
@@ -552,7 +552,7 @@ export default function PassportWizardPage() {
               } else {
                 // validateDocument returned null - something went wrong
                 console.error(`[Wizard] Failed to save document ${docCode} - null response`)
-                failedDocuments.push(docCode)
+                failedDocuments.push({ code: docCode })
               }
             } catch (docErr) {
               console.error(`[Wizard] Failed to save document ${docCode}:`, docErr)
@@ -574,12 +574,12 @@ export default function PassportWizardPage() {
         // If any documents failed to save, abort the entire operation
         if (failedDocuments.length > 0) {
           // Check if we have a specific error message (e.g., preview expired)
-          const firstError = failedDocuments[0] as { code: string; error?: string }
+          const firstError = failedDocuments[0]
           if (firstError.error) {
             throw new Error(firstError.error)
           }
           // Fallback to generic message
-          const docNames = failedDocuments.map((d: { code: string }) => d.code).join(', ')
+          const docNames = failedDocuments.map((d) => d.code).join(', ')
           throw new Error(
             locale === 'es' ? `Error al guardar documentos: ${docNames}. Por favor reintente.` :
             locale === 'fr' ? `Erreur lors de la sauvegarde des documents: ${docNames}. Veuillez réessayer.` :
@@ -2344,8 +2344,9 @@ interface AppointmentStepImprovedProps {
   paymentComplete: boolean
   pendingPaymentReference?: string
   getLocations: (requestId: string) => Promise<{ entityCode: string; locations: EntityLocation[]; count: number }>
-  getSlots: (requestId: string, locationName: string, fromDate?: string, limit?: number) => Promise<{ entityCode: string; locationName: string; fromDate: string; slots: AvailableSlot[]; count: number; hasAvailability: boolean }>
-  holdSlot: (requestId: string, data: { locationName: string; locationAddress?: string; appointmentDate: string; appointmentTime: string }) => Promise<{ success: boolean; holdId?: string; expiresInSeconds: number; expiresAt?: string; error?: string }>
+  // Migration 030: Uses entityLocationId FK instead of locationName
+  getSlots: (requestId: string, entityLocationId: string, fromDate?: string, limit?: number) => Promise<{ entityCode: string; locationName: string; fromDate: string; slots: AvailableSlot[]; count: number; hasAvailability: boolean }>
+  holdSlot: (requestId: string, data: { entityLocationId: string; slotConfigId?: string; appointmentDate: string; appointmentTime: string }) => Promise<{ success: boolean; holdId?: string; expiresInSeconds: number; expiresAt?: string; error?: string }>
   getHoldStatus: (requestId: string) => Promise<AppointmentHoldStatus>
   releaseHold: (requestId: string) => Promise<{ success: boolean; message: string }>
   onComplete: (data: { hasAppointment: boolean; locationName?: string; appointmentDate?: string; appointmentTime?: string; isFallback: boolean }) => void

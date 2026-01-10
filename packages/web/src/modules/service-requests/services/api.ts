@@ -1331,10 +1331,11 @@ class ServiceRequestsApiClient {
 
   /**
    * Get available appointment slots for a location
+   * Migration 030: Uses entity_location_id FK instead of location_name
    */
   async getAppointmentSlots(
     requestId: string,
-    locationName: string,
+    entityLocationId: string,
     fromDate?: string,
     limit: number = 6
   ): Promise<{
@@ -1353,7 +1354,7 @@ class ServiceRequestsApiClient {
     hasAvailability: boolean
   }> {
     const params = new URLSearchParams({
-      location_name: locationName,
+      entity_location_id: entityLocationId,
       limit: limit.toString(),
     })
     if (fromDate) params.append('from_date', fromDate)
