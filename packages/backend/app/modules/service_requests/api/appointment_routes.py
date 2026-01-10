@@ -136,36 +136,41 @@ async def get_appointment_locations(
         db, request['workflow_code']
     )
 
-    # Get locations from appointment_slot_configs table (grouped by city)
-    # Uses the city column added in migration 029
+    # Get locations from entity_locations table via appointment_slot_configs FK
+    # Migration 030 moved location data to entity_locations table
     rows = await db.fetch("""
-        SELECT DISTINCT ON (city, location_name)
-            id,
-            entity_code,
-            location_name,
-            location_address,
-            city,
-            region
-        FROM appointment_slot_configs
-        WHERE entity_code = $1
-        AND is_active = TRUE
-        AND city IS NOT NULL
-        ORDER BY city, location_name, id
+        SELECT DISTINCT ON (el.city, el.location_name)
+            el.id,
+            el.entity_code,
+            el.location_code,
+            el.location_name,
+            el.location_address,
+            el.city,
+            el.region,
+            el.phone,
+            el.email,
+            el.is_main_office
+        FROM entity_locations el
+        INNER JOIN appointment_slot_configs asc ON asc.entity_location_id = el.id
+        WHERE el.entity_code = $1
+        AND el.is_active = TRUE
+        AND asc.is_active = TRUE
+        ORDER BY el.city, el.location_name, el.id
     """, entity_code)
 
     locations = [
         EntityLocationResponse(
             id=row['id'],
             entity_code=row['entity_code'],
-            location_code=f"{row['entity_code']}_{row['city']}".upper(),  # Generated code
+            location_code=row['location_code'] or f"{row['entity_code']}_{row['city']}".upper(),
             location_name=row['location_name'],
             city=row['city'],
             province=row['city'],  # Province = city for GE (Malabo/Bata are provinces)
             region=row['region'],
             address=row['location_address'],
-            phone=None,  # Not stored in slot configs
-            email=None,  # Not stored in slot configs
-            is_main_office=(row['city'] == 'Malabo')  # Malabo is main office
+            phone=row['phone'],
+            email=row['email'],
+            is_main_office=row['is_main_office'] or (row['city'] == 'Malabo')
         )
         for row in rows
     ]

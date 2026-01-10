@@ -328,7 +328,7 @@ class AppointmentSlotConfigUpdate(BaseModel):
 
 
 class AppointmentSlotConfigResponse(BaseModel):
-    """Appointment slot config response"""
+    """Appointment slot config response - aligned with migration 030 schema"""
     id: str  # UUID
     entity_location_id: Optional[str] = None  # FK to entity_locations
     entity_code: str
@@ -337,9 +337,9 @@ class AppointmentSlotConfigResponse(BaseModel):
     end_time: str
     slot_duration_minutes: int
     max_appointments_per_slot: int
-    location_name: Optional[str]
-    location_address: Optional[str]
     is_active: bool
+    # Note: location_name/location_address removed in migration 030
+    # Get from entity_locations table via entity_location_id FK
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -1283,8 +1283,6 @@ async def list_slot_configs(
             end_time=str(row['end_time']),
             slot_duration_minutes=row['slot_duration_minutes'],
             max_appointments_per_slot=row['max_appointments_per_slot'],
-            location_name=row['location_name'],
-            location_address=row['location_address'],
             is_active=row['is_active']
         )
         for row in rows
@@ -1336,13 +1334,12 @@ async def create_slot_config(
                 detail=f"Slot configuration already exists for this location, day, and start time"
             )
 
-        # 3. Insert the slot config with resolved values
+        # 3. Insert the slot config (location_name/location_address removed in migration 030)
         row = await db.fetchrow("""
             INSERT INTO appointment_slot_configs (
                 entity_location_id, entity_code, day_of_week, start_time, end_time,
-                slot_duration_minutes, max_appointments_per_slot,
-                location_name, location_address, is_active
-            ) VALUES ($1::uuid, $2, $3, $4::time, $5::time, $6, $7, $8, $9, $10)
+                slot_duration_minutes, max_appointments_per_slot, is_active
+            ) VALUES ($1::uuid, $2, $3, $4::time, $5::time, $6, $7, $8)
             RETURNING *
         """,
             slot.entity_location_id,
@@ -1352,8 +1349,6 @@ async def create_slot_config(
             end_time_obj,
             slot.slot_duration_minutes,
             slot.max_appointments_per_slot,
-            location['location_name'],
-            location['location_address'],
             slot.is_active
         )
 
@@ -1368,8 +1363,6 @@ async def create_slot_config(
             end_time=str(row['end_time']),
             slot_duration_minutes=row['slot_duration_minutes'],
             max_appointments_per_slot=row['max_appointments_per_slot'],
-            location_name=row['location_name'],
-            location_address=row['location_address'],
             is_active=row['is_active']
         )
 
@@ -1421,17 +1414,9 @@ async def update_slot_config(
         params.append(slot_data['entity_location_id'])
         param_idx += 1
 
-        # Also update derived fields
+        # Also update entity_code (location_name/location_address removed in migration 030)
         updates.append(f"entity_code = ${param_idx}")
         params.append(new_location['entity_code'])
-        param_idx += 1
-
-        updates.append(f"location_name = ${param_idx}")
-        params.append(new_location['location_name'])
-        param_idx += 1
-
-        updates.append(f"location_address = ${param_idx}")
-        params.append(new_location['location_address'])
         param_idx += 1
 
     # Handle other fields
@@ -1459,8 +1444,6 @@ async def update_slot_config(
             end_time=str(row['end_time']),
             slot_duration_minutes=row['slot_duration_minutes'],
             max_appointments_per_slot=row['max_appointments_per_slot'],
-            location_name=row['location_name'],
-            location_address=row['location_address'],
             is_active=row['is_active']
         )
 
@@ -1490,8 +1473,6 @@ async def update_slot_config(
         end_time=str(row['end_time']),
         slot_duration_minutes=row['slot_duration_minutes'],
         max_appointments_per_slot=row['max_appointments_per_slot'],
-        location_name=row['location_name'],
-        location_address=row['location_address'],
         is_active=row['is_active']
     )
 
