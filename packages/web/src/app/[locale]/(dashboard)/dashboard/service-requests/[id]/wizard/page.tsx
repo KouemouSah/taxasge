@@ -328,7 +328,8 @@ export default function PassportWizardPage() {
   // Navigate back
   const handleBack = () => {
     if (currentStepIndex === 0) {
-      router.push(`/${locale}/dashboard/service-requests/${requestId}`)
+      // At step 0, go back to service requests list (not detail page)
+      router.push(`/${locale}/dashboard/service-requests`)
       return
     }
 
@@ -804,8 +805,21 @@ export default function PassportWizardPage() {
 
     setIsProcessingPayment(true)
     setPendingPaymentResult(null)
+    setPaymentMethodsError(null) // Clear any previous errors
     try {
       const result = await initiatePayment(selectedPaymentMethod, phoneNumber)
+      if (!result) {
+        // Payment initiation failed (returned null)
+        setIsProcessingPayment(false)
+        setPaymentMethodsError(
+          locale === 'es'
+            ? 'Error al iniciar el pago. Intente nuevamente.'
+            : locale === 'fr'
+              ? 'Erreur lors de l\'initiation du paiement. Réessayez.'
+              : 'Error initiating payment. Please try again.'
+        )
+        return
+      }
       if (result) {
         // Check if this is a manual payment (cash/check) requiring agent validation
         const isManualPayment = result.actionType?.startsWith('agent_validation') || false
@@ -902,8 +916,9 @@ export default function PassportWizardPage() {
     setCurrentStepIndex(9) // Go to confirmation
   }
 
-  // Loading state
-  if (isLoading && !currentRequest) {
+  // Loading state - show loading when we don't have a request yet and no error
+  // This prevents page flash on initial load (before loadRequest sets isLoading=true)
+  if (!currentRequest && !error) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
@@ -1024,6 +1039,7 @@ export default function PassportWizardPage() {
           onDelete={async (docId) => { await deleteDocument(docId) }}
           onNext={handleDocumentsContinue}
           onBack={handleBack}
+          isLocked={currentRequest?.status !== 'DRAFT'}
         />
       )}
 
@@ -1459,6 +1475,7 @@ interface DocumentsStepImprovedProps {
   onDelete: (documentId: string) => Promise<void>
   onNext: () => void
   onBack: () => void
+  isLocked?: boolean // True when documents cannot be modified (status != DRAFT)
 }
 
 function DocumentsStepImproved({
@@ -1473,6 +1490,7 @@ function DocumentsStepImproved({
   onDelete,
   onNext,
   onBack,
+  isLocked = false,
 }: DocumentsStepImprovedProps) {
   const getDocumentRequirements = (): DocumentRequirement[] => {
     const requirements: DocumentRequirement[] = []
@@ -1591,17 +1609,33 @@ function DocumentsStepImproved({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Warning when documents are locked */}
+        {isLocked && (
+          <Alert className="border-orange-200 bg-orange-50">
+            <AlertTriangle className="h-4 w-4 text-orange-600" />
+            <AlertDescription className="text-orange-700">
+              {locale === 'es'
+                ? 'Los documentos estan bloqueados porque la solicitud ya ha avanzado al pago. No puede modificar los documentos.'
+                : locale === 'fr'
+                  ? 'Les documents sont bloques car la demande est deja en cours de paiement. Vous ne pouvez pas modifier les documents.'
+                  : 'Documents are locked because the request has progressed to payment. You cannot modify documents.'}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Info about two-step flow */}
-        <Alert className="border-blue-200 bg-blue-50">
-          <Eye className="h-4 w-4 text-blue-600" />
-          <AlertDescription className="text-blue-700">
-            {locale === 'es'
-              ? 'Los documentos seran procesados automaticamente. Podra revisar y corregir los datos extraidos antes de guardar.'
-              : locale === 'fr'
-                ? 'Les documents seront traites automatiquement. Vous pourrez verifier et corriger les donnees extraites avant de sauvegarder.'
-                : 'Documents will be processed automatically. You can review and correct extracted data before saving.'}
-          </AlertDescription>
-        </Alert>
+        {!isLocked && (
+          <Alert className="border-blue-200 bg-blue-50">
+            <Eye className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-blue-700">
+              {locale === 'es'
+                ? 'Los documentos seran procesados automaticamente. Podra revisar y corregir los datos extraidos antes de guardar.'
+                : locale === 'fr'
+                  ? 'Les documents seront traites automatiquement. Vous pourrez verifier et corriger les donnees extraites avant de sauvegarder.'
+                  : 'Documents will be processed automatically. You can review and correct extracted data before saving.'}
+            </AlertDescription>
+          </Alert>
+        )}
 
         {requirements.map((req) => {
           const uploadedDoc = documents.find(d => d.documentCode === req.documentCode)
@@ -1618,6 +1652,7 @@ function DocumentsStepImproved({
                 onUpload={(file) => onUpload(req.documentCode, file)}
                 onDelete={uploadedDoc ? async () => { await onDelete(uploadedDoc.id) } : undefined}
                 maxSizeMB={req.documentCode === 'photo_carnet' ? 2 : 5}
+                disabled={isLocked}
               />
 
               {/* Loading state during OCR extraction */}
