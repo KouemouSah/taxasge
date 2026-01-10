@@ -1139,88 +1139,118 @@ async def initiate_payment(
     from app.modules.payments.services.processors.base import PaymentContext
     from app.modules.payments.models.payment import PaymentMethod
 
-    # Load context
-    context = await workflow_engine.load_context_from_db(db, request_id)
-    if not context:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Service request not found: {request_id}"
-        )
+    # === DETAILED LOGGING FOR DEBUGGING ===
+    logger.info(f"[PAYMENT] === initiate_payment START ===")
+    logger.info(f"[PAYMENT] request_id={request_id}, method={body.payment_method}, phone={body.phone_number}")
+    logger.info(f"[PAYMENT] user_id={current_user.id}, email={current_user.email}")
 
-    # Verify ownership
-    if str(context.user_id) != str(current_user.id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied"
-        )
-
-    # Verify request is in correct status for payment
-    if context.status not in [ServiceRequestStatus.PAYMENT_PENDING]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Cannot initiate payment in status: {context.status.value}"
-        )
-
-    # Validate payment method
     try:
-        payment_method = PaymentMethod(body.payment_method)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid payment method: {body.payment_method}"
+        # Load context
+        context = await workflow_engine.load_context_from_db(db, request_id)
+        if not context:
+            logger.error(f"[PAYMENT] Service request not found: {request_id}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Service request not found: {request_id}"
+            )
+
+        logger.info(f"[PAYMENT] Context loaded: status={context.status.value}, workflow={context.workflow_code.value}")
+
+        # Verify ownership
+        if str(context.user_id) != str(current_user.id):
+            logger.error(f"[PAYMENT] Access denied: context.user_id={context.user_id} != current_user.id={current_user.id}")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied"
+            )
+
+        # Verify request is in correct status for payment
+        if context.status not in [ServiceRequestStatus.PAYMENT_PENDING]:
+            logger.error(f"[PAYMENT] Wrong status: {context.status.value}, expected PAYMENT_PENDING")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot initiate payment in status: {context.status.value}"
+            )
+
+        # Validate payment method
+        try:
+            payment_method = PaymentMethod(body.payment_method)
+            logger.info(f"[PAYMENT] Payment method validated: {payment_method.value}")
+        except ValueError:
+            logger.error(f"[PAYMENT] Invalid payment method: {body.payment_method}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid payment method: {body.payment_method}"
+            )
+
+        # Validate phone for mobile money
+        if payment_method == PaymentMethod.MOBILE_MONEY and not body.phone_number:
+            logger.error(f"[PAYMENT] Mobile Money requires phone number")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Phone number is required for Mobile Money payments"
+            )
+
+        # Get tariff amount from context
+        from ..services.tariff_calculator import tariff_calculator
+        workflow = workflow_engine.get_workflow(context.workflow_code)
+        tariff_breakdown = await tariff_calculator.calculate(db, workflow, context)
+        total_amount = tariff_breakdown.get("total_amount", 0)
+        logger.info(f"[PAYMENT] Tariff calculated: total_amount={total_amount}")
+
+        if total_amount <= 0:
+            logger.error(f"[PAYMENT] No payment required: total_amount={total_amount}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No payment required for this request"
+            )
+
+        # Create payment context
+        from decimal import Decimal
+        payment_context = PaymentContext(
+            service_request_id=str(request_id),
+            user_id=str(current_user.id),
+            amount=Decimal(str(total_amount)),
+            currency=tariff_breakdown.get("currency", "XAF"),
+            payment_method=payment_method,
+            tariff_breakdown=tariff_breakdown,
+            user_email=current_user.email,
+            user_phone=body.phone_number or current_user.phone,
+            user_name=f"{current_user.first_name} {current_user.last_name}".strip(),
+            workflow_code=context.workflow_code.value,
+            service_name=workflow.service_name_es if workflow else None,
+            reference_number=context.reference_number,
         )
+        logger.info(f"[PAYMENT] PaymentContext created, calling processor...")
 
-    # Validate phone for mobile money
-    if payment_method == PaymentMethod.MOBILE_MONEY and not body.phone_number:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Phone number is required for Mobile Money payments"
+        # Initiate payment via registry
+        result = await payment_processor_registry.initiate_payment(db, payment_context)
+        logger.info(f"[PAYMENT] Processor result: success={result.success}, payment_id={result.payment_id}, status={result.status}")
+
+        response = PaymentInitiateResponse(
+            success=result.success,
+            payment_id=result.payment_id,
+            payment_reference=result.external_reference,
+            status=result.status.value if hasattr(result.status, "value") else str(result.status),
+            redirect_url=result.redirect_url,
+            requires_action=result.requires_action,
+            action_type=result.action_type,
+            message_es=result.message_es,
+            expires_at=result.expires_at,
+            error=result.error,
         )
+        logger.info(f"[PAYMENT] === initiate_payment SUCCESS ===")
+        return response
 
-    # Get tariff amount from context
-    from ..services.tariff_calculator import tariff_calculator
-    workflow = workflow_engine.get_workflow(context.workflow_code)
-    tariff_breakdown = await tariff_calculator.calculate(db, workflow, context)
-    total_amount = tariff_breakdown.get("total_amount", 0)
-
-    if total_amount <= 0:
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is (they're already logged above)
+        raise
+    except Exception as e:
+        logger.exception(f"[PAYMENT] === UNEXPECTED ERROR === {type(e).__name__}: {e}")
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No payment required for this request"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Payment initiation failed: {str(e)}"
         )
-
-    # Create payment context
-    from decimal import Decimal
-    payment_context = PaymentContext(
-        service_request_id=str(request_id),
-        user_id=str(current_user.id),
-        amount=Decimal(str(total_amount)),
-        currency=tariff_breakdown.get("currency", "XAF"),
-        payment_method=payment_method,
-        tariff_breakdown=tariff_breakdown,
-        user_email=current_user.email,
-        user_phone=body.phone_number or current_user.phone,
-        user_name=f"{current_user.first_name} {current_user.last_name}".strip(),
-        workflow_code=context.workflow_code.value,
-        service_name=workflow.service_name_es if workflow else None,
-        reference_number=context.reference_number,
-    )
-
-    # Initiate payment via registry
-    result = await payment_processor_registry.initiate_payment(db, payment_context)
-
-    return PaymentInitiateResponse(
-        success=result.success,
-        payment_id=result.payment_id,
-        payment_reference=result.external_reference,
-        status=result.status.value if hasattr(result.status, "value") else str(result.status),
-        redirect_url=result.redirect_url,
-        requires_action=result.requires_action,
-        action_type=result.action_type,
-        message_es=result.message_es,
-        expires_at=result.expires_at,
-        error=result.error,
-    )
 
 
 # ═══════════════════════════════════════════════════════════════
