@@ -159,7 +159,6 @@ export default function PassportWizardPage() {
   const [pendingPaymentResult, setPendingPaymentResult] = useState<{
     paymentReference?: string
     messageEs?: string
-    messageFr?: string
     actionType?: string
     isManualPayment: boolean
   } | null>(null)
@@ -849,7 +848,6 @@ export default function PassportWizardPage() {
           setPendingPaymentResult({
             paymentReference: result.paymentReference,
             messageEs: result.messageEs,
-            messageFr: result.messageFr,
             actionType: result.actionType,
             isManualPayment: true,
           })
@@ -2037,7 +2035,6 @@ interface PaymentStepImprovedProps {
   pendingPaymentResult: {
     paymentReference?: string
     messageEs?: string
-    messageFr?: string
     actionType?: string
     isManualPayment: boolean
   } | null

@@ -999,7 +999,6 @@ class ServiceRequestsApiClient {
       requires_action: boolean
       action_type?: string
       message_es?: string
-      message_fr?: string
       expires_at?: string
       error?: string
     }
@@ -1022,7 +1021,6 @@ class ServiceRequestsApiClient {
       requiresAction: backend.requires_action,
       actionType: backend.action_type,
       messageEs: backend.message_es,
-      messageFr: backend.message_fr,
       expiresAt: backend.expires_at,
       error: backend.error,
     }

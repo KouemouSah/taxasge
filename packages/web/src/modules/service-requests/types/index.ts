@@ -708,7 +708,6 @@ export interface PaymentInitiateResult {
   requiresAction: boolean
   actionType?: string        // 'agent_validation_cash' or 'agent_validation_check' for manual
   messageEs?: string         // Instructions message in Spanish
-  messageFr?: string         // Instructions message in French (optional)
   expiresAt?: string
   error?: string
 }
