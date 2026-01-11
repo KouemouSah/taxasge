@@ -2297,7 +2297,7 @@ function PaymentStepImproved({
                     <>
                       <p className="font-medium mb-1">Instructions:</p>
                       <p>Presentez ce recu au bureau du Tresor avec le montant de <strong>{tariff.toLocaleString()} XAF</strong>.</p>
-                      <p className="mt-2 text-sm font-medium">Un agent du Tresor validera votre paiement. Ce n'est qu'apres validation que vous pourrez prendre rendez-vous.</p>
+                      <p className="mt-2 text-sm font-medium">Un agent du Tresor validera votre paiement. Vous pourrez prendre rendez-vous uniquement apres validation.</p>
                     </>
                   ) : (
                     <>
