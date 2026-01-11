@@ -178,7 +178,15 @@ export interface ServiceRequest {
   formData: Record<string, unknown>
   extractedData?: Record<string, unknown>
   validationResults?: ValidationResult[]
+  // Tariff fields - populated after prepare_for_payment
   tariffAmount?: number
+  tariff?: {
+    baseAmount: number
+    supplements: Array<{ code: string; nameEs: string; amount: number }>
+    supplementsTotal: number
+    totalAmount: number
+    currency: string
+  }
   paymentId?: string
   appointmentId?: string
   assignedAgentId?: string

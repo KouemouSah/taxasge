@@ -161,12 +161,10 @@ export default function ServiceRequestDetailPage() {
   const {
     currentRequest,
     documents,
-    tariff,
     isLoading,
     error,
     loadRequest,
     loadDocuments,
-    calculateTariff,
     clearError,
     uploadDocument,
   } = useServiceRequests()
@@ -225,13 +223,6 @@ export default function ServiceRequestDetailPage() {
     }
   }, [requestId, loadRequest, loadDocuments])
 
-  // Load tariff when request is loaded
-  useEffect(() => {
-    if (currentRequest && !tariff) {
-      calculateTariff()
-    }
-  }, [currentRequest, tariff, calculateTariff])
-
   // Auto-redirect DRAFT status to wizard for workflows with dedicated wizard
   useEffect(() => {
     if (currentRequest && currentRequest.status === 'DRAFT') {
@@ -244,16 +235,6 @@ export default function ServiceRequestDetailPage() {
   // Get status config
   const getStatusConfig = (status: string) => {
     return STATUS_CONFIG[status] || STATUS_CONFIG.DRAFT
-  }
-
-  // Format currency
-  const formatAmount = (amount?: number): string => {
-    if (!amount) return '-'
-    return new Intl.NumberFormat(locale === 'es' ? 'es-GQ' : locale, {
-      style: 'currency',
-      currency: 'XAF',
-      minimumFractionDigits: 0,
-    }).format(amount)
   }
 
   // Format date as DD/MM/YY - HHhMM
@@ -512,14 +493,18 @@ export default function ServiceRequestDetailPage() {
                     <p className="text-sm text-muted-foreground">{t('sub_type') || 'Tipo'}</p>
                     <p className="font-medium">
                       {(() => {
-                        const typeValue = currentRequest.subType || (currentRequest.formData as Record<string, unknown>)?.solicitud_type
+                        // Priority: formData.solicitud_type (user-entered) > currentRequest.subType (backend default)
+                        const formData = currentRequest.formData as Record<string, unknown>
+                        const typeValue = formData?.solicitud_type || currentRequest.subType
                         const typeLabels: Record<string, Record<string, string>> = {
                           EXPEDICION: { es: 'Nueva Expedición', fr: 'Nouvelle Émission', en: 'New Issuance' },
                           expedicion: { es: 'Nueva Expedición', fr: 'Nouvelle Émission', en: 'New Issuance' },
                           RENOVACION: { es: 'Renovación', fr: 'Renouvellement', en: 'Renewal' },
                           renovacion: { es: 'Renovación', fr: 'Renouvellement', en: 'Renewal' },
+                          DUPLICADO: { es: 'Duplicado', fr: 'Duplicata', en: 'Duplicate' },
+                          duplicado: { es: 'Duplicado', fr: 'Duplicata', en: 'Duplicate' },
                         }
-                        return typeLabels[String(typeValue)]?.[locale] || String(typeValue || 'Expedición')
+                        return typeLabels[String(typeValue)]?.[locale] || String(typeValue || '-')
                       })()}
                     </p>
                   </div>
@@ -540,7 +525,7 @@ export default function ServiceRequestDetailPage() {
               <PassportDataSummary
                 formData={currentRequest.formData as Record<string, unknown>}
                 locale={locale}
-                tariff={tariff}
+                tariff={currentRequest.tariff}
               />
             ) : (
               /* Generic form data display for non-wizard workflows */
@@ -896,9 +881,11 @@ interface PassportDataSummaryProps {
   formData: Record<string, unknown>
   locale: string
   tariff?: {
-    baseAmount?: number
-    totalAmount?: number
-    additionalFees?: Array<{ code: string; nameEs?: string; amount: number }>
+    baseAmount: number
+    supplements: Array<{ code: string; nameEs: string; amount: number }>
+    supplementsTotal: number
+    totalAmount: number
+    currency: string
   } | null
 }
 
@@ -946,7 +933,7 @@ function PassportDataSummary({ formData, locale, tariff }: PassportDataSummaryPr
     const fieldLabels: Record<string, Record<string, string>> = {
       is_minor: { es: '¿Es menor de edad?', fr: 'Est mineur?', en: 'Is minor?' },
       solicitud_type: { es: 'Tipo de solicitud', fr: 'Type de demande', en: 'Request type' },
-      renovacion_motivo: { es: 'Motivo de renovación', fr: 'Motif de renouvellement', en: 'Renewal reason' },
+      motivo: { es: 'Motivo', fr: 'Motif', en: 'Reason' },
       apellidos: { es: 'Apellidos', fr: 'Nom de famille', en: 'Last name' },
       nombres: { es: 'Nombres', fr: 'Prénoms', en: 'First name' },
       fecha_nacimiento: { es: 'Fecha de nacimiento', fr: 'Date de naissance', en: 'Date of birth' },
@@ -978,7 +965,7 @@ function PassportDataSummary({ formData, locale, tariff }: PassportDataSummaryPr
       }
       return types[String(value)]?.[locale] || String(value)
     }
-    if (key === 'renovacion_motivo') {
+    if (key === 'motivo') {
       const motivos: Record<string, Record<string, string>> = {
         VENCIMIENTO: { es: 'Vencimiento', fr: 'Expiration', en: 'Expiration' },
         PERDIDA: { es: 'Pérdida', fr: 'Perte', en: 'Loss' },
@@ -1009,8 +996,8 @@ function PassportDataSummary({ formData, locale, tariff }: PassportDataSummaryPr
 
   // Group fields by section
   // Note: solicitud_type is shown in Aperçu block, not here (avoid redundancy)
-  // Note: renovacion_motivo is merged with applicant section
-  const applicantFields = ['is_minor', 'renovacion_motivo']
+  // Note: motivo is merged with applicant section (wizard stores as "motivo", not "renovacion_motivo")
+  const applicantFields = ['is_minor', 'motivo']
   const personalFields = ['apellidos', 'nombres', 'fecha_nacimiento', 'lugar_nacimiento', 'sexo', 'estado_civil', 'profesion', 'numero_dip', 'numero_pasaporte_anterior']
   const contactFields = ['telefono', 'email', 'direccion']
 
@@ -1049,8 +1036,8 @@ function PassportDataSummary({ formData, locale, tariff }: PassportDataSummaryPr
       {/* Contact Section */}
       {renderFieldGroup(contactFields, getLabel('contact'))}
 
-      {/* Tariff Section */}
-      {tariff && (
+      {/* Tariff Section - only show if there's an actual amount */}
+      {tariff && tariff.totalAmount > 0 && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
@@ -1066,10 +1053,10 @@ function PassportDataSummary({ formData, locale, tariff }: PassportDataSummaryPr
                 </span>
                 <span className="font-medium">{formatAmount(tariff.baseAmount)}</span>
               </div>
-              {tariff.additionalFees?.map((fee, index) => (
+              {tariff.supplements?.map((supplement, index) => (
                 <div key={index} className="flex justify-between p-2 bg-muted/50 rounded">
-                  <span className="text-muted-foreground">{fee.nameEs || fee.code}</span>
-                  <span className="font-medium">{formatAmount(fee.amount)}</span>
+                  <span className="text-muted-foreground">{supplement.nameEs || supplement.code}</span>
+                  <span className="font-medium">{formatAmount(supplement.amount)}</span>
                 </div>
               ))}
               <Separator />

@@ -262,6 +262,29 @@ function transformServiceRequest(backend: BackendServiceRequest): ServiceRequest
     }
   }
 
+  // Transform tariff from backend (snake_case) to frontend (camelCase)
+  let tariff: ServiceRequest['tariff'] = undefined
+  if (backend.tariff) {
+    const backendTariff = backend.tariff as {
+      base_amount?: number
+      supplements?: Array<{ code: string; name_es?: string; amount: number }>
+      supplements_total?: number
+      total_amount?: number
+      currency?: string
+    }
+    tariff = {
+      baseAmount: backendTariff.base_amount || 0,
+      supplements: (backendTariff.supplements || []).map(s => ({
+        code: s.code,
+        nameEs: s.name_es || s.code,
+        amount: s.amount,
+      })),
+      supplementsTotal: backendTariff.supplements_total || 0,
+      totalAmount: backendTariff.total_amount || 0,
+      currency: backendTariff.currency || 'XAF',
+    }
+  }
+
   return {
     id: backend.id,
     requestNumber: backend.reference,
@@ -273,6 +296,7 @@ function transformServiceRequest(backend: BackendServiceRequest): ServiceRequest
     formData: backend.form_data || {},
     extractedData: backend.extracted_data,
     tariffAmount: backend.tariff?.total_amount as number | undefined,
+    tariff,
     assignedAgentId: backend.assigned_to,
     createdAt: backend.created_at,
     updatedAt: backend.updated_at,
