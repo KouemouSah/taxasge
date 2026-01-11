@@ -871,7 +871,9 @@ export interface PassportWizardStep {
   labelEs: string
   labelFr: string
   labelEn: string
-  isConditional?: boolean // true if step depends on previous selection
+  isConditional?: boolean // true if step depends on previous selection (e.g., RENOVACION motivo)
+  isMinorOnly?: boolean // true if step only shows for minors
+  isAdultOnly?: boolean // true if step only shows for adults
 }
 
 /**
@@ -882,14 +884,18 @@ export const PASSPORT_WIZARD_STEPS: PassportWizardStep[] = [
   { id: 'is_minor', number: 0, titleKey: 'wizard.step_minor', labelEs: 'Solicitante', labelFr: 'Demandeur', labelEn: 'Applicant' },
   { id: 'select_type', number: 1, titleKey: 'wizard.step_type', labelEs: 'Tipo', labelFr: 'Type', labelEn: 'Type' },
   { id: 'select_motivo', number: 1.5, titleKey: 'wizard.step_motivo', labelEs: 'Motivo', labelFr: 'Motif', labelEn: 'Reason', isConditional: true },
-  { id: 'upload_documents', number: 2, titleKey: 'wizard.step_documents', labelEs: 'Documentos', labelFr: 'Documents', labelEn: 'Documents' },
-  { id: 'form_review_1', number: 3, titleKey: 'wizard.step_form_1', labelEs: 'Datos 1', labelFr: 'Données 1', labelEn: 'Data 1' },
-  { id: 'form_review_2', number: 4, titleKey: 'wizard.step_form_2', labelEs: 'Datos 2', labelFr: 'Données 2', labelEn: 'Data 2' },
+  // Step 1c: Legal representatives info (minors only) - before document upload
+  { id: 'representantes_legales', number: 2, titleKey: 'wizard.step_representantes_legales', labelEs: 'Representantes', labelFr: 'Représentants', labelEn: 'Representatives', isMinorOnly: true },
+  { id: 'upload_documents', number: 3, titleKey: 'wizard.step_documents', labelEs: 'Documentos', labelFr: 'Documents', labelEn: 'Documents' },
+  { id: 'form_review_1', number: 4, titleKey: 'wizard.step_form_1', labelEs: 'Datos 1', labelFr: 'Données 1', labelEn: 'Data 1' },
+  { id: 'form_review_2', number: 5, titleKey: 'wizard.step_form_2', labelEs: 'Datos 2', labelFr: 'Données 2', labelEn: 'Data 2' },
+  // Step for minors: Review legal representatives data + cross-validation results
+  { id: 'form_review_representantes', number: 5.5, titleKey: 'wizard.step_form_review_representantes', labelEs: 'Representantes', labelFr: 'Représentants', labelEn: 'Representatives', isMinorOnly: true },
   // NOTE: Validation step removed - cross-document validation is now done during extraction
   // by Gemini processor with identity mismatch blocking (Step 3: upload_documents)
-  { id: 'payment', number: 5, titleKey: 'wizard.step_payment', labelEs: 'Pago', labelFr: 'Paiement', labelEn: 'Payment' },
-  { id: 'appointment', number: 6, titleKey: 'wizard.step_appointment', labelEs: 'Cita', labelFr: 'RDV', labelEn: 'Appt' },
-  { id: 'confirmation', number: 7, titleKey: 'wizard.step_confirmation', labelEs: 'Confirmación', labelFr: 'Confirmation', labelEn: 'Confirmation' },
+  { id: 'payment', number: 6, titleKey: 'wizard.step_payment', labelEs: 'Pago', labelFr: 'Paiement', labelEn: 'Payment' },
+  { id: 'appointment', number: 7, titleKey: 'wizard.step_appointment', labelEs: 'Cita', labelFr: 'RDV', labelEn: 'Appt' },
+  { id: 'confirmation', number: 8, titleKey: 'wizard.step_confirmation', labelEs: 'Confirmación', labelFr: 'Confirmation', labelEn: 'Confirmation' },
 ]
 
 /**
@@ -943,12 +949,24 @@ export function getPassportStepIndex(
 }
 
 /**
- * getVisiblePassportSteps - Get visible steps based on solicitud type
- * Filters out the 'select_motivo' step if not RENOVACION
+ * getVisiblePassportSteps - Get visible steps based on solicitud type and isMinor
+ * Filters out:
+ * - 'select_motivo' step if not RENOVACION
+ * - Minor-only steps if adult (isMinor === false)
+ * - Adult-only steps if minor (isMinor === true)
  */
 export function getVisiblePassportSteps(
-  solicitudType?: string
+  solicitudType?: string,
+  isMinor?: boolean | null
 ): PassportWizardStep[] {
   const isRenovacion = solicitudType === 'RENOVACION'
-  return PASSPORT_WIZARD_STEPS.filter(step => !step.isConditional || isRenovacion)
+  return PASSPORT_WIZARD_STEPS.filter(step => {
+    // Filter conditional steps (motivo only for RENOVACION)
+    if (step.isConditional && !isRenovacion) return false
+    // Filter minor-only steps for adults
+    if (step.isMinorOnly && isMinor === false) return false
+    // Filter adult-only steps for minors
+    if (step.isAdultOnly && isMinor === true) return false
+    return true
+  })
 }

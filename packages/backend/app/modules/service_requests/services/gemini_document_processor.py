@@ -139,6 +139,13 @@ class RiskFactorCode(str, Enum):
     MISSING_SIGNATURE = "MISSING_SIGNATURE"
     MISSING_STAMP = "MISSING_STAMP"
 
+    # Parental Authorization (for minors passport)
+    AUTHORIZATION_EXPIRED = "AUTHORIZATION_EXPIRED"
+    AUTHORIZATION_MISSING_SIGNATURE = "AUTHORIZATION_MISSING_SIGNATURE"
+    AUTHORIZATION_PARENT_ID_MISMATCH = "AUTHORIZATION_PARENT_ID_MISMATCH"
+    AUTHORIZATION_DUAL_REQUIRES_BOTH = "AUTHORIZATION_DUAL_REQUIRES_BOTH"
+    AUTHORIZATION_MINOR_NAME_MISMATCH = "AUTHORIZATION_MINOR_NAME_MISMATCH"
+
 
 # Risk factor severity mapping
 RISK_FACTOR_SEVERITY: Dict[RiskFactorCode, str] = {
@@ -183,6 +190,13 @@ RISK_FACTOR_SEVERITY: Dict[RiskFactorCode, str] = {
     RiskFactorCode.MISSING_STAMP: "low",
     RiskFactorCode.INVALID_ID_FORMAT: "low",
     RiskFactorCode.PHOTO_MISMATCH: "low",
+
+    # Parental Authorization
+    RiskFactorCode.AUTHORIZATION_EXPIRED: "high",
+    RiskFactorCode.AUTHORIZATION_MISSING_SIGNATURE: "high",
+    RiskFactorCode.AUTHORIZATION_PARENT_ID_MISMATCH: "critical",  # BLOCKING
+    RiskFactorCode.AUTHORIZATION_DUAL_REQUIRES_BOTH: "high",
+    RiskFactorCode.AUTHORIZATION_MINOR_NAME_MISMATCH: "medium",  # Warning only
 }
 
 # Document type mapping (expected document code -> acceptable detected types)
@@ -199,6 +213,10 @@ DOCUMENT_TYPE_MAPPING: Dict[str, List[str]] = {
     "contrato_trabajo": ["contrato", "contract", "contrato_trabajo"],
     "declaracion_renta": ["declaracion", "tax_declaration", "irpf"],
     "extracto_bancario": ["extracto", "bank_statement", "estado_cuenta"],
+    # Parent/Guardian documents for minors
+    "autorizacion_parental": ["autorizacion", "autorizacion_parental", "consentimiento", "permiso_parental", "authorization"],
+    "documento_representante_1": ["dni", "dip", "pasaporte", "passport", "nie", "permiso_residencia"],
+    "documento_representante_2": ["dni", "dip", "pasaporte", "passport", "nie", "permiso_residencia"],
 }
 
 # Amount ranges by document/service type (in XAF)
@@ -292,8 +310,59 @@ DEFAULT_IDENTITY_FIELDS = [
     ),
 ]
 
+# Identity fields for minors passport (no DIP, uses certificado_nacimiento)
+MINOR_IDENTITY_FIELDS = [
+    # ══════════════════════════════════════════════════════════════════════════
+    # BLOCKING FIELDS - date of birth from birth certificate
+    # ══════════════════════════════════════════════════════════════════════════
+    IdentityFieldConfig(
+        field_name="fecha_nacimiento",
+        field_paths=["menor.fecha_nacimiento", "titular.fecha_nacimiento", "fecha_nacimiento"],
+        is_blocking=True,
+        label_es="Fecha de nacimiento",
+        label_fr="Date de naissance",
+        label_en="Date of birth"
+    ),
+    # ══════════════════════════════════════════════════════════════════════════
+    # WARNING FIELDS - names (prone to OCR errors)
+    # ══════════════════════════════════════════════════════════════════════════
+    IdentityFieldConfig(
+        field_name="nombre_completo",
+        field_paths=["menor.nombre_completo", "titular.nombre_completo", "nombre_completo"],
+        is_blocking=False,  # WARNING only
+        label_es="Nombre completo",
+        label_fr="Nom complet",
+        label_en="Full name"
+    ),
+    IdentityFieldConfig(
+        field_name="apellidos",
+        field_paths=["menor.apellidos", "titular.apellidos", "apellidos"],
+        is_blocking=False,  # WARNING only
+        label_es="Apellidos",
+        label_fr="Nom de famille",
+        label_en="Surname"
+    ),
+    IdentityFieldConfig(
+        field_name="nombres",
+        field_paths=["menor.nombres", "titular.nombres", "nombres"],
+        is_blocking=False,  # WARNING only
+        label_es="Nombres",
+        label_fr="Prénoms",
+        label_en="First names"
+    ),
+]
+
 # Per-workflow identity verification configurations
 WORKFLOW_IDENTITY_CONFIGS: Dict[str, WorkflowIdentityConfig] = {
+    # Passport workflows for MINORS - certificado_nacimiento is reference
+    # Special case: uses parental authorization cross-validation instead of DIP
+    "PASAPORTE_MENOR": WorkflowIdentityConfig(
+        reference_document="certificado_nacimiento",
+        compare_documents=["pasaporte_antiguo", "pasaporte_danado", "autorizacion_parental"],
+        critical_fields=MINOR_IDENTITY_FIELDS,
+        is_blocking=True,
+        workflow_patterns=["PASAPORTE_MENOR_*"]
+    ),
     # Passport workflows - DIP is reference, compare with old passport
     "PASAPORTE": WorkflowIdentityConfig(
         reference_document="dip",
@@ -547,6 +616,28 @@ class RiskAnalyzer:
         fraud_risks = self._process_gemini_risk_hints(gemini_risk_hints or {})
         risk_factors.extend(fraud_risks)
 
+        # 10. Parental Authorization Cross-Validation (for minor passport workflows)
+        # Only runs when autorizacion_parental document is present
+        parental_auth_validation = None
+        if existing_documents and "autorizacion_parental" in existing_documents:
+            parental_auth_validation = self._check_parental_authorization_cross_validation(
+                existing_documents=existing_documents,
+                form_data=form_data
+            )
+            # Add blocking errors as critical risk factors
+            for error in parental_auth_validation.get("blocking_errors", []):
+                risk_factors.append({
+                    "code": error.get("code", RiskFactorCode.AUTHORIZATION_PARENT_ID_MISMATCH.value),
+                    "severity": "critical",
+                    "message": error.get("message_es", "Error de validación cruzada"),
+                    "detail": error,
+                    "action": "block"
+                })
+            # Update blocking flag if parental auth validation failed
+            if not parental_auth_validation.get("cross_validation_passed", True):
+                has_blocking_mismatches = True
+                logger.warning("Parental authorization cross-validation FAILED - blocking submission")
+
         # Calculate overall risk score and level
         risk_score, risk_level = self._calculate_risk_score(risk_factors)
 
@@ -577,7 +668,10 @@ class RiskAnalyzer:
             },
             # New: Structured identity mismatch data for frontend blocking
             "identity_mismatches": identity_mismatches,
-            "has_blocking_mismatches": has_blocking_mismatches
+            "has_blocking_mismatches": has_blocking_mismatches,
+            # New: Parental authorization cross-validation result (for minor passport)
+            # Should be stored in form_data.parental_authorization_validation
+            "parental_authorization_validation": parental_auth_validation
         }
 
     def _check_document_type_mismatch(
@@ -919,6 +1013,196 @@ class RiskAnalyzer:
             "identity_mismatches": identity_mismatches,
             "has_blocking_mismatches": has_blocking_mismatches
         }
+
+    def _check_parental_authorization_cross_validation(
+        self,
+        existing_documents: Dict[str, Dict[str, Any]],
+        form_data: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Cross-validate parental authorization document with parent/guardian identity documents.
+
+        For minor passport workflows:
+        - autorizacion_parental.representante_1.documento_numero MUST match documento_representante_1
+        - autorizacion_parental.representante_2.documento_numero MUST match documento_representante_2 (if not representante_unico)
+        - Document number mismatches are BLOCKING
+
+        Returns:
+            Dict with:
+            - cross_validation_passed: bool
+            - blocking_errors: List of blocking errors
+            - warnings: List of non-blocking warnings
+            - validation_details: Detailed comparison results
+        """
+        result = {
+            "cross_validation_passed": True,
+            "blocking_errors": [],
+            "warnings": [],
+            "validation_details": {
+                "representante_1": {"validated": False, "match": None, "error": None},
+                "representante_2": {"validated": False, "match": None, "error": None}
+            }
+        }
+
+        # Get autorizacion_parental extraction
+        auth_doc = existing_documents.get("autorizacion_parental", {})
+        auth_extraction = auth_doc.get("extraction", {})
+
+        if not auth_extraction:
+            logger.warning("No autorizacion_parental extraction found for cross-validation")
+            return result
+
+        # Get parent document extractions
+        rep1_doc = existing_documents.get("documento_representante_1", {})
+        rep1_extraction = rep1_doc.get("extraction", {})
+
+        rep2_doc = existing_documents.get("documento_representante_2", {})
+        rep2_extraction = rep2_doc.get("extraction", {})
+
+        # Check if representante_unico (single parent)
+        es_representante_unico = auth_extraction.get("documento", {}).get("es_representante_unico", False)
+        if form_data and "representante_unico" in form_data:
+            es_representante_unico = form_data.get("representante_unico", False)
+
+        logger.info(f"Parental authorization cross-validation: representante_unico={es_representante_unico}")
+
+        # ══════════════════════════════════════════════════════════════════════════
+        # Representante 1 validation (ALWAYS required)
+        # ══════════════════════════════════════════════════════════════════════════
+        auth_rep1_num = (
+            auth_extraction.get("representante_1", {}).get("documento_numero", "") or ""
+        ).strip().upper()
+
+        if rep1_extraction:
+            # Get document number from parent's identity document
+            # Works for DIP, NIE (permiso_residencia), or Passport
+            rep1_doc_num = (
+                rep1_extraction.get("documento", {}).get("numero_dip") or
+                rep1_extraction.get("documento", {}).get("numero_nie") or
+                rep1_extraction.get("documento", {}).get("numero_pasaporte") or
+                rep1_extraction.get("numero_documento") or
+                rep1_extraction.get("numero") or
+                ""
+            ).strip().upper()
+
+            if auth_rep1_num and rep1_doc_num:
+                if auth_rep1_num == rep1_doc_num:
+                    result["validation_details"]["representante_1"] = {
+                        "validated": True,
+                        "match": True,
+                        "auth_value": auth_rep1_num,
+                        "doc_value": rep1_doc_num,
+                        "error": None
+                    }
+                    logger.info(f"✓ Representante 1 document number MATCH: {auth_rep1_num}")
+                else:
+                    # BLOCKING ERROR - document numbers don't match
+                    result["cross_validation_passed"] = False
+                    error = {
+                        "code": RiskFactorCode.AUTHORIZATION_PARENT_ID_MISMATCH.value,
+                        "field": "representante_1.documento_numero",
+                        "auth_value": auth_rep1_num,
+                        "doc_value": rep1_doc_num,
+                        "message_es": f"N° documento en autorización ({auth_rep1_num}) no coincide con documento del representante 1 ({rep1_doc_num})",
+                        "message_fr": f"N° document dans l'autorisation ({auth_rep1_num}) ne correspond pas au document du représentant 1 ({rep1_doc_num})",
+                        "message_en": f"Document number in authorization ({auth_rep1_num}) doesn't match representative 1's document ({rep1_doc_num})"
+                    }
+                    result["blocking_errors"].append(error)
+                    result["validation_details"]["representante_1"] = {
+                        "validated": True,
+                        "match": False,
+                        "auth_value": auth_rep1_num,
+                        "doc_value": rep1_doc_num,
+                        "error": error
+                    }
+                    logger.error(f"✗ Representante 1 document number MISMATCH: auth={auth_rep1_num} vs doc={rep1_doc_num}")
+            else:
+                # Missing data warning
+                result["warnings"].append({
+                    "code": "MISSING_DATA_FOR_VALIDATION",
+                    "field": "representante_1.documento_numero",
+                    "message_es": "No se pudo validar el número de documento del representante 1",
+                    "message_fr": "Impossible de valider le numéro de document du représentant 1",
+                    "message_en": "Could not validate representative 1's document number"
+                })
+        else:
+            result["warnings"].append({
+                "code": "DOCUMENT_NOT_UPLOADED",
+                "field": "documento_representante_1",
+                "message_es": "Documento del representante 1 no subido",
+                "message_fr": "Document du représentant 1 non téléchargé",
+                "message_en": "Representative 1's document not uploaded"
+            })
+
+        # ══════════════════════════════════════════════════════════════════════════
+        # Representante 2 validation (only if NOT representante_unico)
+        # ══════════════════════════════════════════════════════════════════════════
+        if not es_representante_unico:
+            auth_rep2_num = (
+                auth_extraction.get("representante_2", {}).get("documento_numero", "") or ""
+            ).strip().upper()
+
+            if rep2_extraction:
+                rep2_doc_num = (
+                    rep2_extraction.get("documento", {}).get("numero_dip") or
+                    rep2_extraction.get("documento", {}).get("numero_nie") or
+                    rep2_extraction.get("documento", {}).get("numero_pasaporte") or
+                    rep2_extraction.get("numero_documento") or
+                    rep2_extraction.get("numero") or
+                    ""
+                ).strip().upper()
+
+                if auth_rep2_num and rep2_doc_num:
+                    if auth_rep2_num == rep2_doc_num:
+                        result["validation_details"]["representante_2"] = {
+                            "validated": True,
+                            "match": True,
+                            "auth_value": auth_rep2_num,
+                            "doc_value": rep2_doc_num,
+                            "error": None
+                        }
+                        logger.info(f"✓ Representante 2 document number MATCH: {auth_rep2_num}")
+                    else:
+                        # BLOCKING ERROR
+                        result["cross_validation_passed"] = False
+                        error = {
+                            "code": RiskFactorCode.AUTHORIZATION_PARENT_ID_MISMATCH.value,
+                            "field": "representante_2.documento_numero",
+                            "auth_value": auth_rep2_num,
+                            "doc_value": rep2_doc_num,
+                            "message_es": f"N° documento en autorización ({auth_rep2_num}) no coincide con documento del representante 2 ({rep2_doc_num})",
+                            "message_fr": f"N° document dans l'autorisation ({auth_rep2_num}) ne correspond pas au document du représentant 2 ({rep2_doc_num})",
+                            "message_en": f"Document number in authorization ({auth_rep2_num}) doesn't match representative 2's document ({rep2_doc_num})"
+                        }
+                        result["blocking_errors"].append(error)
+                        result["validation_details"]["representante_2"] = {
+                            "validated": True,
+                            "match": False,
+                            "auth_value": auth_rep2_num,
+                            "doc_value": rep2_doc_num,
+                            "error": error
+                        }
+                        logger.error(f"✗ Representante 2 document number MISMATCH: auth={auth_rep2_num} vs doc={rep2_doc_num}")
+                else:
+                    result["warnings"].append({
+                        "code": "MISSING_DATA_FOR_VALIDATION",
+                        "field": "representante_2.documento_numero",
+                        "message_es": "No se pudo validar el número de documento del representante 2",
+                        "message_fr": "Impossible de valider le numéro de document du représentant 2",
+                        "message_en": "Could not validate representative 2's document number"
+                    })
+            elif auth_rep2_num:
+                # Authorization has rep2 but no document uploaded
+                result["cross_validation_passed"] = False
+                result["blocking_errors"].append({
+                    "code": RiskFactorCode.AUTHORIZATION_DUAL_REQUIRES_BOTH.value,
+                    "field": "documento_representante_2",
+                    "message_es": "La autorización tiene 2 firmantes pero falta el documento del representante 2",
+                    "message_fr": "L'autorisation a 2 signataires mais le document du représentant 2 est manquant",
+                    "message_en": "Authorization has 2 signatories but representative 2's document is missing"
+                })
+
+        return result
 
     def _check_form_consistency(
         self,

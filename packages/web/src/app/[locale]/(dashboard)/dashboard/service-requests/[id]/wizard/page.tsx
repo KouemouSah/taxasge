@@ -24,7 +24,7 @@
  * 8. confirmation - Final summary with PDF download
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
@@ -81,11 +81,14 @@ import {
   DocumentConditionType,
   PASSPORT_WIZARD_STEPS,
   PASSPORT_TARIFFS,
+  getVisiblePassportSteps,
 } from '@/modules/service-requests'
 import { PaymentMethod } from '@/types/payment'
 
 // Use shared constants from types/index.ts
-const WIZARD_STEPS = PASSPORT_WIZARD_STEPS
+// NOTE: WIZARD_STEPS is now computed dynamically based on isMinor and solicitudType
+// See the useMemo hook below for the actual visible steps
+const ALL_STEPS = PASSPORT_WIZARD_STEPS
 const TARIFFS = PASSPORT_TARIFFS
 
 // Solicitud types - Use shared types
@@ -115,6 +118,12 @@ export default function PassportWizardPage() {
   // isSaving is kept for UI components but no longer set during step transitions
   // Step transitions are now synchronous (data stored locally, saved at final validation)
   const [isSaving] = useState(false)
+
+  // Compute visible steps based on wizard state (isMinor and solicitudType)
+  // This filters out minor-only steps for adults and vice versa
+  const visibleSteps = useMemo(() => {
+    return getVisiblePassportSteps(wizardState.solicitudType ?? undefined, wizardState.isMinor)
+  }, [wizardState.solicitudType, wizardState.isMinor])
 
   // Service requests hook
   const {
@@ -279,10 +288,10 @@ export default function PassportWizardPage() {
   }
 
   // Get current step
-  const currentStep = WIZARD_STEPS[currentStepIndex]
+  const currentStep = visibleSteps[currentStepIndex]
 
   // Calculate progress percentage
-  const progressPercent = ((currentStepIndex + 1) / WIZARD_STEPS.length) * 100
+  const progressPercent = ((currentStepIndex + 1) / visibleSteps.length) * 100
 
   // Calculate tariff based on selection
   const getTariff = (): number => {
@@ -813,7 +822,7 @@ export default function PassportWizardPage() {
 
   // Load payment methods when reaching payment step
   useEffect(() => {
-    const step = WIZARD_STEPS[currentStepIndex]
+    const step = visibleSteps[currentStepIndex]
     if (step?.id === 'payment' && availablePaymentMethods.length === 0 && !isLoadingPaymentMethods) {
       loadPaymentMethods()
     }
@@ -1055,6 +1064,20 @@ export default function PassportWizardPage() {
         />
       )}
 
+      {/* Step for minors: Legal representatives info (representante_unico checkbox) */}
+      {currentStep.id === 'representantes_legales' && (
+        <RepresentantesLegalesStep
+          locale={locale}
+          formData={formData}
+          onSave={(data) => {
+            setFormData(prev => ({ ...prev, ...data }))
+            setCurrentStepIndex(prev => prev + 1)
+          }}
+          onBack={handleBack}
+          isSaving={isSaving}
+        />
+      )}
+
       {currentStep.id === 'upload_documents' && !showMismatchBlocker && (
         <DocumentsStepImproved
           locale={locale}
@@ -1091,16 +1114,16 @@ export default function PassportWizardPage() {
           isLoading={isLoadingFormData}
           isSaving={isSavingFormData}
           saveError={formSaveError}
+          isMinor={wizardState.isMinor || false}
           onFieldEdit={handleFormFieldEdit}
           onSave={() => handleSaveFormReview(currentStep.id)}
           onNext={async () => {
             const success = await handleSaveFormReview(currentStep.id)
             if (success) {
-              // If completing form_review_2, prepare for payment (validates docs, calculates tariff)
-              // NOTE: Status stays DRAFT - will change to PAYMENT_PENDING only after
-              // initiatePayment() successfully creates a payment record in the database
-              if (currentStep.id === 'form_review_2') {
-                console.log('[Wizard] Form review complete, preparing for payment...')
+              // If completing form_review_2 and NOT minor, prepare for payment
+              // For minors, they go to form_review_representantes first
+              if (currentStep.id === 'form_review_2' && !wizardState.isMinor) {
+                console.log('[Wizard] Form review complete (adult), preparing for payment...')
                 const prepared = await prepareForPayment()
                 if (!prepared) {
                   console.error('[Wizard] Failed to prepare for payment')
@@ -1120,6 +1143,27 @@ export default function PassportWizardPage() {
           }}
           onBack={handleBack}
           onRetry={loadFormDataForReview}
+        />
+      )}
+
+      {/* Step for minors: Review legal representatives data + cross-validation results */}
+      {currentStep.id === 'form_review_representantes' && (
+        <FormReviewRepresentantesStep
+          locale={locale}
+          formData={formData}
+          documentPreviews={documentPreviews}
+          onNext={async () => {
+            // Prepare for payment after validating representatives
+            console.log('[Wizard] Form review representantes complete (minor), preparing for payment...')
+            const prepared = await prepareForPayment()
+            if (!prepared) {
+              console.error('[Wizard] Failed to prepare for payment')
+              return
+            }
+            setCurrentStepIndex(prev => prev + 1)
+          }}
+          onBack={handleBack}
+          isSaving={isSaving}
         />
       )}
 
@@ -1748,6 +1792,7 @@ interface FormReviewStepEditableProps {
   isLoading: boolean
   isSaving: boolean
   saveError: string | null
+  isMinor?: boolean
   onFieldEdit: (field: string, value: unknown) => void
   onSave: () => Promise<boolean>
   onNext: () => Promise<void>
@@ -1763,6 +1808,7 @@ function FormReviewStepEditable({
   isLoading,
   isSaving,
   saveError,
+  isMinor = false,
   onFieldEdit,
   onNext,
   onBack,
@@ -1771,8 +1817,10 @@ function FormReviewStepEditable({
   const isStep1 = step === 'form_review_1'
 
   // Fields for each step with their types
+  // Note: For minors, numero_dip is not shown (they use certificado_nacimiento instead)
   const step1Fields = [
-    { key: 'numero_dip', type: 'text', required: true },
+    // DIP field only for adults
+    ...(!isMinor ? [{ key: 'numero_dip', type: 'text', required: true }] : []),
     { key: 'apellidos', type: 'text', required: true },
     { key: 'nombres', type: 'text', required: true },
     { key: 'sexo', type: 'select', options: ['M', 'F'], required: true },
@@ -2590,6 +2638,336 @@ function ConfirmationStepImproved({ locale, requestId, tariff, summary, notifica
           </Button>
           <Button onClick={() => router.push(`/${locale}/dashboard/service-requests`)}>
             {locale === 'es' ? 'Volver a Solicitudes' : locale === 'fr' ? 'Retour aux Demandes' : 'Back to Requests'}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// =============================================================================
+// STEP: Legal Representatives Info (for minors only)
+// =============================================================================
+
+interface RepresentantesLegalesStepProps {
+  locale: string
+  formData: Record<string, unknown> | null
+  onSave: (data: Record<string, unknown>) => void
+  onBack: () => void
+  isSaving: boolean
+}
+
+function RepresentantesLegalesStep({
+  locale,
+  formData,
+  onSave,
+  onBack,
+  isSaving,
+}: RepresentantesLegalesStepProps) {
+  const [representanteUnico, setRepresentanteUnico] = useState<boolean>(
+    formData?.representante_unico as boolean ?? false
+  )
+  const [motivoRepresentanteUnico, setMotivoRepresentanteUnico] = useState<string>(
+    formData?.motivo_representante_unico as string ?? ''
+  )
+
+  const motivoOptions = [
+    { value: 'custodia_exclusiva', labelEs: 'Custodia exclusiva', labelFr: 'Garde exclusive', labelEn: 'Sole custody' },
+    { value: 'fallecimiento', labelEs: 'Fallecimiento de un padre', labelFr: 'Décès d\'un parent', labelEn: 'Parent deceased' },
+    { value: 'desconocido', labelEs: 'Padre desconocido', labelFr: 'Parent inconnu', labelEn: 'Unknown parent' },
+    { value: 'otro', labelEs: 'Otro motivo', labelFr: 'Autre motif', labelEn: 'Other reason' },
+  ]
+
+  const handleContinue = () => {
+    onSave({
+      representante_unico: representanteUnico,
+      motivo_representante_unico: representanteUnico ? motivoRepresentanteUnico : null,
+    })
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          {locale === 'es' ? 'Representantes Legales' : locale === 'fr' ? 'Représentants Légaux' : 'Legal Representatives'}
+        </CardTitle>
+        <CardDescription>
+          {locale === 'es'
+            ? 'Información sobre los padres/tutores del menor'
+            : locale === 'fr'
+              ? 'Informations sur les parents/tuteurs du mineur'
+              : 'Information about the minor\'s parents/guardians'}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Representante Unico Checkbox */}
+        <div className="flex items-start space-x-3 p-4 border rounded-lg">
+          <input
+            type="checkbox"
+            id="representante_unico"
+            checked={representanteUnico}
+            onChange={(e) => setRepresentanteUnico(e.target.checked)}
+            className="mt-1 h-4 w-4 rounded border-gray-300"
+          />
+          <div>
+            <label htmlFor="representante_unico" className="font-medium cursor-pointer">
+              {locale === 'es' ? 'Representante único' : locale === 'fr' ? 'Représentant unique' : 'Single representative'}
+            </label>
+            <p className="text-sm text-muted-foreground">
+              {locale === 'es'
+                ? 'Un solo padre o tutor realiza este trámite (custodia exclusiva, fallecimiento, etc.)'
+                : locale === 'fr'
+                  ? 'Un seul parent ou tuteur effectue cette démarche (garde exclusive, décès, etc.)'
+                  : 'Only one parent or guardian is handling this request (sole custody, death, etc.)'}
+            </p>
+          </div>
+        </div>
+
+        {/* Motivo selection (only if representante_unico is true) */}
+        {representanteUnico && (
+          <div className="space-y-3">
+            <label className="font-medium">
+              {locale === 'es' ? 'Motivo del representante único' : locale === 'fr' ? 'Motif du représentant unique' : 'Reason for single representative'}
+            </label>
+            <div className="grid gap-2">
+              {motivoOptions.map((option) => (
+                <div
+                  key={option.value}
+                  className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                    motivoRepresentanteUnico === option.value
+                      ? 'border-primary bg-primary/5'
+                      : 'hover:border-gray-400'
+                  }`}
+                  onClick={() => setMotivoRepresentanteUnico(option.value)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-4 h-4 rounded-full border-2 ${
+                      motivoRepresentanteUnico === option.value
+                        ? 'border-primary bg-primary'
+                        : 'border-gray-300'
+                    }`}>
+                      {motivoRepresentanteUnico === option.value && (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <div className="w-1.5 h-1.5 bg-white rounded-full" />
+                        </div>
+                      )}
+                    </div>
+                    <span>
+                      {locale === 'es' ? option.labelEs : locale === 'fr' ? option.labelFr : option.labelEn}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Info about documents required */}
+        <div className="p-4 bg-blue-50 text-blue-800 rounded-lg">
+          <p className="text-sm">
+            {locale === 'es'
+              ? representanteUnico
+                ? 'Deberá subir: Autorización parental + Documento de identidad del representante (DIP, NIE o Pasaporte)'
+                : 'Deberá subir: Autorización parental firmada por ambos + Documentos de identidad de ambos representantes'
+              : locale === 'fr'
+                ? representanteUnico
+                  ? 'Vous devrez télécharger: Autorisation parentale + Document d\'identité du représentant (DIP, NIE ou Passeport)'
+                  : 'Vous devrez télécharger: Autorisation parentale signée par les deux + Documents d\'identité des deux représentants'
+                : representanteUnico
+                  ? 'You will need to upload: Parental authorization + Representative\'s identity document (DIP, NIE or Passport)'
+                  : 'You will need to upload: Parental authorization signed by both + Identity documents for both representatives'}
+          </p>
+        </div>
+
+        {/* Navigation buttons */}
+        <div className="flex justify-between pt-4">
+          <Button variant="outline" onClick={onBack} disabled={isSaving}>
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            {locale === 'es' ? 'Anterior' : locale === 'fr' ? 'Précédent' : 'Back'}
+          </Button>
+          <Button
+            onClick={handleContinue}
+            disabled={isSaving || (representanteUnico && !motivoRepresentanteUnico)}
+          >
+            {locale === 'es' ? 'Continuar' : locale === 'fr' ? 'Continuer' : 'Continue'}
+            <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// =============================================================================
+// STEP: Form Review Representantes (for minors only - shows cross-validation)
+// =============================================================================
+
+interface FormReviewRepresentantesStepProps {
+  locale: string
+  formData: Record<string, unknown> | null
+  documentPreviews: Record<string, DocumentExtractionPreview>
+  onNext: () => void
+  onBack: () => void
+  isSaving: boolean
+}
+
+function FormReviewRepresentantesStep({
+  locale,
+  formData,
+  documentPreviews,
+  onNext,
+  onBack,
+  isSaving,
+}: FormReviewRepresentantesStepProps) {
+  // Get parental authorization validation results from formData
+  const parentalValidation = formData?.parental_authorization_validation as {
+    cross_validation_passed?: boolean
+    blocking_errors?: Array<{
+      code: string
+      field: string
+      message_es?: string
+      message_fr?: string
+      message_en?: string
+    }>
+    validation_details?: {
+      representante_1?: { validated: boolean; match: boolean | null; auth_value?: string; doc_value?: string }
+      representante_2?: { validated: boolean; match: boolean | null; auth_value?: string; doc_value?: string }
+    }
+  } | null
+
+  const isRepresentanteUnico = formData?.representante_unico as boolean ?? false
+  const crossValidationPassed = parentalValidation?.cross_validation_passed ?? true
+  const blockingErrors = parentalValidation?.blocking_errors ?? []
+
+  // Get representative data from authorization preview
+  const authPreview = documentPreviews['autorizacion_parental']
+  const rep1Preview = documentPreviews['documento_representante_1']
+  const rep2Preview = documentPreviews['documento_representante_2']
+
+  const rep1Data = authPreview?.extraction?.representante_1 as Record<string, unknown> | undefined
+  const rep2Data = authPreview?.extraction?.representante_2 as Record<string, unknown> | undefined
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          {locale === 'es' ? 'Verificar Representantes Legales' : locale === 'fr' ? 'Vérifier les Représentants Légaux' : 'Verify Legal Representatives'}
+        </CardTitle>
+        <CardDescription>
+          {locale === 'es'
+            ? 'Revise los datos extraídos de la autorización parental y los documentos de identidad'
+            : locale === 'fr'
+              ? 'Vérifiez les données extraites de l\'autorisation parentale et des documents d\'identité'
+              : 'Review the data extracted from parental authorization and identity documents'}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Cross-validation status */}
+        <div className={`p-4 rounded-lg ${crossValidationPassed ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+          <div className="flex items-center gap-2">
+            {crossValidationPassed ? (
+              <CheckCircle className="h-5 w-5 text-green-600" />
+            ) : (
+              <AlertCircle className="h-5 w-5 text-red-600" />
+            )}
+            <span className={`font-medium ${crossValidationPassed ? 'text-green-800' : 'text-red-800'}`}>
+              {locale === 'es'
+                ? crossValidationPassed ? 'Validación cruzada exitosa' : 'Error en validación cruzada'
+                : locale === 'fr'
+                  ? crossValidationPassed ? 'Validation croisée réussie' : 'Erreur de validation croisée'
+                  : crossValidationPassed ? 'Cross-validation passed' : 'Cross-validation failed'}
+            </span>
+          </div>
+
+          {/* Show blocking errors */}
+          {blockingErrors.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {blockingErrors.map((error, idx) => (
+                <div key={idx} className="text-sm text-red-700">
+                  • {locale === 'es' ? error.message_es : locale === 'fr' ? error.message_fr : error.message_en}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Representante 1 */}
+        <div className="border rounded-lg p-4">
+          <h4 className="font-medium mb-3">
+            {locale === 'es' ? 'Representante 1' : locale === 'fr' ? 'Représentant 1' : 'Representative 1'}
+          </h4>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-muted-foreground">{locale === 'es' ? 'Nombre' : 'Name'}:</span>
+              <span className="ml-2 font-medium">{rep1Data?.nombre_completo as string || '-'}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">{locale === 'es' ? 'Tipo documento' : 'Doc type'}:</span>
+              <span className="ml-2 font-medium">{rep1Data?.documento_tipo as string || '-'}</span>
+            </div>
+            <div className="col-span-2">
+              <span className="text-muted-foreground">{locale === 'es' ? 'N° Documento (autorización)' : 'Doc # (authorization)'}:</span>
+              <span className="ml-2 font-mono">{rep1Data?.documento_numero as string || '-'}</span>
+            </div>
+            {rep1Preview && (
+              <div className="col-span-2">
+                <span className="text-muted-foreground">{locale === 'es' ? 'N° Documento (subido)' : 'Doc # (uploaded)'}:</span>
+                <span className="ml-2 font-mono">
+                  {(rep1Preview.extraction?.documento?.numero_dip ||
+                    rep1Preview.extraction?.documento?.numero_nie ||
+                    rep1Preview.extraction?.numero_documento) as string || '-'}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Representante 2 (only if not representante_unico) */}
+        {!isRepresentanteUnico && (
+          <div className="border rounded-lg p-4">
+            <h4 className="font-medium mb-3">
+              {locale === 'es' ? 'Representante 2' : locale === 'fr' ? 'Représentant 2' : 'Representative 2'}
+            </h4>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-muted-foreground">{locale === 'es' ? 'Nombre' : 'Name'}:</span>
+                <span className="ml-2 font-medium">{rep2Data?.nombre_completo as string || '-'}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">{locale === 'es' ? 'Tipo documento' : 'Doc type'}:</span>
+                <span className="ml-2 font-medium">{rep2Data?.documento_tipo as string || '-'}</span>
+              </div>
+              <div className="col-span-2">
+                <span className="text-muted-foreground">{locale === 'es' ? 'N° Documento (autorización)' : 'Doc # (authorization)'}:</span>
+                <span className="ml-2 font-mono">{rep2Data?.documento_numero as string || '-'}</span>
+              </div>
+              {rep2Preview && (
+                <div className="col-span-2">
+                  <span className="text-muted-foreground">{locale === 'es' ? 'N° Documento (subido)' : 'Doc # (uploaded)'}:</span>
+                  <span className="ml-2 font-mono">
+                    {(rep2Preview.extraction?.documento?.numero_dip ||
+                      rep2Preview.extraction?.documento?.numero_nie ||
+                      rep2Preview.extraction?.numero_documento) as string || '-'}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Navigation buttons */}
+        <div className="flex justify-between pt-4">
+          <Button variant="outline" onClick={onBack} disabled={isSaving}>
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            {locale === 'es' ? 'Anterior' : locale === 'fr' ? 'Précédent' : 'Back'}
+          </Button>
+          <Button
+            onClick={onNext}
+            disabled={isSaving || !crossValidationPassed}
+          >
+            {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {locale === 'es' ? 'Continuar al Pago' : locale === 'fr' ? 'Continuer au Paiement' : 'Continue to Payment'}
+            <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </div>
       </CardContent>

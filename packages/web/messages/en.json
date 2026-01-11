@@ -3416,6 +3416,10 @@
     "loading": "Loading...",
     "error": "Error",
     "retry": "Retry",
+    "drag_drop_or_click": "Drag and drop a file or click to select",
+    "error_file_too_large": "File is too large. Maximum {max}MB",
+    "error_invalid_format": "Invalid format. Accepted formats: {formats}",
+    "error_upload_failed": "Error uploading file",
     "status": {
       "draft": "Draft",
       "pending_documents": "Pending Documents",
@@ -3482,6 +3486,8 @@
       "step_payment": "Payment",
       "step_appointment": "Appointment",
       "step_confirmation": "Confirmation",
+      "step_representantes_legales": "Legal Representatives",
+      "step_form_review_representantes": "Representatives Verification",
       "passport": {
         "title": "Passport Request",
         "applicant_type": "Applicant Type",
@@ -3510,7 +3516,27 @@
         "select_appointment": "Select Appointment",
         "appointment_confirmed": "Appointment Confirmed",
         "download_receipt": "Download Receipt",
-        "tariff_paid": "Tariff paid"
+        "tariff_paid": "Tariff paid",
+        "representantes_legales": {
+          "title": "Legal Representatives",
+          "subtitle": "Information about the minor's parents/guardians",
+          "representante_unico": "Single representative",
+          "representante_unico_desc": "Only one parent or guardian is handling this request (sole custody, death, etc.)",
+          "motivo_representante_unico": "Reason for single representative",
+          "motivo_custodia_exclusiva": "Sole custody",
+          "motivo_fallecimiento": "Parent deceased",
+          "motivo_desconocido": "Unknown parent",
+          "motivo_otro": "Other reason",
+          "representante_1": "Representative 1",
+          "representante_2": "Representative 2",
+          "tipo_documento": "Document type",
+          "numero_documento": "Document number",
+          "validation_title": "Cross Validation",
+          "validation_passed": "Validation passed",
+          "validation_failed": "Validation failed",
+          "blocking_error": "Blocking error",
+          "document_mismatch": "Document number in authorization does not match the uploaded document"
+        }
       }
     },
     "steps": {

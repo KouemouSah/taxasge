@@ -260,6 +260,42 @@ class PasaporteWorkflow(PredefinedWorkflow):
             }
         ))
 
+        # === Step 1c: Representantes Legales (only for MINORS) ===
+        # Determines if single or dual parent/guardian authorization
+        self.add_step(WorkflowStep(
+            step_number=1,  # Same step number, handled by frontend as sub-step
+            step_id="representantes_legales",
+            step_type=StepType.SELECTION,
+            title_es="Representantes Legales",
+            description_es="Indique los representantes legales del menor",
+            config={
+                "selection_type": "representante_unico",
+                "condition": {"is_minor": True},  # Only shown for minors
+                "fields": [
+                    {
+                        "field_id": "representante_unico",
+                        "type": "checkbox",
+                        "label_es": "Representante unico",
+                        "description_es": "Marque si solo un padre/tutor realizara el tramite (custodia exclusiva, fallecimiento, etc.)",
+                        "default": False
+                    },
+                    {
+                        "field_id": "motivo_representante_unico",
+                        "type": "select",
+                        "label_es": "Motivo",
+                        "condition": {"representante_unico": True},
+                        "required_if": {"representante_unico": True},
+                        "options": [
+                            {"value": "CUSTODIA_EXCLUSIVA", "label_es": "Custodia exclusiva"},
+                            {"value": "FALLECIMIENTO", "label_es": "Fallecimiento del otro progenitor"},
+                            {"value": "PADRE_DESCONOCIDO", "label_es": "Padre/Madre desconocido"},
+                            {"value": "OTRO", "label_es": "Otro motivo"}
+                        ]
+                    }
+                ]
+            }
+        ))
+
         # === Step 2: Document Upload (ALL documents on ONE page) ===
         self.add_step(WorkflowStep(
             step_number=2,
@@ -275,6 +311,7 @@ class PasaporteWorkflow(PredefinedWorkflow):
         ))
 
         # === Step 3: Form Review 1 - Datos Personales + Domicilio ===
+        # CONDITIONAL: Different fields for adults (DIP) vs minors (certificado_nacimiento)
         self.add_step(WorkflowStep(
             step_number=3,
             step_id="form_review_1",
@@ -284,6 +321,63 @@ class PasaporteWorkflow(PredefinedWorkflow):
             config={
                 "form_page": 1,
                 "max_sections": 2,
+                "conditional_sections": True,  # Frontend checks is_minor to select section set
+                "sections_adult": [
+                    {
+                        "id": "personal",
+                        "title_es": "Datos Personales",
+                        "source_document": "dip",
+                        "fields": [
+                            {"key": "numero_dip", "label_es": "Numero DIP", "required": True},
+                            {"key": "apellidos", "label_es": "Apellidos", "required": True},
+                            {"key": "nombres", "label_es": "Nombres", "required": True},
+                            {"key": "sexo", "label_es": "Sexo", "required": True, "type": "select", "options": ["M", "F"]},
+                            {"key": "fecha_nacimiento", "label_es": "Fecha de Nacimiento", "required": True, "type": "date"},
+                            {"key": "lugar_nacimiento", "label_es": "Lugar de Nacimiento", "required": True},
+                            {"key": "natural_de", "label_es": "Natural de", "required": False},
+                            {"key": "nacionalidad", "label_es": "Nacionalidad", "required": True},
+                            {"key": "estado_civil", "label_es": "Estado Civil", "required": True},
+                            {"key": "profesion", "label_es": "Profesion", "required": True},
+                            {"key": "grupo_sanguineo", "label_es": "Grupo Sanguineo", "required": False}
+                        ]
+                    },
+                    {
+                        "id": "domicilio",
+                        "title_es": "Domicilio",
+                        "fields": [
+                            {"key": "domicilio", "label_es": "Direccion", "required": True},
+                            {"key": "ciudad", "label_es": "Ciudad", "required": True},
+                            {"key": "distrito_provincia", "label_es": "Distrito/Provincia", "required": True}
+                        ]
+                    }
+                ],
+                "sections_minor": [
+                    {
+                        "id": "personal_menor",
+                        "title_es": "Datos del Menor",
+                        "source_document": "certificado_nacimiento",
+                        "fields": [
+                            {"key": "cert_nombre", "label_es": "Nombre", "required": True},
+                            {"key": "cert_primer_apellido", "label_es": "Primer Apellido", "required": True},
+                            {"key": "cert_segundo_apellido", "label_es": "Segundo Apellido", "required": False},
+                            {"key": "cert_sexo", "label_es": "Sexo", "required": True, "type": "select", "options": ["M", "F"]},
+                            {"key": "cert_fecha_nacimiento", "label_es": "Fecha de Nacimiento", "required": True, "type": "date"},
+                            {"key": "cert_lugar_nacimiento", "label_es": "Lugar de Nacimiento", "required": True}
+                        ]
+                    },
+                    {
+                        "id": "registro_civil",
+                        "title_es": "Datos del Registro Civil",
+                        "source_document": "certificado_nacimiento",
+                        "fields": [
+                            {"key": "registro_civil", "label_es": "Registro Civil de", "required": True},
+                            {"key": "provincia_registro", "label_es": "Provincia", "required": False},
+                            {"key": "tomo_nacimiento", "label_es": "Tomo", "required": False},
+                            {"key": "pagina_nacimiento", "label_es": "Pagina", "required": False}
+                        ]
+                    }
+                ],
+                # Legacy: sections field for backwards compatibility (defaults to adult)
                 "sections": [
                     {
                         "id": "personal",
@@ -353,12 +447,64 @@ class PasaporteWorkflow(PredefinedWorkflow):
             }
         ))
 
-        # === Step 5: Payment (BEFORE Appointment) ===
+        # === Step 5: Form Review Representantes (MINORS ONLY) ===
+        # Shows data from autorizacion_parental + cross-validation status
+        self.add_step(WorkflowStep(
+            step_number=5,
+            step_id="form_review_representantes",
+            step_type=StepType.FORM_REVIEW,
+            title_es="Verificar Representantes Legales",
+            description_es="Verifique los datos de los representantes legales y el estado de validacion",
+            config={
+                "form_page": 3,
+                "condition": {"is_minor": True},  # Only shown for minors
+                "max_sections": 3,
+                "source_document": "autorizacion_parental",
+                "sections": [
+                    {
+                        "id": "representante_1",
+                        "title_es": "Representante 1",
+                        "fields": [
+                            {"key": "rep1_nombre", "label_es": "Nombre Completo", "required": True},
+                            {"key": "rep1_parentesco", "label_es": "Parentesco", "required": False, "type": "select", "options": ["PADRE", "MADRE", "TUTOR_LEGAL", "OTRO"]},
+                            {"key": "rep1_documento_tipo", "label_es": "Tipo de Documento", "required": True, "type": "select", "options": ["DIP", "NIE", "PASAPORTE"]},
+                            {"key": "rep1_documento_numero", "label_es": "Numero de Documento", "required": True},
+                            {"key": "rep1_validacion_status", "label_es": "Estado de Validacion", "required": False, "type": "validation_badge", "readonly": True}
+                        ]
+                    },
+                    {
+                        "id": "representante_2",
+                        "title_es": "Representante 2",
+                        "condition": {"representante_unico": False},  # Only if dual-parent
+                        "fields": [
+                            {"key": "rep2_nombre", "label_es": "Nombre Completo", "required": True},
+                            {"key": "rep2_parentesco", "label_es": "Parentesco", "required": False, "type": "select", "options": ["PADRE", "MADRE", "TUTOR_LEGAL", "OTRO"]},
+                            {"key": "rep2_documento_tipo", "label_es": "Tipo de Documento", "required": True, "type": "select", "options": ["DIP", "NIE", "PASAPORTE"]},
+                            {"key": "rep2_documento_numero", "label_es": "Numero de Documento", "required": True},
+                            {"key": "rep2_validacion_status", "label_es": "Estado de Validacion", "required": False, "type": "validation_badge", "readonly": True}
+                        ]
+                    },
+                    {
+                        "id": "validacion_cruzada",
+                        "title_es": "Resumen de Validacion",
+                        "readonly": True,
+                        "fields": [
+                            {"key": "cross_validation_passed", "label_es": "Validacion Cruzada", "type": "validation_badge", "readonly": True},
+                            {"key": "authorization_date_valid", "label_es": "Fecha Autorizacion Valida", "type": "validation_badge", "readonly": True},
+                            {"key": "signatures_valid", "label_es": "Firmas Validas", "type": "validation_badge", "readonly": True},
+                            {"key": "blocking_errors", "label_es": "Errores Bloqueantes", "type": "error_list", "readonly": True}
+                        ]
+                    }
+                ]
+            }
+        ))
+
+        # === Step 6: Payment (BEFORE Appointment) ===
         # NOTE: Cross-document validation is now done during extraction (Step 3)
         # by Gemini processor with identity mismatch blocking. No separate validation step needed.
         # Payment methods loaded dynamically via GET /payment/methods endpoint
         self.add_step(WorkflowStep(
-            step_number=5,
+            step_number=6,
             step_id="payment",
             step_type=StepType.PAYMENT,
             title_es="Pago de Tasas",
@@ -370,9 +516,9 @@ class PasaporteWorkflow(PredefinedWorkflow):
             }
         ))
 
-        # === Step 6: Appointment (AFTER Payment, with 15min hold) ===
+        # === Step 7: Appointment (AFTER Payment, with 15min hold) ===
         self.add_step(WorkflowStep(
-            step_number=6,
+            step_number=7,
             step_id="appointment",
             step_type=StepType.APPOINTMENT,
             title_es="Programar Cita",
@@ -386,9 +532,9 @@ class PasaporteWorkflow(PredefinedWorkflow):
             }
         ))
 
-        # === Step 7: Confirmation ===
+        # === Step 8: Confirmation ===
         self.add_step(WorkflowStep(
-            step_number=7,
+            step_number=8,
             step_id="confirmation",
             step_type=StepType.CONFIRMATION,
             title_es="Confirmacion",
@@ -477,23 +623,26 @@ class PasaporteWorkflow(PredefinedWorkflow):
             if context.form_data.get("is_minor") is True:
                 is_minor = True
 
-        # === DIP - Always required (single file with recto+verso) ===
-        requirements.append(DocumentRequirement(
-            document_code="dip",
-            document_name_es="Documento de Identidad Personal (DIP)",
-            schema_key="DIP_GQ_V2",
-            is_required=True,
-            display_order=1,
-            condition_type=DocumentConditionType.ALWAYS,
-            instructions_es="Escanee ambas caras de su DIP vigente (recto y verso en un solo archivo)",
-            faces_required=["recto", "verso"],
-            config={"single_file": True}  # Both sides in one file
-        ))
+        # === DIP - Required for ADULTS only (minors use certificado_nacimiento) ===
+        if not is_minor:
+            requirements.append(DocumentRequirement(
+                document_code="dip",
+                document_name_es="Documento de Identidad Personal (DIP)",
+                schema_key="DIP_GQ_V2",
+                is_required=True,
+                display_order=1,
+                condition_type=DocumentConditionType.IS_ADULT,
+                instructions_es="Escanee ambas caras de su DIP vigente (recto y verso en un solo archivo)",
+                faces_required=["recto", "verso"],
+                config={"single_file": True}  # Both sides in one file
+            ))
 
         # === Type-specific documents ===
 
+        # === Certificado de Nacimiento ===
+        # Required for: EXPEDICION (all) + RENOVACION (minors only)
         if solicitud_type == SolicitudType.EXPEDICION:
-            # First passport: need birth certificate
+            # First passport: need birth certificate (adults and minors)
             requirements.append(DocumentRequirement(
                 document_code="certificado_nacimiento",
                 document_name_es="Certificado de Nacimiento",
@@ -503,8 +652,20 @@ class PasaporteWorkflow(PredefinedWorkflow):
                 condition_type=DocumentConditionType.IS_NEW,
                 instructions_es="Certificacion literal de inscripcion de nacimiento (original o copia certificada)"
             ))
+        elif solicitud_type == SolicitudType.RENOVACION and is_minor:
+            # Renovation for minors: need birth certificate (replaces DIP)
+            requirements.append(DocumentRequirement(
+                document_code="certificado_nacimiento",
+                document_name_es="Certificado de Nacimiento",
+                schema_key="CERTIFICACION_NACIMIENTO_GQ_V1",
+                is_required=True,
+                display_order=2,
+                condition_type=DocumentConditionType.IS_MINOR,
+                instructions_es="Certificacion literal de nacimiento del menor (original o copia certificada)"
+            ))
 
-        elif solicitud_type == SolicitudType.RENOVACION and motivo:
+        # === RENOVACION motivo-specific documents (applies to adults AND minors) ===
+        if solicitud_type == SolicitudType.RENOVACION and motivo:
             if motivo in [RenovacionMotivo.VENCIMIENTO, RenovacionMotivo.DETERIORO]:
                 # Need old passport
                 doc_name = "Pasaporte Danado" if motivo == RenovacionMotivo.DETERIORO else "Pasaporte Antiguo"
@@ -555,28 +716,62 @@ class PasaporteWorkflow(PredefinedWorkflow):
 
         # === Minor-specific requirements ===
         if is_minor:
-            # Parental authorization
+            # Check if single representative (from context)
+            representante_unico = False
+            if context and context.form_data:
+                representante_unico = context.form_data.get("representante_unico", False)
+
+            # Parental authorization (with OCR schema)
             requirements.append(DocumentRequirement(
                 document_code="autorizacion_parental",
                 document_name_es="Autorizacion Parental",
+                schema_key="AUTORIZACION_PARENTAL_GQ_V1",
                 is_required=True,
                 display_order=5,
                 condition_type=DocumentConditionType.IS_MINOR,
-                instructions_es="Autorizacion firmada por ambos padres o tutor legal"
+                instructions_es="Autorizacion parental firmada. Cualquier formato aceptado."
             ))
 
-            # DIP of parent/tutor (single file with recto+verso)
+            # Document of representative 1 (ALWAYS required for minors)
+            # Accepts DIP, NIE (permiso residencia), or Passport
             requirements.append(DocumentRequirement(
-                document_code="dip_padre_tutor",
-                document_name_es="DIP del Padre, Madre o Tutor Legal",
-                schema_key="DIP_GQ_V2",
+                document_code="documento_representante_1",
+                document_name_es="Documento de Identidad del Representante 1",
                 is_required=True,
                 display_order=6,
                 condition_type=DocumentConditionType.IS_MINOR,
-                instructions_es="Escanee ambas caras del DIP del padre, madre o tutor legal (recto y verso en un solo archivo)",
+                instructions_es="DIP, NIE o Pasaporte del padre, madre o tutor que realiza el tramite",
                 faces_required=["recto", "verso"],
-                config={"single_file": True}
+                config={
+                    "single_file": True,
+                    "accepted_schemas": {
+                        "DIP": "DIP_GQ_V2",
+                        "NIE": "PERMISO_RESIDENCIA_GQ_V1",
+                        "PASAPORTE": "PASAPORTE_GQ_V1"
+                    }
+                }
             ))
+
+            # Document of representative 2 (CONDITIONAL - only if not single representative)
+            if not representante_unico:
+                requirements.append(DocumentRequirement(
+                    document_code="documento_representante_2",
+                    document_name_es="Documento de Identidad del Representante 2",
+                    is_required=False,  # Conditional based on representante_unico
+                    display_order=7,
+                    condition_type=DocumentConditionType.CUSTOM,
+                    condition_value={"is_minor": True, "representante_unico": False},
+                    instructions_es="DIP, NIE o Pasaporte del segundo padre, madre o tutor",
+                    faces_required=["recto", "verso"],
+                    config={
+                        "single_file": True,
+                        "accepted_schemas": {
+                            "DIP": "DIP_GQ_V2",
+                            "NIE": "PERMISO_RESIDENCIA_GQ_V1",
+                            "PASAPORTE": "PASAPORTE_GQ_V1"
+                        }
+                    }
+                ))
 
         return requirements
 
@@ -789,6 +984,37 @@ class PasaporteWorkflow(PredefinedWorkflow):
                 "declarante_nombre": "certificado_nacimiento.declarante.nombre",
                 "declarante_calidad": "certificado_nacimiento.declarante.calidad",
                 "declarante_domicilio": "certificado_nacimiento.declarante.domicilio",
+
+                # === Autorizacion Parental fields (for form_review_representantes) ===
+                # ALIGNED with autorizacion_parental_gq.json schema
+                # Representante 1
+                "rep1_nombre": "autorizacion_parental.representante_1.nombre_completo",
+                "rep1_parentesco": "autorizacion_parental.representante_1.parentesco",
+                "rep1_documento_tipo": "autorizacion_parental.representante_1.documento_tipo",
+                "rep1_documento_numero": "autorizacion_parental.representante_1.documento_numero",
+
+                # Representante 2 (if applicable)
+                "rep2_nombre": "autorizacion_parental.representante_2.nombre_completo",
+                "rep2_parentesco": "autorizacion_parental.representante_2.parentesco",
+                "rep2_documento_tipo": "autorizacion_parental.representante_2.documento_tipo",
+                "rep2_documento_numero": "autorizacion_parental.representante_2.documento_numero",
+
+                # Authorization metadata
+                "fecha_autorizacion": "autorizacion_parental.documento.fecha_autorizacion",
+                "es_representante_unico": "autorizacion_parental.documento.es_representante_unico",
+                "motivo_representante_unico": "autorizacion_parental.documento.motivo_representante_unico",
+
+                # Minor data from authorization (for cross-check)
+                "menor_nombre_autorizacion": "autorizacion_parental.menor.nombre_completo",
+                "menor_fecha_nacimiento_autorizacion": "autorizacion_parental.menor.fecha_nacimiento",
+
+                # Cross-validation results (populated by gemini_processor, stored in form_data)
+                "rep1_validacion_status": "form_data.parental_authorization_validation.representante_1.match",
+                "rep2_validacion_status": "form_data.parental_authorization_validation.representante_2.match",
+                "cross_validation_passed": "form_data.parental_authorization_validation.cross_validation_passed",
+                "authorization_date_valid": "form_data.parental_authorization_validation.authorization_date_valid",
+                "signatures_valid": "form_data.parental_authorization_validation.signatures_valid",
+                "blocking_errors": "form_data.parental_authorization_validation.blocking_errors",
             })
         else:
             # === For ADULTS: Add parent info from certificado (if NUEVO) ===

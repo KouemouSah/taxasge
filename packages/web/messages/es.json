@@ -3615,6 +3615,8 @@
       "step_payment": "Pago",
       "step_appointment": "Cita",
       "step_confirmation": "Confirmación",
+      "step_representantes_legales": "Representantes Legales",
+      "step_form_review_representantes": "Verificar Representantes",
       "passport": {
         "title": "Solicitud de Pasaporte",
         "applicant_type": "Tipo de Solicitante",
@@ -3643,7 +3645,27 @@
         "select_appointment": "Seleccionar Cita",
         "appointment_confirmed": "Cita Confirmada",
         "download_receipt": "Descargar Comprobante",
-        "tariff_paid": "Tarifa pagada"
+        "tariff_paid": "Tarifa pagada",
+        "representantes_legales": {
+          "title": "Representantes Legales",
+          "subtitle": "Información sobre los padres/tutores del menor",
+          "representante_unico": "Representante único",
+          "representante_unico_desc": "Un solo padre o tutor realiza este trámite (custodia exclusiva, fallecimiento, etc.)",
+          "motivo_representante_unico": "Motivo del representante único",
+          "motivo_custodia_exclusiva": "Custodia exclusiva",
+          "motivo_fallecimiento": "Fallecimiento de un padre",
+          "motivo_desconocido": "Padre desconocido",
+          "motivo_otro": "Otro motivo",
+          "representante_1": "Representante 1",
+          "representante_2": "Representante 2",
+          "tipo_documento": "Tipo de documento",
+          "numero_documento": "Número de documento",
+          "validation_title": "Validación Cruzada",
+          "validation_passed": "Validación exitosa",
+          "validation_failed": "Validación fallida",
+          "blocking_error": "Error bloqueante",
+          "document_mismatch": "El número de documento en la autorización no coincide con el documento subido"
+        }
       }
     },
     "newRequestDescription": "Iniciar una nueva solicitud de servicio",

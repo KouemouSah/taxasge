@@ -3416,6 +3416,10 @@
     "loading": "Chargement...",
     "error": "Erreur",
     "retry": "Réessayer",
+    "drag_drop_or_click": "Glissez-déposez un fichier ou cliquez pour sélectionner",
+    "error_file_too_large": "Le fichier est trop volumineux. Maximum {max}Mo",
+    "error_invalid_format": "Format non valide. Formats acceptés: {formats}",
+    "error_upload_failed": "Erreur lors du téléchargement du fichier",
     "status": {
       "draft": "Brouillon",
       "pending_documents": "Documents en attente",
@@ -3482,6 +3486,8 @@
       "step_payment": "Paiement",
       "step_appointment": "Rendez-vous",
       "step_confirmation": "Confirmation",
+      "step_representantes_legales": "Représentants Légaux",
+      "step_form_review_representantes": "Vérification des Représentants",
       "passport": {
         "title": "Demande de Passeport",
         "applicant_type": "Type de Demandeur",
@@ -3510,7 +3516,27 @@
         "select_appointment": "Sélectionner un Rendez-vous",
         "appointment_confirmed": "Rendez-vous Confirmé",
         "download_receipt": "Télécharger le Reçu",
-        "tariff_paid": "Tarif payé"
+        "tariff_paid": "Tarif payé",
+        "representantes_legales": {
+          "title": "Représentants Légaux",
+          "subtitle": "Informations sur les parents/tuteurs du mineur",
+          "representante_unico": "Représentant unique",
+          "representante_unico_desc": "Un seul parent ou tuteur effectue cette démarche (garde exclusive, décès, etc.)",
+          "motivo_representante_unico": "Motif du représentant unique",
+          "motivo_custodia_exclusiva": "Garde exclusive",
+          "motivo_fallecimiento": "Décès d'un parent",
+          "motivo_desconocido": "Parent inconnu",
+          "motivo_otro": "Autre motif",
+          "representante_1": "Représentant 1",
+          "representante_2": "Représentant 2",
+          "tipo_documento": "Type de document",
+          "numero_documento": "Numéro de document",
+          "validation_title": "Validation Croisée",
+          "validation_passed": "Validation réussie",
+          "validation_failed": "Validation échouée",
+          "blocking_error": "Erreur bloquante",
+          "document_mismatch": "Le numéro de document dans l'autorisation ne correspond pas au document téléchargé"
+        }
       }
     },
     "steps": {
