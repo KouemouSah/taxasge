@@ -196,11 +196,13 @@ async def get_appointment_locations(
     Returns up to 6 available slots, starting from the minimum delay date
     (7 business days by default). Considers both confirmed reservations
     AND active holds when calculating availability.
+
+    Migration 030: Now accepts entity_location_id (UUID) instead of location_name.
     """
 )
 async def get_available_slots(
     request_id: UUID,
-    location_name: str = Query(..., description="Location name (e.g., 'CNEDOGE Malabo')"),
+    entity_location_id: UUID = Query(..., description="FK to entity_locations table"),
     from_date: Optional[date] = Query(None, description="Start date (defaults to min delay date)"),
     limit: int = Query(6, ge=1, le=20, description="Max slots to return"),
     db: asyncpg.Connection = Depends(get_database),
@@ -224,6 +226,21 @@ async def get_available_slots(
     # Validate status allows appointment access
     validate_appointment_access(request['status'], "view appointment slots")
 
+    # Look up location_name from entity_locations table (migration 030)
+    location = await db.fetchrow("""
+        SELECT location_name, city
+        FROM entity_locations
+        WHERE id = $1 AND is_active = TRUE
+    """, entity_location_id)
+
+    if not location:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Entity location not found or inactive: {entity_location_id}"
+        )
+
+    location_name = location['location_name']
+
     # Get entity code
     entity_code = await appointment_service.get_entity_code_for_workflow(
         db, request['workflow_code']
@@ -245,7 +262,7 @@ async def get_available_slots(
             location_name=slot.location_name,
             location_address=slot.location_address,
             slots_remaining=slot.slots_remaining,
-            city=slot.city  # Include city for statistics (migration 029)
+            city=slot.city or location['city']  # Use location city as fallback
         )
         for slot in slots
     ]
