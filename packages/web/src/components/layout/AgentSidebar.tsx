@@ -208,7 +208,7 @@ export function AgentSidebar() {
   return (
     <aside
       className={cn(
-        'bg-white border-r border-gray-200 flex flex-col transition-all duration-300',
+        'h-full bg-white border-r border-gray-200 flex flex-col transition-all duration-300',
         collapsed ? 'w-16' : 'w-64'
       )}
     >
