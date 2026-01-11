@@ -101,6 +101,8 @@ interface WizardState {
   isMinor: boolean | null
   solicitudType: SolicitudType | null
   motivo: RenovacionMotivo | null
+  representanteUnico: boolean | null // For minors: true = single parent, false = both parents
+  motivoRepresentanteUnico: string | null // Reason for single representative
 }
 
 export default function PassportWizardPage() {
@@ -116,6 +118,8 @@ export default function PassportWizardPage() {
     isMinor: null,
     solicitudType: null,
     motivo: null,
+    representanteUnico: null,
+    motivoRepresentanteUnico: null,
   })
   // isSaving is kept for UI components but no longer set during step transitions
   // Step transitions are now synchronous (data stored locally, saved at final validation)
@@ -236,6 +240,8 @@ export default function PassportWizardPage() {
           isMinor: data.is_minor as boolean | null ?? null,
           solicitudType: data.solicitud_type as SolicitudType | null ?? null,
           motivo: data.motivo as RenovacionMotivo | null ?? null,
+          representanteUnico: data.representante_unico as boolean | null ?? null,
+          motivoRepresentanteUnico: data.motivo_representante_unico as string | null ?? null,
         })
       }
     }
@@ -255,17 +261,36 @@ export default function PassportWizardPage() {
       }
 
       // For DRAFT status, determine step from form data and documents
+      // Note: Step indices correspond to visibleSteps array which changes based on isMinor/solicitudType
       if (data) {
-        if (data.is_minor === undefined || data.is_minor === null) {
+        const isMinor = data.is_minor as boolean | null
+        const solicitudType = data.solicitud_type as string | null
+        const motivo = data.motivo as string | null
+        const representanteUnico = data.representante_unico as boolean | null
+
+        if (isMinor === undefined || isMinor === null) {
           setCurrentStepIndex(0) // is_minor step
-        } else if (!data.solicitud_type) {
+        } else if (!solicitudType) {
           setCurrentStepIndex(1) // select_type step
-        } else if (data.solicitud_type === 'RENOVACION' && !data.motivo) {
+        } else if (solicitudType === 'RENOVACION' && !motivo) {
           setCurrentStepIndex(2) // select_motivo step
+        } else if (isMinor && representanteUnico === null) {
+          // For minors: must complete representantes_legales before upload_documents
+          // Index depends on whether motivo step is visible
+          const repIndex = solicitudType === 'RENOVACION' ? 3 : 2
+          setCurrentStepIndex(repIndex) // representantes_legales step
         } else if (documents.length === 0) {
-          setCurrentStepIndex(3) // upload_documents step
+          // upload_documents step - index depends on visible steps
+          const uploadIndex = isMinor
+            ? (solicitudType === 'RENOVACION' ? 4 : 3)
+            : (solicitudType === 'RENOVACION' ? 3 : 2)
+          setCurrentStepIndex(uploadIndex)
         } else {
-          setCurrentStepIndex(4) // form_review_1 step
+          // form_review_1 step - index depends on visible steps
+          const formIndex = isMinor
+            ? (solicitudType === 'RENOVACION' ? 5 : 4)
+            : (solicitudType === 'RENOVACION' ? 4 : 3)
+          setCurrentStepIndex(formIndex)
         }
       } else {
         setCurrentStepIndex(0)
@@ -498,20 +523,23 @@ export default function PassportWizardPage() {
     setFormSaveError(null) // Clear previous errors
     try {
       // Merge extracted data with user edits
-      // IMPORTANT: Include wizardState values (solicitud_type, motivo, is_minor)
-      // These are needed for tariff calculation in backend
+      // IMPORTANT: Include wizardState values (solicitud_type, motivo, is_minor, representante_unico)
+      // These are needed for tariff calculation and workflow processing in backend
       const dataToSave = {
         ...formData.extractedData,
         ...formData.formData,
         ...editedFormData,
-        // Add wizard selections for tariff calculation
+        // Add wizard selections for tariff calculation and workflow
         solicitud_type: wizardState.solicitudType,
         motivo: wizardState.motivo,
         is_minor: wizardState.isMinor,
+        // Minor-specific: representative info (null for adults)
+        representante_unico: wizardState.representanteUnico,
+        motivo_representante_unico: wizardState.motivoRepresentanteUnico,
       }
 
       // Step 2 of 2-step flow: Validate and save each document preview to DB
-      // Only do this on the LAST form review step to avoid duplicate saves
+      // Only do this on form_review_2 (the LAST form review step for both adults and minors)
       // CRITICAL: If any document fails to save, the entire operation fails
       if (stepId === 'form_review_2' && Object.keys(documentPreviews).length > 0) {
         console.log('[Wizard] Validating and saving documents to DB...')
@@ -1070,15 +1098,30 @@ export default function PassportWizardPage() {
       {currentStep.id === 'representantes_legales' && (
         <RepresentantesLegalesStep
           locale={locale}
-          formData={formData?.formData ?? null}
-          onSave={(data) => {
-            console.log('[Wizard] RepresentantesLegales onSave:', data)
+          representanteUnico={wizardState.representanteUnico}
+          motivoRepresentanteUnico={wizardState.motivoRepresentanteUnico}
+          onSave={(representanteUnico, motivoRepresentanteUnico) => {
+            console.log('[Wizard] RepresentantesLegales onSave:', { representanteUnico, motivoRepresentanteUnico })
+            // Store in wizardState for immediate use
+            setWizardState(prev => ({
+              ...prev,
+              representanteUnico,
+              motivoRepresentanteUnico,
+            }))
+            // Also store in formData for later DB persistence
             setFormData(prev => {
               const newFormData = prev ? {
                 ...prev,
-                formData: { ...prev.formData, ...data }
+                formData: {
+                  ...prev.formData,
+                  representante_unico: representanteUnico,
+                  motivo_representante_unico: motivoRepresentanteUnico,
+                }
               } : {
-                formData: data,
+                formData: {
+                  representante_unico: representanteUnico,
+                  motivo_representante_unico: motivoRepresentanteUnico,
+                },
                 extractedData: {},
                 requiresReview: true,
                 completionPercentage: 0,
@@ -1100,7 +1143,7 @@ export default function PassportWizardPage() {
           isMinor={wizardState.isMinor || false}
           solicitudType={wizardState.solicitudType}
           motivo={wizardState.motivo}
-          representanteUnico={formData?.formData?.representante_unico as boolean | null ?? null}
+          representanteUnico={wizardState.representanteUnico}
           documents={documents}
           documentPreviews={documentPreviews}
           isUploadingDocument={isUploadingDocument}
@@ -1137,18 +1180,18 @@ export default function PassportWizardPage() {
           onNext={async () => {
             const success = await handleSaveFormReview(currentStep.id)
             if (success) {
-              // If completing form_review_2 and NOT minor, prepare for payment
-              // For minors, they go to form_review_representantes first
-              if (currentStep.id === 'form_review_2' && !wizardState.isMinor) {
-                console.log('[Wizard] Form review complete (adult), preparing for payment...')
+              // form_review_2 is the LAST form review step for EVERYONE (adults and minors)
+              // Minors go through form_review_representantes BEFORE this step
+              if (currentStep.id === 'form_review_2') {
+                console.log('[Wizard] Form review complete, preparing for payment...')
                 const prepared = await prepareForPayment()
                 if (!prepared) {
                   console.error('[Wizard] Failed to prepare for payment')
                   setFormSaveError(
                     locale === 'es'
-                      ? 'Error al preparar el pago. Verifique que todos los documentos esten validados.'
+                      ? 'Error al preparar el pago. Verifique que todos los documentos estén validados.'
                       : locale === 'fr'
-                        ? 'Erreur lors de la preparation du paiement. Verifiez que tous les documents sont valides.'
+                        ? 'Erreur lors de la préparation du paiement. Vérifiez que tous les documents sont validés.'
                         : 'Error preparing payment. Verify all documents are validated.'
                   )
                   return
@@ -1164,23 +1207,19 @@ export default function PassportWizardPage() {
       )}
 
       {/* Step for minors: Review legal representatives data + cross-validation results */}
+      {/* This is BEFORE form_review_2 - no persistence here, just validation display */}
       {currentStep.id === 'form_review_representantes' && (
         <FormReviewRepresentantesStep
           locale={locale}
           formData={formData?.formData ?? null}
           documentPreviews={documentPreviews}
-          onNext={async () => {
-            // Prepare for payment after validating representatives
-            console.log('[Wizard] Form review representantes complete (minor), preparing for payment...')
-            const prepared = await prepareForPayment()
-            if (!prepared) {
-              console.error('[Wizard] Failed to prepare for payment')
-              return
-            }
+          isSaving={false}
+          saveError={null}
+          onNext={() => {
+            console.log('[Wizard] Form review representantes complete, advancing to form_review_2...')
             setCurrentStepIndex(prev => prev + 1)
           }}
           onBack={handleBack}
-          isSaving={isSaving}
         />
       )}
 
@@ -2711,24 +2750,26 @@ function ConfirmationStepImproved({ locale, requestId, tariff, summary, notifica
 
 interface RepresentantesLegalesStepProps {
   locale: string
-  formData: Record<string, unknown> | null
-  onSave: (data: Record<string, unknown>) => void
+  representanteUnico: boolean | null
+  motivoRepresentanteUnico: string | null
+  onSave: (representanteUnico: boolean, motivoRepresentanteUnico: string | null) => void
   onBack: () => void
   isSaving: boolean
 }
 
 function RepresentantesLegalesStep({
   locale,
-  formData,
+  representanteUnico: initialRepresentanteUnico,
+  motivoRepresentanteUnico: initialMotivoRepresentanteUnico,
   onSave,
   onBack,
   isSaving,
 }: RepresentantesLegalesStepProps) {
   const [representanteUnico, setRepresentanteUnico] = useState<boolean>(
-    formData?.representante_unico as boolean ?? false
+    initialRepresentanteUnico ?? false
   )
   const [motivoRepresentanteUnico, setMotivoRepresentanteUnico] = useState<string>(
-    formData?.motivo_representante_unico as string ?? ''
+    initialMotivoRepresentanteUnico ?? ''
   )
 
   const motivoOptions = [
@@ -2739,10 +2780,10 @@ function RepresentantesLegalesStep({
   ]
 
   const handleContinue = () => {
-    onSave({
-      representante_unico: representanteUnico,
-      motivo_representante_unico: representanteUnico ? motivoRepresentanteUnico : null,
-    })
+    onSave(
+      representanteUnico,
+      representanteUnico ? motivoRepresentanteUnico : null
+    )
   }
 
   return (
@@ -2869,6 +2910,7 @@ interface FormReviewRepresentantesStepProps {
   onNext: () => void
   onBack: () => void
   isSaving: boolean
+  saveError: string | null
 }
 
 function FormReviewRepresentantesStep({
@@ -2878,6 +2920,7 @@ function FormReviewRepresentantesStep({
   onNext,
   onBack,
   isSaving,
+  saveError,
 }: FormReviewRepresentantesStepProps) {
   // Get parental authorization validation results from formData
   const parentalValidation = formData?.parental_authorization_validation as {
@@ -3015,6 +3058,14 @@ function FormReviewRepresentantesStep({
           </div>
         )}
 
+        {/* Save error display */}
+        {saveError && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{saveError}</AlertDescription>
+          </Alert>
+        )}
+
         {/* Navigation buttons */}
         <div className="flex justify-between pt-4">
           <Button variant="outline" onClick={onBack} disabled={isSaving}>
@@ -3025,8 +3076,7 @@ function FormReviewRepresentantesStep({
             onClick={onNext}
             disabled={isSaving || !crossValidationPassed}
           >
-            {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {locale === 'es' ? 'Continuar al Pago' : locale === 'fr' ? 'Continuer au Paiement' : 'Continue to Payment'}
+            {locale === 'es' ? 'Continuar' : locale === 'fr' ? 'Continuer' : 'Continue'}
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </div>
