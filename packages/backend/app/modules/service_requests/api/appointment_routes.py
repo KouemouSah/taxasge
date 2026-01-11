@@ -138,11 +138,11 @@ async def get_appointment_locations(
 
     # Get locations from entity_locations table via appointment_slot_configs FK
     # Migration 030 moved location data to entity_locations table
+    # Note: location_code is generated dynamically (not stored in DB)
     rows = await db.fetch("""
         SELECT DISTINCT ON (el.city, el.location_name)
             el.id,
             el.entity_code,
-            el.location_code,
             el.location_name,
             el.location_address,
             el.city,
@@ -162,7 +162,7 @@ async def get_appointment_locations(
         EntityLocationResponse(
             id=row['id'],
             entity_code=row['entity_code'],
-            location_code=row['location_code'] or f"{row['entity_code']}_{row['city']}".upper(),
+            location_code=f"{row['entity_code']}_{row['city']}".upper(),  # Generated: CNEDOGE_MALABO
             location_name=row['location_name'],
             city=row['city'],
             province=row['city'],  # Province = city for GE (Malabo/Bata are provinces)
