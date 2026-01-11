@@ -51,7 +51,7 @@ import {
   MapPin,
   CalendarCheck,
   RefreshCw,
-  ExternalLink,
+  Download,
 } from 'lucide-react'
 import {
   useServiceRequests,
@@ -479,11 +479,11 @@ export default function ServiceRequestDetailPage() {
       )}
 
       {/* Main Content Tabs */}
+      {/* Note: Tariff tab removed - tariff is displayed in Aperçu section (PassportDataSummary) */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">{t('overview')}</TabsTrigger>
           <TabsTrigger value="documents">{t('documents_tab')}</TabsTrigger>
-          <TabsTrigger value="payment">{t('tariff') || 'Pago'}</TabsTrigger>
           {currentRequest.status === 'CITA_SCHEDULED' && (
             <TabsTrigger value="appointment">{t('schedule_appointment') || 'Cita'}</TabsTrigger>
           )}
@@ -510,7 +510,18 @@ export default function ServiceRequestDetailPage() {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">{t('sub_type') || 'Tipo'}</p>
-                    <p className="font-medium">{currentRequest.subType || 'Expedición'}</p>
+                    <p className="font-medium">
+                      {(() => {
+                        const typeValue = currentRequest.subType || (currentRequest.formData as Record<string, unknown>)?.solicitud_type
+                        const typeLabels: Record<string, Record<string, string>> = {
+                          EXPEDICION: { es: 'Nueva Expedición', fr: 'Nouvelle Émission', en: 'New Issuance' },
+                          expedicion: { es: 'Nueva Expedición', fr: 'Nouvelle Émission', en: 'New Issuance' },
+                          RENOVACION: { es: 'Renovación', fr: 'Renouvellement', en: 'Renewal' },
+                          renovacion: { es: 'Renovación', fr: 'Renouvellement', en: 'Renewal' },
+                        }
+                        return typeLabels[String(typeValue)]?.[locale] || String(typeValue || 'Expedición')
+                      })()}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">{t('created') || 'Creado'}</p>
@@ -559,7 +570,7 @@ export default function ServiceRequestDetailPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle>{t('documents')}</CardTitle>
+                <CardTitle>{t('documents_tab')}</CardTitle>
                 <CardDescription>
                   {documents.length} {t('documents_uploaded')}
                 </CardDescription>
@@ -609,10 +620,22 @@ export default function ServiceRequestDetailPage() {
                           {doc.extractionStatus}
                         </Badge>
                         {doc.fileUrl && (
-                          <Button variant="ghost" size="sm" asChild>
-                            <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
-                              <ExternalLink className="h-4 w-4" />
-                            </a>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              // Trigger download with proper filename
+                              const link = document.createElement('a')
+                              link.href = doc.fileUrl!
+                              link.download = doc.fileName || 'document'
+                              link.target = '_blank'
+                              document.body.appendChild(link)
+                              link.click()
+                              document.body.removeChild(link)
+                            }}
+                          >
+                            <Download className="h-4 w-4 mr-1" />
+                            {locale === 'es' ? 'Descargar' : locale === 'fr' ? 'Télécharger' : 'Download'}
                           </Button>
                         )}
                       </div>
@@ -624,62 +647,7 @@ export default function ServiceRequestDetailPage() {
           </Card>
         </TabsContent>
 
-        {/* Payment Tab */}
-        <TabsContent value="payment" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
-                {t('tariff')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {tariff ? (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">{t('payment.base_tariff')}</span>
-                      <span className="font-medium">{formatAmount(tariff.baseAmount)}</span>
-                    </div>
-                    {tariff.additionalFees?.map((fee, index) => (
-                      <div key={index} className="flex justify-between">
-                        <span className="text-muted-foreground">{fee.nameEs || fee.code}</span>
-                        <span className="font-medium">{formatAmount(fee.amount)}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between text-lg font-bold">
-                    <span>Total</span>
-                    <span>{formatAmount(tariff.totalAmount)}</span>
-                  </div>
-
-                  {['PAYMENT_PENDING', 'DOSSIER_VALIDE'].includes(currentRequest.status) && (
-                    <Button className="w-full mt-4">
-                      <CreditCard className="mr-2 h-4 w-4" />
-                      {t('payment.pay_now')}
-                    </Button>
-                  )}
-
-                  {currentRequest.status === 'PAID' && (
-                    <Alert className="mt-4 border-green-500 bg-green-50">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                      <AlertTitle className="text-green-700">Pago completado</AlertTitle>
-                      <AlertDescription className="text-green-600">
-                        Tu pago ha sido procesado exitosamente.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Calculando tarifa...</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {/* Payment Tab removed - tariff is displayed in Aperçu section (PassportDataSummary) */}
 
         {/* Appointment Tab */}
         {currentRequest.status === 'CITA_SCHEDULED' && (
@@ -1040,9 +1008,9 @@ function PassportDataSummary({ formData, locale, tariff }: PassportDataSummaryPr
   }
 
   // Group fields by section
-  const applicantFields = ['is_minor']
-  const typeFields = ['solicitud_type']
-  const motivoFields = ['renovacion_motivo']
+  // Note: solicitud_type is shown in Aperçu block, not here (avoid redundancy)
+  // Note: renovacion_motivo is merged with applicant section
+  const applicantFields = ['is_minor', 'renovacion_motivo']
   const personalFields = ['apellidos', 'nombres', 'fecha_nacimiento', 'lugar_nacimiento', 'sexo', 'estado_civil', 'profesion', 'numero_dip', 'numero_pasaporte_anterior']
   const contactFields = ['telefono', 'email', 'direccion']
 
@@ -1071,10 +1039,9 @@ function PassportDataSummary({ formData, locale, tariff }: PassportDataSummaryPr
 
   return (
     <div className="grid gap-4">
-      {/* Applicant & Type Section */}
+      {/* Applicant Section (includes motif when RENOVACION) */}
+      {/* Note: Type de demande is shown in Aperçu block, removed here to avoid redundancy */}
       {renderFieldGroup(applicantFields, getLabel('applicant'))}
-      {renderFieldGroup(typeFields, getLabel('requestType'))}
-      {formData.solicitud_type === 'RENOVACION' && renderFieldGroup(motivoFields, getLabel('reason'))}
 
       {/* Personal Data Section */}
       {renderFieldGroup(personalFields, getLabel('personalData'))}
