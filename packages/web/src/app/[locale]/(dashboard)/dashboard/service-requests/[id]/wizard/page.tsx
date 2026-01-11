@@ -1072,15 +1072,20 @@ export default function PassportWizardPage() {
           locale={locale}
           formData={formData?.formData ?? null}
           onSave={(data) => {
-            setFormData(prev => prev ? {
-              ...prev,
-              formData: { ...prev.formData, ...data }
-            } : {
-              formData: data,
-              extractedData: {},
-              requiresReview: true,
-              completionPercentage: 0,
-              missingFields: []
+            console.log('[Wizard] RepresentantesLegales onSave:', data)
+            setFormData(prev => {
+              const newFormData = prev ? {
+                ...prev,
+                formData: { ...prev.formData, ...data }
+              } : {
+                formData: data,
+                extractedData: {},
+                requiresReview: true,
+                completionPercentage: 0,
+                missingFields: []
+              }
+              console.log('[Wizard] New formData after representantes:', newFormData)
+              return newFormData
             })
             setCurrentStepIndex(prev => prev + 1)
           }}
@@ -1583,8 +1588,12 @@ function DocumentsStepImproved({
   onBack,
   isLocked = false,
 }: DocumentsStepImprovedProps) {
+  // Debug log to trace representanteUnico value
+  console.log('[Wizard] DocumentsStepImproved props:', { isMinor, solicitudType, motivo, representanteUnico })
+
   const getDocumentRequirements = (): DocumentRequirement[] => {
     const requirements: DocumentRequirement[] = []
+    console.log('[Wizard] getDocumentRequirements called with representanteUnico:', representanteUnico)
 
     // Identity document: DIP for adults, Certificado de Nacimiento for minors
     if (isMinor) {
