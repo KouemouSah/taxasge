@@ -1095,6 +1095,7 @@ export default function PassportWizardPage() {
           isMinor={wizardState.isMinor || false}
           solicitudType={wizardState.solicitudType}
           motivo={wizardState.motivo}
+          representanteUnico={formData?.formData?.representante_unico as boolean | null ?? null}
           documents={documents}
           documentPreviews={documentPreviews}
           isUploadingDocument={isUploadingDocument}
@@ -1556,6 +1557,7 @@ interface DocumentsStepImprovedProps {
   isMinor: boolean
   solicitudType: SolicitudType | null
   motivo: RenovacionMotivo | null
+  representanteUnico: boolean | null // For minors: true = single parent/guardian, false = both parents
   documents: ServiceRequestDocument[]
   documentPreviews: Record<string, DocumentExtractionPreview>
   isUploadingDocument: string | null
@@ -1571,6 +1573,7 @@ function DocumentsStepImproved({
   isMinor,
   solicitudType,
   motivo,
+  representanteUnico,
   documents,
   documentPreviews,
   isUploadingDocument,
@@ -1661,26 +1664,47 @@ function DocumentsStepImproved({
 
     // Minor-specific documents
     if (isMinor) {
+      // Parental authorization
       requirements.push({
         documentCode: 'autorizacion_parental',
-        documentNameEs: 'Autorizacion Parental',
+        documentNameEs: 'Autorización Parental',
         isRequired: true,
         displayOrder: 5,
         conditionType: DocumentConditionType.CUSTOM,
         conditionValue: { is_minor: true },
-        instructionsEs: 'Autorizacion firmada por ambos padres o tutor legal',
+        instructionsEs: representanteUnico
+          ? 'Autorización firmada por el representante único (padre, madre o tutor legal)'
+          : 'Autorización firmada por AMBOS padres o tutores legales',
         acceptedFormats: ['pdf', 'jpg', 'jpeg', 'png'],
       })
+
+      // Representative 1 identity document (always required for minors)
       requirements.push({
-        documentCode: 'dip_padre_tutor',
-        documentNameEs: 'DIP del Padre, Madre o Tutor',
+        documentCode: 'documento_representante_1',
+        documentNameEs: representanteUnico
+          ? 'Documento de Identidad del Representante'
+          : 'Documento de Identidad - Representante 1 (Padre/Madre/Tutor)',
         isRequired: true,
         displayOrder: 6,
         conditionType: DocumentConditionType.CUSTOM,
         conditionValue: { is_minor: true },
-        instructionsEs: 'DIP del padre, madre o tutor legal',
+        instructionsEs: 'DIP, NIE o Pasaporte vigente del representante legal',
         acceptedFormats: ['pdf', 'jpg', 'jpeg', 'png'],
       })
+
+      // Representative 2 identity document (only when both parents required)
+      if (representanteUnico === false) {
+        requirements.push({
+          documentCode: 'documento_representante_2',
+          documentNameEs: 'Documento de Identidad - Representante 2 (Padre/Madre/Tutor)',
+          isRequired: true,
+          displayOrder: 7,
+          conditionType: DocumentConditionType.CUSTOM,
+          conditionValue: { is_minor: true, representante_unico: false },
+          instructionsEs: 'DIP, NIE o Pasaporte vigente del segundo representante legal',
+          acceptedFormats: ['pdf', 'jpg', 'jpeg', 'png'],
+        })
+      }
     }
 
     return requirements.sort((a, b) => a.displayOrder - b.displayOrder)
