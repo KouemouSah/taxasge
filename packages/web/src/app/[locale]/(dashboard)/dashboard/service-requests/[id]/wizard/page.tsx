@@ -54,6 +54,8 @@ import {
   Bell,
   Building2,
   Clock,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 import {
   useServiceRequests,
@@ -88,7 +90,7 @@ import { PaymentMethod } from '@/types/payment'
 // Use shared constants from types/index.ts
 // NOTE: WIZARD_STEPS is now computed dynamically based on isMinor and solicitudType
 // See the useMemo hook below for the actual visible steps
-const ALL_STEPS = PASSPORT_WIZARD_STEPS
+const _ALL_STEPS = PASSPORT_WIZARD_STEPS
 const TARIFFS = PASSPORT_TARIFFS
 
 // Solicitud types - Use shared types
@@ -1068,9 +1070,18 @@ export default function PassportWizardPage() {
       {currentStep.id === 'representantes_legales' && (
         <RepresentantesLegalesStep
           locale={locale}
-          formData={formData}
+          formData={formData?.formData ?? null}
           onSave={(data) => {
-            setFormData(prev => ({ ...prev, ...data }))
+            setFormData(prev => prev ? {
+              ...prev,
+              formData: { ...prev.formData, ...data }
+            } : {
+              formData: data,
+              extractedData: {},
+              requiresReview: true,
+              completionPercentage: 0,
+              missingFields: []
+            })
             setCurrentStepIndex(prev => prev + 1)
           }}
           onBack={handleBack}
@@ -1150,7 +1161,7 @@ export default function PassportWizardPage() {
       {currentStep.id === 'form_review_representantes' && (
         <FormReviewRepresentantesStep
           locale={locale}
-          formData={formData}
+          formData={formData?.formData ?? null}
           documentPreviews={documentPreviews}
           onNext={async () => {
             // Prepare for payment after validating representatives
@@ -2913,8 +2924,8 @@ function FormReviewRepresentantesStep({
               <div className="col-span-2">
                 <span className="text-muted-foreground">{locale === 'es' ? 'N° Documento (subido)' : 'Doc # (uploaded)'}:</span>
                 <span className="ml-2 font-mono">
-                  {(rep1Preview.extraction?.documento?.numero_dip ||
-                    rep1Preview.extraction?.documento?.numero_nie ||
+                  {((rep1Preview.extraction?.documento as Record<string, unknown>)?.numero_dip ||
+                    (rep1Preview.extraction?.documento as Record<string, unknown>)?.numero_nie ||
                     rep1Preview.extraction?.numero_documento) as string || '-'}
                 </span>
               </div>
@@ -2945,8 +2956,8 @@ function FormReviewRepresentantesStep({
                 <div className="col-span-2">
                   <span className="text-muted-foreground">{locale === 'es' ? 'N° Documento (subido)' : 'Doc # (uploaded)'}:</span>
                   <span className="ml-2 font-mono">
-                    {(rep2Preview.extraction?.documento?.numero_dip ||
-                      rep2Preview.extraction?.documento?.numero_nie ||
+                    {((rep2Preview.extraction?.documento as Record<string, unknown>)?.numero_dip ||
+                      (rep2Preview.extraction?.documento as Record<string, unknown>)?.numero_nie ||
                       rep2Preview.extraction?.numero_documento) as string || '-'}
                   </span>
                 </div>
