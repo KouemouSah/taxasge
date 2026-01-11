@@ -392,7 +392,13 @@ class BangeProcessor(PaymentProcessorBase):
         payment_id: str,
         paid_at: datetime
     ) -> None:
-        """Mark payment as completed."""
+        """
+        Mark payment as completed.
+
+        Updates both service_payments AND service_requests tables
+        to keep status in sync for frontend polling.
+        """
+        # 1. Update service_payments
         query = """
             UPDATE service_payments
             SET status = 'completed',
@@ -400,8 +406,29 @@ class BangeProcessor(PaymentProcessorBase):
                 paid_at = $2,
                 updated_at = NOW()
             WHERE id = $1
+            RETURNING service_request_id
         """
-        await db.execute(query, payment_id, paid_at)
+        result = await db.fetchrow(query, payment_id, paid_at)
+
+        # 2. Update service_requests for frontend polling consistency
+        # Critical: checkPaymentStatus endpoint reads from service_requests
+        if result and result["service_request_id"]:
+            await db.execute(
+                """
+                UPDATE service_requests
+                SET payment_status = 'completed',
+                    status = 'PAID',
+                    paid_at = $2,
+                    updated_at = NOW()
+                WHERE id = $1
+                """,
+                result["service_request_id"],
+                paid_at
+            )
+            logger.info(
+                f"BANGE payment {payment_id} completed - "
+                f"service_request {result['service_request_id']} status=PAID"
+            )
 
     async def _get_payment(
         self,
