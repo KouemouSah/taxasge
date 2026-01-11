@@ -851,13 +851,11 @@ export default function PassportWizardPage() {
             actionType: result.actionType,
             isManualPayment: true,
           })
-          // For manual payments, stop processing immediately - no polling needed
-          // Payment will be validated by treasury agent
+          // Stop the "processing" spinner but keep showing waiting state
           setIsProcessingPayment(false)
           console.log('[Payment] Manual payment registered, reference:', result.paymentReference)
-          // Don't poll - the user will proceed to appointment step
-          // Agent will validate the payment in treasury dashboard
-          return
+          // Continue polling to check when agent validates the payment
+          // User cannot proceed to appointment until payment is validated (status=PAID)
         }
 
         // For BANGE electronic payments, redirect to payment page
@@ -867,7 +865,8 @@ export default function PassportWizardPage() {
           window.open(result.redirectUrl, '_blank')
         }
 
-        // Start polling for payment status (only for electronic payments like BANGE)
+        // Start polling for payment status (for ALL payments - electronic and manual)
+        // Manual payments need polling to detect when agent validates
         paymentPollRef.current = setInterval(async () => {
           try {
             const status = await checkPaymentStatus()
@@ -877,21 +876,26 @@ export default function PassportWizardPage() {
               }
               setPaymentComplete(true)
               setIsProcessingPayment(false)
-              setPendingPaymentResult(null)
-              setCurrentStepIndex(7) // Go to appointment (index 7 after validation step removal)
+              // Don't auto-advance for manual payments - let user click continue
+              if (!isManualPayment) {
+                setCurrentStepIndex(7) // Go to appointment (index 7 after validation step removal)
+              }
             }
           } catch (err) {
             console.error('Payment status check failed:', err)
           }
-        }, 3000) // Poll every 3 seconds
+        }, 5000) // Poll every 5 seconds (less aggressive for manual payments)
 
-        // Stop polling after 10 minutes (increased from 5 for BANGE payments)
+        // Stop polling after 30 minutes for manual payments (agent may take time)
+        const pollTimeout = isManualPayment ? 1800000 : 600000 // 30 min vs 10 min
         setTimeout(() => {
           if (paymentPollRef.current) {
             clearInterval(paymentPollRef.current)
-            setIsProcessingPayment(false)
+            if (!isManualPayment) {
+              setIsProcessingPayment(false)
+            }
           }
-        }, 600000)
+        }, pollTimeout)
       }
     } catch (err) {
       console.error('Payment failed:', err)
@@ -2239,23 +2243,34 @@ function PaymentStepImproved({
           </div>
         )}
 
-        {/* Cash/Check Payment Result - Show even when not processing */}
+        {/* Cash/Check Payment Result - Show when manual payment initiated */}
         {pendingPaymentResult?.isManualPayment && !isProcessing && (
           <div className="space-y-4">
-            {/* Success Alert */}
-            <Alert className="border-green-200 bg-green-50">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-700">
-                {locale === 'es' ? 'Pago registrado exitosamente.' :
-                 locale === 'fr' ? 'Paiement enregistre avec succes.' :
-                 'Payment registered successfully.'}
-              </AlertDescription>
-            </Alert>
+            {/* Status Alert - Changes based on paymentComplete */}
+            {paymentComplete ? (
+              <Alert className="border-green-200 bg-green-50">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-700 font-medium">
+                  {locale === 'es' ? 'Pago validado! Puede continuar a reservar su cita.' :
+                   locale === 'fr' ? 'Paiement valide! Vous pouvez continuer a reserver votre rendez-vous.' :
+                   'Payment validated! You can now book your appointment.'}
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <Alert className="border-amber-200 bg-amber-50">
+                <Clock className="h-4 w-4 text-amber-600 animate-pulse" />
+                <AlertDescription className="text-amber-700 font-medium">
+                  {locale === 'es' ? 'Pago en espera de validacion...' :
+                   locale === 'fr' ? 'Paiement en attente de validation...' :
+                   'Payment awaiting validation...'}
+                </AlertDescription>
+              </Alert>
+            )}
 
             {/* Reference Number Display */}
-            <Alert className="border-amber-200 bg-amber-50">
-              <Building2 className="h-4 w-4 text-amber-600" />
-              <AlertDescription className="text-amber-800 space-y-2">
+            <Alert className="border-gray-200 bg-gray-50">
+              <Building2 className="h-4 w-4 text-gray-600" />
+              <AlertDescription className="text-gray-800 space-y-2">
                 <p className="font-medium">
                   {locale === 'es' ? 'Referencia de Pago:' :
                    locale === 'fr' ? 'Reference de paiement:' :
@@ -2267,31 +2282,33 @@ function PaymentStepImproved({
               </AlertDescription>
             </Alert>
 
-            {/* Instructions */}
-            <Alert className="border-blue-200 bg-blue-50">
-              <Clock className="h-4 w-4 text-blue-600" />
-              <AlertDescription className="text-blue-700">
-                {locale === 'es' ? (
-                  <>
-                    <p className="font-medium mb-1">Instrucciones:</p>
-                    <p>Presente este comprobante en la oficina del Tesoro junto con el monto de <strong>{tariff.toLocaleString()} XAF</strong>.</p>
-                    <p className="mt-2 text-sm">Puede continuar a reservar su cita mientras se valida el pago.</p>
-                  </>
-                ) : locale === 'fr' ? (
-                  <>
-                    <p className="font-medium mb-1">Instructions:</p>
-                    <p>Presentez ce recu au bureau du Tresor avec le montant de <strong>{tariff.toLocaleString()} XAF</strong>.</p>
-                    <p className="mt-2 text-sm">Vous pouvez continuer a reserver votre rendez-vous pendant la validation.</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="font-medium mb-1">Instructions:</p>
-                    <p>Present this receipt at the Treasury office with the amount of <strong>{tariff.toLocaleString()} XAF</strong>.</p>
-                    <p className="mt-2 text-sm">You can continue to book your appointment while payment is validated.</p>
-                  </>
-                )}
-              </AlertDescription>
-            </Alert>
+            {/* Instructions - Only show when NOT yet validated */}
+            {!paymentComplete && (
+              <Alert className="border-blue-200 bg-blue-50">
+                <AlertCircle className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-700">
+                  {locale === 'es' ? (
+                    <>
+                      <p className="font-medium mb-1">Instrucciones:</p>
+                      <p>Presente este comprobante en la oficina del Tesoro junto con el monto de <strong>{tariff.toLocaleString()} XAF</strong>.</p>
+                      <p className="mt-2 text-sm font-medium">Un agente del Tesoro validara su pago. Solo entonces podra reservar su cita.</p>
+                    </>
+                  ) : locale === 'fr' ? (
+                    <>
+                      <p className="font-medium mb-1">Instructions:</p>
+                      <p>Presentez ce recu au bureau du Tresor avec le montant de <strong>{tariff.toLocaleString()} XAF</strong>.</p>
+                      <p className="mt-2 text-sm font-medium">Un agent du Tresor validera votre paiement. Ce n'est qu'apres validation que vous pourrez prendre rendez-vous.</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-medium mb-1">Instructions:</p>
+                      <p>Present this receipt at the Treasury office with the amount of <strong>{tariff.toLocaleString()} XAF</strong>.</p>
+                      <p className="mt-2 text-sm font-medium">A Treasury agent will validate your payment. Only then can you book your appointment.</p>
+                    </>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
         )}
 
@@ -2307,18 +2324,34 @@ function PaymentStepImproved({
 
         {/* Action Buttons */}
         <div className="flex justify-between pt-4">
-          <Button variant="outline" onClick={onBack} disabled={isProcessing}>
+          <Button variant="outline" onClick={onBack} disabled={isProcessing || (pendingPaymentResult?.isManualPayment && !paymentComplete)}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             {t.back}
           </Button>
-          {pendingPaymentResult?.isManualPayment && !isProcessing ? (
-            // Cash payment: Show continue button
-            <Button onClick={onNext}>
-              {locale === 'es' ? 'Continuar a la Cita' : locale === 'fr' ? 'Continuer au Rendez-vous' : 'Continue to Appointment'}
-              <ArrowRight className="ml-2 h-4 w-4" />
+          {pendingPaymentResult?.isManualPayment ? (
+            // Manual payment (cash/check): Show continue button - DISABLED until payment validated
+            <Button
+              onClick={onNext}
+              disabled={!paymentComplete}
+              className={!paymentComplete ? 'opacity-50 cursor-not-allowed' : ''}
+            >
+              {!paymentComplete ? (
+                <>
+                  <Clock className="mr-2 h-4 w-4 animate-pulse" />
+                  {locale === 'es' ? 'Esperando validacion...' :
+                   locale === 'fr' ? 'En attente de validation...' :
+                   'Waiting for validation...'}
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  {locale === 'es' ? 'Continuar a la Cita' : locale === 'fr' ? 'Continuer au Rendez-vous' : 'Continue to Appointment'}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </>
+              )}
             </Button>
           ) : (
-            // Normal pay button
+            // Electronic payment: Normal pay button
             <Button onClick={onPay} disabled={!canPay || isProcessing}>
               {isProcessing ? (
                 <>
