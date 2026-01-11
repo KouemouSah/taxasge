@@ -851,6 +851,13 @@ export default function PassportWizardPage() {
             actionType: result.actionType,
             isManualPayment: true,
           })
+          // For manual payments, stop processing immediately - no polling needed
+          // Payment will be validated by treasury agent
+          setIsProcessingPayment(false)
+          console.log('[Payment] Manual payment registered, reference:', result.paymentReference)
+          // Don't poll - the user will proceed to appointment step
+          // Agent will validate the payment in treasury dashboard
+          return
         }
 
         // For BANGE electronic payments, redirect to payment page
@@ -860,7 +867,7 @@ export default function PassportWizardPage() {
           window.open(result.redirectUrl, '_blank')
         }
 
-        // Start polling for payment status (works for both BANGE and manual payments)
+        // Start polling for payment status (only for electronic payments like BANGE)
         paymentPollRef.current = setInterval(async () => {
           try {
             const status = await checkPaymentStatus()
