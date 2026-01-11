@@ -1583,27 +1583,43 @@ function DocumentsStepImproved({
   const getDocumentRequirements = (): DocumentRequirement[] => {
     const requirements: DocumentRequirement[] = []
 
-    // DIP - Always required
-    requirements.push({
-      documentCode: 'dip',
-      documentNameEs: 'Documento de Identidad Personal (DIP)',
-      schemaKey: 'DIP_GQ_V2',
-      isRequired: true,
-      displayOrder: 1,
-      conditionType: DocumentConditionType.ALWAYS,
-      instructionsEs: 'Escanee ambas caras de su DIP vigente',
-      acceptedFormats: ['pdf', 'jpg', 'jpeg', 'png'],
-    })
+    // Identity document: DIP for adults, Certificado de Nacimiento for minors
+    if (isMinor) {
+      // Minors don't have DIP - they use birth certificate as identity document
+      requirements.push({
+        documentCode: 'certificado_nacimiento',
+        documentNameEs: 'Certificado de Nacimiento',
+        isRequired: true,
+        displayOrder: 1,
+        conditionType: DocumentConditionType.CUSTOM,
+        conditionValue: { is_minor: true },
+        instructionsEs: 'Certificación literal de inscripción de nacimiento del menor',
+        acceptedFormats: ['pdf', 'jpg', 'jpeg', 'png'],
+      })
+    } else {
+      // Adults use DIP
+      requirements.push({
+        documentCode: 'dip',
+        documentNameEs: 'Documento de Identidad Personal (DIP)',
+        schemaKey: 'DIP_GQ_V2',
+        isRequired: true,
+        displayOrder: 1,
+        conditionType: DocumentConditionType.ALWAYS,
+        instructionsEs: 'Escanee ambas caras de su DIP vigente',
+        acceptedFormats: ['pdf', 'jpg', 'jpeg', 'png'],
+      })
+    }
 
-    // Type-specific documents
-    if (solicitudType === 'EXPEDICION') {
+    // Type-specific documents (adults only for EXPEDICION birth certificate)
+    if (solicitudType === 'EXPEDICION' && !isMinor) {
+      // Adults doing first-time passport also need birth certificate
       requirements.push({
         documentCode: 'certificado_nacimiento',
         documentNameEs: 'Certificado de Nacimiento',
         isRequired: true,
         displayOrder: 2,
         conditionType: DocumentConditionType.IS_NEW,
-        instructionsEs: 'Certificacion literal de inscripcion de nacimiento',
+        instructionsEs: 'Certificación literal de inscripción de nacimiento',
         acceptedFormats: ['pdf', 'jpg', 'jpeg', 'png'],
       })
     } else if (solicitudType === 'RENOVACION' && motivo) {
