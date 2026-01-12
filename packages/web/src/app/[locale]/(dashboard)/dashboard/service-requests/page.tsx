@@ -694,7 +694,7 @@ export default function ServiceRequestsPage() {
 
           {/* Pagination */}
           {pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4">
               <p className="text-sm text-muted-foreground">
                 {t('showing_of', {
                   start: (pagination.page - 1) * pagination.pageSize + 1,
@@ -702,7 +702,16 @@ export default function ServiceRequestsPage() {
                   total: pagination.total,
                 }) || `Mostrando ${filteredRequests.length} de ${pagination.total}`}
               </p>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={pagination.page <= 1}
+                  onClick={() => loadMyRequests(1, pagination.pageSize)}
+                  className="hidden sm:flex"
+                >
+                  {'<<'}
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -711,6 +720,59 @@ export default function ServiceRequestsPage() {
                 >
                   {t('previous')}
                 </Button>
+
+                {/* Page Numbers */}
+                <div className="flex items-center gap-1">
+                  {(() => {
+                    const pages: (number | string)[] = []
+                    const current = pagination.page
+                    const total = pagination.totalPages
+
+                    // Always show first page
+                    pages.push(1)
+
+                    // Show ellipsis if current is far from start
+                    if (current > 3) {
+                      pages.push('...')
+                    }
+
+                    // Show pages around current
+                    for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
+                      if (!pages.includes(i)) {
+                        pages.push(i)
+                      }
+                    }
+
+                    // Show ellipsis if current is far from end
+                    if (current < total - 2) {
+                      pages.push('...')
+                    }
+
+                    // Always show last page
+                    if (total > 1 && !pages.includes(total)) {
+                      pages.push(total)
+                    }
+
+                    return pages.map((page, idx) => (
+                      typeof page === 'string' ? (
+                        <span key={`ellipsis-${idx}`} className="px-2 text-muted-foreground">
+                          {page}
+                        </span>
+                      ) : (
+                        <Button
+                          key={page}
+                          variant={page === current ? 'default' : 'outline'}
+                          size="sm"
+                          className="min-w-[36px]"
+                          onClick={() => loadMyRequests(page, pagination.pageSize)}
+                        >
+                          {page}
+                        </Button>
+                      )
+                    ))
+                  })()}
+                </div>
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -718,6 +780,15 @@ export default function ServiceRequestsPage() {
                   onClick={() => loadMyRequests(pagination.page + 1, pagination.pageSize)}
                 >
                   {t('next')}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={pagination.page >= pagination.totalPages}
+                  onClick={() => loadMyRequests(pagination.totalPages, pagination.pageSize)}
+                  className="hidden sm:flex"
+                >
+                  {'>>'}
                 </Button>
               </div>
             </div>

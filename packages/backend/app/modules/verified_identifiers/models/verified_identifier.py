@@ -21,6 +21,10 @@ class IdentifierType(str, Enum):
     REGISTRO_CIVIL = "registro_civil"
     CUVE = "cuve"
     PERMISO_CIRCULACION = "permiso_circulacion"
+    # Funcionario verification types
+    MATRICULA_FUNCIONARIO = "matricula_funcionario"
+    NUMERO_NOMBRAMIENTO = "numero_nombramiento"
+    CARNET_FUNCIONARIO = "carnet_funcionario"
 
 
 class VerificationSource(str, Enum):

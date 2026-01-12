@@ -930,6 +930,16 @@ except Exception as e:
     logger.error(f"❌ Cities router failed: {e}")
     logger.error(traceback.format_exc())
 
+# Try to load funcionario verification router (Module - Civil Servant Verification)
+try:
+    from app.modules.funcionario.api import router as funcionario_router
+    app.include_router(funcionario_router, prefix="/api/v1", tags=["funcionario-verification"])
+    routers_loaded.append("funcionario")
+    logger.info("✅ Funcionario verification router loaded")
+except Exception as e:
+    logger.error(f"❌ Funcionario verification router failed: {e}")
+    logger.error(traceback.format_exc())
+
 if routers_loaded:
     logger.info(f"✅ {len(routers_loaded)} API routers loaded: {', '.join(routers_loaded)}")
 else:

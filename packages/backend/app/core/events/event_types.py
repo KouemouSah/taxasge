@@ -87,6 +87,22 @@ class EventType(str, Enum):
     """Agent manually verified a service request"""
 
     # ==========================================================================
+    # FUNCIONARIO VERIFICATION EVENTS
+    # ==========================================================================
+
+    FUNCIONARIO_VERIFICATION_SUBMITTED = "funcionario.verification.submitted"
+    """New funcionario verification request submitted"""
+
+    FUNCIONARIO_VERIFICATION_PRE_VERIFIED = "funcionario.verification.pre_verified"
+    """Funcionario verification request pre-verified (matricula found in verified_identifiers)"""
+
+    FUNCIONARIO_VERIFICATION_APPROVED = "funcionario.verification.approved"
+    """Funcionario verification request approved by agent"""
+
+    FUNCIONARIO_VERIFICATION_REJECTED = "funcionario.verification.rejected"
+    """Funcionario verification request rejected by agent"""
+
+    # ==========================================================================
     # DOCUMENT EVENTS
     # ==========================================================================
 
