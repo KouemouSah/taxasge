@@ -5,7 +5,7 @@
  * Main navigation menu for authenticated users
  */
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
@@ -23,18 +23,29 @@ import {
   LogOut,
   Menu,
   ChevronRight,
-  MessageCircle
+  MessageCircle,
+  BadgeCheck,
+  Lock
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { authApi } from '@/core/api/auth'
 import { getAuthData, clearAuthData } from '@/core/auth/storage'
 import { useLocale, useTranslations } from 'next-intl'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 interface NavItem {
   titleKey: string
   href: string
   icon: React.ComponentType<{ className?: string }>
   badge?: string
+  disabled?: boolean
+  disabledTooltip?: string
+  visible?: boolean
 }
 
 interface DashboardSidebarProps {
@@ -48,7 +59,31 @@ export function DashboardSidebar({ className }: DashboardSidebarProps) {
   const locale = useLocale()
   const t = useTranslations('dashboard')
 
-  const navItems: NavItem[] = [
+  // Get user info to determine funcionario status
+  const authData = getAuthData()
+  const user = authData?.user
+
+  // Check if user is a verified funcionario with active status
+  const isVerifiedFuncionario = useMemo(() => {
+    if (!user) return false
+
+    // User must have matricula_funcionario and funcionario_verified_at
+    const hasVerification = !!(user.matricula_funcionario && user.funcionario_verified_at)
+    if (!hasVerification) return false
+
+    // Check funcionario_status from verified_identifiers (real-time check)
+    // If funcionario_status exists, check is_active
+    // If it doesn't exist yet (backward compatibility), allow access
+    const status = user.funcionario_status
+    if (status) {
+      return status.is_active === true
+    }
+
+    // Backward compatibility: if no status, allow based on verification only
+    return true
+  }, [user])
+
+  const navItems: NavItem[] = useMemo(() => [
     {
       titleKey: 'overview',
       href: `/${locale}/dashboard`,
@@ -58,11 +93,20 @@ export function DashboardSidebar({ className }: DashboardSidebarProps) {
       titleKey: 'declarations',
       href: `/${locale}/dashboard/declarations`,
       icon: FileText,
+      disabled: true,
+      disabledTooltip: t('declarationsDisabled'),
     },
     {
       titleKey: 'serviceRequests',
       href: `/${locale}/dashboard/service-requests`,
       icon: ClipboardList,
+    },
+    // Funcionario menu - only visible for verified civil servants
+    {
+      titleKey: 'funcionario',
+      href: `/${locale}/dashboard/funcionario`,
+      icon: BadgeCheck,
+      visible: isVerifiedFuncionario,
     },
     {
       titleKey: 'chatAssistant',
@@ -84,7 +128,7 @@ export function DashboardSidebar({ className }: DashboardSidebarProps) {
       href: `/${locale}/dashboard/settings`,
       icon: Settings,
     },
-  ]
+  ], [locale, isVerifiedFuncionario, t])
 
   const handleLogout = async () => {
     const authData = getAuthData()
@@ -132,34 +176,62 @@ export function DashboardSidebar({ className }: DashboardSidebarProps) {
 
         {/* Navigation */}
         <ScrollArea className="flex-1 px-3 py-4">
-          <nav className="space-y-1">
-            {navItems.map((item) => {
-              const Icon = item.icon
-              const active = isActive(item.href)
+          <TooltipProvider>
+            <nav className="space-y-1">
+              {navItems
+                .filter((item) => item.visible !== false)
+                .map((item) => {
+                  const Icon = item.icon
+                  const active = isActive(item.href)
 
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all hover:bg-accent',
-                    active
-                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  <Icon className="h-5 w-5" />
-                  <span>{t(item.titleKey)}</span>
-                  {item.badge && (
-                    <span className="ml-auto flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
-                      {item.badge}
-                    </span>
-                  )}
-                  {active && <ChevronRight className="ml-auto h-4 w-4" />}
-                </Link>
-              )
-            })}
-          </nav>
+                  // Disabled item with tooltip
+                  if (item.disabled) {
+                    return (
+                      <Tooltip key={item.href}>
+                        <TooltipTrigger asChild>
+                          <div
+                            className={cn(
+                              'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium',
+                              'cursor-not-allowed opacity-50 text-muted-foreground'
+                            )}
+                          >
+                            <Icon className="h-5 w-5" />
+                            <span>{t(item.titleKey)}</span>
+                            <Lock className="ml-auto h-4 w-4" />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                          <p>{item.disabledTooltip || t('comingSoon')}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )
+                  }
+
+                  // Normal item
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all hover:bg-accent',
+                        active
+                          ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      <Icon className="h-5 w-5" />
+                      <span>{t(item.titleKey)}</span>
+                      {item.badge && (
+                        <span className="ml-auto flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
+                          {item.badge}
+                        </span>
+                      )}
+                      {active && <ChevronRight className="ml-auto h-4 w-4" />}
+                    </Link>
+                  )
+                })}
+            </nav>
+          </TooltipProvider>
         </ScrollArea>
 
         {/* Logout Button */}

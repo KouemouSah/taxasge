@@ -216,6 +216,14 @@ class UserResponse(BaseModel):
     citizen_profile: Optional[CitizenProfile] = None
     business_profile: Optional[BusinessProfile] = None
 
+    # Funcionario (civil servant) verification fields
+    matricula_funcionario: Optional[str] = Field(None, description="Civil servant matricula")
+    funcionario_verified_at: Optional[datetime] = Field(None, description="When funcionario was verified")
+    funcionario_verified_by: Optional[str] = Field(None, description="Agent who verified funcionario")
+
+    # Funcionario status from verified_identifiers (real-time check)
+    funcionario_status: Optional[Dict[str, Any]] = Field(None, description="Real-time funcionario status from verified_identifiers")
+
 
 class UserListResponse(BaseModel):
     """Model for paginated user list response"""

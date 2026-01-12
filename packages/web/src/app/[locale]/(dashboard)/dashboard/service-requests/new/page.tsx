@@ -207,9 +207,14 @@ export default function NewServiceRequestPage() {
   }, [loadWorkflows])
 
   // Group workflows by category
+  // FUNCION_PUBLICA is excluded - only accessible via /funcionario menu
   const workflowsByCategory = useMemo(() => {
     const groups: Record<string, WorkflowConfig[]> = {}
     workflows.forEach((w) => {
+      // Exclude FUNCION_PUBLICA - accessible only through dedicated funcionario menu
+      if (w.category === 'FUNCION_PUBLICA') {
+        return
+      }
       if (!groups[w.category]) {
         groups[w.category] = []
       }

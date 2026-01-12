@@ -109,6 +109,39 @@ export interface User {
 
   // For business users, include company information
   company?: Company;
+
+  // Funcionario (civil servant) verification fields
+  matricula_funcionario?: string;
+  funcionario_verified_at?: string;
+  funcionario_verified_by?: string;
+
+  // Funcionario status from verified_identifiers table (real-time check)
+  funcionario_status?: FuncionarioStatus;
+}
+
+/**
+ * Funcionario Status - Real-time status from verified_identifiers table
+ * Used to control access to Funcionario menu and services
+ *
+ * Fields based on verified_identifiers schema:
+ * - is_active (boolean): true = active, false = deactivated/suspended
+ * - expires_at (timestamp): NULL = no expiry, or expiration date
+ */
+export interface FuncionarioStatus {
+  /** User has been verified as funcionario (funcionario_verified_at exists) */
+  verified: boolean;
+  /** Matricula is active in verified_identifiers (is_active = true) */
+  is_active: boolean;
+  /** Matricula has expired (expires_at < now) */
+  is_expired: boolean;
+  /** Expiration date if applicable (NULL = no expiry) */
+  expires_at: string | null;
+  /** Source of verification (ministerio_funcion_publica, agent_manual, etc.) */
+  source: string | null;
+  /** Timestamp when status was checked */
+  checked_at: string;
+  /** Found in verified_identifiers table */
+  found_in_registry: boolean;
 }
 
 // Login Request

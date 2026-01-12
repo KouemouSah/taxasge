@@ -54,7 +54,12 @@ class UserRepository(BaseRepository[UserResponse]):
             two_factor_secret=data.get("two_factor_secret"),
             two_factor_backup_codes=backup_codes,  # Now properly parsed as list
             citizen_profile=data.get("citizen_profile"),
-            business_profile=data.get("business_profile")
+            business_profile=data.get("business_profile"),
+            # Funcionario fields
+            matricula_funcionario=data.get("matricula_funcionario"),
+            funcionario_verified_at=data.get("funcionario_verified_at"),
+            funcionario_verified_by=str(data["funcionario_verified_by"]) if data.get("funcionario_verified_by") else None,
+            # funcionario_status will be enriched by auth middleware
         )
 
     def _map_from_model(self, model: UserResponse) -> Dict[str, Any]:

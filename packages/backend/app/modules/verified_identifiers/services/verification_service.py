@@ -400,3 +400,83 @@ class VerificationService:
                 status.value,
                 json.dumps(details)
             )
+
+    async def check_funcionario_status(
+        self,
+        matricula: str,
+    ) -> Dict[str, Any]:
+        """
+        Check funcionario matricula status in verified_identifiers table.
+
+        This is used to determine if the funcionario menu should be visible
+        and if the user's matricula is still active.
+
+        Args:
+            matricula: The matricula to check
+
+        Returns:
+            Dict with status fields:
+            - verified: bool - User has been verified as funcionario
+            - is_active: bool - Matricula is active in verified_identifiers
+            - is_expired: bool - Matricula has expired
+            - expires_at: str|None - Expiration date if applicable
+            - source: str|None - Source of verification
+            - checked_at: str - Timestamp of this check
+            - found_in_registry: bool - Found in verified_identifiers table
+        """
+        now = datetime.now(timezone.utc)
+
+        try:
+            # Compute blind index for lookup
+            blind_index = self.crypto.compute_blind_index(matricula, "matricula_funcionario")
+
+            # Search in verified_identifiers table
+            result = await self.repo.find_by_blind_index(
+                blind_index=blind_index,
+                identifier_type="matricula_funcionario"
+            )
+
+            if not result:
+                # Not found in verified_identifiers
+                return {
+                    "verified": True,  # User IS verified (has funcionario_verified_at)
+                    "is_active": False,  # But not in registry
+                    "is_expired": False,
+                    "expires_at": None,
+                    "source": None,
+                    "checked_at": now.isoformat(),
+                    "found_in_registry": False,
+                }
+
+            # Found in registry - check status
+            is_active = result.get("is_active", False)
+            expires_at = result.get("expires_at")
+
+            # Check if expired
+            is_expired = False
+            if expires_at and expires_at < now:
+                is_expired = True
+
+            return {
+                "verified": True,  # User IS verified
+                "is_active": is_active and not is_expired,  # Active AND not expired
+                "is_expired": is_expired,
+                "expires_at": expires_at.isoformat() if expires_at else None,
+                "source": result.get("source"),
+                "checked_at": now.isoformat(),
+                "found_in_registry": True,
+            }
+
+        except Exception as e:
+            logger.error(f"Error checking funcionario status for matricula: {e}")
+            # On error, return safe default (allow access but log)
+            return {
+                "verified": True,
+                "is_active": True,  # Fail-open: allow access on error
+                "is_expired": False,
+                "expires_at": None,
+                "source": None,
+                "checked_at": now.isoformat(),
+                "found_in_registry": False,
+                "error": str(e),
+            }

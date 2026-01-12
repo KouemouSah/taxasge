@@ -34,6 +34,30 @@ def get_auth_service():
     return _get_auth_service()
 
 
+async def _check_funcionario_status(matricula: str) -> dict:
+    """
+    Check funcionario matricula status against verified_identifiers table.
+
+    This is called for every authenticated request where user has matricula_funcionario.
+    Uses the VerificationService to check if the matricula is still active.
+
+    Args:
+        matricula: The funcionario's matricula
+
+    Returns:
+        Dict with funcionario status fields
+    """
+    from app.database.connection import get_database
+    from app.modules.verified_identifiers.services.verification_service import VerificationService
+    from app.modules.verified_identifiers.services.crypto_service import get_crypto_service
+
+    db = await get_database()
+    crypto = get_crypto_service()
+    verification_service = VerificationService(pool=db, crypto=crypto)
+
+    return await verification_service.check_funcionario_status(matricula)
+
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> UserResponse:
@@ -96,6 +120,15 @@ async def get_current_user(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Account status: {user.status}. Please verify your email or contact support."
             )
+
+        # Enrich with funcionario_status if user is a verified funcionario
+        if user.matricula_funcionario and user.funcionario_verified_at:
+            try:
+                funcionario_status = await _check_funcionario_status(user.matricula_funcionario)
+                user.funcionario_status = funcionario_status
+            except Exception as e:
+                logger.warning(f"Failed to check funcionario status: {e}")
+                # Don't block access on failure - just log
 
         return user
 
