@@ -9,17 +9,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { agentCreationApi, agentProfilesApi, agentWorkloadApi, adminUsersApi } from '../services/api';
 import type {
-  AgentProfile,
-  AgentWorkload,
-  AgentPerformance,
   AgentCompleteCreateRequest,
-  AgentCompleteResponse,
   AdminCreateRequest,
-  AdminCreateResponse,
   AgentProfileUpdateRequest,
   AgentWorkloadUpdateRequest,
   AgentListFilters,
-  AgentListResponse,
 } from '../types';
 
 // =============================================================================

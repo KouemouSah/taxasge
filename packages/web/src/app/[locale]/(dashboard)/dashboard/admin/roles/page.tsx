@@ -38,15 +38,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+// Dialog imports kept for potential future use
+// import {
+//   Dialog,
+//   DialogContent,
+//   DialogDescription,
+//   DialogFooter,
+//   DialogHeader,
+//   DialogTitle,
+//   DialogTrigger,
+// } from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -63,8 +64,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+// Label and Textarea imports kept for potential future use
+// import { Label } from '@/components/ui/label';
+// import { Textarea } from '@/components/ui/textarea';
 import {
   Shield,
   Plus,
@@ -105,10 +107,11 @@ export default function RolesPermissionsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const locale = useLocale();
-  const t = useTranslations('admin.roles');
-  const tPerm = useTranslations('admin.permissions');
-  const tUserPerm = useTranslations('admin.userPermissions');
-  const tCommon = useTranslations('common');
+  // Note: translation hooks kept for future i18n
+  const _t = useTranslations('admin.roles');
+  const _tPerm = useTranslations('admin.permissions');
+  const _tUserPerm = useTranslations('admin.userPermissions');
+  const _tCommon = useTranslations('common');
 
   // Read initial tab from URL params
   const tabParam = searchParams.get('tab');
@@ -441,7 +444,8 @@ function RolesTab() {
 // =============================================================================
 
 function PermissionsCatalogTab() {
-  const t = useTranslations('admin.permissions');
+  // Note: _t kept for future i18n
+  const _t = useTranslations('admin.permissions');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [moduleFilter, setModuleFilter] = useState<string>('all');
@@ -727,8 +731,9 @@ function PermissionsCatalogTab() {
 // =============================================================================
 
 function UserPermissionsTab() {
-  const t = useTranslations('admin.userPermissions');
-  const tCommon = useTranslations('common');
+  // Note: translation hooks kept for future i18n
+  const _t = useTranslations('admin.userPermissions');
+  const _tCommon = useTranslations('common');
 
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<SimpleUser | null>(null);

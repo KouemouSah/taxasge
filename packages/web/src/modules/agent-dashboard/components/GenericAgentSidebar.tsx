@@ -15,7 +15,6 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { cn } from '@/core/utils';
@@ -77,7 +76,7 @@ export function GenericAgentSidebar({
     entityConfig: hookConfig,
     menuItems,
     context,
-    getBasePath,
+    getBasePath: _getBasePath,
   } = useAgentDashboard();
 
   // Use prop config if provided, otherwise use hook config
@@ -296,7 +295,7 @@ function renderMenuItem(
     getTitle: (key: string) => string;
   }
 ): React.ReactNode {
-  const { pathname, collapsed, expandedGroups, toggleGroup, getTitle } = options;
+  const { pathname, collapsed, getTitle } = options;
 
   if (isMenuGroup(item)) {
     return renderMenuGroup(item, options);

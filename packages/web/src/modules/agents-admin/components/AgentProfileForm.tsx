@@ -33,7 +33,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Loader2 } from 'lucide-react';
-import { AgentType, AgentRole } from '../types';
+import { AgentType } from '../types';
 import type { AgentCompleteCreateRequest, AgentProfileUpdateRequest } from '../types';
 
 // =============================================================================
@@ -106,7 +106,8 @@ export function AgentProfileForm({
   ministries = [],
   entities = [],
 }: AgentProfileFormProps) {
-  const [showMaxAmount, setShowMaxAmount] = useState(
+  // Note: _showMaxAmount kept for future implementation
+  const [_showMaxAmount, setShowMaxAmount] = useState(
     initialData?.can_approve_unlimited === false && !!initialData?.max_approval_amount
   );
 
@@ -146,7 +147,7 @@ export function AgentProfileForm({
       await onSubmit(data as AgentCompleteCreateRequest);
     } else {
       // For edit mode, exclude user data
-      const { user, ...profileData } = data;
+      const { user: _user, ...profileData } = data;
       await onSubmit(profileData as AgentProfileUpdateRequest);
     }
   };

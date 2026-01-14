@@ -13,7 +13,7 @@ import { useLocale } from 'next-intl';
 import { getAuthData } from '@/core/auth/storage';
 import apiClient from '@/core/api/client';
 import type { AgentDashboardContext, EntityCode, MenuItem } from '../types';
-import { getEntityConfig, getEntityCodeFromName, ENTITY_CONFIGS } from '../config/entity-menus';
+import { getEntityConfig, getEntityCodeFromName } from '../config/entity-menus';
 
 // =============================================================================
 // API RESPONSE TYPES

@@ -40,7 +40,6 @@ import {
   Loader2,
   Briefcase,
   Clock,
-  Target,
   TrendingUp,
   AlertCircle,
   CheckCircle2,
@@ -53,7 +52,7 @@ import {
   useUpdateAgentWorkload,
 } from '@/modules/agents-admin/hooks';
 import { WorkloadStats } from '@/modules/agents-admin/components';
-import { AgentAvailability, WorkloadStatus } from '@/modules/agents-admin/types';
+import { AgentAvailability } from '@/modules/agents-admin/types';
 import type { AgentWorkloadUpdateRequest } from '@/modules/agents-admin/types';
 
 // =============================================================================

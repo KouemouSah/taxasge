@@ -55,12 +55,8 @@ import {
   ArrowLeft,
   Loader2,
   UserCog,
-  Shield,
-  Building2,
   Briefcase,
-  CheckCircle2,
   XCircle,
-  Clock,
   BarChart3,
   Settings,
   Power,
@@ -76,7 +72,7 @@ import {
   useReactivateAgent,
 } from '@/modules/agents-admin/hooks';
 import { WorkloadStats, PerformanceStats } from '@/modules/agents-admin/components';
-import { AgentType, AgentRole, AgentAvailability, WorkloadStatus } from '@/modules/agents-admin/types';
+import { AgentType } from '@/modules/agents-admin/types';
 import type { AgentProfileUpdateRequest } from '@/modules/agents-admin/types';
 
 // =============================================================================

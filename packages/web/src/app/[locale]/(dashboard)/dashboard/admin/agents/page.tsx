@@ -87,7 +87,6 @@ import { BackendUnavailableAlert } from '@/modules/admin/components';
 export default function AgentsPage() {
   const router = useRouter();
   const t = useTranslations('admin.agents');
-  const tCommon = useTranslations('common');
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState('agents');

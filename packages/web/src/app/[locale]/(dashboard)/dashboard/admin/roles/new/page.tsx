@@ -45,7 +45,8 @@ export default function CreateRolePage() {
   const router = useRouter();
   const locale = useLocale();
   const t = useTranslations('admin.roles');
-  const tPerm = useTranslations('admin.permissions');
+  // Note: _tPerm kept for future i18n
+  const _tPerm = useTranslations('admin.permissions');
 
   const [formData, setFormData] = useState<CreateRoleRequest>({
     name: '',

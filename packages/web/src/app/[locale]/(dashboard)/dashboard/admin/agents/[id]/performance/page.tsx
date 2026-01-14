@@ -8,14 +8,12 @@
  * @date 2025-01-14
  */
 
-import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ArrowLeft,
   BarChart3,
@@ -44,14 +42,13 @@ import { PerformanceStats } from '@/modules/agents-admin/components';
 export default function AgentPerformancePage() {
   const router = useRouter();
   const params = useParams();
-  const [period, setPeriod] = useState<'month' | 'quarter' | 'year'>('month');
 
   const profileId = params.id as string;
 
   // Queries
   const { data: profile, isLoading: profileLoading } = useAgentProfile(profileId);
   const { data: performance, isLoading: performanceLoading } = useAgentPerformance(profileId, !!profile);
-  const { data: workload, isLoading: workloadLoading } = useAgentWorkload(profileId, !!profile);
+  const { data: workload } = useAgentWorkload(profileId, !!profile);
 
   // Loading state
   if (profileLoading || performanceLoading) {

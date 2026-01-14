@@ -18,7 +18,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
@@ -70,8 +69,9 @@ export default function EditRolePage() {
   const locale = useLocale();
   const roleId = params.id as string;
 
-  const t = useTranslations('admin.roles');
-  const tPerm = useTranslations('admin.permissions');
+  // Note: t and tPerm kept for future i18n
+  const _t = useTranslations('admin.roles');
+  const _tPerm = useTranslations('admin.permissions');
 
   // Fetch role with permissions
   const {

@@ -27,7 +27,6 @@ import { Label } from '@/components/ui/label'
 import {
   BadgeCheck,
   FileText,
-  ArrowRight,
   Shield,
   AlertCircle,
   Search,
