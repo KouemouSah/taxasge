@@ -1751,6 +1751,11 @@
     "users": {
       "adminCannotBeDeleted": "Les comptes administrateurs ne peuvent pas être supprimés",
       "allRoles": "Tous les rôles",
+      "allStatuses": "Tous les statuts",
+      "roleCategoryAdmins": "Administrateurs",
+      "roleCategoryAgents": "Agents",
+      "roleCategoryCitizens": "Citoyens",
+      "roleCategoryProfessionals": "Professionnels",
       "backendUnavailableDescription": "Impossible de se connecter au serveur backend.",
       "backendUnavailableInstructions": "Contactez l'administrateur système si le problème persiste.",
       "backendUnavailableReason1": "Le serveur backend est arrêté",

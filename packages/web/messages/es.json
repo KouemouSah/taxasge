@@ -1751,6 +1751,11 @@
     "users": {
       "adminCannotBeDeleted": "Las cuentas de administrador no se pueden eliminar",
       "allRoles": "Todos los roles",
+      "allStatuses": "Todos los estados",
+      "roleCategoryAdmins": "Administradores",
+      "roleCategoryAgents": "Agentes",
+      "roleCategoryCitizens": "Ciudadanos",
+      "roleCategoryProfessionals": "Profesionales",
       "backendUnavailableDescription": "No se puede conectar al servidor backend.",
       "backendUnavailableInstructions": "Contacte al administrador del sistema si el problema persiste.",
       "backendUnavailableReason1": "El servidor backend está desactivado",

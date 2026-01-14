@@ -1751,6 +1751,11 @@
     "users": {
       "adminCannotBeDeleted": "Administrator accounts cannot be deleted",
       "allRoles": "All roles",
+      "allStatuses": "All statuses",
+      "roleCategoryAdmins": "Administrators",
+      "roleCategoryAgents": "Agents",
+      "roleCategoryCitizens": "Citizens",
+      "roleCategoryProfessionals": "Professionals",
       "backendUnavailableDescription": "Unable to connect to the backend server.",
       "backendUnavailableInstructions": "Contact the system administrator if the problem persists.",
       "backendUnavailableReason1": "The backend server is down",
