@@ -697,6 +697,16 @@ except Exception as e:
     logger.error(f"❌ Assignment router failed: {e}")
     logger.error(traceback.format_exc())
 
+# Try to load agent profile router (Module - Agent Profiles v2)
+try:
+    from app.modules.agents.api.profile_routes import router as agent_profile_router
+    app.include_router(agent_profile_router, prefix="/api/v1/agents", tags=["agent-profiles"])
+    routers_loaded.append("agent-profiles")
+    logger.info("✅ Agent profile router loaded")
+except Exception as e:
+    logger.error(f"❌ Agent profile router failed: {e}")
+    logger.error(traceback.format_exc())
+
 # Try to load documents router (Module - Documents System)
 try:
     from app.modules.documents.api import document_routes

@@ -5,13 +5,16 @@
  */
 
 // User Role Enum (aligned with user_role_enum from schema_taxage.sql)
+// Updated to include new unified roles from migration 048
 export type UserRole =
   | 'citizen'
   | 'business'
   | 'accountant'
   | 'admin'
-  | 'dgi_agent'
-  | 'ministry_agent'
+  | 'agent'           // New unified agent role (migration 048)
+  | 'funcionario'     // Civil servant role
+  | 'dgi_agent'       // Legacy - mapped to 'agent' with entity
+  | 'ministry_agent'  // Legacy - mapped to 'agent' with entity
   | 'supervisor'
   | 'supervisor_junior_dgi'
   | 'supervisor_dgi'
@@ -117,6 +120,9 @@ export interface User {
 
   // Funcionario status from verified_identifiers table (real-time check)
   funcionario_status?: FuncionarioStatus;
+
+  // Permissions from role_permissions and user_permissions
+  permissions?: string[];
 }
 
 /**

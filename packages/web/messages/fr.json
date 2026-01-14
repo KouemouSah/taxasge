@@ -4516,5 +4516,74 @@
         "noData": "Aucune donnee"
       }
     }
+  },
+  "agent": {
+    "entities": {
+      "cnedoge": {
+        "title": "CNEDOGE"
+      },
+      "dgt": {
+        "title": "DG Tráfico"
+      },
+      "onrc": {
+        "title": "ONRC"
+      },
+      "minfp": {
+        "title": "Min. Función Pública"
+      },
+      "tesoro": {
+        "title": "Trésorerie"
+      },
+      "ofive": {
+        "title": "OFIVE"
+      },
+      "extranjeria": {
+        "title": "Extranjeria"
+      },
+      "itve": {
+        "title": "ITVE"
+      },
+      "dgi": {
+        "title": "DGI"
+      },
+      "general": {
+        "title": "Agent"
+      }
+    },
+    "nav": {
+      "dashboard": "Tableau de Bord",
+      "passports": "Passeports",
+      "residences": "Résidences",
+      "driverLicenses": "Permis de Conduire",
+      "vehicles": "Véhicules",
+      "contracts": "Contrats",
+      "civilServants": "Fonctionnaires",
+      "certificates": "Certificats",
+      "payments": "Paiements",
+      "reports": "Rapports",
+      "settings": "Configuration",
+      "pending": "En Attente",
+      "validation": "Validation",
+      "appointments": "Rendez-vous",
+      "history": "Historique",
+      "exams": "Examens",
+      "registration": "Immatriculation",
+      "transfers": "Transferts",
+      "registered": "Enregistrés",
+      "verificationPending": "Vérifications en Attente",
+      "idCards": "Carnets",
+      "issued": "Émis",
+      "reconciliation": "Rapprochement",
+      "transactions": "Transactions",
+      "stats": "Statistiques",
+      "analytics": "Analytique",
+      "audit": "Audit",
+      "slaStats": "Statistiques SLA",
+      "anomalies": "Anomalies",
+      "exports": "Exports",
+      "banks": "Banques",
+      "paymentMethods": "Méthodes de Paiement",
+      "cuveDocuments": "Documents CUVE"
+    }
   }
 }

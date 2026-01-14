@@ -4516,5 +4516,74 @@
         "noData": "No data"
       }
     }
+  },
+  "agent": {
+    "entities": {
+      "cnedoge": {
+        "title": "CNEDOGE"
+      },
+      "dgt": {
+        "title": "DG Traffic"
+      },
+      "onrc": {
+        "title": "ONRC"
+      },
+      "minfp": {
+        "title": "Min. Public Function"
+      },
+      "tesoro": {
+        "title": "Treasury"
+      },
+      "ofive": {
+        "title": "OFIVE"
+      },
+      "extranjeria": {
+        "title": "Foreigners Office"
+      },
+      "itve": {
+        "title": "ITVE"
+      },
+      "dgi": {
+        "title": "DGI"
+      },
+      "general": {
+        "title": "Agent"
+      }
+    },
+    "nav": {
+      "dashboard": "Dashboard",
+      "passports": "Passports",
+      "residences": "Residences",
+      "driverLicenses": "Driver Licenses",
+      "vehicles": "Vehicles",
+      "contracts": "Contracts",
+      "civilServants": "Civil Servants",
+      "certificates": "Certificates",
+      "payments": "Payments",
+      "reports": "Reports",
+      "settings": "Settings",
+      "pending": "Pending",
+      "validation": "Validation",
+      "appointments": "Appointments",
+      "history": "History",
+      "exams": "Exams",
+      "registration": "Registration",
+      "transfers": "Transfers",
+      "registered": "Registered",
+      "verificationPending": "Verification Pending",
+      "idCards": "ID Cards",
+      "issued": "Issued",
+      "reconciliation": "Reconciliation",
+      "transactions": "Transactions",
+      "stats": "Statistics",
+      "analytics": "Analytics",
+      "audit": "Audit",
+      "slaStats": "SLA Statistics",
+      "anomalies": "Anomalies",
+      "exports": "Exports",
+      "banks": "Banks",
+      "paymentMethods": "Payment Methods",
+      "cuveDocuments": "CUVE Documents"
+    }
   }
 }

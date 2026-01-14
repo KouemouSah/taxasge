@@ -15,6 +15,7 @@ import Image from 'next/image'
 import { DashboardSidebar, MobileSidebar } from './DashboardSidebar'
 import { AgentSidebar } from './AgentSidebar'
 import { AdminSidebar } from '@/modules/admin/components'
+import { GenericAgentSidebar } from '@/modules/agent-dashboard'
 import { getAuthData } from '@/core/auth/storage'
 import { APP_CONSTANTS } from '@/core/config/constants'
 import type { User } from '@/types/auth'
@@ -66,17 +67,22 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const isAdmin = user?.role === APP_CONSTANTS.USER_ROLES.ADMIN
   const isMinistryAgent = user?.role === APP_CONSTANTS.USER_ROLES.MINISTRY_AGENT
   const isDgiAgent = user?.role === APP_CONSTANTS.USER_ROLES.DGI_AGENT
+  // New unified agent role (from migration 048)
+  const isAgent = user?.role === 'agent'
 
   // Determine sidebar and title
   const getSidebar = () => {
     if (isAdmin) return <AdminSidebar />
+    // Use new GenericAgentSidebar for unified 'agent' role
+    if (isAgent) return <GenericAgentSidebar />
+    // Legacy support for old agent roles (ministry_agent, dgi_agent)
     if (isMinistryAgent || isDgiAgent) return <AgentSidebar />
     return <DashboardSidebar />
   }
 
   const getTitle = () => {
     if (isAdmin) return 'TaxasGE Admin'
-    if (isMinistryAgent) return 'TaxasGE Agent'
+    if (isAgent || isMinistryAgent || isDgiAgent) return 'TaxasGE Agent'
     return 'TaxasGE'
   }
 
