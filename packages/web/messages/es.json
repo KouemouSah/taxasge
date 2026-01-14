@@ -535,10 +535,14 @@
       "uploading": "Subiendo..."
     },
     "nav": {
+      "accessManagement": "Gestión de Accesos",
+      "agents": "Agentes & Admins",
       "assignments": "Asignaciones",
       "auditLogs": "Logs de Auditoría",
+      "catalog": "Catálogo",
       "categories": "Categorías",
       "communications": "Comunicaciones",
+      "configuration": "Configuración",
       "dashboard": "Panel",
       "emailTemplates": "Plantillas de Email",
       "documentTemplates": "Plantillas de Documentos",
@@ -555,6 +559,7 @@
       "providerSettings": "Proveedores",
       "procedureTemplates": "Plantillas de Procedimientos",
       "roles": "Roles",
+      "rolesPermissions": "Roles y Permisos",
       "sectors": "Sectores",
       "settings": "Configuración",
       "smsTemplates": "Plantillas SMS",

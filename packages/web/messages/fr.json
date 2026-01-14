@@ -535,10 +535,14 @@
       "uploading": "Téléchargement..."
     },
     "nav": {
+      "accessManagement": "Gestion des Accès",
+      "agents": "Agents & Admins",
       "assignments": "Assignations",
       "auditLogs": "Logs d'Audit",
+      "catalog": "Catalogue",
       "categories": "Catégories",
       "communications": "Communications",
+      "configuration": "Configuration",
       "dashboard": "Tableau de bord",
       "documentTemplates": "Modèles de Documents",
       "emailTemplates": "Modèles d'Email",
@@ -555,6 +559,7 @@
       "pushTemplates": "Modèles Push",
       "providerSettings": "Fournisseurs",
       "roles": "Rôles",
+      "rolesPermissions": "Rôles & Permissions",
       "sectors": "Secteurs",
       "settings": "Paramètres",
       "smsTemplates": "Modèles SMS",

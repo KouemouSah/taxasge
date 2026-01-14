@@ -535,10 +535,14 @@
       "uploading": "Uploading..."
     },
     "nav": {
+      "accessManagement": "Access Management",
+      "agents": "Agents & Admins",
       "assignments": "Assignments",
       "auditLogs": "Audit Logs",
+      "catalog": "Catalog",
       "categories": "Categories",
       "communications": "Communications",
+      "configuration": "Configuration",
       "dashboard": "Dashboard",
       "documentTemplates": "Document Templates",
       "emailTemplates": "Email Templates",
@@ -555,6 +559,7 @@
       "pushTemplates": "Push Templates",
       "providerSettings": "Providers",
       "roles": "Roles",
+      "rolesPermissions": "Roles & Permissions",
       "sectors": "Sectors",
       "settings": "Settings",
       "smsTemplates": "SMS Templates",

@@ -4,6 +4,11 @@
  * Edit User Dialog Component
  * Dialog for editing existing users with full i18n
  *
+ * @deprecated As of 2025-01-14, this component is no longer used.
+ * - citizen/business/accountant/funcionario manage their own profiles
+ * - admin/agent users are edited via /admin/agents/[id]
+ * - Kept for reference only
+ *
  * PHASE 5.6 - Full i18n + new type system
  * - Pre-populates form with existing user data
  * - Optional password change
@@ -52,20 +57,16 @@ interface EditUserDialogProps {
 }
 
 /**
- * All user roles can be edited (including citizen/business)
- * But admin role prevents deletion only, not editing
+ * All 6 user roles can be edited
+ * Admin role prevents deletion only, not editing
  */
 const EDITABLE_ROLES: UserRole[] = [
-  UserRole.ADMIN,
-  UserRole.DGI_AGENT,
-  UserRole.ACCOUNTANT,
-  UserRole.SUPERVISOR_DGI,
-  UserRole.SUPERVISOR_SENIOR,
-  UserRole.SUPERVISOR_JUNIOR_DGI,
-  UserRole.SUPERVISOR_READONLY,
-  UserRole.MINISTRY_AGENT,
   UserRole.CITIZEN,
   UserRole.BUSINESS,
+  UserRole.ACCOUNTANT,
+  UserRole.ADMIN,
+  UserRole.AGENT,
+  UserRole.FUNCIONARIO,
 ]
 
 export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUserDialogProps) {
@@ -82,7 +83,7 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
     email: '',
     first_name: '',
     last_name: '',
-    role: UserRole.DGI_AGENT as UserRole,
+    role: UserRole.CITIZEN as UserRole,
     role_id: '' as string | null,  // Custom role ID (optional)
     password: '', // Optional - only update if provided
   })

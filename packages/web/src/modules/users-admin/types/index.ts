@@ -6,27 +6,17 @@
  * - Backend uses 'status' (UserStatus enum) not 'is_active' (boolean)
  * - The API service transforms backend 'status' to frontend 'is_active'
  *
+ * IMPORTANT: UserRole and UserStatus are imported from @/types/user
+ * which is the CANONICAL source. Do NOT redefine them here.
+ *
  * @module users-admin/types
  * @author Claude Code
  * @date 2025-11-19
  */
 
-export type UserRole =
-  | 'citizen'
-  | 'business'
-  | 'accountant'
-  | 'admin'
-  | 'dgi_agent'
-  | 'supervisor_junior_dgi'
-  | 'supervisor_readonly'
-  | 'supervisor_senior'
-  | 'ministry_agent'
-  | 'supervisor_dgi'
-
-/**
- * User status enum - matches backend UserStatus
- */
-export type UserStatus = 'active' | 'inactive' | 'suspended' | 'pending_verification'
+// Import from canonical source and re-export
+import { UserRole, UserStatus } from '@/types/user'
+export { UserRole, UserStatus }
 
 /**
  * User interface for frontend display
@@ -44,7 +34,15 @@ export interface User {
   two_factor_enabled: boolean
   created_at: string
   updated_at?: string
-  last_login?: string
+  last_login?: string | null
+  // Additional profile fields
+  phone_number?: string | null
+  address?: string | null
+  city?: string | null
+  country?: string | null
+  preferred_language?: string | null
+  email_verified?: boolean
+  email_verified_at?: string | null
 }
 
 /**

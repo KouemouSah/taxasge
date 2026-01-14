@@ -96,29 +96,24 @@ export default function AdminSidebar() {
       icon: LayoutDashboard,
     },
     {
-      id: 'management',
-      title: t('nav.management'),
-      icon: Users,
+      id: 'access',
+      title: t('nav.accessManagement'),
+      icon: Shield,
       items: [
+        {
+          title: t('nav.agents'),
+          href: `/${locale}/dashboard/admin/agents`,
+          icon: UserCog,
+        },
         {
           title: t('nav.users'),
           href: `/${locale}/dashboard/admin/users`,
           icon: Users,
         },
         {
-          title: t('nav.roles'),
+          title: t('nav.rolesPermissions'),
           href: `/${locale}/dashboard/admin/roles`,
-          icon: Shield,
-        },
-        {
-          title: t('nav.permissions'),
-          href: `/${locale}/dashboard/admin/permissions`,
           icon: Key,
-        },
-        {
-          title: t('nav.userPermissions'),
-          href: `/${locale}/dashboard/admin/user-permissions`,
-          icon: UserCog,
         },
         {
           title: t('nav.assignments'),
@@ -127,13 +122,14 @@ export default function AdminSidebar() {
         },
       ],
     },
+    // SERVICES FISCAUX
     {
       id: 'fiscal',
       title: t('nav.fiscalServices'),
       icon: FileText,
       items: [
         {
-          title: t('nav.fiscalServices'),
+          title: t('nav.catalog'),
           href: `/${locale}/dashboard/admin/fiscal-services`,
           icon: FileText,
         },
@@ -152,13 +148,6 @@ export default function AdminSidebar() {
           href: `/${locale}/dashboard/admin/categories`,
           icon: FolderTree,
         },
-      ],
-    },
-    {
-      id: 'templates',
-      title: t('nav.templates'),
-      icon: ListOrdered,
-      items: [
         {
           title: t('nav.documentTemplates'),
           href: `/${locale}/dashboard/admin/document-templates`,
@@ -171,33 +160,13 @@ export default function AdminSidebar() {
         },
       ],
     },
+    // CONFIGURATION
     {
-      id: 'system',
-      title: t('nav.system'),
+      id: 'config',
+      title: t('nav.configuration'),
       icon: Settings,
       items: [
-        {
-          title: t('nav.auditLogs'),
-          href: `/${locale}/dashboard/admin/audit-logs`,
-          icon: FileText,
-        },
-        {
-          title: t('nav.translations'),
-          href: `/${locale}/dashboard/admin/translations`,
-          icon: Languages,
-        },
-        {
-          title: t('nav.settings'),
-          href: `/${locale}/dashboard/admin/settings`,
-          icon: Settings,
-        },
-      ],
-    },
-    {
-      id: 'communications',
-      title: t('nav.communications'),
-      icon: MessageSquare,
-      items: [
+        // Communications
         {
           title: t('nav.emailTemplates'),
           href: `/${locale}/dashboard/admin/communications/email-templates`,
@@ -207,16 +176,6 @@ export default function AdminSidebar() {
           title: t('nav.smsTemplates'),
           href: `/${locale}/dashboard/admin/communications/sms-templates`,
           icon: MessageCircle,
-        },
-        {
-          title: t('nav.webhooks'),
-          href: `/${locale}/dashboard/admin/communications/webhooks`,
-          icon: Webhook,
-        },
-        {
-          title: t('nav.ussdConfig'),
-          href: `/${locale}/dashboard/admin/communications/ussd`,
-          icon: Phone,
         },
         {
           title: t('nav.notificationTemplates'),
@@ -229,34 +188,21 @@ export default function AdminSidebar() {
           icon: Send,
         },
         {
+          title: t('nav.webhooks'),
+          href: `/${locale}/dashboard/admin/communications/webhooks`,
+          icon: Webhook,
+        },
+        {
+          title: t('nav.ussdConfig'),
+          href: `/${locale}/dashboard/admin/communications/ussd`,
+          icon: Phone,
+        },
+        {
           title: t('nav.providerSettings'),
           href: `/${locale}/dashboard/admin/communications/provider-settings`,
-          icon: Settings,
+          icon: MessageSquare,
         },
-      ],
-    },
-    {
-      id: 'support',
-      title: t('nav.support'),
-      icon: Headphones,
-      items: [
-        {
-          title: t('nav.supportTickets'),
-          href: `/${locale}/dashboard/admin/support`,
-          icon: TicketIcon,
-        },
-        {
-          title: t('nav.supportCategories'),
-          href: `/${locale}/dashboard/admin/support/categories`,
-          icon: ListChecks,
-        },
-      ],
-    },
-    {
-      id: 'serviceRequests',
-      title: t('nav.serviceRequests'),
-      icon: GitBranch,
-      items: [
+        // Service Requests
         {
           title: t('nav.workflows'),
           href: `/${locale}/dashboard/admin/service-requests/workflows`,
@@ -276,6 +222,40 @@ export default function AdminSidebar() {
           title: t('nav.appointments'),
           href: `/${locale}/dashboard/admin/service-requests/appointments`,
           icon: CalendarClock,
+        },
+        // System
+        {
+          title: t('nav.auditLogs'),
+          href: `/${locale}/dashboard/admin/audit-logs`,
+          icon: FileText,
+        },
+        {
+          title: t('nav.translations'),
+          href: `/${locale}/dashboard/admin/translations`,
+          icon: Languages,
+        },
+        {
+          title: t('nav.settings'),
+          href: `/${locale}/dashboard/admin/settings`,
+          icon: Settings,
+        },
+      ],
+    },
+    // SUPPORT
+    {
+      id: 'support',
+      title: t('nav.support'),
+      icon: Headphones,
+      items: [
+        {
+          title: t('nav.supportTickets'),
+          href: `/${locale}/dashboard/admin/support`,
+          icon: TicketIcon,
+        },
+        {
+          title: t('nav.supportCategories'),
+          href: `/${locale}/dashboard/admin/support/categories`,
+          icon: ListChecks,
         },
       ],
     },

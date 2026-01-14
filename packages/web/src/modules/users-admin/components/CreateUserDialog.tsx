@@ -4,6 +4,11 @@
  * Create User Dialog Component
  * Dialog for creating new administrative users with full i18n
  *
+ * @deprecated As of 2025-01-14, this component is no longer used.
+ * - citizen/business/accountant/funcionario users self-register
+ * - admin/agent users are created via /admin/agents/new
+ * - Kept for reference only
+ *
  * MIGRATED: Phase 5.3 - Full i18n + new type system
  * - Uses useTranslations() for all labels
  * - Uses UserRole enum from src/types/user.ts
@@ -49,16 +54,13 @@ interface CreateUserDialogProps {
 /**
  * Administrative roles that can be created via this dialog
  * Excludes citizen and business (those register via public form)
+ * Agent type specifics are managed via agent_profiles table
  */
 const CREATABLE_ROLES: UserRole[] = [
   UserRole.ADMIN,
-  UserRole.DGI_AGENT,
+  UserRole.AGENT,
   UserRole.ACCOUNTANT,
-  UserRole.SUPERVISOR_DGI,
-  UserRole.SUPERVISOR_SENIOR,
-  UserRole.SUPERVISOR_JUNIOR_DGI,
-  UserRole.SUPERVISOR_READONLY,
-  UserRole.MINISTRY_AGENT,
+  UserRole.FUNCIONARIO,
 ]
 
 export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDialogProps) {
@@ -72,7 +74,7 @@ export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDi
     email: '',
     first_name: '',
     last_name: '',
-    role: UserRole.DGI_AGENT as UserRole,
+    role: UserRole.AGENT as UserRole,
     password: '',
     is_active: true,
   })
@@ -96,7 +98,7 @@ export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDi
         email: '',
         first_name: '',
         last_name: '',
-        role: UserRole.DGI_AGENT,
+        role: UserRole.AGENT,
         password: '',
         is_active: true,
       })
