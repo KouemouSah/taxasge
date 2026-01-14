@@ -74,7 +74,7 @@ interface TokenResponse {
   user: {
     id: string;
     email: string;
-    role: 'citizen' | 'business' | 'accountant' | 'admin' | 'dgi_agent';
+    role: 'citizen' | 'business' | 'accountant' | 'admin' | 'agent' | 'funcionario';
     status: 'active' | 'inactive' | 'suspended' | 'pending_verification';
     first_name: string;
     last_name: string;
@@ -89,6 +89,7 @@ interface TokenResponse {
     email_verified?: boolean;
     two_factor_enabled?: boolean;
     is_active: boolean;
+    permissions?: string[];
   };
 }
 

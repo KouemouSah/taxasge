@@ -4,22 +4,15 @@
  * Source: packages/backend/app/models/user.py & auth_models.py
  */
 
-// User Role Enum (aligned with user_role_enum from schema_taxage.sql)
-// Updated to include new unified roles from migration 048
+// User Role Enum (aligned with user_role_enum from migration 048)
+// Simplified roles - deprecated supervisor roles removed
 export type UserRole =
   | 'citizen'
   | 'business'
   | 'accountant'
   | 'admin'
-  | 'agent'           // New unified agent role (migration 048)
-  | 'funcionario'     // Civil servant role
-  | 'dgi_agent'       // Legacy - mapped to 'agent' with entity
-  | 'ministry_agent'  // Legacy - mapped to 'agent' with entity
-  | 'supervisor'
-  | 'supervisor_junior_dgi'
-  | 'supervisor_dgi'
-  | 'supervisor_senior'
-  | 'supervisor_readonly';
+  | 'agent'           // Unified agent role (includes supervisors via is_supervisor flag)
+  | 'funcionario';    // Civil servant role
 
 // User Status Enum (aligned with backend UserStatus)
 export type UserStatus = 'active' | 'inactive' | 'suspended' | 'pending_verification';

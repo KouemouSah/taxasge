@@ -5,15 +5,14 @@
  * Main layout wrapper for all dashboard pages with sidebar navigation
  * Renders appropriate sidebar based on user role:
  * - AdminSidebar for admin users
- * - AgentSidebar for ministry_agent (Treasury, DGI agents)
- * - DashboardSidebar for citizens/businesses
+ * - GenericAgentSidebar for unified 'agent' role (entity-based)
+ * - DashboardSidebar for citizens/businesses/accountants/funcionarios
  */
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { DashboardSidebar, MobileSidebar } from './DashboardSidebar'
-import { AgentSidebar } from './AgentSidebar'
 import { AdminSidebar } from '@/modules/admin/components'
 import { GenericAgentSidebar } from '@/modules/agent-dashboard'
 import { getAuthData } from '@/core/auth/storage'
@@ -64,25 +63,23 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   // Determine which sidebar to show based on user role
+  // Simplified role structure from migration 048:
+  // - admin: AdminSidebar
+  // - agent: GenericAgentSidebar (unified, entity-based)
+  // - citizen/business/accountant/funcionario: DashboardSidebar
   const isAdmin = user?.role === APP_CONSTANTS.USER_ROLES.ADMIN
-  const isMinistryAgent = user?.role === APP_CONSTANTS.USER_ROLES.MINISTRY_AGENT
-  const isDgiAgent = user?.role === APP_CONSTANTS.USER_ROLES.DGI_AGENT
-  // New unified agent role (from migration 048)
   const isAgent = user?.role === 'agent'
 
   // Determine sidebar and title
   const getSidebar = () => {
     if (isAdmin) return <AdminSidebar />
-    // Use new GenericAgentSidebar for unified 'agent' role
     if (isAgent) return <GenericAgentSidebar />
-    // Legacy support for old agent roles (ministry_agent, dgi_agent)
-    if (isMinistryAgent || isDgiAgent) return <AgentSidebar />
     return <DashboardSidebar />
   }
 
   const getTitle = () => {
     if (isAdmin) return 'TaxasGE Admin'
-    if (isAgent || isMinistryAgent || isDgiAgent) return 'TaxasGE Agent'
+    if (isAgent) return 'TaxasGE Agent'
     return 'TaxasGE'
   }
 

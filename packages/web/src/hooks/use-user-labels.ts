@@ -43,34 +43,16 @@ export function useUserLabels() {
   /**
    * Get all role options for filters/selects
    * Uses hybrid approach for labels (API + fallback)
+   * Updated for simplified role structure (migration 048)
    */
   const getRoleOptions = (includeAll = true) => {
     const options = [
       { value: UserRole.CITIZEN, label: getRoleLabel(UserRole.CITIZEN) },
       { value: UserRole.BUSINESS, label: getRoleLabel(UserRole.BUSINESS) },
       { value: UserRole.ACCOUNTANT, label: getRoleLabel(UserRole.ACCOUNTANT) },
+      { value: UserRole.FUNCIONARIO, label: getRoleLabel(UserRole.FUNCIONARIO) },
+      { value: UserRole.AGENT, label: getRoleLabel(UserRole.AGENT) },
       { value: UserRole.ADMIN, label: getRoleLabel(UserRole.ADMIN) },
-      { value: UserRole.DGI_AGENT, label: getRoleLabel(UserRole.DGI_AGENT) },
-      {
-        value: UserRole.SUPERVISOR_JUNIOR_DGI,
-        label: getRoleLabel(UserRole.SUPERVISOR_JUNIOR_DGI),
-      },
-      {
-        value: UserRole.SUPERVISOR_READONLY,
-        label: getRoleLabel(UserRole.SUPERVISOR_READONLY),
-      },
-      {
-        value: UserRole.SUPERVISOR_SENIOR,
-        label: getRoleLabel(UserRole.SUPERVISOR_SENIOR),
-      },
-      {
-        value: UserRole.MINISTRY_AGENT,
-        label: getRoleLabel(UserRole.MINISTRY_AGENT),
-      },
-      {
-        value: UserRole.SUPERVISOR_DGI,
-        label: getRoleLabel(UserRole.SUPERVISOR_DGI),
-      },
     ]
 
     if (includeAll) {
@@ -94,6 +76,7 @@ export function useUserLabels() {
 
   /**
    * Get role options grouped by category
+   * Updated for simplified role structure (migration 048)
    */
   const getRoleOptionsGrouped = () => {
     return {
@@ -103,27 +86,10 @@ export function useUserLabels() {
       ],
       professionals: [
         { value: UserRole.ACCOUNTANT, label: getRoleLabel(UserRole.ACCOUNTANT) },
-        { value: UserRole.DGI_AGENT, label: getRoleLabel(UserRole.DGI_AGENT) },
-        {
-          value: UserRole.SUPERVISOR_JUNIOR_DGI,
-          label: getRoleLabel(UserRole.SUPERVISOR_JUNIOR_DGI),
-        },
-        {
-          value: UserRole.SUPERVISOR_READONLY,
-          label: getRoleLabel(UserRole.SUPERVISOR_READONLY),
-        },
-        {
-          value: UserRole.SUPERVISOR_SENIOR,
-          label: getRoleLabel(UserRole.SUPERVISOR_SENIOR),
-        },
-        {
-          value: UserRole.MINISTRY_AGENT,
-          label: getRoleLabel(UserRole.MINISTRY_AGENT),
-        },
-        {
-          value: UserRole.SUPERVISOR_DGI,
-          label: getRoleLabel(UserRole.SUPERVISOR_DGI),
-        },
+        { value: UserRole.FUNCIONARIO, label: getRoleLabel(UserRole.FUNCIONARIO) },
+      ],
+      agents: [
+        { value: UserRole.AGENT, label: getRoleLabel(UserRole.AGENT) },
       ],
       admins: [{ value: UserRole.ADMIN, label: getRoleLabel(UserRole.ADMIN) }],
     }
@@ -133,11 +99,12 @@ export function useUserLabels() {
    * Get role category label
    */
   const getRoleCategoryLabel = (
-    category: 'citizens' | 'professionals' | 'admins'
+    category: 'citizens' | 'professionals' | 'agents' | 'admins'
   ): string => {
     const categoryMap = {
       citizens: t('users.roleCategoryCitizens'),
       professionals: t('users.roleCategoryProfessionals'),
+      agents: t('users.roleCategoryAgents'),
       admins: t('users.roleCategoryAdmins'),
     }
 

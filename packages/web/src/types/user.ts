@@ -20,19 +20,16 @@
 
 /**
  * UserRole Enum - MUST match backend user_role_enum exactly
- * 10 roles total - mirrors UserRole(str, Enum) in backend
+ * Simplified to 6 roles from migration 048
+ * Supervisors are now handled via is_supervisor flag in agent_profiles
  */
 export enum UserRole {
   CITIZEN = 'citizen',
   BUSINESS = 'business',
   ACCOUNTANT = 'accountant',
   ADMIN = 'admin',
-  DGI_AGENT = 'dgi_agent',
-  SUPERVISOR_JUNIOR_DGI = 'supervisor_junior_dgi',
-  SUPERVISOR_READONLY = 'supervisor_readonly',
-  SUPERVISOR_SENIOR = 'supervisor_senior',
-  MINISTRY_AGENT = 'ministry_agent',
-  SUPERVISOR_DGI = 'supervisor_dgi',
+  AGENT = 'agent',           // Unified agent role (replaces dgi_agent, ministry_agent, supervisors)
+  FUNCIONARIO = 'funcionario', // Civil servant role
 }
 
 /**
@@ -184,18 +181,15 @@ export interface UserActivity {
 
 /**
  * Role Categories - Helper for grouping roles
+ * Updated for simplified role structure (migration 048)
  */
 export const ROLE_CATEGORIES = {
   citizens: [UserRole.CITIZEN, UserRole.BUSINESS] as const,
   professionals: [
     UserRole.ACCOUNTANT,
-    UserRole.DGI_AGENT,
-    UserRole.SUPERVISOR_JUNIOR_DGI,
-    UserRole.SUPERVISOR_READONLY,
-    UserRole.SUPERVISOR_SENIOR,
-    UserRole.MINISTRY_AGENT,
-    UserRole.SUPERVISOR_DGI,
+    UserRole.FUNCIONARIO,
   ] as const,
+  agents: [UserRole.AGENT] as const,
   admins: [UserRole.ADMIN] as const,
 }
 
@@ -227,9 +221,10 @@ export function canSoftDelete(role: UserRole): boolean {
  */
 export function getRoleCategory(
   role: UserRole
-): 'citizens' | 'professionals' | 'admins' {
+): 'citizens' | 'professionals' | 'agents' | 'admins' {
   if (ROLE_CATEGORIES.citizens.includes(role as any)) return 'citizens'
   if (ROLE_CATEGORIES.admins.includes(role as any)) return 'admins'
+  if (ROLE_CATEGORIES.agents.includes(role as any)) return 'agents'
   return 'professionals'
 }
 
