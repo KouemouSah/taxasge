@@ -82,6 +82,7 @@ import {
   User,
   RefreshCw,
   ChevronRight,
+  ChevronLeft,
   Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -188,6 +189,8 @@ export default function RolesPermissionsPage() {
 // ROLES TAB COMPONENT
 // =============================================================================
 
+const PAGE_SIZE = 10;
+
 function RolesTab() {
   const t = useTranslations('admin.roles');
   const locale = useLocale();
@@ -196,10 +199,17 @@ function RolesTab() {
   const [entityTypeFilter, setEntityTypeFilter] = useState<string>('all');
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [entityTypeFilter]);
 
   const { data: rolesData, isLoading, error, refetch } = useRoles({
     entity_type: entityTypeFilter === 'all' ? undefined : entityTypeFilter === 'null' ? null : entityTypeFilter,
-    page_size: 100,
+    page: currentPage,
+    page_size: PAGE_SIZE,
   });
 
   const deleteMutation = useDeleteRole();
@@ -411,6 +421,61 @@ function RolesTab() {
               </TableBody>
             </Table>
           </div>
+
+          {/* Pagination Controls */}
+          {rolesData && rolesData.total_pages > 1 && (
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-sm text-muted-foreground">
+                Page {rolesData.page} sur {rolesData.total_pages} ({rolesData.total} rôles)
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage <= 1 || isLoading}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Précédent
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, rolesData.total_pages) }, (_, i) => {
+                    let pageNum: number;
+                    if (rolesData.total_pages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= rolesData.total_pages - 2) {
+                      pageNum = rolesData.total_pages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={currentPage === pageNum ? 'default' : 'outline'}
+                        size="sm"
+                        className="w-8 h-8 p-0"
+                        onClick={() => setCurrentPage(pageNum)}
+                        disabled={isLoading}
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(rolesData.total_pages, prev + 1))}
+                  disabled={currentPage >= rolesData.total_pages || isLoading}
+                >
+                  Suivant
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
