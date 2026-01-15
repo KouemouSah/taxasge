@@ -395,10 +395,13 @@ async def validate_and_submit_session(
             "message": e.message,
         })
     except SubmissionError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={
+        detail = {
             "code": e.code,
             "message": e.message,
-        })
+        }
+        if e.details:
+            detail.update(e.details)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
     except SessionError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={
             "code": e.code,

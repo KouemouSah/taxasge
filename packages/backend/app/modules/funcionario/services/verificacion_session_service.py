@@ -81,8 +81,9 @@ class DocumentValidationError(SessionError):
 
 class SubmissionError(SessionError):
     """Submission failed."""
-    def __init__(self, message: str, code: str = "SUBMISSION_ERROR"):
+    def __init__(self, message: str, code: str = "SUBMISSION_ERROR", details: Dict[str, Any] = None):
         super().__init__(message, code)
+        self.details = details or {}
 
 
 class MatriculaAlreadyVerifiedError(SessionError):
@@ -685,14 +686,25 @@ class VerificacionSessionService:
         # STEP 1: Validate required documents
         # =====================================================================
 
-        # Check if DIP was uploaded and previewed (not if extraction has data)
+        extraction_warnings = []
+
+        # Check if DIP was uploaded and previewed
         if "dip" not in documents or not documents["dip"].get("previewed_at"):
             raise SubmissionError(
                 "Debe subir y validar el DIP antes de enviar.",
                 "MISSING_DIP"
             )
 
-        # Find proof document (check if previewed, not if extraction has data)
+        # Check if DIP extraction has data
+        dip_extraction = documents["dip"].get("extraction", {})
+        if not dip_extraction:
+            extraction_warnings.append({
+                "code": "EMPTY_DIP_EXTRACTION",
+                "message": "No se pudieron extraer datos del DIP. Verifique la calidad del documento.",
+                "severity": "high",
+            })
+
+        # Find proof document (check if previewed)
         proof_doc_type = None
         proof_doc_data = None
         for t in DocumentoTipoPrueba:
@@ -705,6 +717,24 @@ class VerificacionSessionService:
             raise SubmissionError(
                 "Debe subir un documento de prueba (Nombramiento, Carnet o Contrato).",
                 "MISSING_PROOF_DOCUMENT"
+            )
+
+        # Check if proof document extraction has data
+        proof_extraction = proof_doc_data.get("extraction", {})
+        if not proof_extraction:
+            extraction_warnings.append({
+                "code": "EMPTY_PROOF_EXTRACTION",
+                "message": f"No se pudieron extraer datos del documento de prueba ({proof_doc_type}).",
+                "severity": "high",
+            })
+
+        # Block submission if extraction is empty and force_submit is False
+        if extraction_warnings and not force_submit:
+            raise SubmissionError(
+                "No se pudieron extraer datos de los documentos. "
+                "Suba documentos de mejor calidad o confirme para continuar.",
+                "EMPTY_EXTRACTION",
+                details={"warnings": extraction_warnings, "requires_force": True}
             )
 
         # =====================================================================
