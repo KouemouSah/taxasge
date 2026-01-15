@@ -13,6 +13,21 @@ from app.modules.permissions.models.permission import (
 )
 
 
+def _serialize_record(record: asyncpg.Record) -> Dict[str, Any]:
+    """
+    Convert asyncpg Record to dict with JSON-serializable types.
+
+    Converts UUID objects to strings.
+    """
+    if record is None:
+        return None
+    result = dict(record)
+    for key, value in result.items():
+        if isinstance(value, UUID):
+            result[key] = str(value)
+    return result
+
+
 class PermissionRepository:
     """Repository for permission CRUD operations using asyncpg"""
 
@@ -42,7 +57,7 @@ class PermissionRepository:
             WHERE id = $1
         """, permission_id)
 
-        return dict(result) if result else None
+        return _serialize_record(result) if result else None
 
     async def get_by_name(self, name: str) -> Optional[Dict[str, Any]]:
         """
@@ -61,7 +76,7 @@ class PermissionRepository:
             WHERE name = $1
         """, name)
 
-        return dict(result) if result else None
+        return _serialize_record(result) if result else None
 
     async def get_all(
         self,
@@ -112,7 +127,7 @@ class PermissionRepository:
         params.extend([limit, offset])
 
         results = await self.db.fetch(query, *params)
-        return [dict(row) for row in results]
+        return [_serialize_record(row) for row in results]
 
     async def count(
         self,
@@ -184,7 +199,7 @@ class PermissionRepository:
             module = row['module_name'] or 'unknown'
             if module not in grouped:
                 grouped[module] = []
-            grouped[module].append(dict(row))
+            grouped[module].append(_serialize_record(row))
 
         return grouped
 
@@ -209,7 +224,7 @@ class PermissionRepository:
         """, permission.name, permission.resource, permission.action,
             permission.description, permission.is_critical, permission.module_name)
 
-        return dict(result)
+        return _serialize_record(result)
 
     async def bulk_create(self, permissions: List[PermissionCreate]) -> List[Dict[str, Any]]:
         """
@@ -234,7 +249,7 @@ class PermissionRepository:
                 permission.description, permission.is_critical, permission.module_name)
 
             if result:
-                created_permissions.append(dict(result))
+                created_permissions.append(_serialize_record(result))
 
         return created_permissions
 
@@ -286,7 +301,7 @@ class PermissionRepository:
         """
 
         result = await self.db.fetchrow(query, *params)
-        return dict(result) if result else None
+        return _serialize_record(result) if result else None
 
     async def delete(self, permission_id: str) -> bool:
         """
@@ -358,7 +373,7 @@ class PermissionRepository:
             SELECT * FROM v_user_effective_permissions
             WHERE user_id = $1
         """, user_id)
-        return dict(result) if result else None
+        return _serialize_record(result) if result else None
 
     async def list_users_effective_permissions(
         self,
@@ -409,7 +424,7 @@ class PermissionRepository:
         """
 
         results = await self.db.fetch(data_query, *params)
-        users = [dict(r) for r in results]
+        users = [_serialize_record(r) for r in results]
 
         return users, total
 
@@ -464,7 +479,7 @@ class PermissionRepository:
         """
 
         results = await self.db.fetch(query, *params)
-        return [dict(r) for r in results]
+        return [_serialize_record(r) for r in results]
 
     async def detect_overprivileged_users(
         self,
@@ -507,4 +522,4 @@ class PermissionRepository:
         """
 
         results = await self.db.fetch(query, *params)
-        return [dict(r) for r in results]
+        return [_serialize_record(r) for r in results]

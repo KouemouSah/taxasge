@@ -3,12 +3,30 @@ Role Repository - Database operations for roles (asyncpg version)
 """
 from typing import List, Optional, Dict, Any
 from uuid import UUID
+from datetime import datetime
 import asyncpg
 
 from app.modules.permissions.models.role import (
     RoleCreate,
     RoleUpdate,
 )
+
+
+def _serialize_record(record: asyncpg.Record) -> Dict[str, Any]:
+    """
+    Convert asyncpg Record to dict with JSON-serializable types.
+
+    Converts:
+    - UUID objects to strings
+    - datetime objects are kept as-is (FastAPI handles serialization)
+    """
+    if record is None:
+        return None
+    result = dict(record)
+    for key, value in result.items():
+        if isinstance(value, UUID):
+            result[key] = str(value)
+    return result
 
 
 class RoleRepository:
@@ -40,7 +58,7 @@ class RoleRepository:
             WHERE id = $1
         """, role_id)
 
-        return dict(result) if result else None
+        return _serialize_record(result) if result else None
 
     async def get_by_code(self, code: str) -> Optional[Dict[str, Any]]:
         """
@@ -59,7 +77,7 @@ class RoleRepository:
             WHERE code = $1
         """, code)
 
-        return dict(result) if result else None
+        return _serialize_record(result) if result else None
 
     async def get_all(
         self,
@@ -103,7 +121,7 @@ class RoleRepository:
         params.extend([limit, offset])
 
         results = await self.db.fetch(query, *params)
-        return [dict(row) for row in results]
+        return [_serialize_record(row) for row in results]
 
     async def count(
         self,
@@ -174,7 +192,7 @@ class RoleRepository:
             ORDER BY name
         """)
 
-        return [dict(row) for row in results]
+        return [_serialize_record(row) for row in results]
 
     async def get_with_permissions(self, role_id: str) -> Optional[Dict[str, Any]]:
         """
@@ -209,7 +227,7 @@ class RoleRepository:
             ORDER BY p.module_name, p.resource, p.action
         """, role_id)
 
-        role_dict['permissions'] = [dict(row) for row in permissions]
+        role_dict['permissions'] = [_serialize_record(row) for row in permissions]
         role_dict['permissions_count'] = len(permissions)
 
         return role_dict
@@ -235,7 +253,7 @@ class RoleRepository:
                       created_at, updated_at, created_by
         """, role.name, role.code, role.entity_type, role.description, False, created_by)
 
-        return dict(result)
+        return _serialize_record(result)
 
     async def update(self, role_id: str, role: RoleUpdate) -> Optional[Dict[str, Any]]:
         """
@@ -292,7 +310,7 @@ class RoleRepository:
         """
 
         result = await self.db.fetchrow(query, *params)
-        return dict(result) if result else None
+        return _serialize_record(result) if result else None
 
     async def delete(self, role_id: str) -> bool:
         """
