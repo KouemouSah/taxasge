@@ -33,14 +33,14 @@ export const permissionsApi = {
     resource?: string;
     is_critical?: boolean;
   }): Promise<Permission[]> => {
-    const response = await fetchClient.get<{ items: Permission[]; total: number; page: number; page_size: number }>('/permissions', {
+    const response = await fetchClient.get<{ permissions: Permission[]; total: number; page: number; page_size: number }>('/permissions', {
       module_name: params?.module_name,
       resource: params?.resource,
       is_critical: params?.is_critical,
     });
 
-    // Extract permissions array from paginated response
-    return response.items || [];
+    // Extract permissions array from paginated response (backend returns "permissions" not "items")
+    return response.permissions || [];
   },
 
   /**
@@ -77,13 +77,13 @@ export const rolesApi = {
     entity_type?: string;
     is_system?: boolean;
   }): Promise<Role[]> => {
-    const response = await fetchClient.get<{ items: Role[]; total: number; page: number; page_size: number }>('/roles', {
+    const response = await fetchClient.get<{ roles: Role[]; total: number; page: number; page_size: number }>('/roles', {
       entity_type: params?.entity_type,
       is_system: params?.is_system,
     });
 
-    // Extract roles array from paginated response
-    return response.items || [];
+    // Extract roles array from paginated response (backend returns "roles" not "items")
+    return response.roles || [];
   },
 
   /**
