@@ -96,6 +96,26 @@ async def get_custom_roles(
     return custom_roles
 
 
+@router.get("/agent-roles", response_model=List[RoleResponse])
+@require_permission("roles.view")
+async def get_agent_rbac_roles(
+    current_user: UserResponse = Depends(get_current_user),
+    role_service: RoleService = Depends(get_role_service),
+):
+    """
+    Get all predefined RBAC roles for agents
+
+    Requires: roles.view
+
+    Returns:
+        List of agent RBAC roles (dgi_validator, dgi_approver, ministry_validator, etc.)
+
+    These roles should be assigned to agents during creation to define their permissions.
+    """
+    agent_roles = await role_service.get_agent_rbac_roles()
+    return agent_roles
+
+
 @router.get("/{role_id}", response_model=RoleResponse)
 @require_permission("roles.view")
 async def get_role_by_id(

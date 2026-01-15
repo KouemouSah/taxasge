@@ -374,6 +374,208 @@ class AgentProfileService:
 
         return {"valid": True, "error": None}
 
+    # ========================================================================
+    # COMPLETE CREATION (User + Profile atomically)
+    # ========================================================================
+
+    async def create_agent_complete(
+        self,
+        conn: asyncpg.Connection,
+        data,  # AgentCompleteCreate
+        created_by: UUID,
+    ) -> Dict[str, Any]:
+        """
+        Create agent user + profile atomically.
+
+        This method:
+        1. Creates a user with role matching agent_type
+        2. Creates an agent_profile linked to that user
+        3. Optionally assigns an RBAC role for permissions
+
+        Args:
+            conn: Database connection
+            data: AgentCompleteCreate model
+            created_by: UUID of user performing the creation
+
+        Returns:
+            Dict with user_id, profile_id, etc.
+        """
+        import bcrypt
+
+        # Determine user role based on agent type and is_supervisor
+        user_role = "dgi_agent" if data.agent_type.value == "ministry_agent" else "ministry_agent"
+        if data.is_supervisor:
+            user_role = "supervisor"
+
+        # Hash password
+        password_hash = bcrypt.hashpw(
+            data.user.password.encode('utf-8'),
+            bcrypt.gensalt(rounds=12)
+        ).decode('utf-8')
+
+        async with conn.transaction():
+            # 1. Create user
+            user_query = """
+                INSERT INTO users (email, password_hash, first_name, last_name,
+                                   phone_number, role, preferred_language, status,
+                                   email_verified, created_at, updated_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', FALSE, NOW(), NOW())
+                RETURNING id, email, first_name, last_name
+            """
+            user_row = await conn.fetchrow(
+                user_query,
+                data.user.email.lower(),
+                password_hash,
+                data.user.first_name,
+                data.user.last_name,
+                data.user.phone_number,
+                user_role,
+                data.user.preferred_language,
+            )
+            user_id = user_row["id"]
+
+            # 2. Create agent profile
+            profile_query = """
+                INSERT INTO agent_profiles (
+                    user_id, agent_type, is_supervisor, entity_id, ministry_id,
+                    agent_role, can_approve_unlimited, max_approval_amount,
+                    can_escalate, can_assign_tasks, can_reassign,
+                    specializations, working_hours_start, working_hours_end,
+                    working_days, is_active, assigned_by, assigned_at
+                ) VALUES (
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, TRUE, $16, NOW()
+                )
+                RETURNING id
+            """
+            profile_row = await conn.fetchrow(
+                profile_query,
+                user_id,
+                data.agent_type.value,
+                data.is_supervisor,
+                data.entity_id,
+                data.ministry_id,
+                data.agent_role,
+                data.can_approve_unlimited,
+                float(data.max_approval_amount) if data.max_approval_amount else None,
+                data.can_escalate,
+                data.can_assign_tasks,
+                data.can_reassign,
+                data.specializations or [],
+                data.working_hours_start,
+                data.working_hours_end,
+                data.working_days or [1, 2, 3, 4, 5],
+                created_by,
+            )
+            profile_id = profile_row["id"]
+
+            # 3. Assign RBAC role if provided
+            if data.rbac_role_id:
+                # First verify the role exists and is an agent role
+                role_check = await conn.fetchrow(
+                    "SELECT id FROM roles WHERE id = $1 AND entity_type = 'agent'",
+                    data.rbac_role_id
+                )
+                if role_check:
+                    # Get all permissions from the role
+                    perms_query = """
+                        SELECT permission_id FROM role_permissions
+                        WHERE role_id = $1 AND granted = TRUE
+                    """
+                    role_permissions = await conn.fetch(perms_query, data.rbac_role_id)
+
+                    # Assign each permission to the user
+                    for perm in role_permissions:
+                        await conn.execute("""
+                            INSERT INTO user_permissions (user_id, permission_id, granted, granted_by, granted_at)
+                            VALUES ($1, $2, TRUE, $3, NOW())
+                            ON CONFLICT (user_id, permission_id) DO UPDATE SET granted = TRUE
+                        """, user_id, perm["permission_id"], created_by)
+
+                    logger.info(
+                        f"Assigned RBAC role {data.rbac_role_id} to agent {user_id} "
+                        f"({len(role_permissions)} permissions)"
+                    )
+                else:
+                    logger.warning(
+                        f"RBAC role {data.rbac_role_id} not found or not an agent role"
+                    )
+
+            # 4. Create workload record
+            await conn.execute("""
+                INSERT INTO agent_workloads (agent_profile_id, current_assignments,
+                    pending_declarations, in_progress_declarations, max_concurrent_assignments,
+                    capacity_percentage, workload_status, availability)
+                VALUES ($1, 0, 0, 0, 10, 0, 'available', 'available')
+            """, profile_id)
+
+        logger.info(
+            f"Created complete agent: user={user_id}, profile={profile_id}, "
+            f"type={data.agent_type.value}, supervisor={data.is_supervisor}"
+        )
+
+        return {
+            "user_id": user_id,
+            "user_email": data.user.email,
+            "user_full_name": f"{data.user.first_name} {data.user.last_name}",
+            "profile_id": profile_id,
+            "agent_type": data.agent_type,
+            "is_supervisor": data.is_supervisor,
+            "message": "Agent created successfully. Email verification required.",
+        }
+
+    async def create_admin(
+        self,
+        conn: asyncpg.Connection,
+        data,  # AdminCreateRequest
+        created_by: UUID,
+    ) -> Dict[str, Any]:
+        """
+        Create admin user (no agent profile needed).
+
+        Args:
+            conn: Database connection
+            data: AdminCreateRequest model
+            created_by: UUID of user performing the creation
+
+        Returns:
+            Dict with user_id, email, etc.
+        """
+        import bcrypt
+
+        # Hash password
+        password_hash = bcrypt.hashpw(
+            data.password.encode('utf-8'),
+            bcrypt.gensalt(rounds=12)
+        ).decode('utf-8')
+
+        # Create user with admin role
+        user_query = """
+            INSERT INTO users (email, password_hash, first_name, last_name,
+                               phone_number, role, preferred_language, status,
+                               email_verified, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, 'admin', $6, 'active', FALSE, NOW(), NOW())
+            RETURNING id, email, first_name, last_name
+        """
+        user_row = await conn.fetchrow(
+            user_query,
+            data.email.lower(),
+            password_hash,
+            data.first_name,
+            data.last_name,
+            data.phone_number,
+            data.preferred_language,
+        )
+
+        logger.info(f"Created admin user: {user_row['id']} ({data.email})")
+
+        return {
+            "user_id": user_row["id"],
+            "email": data.email,
+            "full_name": f"{data.first_name} {data.last_name}",
+            "role": "admin",
+            "message": "Admin created successfully. Email verification required.",
+        }
+
 
 # Singleton instance
 agent_profile_service = AgentProfileService()

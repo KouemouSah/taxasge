@@ -198,6 +198,7 @@ class AgentCompleteCreate(BaseModel):
     This model is used by POST /agents/complete to create:
     1. A user with role='agent' and email_verified=False
     2. An agent_profile linked to that user
+    3. Optionally assign an RBAC role to define permissions
     """
     # User information
     user: AgentUserInfo
@@ -208,6 +209,13 @@ class AgentCompleteCreate(BaseModel):
     entity_id: Optional[UUID] = None
     ministry_id: Optional[int] = None
     agent_role: str = Field(default="validator", pattern="^(validator|approver|auditor|reviewer)$")
+
+    # RBAC role for permissions (from roles table where entity_type='agent')
+    rbac_role_id: Optional[UUID] = Field(
+        None,
+        description="RBAC role ID to assign to the agent for permissions"
+    )
+
     can_approve_unlimited: bool = False
     max_approval_amount: Optional[Decimal] = None
     can_escalate: bool = True

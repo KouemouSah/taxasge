@@ -38,12 +38,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ArrowLeft, Loader2, UserCog, Shield } from 'lucide-react';
+import { ArrowLeft, Loader2, UserCog, Shield, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateAgent, useCreateAdmin } from '@/modules/agents-admin/hooks';
 import { AgentType } from '@/modules/agents-admin/types';
 import { hierarchyApi } from '@/modules/fiscal-services/services/api';
 import { useEntitiesSimple } from '@/modules/cities/hooks';
+import { rolesApi } from '@/modules/roles-admin/services/api';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // =============================================================================
 // VALIDATION SCHEMAS
@@ -80,6 +82,8 @@ const agentSchema = z.object({
   ministry_id: z.coerce.number().int().positive().optional(),
   entity_id: z.string().uuid().optional().or(z.literal('')),
   agent_role: z.enum(['validator', 'approver', 'auditor', 'reviewer']).default('validator'),
+  // RBAC role for permissions
+  rbac_role_id: z.string().uuid('Sélectionnez un rôle RBAC'),
   can_approve_unlimited: z.boolean().default(false),
   max_approval_amount: z.coerce.number().positive().optional(),
   can_escalate: z.boolean().default(true),
@@ -106,10 +110,18 @@ export default function CreateAgentPage() {
 
   const { data: entitiesData, isLoading: isLoadingEntities } = useEntitiesSimple(true);
 
+  // Fetch RBAC roles for agents
+  const { data: rbacRolesData, isLoading: isLoadingRbacRoles } = useQuery({
+    queryKey: ['roles', 'agent-rbac'],
+    queryFn: () => rolesApi.getAgentRbacRoles(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
   // Transform data for select components
   // Ministry uses name_es for Spanish (default language)
   const ministries = ministriesData?.map(m => ({ id: m.id, name: m.name_es || m.nameEs || '' })) || [];
   const entities = entitiesData?.map(e => ({ id: e.id, name: e.name })) || [];
+  const rbacRoles = rbacRolesData || [];
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -144,6 +156,7 @@ export default function CreateAgentPage() {
       agent_type: AgentType.MINISTRY_AGENT,
       is_supervisor: false,
       agent_role: 'validator',
+      rbac_role_id: '',
       can_approve_unlimited: false,
       can_escalate: true,
       can_assign_tasks: false,
@@ -198,6 +211,7 @@ export default function CreateAgentPage() {
         ministry_id: data.agent_type === AgentType.MINISTRY_AGENT ? data.ministry_id : undefined,
         entity_id: data.agent_type === AgentType.ENTITY_AGENT ? data.entity_id : undefined,
         agent_role: data.agent_role,
+        rbac_role_id: data.rbac_role_id, // RBAC role for permissions
         can_approve_unlimited: data.can_approve_unlimited,
         max_approval_amount: data.can_approve_unlimited ? undefined : data.max_approval_amount,
         can_escalate: data.can_escalate,
@@ -584,14 +598,27 @@ export default function CreateAgentPage() {
                   )}
                 </div>
 
-                {/* Role & Supervisor */}
+                {/* Functional Role & Supervisor */}
                 <div className="grid gap-4 md:grid-cols-2">
                   <FormField
                     control={agentForm.control}
                     name="agent_role"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Rôle fonctionnel</FormLabel>
+                        <FormLabel className="flex items-center gap-2">
+                          Rôle fonctionnel
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className="h-4 w-4 text-muted-foreground" />
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs">
+                                Classification métier de l&apos;agent (pour statistiques et filtres).
+                                N&apos;affecte pas les permissions.
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -628,6 +655,59 @@ export default function CreateAgentPage() {
                     )}
                   />
                 </div>
+
+                {/* RBAC Role - Defines permissions */}
+                <FormField
+                  control={agentForm.control}
+                  name="rbac_role_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        Rôle RBAC (Permissions) *
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Info className="h-4 w-4 text-muted-foreground" />
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              Définit les permissions d&apos;accès de l&apos;agent dans le système.
+                              Chaque rôle contient un ensemble de permissions prédéfinies.
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sélectionner un rôle" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {isLoadingRbacRoles ? (
+                            <SelectItem value="" disabled>Chargement...</SelectItem>
+                          ) : rbacRoles.length === 0 ? (
+                            <SelectItem value="" disabled>Aucun rôle disponible</SelectItem>
+                          ) : (
+                            rbacRoles.map((role) => (
+                              <SelectItem key={role.id} value={role.id}>
+                                {role.name}
+                                {role.description && (
+                                  <span className="text-xs text-muted-foreground ml-2">
+                                    - {role.description}
+                                  </span>
+                                )}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Détermine les fonctionnalités accessibles par l&apos;agent
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <Separator />
 

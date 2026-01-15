@@ -169,6 +169,32 @@ class RoleRepository:
         """
         return await self.get_all(is_system=False, limit=1000)
 
+    async def get_agent_rbac_roles(self) -> List[Dict[str, Any]]:
+        """
+        Get all predefined RBAC roles for agents
+
+        These are system roles with entity_type='agent' that define
+        what permissions an agent has.
+
+        Returns:
+            List of agent RBAC roles
+        """
+        cursor = self.db.cursor(cursor_factory=RealDictCursor)
+        try:
+            cursor.execute("""
+                SELECT id, name, code, entity_type, description, is_system,
+                       created_at, updated_at, created_by
+                FROM roles
+                WHERE entity_type = 'agent'
+                  AND is_system = TRUE
+                ORDER BY name
+            """)
+
+            results = cursor.fetchall()
+            return [dict(row) for row in results]
+        finally:
+            cursor.close()
+
     async def get_with_permissions(self, role_id: str) -> Optional[Dict[str, Any]]:
         """
         Get role with associated permissions

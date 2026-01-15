@@ -82,6 +82,18 @@ export const rolesApi = {
   },
 
   /**
+   * Get all predefined RBAC roles for agents
+   * BACKEND: GET /api/v1/roles/agent-roles
+   * PERMISSION: roles.view
+   *
+   * Returns roles like: dgi_validator, dgi_approver, ministry_validator, etc.
+   * These should be assigned to agents during creation to define their permissions.
+   */
+  getAgentRbacRoles: async (): Promise<Role[]> => {
+    return fetchClient.get<Role[]>(`${ROLES_BASE}/agent-roles`)
+  },
+
+  /**
    * Get role by ID
    * BACKEND: GET /api/v1/roles/{role_id}
    * PERMISSION: roles.view

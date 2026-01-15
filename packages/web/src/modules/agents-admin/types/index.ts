@@ -201,6 +201,8 @@ export interface AgentCompleteCreateRequest {
   entity_id?: string;
   ministry_id?: number;
   agent_role?: AgentRole | string;
+  /** RBAC role ID for defining agent permissions */
+  rbac_role_id?: string;
   can_approve_unlimited?: boolean;
   max_approval_amount?: number;
   can_escalate?: boolean;

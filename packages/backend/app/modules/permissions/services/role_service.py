@@ -127,6 +127,19 @@ class RoleService:
         """
         return await self.role_repo.get_custom_roles()
 
+    async def get_agent_rbac_roles(self) -> List[Dict[str, Any]]:
+        """
+        Get all predefined RBAC roles for agents
+
+        These are system roles with entity_type='agent' that define
+        what permissions an agent has. Used during agent creation.
+
+        Returns:
+            List of agent RBAC roles (dgi_validator, dgi_approver,
+            ministry_validator, ministry_approver, auditor, supervisor_agent)
+        """
+        return await self.role_repo.get_agent_rbac_roles()
+
     async def create_role(
         self,
         role: RoleCreate,
