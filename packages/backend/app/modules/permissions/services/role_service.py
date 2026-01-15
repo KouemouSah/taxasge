@@ -4,7 +4,7 @@ Role Service - Business logic for role management
 from typing import List, Optional, Dict, Any
 from fastapi import HTTPException, status, Depends
 
-from app.core.database import get_db_connection
+from app.database.connection import get_database
 from app.modules.permissions.repositories.role_repository import RoleRepository
 from app.modules.permissions.repositories.permission_repository import PermissionRepository
 from app.modules.permissions.models.role import (
@@ -375,7 +375,7 @@ class RoleService:
 
 
 # Helper function for use in dependencies
-async def get_role_service(db_connection=Depends(get_db_connection)) -> RoleService:
+async def get_role_service(db_connection=Depends(get_database)) -> RoleService:
     """
     Create role service with repositories
 
