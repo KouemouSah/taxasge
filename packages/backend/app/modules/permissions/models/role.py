@@ -83,7 +83,7 @@ class RoleListResponse(BaseModel):
 
 class AssignPermissionsToRoleRequest(BaseModel):
     """Schema for assigning multiple permissions to a role"""
-    permission_ids: List[str] = Field(..., min_length=1, description="List of permission UUIDs to assign")
+    permission_ids: List[UUID] = Field(..., min_length=1, description="List of permission UUIDs to assign")
     granted: bool = Field(True, description="True to grant, False to deny")
 
     @validator('permission_ids')
@@ -96,7 +96,7 @@ class AssignPermissionsToRoleRequest(BaseModel):
 
 class RemovePermissionsFromRoleRequest(BaseModel):
     """Schema for removing permissions from a role"""
-    permission_ids: List[str] = Field(..., min_length=1, description="List of permission UUIDs to remove")
+    permission_ids: List[UUID] = Field(..., min_length=1, description="List of permission UUIDs to remove")
 
     @validator('permission_ids')
     def validate_permission_ids(cls, v):

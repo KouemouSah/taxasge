@@ -3,13 +3,14 @@ RolePermission Models - Association between roles and permissions
 """
 from typing import Optional
 from datetime import datetime
+from uuid import UUID
 from pydantic import BaseModel, Field
 
 
 class RolePermissionBase(BaseModel):
     """Base role-permission association model"""
-    role_id: str = Field(..., description="Role UUID")
-    permission_id: str = Field(..., description="Permission UUID")
+    role_id: UUID = Field(..., description="Role UUID")
+    permission_id: UUID = Field(..., description="Permission UUID")
     granted: bool = Field(True, description="True if granted, False if explicitly denied")
 
 
@@ -21,7 +22,7 @@ class RolePermissionCreate(RolePermissionBase):
 class RolePermissionResponse(RolePermissionBase):
     """Schema for role-permission response"""
     created_at: datetime
-    created_by: Optional[str] = Field(None, description="User ID who created this association")
+    created_by: Optional[UUID] = Field(None, description="User ID who created this association")
 
     class Config:
         from_attributes = True
@@ -38,10 +39,10 @@ class RolePermissionResponse(RolePermissionBase):
 
 class RolePermissionWithDetails(BaseModel):
     """Schema for role-permission with full details"""
-    role_id: str
+    role_id: UUID
     role_name: str
     role_code: str
-    permission_id: str
+    permission_id: UUID
     permission_name: str
     permission_resource: str
     permission_action: str
