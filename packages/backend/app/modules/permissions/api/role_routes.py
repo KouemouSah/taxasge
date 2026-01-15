@@ -20,6 +20,10 @@ from app.modules.permissions.services.role_service import (
     RoleService,
     get_role_service,
 )
+from app.modules.permissions.services.permission_service import (
+    PermissionService,
+    get_permission_service,
+)
 from app.modules.permissions.middleware.permission_middleware import require_permission
 
 
@@ -35,6 +39,7 @@ async def get_all_roles(
     page_size: int = Query(50, ge=1, le=100, description="Results per page"),
     current_user: UserResponse = Depends(get_current_user),
     role_service: RoleService = Depends(get_role_service),
+    permission_service: PermissionService = Depends(get_permission_service),
 ):
     """
     Get all roles with pagination and filtering
@@ -65,6 +70,7 @@ async def get_all_roles(
 async def get_system_roles(
     current_user: UserResponse = Depends(get_current_user),
     role_service: RoleService = Depends(get_role_service),
+    permission_service: PermissionService = Depends(get_permission_service),
 ):
     """
     Get all system (built-in) roles
@@ -83,6 +89,7 @@ async def get_system_roles(
 async def get_custom_roles(
     current_user: UserResponse = Depends(get_current_user),
     role_service: RoleService = Depends(get_role_service),
+    permission_service: PermissionService = Depends(get_permission_service),
 ):
     """
     Get all custom (user-created) roles
@@ -101,6 +108,7 @@ async def get_custom_roles(
 async def get_agent_rbac_roles(
     current_user: UserResponse = Depends(get_current_user),
     role_service: RoleService = Depends(get_role_service),
+    permission_service: PermissionService = Depends(get_permission_service),
 ):
     """
     Get all predefined RBAC roles for agents
@@ -122,6 +130,7 @@ async def get_role_by_id(
     role_id: UUID,
     current_user: UserResponse = Depends(get_current_user),
     role_service: RoleService = Depends(get_role_service),
+    permission_service: PermissionService = Depends(get_permission_service),
 ):
     """
     Get role by ID
@@ -154,6 +163,7 @@ async def get_role_with_permissions(
     role_id: UUID,
     current_user: UserResponse = Depends(get_current_user),
     role_service: RoleService = Depends(get_role_service),
+    permission_service: PermissionService = Depends(get_permission_service),
 ):
     """
     Get role with all associated permissions
@@ -186,6 +196,7 @@ async def get_role_by_code(
     code: str,
     current_user: UserResponse = Depends(get_current_user),
     role_service: RoleService = Depends(get_role_service),
+    permission_service: PermissionService = Depends(get_permission_service),
 ):
     """
     Get role by code
@@ -218,6 +229,7 @@ async def create_role(
     role: RoleCreate,
     current_user: UserResponse = Depends(get_current_user),
     role_service: RoleService = Depends(get_role_service),
+    permission_service: PermissionService = Depends(get_permission_service),
 ):
     """
     Create a new custom role
@@ -244,6 +256,7 @@ async def update_role(
     role: RoleUpdate,
     current_user: UserResponse = Depends(get_current_user),
     role_service: RoleService = Depends(get_role_service),
+    permission_service: PermissionService = Depends(get_permission_service),
 ):
     """
     Update a role
@@ -271,6 +284,7 @@ async def delete_role(
     role_id: UUID,
     current_user: UserResponse = Depends(get_current_user),
     role_service: RoleService = Depends(get_role_service),
+    permission_service: PermissionService = Depends(get_permission_service),
 ):
     """
     Delete a role
@@ -296,6 +310,7 @@ async def assign_permissions_to_role(
     request: AssignPermissionsToRoleRequest,
     current_user: UserResponse = Depends(get_current_user),
     role_service: RoleService = Depends(get_role_service),
+    permission_service: PermissionService = Depends(get_permission_service),
 ):
     """
     Assign multiple permissions to a role
@@ -329,6 +344,7 @@ async def remove_permissions_from_role(
     request: RemovePermissionsFromRoleRequest,
     current_user: UserResponse = Depends(get_current_user),
     role_service: RoleService = Depends(get_role_service),
+    permission_service: PermissionService = Depends(get_permission_service),
 ):
     """
     Remove permissions from a role
@@ -359,6 +375,7 @@ async def get_role_permissions(
     role_id: UUID,
     current_user: UserResponse = Depends(get_current_user),
     role_service: RoleService = Depends(get_role_service),
+    permission_service: PermissionService = Depends(get_permission_service),
 ):
     """
     Get list of permission IDs for a role

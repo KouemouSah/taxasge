@@ -21,6 +21,10 @@ from app.modules.permissions.models.user_permission import (
 from app.modules.permissions.repositories.user_permission_repository import (
     UserPermissionRepository,
 )
+from app.modules.permissions.services.permission_service import (
+    PermissionService,
+    get_permission_service,
+)
 from app.modules.permissions.middleware.permission_middleware import require_permission
 
 
@@ -39,6 +43,7 @@ async def get_user_permissions(
     include_expired: bool = Query(False, description="Include expired permissions"),
     current_user: UserResponse = Depends(get_current_user),
     user_permission_repo: UserPermissionRepository = Depends(get_user_permission_repo),
+    permission_service: PermissionService = Depends(get_permission_service),
 ):
     """
     Get all user-specific permissions for a user
@@ -66,6 +71,7 @@ async def get_user_permissions_summary(
     user_id: UUID,
     current_user: UserResponse = Depends(get_current_user),
     user_permission_repo: UserPermissionRepository = Depends(get_user_permission_repo),
+    permission_service: PermissionService = Depends(get_permission_service),
 ):
     """
     Get comprehensive summary of user's permissions
@@ -95,6 +101,7 @@ async def grant_permission_to_user(
     request: GrantPermissionToUserRequest,
     current_user: UserResponse = Depends(get_current_user),
     user_permission_repo: UserPermissionRepository = Depends(get_user_permission_repo),
+    permission_service: PermissionService = Depends(get_permission_service),
 ):
     """
     Grant a specific permission to a user
@@ -146,6 +153,7 @@ async def revoke_permission_from_user(
     request: RevokePermissionFromUserRequest,
     current_user: UserResponse = Depends(get_current_user),
     user_permission_repo: UserPermissionRepository = Depends(get_user_permission_repo),
+    permission_service: PermissionService = Depends(get_permission_service),
 ):
     """
     Revoke a permission from a user
@@ -192,6 +200,7 @@ async def deny_permission_to_user(
     reason: Optional[str] = None,
     current_user: UserResponse = Depends(get_current_user),
     user_permission_repo: UserPermissionRepository = Depends(get_user_permission_repo),
+    permission_service: PermissionService = Depends(get_permission_service),
 ):
     """
     Explicitly deny a permission to a user
@@ -240,6 +249,7 @@ async def update_user_permission(
     update_data: UserPermissionUpdate,
     current_user: UserResponse = Depends(get_current_user),
     user_permission_repo: UserPermissionRepository = Depends(get_user_permission_repo),
+    permission_service: PermissionService = Depends(get_permission_service),
 ):
     """
     Update a user-specific permission
@@ -287,6 +297,7 @@ async def update_user_permission(
 async def get_expired_permissions(
     current_user: UserResponse = Depends(get_current_user),
     user_permission_repo: UserPermissionRepository = Depends(get_user_permission_repo),
+    permission_service: PermissionService = Depends(get_permission_service),
 ):
     """
     Get all expired user permissions
@@ -305,6 +316,7 @@ async def get_expired_permissions(
 async def cleanup_expired_permissions(
     current_user: UserResponse = Depends(get_current_user),
     user_permission_repo: UserPermissionRepository = Depends(get_user_permission_repo),
+    permission_service: PermissionService = Depends(get_permission_service),
 ):
     """
     Remove all expired user permissions
@@ -334,6 +346,7 @@ async def check_user_has_permission(
     permission_name: str,
     current_user: UserResponse = Depends(get_current_user),
     user_permission_repo: UserPermissionRepository = Depends(get_user_permission_repo),
+    permission_service: PermissionService = Depends(get_permission_service),
 ):
     """
     Check if a user has a specific permission
@@ -368,6 +381,7 @@ async def get_user_permission(
     permission_id: UUID,
     current_user: UserResponse = Depends(get_current_user),
     user_permission_repo: UserPermissionRepository = Depends(get_user_permission_repo),
+    permission_service: PermissionService = Depends(get_permission_service),
 ):
     """
     Get a specific user permission
