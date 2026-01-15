@@ -37,6 +37,7 @@ export const permissionsApi = {
       module_name: params?.module_name,
       resource: params?.resource,
       is_critical: params?.is_critical,
+      page_size: 500, // Fetch all permissions (312 total across 20 modules)
     });
 
     // Extract permissions array from paginated response (backend returns "permissions" not "items")
