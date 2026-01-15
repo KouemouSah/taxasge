@@ -122,6 +122,21 @@ async def get_database() -> AsyncGenerator[asyncpg.Connection, None]:
         yield conn
 
 
+# Direct connection getter (for repositories that need raw connection)
+async def get_db_connection() -> asyncpg.Connection:
+    """Get a database connection directly (not as generator).
+
+    Use this for repositories that need direct connection access.
+    Caller is responsible for using connection within context of request.
+    """
+    return await db_manager.pool.acquire()
+
+
+async def release_db_connection(conn: asyncpg.Connection):
+    """Release a database connection back to the pool."""
+    await db_manager.pool.release(conn)
+
+
 # Convenience functions for common operations
 async def fetch_all(query: str, *args) -> list:
     """Fetch all rows from query"""

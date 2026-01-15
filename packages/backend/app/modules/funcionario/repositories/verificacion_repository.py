@@ -10,7 +10,7 @@ from uuid import UUID
 
 from loguru import logger
 
-from app.database.connection import get_database
+from app.database.connection import get_db_connection
 
 
 class VerificacionRepository:
@@ -41,7 +41,7 @@ class VerificacionRepository:
         Returns:
             Created verification record
         """
-        db = await get_database()
+        db = await get_db_connection()
 
         query = """
             INSERT INTO verificacion_funcionario (
@@ -68,7 +68,7 @@ class VerificacionRepository:
 
     async def get_by_id(self, verificacion_id: UUID) -> Optional[Dict[str, Any]]:
         """Get verification by ID."""
-        db = await get_database()
+        db = await get_db_connection()
 
         query = """
             SELECT vf.*, u.email as user_email, u.full_name as user_full_name, u.phone_number as user_phone
@@ -82,7 +82,7 @@ class VerificacionRepository:
 
     async def get_by_user_id(self, user_id: UUID) -> Optional[Dict[str, Any]]:
         """Get the latest verification for a user."""
-        db = await get_database()
+        db = await get_db_connection()
 
         query = """
             SELECT *
@@ -97,7 +97,7 @@ class VerificacionRepository:
 
     async def get_pending_by_user(self, user_id: UUID) -> Optional[Dict[str, Any]]:
         """Get pending verification for a user (if any)."""
-        db = await get_database()
+        db = await get_db_connection()
 
         query = """
             SELECT *
@@ -129,7 +129,7 @@ class VerificacionRepository:
         Returns:
             Dict with items, total, pagination info
         """
-        db = await get_database()
+        db = await get_db_connection()
         offset = (page - 1) * page_size
 
         # Build WHERE clause
@@ -177,7 +177,7 @@ class VerificacionRepository:
 
     async def get_stats(self) -> Dict[str, Any]:
         """Get verification statistics."""
-        db = await get_database()
+        db = await get_db_connection()
 
         query = """
             SELECT
@@ -207,7 +207,7 @@ class VerificacionRepository:
         verification_data: Dict[str, Any],
     ) -> Optional[Dict[str, Any]]:
         """Update verification_data for a verification."""
-        db = await get_database()
+        db = await get_db_connection()
 
         query = """
             UPDATE verificacion_funcionario
@@ -225,7 +225,7 @@ class VerificacionRepository:
         new_data: Dict[str, Any],
     ) -> Optional[Dict[str, Any]]:
         """Merge new data into existing verification_data."""
-        db = await get_database()
+        db = await get_db_connection()
 
         query = """
             UPDATE verificacion_funcionario
@@ -259,7 +259,7 @@ class VerificacionRepository:
         Returns:
             Result dict with success, status, user_id, etc.
         """
-        db = await get_database()
+        db = await get_db_connection()
 
         query = """
             SELECT process_verificacion_funcionario(
@@ -296,7 +296,7 @@ class VerificacionRepository:
         Returns:
             Result dict with success count, errors, etc.
         """
-        db = await get_database()
+        db = await get_db_connection()
 
         query = """
             SELECT batch_approve_verificaciones($1, $2, $3) as result
@@ -327,7 +327,7 @@ class VerificacionRepository:
         Returns:
             Dict with existing user info if found, None otherwise
         """
-        db = await get_database()
+        db = await get_db_connection()
 
         query = """
             SELECT u.id, u.email, u.full_name, u.matricula_funcionario, u.funcionario_verified_at
@@ -361,7 +361,7 @@ class VerificacionRepository:
         Returns:
             Dict with pending request info if found, None otherwise
         """
-        db = await get_database()
+        db = await get_db_connection()
 
         query = """
             SELECT vf.id, vf.user_id, vf.matricula, vf.created_at, u.email, u.full_name
@@ -397,7 +397,7 @@ class VerificacionRepository:
         Returns:
             Dict with approved verification info if found, None otherwise
         """
-        db = await get_database()
+        db = await get_db_connection()
 
         query = """
             SELECT vf.id, vf.user_id, vf.matricula, vf.created_at, vf.processed_at,
@@ -436,7 +436,7 @@ class VerificacionRepository:
         Returns:
             True if logged successfully
         """
-        db = await get_database()
+        db = await get_db_connection()
 
         query = """
             INSERT INTO verificacion_fraud_log (
@@ -478,7 +478,7 @@ class VerificacionRepository:
         Returns:
             Dict with verification status and user's funcionario info
         """
-        db = await get_database()
+        db = await get_db_connection()
 
         # Get user's funcionario fields
         user_query = """
