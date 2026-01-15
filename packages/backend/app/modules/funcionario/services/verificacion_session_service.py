@@ -685,17 +685,18 @@ class VerificacionSessionService:
         # STEP 1: Validate required documents
         # =====================================================================
 
-        if "dip" not in documents or not documents["dip"].get("extraction"):
+        # Check if DIP was uploaded and previewed (not if extraction has data)
+        if "dip" not in documents or not documents["dip"].get("previewed_at"):
             raise SubmissionError(
                 "Debe subir y validar el DIP antes de enviar.",
                 "MISSING_DIP"
             )
 
-        # Find proof document
+        # Find proof document (check if previewed, not if extraction has data)
         proof_doc_type = None
         proof_doc_data = None
         for t in DocumentoTipoPrueba:
-            if t.value in documents and documents[t.value].get("extraction"):
+            if t.value in documents and documents[t.value].get("previewed_at"):
                 proof_doc_type = t.value
                 proof_doc_data = documents[t.value]
                 break
