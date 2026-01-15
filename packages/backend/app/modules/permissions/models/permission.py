@@ -15,9 +15,13 @@ class PermissionBase(BaseModel):
     is_critical: bool = Field(False, description="If true, UI will show warning when granting")
     module_name: Optional[str] = Field(None, max_length=50, description="Module that registered this permission")
 
+
+class PermissionCreate(PermissionBase):
+    """Schema for creating a new permission"""
+
     @validator('name')
     def validate_name_format(cls, v, values):
-        """Validate permission name format: resource.action"""
+        """Validate permission name format: resource.action (for creation only)"""
         if '.' not in v:
             raise ValueError('Permission name must follow format: resource.action')
 
@@ -32,11 +36,6 @@ class PermissionBase(BaseModel):
             raise ValueError('Permission name action part must match action field')
 
         return v
-
-
-class PermissionCreate(PermissionBase):
-    """Schema for creating a new permission"""
-    pass
 
 
 class PermissionUpdate(BaseModel):
@@ -82,4 +81,4 @@ class PermissionsByModuleResponse(BaseModel):
     """Schema for permissions grouped by module"""
     module_name: str
     permissions: list[PermissionResponse]
-    total: int
+    total: int = Field(default=0, description="Total permissions in this module")

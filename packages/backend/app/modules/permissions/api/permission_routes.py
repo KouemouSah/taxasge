@@ -64,12 +64,13 @@ async def get_permissions_grouped_by_module(
     Returns:
         List of modules with their permissions
     """
-    grouped = await permission_service.get_permissions_grouped_by_module()
+    grouped = await permission_service.get_permissions_by_module()
 
     return [
         PermissionsByModuleResponse(
             module_name=module,
-            permissions=perms
+            permissions=perms,
+            total=len(perms)
         )
         for module, perms in grouped.items()
     ]

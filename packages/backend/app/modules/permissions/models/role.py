@@ -13,9 +13,13 @@ class RoleBase(BaseModel):
     entity_type: Optional[str] = Field(None, max_length=50, description="Entity type: DGI, Ministry, or NULL for global")
     description: Optional[str] = Field(None, description="Role description")
 
+
+class RoleCreate(RoleBase):
+    """Schema for creating a new role"""
+
     @validator('code')
     def validate_code_format(cls, v):
-        """Validate role code format: lowercase with underscores only"""
+        """Validate role code format: lowercase with underscores only (for creation only)"""
         if not v.replace('_', '').isalnum():
             raise ValueError('Role code must contain only alphanumeric characters and underscores')
         if v != v.lower():
@@ -25,14 +29,9 @@ class RoleBase(BaseModel):
     @validator('entity_type')
     def validate_entity_type(cls, v):
         """Validate entity_type is one of allowed values"""
-        if v is not None and v not in ['DGI', 'Ministry']:
-            raise ValueError('entity_type must be one of: DGI, Ministry, or NULL')
+        if v is not None and v not in ['DGI', 'Ministry', 'agent']:
+            raise ValueError('entity_type must be one of: DGI, Ministry, agent, or NULL')
         return v
-
-
-class RoleCreate(RoleBase):
-    """Schema for creating a new role"""
-    pass
 
 
 class RoleUpdate(BaseModel):
