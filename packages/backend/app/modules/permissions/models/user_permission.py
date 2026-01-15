@@ -3,13 +3,14 @@ UserPermission Models - User-specific permission overrides
 """
 from typing import Optional
 from datetime import datetime
+from uuid import UUID
 from pydantic import BaseModel, Field, validator
 
 
 class UserPermissionBase(BaseModel):
     """Base user-permission model"""
-    user_id: str = Field(..., description="User UUID")
-    permission_id: str = Field(..., description="Permission UUID")
+    user_id: UUID = Field(..., description="User UUID")
+    permission_id: UUID = Field(..., description="Permission UUID")
     granted: bool = Field(True, description="True to grant, False to deny")
     expires_at: Optional[datetime] = Field(None, description="Expiration date for temporary permissions (NULL for permanent)")
     reason: Optional[str] = Field(None, description="Reason for granting/denying this permission (for audit)")
@@ -42,7 +43,7 @@ class UserPermissionUpdate(BaseModel):
 
 class UserPermissionResponse(UserPermissionBase):
     """Schema for user permission response"""
-    granted_by: Optional[str] = Field(None, description="Admin user ID who granted this permission")
+    granted_by: Optional[UUID] = Field(None, description="Admin user ID who granted this permission")
     granted_at: datetime
     is_expired: bool = Field(..., description="True if permission has expired")
 
@@ -64,16 +65,16 @@ class UserPermissionResponse(UserPermissionBase):
 
 class UserPermissionWithDetails(BaseModel):
     """Schema for user permission with full details"""
-    user_id: str
+    user_id: UUID
     user_email: str
     user_full_name: str
-    permission_id: str
+    permission_id: UUID
     permission_name: str
     permission_resource: str
     permission_action: str
     permission_is_critical: bool
     granted: bool
-    granted_by: Optional[str]
+    granted_by: Optional[UUID]
     granted_by_name: Optional[str]
     granted_at: datetime
     expires_at: Optional[datetime]
@@ -95,7 +96,7 @@ class UserPermissionListResponse(BaseModel):
 
 class GrantPermissionToUserRequest(BaseModel):
     """Schema for granting a permission to a user"""
-    permission_id: str = Field(..., description="Permission UUID to grant")
+    permission_id: UUID = Field(..., description="Permission UUID to grant")
     expires_at: Optional[datetime] = Field(None, description="Expiration date (NULL for permanent)")
     reason: Optional[str] = Field(None, description="Reason for granting (for audit)")
 
@@ -109,13 +110,13 @@ class GrantPermissionToUserRequest(BaseModel):
 
 class RevokePermissionFromUserRequest(BaseModel):
     """Schema for revoking a permission from a user"""
-    permission_id: str = Field(..., description="Permission UUID to revoke")
+    permission_id: UUID = Field(..., description="Permission UUID to revoke")
     reason: Optional[str] = Field(None, description="Reason for revoking (for audit)")
 
 
 class UserPermissionsSummary(BaseModel):
     """Summary of user's permissions (role + overrides)"""
-    user_id: str
+    user_id: UUID
     user_email: str
     role_code: Optional[str] = None
     role_name: Optional[str] = None

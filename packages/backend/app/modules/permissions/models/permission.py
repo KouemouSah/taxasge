@@ -3,6 +3,7 @@ Permission Models - Pydantic schemas for permissions
 """
 from typing import Optional
 from datetime import datetime
+from uuid import UUID
 from pydantic import BaseModel, Field, validator
 
 
@@ -47,7 +48,7 @@ class PermissionUpdate(BaseModel):
 
 class PermissionResponse(PermissionBase):
     """Schema for permission responses"""
-    id: str = Field(..., description="Permission UUID")
+    id: UUID = Field(..., description="Permission UUID")
     created_at: datetime
     updated_at: datetime
 

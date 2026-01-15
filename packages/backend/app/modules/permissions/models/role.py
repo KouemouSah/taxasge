@@ -3,6 +3,7 @@ Role Models - Pydantic schemas for roles
 """
 from typing import Optional, List
 from datetime import datetime
+from uuid import UUID
 from pydantic import BaseModel, Field, validator
 
 
@@ -42,11 +43,11 @@ class RoleUpdate(BaseModel):
 
 class RoleResponse(RoleBase):
     """Schema for role responses"""
-    id: str = Field(..., description="Role UUID")
+    id: UUID = Field(..., description="Role UUID")
     is_system: bool = Field(..., description="System roles cannot be modified/deleted")
     created_at: datetime
     updated_at: datetime
-    created_by: Optional[str] = Field(None, description="User ID who created this role (NULL for system roles)")
+    created_by: Optional[UUID] = Field(None, description="User ID who created this role (NULL for system roles)")
 
     class Config:
         from_attributes = True

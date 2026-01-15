@@ -12,19 +12,15 @@ from app.modules.permissions.models.user_permission import (
 )
 
 
-def _serialize_record(record: asyncpg.Record) -> Dict[str, Any]:
+def _row_to_dict(record: asyncpg.Record) -> Dict[str, Any]:
     """
-    Convert asyncpg Record to dict with JSON-serializable types.
+    Convert asyncpg Record to dict.
 
-    Converts UUID objects to strings.
+    UUIDs are kept as-is (Pydantic handles the conversion).
     """
     if record is None:
         return None
-    result = dict(record)
-    for key, value in result.items():
-        if isinstance(value, UUID):
-            result[key] = str(value)
-    return result
+    return dict(record)
 
 
 class UserPermissionRepository:
@@ -65,7 +61,7 @@ class UserPermissionRepository:
             WHERE user_id = $1 AND permission_id = $2
         """, user_id, permission_id)
 
-        return _serialize_record(result) if result else None
+        return _row_to_dict(result) if result else None
 
     async def get_by_user(
         self,
@@ -99,7 +95,7 @@ class UserPermissionRepository:
         query += " ORDER BY granted_at DESC"
 
         results = await self.db.fetch(query, user_id)
-        return [_serialize_record(row) for row in results]
+        return [_row_to_dict(row) for row in results]
 
     async def get_by_user_with_details(
         self,
@@ -149,7 +145,7 @@ class UserPermissionRepository:
         query += " ORDER BY up.granted_at DESC"
 
         results = await self.db.fetch(query, user_id)
-        return [_serialize_record(row) for row in results]
+        return [_row_to_dict(row) for row in results]
 
     async def get_expired_permissions(self) -> List[Dict[str, Any]]:
         """
@@ -166,7 +162,7 @@ class UserPermissionRepository:
             ORDER BY expires_at DESC
         """)
 
-        return [_serialize_record(row) for row in results]
+        return [_row_to_dict(row) for row in results]
 
     async def create(
         self,
@@ -202,7 +198,7 @@ class UserPermissionRepository:
             user_permission.granted, str(user_permission.granted_by) if user_permission.granted_by else None,
             user_permission.expires_at, user_permission.reason)
 
-        return _serialize_record(result)
+        return _row_to_dict(result)
 
     async def update(
         self,
@@ -263,7 +259,7 @@ class UserPermissionRepository:
         """
 
         result = await self.db.fetchrow(query, *params)
-        return _serialize_record(result) if result else None
+        return _row_to_dict(result) if result else None
 
     async def delete(self, user_id: str, permission_id: str) -> bool:
         """
@@ -407,4 +403,4 @@ class UserPermissionRepository:
             WHERE u.id = $1
         """, user_id)
 
-        return _serialize_record(result) if result else None
+        return _row_to_dict(result) if result else None
