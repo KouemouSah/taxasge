@@ -84,6 +84,7 @@ import {
   ChevronRight,
   ChevronLeft,
   Users,
+  Eye,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -396,8 +397,16 @@ function RolesTab() {
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Link href={`/${locale}/dashboard/admin/roles/${role.id}`}>
-                            <Button variant="ghost" size="icon" title="Voir/Modifier">
-                              <Pencil className="h-4 w-4" />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title={role.is_system ? "Voir" : "Modifier"}
+                            >
+                              {role.is_system ? (
+                                <Eye className="h-4 w-4" />
+                              ) : (
+                                <Pencil className="h-4 w-4" />
+                              )}
                             </Button>
                           </Link>
                           <Button
