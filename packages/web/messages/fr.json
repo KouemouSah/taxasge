@@ -3,6 +3,39 @@
     "actions": "Actions",
     "active": "Actifs",
     "all": "Tous",
+    "agents": {
+      "title": "Agents & Administrateurs",
+      "subtitle": "Gérer les profils agents et les administrateurs système",
+      "createAgent": "Créer Agent",
+      "createAdmin": "Créer Admin",
+      "noAgentsFound": "Aucun agent trouvé",
+      "noAdminsFound": "Aucun administrateur trouvé",
+      "agentDetails": "Détails de l'agent",
+      "adminDetails": "Détails de l'administrateur",
+      "deactivate": "Désactiver",
+      "reactivate": "Réactiver",
+      "delete": "Supprimer",
+      "confirmDelete": "Êtes-vous sûr de vouloir supprimer cet agent ?",
+      "confirmDeactivate": "Êtes-vous sûr de vouloir désactiver cet agent ?",
+      "tabs": {
+        "agents": "Agents",
+        "admins": "Administrateurs",
+        "workload": "Charge de Travail",
+        "performance": "Performance"
+      },
+      "stats": {
+        "totalAgents": "Total Agents",
+        "active": "Actifs",
+        "supervisors": "Superviseurs",
+        "ministries": "Ministères",
+        "entities": "Entités"
+      },
+      "filters": {
+        "allTypes": "Tous les types",
+        "ministryAgent": "Agent Ministère",
+        "entityAgent": "Agent Entité"
+      }
+    },
     "assignments": {
       "assignedAgent": "Agent assigné",
       "assignmentDate": "Date d'assignation",
