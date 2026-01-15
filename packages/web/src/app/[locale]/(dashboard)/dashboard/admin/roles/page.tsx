@@ -520,6 +520,8 @@ function RolesTab() {
 // PERMISSIONS CATALOG TAB COMPONENT
 // =============================================================================
 
+const PERMISSIONS_PAGE_SIZE = 20;
+
 function PermissionsCatalogTab() {
   // Note: _t kept for future i18n
   const _t = useTranslations('admin.permissions');
@@ -528,6 +530,12 @@ function PermissionsCatalogTab() {
   const [moduleFilter, setModuleFilter] = useState<string>('all');
   const [criticalFilter, setCriticalFilter] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'grouped' | 'list'>('grouped');
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, moduleFilter, criticalFilter]);
 
   const { data: permissions = [], isLoading, error, refetch } = usePermissions({
     module_name: moduleFilter === 'all' ? undefined : moduleFilter,
@@ -538,6 +546,9 @@ function PermissionsCatalogTab() {
   const moduleNames = useModuleNames();
 
   const filteredPermissions = permissions.filter((perm) => {
+    // Apply critical filter for 'normal' option
+    if (criticalFilter === 'normal' && perm.is_critical) return false;
+
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -546,6 +557,15 @@ function PermissionsCatalogTab() {
       perm.resource.toLowerCase().includes(query)
     );
   });
+
+  // Pagination for list view
+  const totalPages = Math.ceil(filteredPermissions.length / PERMISSIONS_PAGE_SIZE);
+  const paginatedPermissions = viewMode === 'list'
+    ? filteredPermissions.slice(
+        (currentPage - 1) * PERMISSIONS_PAGE_SIZE,
+        currentPage * PERMISSIONS_PAGE_SIZE
+      )
+    : filteredPermissions;
 
   const groupedByModule = filteredPermissions.reduce((acc, perm) => {
     const module = perm.module_name || 'other';
@@ -586,25 +606,27 @@ function PermissionsCatalogTab() {
 
   return (
     <div className="space-y-4">
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* Stats Cards - Improved layout */}
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Total Permissions</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.total}</div>
+            <p className="text-xs text-muted-foreground">dans {stats.modules} modules</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-destructive" />
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
               Critiques
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">{stats.critical}</div>
+            <div className="text-2xl font-bold text-amber-500">{stats.critical}</div>
+            <p className="text-xs text-muted-foreground">requièrent supervision</p>
           </CardContent>
         </Card>
         <Card>
@@ -613,126 +635,174 @@ function PermissionsCatalogTab() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.modules}</div>
+            <p className="text-xs text-muted-foreground">catégories de permissions</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Filtrées</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{filteredPermissions.length}</div>
+            <p className="text-xs text-muted-foreground">permissions affichées</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Permissions Table */}
+      {/* Permissions Catalog - Improved UI */}
       <Card>
         <CardHeader>
-          <CardTitle>Catalogue des Permissions</CardTitle>
-          <CardDescription>
-            Vue en lecture seule de toutes les permissions système
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Key className="h-5 w-5" />
+                Catalogue des Permissions
+              </CardTitle>
+              <CardDescription>
+                Référence complète des permissions système ({stats.total} permissions)
+              </CardDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Actualiser
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4 mb-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
+          {/* Filters - Improved layout */}
+          <div className="flex flex-col gap-4 mb-6">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Rechercher par nom, description ou ressource..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Select value={moduleFilter} onValueChange={setModuleFilter}>
+                <SelectTrigger className="w-full sm:w-[200px]">
+                  <SelectValue placeholder="Module" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les modules ({stats.modules})</SelectItem>
+                  <Separator className="my-1" />
+                  {moduleNames.map((module) => {
+                    const count = permissions.filter(p => p.module_name === module).length;
+                    return (
+                      <SelectItem key={module} value={module}>
+                        {module} ({count})
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+              <Select value={criticalFilter} onValueChange={setCriticalFilter}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous types</SelectItem>
+                  <SelectItem value="critical">Critiques ({stats.critical})</SelectItem>
+                  <SelectItem value="normal">Normales ({stats.total - stats.critical})</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={moduleFilter} onValueChange={setModuleFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Module" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les modules</SelectItem>
-                {moduleNames.map((module) => (
-                  <SelectItem key={module} value={module}>
-                    {module}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={criticalFilter} onValueChange={setCriticalFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous</SelectItem>
-                <SelectItem value="critical">Critiques seulement</SelectItem>
-                <SelectItem value="normal">Normales seulement</SelectItem>
-              </SelectContent>
-            </Select>
-            <div className="flex gap-1">
-              <Button
-                variant={viewMode === 'grouped' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('grouped')}
-              >
-                Groupé
-              </Button>
-              <Button
-                variant={viewMode === 'list' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('list')}
-              >
-                Liste
-              </Button>
+            <div className="flex items-center justify-between">
+              <div className="flex gap-1 border rounded-lg p-1">
+                <Button
+                  variant={viewMode === 'grouped' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('grouped')}
+                  className="gap-2"
+                >
+                  <Building2 className="h-4 w-4" />
+                  Par Module
+                </Button>
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                  className="gap-2"
+                >
+                  <Key className="h-4 w-4" />
+                  Liste
+                </Button>
+              </div>
+              {viewMode === 'list' && filteredPermissions.length > 0 && (
+                <span className="text-sm text-muted-foreground">
+                  Affichage {(currentPage - 1) * PERMISSIONS_PAGE_SIZE + 1}-
+                  {Math.min(currentPage * PERMISSIONS_PAGE_SIZE, filteredPermissions.length)} sur {filteredPermissions.length}
+                </span>
+              )}
             </div>
           </div>
 
           {viewMode === 'grouped' ? (
-            <Accordion type="multiple" className="w-full">
-              {Object.entries(groupedByModule).map(([module, perms]) => (
+            <Accordion type="multiple" className="w-full" defaultValue={Object.keys(groupedByModule).slice(0, 2)}>
+              {Object.entries(groupedByModule)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([module, perms]) => (
                 <AccordionItem key={module} value={module}>
                   <AccordionTrigger className="hover:no-underline">
                     <div className="flex items-center gap-3">
-                      <Badge variant="outline" className="capitalize">
+                      <Badge variant="outline" className="capitalize font-mono">
                         {module}
                       </Badge>
                       <span className="text-sm text-muted-foreground">
-                        {perms.length} permissions
+                        {perms.length} permission{perms.length > 1 ? 's' : ''}
                       </span>
                       {perms.some(p => p.is_critical) && (
-                        <Badge variant="destructive" className="gap-1">
+                        <Badge variant="secondary" className="gap-1 bg-amber-100 text-amber-700 border-amber-300">
                           <AlertTriangle className="h-3 w-3" />
-                          {perms.filter(p => p.is_critical).length} critiques
+                          {perms.filter(p => p.is_critical).length} critique{perms.filter(p => p.is_critical).length > 1 ? 's' : ''}
                         </Badge>
                       )}
                     </div>
                   </AccordionTrigger>
                   <AccordionContent>
-                    <div className="border rounded-md mt-2">
+                    <div className="border rounded-md mt-2 overflow-hidden">
                       <Table>
                         <TableHeader>
-                          <TableRow>
-                            <TableHead>Nom</TableHead>
-                            <TableHead>Ressource</TableHead>
-                            <TableHead>Action</TableHead>
-                            <TableHead>Type</TableHead>
+                          <TableRow className="bg-muted/50">
+                            <TableHead className="w-[40%]">Permission</TableHead>
+                            <TableHead className="w-[20%]">Ressource</TableHead>
+                            <TableHead className="w-[15%]">Action</TableHead>
+                            <TableHead className="w-[25%]">Type</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {perms.map((perm) => (
-                            <TableRow key={perm.id}>
+                            <TableRow key={perm.id} className="hover:bg-muted/30">
                               <TableCell>
-                                <code className="text-sm bg-muted px-2 py-1 rounded">
-                                  {perm.name}
-                                </code>
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant="secondary">{perm.resource}</Badge>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-1">
-                                  <ChevronRight className="h-3 w-3 text-muted-foreground" />
-                                  {perm.action}
+                                <div className="space-y-1">
+                                  <div className="font-medium text-sm">
+                                    {perm.description || perm.name}
+                                  </div>
+                                  <code className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+                                    {perm.name}
+                                  </code>
                                 </div>
                               </TableCell>
                               <TableCell>
+                                <Badge variant="secondary" className="font-mono text-xs">
+                                  {perm.resource}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-sm font-medium text-primary">
+                                  {perm.action}
+                                </span>
+                              </TableCell>
+                              <TableCell>
                                 {perm.is_critical ? (
-                                  <Badge variant="destructive" className="gap-1">
+                                  <Badge className="gap-1 bg-amber-100 text-amber-700 border-amber-300 hover:bg-amber-100">
                                     <AlertTriangle className="h-3 w-3" />
                                     Critique
                                   </Badge>
                                 ) : (
-                                  <Badge variant="outline">Normal</Badge>
+                                  <Badge variant="outline" className="text-muted-foreground">Normal</Badge>
                                 )}
                               </TableCell>
                             </TableRow>
@@ -745,57 +815,126 @@ function PermissionsCatalogTab() {
               ))}
             </Accordion>
           ) : (
-            <div className="border rounded-md">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nom</TableHead>
-                    <TableHead>Module</TableHead>
-                    <TableHead>Ressource</TableHead>
-                    <TableHead>Action</TableHead>
-                    <TableHead>Type</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredPermissions.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                        Aucune permission trouvée
-                      </TableCell>
+            <>
+              <div className="border rounded-md overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="w-[35%]">Permission</TableHead>
+                      <TableHead className="w-[15%]">Module</TableHead>
+                      <TableHead className="w-[15%]">Ressource</TableHead>
+                      <TableHead className="w-[10%]">Action</TableHead>
+                      <TableHead className="w-[25%]">Type</TableHead>
                     </TableRow>
-                  ) : (
-                    filteredPermissions.map((perm) => (
-                      <TableRow key={perm.id}>
-                        <TableCell>
-                          <code className="text-sm bg-muted px-2 py-1 rounded">
-                            {perm.name}
-                          </code>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="capitalize">
-                            {perm.module_name || 'other'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">{perm.resource}</Badge>
-                        </TableCell>
-                        <TableCell>{perm.action}</TableCell>
-                        <TableCell>
-                          {perm.is_critical ? (
-                            <Badge variant="destructive" className="gap-1">
-                              <AlertTriangle className="h-3 w-3" />
-                              Critique
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline">Normal</Badge>
-                          )}
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedPermissions.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-12">
+                          <Key className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                          <p>Aucune permission trouvée</p>
+                          <p className="text-sm">Essayez de modifier vos filtres</p>
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                    ) : (
+                      paginatedPermissions.map((perm) => (
+                        <TableRow key={perm.id} className="hover:bg-muted/30">
+                          <TableCell>
+                            <div className="space-y-1">
+                              <div className="font-medium text-sm">
+                                {perm.description || perm.name}
+                              </div>
+                              <code className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+                                {perm.name}
+                              </code>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="capitalize font-mono text-xs">
+                              {perm.module_name || 'other'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className="font-mono text-xs">
+                              {perm.resource}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm font-medium text-primary">
+                              {perm.action}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {perm.is_critical ? (
+                              <Badge className="gap-1 bg-amber-100 text-amber-700 border-amber-300 hover:bg-amber-100">
+                                <AlertTriangle className="h-3 w-3" />
+                                Critique
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-muted-foreground">Normal</Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <div className="text-sm text-muted-foreground">
+                    Page {currentPage} sur {totalPages} ({filteredPermissions.length} permissions)
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage <= 1}
+                    >
+                      <ChevronLeft className="h-4 w-4 mr-1" />
+                      Précédent
+                    </Button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum: number;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentPage === pageNum ? 'default' : 'outline'}
+                            size="sm"
+                            className="w-8 h-8 p-0"
+                            onClick={() => setCurrentPage(pageNum)}
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage >= totalPages}
+                    >
+                      Suivant
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
@@ -973,16 +1112,35 @@ function UserPermissionsTab() {
         </Card>
       )}
 
-      {/* Empty State */}
+      {/* Empty State with guidance */}
       {!selectedUserId && (
         <Card>
           <CardContent className="py-12">
-            <div className="text-center text-muted-foreground">
-              <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p className="text-lg font-medium">Aucun utilisateur sélectionné</p>
-              <p className="text-sm mt-2">
-                Sélectionnez un utilisateur ci-dessus pour gérer ses permissions
+            <div className="text-center">
+              <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+              <p className="text-lg font-medium text-foreground">Sélectionnez un utilisateur</p>
+              <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
+                Recherchez un utilisateur par nom ou email pour gérer ses permissions individuelles.
+                Tapez au moins 2 caractères pour lancer la recherche.
               </p>
+              <Separator className="my-6 max-w-xs mx-auto" />
+              <div className="text-left max-w-md mx-auto space-y-3">
+                <h4 className="text-sm font-medium text-foreground">À propos des permissions utilisateurs</h4>
+                <ul className="text-sm text-muted-foreground space-y-2">
+                  <li className="flex items-start gap-2">
+                    <ChevronRight className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <span>Les <strong>overrides</strong> permettent d&apos;accorder ou refuser des permissions spécifiques à un utilisateur</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <ChevronRight className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <span>Ces permissions s&apos;ajoutent ou se soustraient à celles du rôle de l&apos;utilisateur</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <ChevronRight className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <span>Utilisez cette fonctionnalité pour des cas exceptionnels uniquement</span>
+                  </li>
+                </ul>
+              </div>
             </div>
           </CardContent>
         </Card>
