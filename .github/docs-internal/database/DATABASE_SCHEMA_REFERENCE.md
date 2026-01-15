@@ -3,7 +3,7 @@
 TAXASGE DATABASE SCHEMA - COMPLETE REFERENCE
 ====================================================================================================
 
-Extracted on: 2026-01-08 15:51:05
+Extracted on: 2026-01-15 16:03:33
 Database: Supabase PostgreSQL
 Project: taxasge-dev
 
@@ -11,17 +11,20 @@ Project: taxasge-dev
 1. ALL TABLES IN PUBLIC SCHEMA
 ====================================================================================================
 
+  - _migration_agent_map                     No description
   - adjustment_reasons                       Catalogue des raisons prédéfinies pour ajustements de montants
-  - agent_performance_stats                  No description
+  - agent_performance_stats                  Agent performance statistics. Migration 054: agent_profile_id is now the primary identifier. agent_id (int PK) is deprecated.
+  - agent_profiles                           Agent configuration profiles - separates agent data from users table
   - agent_work_queue                         Work queue for agent load balancing with dynamic priority calculation based on SLA, amount, and complexity
-  - agent_workloads                          Suivi en temps réel de la charge de travail des agents
+  - agent_workloads                          Agent workload tracking. Migration 054: agent_profile_id is now the primary identifier. agent_id is deprecated.
+  - anomaly_actions                          Historique des actions effectuees sur les anomalies (audit trail)
   - appointment_blocked_dates                Holidays and blocked dates when appointments cannot be scheduled
   - appointment_delay_rules                  Configurable delay (in business days) between validation and appointment
   - appointment_holds                        No description
   - appointment_reservations                 Booked appointments for service requests
   - appointment_slot_configs                 Available appointment time slots by entity and day of week
   - assignment_rules                         Règles configurables pour l'auto-assignation intelligente
-  - assignments                              Historique complet des assignations de déclarations aux agents
+  - assignments                              Unified assignments table for all modules (tax_declarations, service_requests, etc.). Uses item_id + item_type for polymorphic references. Migration 053: Renamed declaration_id→item_id, declaration_type→item_type. Removed deprecated columns (agent_id, assigned_by, reassigned_to).
   - audit_logs                               No description
   - bank_configurations                      Configuration des intégrations bancaires (API, webhooks, comptes)
   - bank_transactions                        Transactions bancaires reçues des banques (webhooks ou réconciliation manuelle)
@@ -40,10 +43,12 @@ Project: taxasge-dev
   - document_processing_queue                Async processing queue for OCR with retry logic, exponential backoff, and Cloud Vision→Tesseract fallback
   - document_templates                       Templates documents - Avec validity_duration_months (v4.1 fix)
   - document_templates_backup_20251017       No description
+  - document_verification_config             Configurable mapping: document_code -> identifier_type -> extraction paths
   - email_templates                          Email templates with multilingual support. HTML content stored in separate files.
   - entities                                 No description
   - entity_locations                         Master table of physical locations for each government entity. Single source of truth for location data.
   - entity_translations                      Traductions optimisées - ENUM strict + codes courts (-40%% storage)
+  - export_templates                         Templates predefinies pour les exports (colonnes, format, mapping)
   - extraction_schemas                       Mapping entre catégories de documents et schemas JSON d'extraction
   - fiscal_service_data                      NIVEAU 3 - Données fiscal services avec support OCR Tesseract (ex: Nota de Ingreso)
   - fiscal_services                          Services fiscaux - NO instructions_es denormalization (v4.1 user feedback)
@@ -52,11 +57,11 @@ Project: taxasge-dev
   - import_batch_items                       Lignes individuelles d'un import Excel (une ligne = une ligne du fichier)
   - import_batches                           Métadonnées des imports Excel en masse (un fichier = un batch)
   - ministries                               Ministères - Espagnol en DB, FR/EN via entity_translations optimisée
-  - ministry_agents                          Agents ministériels - Workflow complet validation
   - ministry_validation_config               No description
   - notification_log                         Historique de toutes les notifications envoyées (audit et traçabilité)
   - notification_templates                   In-app notification templates with multilingual support.
   - ocr_extraction_results                   Résultats bruts de l'extraction OCR Tesseract (JSONB temporaire avant validation)
+  - payment_anomalies                        Anomalies detectees sur les paiements Treasury - tracking et workflow de resolution
   - payment_installments                     Acomptes individuels d'un plan de paiement
   - payment_lock_history                     No description
   - payment_method_configurations            Payment method configurations. Translations for labels are managed via entity_translations table with entity_type=payment_method
@@ -94,15 +99,18 @@ Project: taxasge-dev
   - tariff_supplements                       Suppléments (cédulas, pólizas, timbres)
   - tax_declarations                         Déclarations fiscales - 20 types GE-specific
   - translations                             Table unifiée pour toutes les traductions du système (ENUMs, UI, Forms, Messages système)
+  - treasury_exports                         Journal des exports comptables Treasury - tracabilite complete.
+Les exports incluent les donnees de service_payments JOINees avec service_requests
+pour obtenir workflow_code, solicitud_type et reference.
   - uploaded_files                           Métadonnées des fichiers uploadés (stockés dans Supabase Storage)
   - user_company_roles                       No description
   - user_favorites                           No description
-  - user_ministry_assignments                No description
   - user_permissions                         Permissions spécifiques par utilisateur (override du rôle)
   - users                                    No description
   - ussd_configurations                      USSD menu configurations for operators: Getesa, Muni, Other API SMS.
   - verificacion_fraud_log                   Log des tentatives suspectes de verification funcionario
   - verificacion_funcionario                 Demandes de verification du statut funcionario
+  - verification_queue                       Durable queue for verification processing with retry support
   - verified_identifiers                     Cache securise d'identifiants verifies par des systemes externes
   - verified_identifiers_audit               Log de toutes les operations sur verified_identifiers
   - webhook_configurations                   Webhook configurations for WhatsApp Business API and custom integrations.
@@ -135,6 +143,33 @@ agent_availability_enum:
   - training
   - mission
   - temporarily_unavailable
+
+anomaly_severity_enum:
+  - low
+  - medium
+  - high
+  - critical
+
+anomaly_status_enum:
+  - open
+  - investigating
+  - resolved
+  - false_positive
+  - escalated
+
+anomaly_type_enum:
+  - amount_mismatch
+  - duplicate_suspected
+  - reconciliation_failed
+  - validated_not_received
+  - sla_breached
+  - high_amount
+  - suspicious_pattern
+  - manual_flag
+  - duplicate_payment
+  - late_validation
+  - orphan_transaction
+  - reference_missing
 
 appointment_hold_status:
   - held
@@ -246,11 +281,29 @@ document_condition_type_enum:
   - is_national
   - custom
 
+entity_type_enum:
+  - entity
+  - department
+
 escalation_level:
   - low
   - medium
   - high
   - critical
+
+export_status_enum:
+  - pending
+  - processing
+  - completed
+  - failed
+
+export_type_enum:
+  - sage_x3
+  - ministry_report
+  - bank_central
+  - audit_report
+  - reconciliation
+  - custom
 
 identifier_type_enum:
   - dni
@@ -277,6 +330,7 @@ payment_method_enum:
   - mobile_money
   - cash
   - bange_wallet
+  - check
 
 payment_status_enum:
   - pending
@@ -387,9 +441,7 @@ user_role_enum:
   - business
   - accountant
   - admin
-  - supervisor
-  - dgi_agent
-  - ministry_agent
+  - agent
   - funcionario
 
 user_status_enum:
@@ -409,6 +461,15 @@ verification_source_enum:
   - agent_manual
   - api_integration
 
+verification_status_enum:
+  - pending
+  - in_progress
+  - verified
+  - partial_verification
+  - not_found
+  - verified_manually
+  - verification_failed
+
 workload_status_enum:
   - available
   - normal
@@ -420,6 +481,20 @@ workload_status_enum:
 3. DETAILED TABLE SCHEMAS
 ====================================================================================================
 
+
+----------------------------------------------------------------------------------------------------
+Table: _MIGRATION_AGENT_MAP
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+ministry_agent_id                   integer                   YES                                      
+agent_profile_id                    uuid                      YES                                      
+
+Indexes:
+  - idx_migration_map_ma_id
+    CREATE INDEX idx_migration_map_ma_id ON public._migration_agent_map USING btree (ministry_agent_id)
 
 ----------------------------------------------------------------------------------------------------
 Table: ADJUSTMENT_REASONS
@@ -458,6 +533,7 @@ Table: AGENT_PERFORMANCE_STATS
 Column                              Type                      Nullable   Default                       
 ----------------------------------------------------------------------------------------------------
 agent_id                            integer                   NO                                       
+  └─ Description: DEPRECATED: Use agent_profile_id. Legacy integer ID kept as PK for backward compatibility.
 ministry_id                         integer                   NO                                       
 current_month_processed             integer                   YES        0                             
 current_month_approved              integer                   YES        0                             
@@ -475,11 +551,89 @@ last_login_at                       timestamp with time zone  YES
 stats_period_start                  date                      YES        CURRENT_DATE                  
 stats_period_end                    date                      YES                                      
 updated_at                          timestamp with time zone  YES        now()                         
+agent_profile_id                    uuid                      NO                                       
 
 Primary Key: agent_id
 
 Foreign Keys:
-  - agent_id → ministry_agents.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+  - agent_profile_id → agent_profiles.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+Unique Constraints:
+  - agent_performance_stats_agent_profile_id_key: (agent_profile_id)
+
+Indexes:
+  - agent_performance_stats_agent_profile_id_key
+    CREATE UNIQUE INDEX agent_performance_stats_agent_profile_id_key ON public.agent_performance_stats USING btree (agent_profile_id)
+  - idx_agent_perf_stats_profile
+    CREATE INDEX idx_agent_perf_stats_profile ON public.agent_performance_stats USING btree (agent_profile_id)
+
+----------------------------------------------------------------------------------------------------
+Table: AGENT_PROFILES
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+user_id                             uuid                      NO                                       
+agent_type                          varchar(30)               NO                                       
+  └─ Description: ministry_agent = works for a ministry (DGI, Treasury, etc.), entity_agent = works for an independent entity (CNEDOGE, ONRC, etc.)
+entity_id                           uuid                      YES                                      
+  └─ Description: The entity/department this agent belongs to
+ministry_id                         integer                   YES                                      
+  └─ Description: Legacy: direct ministry assignment (prefer entity_id going forward)
+agent_role                          varchar(50)               NO         'validator'::character varying
+can_approve_unlimited               boolean                   YES        false                         
+max_approval_amount                 numeric                   YES                                      
+can_escalate                        boolean                   YES        true                          
+can_assign_tasks                    boolean                   YES        false                         
+can_reassign                        boolean                   YES        false                         
+specializations                     jsonb                     YES        '[]'::jsonb                   
+  └─ Description: JSONB array of declaration_type_enum values or workflow_codes
+working_hours_start                 time without time zone    YES        '08:00:00'::time without time 
+working_hours_end                   time without time zone    YES        '17:00:00'::time without time 
+working_days                        ARRAY                     YES        ARRAY[1, 2, 3, 4, 5]          
+is_active                           boolean                   YES        true                          
+is_backup_agent                     boolean                   YES        false                         
+backup_for_profile_id               uuid                      YES                                      
+assigned_at                         timestamp with time zone  YES        now()                         
+assigned_by                         uuid                      YES                                      
+deactivated_at                      timestamp with time zone  YES                                      
+deactivated_by                      uuid                      YES                                      
+deactivation_reason                 text                      YES                                      
+created_at                          timestamp with time zone  YES        now()                         
+updated_at                          timestamp with time zone  YES        now()                         
+is_supervisor                       boolean                   YES        false                         
+  └─ Description: TRUE if agent can supervise other agents. Supervisors must still belong to a ministry or entity.
+
+Primary Key: id
+
+Foreign Keys:
+  - assigned_by → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - backup_for_profile_id → agent_profiles.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - deactivated_by → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - entity_id → entities.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - ministry_id → ministries.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - user_id → users.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+Unique Constraints:
+  - agent_profiles_user_id_key: (user_id)
+
+Indexes:
+  - idx_agent_profiles_is_supervisor
+    CREATE INDEX idx_agent_profiles_is_supervisor ON public.agent_profiles USING btree (is_supervisor) WHERE (is_supervisor = true)
+  - agent_profiles_user_id_key
+    CREATE UNIQUE INDEX agent_profiles_user_id_key ON public.agent_profiles USING btree (user_id)
+  - idx_agent_profiles_user_id
+    CREATE INDEX idx_agent_profiles_user_id ON public.agent_profiles USING btree (user_id)
+  - idx_agent_profiles_entity_id
+    CREATE INDEX idx_agent_profiles_entity_id ON public.agent_profiles USING btree (entity_id)
+  - idx_agent_profiles_ministry_id
+    CREATE INDEX idx_agent_profiles_ministry_id ON public.agent_profiles USING btree (ministry_id)
+  - idx_agent_profiles_agent_type
+    CREATE INDEX idx_agent_profiles_agent_type ON public.agent_profiles USING btree (agent_type)
+  - idx_agent_profiles_is_active
+    CREATE INDEX idx_agent_profiles_is_active ON public.agent_profiles USING btree (is_active) WHERE (is_active = true)
 
 ----------------------------------------------------------------------------------------------------
 Table: AGENT_WORK_QUEUE
@@ -547,7 +701,8 @@ Table: AGENT_WORKLOADS
 Column                              Type                      Nullable   Default                       
 ----------------------------------------------------------------------------------------------------
 id                                  uuid                      NO         gen_random_uuid()             
-agent_id                            uuid                      NO                                       
+agent_id                            uuid                      YES                                      
+  └─ Description: DEPRECATED: Use agent_profile_id. Kept for backward compatibility.
 current_assignments                 integer                   YES        0                             
 pending_declarations                integer                   YES        0                             
 in_progress_declarations            integer                   YES        0                             
@@ -570,16 +725,23 @@ avg_pending_duration_hours          numeric                   YES
 last_assignment_at                  timestamp with time zone  YES                                      
 last_completion_at                  timestamp with time zone  YES                                      
 last_updated_at                     timestamp with time zone  YES        now()                         
+agent_profile_id                    uuid                      NO                                       
+  └─ Description: New: reference to agent_profiles. Transition period: both agent_id (users) and agent_profile_id can be used.
 
 Primary Key: id
 
 Foreign Keys:
-  - agent_id → users.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+  - agent_profile_id → agent_profiles.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
 
 Unique Constraints:
   - agent_workloads_agent_id_key: (agent_id)
+  - agent_workloads_agent_profile_id_key: (agent_profile_id)
 
 Indexes:
+  - agent_workloads_agent_profile_id_key
+    CREATE UNIQUE INDEX agent_workloads_agent_profile_id_key ON public.agent_workloads USING btree (agent_profile_id)
+  - idx_agent_workloads_ministry_availability
+    CREATE INDEX idx_agent_workloads_ministry_availability ON public.agent_workloads USING btree (agent_profile_id, workload_status, availability)
   - agent_workloads_agent_id_key
     CREATE UNIQUE INDEX agent_workloads_agent_id_key ON public.agent_workloads USING btree (agent_id)
   - idx_agent_workloads_agent_id
@@ -594,6 +756,34 @@ Indexes:
     CREATE INDEX idx_agent_workloads_specializations ON public.agent_workloads USING gin (active_specializations)
   - idx_agent_workloads_last_assignment
     CREATE INDEX idx_agent_workloads_last_assignment ON public.agent_workloads USING btree (last_assignment_at) WHERE (last_assignment_at IS NOT NULL)
+  - idx_agent_workloads_profile_id
+    CREATE INDEX idx_agent_workloads_profile_id ON public.agent_workloads USING btree (agent_profile_id)
+
+----------------------------------------------------------------------------------------------------
+Table: ANOMALY_ACTIONS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+anomaly_id                          uuid                      NO                                       
+action                              varchar(50)               NO                                       
+from_status                         anomaly_status_enum       YES                                      
+to_status                           anomaly_status_enum       YES                                      
+comment                             text                      YES                                      
+performed_by                        uuid                      YES                                      
+performed_at                        timestamp with time zone  NO         now()                         
+
+Primary Key: id
+
+Foreign Keys:
+  - anomaly_id → payment_anomalies.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+  - performed_by → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+
+Indexes:
+  - idx_anomaly_actions_anomaly
+    CREATE INDEX idx_anomaly_actions_anomaly ON public.anomaly_actions USING btree (anomaly_id, performed_at DESC)
 
 ----------------------------------------------------------------------------------------------------
 Table: APPOINTMENT_BLOCKED_DATES
@@ -843,10 +1033,10 @@ Table: ASSIGNMENTS
 Column                              Type                      Nullable   Default                       
 ----------------------------------------------------------------------------------------------------
 id                                  uuid                      NO         gen_random_uuid()             
-declaration_id                      uuid                      NO                                       
-declaration_type                    varchar(50)               NO                                       
-agent_id                            uuid                      NO                                       
-assigned_by                         uuid                      NO                                       
+item_id                             uuid                      NO                                       
+  └─ Description: UUID of the assigned item (tax_declarations.id, service_requests.id, etc.)
+item_type                           varchar(50)               NO                                       
+  └─ Description: Type of the assigned item: declaration types (iva_declaration, income_tax) or workflow codes (pasaporte_nuevo, residencia)
 assignment_method                   assignment_method_enum    YES        'manual'::assignment_method_en
 status                              assignment_status_enum    YES        'assigned'::assignment_status_
 notes                               text                      YES                                      
@@ -860,7 +1050,6 @@ processing_duration_hours           numeric                   YES
 deadline                            timestamp with time zone  YES                                      
 deadline_met                        boolean                   YES                                      
 priority_level                      integer                   YES        5                             
-reassigned_to                       uuid                      YES                                      
 reassigned_at                       timestamp with time zone  YES                                      
 reassignment_reason                 reassignment_reason_enum  YES                                      
 reassignment_notes                  text                      YES                                      
@@ -868,22 +1057,22 @@ validation_status                   varchar(20)               YES
 quality_score                       numeric                   YES                                      
 created_at                          timestamp with time zone  YES        now()                         
 updated_at                          timestamp with time zone  YES        now()                         
+agent_profile_id                    uuid                      NO                                       
+  └─ Description: NEW: Reference to agent_profiles. The agent assigned to process this task.
+assigned_by_profile_id              uuid                      YES                                      
+  └─ Description: NEW: Reference to agent_profiles for the supervisor who assigned this task.
+reassigned_to_profile_id            uuid                      YES                                      
+  └─ Description: NEW: Reference to agent_profiles for the agent after reassignment.
 
 Primary Key: id
 
 Foreign Keys:
-  - agent_id → users.id (ON UPDATE NO ACTION, ON DELETE RESTRICT)
-  - assigned_by → users.id (ON UPDATE NO ACTION, ON DELETE RESTRICT)
-  - reassigned_to → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
   - rule_applied_id → assignment_rules.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - agent_profile_id → agent_profiles.id (ON UPDATE NO ACTION, ON DELETE RESTRICT)
+  - assigned_by_profile_id → agent_profiles.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - reassigned_to_profile_id → agent_profiles.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
 
 Indexes:
-  - idx_assignments_declaration
-    CREATE INDEX idx_assignments_declaration ON public.assignments USING btree (declaration_id, declaration_type)
-  - idx_assignments_agent_id
-    CREATE INDEX idx_assignments_agent_id ON public.assignments USING btree (agent_id)
-  - idx_assignments_assigned_by
-    CREATE INDEX idx_assignments_assigned_by ON public.assignments USING btree (assigned_by)
   - idx_assignments_status
     CREATE INDEX idx_assignments_status ON public.assignments USING btree (status)
   - idx_assignments_assignment_method
@@ -896,8 +1085,16 @@ Indexes:
     CREATE INDEX idx_assignments_rule_applied ON public.assignments USING btree (rule_applied_id) WHERE (rule_applied_id IS NOT NULL)
   - idx_assignments_created_at
     CREATE INDEX idx_assignments_created_at ON public.assignments USING btree (created_at DESC)
-  - idx_assignments_agent_status
-    CREATE INDEX idx_assignments_agent_status ON public.assignments USING btree (agent_id, status)
+  - idx_assignments_item
+    CREATE INDEX idx_assignments_item ON public.assignments USING btree (item_id, item_type)
+  - idx_assignments_agent_profile_status
+    CREATE INDEX idx_assignments_agent_profile_status ON public.assignments USING btree (agent_profile_id, status)
+  - idx_assignments_agent_profile_id
+    CREATE INDEX idx_assignments_agent_profile_id ON public.assignments USING btree (agent_profile_id)
+  - idx_assignments_assigned_by_profile_id
+    CREATE INDEX idx_assignments_assigned_by_profile_id ON public.assignments USING btree (assigned_by_profile_id)
+  - idx_assignments_reassigned_to_profile_id
+    CREATE INDEX idx_assignments_reassigned_to_profile_id ON public.assignments USING btree (reassigned_to_profile_id)
 
 ----------------------------------------------------------------------------------------------------
 Table: AUDIT_LOGS
@@ -1646,6 +1843,40 @@ updated_at                          timestamp with time zone  YES
 created_by                          integer                   YES                                      
 
 ----------------------------------------------------------------------------------------------------
+Table: DOCUMENT_VERIFICATION_CONFIG
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+document_code                       varchar(50)               NO                                       
+  └─ Description: Document code from service_request_documents (e.g., dip_gq, pasaporte_gq)
+identifier_type                     identifier_type_enum      NO                                       
+  └─ Description: Type of identifier to verify (dni, pasaporte, etc.)
+extraction_paths                    ARRAY                     NO                                       
+  └─ Description: JSON paths to extract identifier from extraction_data
+source                              verification_source_enum  NO                                       
+is_required                         boolean                   YES        true                          
+  └─ Description: If true, verification failure affects overall status
+normalization_regex                 varchar(100)              YES                                      
+  └─ Description: Regex pattern for validating/normalizing identifier format
+is_active                           boolean                   YES        true                          
+created_at                          timestamp with time zone  YES        now()                         
+updated_at                          timestamp with time zone  YES        now()                         
+
+Primary Key: id
+
+Unique Constraints:
+  - document_verification_config_document_code_identifier_type_key: (document_code, identifier_type)
+
+Indexes:
+  - document_verification_config_document_code_identifier_type_key
+    CREATE UNIQUE INDEX document_verification_config_document_code_identifier_type_key ON public.document_verification_config USING btree (document_code, identifier_type)
+  - idx_dvc_active
+    CREATE INDEX idx_dvc_active ON public.document_verification_config USING btree (document_code) WHERE (is_active = true)
+
+----------------------------------------------------------------------------------------------------
 Table: EMAIL_TEMPLATES
 ----------------------------------------------------------------------------------------------------
 
@@ -1710,17 +1941,31 @@ created_at                          timestamp with time zone  YES        now()
 updated_at                          timestamp with time zone  YES        now()                         
 created_by                          uuid                      YES                                      
 updated_by                          uuid                      YES                                      
+ministry_id                         integer                   YES                                      
+  └─ Description: Optional ministry link. Entities can be independent (NULL) or linked to a ministry.
+parent_entity_id                    uuid                      YES                                      
+  └─ Description: For departments: the parent entity. NULL for top-level entities.
+entity_type                         entity_type_enum          NO         'entity'::entity_type_enum    
+  └─ Description: entity = top-level (can be independent or ministry-linked), department = must have parent
 
 Primary Key: id
 
 Foreign Keys:
   - created_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - ministry_id → ministries.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - parent_entity_id → entities.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
   - updated_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
 
 Unique Constraints:
   - entities_code_key: (code)
 
 Indexes:
+  - idx_entities_ministry_id
+    CREATE INDEX idx_entities_ministry_id ON public.entities USING btree (ministry_id)
+  - idx_entities_parent_entity_id
+    CREATE INDEX idx_entities_parent_entity_id ON public.entities USING btree (parent_entity_id)
+  - idx_entities_entity_type
+    CREATE INDEX idx_entities_entity_type ON public.entities USING btree (entity_type)
   - entities_code_key
     CREATE UNIQUE INDEX entities_code_key ON public.entities USING btree (code)
   - idx_entities_active
@@ -1806,6 +2051,35 @@ created_at                          timestamp with time zone  YES        now()
 updated_at                          timestamp with time zone  YES        now()                         
 
 Primary Key: entity_type, entity_code, language_code, field_name
+
+----------------------------------------------------------------------------------------------------
+Table: EXPORT_TEMPLATES
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  integer                   NO         nextval('export_templates_id_s
+code                                varchar(50)               NO                                       
+name_es                             varchar(100)              NO                                       
+export_type                         export_type_enum          NO                                       
+export_format                       varchar(20)               NO         'csv'::character varying      
+config                              jsonb                     NO         '{}'::jsonb                   
+columns_config                      jsonb                     NO                                       
+  └─ Description: Configuration des colonnes: [{source, target, transform, format}]
+description_es                      text                      YES                                      
+is_active                           boolean                   YES        true                          
+created_at                          timestamp with time zone  YES        now()                         
+updated_at                          timestamp with time zone  YES        now()                         
+
+Primary Key: id
+
+Unique Constraints:
+  - export_templates_code_key: (code)
+
+Indexes:
+  - export_templates_code_key
+    CREATE UNIQUE INDEX export_templates_code_key ON public.export_templates USING btree (code)
 
 ----------------------------------------------------------------------------------------------------
 Table: EXTRACTION_SCHEMAS
@@ -2264,53 +2538,6 @@ Indexes:
     CREATE INDEX idx_ministries_active ON public.ministries USING btree (is_active) WHERE (is_active = true)
 
 ----------------------------------------------------------------------------------------------------
-Table: MINISTRY_AGENTS
-----------------------------------------------------------------------------------------------------
-
-
-Column                              Type                      Nullable   Default                       
-----------------------------------------------------------------------------------------------------
-id                                  integer                   NO         nextval('ministry_agents_id_se
-user_id                             uuid                      NO                                       
-ministry_id                         integer                   NO                                       
-agent_role                          varchar(50)               NO         'validator'::character varying
-can_approve_unlimited               boolean                   YES        false                         
-max_approval_amount                 numeric                   YES                                      
-can_escalate                        boolean                   YES        true                          
-can_assign_tasks                    boolean                   YES        false                         
-is_active                           boolean                   YES        true                          
-is_backup_agent                     boolean                   YES        false                         
-backup_for_agent_id                 integer                   YES                                      
-working_hours_start                 time without time zone    YES        '08:00:00'::time without time 
-working_hours_end                   time without time zone    YES        '17:00:00'::time without time 
-working_days                        ARRAY                     YES        ARRAY[1, 2, 3, 4, 5]          
-assigned_at                         timestamp with time zone  YES        now()                         
-assigned_by                         uuid                      YES                                      
-deactivated_at                      timestamp with time zone  YES                                      
-deactivated_by                      uuid                      YES                                      
-deactivation_reason                 text                      YES                                      
-
-Primary Key: id
-
-Foreign Keys:
-  - assigned_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
-  - backup_for_agent_id → ministry_agents.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
-  - deactivated_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
-  - ministry_id → ministries.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
-  - user_id → users.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
-
-Unique Constraints:
-  - ministry_agents_user_id_ministry_id_key: (user_id, ministry_id)
-
-Indexes:
-  - ministry_agents_user_id_ministry_id_key
-    CREATE UNIQUE INDEX ministry_agents_user_id_ministry_id_key ON public.ministry_agents USING btree (user_id, ministry_id)
-  - idx_ministry_agents_user
-    CREATE INDEX idx_ministry_agents_user ON public.ministry_agents USING btree (user_id, is_active)
-  - idx_ministry_agents_ministry
-    CREATE INDEX idx_ministry_agents_ministry ON public.ministry_agents USING btree (ministry_id, is_active) WHERE (is_active = true)
-
-----------------------------------------------------------------------------------------------------
 Table: MINISTRY_VALIDATION_CONFIG
 ----------------------------------------------------------------------------------------------------
 
@@ -2508,6 +2735,70 @@ Indexes:
     CREATE INDEX idx_ocr_extraction_results_status ON public.ocr_extraction_results USING btree (status)
 
 ----------------------------------------------------------------------------------------------------
+Table: PAYMENT_ANOMALIES
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+entity_type                         varchar(50)               NO                                       
+  └─ Description: Type d entite concernee: service_payment, bank_transaction, payment
+entity_id                           uuid                      NO                                       
+payment_reference                   varchar(100)              YES                                      
+service_request_id                  uuid                      YES                                      
+service_request_reference           varchar(50)               YES                                      
+anomaly_type                        anomaly_type_enum         NO                                       
+severity                            anomaly_severity_enum     NO         'medium'::anomaly_severity_enu
+status                              anomaly_status_enum       NO         'open'::anomaly_status_enum   
+title                               varchar(255)              NO                                       
+description                         text                      YES                                      
+detection_rule                      varchar(100)              YES                                      
+  └─ Description: Identifiant de la regle metier qui a detecte l anomalie (ex: RULE_DUPLICATE_24H)
+detection_details                   jsonb                     YES                                      
+  └─ Description: Donnees JSONB capturees au moment de la detection (contexte, valeurs comparees)
+expected_amount                     numeric                   YES                                      
+actual_amount                       numeric                   YES                                      
+difference_amount                   numeric                   YES                                      
+resolution_notes                    text                      YES                                      
+resolved_at                         timestamp with time zone  YES                                      
+resolved_by                         uuid                      YES                                      
+detected_at                         timestamp with time zone  NO         now()                         
+detected_by                         varchar(50)               NO         'system'::character varying   
+  └─ Description: system pour detection automatique, sinon user_id pour signalement manuel
+updated_at                          timestamp with time zone  NO         now()                         
+affected_amount                     numeric                   YES                                      
+  └─ Description: Monto afectado por la anomalia (ej: monto duplicado, diferencia de reconciliacion)
+related_entities                    jsonb                     YES                                      
+  └─ Description: Entites liees (ex: {bank_transaction_id, duplicate_count, etc.})
+metadata                            jsonb                     YES                                      
+  └─ Description: Metadonnees supplementaires (user_id pour suspicious_pattern, etc.)
+
+Primary Key: id
+
+Foreign Keys:
+  - resolved_by → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - service_request_id → service_requests.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+
+Indexes:
+  - idx_anomalies_open
+    CREATE INDEX idx_anomalies_open ON public.payment_anomalies USING btree (status, severity DESC, detected_at DESC) WHERE (status = ANY (ARRAY['open'::anomaly_status_enum, 'investigating'::anomaly_status_enum]))
+  - idx_anomalies_entity
+    CREATE INDEX idx_anomalies_entity ON public.payment_anomalies USING btree (entity_type, entity_id)
+  - idx_anomalies_severity_status
+    CREATE INDEX idx_anomalies_severity_status ON public.payment_anomalies USING btree (severity, status)
+  - idx_anomalies_type
+    CREATE INDEX idx_anomalies_type ON public.payment_anomalies USING btree (anomaly_type)
+  - idx_anomalies_detected_at
+    CREATE INDEX idx_anomalies_detected_at ON public.payment_anomalies USING btree (detected_at DESC)
+  - idx_anomalies_payment_ref
+    CREATE INDEX idx_anomalies_payment_ref ON public.payment_anomalies USING btree (payment_reference) WHERE (payment_reference IS NOT NULL)
+  - idx_anomalies_service_request
+    CREATE INDEX idx_anomalies_service_request ON public.payment_anomalies USING btree (service_request_id) WHERE (service_request_id IS NOT NULL)
+  - idx_anomalies_metadata_user
+    CREATE INDEX idx_anomalies_metadata_user ON public.payment_anomalies USING gin (((metadata -> 'user_id'::text)))
+
+----------------------------------------------------------------------------------------------------
 Table: PAYMENT_INSTALLMENTS
 ----------------------------------------------------------------------------------------------------
 
@@ -2563,18 +2854,24 @@ Column                              Type                      Nullable   Default
 id                                  uuid                      NO         gen_random_uuid()             
 payment_id                          uuid                      NO                                       
 agent_id                            integer                   NO                                       
+  └─ Description: DEPRECATED: Use agent_profile_id
 locked_at                           timestamp with time zone  NO                                       
 unlocked_at                         timestamp with time zone  YES                                      
 lock_duration_minutes               integer                   YES                                      
 unlock_reason                       varchar(50)               YES                                      
 actions_performed                   jsonb                     YES        '[]'::jsonb                   
 final_action                        agent_action_type         YES                                      
+agent_profile_id                    uuid                      YES                                      
 
 Primary Key: id
 
 Foreign Keys:
-  - agent_id → ministry_agents.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - agent_profile_id → agent_profiles.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
   - payment_id → service_payments.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+Indexes:
+  - idx_payment_lock_history_profile
+    CREATE INDEX idx_payment_lock_history_profile ON public.payment_lock_history USING btree (agent_profile_id)
 
 ----------------------------------------------------------------------------------------------------
 Table: PAYMENT_METHOD_CONFIGURATIONS
@@ -2700,6 +2997,7 @@ Column                              Type                      Nullable   Default
 id                                  uuid                      NO         gen_random_uuid()             
 payment_id                          uuid                      NO                                       
 agent_id                            integer                   YES                                      
+  └─ Description: DEPRECATED: Use agent_profile_id
 agent_user_id                       uuid                      YES                                      
 action                              agent_action_type         NO                                       
 from_status                         payment_workflow_status   YES                                      
@@ -2713,11 +3011,12 @@ user_agent                          text                      YES
 session_id                          varchar(255)              YES                                      
 action_duration_seconds             integer                   YES                                      
 created_at                          timestamp with time zone  YES        now()                         
+agent_profile_id                    uuid                      YES                                      
 
 Primary Key: id
 
 Foreign Keys:
-  - agent_id → ministry_agents.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - agent_profile_id → agent_profiles.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
   - agent_user_id → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
   - payment_id → service_payments.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
 
@@ -2726,6 +3025,8 @@ Indexes:
     CREATE INDEX idx_payment_audit_agent_date ON public.payment_validation_audit USING btree (agent_id, created_at DESC)
   - idx_payment_audit_payment_action
     CREATE INDEX idx_payment_audit_payment_action ON public.payment_validation_audit USING btree (payment_id, action, created_at)
+  - idx_payment_validation_audit_profile
+    CREATE INDEX idx_payment_validation_audit_profile ON public.payment_validation_audit USING btree (agent_profile_id)
 
 ----------------------------------------------------------------------------------------------------
 Table: PAYMENTS
@@ -3267,7 +3568,6 @@ Column                              Type                      Nullable   Default
 ----------------------------------------------------------------------------------------------------
 id                                  uuid                      NO         gen_random_uuid()             
 payment_reference                   varchar(100)              NO                                       
-fiscal_service_code                 varchar(10)               NO                                       
 user_id                             uuid                      NO                                       
 company_id                          uuid                      YES                                      
 payment_type                        varchar(20)               NO                                       
@@ -3286,15 +3586,19 @@ workflow_status                     payment_workflow_status   YES        'submit
 paid_at                             timestamp with time zone  YES                                      
 expires_at                          timestamp with time zone  YES                                      
 locked_by_agent_id                  integer                   YES                                      
+  └─ Description: DEPRECATED: Use locked_by_agent_profile_id
 locked_at                           timestamp with time zone  YES                                      
 lock_expires_at                     timestamp with time zone  YES                                      
 assigned_agent_id                   integer                   YES                                      
+  └─ Description: DEPRECATED: Use assigned_agent_profile_id
 assigned_at                         timestamp with time zone  YES                                      
 validated_by_agent_id               integer                   YES                                      
+  └─ Description: DEPRECATED: Use validated_by_agent_profile_id
 validated_at                        timestamp with time zone  YES                                      
 validation_comment                  text                      YES                                      
 validation_checklist_completed      jsonb                     YES        '{}'::jsonb                   
 escalated_to_agent_id               integer                   YES                                      
+  └─ Description: DEPRECATED: Use escalated_to_agent_profile_id
 escalated_at                        timestamp with time zone  YES                                      
 escalation_reason                   text                      YES                                      
 escalation_level                    escalation_level          YES                                      
@@ -3313,18 +3617,21 @@ created_at                          timestamp with time zone  YES        now()
 updated_at                          timestamp with time zone  YES        now()                         
 service_request_id                  uuid                      YES                                      
   └─ Description: FK to service_requests. XOR with fiscal_service_code - one must be set.
+assigned_agent_profile_id           uuid                      YES                                      
+locked_by_agent_profile_id          uuid                      YES                                      
+validated_by_agent_profile_id       uuid                      YES                                      
+escalated_to_agent_profile_id       uuid                      YES                                      
 
 Primary Key: id
 
 Foreign Keys:
-  - assigned_agent_id → ministry_agents.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - assigned_agent_profile_id → agent_profiles.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
   - company_id → companies.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
-  - escalated_to_agent_id → ministry_agents.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
-  - fiscal_service_code → fiscal_services.service_code (ON UPDATE NO ACTION, ON DELETE RESTRICT)
-  - locked_by_agent_id → ministry_agents.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - escalated_to_agent_profile_id → agent_profiles.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - locked_by_agent_profile_id → agent_profiles.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
   - service_request_id → service_requests.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
   - user_id → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
-  - validated_by_agent_id → ministry_agents.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+  - validated_by_agent_profile_id → agent_profiles.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
 
 Unique Constraints:
   - service_payments_bange_transaction_id_key: (bange_transaction_id)
@@ -3342,8 +3649,6 @@ Indexes:
     CREATE UNIQUE INDEX service_payments_receipt_number_key ON public.service_payments USING btree (receipt_number)
   - idx_service_payments_user
     CREATE INDEX idx_service_payments_user ON public.service_payments USING btree (user_id, status, created_at)
-  - idx_service_payments_service_code
-    CREATE INDEX idx_service_payments_service_code ON public.service_payments USING btree (fiscal_service_code, payment_type, status)
   - idx_service_payments_workflow_ministry
     CREATE INDEX idx_service_payments_workflow_ministry ON public.service_payments USING btree (ministry_id, workflow_status, sla_target_date)
   - idx_service_payments_locked_agent
@@ -3356,6 +3661,14 @@ Indexes:
     CREATE INDEX idx_service_payments_request_status ON public.service_payments USING btree (service_request_id, status, workflow_status) WHERE (service_request_id IS NOT NULL)
   - idx_service_payments_pending_validation
     CREATE INDEX idx_service_payments_pending_validation ON public.service_payments USING btree (workflow_status, payment_method, created_at) WHERE (workflow_status = 'pending_agent_review'::payment_workflow_status)
+  - idx_service_payments_assigned_profile
+    CREATE INDEX idx_service_payments_assigned_profile ON public.service_payments USING btree (assigned_agent_profile_id)
+  - idx_service_payments_locked_profile
+    CREATE INDEX idx_service_payments_locked_profile ON public.service_payments USING btree (locked_by_agent_profile_id)
+  - idx_service_payments_validated_profile
+    CREATE INDEX idx_service_payments_validated_profile ON public.service_payments USING btree (validated_by_agent_profile_id)
+  - idx_service_payments_escalated_profile
+    CREATE INDEX idx_service_payments_escalated_profile ON public.service_payments USING btree (escalated_to_agent_profile_id)
 
 ----------------------------------------------------------------------------------------------------
 Table: SERVICE_PROCEDURE_ASSIGNMENTS
@@ -3533,6 +3846,10 @@ updated_at                          timestamp with time zone  NO         now()
 created_by                          uuid                      YES                                      
 entity_location_id                  uuid                      YES                                      
   └─ Description: FK to entity_locations - user selected location for appointment (nullable)
+verification_status                 verification_status_enum  YES        'pending'::verification_status
+  └─ Description: Status of external identifier verification
+verification_details                jsonb                     YES        '{}'::jsonb                   
+  └─ Description: Details per document type: {dip: {verified: bool, source: string}, ...}
 
 Primary Key: id
 
@@ -3569,6 +3886,8 @@ Indexes:
     CREATE INDEX idx_sr_workflow_status ON public.service_requests USING btree (workflow_code, status)
   - idx_sr_entity_location
     CREATE INDEX idx_sr_entity_location ON public.service_requests USING btree (entity_location_id) WHERE (entity_location_id IS NOT NULL)
+  - idx_sr_verification_status
+    CREATE INDEX idx_sr_verification_status ON public.service_requests USING btree (verification_status) WHERE (verification_status = ANY (ARRAY['not_found'::verification_status_enum, 'partial_verification'::verification_status_enum, 'verification_failed'::verification_status_enum]))
 
 ----------------------------------------------------------------------------------------------------
 Table: SESSIONS
@@ -4022,6 +4341,60 @@ Indexes:
     CREATE INDEX idx_translations_en_gin ON public.translations USING gin (to_tsvector('english'::regconfig, en))
 
 ----------------------------------------------------------------------------------------------------
+Table: TREASURY_EXPORTS
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+export_type                         export_type_enum          NO                                       
+export_format                       varchar(20)               NO         'csv'::character varying      
+period_start                        date                      NO                                       
+period_end                          date                      NO                                       
+filters                             jsonb                     YES                                      
+  └─ Description: Filtres JSONB appliques: {ministry_id, payment_method, workflow_code, etc.}
+status                              export_status_enum        NO         'pending'::export_status_enum 
+progress_percentage                 integer                   YES        0                             
+total_records                       integer                   YES                                      
+total_amount                        numeric                   YES                                      
+currency                            varchar(3)                YES        'XAF'::character varying      
+file_path                           text                      YES                                      
+  └─ Description: Chemin relatif dans le storage (Supabase ou local)
+file_name                           varchar(255)              YES                                      
+file_size_bytes                     bigint                    YES                                      
+file_checksum                       varchar(64)               YES                                      
+  └─ Description: SHA-256 du fichier genere pour verification integrite
+file_mime_type                      varchar(100)              YES                                      
+error_message                       text                      YES                                      
+error_details                       jsonb                     YES                                      
+requested_by                        uuid                      NO                                       
+requested_at                        timestamp with time zone  NO         now()                         
+started_at                          timestamp with time zone  YES                                      
+completed_at                        timestamp with time zone  YES                                      
+downloaded_at                       timestamp with time zone  YES                                      
+downloaded_by                       uuid                      YES                                      
+download_count                      integer                   YES        0                             
+
+Primary Key: id
+
+Foreign Keys:
+  - downloaded_by → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+  - requested_by → users.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
+
+Indexes:
+  - idx_exports_status
+    CREATE INDEX idx_exports_status ON public.treasury_exports USING btree (status) WHERE (status = ANY (ARRAY['pending'::export_status_enum, 'processing'::export_status_enum]))
+  - idx_exports_type
+    CREATE INDEX idx_exports_type ON public.treasury_exports USING btree (export_type)
+  - idx_exports_requested_at
+    CREATE INDEX idx_exports_requested_at ON public.treasury_exports USING btree (requested_at DESC)
+  - idx_exports_user
+    CREATE INDEX idx_exports_user ON public.treasury_exports USING btree (requested_by)
+  - idx_exports_period
+    CREATE INDEX idx_exports_period ON public.treasury_exports USING btree (period_start, period_end)
+
+----------------------------------------------------------------------------------------------------
 Table: UPLOADED_FILES
 ----------------------------------------------------------------------------------------------------
 
@@ -4145,42 +4518,6 @@ Foreign Keys:
   - user_id → users.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
 
 ----------------------------------------------------------------------------------------------------
-Table: USER_MINISTRY_ASSIGNMENTS
-----------------------------------------------------------------------------------------------------
-
-
-Column                              Type                      Nullable   Default                       
-----------------------------------------------------------------------------------------------------
-user_id                             uuid                      NO                                       
-ministry_id                         integer                   NO                                       
-ministry_role                       varchar(50)               NO                                       
-status                              varchar(20)               NO         'pending'::character varying  
-approved_by                         uuid                      YES                                      
-approved_at                         timestamp with time zone  YES                                      
-assigned_at                         timestamp with time zone  NO         now()                         
-assigned_by                         uuid                      NO                                       
-revoked_at                          timestamp with time zone  YES                                      
-revoked_by                          uuid                      YES                                      
-revoked_reason                      text                      YES                                      
-
-Primary Key: user_id, ministry_id
-
-Foreign Keys:
-  - approved_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
-  - assigned_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
-  - ministry_id → ministries.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
-  - revoked_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
-  - user_id → users.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
-
-Indexes:
-  - idx_ministry_assignments_user
-    CREATE INDEX idx_ministry_assignments_user ON public.user_ministry_assignments USING btree (user_id, status)
-  - idx_ministry_assignments_ministry
-    CREATE INDEX idx_ministry_assignments_ministry ON public.user_ministry_assignments USING btree (ministry_id, status)
-  - idx_ministry_assignments_pending
-    CREATE INDEX idx_ministry_assignments_pending ON public.user_ministry_assignments USING btree (status, assigned_at) WHERE ((status)::text = 'pending'::text)
-
-----------------------------------------------------------------------------------------------------
 Table: USER_PERMISSIONS
 ----------------------------------------------------------------------------------------------------
 
@@ -4269,13 +4606,13 @@ two_factor_backup_codes             jsonb                     YES
 last_failed_ip                      varchar(45)               YES                                      
   └─ Description: IP address of last failed login attempt (used to reset counter if IP changes)
 supervisor_id                       uuid                      YES                                      
-  └─ Description: ID du superviseur de cet agent (hiérarchie)
+  └─ Description: DEPRECATED: Use agent_profiles.is_supervisor and backup_for_profile_id
 department_id                       varchar(100)              YES                                      
-  └─ Description: ID du département (DGI-DEPT-MALABO, MIN001-DEPT-FISCAL, etc.)
+  └─ Description: DEPRECATED: Use agent_profiles.entity_id
 specializations                     jsonb                     YES        '[]'::jsonb                   
-  └─ Description: Spécialisations de l'agent (ex: ["declaration_iva_destajo", "sector_petrolero"])
+  └─ Description: DEPRECATED: Use agent_profiles.specializations
 max_concurrent_assignments          integer                   YES        20                            
-  └─ Description: Nombre maximum d'assignations simultanées pour cet agent
+  └─ Description: DEPRECATED: Use agent_workloads.max_concurrent_assignments
 role_id                             uuid                      YES                                      
   └─ Description: Référence vers table roles (nouvelle logique granulaire). Si NULL, utilise role VARCHAR.
 sms_notifications                   boolean                   YES        false                         
@@ -4306,8 +4643,6 @@ Indexes:
     CREATE UNIQUE INDEX users_matricule_key ON public.users USING btree (matricule)
   - idx_users_email
     CREATE INDEX idx_users_email ON public.users USING btree (email) WHERE (status <> 'deactivated'::user_status_enum)
-  - idx_users_role
-    CREATE INDEX idx_users_role ON public.users USING btree (role) WHERE (status = 'active'::user_status_enum)
   - idx_users_matricule
     CREATE INDEX idx_users_matricule ON public.users USING btree (matricule) WHERE (matricule IS NOT NULL)
   - idx_users_full_name_trgm
@@ -4334,6 +4669,8 @@ Indexes:
     CREATE INDEX idx_users_specializations ON public.users USING gin (specializations)
   - users_matricula_funcionario_key
     CREATE UNIQUE INDEX users_matricula_funcionario_key ON public.users USING btree (matricula_funcionario)
+  - idx_users_role
+    CREATE INDEX idx_users_role ON public.users USING btree (role) WHERE (status = 'active'::user_status_enum)
 
 ----------------------------------------------------------------------------------------------------
 Table: USSD_CONFIGURATIONS
@@ -4410,9 +4747,6 @@ Column                              Type                      Nullable   Default
 id                                  uuid                      NO         gen_random_uuid()             
 user_id                             uuid                      NO                                       
 matricula                           varchar(50)               NO                                       
-documento_id                        uuid                      YES                                      
-datos_extraidos_dip                 jsonb                     YES                                      
-  └─ Description: Donnees extraites du DIP par Gemini (nom, numero, etc.)
 status                              varchar(20)               NO         'pendiente'::character varying
 processed_by                        uuid                      YES                                      
 processed_at                        timestamp with time zone  YES                                      
@@ -4427,11 +4761,12 @@ ip_address                          inet                      YES
 user_agent                          text                      YES                                      
 created_at                          timestamp with time zone  NO         now()                         
 updated_at                          timestamp with time zone  NO         now()                         
+verification_data                   jsonb                     NO         '{}'::jsonb                   
+  └─ Description: Données complètes: documents (dip, nombramiento/carnet/contrato), extractions OCR, validation croisée
 
 Primary Key: id
 
 Foreign Keys:
-  - documento_id → uploaded_files.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
   - processed_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
   - user_id → users.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
 
@@ -4446,6 +4781,47 @@ Indexes:
     CREATE INDEX idx_verificacion_func_created ON public.verificacion_funcionario USING btree (created_at DESC)
   - idx_verificacion_func_pending
     CREATE INDEX idx_verificacion_func_pending ON public.verificacion_funcionario USING btree (user_id) WHERE ((status)::text = 'pendiente'::text)
+  - idx_verificacion_data_gin
+    CREATE INDEX idx_verificacion_data_gin ON public.verificacion_funcionario USING gin (verification_data)
+  - idx_verificacion_data_matricula
+    CREATE INDEX idx_verificacion_data_matricula ON public.verificacion_funcionario USING btree (((verification_data ->> 'matricula'::text)))
+
+----------------------------------------------------------------------------------------------------
+Table: VERIFICATION_QUEUE
+----------------------------------------------------------------------------------------------------
+
+
+Column                              Type                      Nullable   Default                       
+----------------------------------------------------------------------------------------------------
+id                                  uuid                      NO         gen_random_uuid()             
+service_request_id                  uuid                      NO                                       
+status                              varchar(20)               YES        'pending'::character varying  
+retry_count                         integer                   YES        0                             
+max_retries                         integer                   YES        3                             
+next_retry_at                       timestamp with time zone  YES        now()                         
+  └─ Description: When to retry failed items (exponential backoff)
+error_message                       text                      YES                                      
+partial_results                     jsonb                     YES        '{}'::jsonb                   
+  └─ Description: Store partial results between retries
+created_at                          timestamp with time zone  YES        now()                         
+started_at                          timestamp with time zone  YES                                      
+completed_at                        timestamp with time zone  YES                                      
+
+Primary Key: id
+
+Foreign Keys:
+  - service_request_id → service_requests.id (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+Unique Constraints:
+  - uq_vq_request: (service_request_id)
+
+Indexes:
+  - idx_vq_pending
+    CREATE INDEX idx_vq_pending ON public.verification_queue USING btree (next_retry_at) WHERE (((status)::text = ANY ((ARRAY['pending'::character varying, 'failed'::character varying])::text[])) AND (retry_count < max_retries))
+  - idx_vq_request
+    CREATE INDEX idx_vq_request ON public.verification_queue USING btree (service_request_id)
+  - uq_vq_request
+    CREATE UNIQUE INDEX uq_vq_request ON public.verification_queue USING btree (service_request_id)
 
 ----------------------------------------------------------------------------------------------------
 Table: VERIFIED_IDENTIFIERS
@@ -4473,6 +4849,8 @@ encrypted_metadata                  bytea                     YES
   └─ Description: Donnees additionnelles chiffrees (JSON)
 created_at                          timestamp with time zone  NO         now()                         
 updated_at                          timestamp with time zone  NO         now()                         
+encryption_key_version              smallint                  YES        1                             
+  └─ Description: Version of encryption key used, for future key rotation
 
 Primary Key: id
 
@@ -4815,33 +5193,76 @@ Indexes:
 
 View: v_active_assignments
 Definition:  SELECT a.id AS assignment_id,
-    a.declaration_id,
-    a.declaration_type,
-    a.status,
-    a.priority_level,
-    a.assigned_at,
-    a.deadline,
-        CASE
-            WHEN ((a.deadline IS NOT NU...
+    a.item_id,
+    a.item_type,
+    a.agent_profile_id,
+    ap.user_id AS agent_user_id,
+    u.full_name AS agent_name,
+    u.email AS agent_email,
+    ap.ministry_id,
+ ...
+
+View: v_active_declaration_assignments
+Definition:  SELECT a.id AS assignment_id,
+    a.item_id AS declaration_id,
+    a.item_type AS declaration_type,
+    a.agent_profile_id,
+    ap.user_id AS agent_user_id,
+    u.full_name AS agent_name,
+    u.email...
+
+View: v_active_service_request_assignments
+Definition:  SELECT a.id AS assignment_id,
+    a.item_id AS service_request_id,
+    a.item_type AS workflow_code,
+    a.agent_profile_id,
+    ap.user_id AS agent_user_id,
+    u.full_name AS agent_name,
+    u.emai...
 
 View: v_agent_assignment_history
 Definition:  SELECT a.id AS assignment_id,
-    a.declaration_id,
-    a.agent_id,
+    a.item_id,
+    a.item_type,
+    a.agent_profile_id,
+    ap.user_id AS agent_user_id,
     u.full_name AS agent_name,
-    ma.ministry_id,
+    ap.ministry_id,
+    m.ministry_code,
+    ap.e...
+
+View: v_agent_entity_summary
+Definition:  SELECT e.id AS entity_id,
+    e.code AS entity_code,
+    e.name AS entity_name,
+    e.entity_type,
+    m.id AS ministry_id,
+    m.ministry_code,
     m.name_es AS ministry_name,
-    d.declaration_type,
-    d.calculated_tax AS ...
+    count(DISTINCT ap....
 
 View: v_agent_performance_rankings
-Definition:  WITH agent_stats AS (
-         SELECT ma.id AS agent_id,
-            u.full_name,
-            ma.ministry_id,
-            m.name_es AS ministry_name,
-            aps.current_month_processed,
-        ...
+Definition:  SELECT ap.id AS agent_profile_id,
+    ap.user_id,
+    u.full_name,
+    u.email,
+    ap.ministry_id,
+    m.ministry_code,
+    m.name_es AS ministry_name,
+    ap.entity_id,
+    e.code AS entity_code,
+ ...
+
+View: v_agent_performance_summary
+Definition:  SELECT aps.agent_profile_id,
+    ap.user_id,
+    ap.agent_type,
+    ap.agent_role,
+    ap.is_supervisor,
+    ap.ministry_id,
+    u.full_name AS agent_name,
+    m.name_es AS ministry_name,
+    aps.cur...
 
 View: v_agent_work_queue_priority
 Definition:  SELECT awq.id AS queue_id,
@@ -4852,16 +5273,38 @@ Definition:  SELECT awq.id AS queue_id,
     awq.amount AS calculated_tax,
     awq.priority_score A...
 
-View: v_agents_workload_dashboard
-Definition:  SELECT ma.id AS agent_id,
-    ma.user_id,
+View: v_agent_workload_summary
+Definition:  SELECT aw.id AS workload_id,
+    aw.agent_profile_id,
+    ap.user_id,
+    ap.agent_type,
+    ap.agent_role,
+    ap.is_supervisor,
+    ap.ministry_id,
+    ap.entity_id,
     u.full_name AS agent_name,
-    u.email AS agent_email,
-    ma.ministry_id,
-    m.name_es AS ministry_name,
-    ma.is_active,
-    aw.current_assignments,
 ...
+
+View: v_agents_workload_dashboard
+Definition:  SELECT ap.id AS agent_profile_id,
+    ap.user_id,
+    u.email,
+    u.full_name,
+    ap.agent_type,
+    ap.agent_role,
+    ap.is_supervisor,
+    ap.ministry_id,
+    m.ministry_code,
+    m.name_es AS m...
+
+View: v_anomaly_summary
+Definition:  SELECT anomaly_type,
+    severity,
+    status,
+    count(*) AS count,
+    sum(COALESCE(affected_amount, difference_amount, (0)::numeric)) AS total_affected,
+    min(detected_at) AS oldest_detected,
+ ...
 
 View: v_appointments_by_city
 Definition:  SELECT COALESCE(el.city, 'Non specifie'::character varying) AS city,
@@ -4869,25 +5312,36 @@ Definition:  SELECT COALESCE(el.city, 'Non specifie'::character varying) AS city
     count(*) AS total_appointments,
     count(*) FILTER (WHE...
 
+View: v_assignments_with_profiles
+Definition:  SELECT a.id,
+    a.item_id,
+    a.item_type,
+    a.agent_profile_id,
+    a.assigned_by_profile_id,
+    a.assignment_method,
+    a.status,
+    a.notes,
+    a.auto_assignment_score,
+    a.score_breakdo...
+
 View: v_available_agents
-Definition:  SELECT u.id AS agent_id,
-    u.full_name AS agent_name,
+Definition:  SELECT ap.id AS agent_profile_id,
+    ap.user_id,
     u.email,
-    u.department_id,
-    u.supervisor_id,
-    u.specializations,
-    u.max_concurrent_assignments,
-    COALESCE(aw.current_assignm...
+    u.full_name,
+    u.first_name,
+    u.last_name,
+    u.role AS user_role,
+    ap.agent_type,
+    ap.agent_role,
+    ap.is_supervisor,...
 
 View: v_available_agents_by_ministry
 Definition:  SELECT m.id AS ministry_id,
     m.ministry_code,
     m.name_es AS ministry_name,
-    count(ma.id) AS total_agents,
-    count(
-        CASE
-            WHEN (ma.is_active = true) THEN 1
-            EL...
+    count(DISTINCT ap.id) AS total_agents,
+    count(DISTINCT ap.id) FILTER (WHERE (ap.is_active = true)) AS active_ag...
 
 View: v_bank_reconciliation_matching
 Definition:  SELECT id AS bank_transaction_id,
@@ -4899,6 +5353,15 @@ Definition:  SELECT id AS bank_transaction_id,
     account_number,
     account_holder_name AS bank_account_ho...
 
+View: v_declaration_assignments
+Definition:  SELECT a.id AS assignment_id,
+    a.item_id AS declaration_id,
+    a.item_type AS declaration_type,
+    a.agent_profile_id,
+    a.assigned_by_profile_id,
+    a.assignment_method,
+    a.status AS assi...
+
 View: v_declaration_statistics_by_type
 Definition:  WITH declaration_payments AS (
          SELECT d.id,
@@ -4908,18 +5371,6 @@ Definition:  WITH declaration_payments AS (
             d.net_tax_due,
             d.processed_at,
        ...
-
-View: v_declarations_complete
-Definition:  SELECT d.id,
-    d.user_id,
-    d.declaration_type,
-    d.fiscal_year,
-    d.fiscal_period,
-    d.status,
-    d.taxable_base,
-    d.calculated_tax,
-    d.net_tax_due,
-    COALESCE(( SELECT sum(p2.amo...
 
 View: v_declarations_pending_review
 Definition:  SELECT d.id,
@@ -4995,21 +5446,18 @@ Definition:  SELECT date(created_at) AS date,
     count(*) FILTER (WHERE (is_match = true)) AS successful_matches,
     count(*) FILTER (WHE...
 
+View: v_kpi_summary
+Definition:  SELECT 'today'::text AS period,
+    sum(mv_treasury_daily_kpis.total_amount) AS total_collected,
+    sum(mv_treasury_daily_kpis.completed_count) AS total_transactions,
+    avg(mv_treasury_daily_kpis....
+
 View: v_notification_statistics
 Definition:  SELECT date(created_at) AS date,
     channel,
     count(*) AS total_sent,
     count(*) FILTER (WHERE ((status)::text = 'delivered'::text)) AS delivered,
     count(*) FILTER (WHERE ((status)::text = '...
-
-View: v_overprivileged_users_detection
-Definition:  WITH user_permission_stats AS (
-         SELECT u.id AS user_id,
-            u.email,
-            u.full_name,
-            u.role,
-            count(DISTINCT up.permission_id) AS permission_count,
-  ...
 
 View: v_payment_plans_tracking
 Definition:  WITH installment_stats AS (
@@ -5029,6 +5477,16 @@ Definition:  SELECT p.id AS payment_id,
     d.declaration_type,
     d.fiscal_yea...
 
+View: v_pending_escalations
+Definition:  SELECT sp.id AS payment_id,
+    sp.payment_reference,
+    sp.service_request_id,
+    sr.reference AS service_request_reference,
+    sp.total_amount,
+    sp.workflow_status,
+    sp.escalation_level,
+ ...
+
 View: v_pending_payment_validations
 Definition:  SELECT sp.id AS payment_id,
     sp.payment_reference,
@@ -5039,29 +5497,37 @@ Definition:  SELECT sp.id AS payment_id,
     u.full_name AS user_name,
     u.email...
 
-View: v_permission_gaps_analysis
-Definition:  WITH role_expected_permissions AS (
-         SELECT 'ministry_agent'::text AS role,
-            ARRAY['agents.view'::text, 'assignments.view'::text, 'declarations.view'::text, 'documents.view'::text]...
-
 View: v_permission_grants_audit
-Definition:  SELECT up.user_id,
-    u.email AS user_email,
-    u.full_name AS user_name,
-    u.role AS user_role,
-    up.permission_id,
+Definition:  SELECT pal.id,
+    pal.user_id AS target_user_id,
+    u.email AS target_email,
+    u.role AS target_role,
+    pal.permission_id,
     p.name AS permission_name,
-    p.module_name AS permission_module,
-    p...
+    p.resource AS permission_resource,
+...
 
 View: v_permission_usage_analytics
 Definition:  SELECT p.id AS permission_id,
     p.name AS permission_name,
+    p.resource,
+    p.action,
     p.module_name,
-    p.description,
-    count(DISTINCT up.user_id) AS users_with_permission,
-    count(up.user_id) AS total_grants,
-    ...
+    p.is_critical,
+    count(DISTINCT up.user_id) FILTER (WHERE (up.granted = true)) AS d...
+
+View: v_recent_exports
+Definition:  SELECT te.id,
+    te.export_type,
+    te.export_format,
+    te.period_start,
+    te.period_end,
+    te.status,
+    te.total_records,
+    te.total_amount,
+    te.file_name,
+    te.file_size_bytes,
+   ...
 
 View: v_recent_verification_audit
 Definition:  SELECT a.id,
@@ -5095,13 +5561,22 @@ Definition:  SELECT date(gemini_processing_logs.created_at) AS date,
     cou...
 
 View: v_role_capabilities_summary
-Definition:  SELECT u.role,
-    count(DISTINCT u.id) AS total_users,
-    count(DISTINCT
-        CASE
-            WHEN (u.status = 'active'::user_status_enum) THEN u.id
-            ELSE NULL::uuid
-        END) AS ...
+Definition:  SELECT r.id AS role_id,
+    r.name AS role_name,
+    r.code AS role_code,
+    r.description AS role_description,
+    r.entity_type,
+    r.is_system,
+    count(DISTINCT rp.permission_id) FILTER (WHERE...
+
+View: v_service_request_assignments
+Definition:  SELECT a.id AS assignment_id,
+    a.item_id AS service_request_id,
+    a.item_type AS workflow_code,
+    a.agent_profile_id,
+    a.assigned_by_profile_id,
+    a.assignment_method,
+    a.status AS ass...
 
 View: v_service_request_notifications
 Definition:  SELECT nl.id,
@@ -5140,27 +5615,51 @@ Definition:  SELECT el.id AS location_id,
     count(DISTINCT sc.id) AS slot_configs,
     COALESCE(sum(sc.max_appointments_per_slot), (0)::bigi...
 
-View: v_user_effective_permissions
-Definition:  SELECT u.id AS user_id,
-    u.email,
-    u.full_name,
-    u.role,
-    (u.status = 'active'::user_status_enum) AS user_active,
-    ((u.role)::text = 'admin'::text) AS is_admin,
-    COALESCE(json_agg(D...
+View: v_top_ministries
+Definition:  SELECT ministry_id,
+    ministry_name,
+    sum(completed_count) AS transaction_count,
+    sum(total_amount) AS total_amount
+   FROM mv_treasury_daily_kpis
+  WHERE ((report_date >= date_trunc('month':...
+
+View: v_top_payment_methods
+Definition:  SELECT payment_method,
+    sum(completed_count) AS transaction_count,
+    sum(total_amount) AS total_amount,
+    round(((sum(total_amount) / NULLIF(sum(sum(total_amount)) OVER (), (0)::numeric)) * (1...
+
+View: v_top_workflows
+Definition:  SELECT workflow_code,
+    solicitud_type,
+    sum(completed_count) AS transaction_count,
+    sum(total_amount) AS total_amount,
+    round(((sum(total_amount) / NULLIF(sum(sum(total_amount)) OVER (), ...
 
 View: v_verificacion_stats
 Definition:  SELECT count(*) FILTER (WHERE ((status)::text = 'pendiente'::text)) AS pendientes,
-    count(*) FILTER (WHERE ((status)::text = 'aprobado'::text)) AS aprobadas,
-    count(*) FILTER (WHERE ((status)::...
+    count(*) FILTER (WHERE (((status)::text = 'pendiente'::text) AND ((((verification_data -> 'validacion_cruzada'::...
 
 View: v_verificaciones_pendientes
 Definition:  SELECT vf.id,
     vf.matricula,
     vf.created_at,
-    (vf.datos_extraidos_dip ->> 'nombre'::text) AS nombre_dip,
-    (vf.datos_extraidos_dip ->> 'numero_dip'::text) AS numero_dip,
-    u.id AS user_i...
+    COALESCE(((((vf.verification_data -> 'dip'::text) -> 'extraction'::text) -> 'titular'::text) ->> 'apellidos'::text), (((vf.verification_data -> ...
+
+View: v_verification_dashboard
+Definition:  SELECT sr.id AS request_id,
+    sr.reference AS request_reference,
+    sr.workflow_code,
+    sr.verification_status,
+    sr.verification_details,
+    sr.created_at AS request_created_at,
+    vq.id AS...
+
+View: v_verification_stats
+Definition:  SELECT verification_status,
+    count(*) AS count,
+    count(*) FILTER (WHERE (created_at >= (now() - '24:00:00'::interval))) AS last_24h,
+    count(*) FILTER (WHERE (created_at >= (now() - '7 days':...
 
 View: v_verified_identifiers_admin
 Definition:  SELECT id,
@@ -5200,6 +5699,18 @@ Definition:  SELECT wt.workflow_code,
     wt.percentage_rate,
     COALESCE(supp.supplements_total, (0)::numeric) AS supplements_total,
     ...
+
+View: vw_agents
+Definition:  SELECT u.id AS user_id,
+    u.email,
+    u.full_name,
+    u.first_name,
+    u.last_name,
+    u.phone_number,
+    u.role AS user_role,
+    ap.id AS agent_profile_id,
+    ap.agent_type,
+    ap.is_super...
 
 ====================================================================================================
 5. FUNCTIONS
@@ -5266,6 +5777,9 @@ Returns: USER-DEFINED
 Function: avg
 Returns: USER-DEFINED
 
+Function: batch_approve_verificaciones
+Returns: jsonb
+
 Function: binary_quantize
 Returns: bit
 
@@ -5282,6 +5796,9 @@ Function: calculate_processing_duration
 Returns: trigger
 
 Function: calculate_queue_priority
+Returns: trigger
+
+Function: check_department_parent
 Returns: trigger
 
 Function: check_duplicate_identifier_usage
@@ -5317,6 +5834,9 @@ Returns: double precision
 Function: deactivate_verified_identifier
 Returns: uuid
 
+Function: detect_duplicate_payments
+Returns: record
+
 Function: evaluate_document_condition
 Returns: boolean
 
@@ -5325,6 +5845,9 @@ Returns: trigger
 
 Function: flag_embedding_update
 Returns: trigger
+
+Function: generate_export_filename
+Returns: character varying
 
 Function: generate_idempotency_key
 Returns: character varying
@@ -5345,6 +5868,9 @@ Function: get_next_available_slot
 Returns: record
 
 Function: get_pending_notification_retries
+Returns: record
+
+Function: get_pending_verifications
 Returns: record
 
 Function: get_rule_value
@@ -5836,11 +6362,29 @@ Returns: uuid
 Function: log_notification
 Returns: uuid
 
+Function: mark_verification_result
+Returns: void
+
 Function: prepare_service_text_for_embedding
 Returns: text
 
 Function: process_verificacion_funcionario
 Returns: jsonb
+
+Function: queue_verification
+Returns: uuid
+
+Function: refresh_agent_performance
+Returns: void
+
+Function: refresh_all_treasury_views
+Returns: void
+
+Function: refresh_reconciliation_stats
+Returns: void
+
+Function: refresh_treasury_kpis
+Returns: void
 
 Function: release_expired_appointment_holds
 Returns: integer
@@ -5971,13 +6515,22 @@ Returns: trigger
 Function: unlock_payment_by_agent
 Returns: jsonb
 
+Function: update_anomaly_timestamp
+Returns: trigger
+
 Function: update_appointment_reservations_updated_at
 Returns: trigger
 
 Function: update_capacity_percentage
 Returns: trigger
 
+Function: update_dvc_updated_at
+Returns: trigger
+
 Function: update_entity_location_timestamp
+Returns: trigger
+
+Function: update_export_timestamp
 Returns: trigger
 
 Function: update_fiscal_service_data_updated_at
@@ -6024,6 +6577,9 @@ Returns: trigger
 
 Function: upsert_verified_identifier
 Returns: record
+
+Function: validate_agent_assignment
+Returns: trigger
 
 Function: validate_fiscal_service_montants
 Returns: trigger
@@ -6137,12 +6693,20 @@ Returns: boolean
 6. TABLE RELATIONSHIPS SUMMARY
 ====================================================================================================
 
-agent_performance_stats.agent_id → ministry_agents.id
+agent_performance_stats.agent_profile_id → agent_profiles.id
+agent_profiles.assigned_by → users.id
+agent_profiles.backup_for_profile_id → agent_profiles.id
+agent_profiles.deactivated_by → users.id
+agent_profiles.entity_id → entities.id
+agent_profiles.ministry_id → ministries.id
+agent_profiles.user_id → users.id
 agent_work_queue.assigned_to → users.id
 agent_work_queue.completed_by → users.id
 agent_work_queue.escalated_by → users.id
 agent_work_queue.ministry_id → ministries.id
-agent_workloads.agent_id → users.id
+agent_workloads.agent_profile_id → agent_profiles.id
+anomaly_actions.anomaly_id → payment_anomalies.id
+anomaly_actions.performed_by → users.id
 appointment_blocked_dates.created_by → users.id
 appointment_delay_rules.created_by → users.id
 appointment_delay_rules.workflow_code → workflows.code
@@ -6158,9 +6722,9 @@ appointment_slot_configs.created_by → users.id
 appointment_slot_configs.entity_location_id → entity_locations.id
 assignment_rules.created_by → users.id
 assignment_rules.updated_by → users.id
-assignments.agent_id → users.id
-assignments.assigned_by → users.id
-assignments.reassigned_to → users.id
+assignments.agent_profile_id → agent_profiles.id
+assignments.assigned_by_profile_id → agent_profiles.id
+assignments.reassigned_to_profile_id → agent_profiles.id
 assignments.rule_applied_id → assignment_rules.id
 audit_logs.user_id → users.id
 bank_transactions.payment_id → payments.id
@@ -6200,6 +6764,8 @@ document_processing_queue.uploaded_file_id → uploaded_files.id
 email_templates.created_by → users.id
 email_templates.updated_by → users.id
 entities.created_by → users.id
+entities.ministry_id → ministries.id
+entities.parent_entity_id → entities.id
 entities.updated_by → users.id
 entity_locations.city_id → cities.id
 entity_locations.created_by → users.id
@@ -6219,11 +6785,6 @@ gemini_processing_logs.service_request_id → service_requests.id
 gemini_processing_logs.user_id → users.id
 import_batch_items.batch_id → import_batches.id
 import_batches.uploaded_by → users.id
-ministry_agents.assigned_by → users.id
-ministry_agents.backup_for_agent_id → ministry_agents.id
-ministry_agents.deactivated_by → users.id
-ministry_agents.ministry_id → ministries.id
-ministry_agents.user_id → users.id
 ministry_validation_config.created_by → users.id
 ministry_validation_config.ministry_id → ministries.id
 ministry_validation_config.updated_by → users.id
@@ -6232,14 +6793,16 @@ notification_log.user_id → users.id
 notification_templates.created_by → users.id
 ocr_extraction_results.uploaded_file_id → uploaded_files.id
 ocr_extraction_results.validated_by → users.id
+payment_anomalies.resolved_by → users.id
+payment_anomalies.service_request_id → service_requests.id
 payment_installments.payment_plan_id → payment_plans.id
-payment_lock_history.agent_id → ministry_agents.id
+payment_lock_history.agent_profile_id → agent_profiles.id
 payment_lock_history.payment_id → service_payments.id
 payment_plans.approved_by → users.id
 payment_plans.tax_declaration_id → tax_declarations.id
 payment_receipts.generated_by → users.id
 payment_receipts.payment_id → payments.id
-payment_validation_audit.agent_id → ministry_agents.id
+payment_validation_audit.agent_profile_id → agent_profiles.id
 payment_validation_audit.agent_user_id → users.id
 payment_validation_audit.payment_id → service_payments.id
 payments.bank_transaction_id → bank_transactions.id
@@ -6263,14 +6826,13 @@ sectors.ministry_id → ministries.id
 service_document_assignments.document_template_id → document_templates.id
 service_document_assignments.fiscal_service_id → fiscal_services.id
 service_keywords.fiscal_service_id → fiscal_services.id
-service_payments.assigned_agent_id → ministry_agents.id
+service_payments.assigned_agent_profile_id → agent_profiles.id
 service_payments.company_id → companies.id
-service_payments.escalated_to_agent_id → ministry_agents.id
-service_payments.fiscal_service_code → fiscal_services.service_code
-service_payments.locked_by_agent_id → ministry_agents.id
+service_payments.escalated_to_agent_profile_id → agent_profiles.id
+service_payments.locked_by_agent_profile_id → agent_profiles.id
 service_payments.service_request_id → service_requests.id
 service_payments.user_id → users.id
-service_payments.validated_by_agent_id → ministry_agents.id
+service_payments.validated_by_agent_profile_id → agent_profiles.id
 service_procedure_assignments.fiscal_service_id → fiscal_services.id
 service_procedure_assignments.template_id → procedure_templates.id
 service_request_documents.service_request_id → service_requests.id
@@ -6301,6 +6863,8 @@ tax_declarations.processed_by → users.id
 tax_declarations.user_id → users.id
 translations.created_by → users.id
 translations.updated_by → users.id
+treasury_exports.downloaded_by → users.id
+treasury_exports.requested_by → users.id
 uploaded_files.payment_id → payments.id
 uploaded_files.tax_declaration_id → tax_declarations.id
 uploaded_files.user_id → users.id
@@ -6308,11 +6872,6 @@ user_company_roles.company_id → companies.id
 user_company_roles.user_id → users.id
 user_favorites.fiscal_service_code → fiscal_services.service_code
 user_favorites.user_id → users.id
-user_ministry_assignments.approved_by → users.id
-user_ministry_assignments.assigned_by → users.id
-user_ministry_assignments.ministry_id → ministries.id
-user_ministry_assignments.revoked_by → users.id
-user_ministry_assignments.user_id → users.id
 user_permissions.granted_by → users.id
 user_permissions.permission_id → permissions.id
 user_permissions.user_id → users.id
@@ -6321,9 +6880,9 @@ users.role_id → roles.id
 users.supervisor_id → users.id
 ussd_configurations.created_by → users.id
 verificacion_fraud_log.user_id → users.id
-verificacion_funcionario.documento_id → uploaded_files.id
 verificacion_funcionario.processed_by → users.id
 verificacion_funcionario.user_id → users.id
+verification_queue.service_request_id → service_requests.id
 verified_identifiers.user_id → users.id
 verified_identifiers.verified_by → users.id
 verified_identifiers_audit.performed_by → users.id
