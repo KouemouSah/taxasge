@@ -1,10 +1,9 @@
 """
-Role Repository - Database operations for roles
+Role Repository - Database operations for roles (asyncpg version)
 """
 from typing import List, Optional, Dict, Any
 from uuid import UUID
-import psycopg2
-from psycopg2.extras import RealDictCursor
+import asyncpg
 
 from app.modules.permissions.models.role import (
     RoleCreate,
@@ -13,14 +12,14 @@ from app.modules.permissions.models.role import (
 
 
 class RoleRepository:
-    """Repository for role CRUD operations"""
+    """Repository for role CRUD operations using asyncpg"""
 
-    def __init__(self, db_connection):
+    def __init__(self, db_connection: asyncpg.Connection):
         """
         Initialize repository with database connection
 
         Args:
-            db_connection: psycopg2 connection object
+            db_connection: asyncpg connection object
         """
         self.db = db_connection
 
@@ -34,19 +33,14 @@ class RoleRepository:
         Returns:
             Role dict or None if not found
         """
-        cursor = self.db.cursor(cursor_factory=RealDictCursor)
-        try:
-            cursor.execute("""
-                SELECT id, name, code, entity_type, description, is_system,
-                       created_at, updated_at, created_by
-                FROM roles
-                WHERE id = %s
-            """, (role_id,))
+        result = await self.db.fetchrow("""
+            SELECT id, name, code, entity_type, description, is_system,
+                   created_at, updated_at, created_by
+            FROM roles
+            WHERE id = $1
+        """, role_id)
 
-            result = cursor.fetchone()
-            return dict(result) if result else None
-        finally:
-            cursor.close()
+        return dict(result) if result else None
 
     async def get_by_code(self, code: str) -> Optional[Dict[str, Any]]:
         """
@@ -58,19 +52,14 @@ class RoleRepository:
         Returns:
             Role dict or None if not found
         """
-        cursor = self.db.cursor(cursor_factory=RealDictCursor)
-        try:
-            cursor.execute("""
-                SELECT id, name, code, entity_type, description, is_system,
-                       created_at, updated_at, created_by
-                FROM roles
-                WHERE code = %s
-            """, (code,))
+        result = await self.db.fetchrow("""
+            SELECT id, name, code, entity_type, description, is_system,
+                   created_at, updated_at, created_by
+            FROM roles
+            WHERE code = $1
+        """, code)
 
-            result = cursor.fetchone()
-            return dict(result) if result else None
-        finally:
-            cursor.close()
+        return dict(result) if result else None
 
     async def get_all(
         self,
@@ -91,32 +80,30 @@ class RoleRepository:
         Returns:
             List of role dicts
         """
-        cursor = self.db.cursor(cursor_factory=RealDictCursor)
-        try:
-            query = """
-                SELECT id, name, code, entity_type, description, is_system,
-                       created_at, updated_at, created_by
-                FROM roles
-                WHERE 1=1
-            """
-            params = []
+        query = """
+            SELECT id, name, code, entity_type, description, is_system,
+                   created_at, updated_at, created_by
+            FROM roles
+            WHERE 1=1
+        """
+        params = []
+        param_count = 0
 
-            if entity_type is not None:
-                query += " AND entity_type = %s"
-                params.append(entity_type)
+        if entity_type is not None:
+            param_count += 1
+            query += f" AND entity_type = ${param_count}"
+            params.append(entity_type)
 
-            if is_system is not None:
-                query += " AND is_system = %s"
-                params.append(is_system)
+        if is_system is not None:
+            param_count += 1
+            query += f" AND is_system = ${param_count}"
+            params.append(is_system)
 
-            query += " ORDER BY is_system DESC, entity_type, code LIMIT %s OFFSET %s"
-            params.extend([limit, offset])
+        query += f" ORDER BY is_system DESC, entity_type, code LIMIT ${param_count + 1} OFFSET ${param_count + 2}"
+        params.extend([limit, offset])
 
-            cursor.execute(query, params)
-            results = cursor.fetchall()
-            return [dict(row) for row in results]
-        finally:
-            cursor.close()
+        results = await self.db.fetch(query, *params)
+        return [dict(row) for row in results]
 
     async def count(
         self,
@@ -133,23 +120,22 @@ class RoleRepository:
         Returns:
             Total count
         """
-        cursor = self.db.cursor()
-        try:
-            query = "SELECT COUNT(*) FROM roles WHERE 1=1"
-            params = []
+        query = "SELECT COUNT(*) FROM roles WHERE 1=1"
+        params = []
+        param_count = 0
 
-            if entity_type is not None:
-                query += " AND entity_type = %s"
-                params.append(entity_type)
+        if entity_type is not None:
+            param_count += 1
+            query += f" AND entity_type = ${param_count}"
+            params.append(entity_type)
 
-            if is_system is not None:
-                query += " AND is_system = %s"
-                params.append(is_system)
+        if is_system is not None:
+            param_count += 1
+            query += f" AND is_system = ${param_count}"
+            params.append(is_system)
 
-            cursor.execute(query, params)
-            return cursor.fetchone()[0]
-        finally:
-            cursor.close()
+        result = await self.db.fetchval(query, *params)
+        return result or 0
 
     async def get_system_roles(self) -> List[Dict[str, Any]]:
         """
@@ -179,21 +165,16 @@ class RoleRepository:
         Returns:
             List of agent RBAC roles
         """
-        cursor = self.db.cursor(cursor_factory=RealDictCursor)
-        try:
-            cursor.execute("""
-                SELECT id, name, code, entity_type, description, is_system,
-                       created_at, updated_at, created_by
-                FROM roles
-                WHERE entity_type = 'agent'
-                  AND is_system = TRUE
-                ORDER BY name
-            """)
+        results = await self.db.fetch("""
+            SELECT id, name, code, entity_type, description, is_system,
+                   created_at, updated_at, created_by
+            FROM roles
+            WHERE entity_type = 'agent'
+              AND is_system = TRUE
+            ORDER BY name
+        """)
 
-            results = cursor.fetchall()
-            return [dict(row) for row in results]
-        finally:
-            cursor.close()
+        return [dict(row) for row in results]
 
     async def get_with_permissions(self, role_id: str) -> Optional[Dict[str, Any]]:
         """
@@ -205,39 +186,33 @@ class RoleRepository:
         Returns:
             Role dict with permissions list
         """
-        cursor = self.db.cursor(cursor_factory=RealDictCursor)
-        try:
-            # Get role
-            cursor.execute("""
-                SELECT id, name, code, entity_type, description, is_system,
-                       created_at, updated_at, created_by
-                FROM roles
-                WHERE id = %s
-            """, (role_id,))
+        # Get role
+        role = await self.db.fetchrow("""
+            SELECT id, name, code, entity_type, description, is_system,
+                   created_at, updated_at, created_by
+            FROM roles
+            WHERE id = $1
+        """, role_id)
 
-            role = cursor.fetchone()
-            if not role:
-                return None
+        if not role:
+            return None
 
-            role_dict = dict(role)
+        role_dict = dict(role)
 
-            # Get permissions
-            cursor.execute("""
-                SELECT p.id, p.name, p.resource, p.action, p.description,
-                       p.is_critical, p.module_name, rp.granted
-                FROM permissions p
-                INNER JOIN role_permissions rp ON p.id = rp.permission_id
-                WHERE rp.role_id = %s
-                ORDER BY p.module_name, p.resource, p.action
-            """, (role_id,))
+        # Get permissions
+        permissions = await self.db.fetch("""
+            SELECT p.id, p.name, p.resource, p.action, p.description,
+                   p.is_critical, p.module_name, rp.granted
+            FROM permissions p
+            INNER JOIN role_permissions rp ON p.id = rp.permission_id
+            WHERE rp.role_id = $1
+            ORDER BY p.module_name, p.resource, p.action
+        """, role_id)
 
-            permissions = [dict(row) for row in cursor.fetchall()]
-            role_dict['permissions'] = permissions
-            role_dict['permissions_count'] = len(permissions)
+        role_dict['permissions'] = [dict(row) for row in permissions]
+        role_dict['permissions_count'] = len(permissions)
 
-            return role_dict
-        finally:
-            cursor.close()
+        return role_dict
 
     async def create(self, role: RoleCreate, created_by: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -251,32 +226,16 @@ class RoleRepository:
             Created role dict
 
         Raises:
-            psycopg2.IntegrityError: If role code already exists
+            asyncpg.UniqueViolationError: If role code already exists
         """
-        cursor = self.db.cursor(cursor_factory=RealDictCursor)
-        try:
-            cursor.execute("""
-                INSERT INTO roles (name, code, entity_type, description, is_system, created_by)
-                VALUES (%s, %s, %s, %s, %s, %s)
-                RETURNING id, name, code, entity_type, description, is_system,
-                          created_at, updated_at, created_by
-            """, (
-                role.name,
-                role.code,
-                role.entity_type,
-                role.description,
-                False,  # Custom roles are never system roles
-                created_by
-            ))
+        result = await self.db.fetchrow("""
+            INSERT INTO roles (name, code, entity_type, description, is_system, created_by)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING id, name, code, entity_type, description, is_system,
+                      created_at, updated_at, created_by
+        """, role.name, role.code, role.entity_type, role.description, False, created_by)
 
-            result = cursor.fetchone()
-            self.db.commit()
-            return dict(result)
-        except Exception as e:
-            self.db.rollback()
-            raise e
-        finally:
-            cursor.close()
+        return dict(result)
 
     async def update(self, role_id: str, role: RoleUpdate) -> Optional[Dict[str, Any]]:
         """
@@ -292,55 +251,48 @@ class RoleRepository:
         Raises:
             ValueError: If trying to update a system role
         """
-        cursor = self.db.cursor(cursor_factory=RealDictCursor)
-        try:
-            # Check if it's a system role
-            cursor.execute("SELECT is_system FROM roles WHERE id = %s", (role_id,))
-            result = cursor.fetchone()
+        # Check if it's a system role
+        result = await self.db.fetchrow("SELECT is_system FROM roles WHERE id = $1", role_id)
 
-            if not result:
-                return None
+        if not result:
+            return None
 
-            if result['is_system']:
-                raise ValueError("Cannot update system roles")
+        if result['is_system']:
+            raise ValueError("Cannot update system roles")
 
-            # Build dynamic update query
-            update_fields = []
-            params = []
+        # Build dynamic update query
+        update_fields = []
+        params = []
+        param_count = 0
 
-            if role.name is not None:
-                update_fields.append("name = %s")
-                params.append(role.name)
+        if role.name is not None:
+            param_count += 1
+            update_fields.append(f"name = ${param_count}")
+            params.append(role.name)
 
-            if role.description is not None:
-                update_fields.append("description = %s")
-                params.append(role.description)
+        if role.description is not None:
+            param_count += 1
+            update_fields.append(f"description = ${param_count}")
+            params.append(role.description)
 
-            if not update_fields:
-                # No fields to update
-                return await self.get_by_id(role_id)
+        if not update_fields:
+            # No fields to update
+            return await self.get_by_id(role_id)
 
-            update_fields.append("updated_at = NOW()")
-            params.append(role_id)
+        update_fields.append("updated_at = NOW()")
+        param_count += 1
+        params.append(role_id)
 
-            query = f"""
-                UPDATE roles
-                SET {', '.join(update_fields)}
-                WHERE id = %s
-                RETURNING id, name, code, entity_type, description, is_system,
-                          created_at, updated_at, created_by
-            """
+        query = f"""
+            UPDATE roles
+            SET {', '.join(update_fields)}
+            WHERE id = ${param_count}
+            RETURNING id, name, code, entity_type, description, is_system,
+                      created_at, updated_at, created_by
+        """
 
-            cursor.execute(query, params)
-            result = cursor.fetchone()
-            self.db.commit()
-
-            return dict(result) if result else None
-        except Exception as e:
-            self.db.rollback()
-            raise e
-        finally:
-            cursor.close()
+        result = await self.db.fetchrow(query, *params)
+        return dict(result) if result else None
 
     async def delete(self, role_id: str) -> bool:
         """
@@ -355,27 +307,17 @@ class RoleRepository:
         Raises:
             ValueError: If trying to delete a system role
         """
-        cursor = self.db.cursor()
-        try:
-            # Check if it's a system role
-            cursor.execute("SELECT is_system FROM roles WHERE id = %s", (role_id,))
-            result = cursor.fetchone()
+        # Check if it's a system role
+        result = await self.db.fetchrow("SELECT is_system FROM roles WHERE id = $1", role_id)
 
-            if not result:
-                return False
+        if not result:
+            return False
 
-            if result[0]:  # is_system
-                raise ValueError("Cannot delete system roles")
+        if result['is_system']:
+            raise ValueError("Cannot delete system roles")
 
-            cursor.execute("DELETE FROM roles WHERE id = %s", (role_id,))
-            deleted = cursor.rowcount > 0
-            self.db.commit()
-            return deleted
-        except Exception as e:
-            self.db.rollback()
-            raise e
-        finally:
-            cursor.close()
+        delete_result = await self.db.execute("DELETE FROM roles WHERE id = $1", role_id)
+        return "DELETE 1" in delete_result
 
     async def exists(self, code: str) -> bool:
         """
@@ -387,15 +329,11 @@ class RoleRepository:
         Returns:
             True if exists, False otherwise
         """
-        cursor = self.db.cursor()
-        try:
-            cursor.execute("""
-                SELECT EXISTS(SELECT 1 FROM roles WHERE code = %s)
-            """, (code,))
+        result = await self.db.fetchval("""
+            SELECT EXISTS(SELECT 1 FROM roles WHERE code = $1)
+        """, code)
 
-            return cursor.fetchone()[0]
-        finally:
-            cursor.close()
+        return result or False
 
     async def assign_permission(
         self,
@@ -414,24 +352,16 @@ class RoleRepository:
             created_by: User ID who made the assignment
 
         Returns:
-            True if assigned, False if already exists
+            True if assigned
         """
-        cursor = self.db.cursor()
-        try:
-            cursor.execute("""
-                INSERT INTO role_permissions (role_id, permission_id, granted, created_by)
-                VALUES (%s, %s, %s, %s)
-                ON CONFLICT (role_id, permission_id) DO UPDATE
-                SET granted = EXCLUDED.granted, created_by = EXCLUDED.created_by
-            """, (role_id, permission_id, granted, created_by))
+        await self.db.execute("""
+            INSERT INTO role_permissions (role_id, permission_id, granted, created_by)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (role_id, permission_id) DO UPDATE
+            SET granted = EXCLUDED.granted, created_by = EXCLUDED.created_by
+        """, role_id, permission_id, granted, created_by)
 
-            self.db.commit()
-            return True
-        except Exception as e:
-            self.db.rollback()
-            raise e
-        finally:
-            cursor.close()
+        return True
 
     async def remove_permission(self, role_id: str, permission_id: str) -> bool:
         """
@@ -444,21 +374,12 @@ class RoleRepository:
         Returns:
             True if removed, False if not found
         """
-        cursor = self.db.cursor()
-        try:
-            cursor.execute("""
-                DELETE FROM role_permissions
-                WHERE role_id = %s AND permission_id = %s
-            """, (role_id, permission_id))
+        result = await self.db.execute("""
+            DELETE FROM role_permissions
+            WHERE role_id = $1 AND permission_id = $2
+        """, role_id, permission_id)
 
-            deleted = cursor.rowcount > 0
-            self.db.commit()
-            return deleted
-        except Exception as e:
-            self.db.rollback()
-            raise e
-        finally:
-            cursor.close()
+        return "DELETE 1" in result
 
     async def get_role_permissions(self, role_id: str) -> List[str]:
         """
@@ -470,14 +391,10 @@ class RoleRepository:
         Returns:
             List of permission UUIDs
         """
-        cursor = self.db.cursor()
-        try:
-            cursor.execute("""
-                SELECT permission_id
-                FROM role_permissions
-                WHERE role_id = %s AND granted = TRUE
-            """, (role_id,))
+        results = await self.db.fetch("""
+            SELECT permission_id
+            FROM role_permissions
+            WHERE role_id = $1 AND granted = TRUE
+        """, role_id)
 
-            return [row[0] for row in cursor.fetchall()]
-        finally:
-            cursor.close()
+        return [str(row['permission_id']) for row in results]
