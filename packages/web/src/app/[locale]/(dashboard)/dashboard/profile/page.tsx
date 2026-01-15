@@ -19,11 +19,12 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
-import { User, Mail, Phone, MapPin, Calendar, Shield, Edit2, Save, X, Building2, Bell, FileText, CreditCard, Languages } from 'lucide-react'
+import { User, Mail, Phone, MapPin, Calendar, Shield, Edit2, Save, X, Building2, Bell, FileText, CreditCard, Languages, BadgeCheck } from 'lucide-react'
 import { getAuthData } from '@/core/auth/storage'
 import type { User as UserType } from '@/types/auth'
 import { Badge } from '@/components/ui/badge'
 import { useLocale, useTranslations } from 'next-intl'
+import { VerificationFuncionarioTab } from '@/modules/funcionario'
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -266,6 +267,10 @@ export default function ProfilePage() {
   }
 
   const isBusiness = user.role === 'business'
+  // Show verification tab for citizen/accountant (not business/admin/agent)
+  const showVerificationTab = ['citizen', 'accountant'].includes(user.role || '')
+  // Calculate grid columns based on visible tabs
+  const tabCount = isBusiness ? 3 : (showVerificationTab ? 4 : 3)
 
   return (
     <div className="space-y-6">
@@ -281,7 +286,7 @@ export default function ProfilePage() {
 
       {/* Tabs */}
       <Tabs defaultValue="personal" className="w-full">
-        <TabsList className={`grid w-full ${isBusiness ? 'grid-cols-3' : 'grid-cols-3'}`}>
+        <TabsList className={`grid w-full ${tabCount === 4 ? 'grid-cols-4' : 'grid-cols-3'}`}>
           <TabsTrigger value="personal">
             <User className="mr-2 h-4 w-4" />
             {t('personalTab')}
@@ -301,6 +306,12 @@ export default function ProfilePage() {
             <Bell className="mr-2 h-4 w-4" />
             {t('notificationsTab')}
           </TabsTrigger>
+          {showVerificationTab && (
+            <TabsTrigger value="verification">
+              <BadgeCheck className="mr-2 h-4 w-4" />
+              {t('verificationTab')}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Personal Information Tab */}
@@ -959,6 +970,13 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Funcionario Verification Tab */}
+        {showVerificationTab && (
+          <TabsContent value="verification" className="space-y-4">
+            <VerificationFuncionarioTab />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   )
