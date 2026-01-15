@@ -40,7 +40,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query, Request
 from loguru import logger
 
-from app.modules.auth.api.dependencies import get_current_user, require_permissions
+from app.modules.auth.dependencies import get_current_user, require_permissions
 from ..models.verificacion import (
     VerificacionCreate,
     VerificacionResponse,
