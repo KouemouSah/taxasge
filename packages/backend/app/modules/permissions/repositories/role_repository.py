@@ -221,7 +221,8 @@ class RoleRepository:
             ORDER BY p.module_name, p.resource, p.action
         """, role_id)
 
-        role_dict['permissions'] = [_row_to_dict(row) for row in permissions]
+        # Return permission names only (not full dicts) - matches RoleWithPermissionsResponse model
+        role_dict['permissions'] = [row['name'] for row in permissions]
         role_dict['permissions_count'] = len(permissions)
 
         return role_dict
