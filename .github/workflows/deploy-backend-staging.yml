@@ -40,7 +40,9 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          sudo apt-get update
+          # Remove problematic Microsoft repositories that can cause 403 errors
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list /etc/apt/sources.list.d/azure-cli.list || true
+          sudo apt-get update || true
           sudo apt-get install -y libcairo2-dev libpango1.0-dev libgdk-pixbuf2.0-dev libffi-dev shared-mime-info
 
       - name: Install dependencies
