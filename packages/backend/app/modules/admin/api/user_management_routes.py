@@ -174,6 +174,34 @@ async def create_user(
         )
 
 
+@router.get("/stats", response_model=UserStats)
+async def get_user_stats(
+    admin_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(permission_required("users.view_stats"))
+):
+    """Get user statistics - Requires users.view_stats permission"""
+    try:
+        stats = await user_repository.get_user_stats()
+
+        # Log activity
+        activity = UserActivity(
+            user_id=admin_user.id,
+            action="view_user_stats",
+            resource="user_stats",
+            timestamp=datetime.utcnow()
+        )
+        await user_repository.log_user_activity(activity)
+
+        return stats
+
+    except Exception as e:
+        logger.error(f"L Error getting user stats: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error retrieving user statistics"
+        )
+
+
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user(
     user_id: str = Path(..., description="User ID", pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"),
@@ -419,34 +447,6 @@ async def search_users(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error searching users"
-        )
-
-
-@router.get("/stats", response_model=UserStats)
-async def get_user_stats(
-    admin_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(permission_required("users.view_stats"))
-):
-    """Get user statistics - Requires users.view_stats permission"""
-    try:
-        stats = await user_repository.get_user_stats()
-
-        # Log activity
-        activity = UserActivity(
-            user_id=admin_user.id,
-            action="view_user_stats",
-            resource="user_stats",
-            timestamp=datetime.utcnow()
-        )
-        await user_repository.log_user_activity(activity)
-
-        return stats
-
-    except Exception as e:
-        logger.error(f"L Error getting user stats: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error retrieving user statistics"
         )
 
 
