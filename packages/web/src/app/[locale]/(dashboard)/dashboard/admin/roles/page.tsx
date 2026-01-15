@@ -331,8 +331,8 @@ function RolesTab() {
               <SelectContent>
                 <SelectItem value="all">Tous les types</SelectItem>
                 <SelectItem value="null">Global</SelectItem>
-                <SelectItem value="DGI">DGI</SelectItem>
-                <SelectItem value="Ministry">Ministère</SelectItem>
+                <SelectItem value="ministry_agent">Agent Ministériel</SelectItem>
+                <SelectItem value="entity_agent">Agent Entité</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -378,7 +378,9 @@ function RolesTab() {
                         {role.entity_type ? (
                           <Badge variant="outline" className="gap-1">
                             <Building2 className="h-3 w-3" />
-                            {role.entity_type}
+                            {role.entity_type === 'ministry_agent' ? 'Agent Ministériel' :
+                             role.entity_type === 'entity_agent' ? 'Agent Entité' :
+                             role.entity_type}
                           </Badge>
                         ) : (
                           <Badge variant="secondary">Global</Badge>

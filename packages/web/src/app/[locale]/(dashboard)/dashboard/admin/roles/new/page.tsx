@@ -169,9 +169,9 @@ export default function CreateRolePage() {
                 </p>
               </div>
 
-              {/* Entity Type */}
+              {/* Target Agent Type */}
               <div className="grid gap-2">
-                <Label htmlFor="entity_type">Type d&apos;entité</Label>
+                <Label htmlFor="entity_type">Type d&apos;agent cible</Label>
                 <Select
                   value={formData.entity_type || 'none'}
                   onValueChange={(value) =>
@@ -182,13 +182,13 @@ export default function CreateRolePage() {
                     <SelectValue placeholder="Sélectionner un type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Global (pas de restriction)</SelectItem>
-                    <SelectItem value="DGI">DGI</SelectItem>
-                    <SelectItem value="Ministry">Ministère</SelectItem>
+                    <SelectItem value="none">Global (tous les agents)</SelectItem>
+                    <SelectItem value="ministry_agent">Agent Ministériel</SelectItem>
+                    <SelectItem value="entity_agent">Agent Entité</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Restreindre ce rôle à un type d&apos;organisation spécifique
+                  Restreindre ce rôle à un type d&apos;agent spécifique
                 </p>
               </div>
 

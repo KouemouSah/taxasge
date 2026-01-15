@@ -29,9 +29,11 @@ class RoleCreate(RoleBase):
 
     @validator('entity_type')
     def validate_entity_type(cls, v):
-        """Validate entity_type is one of allowed values"""
-        if v is not None and v not in ['DGI', 'Ministry', 'agent']:
-            raise ValueError('entity_type must be one of: DGI, Ministry, agent, or NULL')
+        """Validate entity_type is one of allowed agent_type values"""
+        # Valid agent_type values from agent_profiles table (migration 048)
+        valid_agent_types = ['ministry_agent', 'entity_agent']
+        if v is not None and v not in valid_agent_types:
+            raise ValueError(f'entity_type must be one of: {", ".join(valid_agent_types)}, or NULL')
         return v
 
 
