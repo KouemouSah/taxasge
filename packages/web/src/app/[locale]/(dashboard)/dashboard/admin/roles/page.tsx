@@ -124,6 +124,7 @@ export default function RolesPermissionsPage() {
     if (tabParam && validTabs.includes(tabParam) && tabParam !== activeTab) {
       setActiveTab(tabParam);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Only sync when tabParam changes from URL
   }, [tabParam]);
 
   // Update URL when tab changes

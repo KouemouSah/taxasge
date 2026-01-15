@@ -76,7 +76,7 @@ jobs:
 
       - name: Run ESLint
         working-directory: packages/web
-        run: npx eslint src --ext .ts,.tsx --max-warnings=110
+        run: npx eslint src --ext .ts,.tsx --max-warnings=100
 
       - name: Run TypeScript check
         working-directory: packages/web

@@ -601,6 +601,7 @@ export function VerificationFuncionarioTab() {
         setIsProcessing(false)
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- resetWizard is intentionally omitted to avoid re-creating callback
     [wizardState.session_id, toast, t]
   )
 
@@ -658,6 +659,7 @@ export function VerificationFuncionarioTab() {
         setIsProcessing(false)
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- resetWizard is intentionally omitted to avoid re-creating callback
     [wizardState.session_id, selectedProofType, toast, t]
   )
 

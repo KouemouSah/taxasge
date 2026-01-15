@@ -135,6 +135,7 @@ export const ChatWidget = ({
       const lastMessage = messages[messages.length - 1]
       announceNewMessage(lastMessage.role as 'user' | 'assistant', lastMessage.content)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Only trigger when messages count changes
   }, [messages.length])
 
   // Announce errors
@@ -149,6 +150,7 @@ export const ChatWidget = ({
     if (e.key === KEYS.ESCAPE && isOpen) {
       handleClose()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleClose is stable
   }, [isOpen])
 
   useEffect(() => {

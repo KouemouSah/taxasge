@@ -145,6 +145,7 @@ export function NotificationTemplateForm({ template, locale, mode }: Notificatio
       })
       setPreviewVars(newPreviewVars)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- previewVars is used inside but shouldn't trigger re-run
   }, [variables])
 
   const onSubmit = async (data: FormData) => {

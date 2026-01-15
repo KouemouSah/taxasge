@@ -356,6 +356,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
         setIsLoading(false)
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- messages is intentionally omitted to prevent re-creating callback on every message
     [conversationId, language, onError, onSuccess, enableStreaming, sendMessageStreaming]
   )
 

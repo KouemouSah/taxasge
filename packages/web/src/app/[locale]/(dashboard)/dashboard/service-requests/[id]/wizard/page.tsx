@@ -856,6 +856,7 @@ export default function PassportWizardPage() {
     if (step?.id === 'payment' && availablePaymentMethods.length === 0 && !isLoadingPaymentMethods) {
       loadPaymentMethods()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- visibleSteps is stable and derived from request data
   }, [currentStepIndex, availablePaymentMethods.length, isLoadingPaymentMethods, loadPaymentMethods])
 
   const handlePayment = async () => {
