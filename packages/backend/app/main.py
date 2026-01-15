@@ -561,6 +561,64 @@ async def debug_entity_locations_import():
     }
 
 
+@app.get("/api/v1/debug/funcionario-import")
+async def debug_funcionario_import():
+    """Debug endpoint to diagnose funcionario router import errors"""
+    import_errors = []
+    import_success = []
+
+    # Test each import in the funcionario module chain
+    try:
+        from app.modules.auth.dependencies import get_current_user
+        import_success.append("auth.dependencies.get_current_user")
+    except Exception as e:
+        import traceback
+        import_errors.append({"module": "auth.dependencies.get_current_user", "error": str(e), "type": type(e).__name__, "traceback": traceback.format_exc()})
+
+    try:
+        from app.modules.auth.dependencies import require_permissions
+        import_success.append("auth.dependencies.require_permissions")
+    except Exception as e:
+        import traceback
+        import_errors.append({"module": "auth.dependencies.require_permissions", "error": str(e), "type": type(e).__name__, "traceback": traceback.format_exc()})
+
+    try:
+        from app.modules.funcionario.models.verificacion import VerificacionCreate
+        import_success.append("funcionario.models.verificacion.VerificacionCreate")
+    except Exception as e:
+        import traceback
+        import_errors.append({"module": "funcionario.models.verificacion", "error": str(e), "type": type(e).__name__, "traceback": traceback.format_exc()})
+
+    try:
+        from app.modules.funcionario.services.verificacion_service import verificacion_service
+        import_success.append("funcionario.services.verificacion_service")
+    except Exception as e:
+        import traceback
+        import_errors.append({"module": "funcionario.services.verificacion_service", "error": str(e), "type": type(e).__name__, "traceback": traceback.format_exc()})
+
+    try:
+        from app.modules.funcionario.api.verificacion_routes import router
+        import_success.append("funcionario.api.verificacion_routes.router")
+    except Exception as e:
+        import traceback
+        import_errors.append({"module": "funcionario.api.verificacion_routes", "error": str(e), "type": type(e).__name__, "traceback": traceback.format_exc()})
+
+    try:
+        from app.modules.funcionario.api import router as funcionario_router
+        import_success.append("funcionario.api.__init__.router")
+    except Exception as e:
+        import traceback
+        import_errors.append({"module": "funcionario.api.__init__", "error": str(e), "type": type(e).__name__, "traceback": traceback.format_exc()})
+
+    return {
+        "status": "diagnostic",
+        "funcionario_loaded": "funcionario" in routers_loaded,
+        "import_success": import_success,
+        "import_errors": import_errors,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+
 # API v1 info endpoint
 @app.get("/api/v1/")
 async def api_v1_info():
