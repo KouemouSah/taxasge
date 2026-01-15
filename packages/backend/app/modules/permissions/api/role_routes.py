@@ -1,5 +1,7 @@
 """
 Role API Routes - REST endpoints for role management
+
+BUG 6 Fix deployed: 2026-01-15 - Validators moved from Base to Create models
 """
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
