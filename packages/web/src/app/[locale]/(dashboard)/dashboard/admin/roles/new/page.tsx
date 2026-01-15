@@ -144,7 +144,10 @@ export default function CreateRolePage() {
     if (allSelected) {
       setSelectedPermissions((prev) => prev.filter((id) => !modulePermIds.includes(id)));
     } else {
-      setSelectedPermissions((prev) => [...new Set([...prev, ...modulePermIds])]);
+      setSelectedPermissions((prev) => {
+        const combined = [...prev, ...modulePermIds];
+        return combined.filter((id, index) => combined.indexOf(id) === index);
+      });
     }
   };
 
