@@ -16,7 +16,7 @@ from uuid import UUID
 
 from loguru import logger
 
-from app.modules.service_requests.services.gemini_document_processor import gemini_processor
+from app.modules.service_requests.services.gemini_document_processor import gemini_document_processor as gemini_processor
 from ..repositories.verificacion_repository import verificacion_repository
 from ..models.verificacion import DocumentoTipoPrueba
 

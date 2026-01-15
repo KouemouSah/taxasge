@@ -25,7 +25,7 @@ from loguru import logger
 
 from app.core.events import EventBus, EventType
 from app.modules.service_requests.services.preview_cache import preview_cache
-from app.modules.service_requests.services.gemini_document_processor import gemini_processor
+from app.modules.service_requests.services.gemini_document_processor import gemini_document_processor as gemini_processor
 from app.modules.documents.services.storage_service import firebase_storage_service
 from app.database.connection import get_database
 from ..repositories.verificacion_repository import verificacion_repository
