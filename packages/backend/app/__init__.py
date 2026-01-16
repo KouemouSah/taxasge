@@ -19,4 +19,4 @@ __all__ = [
     "__author__",
     "__email__"
 ]
-print("[DEBUG] app.__init__.py loaded")
+print("[DEBUG] app.__init__.py loaded - v2")
