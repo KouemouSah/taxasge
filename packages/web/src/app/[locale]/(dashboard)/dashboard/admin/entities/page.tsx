@@ -7,7 +7,7 @@
  * @module dashboard/admin/entities
  */
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -57,7 +57,6 @@ import {
   Trash2,
   Search,
   AlertTriangle,
-  ChevronRight,
   Layers,
   Workflow,
 } from 'lucide-react'
