@@ -548,9 +548,9 @@ export default function CreateAgentPage() {
                             </FormControl>
                             <SelectContent>
                               {isLoadingMinistries ? (
-                                <SelectItem value="" disabled>Chargement...</SelectItem>
+                                <SelectItem value="_loading" disabled>Chargement...</SelectItem>
                               ) : ministries.length === 0 ? (
-                                <SelectItem value="" disabled>Aucun ministère disponible</SelectItem>
+                                <SelectItem value="_empty" disabled>Aucun ministère disponible</SelectItem>
                               ) : (
                                 ministries.map((m) => (
                                   <SelectItem key={m.id} value={m.id.toString()}>
@@ -579,9 +579,9 @@ export default function CreateAgentPage() {
                             </FormControl>
                             <SelectContent>
                               {isLoadingEntities ? (
-                                <SelectItem value="" disabled>Chargement...</SelectItem>
+                                <SelectItem value="_loading" disabled>Chargement...</SelectItem>
                               ) : entities.length === 0 ? (
-                                <SelectItem value="" disabled>Aucune entité disponible</SelectItem>
+                                <SelectItem value="_empty" disabled>Aucune entité disponible</SelectItem>
                               ) : (
                                 entities.map((e) => (
                                   <SelectItem key={e.id} value={e.id}>
@@ -684,9 +684,9 @@ export default function CreateAgentPage() {
                         </FormControl>
                         <SelectContent>
                           {isLoadingRbacRoles ? (
-                            <SelectItem value="" disabled>Chargement...</SelectItem>
+                            <SelectItem value="_loading" disabled>Chargement...</SelectItem>
                           ) : rbacRoles.length === 0 ? (
-                            <SelectItem value="" disabled>Aucun rôle disponible</SelectItem>
+                            <SelectItem value="_empty" disabled>Aucun rôle disponible</SelectItem>
                           ) : (
                             rbacRoles.map((role) => (
                               <SelectItem key={role.id} value={role.id}>
