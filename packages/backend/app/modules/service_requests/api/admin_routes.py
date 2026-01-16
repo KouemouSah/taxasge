@@ -526,7 +526,7 @@ async def list_workflows(
     is_generic: Optional[bool] = Query(None, description="Filter generic workflows only"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_workflows"))
+    _=Depends(permission_required("admin.manage_workflow"))
 ):
     query = """
         SELECT
@@ -582,7 +582,7 @@ async def get_workflow(
     code: str = Path(..., description="Workflow code"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_workflows"))
+    _=Depends(permission_required("admin.manage_workflow"))
 ):
     row = await db.fetchrow("""
         SELECT
@@ -626,7 +626,7 @@ async def create_workflow(
     workflow: WorkflowCreate = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_workflows"))
+    _=Depends(permission_required("admin.manage_workflow"))
 ):
     # Check if code already exists
     existing = await db.fetchval(
@@ -678,7 +678,7 @@ async def update_workflow(
     workflow: WorkflowUpdate = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_workflows"))
+    _=Depends(permission_required("admin.manage_workflow"))
 ):
     import json
 
@@ -735,7 +735,7 @@ async def toggle_workflow_status(
     is_active: bool = Body(..., embed=True),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_workflows"))
+    _=Depends(permission_required("admin.manage_workflow"))
 ):
     result = await db.execute("""
         UPDATE workflows
@@ -771,7 +771,7 @@ async def delete_workflow(
     code: str = Path(..., description="Workflow code"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_workflows"))
+    _=Depends(permission_required("admin.manage_workflow"))
 ):
     # Check if it's a generic workflow
     workflow = await db.fetchrow(
@@ -827,7 +827,7 @@ async def list_document_requirements(
     code: str = Path(..., description="Workflow code"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_workflows"))
+    _=Depends(permission_required("admin.manage_workflow"))
 ):
     rows = await db.fetch("""
         SELECT * FROM workflow_document_requirements
@@ -866,7 +866,7 @@ async def add_document_requirement(
     doc: DocumentRequirementCreate = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_workflows"))
+    _=Depends(permission_required("admin.manage_workflow"))
 ):
     import json
 
@@ -935,7 +935,7 @@ async def update_document_requirement(
     doc: DocumentRequirementUpdate = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_workflows"))
+    _=Depends(permission_required("admin.manage_workflow"))
 ):
     import json
 
@@ -1028,7 +1028,7 @@ async def remove_document_requirement(
     doc_code: str = Path(..., description="Document code"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_workflows"))
+    _=Depends(permission_required("admin.manage_workflow"))
 ):
     result = await db.execute("""
         DELETE FROM workflow_document_requirements
@@ -1057,7 +1057,7 @@ async def reorder_documents(
     ),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_workflows"))
+    _=Depends(permission_required("admin.manage_workflow"))
 ):
     for item in order:
         doc_code = item.get('document_code')
@@ -1087,7 +1087,7 @@ async def list_tariffs(
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_tariffs"))
+    _=Depends(permission_required("admin.manage_tariff"))
 ):
     query = "SELECT * FROM workflow_tariffs WHERE 1=1"
     params = []
@@ -1133,7 +1133,7 @@ async def create_tariff(
     tariff: WorkflowTariffCreate = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_tariffs"))
+    _=Depends(permission_required("admin.manage_tariff"))
 ):
     # Check workflow exists
     workflow_exists = await db.fetchval(
@@ -1183,7 +1183,7 @@ async def update_tariff(
     tariff: WorkflowTariffUpdate = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_tariffs"))
+    _=Depends(permission_required("admin.manage_tariff"))
 ):
     updates = []
     params = [tariff_id]
@@ -1263,7 +1263,7 @@ async def delete_tariff(
     tariff_id: int = Path(..., description="Tariff ID"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_tariffs"))
+    _=Depends(permission_required("admin.manage_tariff"))
 ):
     result = await db.execute(
         "DELETE FROM workflow_tariffs WHERE id = $1", tariff_id
@@ -1294,7 +1294,7 @@ async def list_slot_configs(
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_appointments"))
+    _=Depends(permission_required("admin.manage_appointment"))
 ):
     query = "SELECT * FROM appointment_slot_configs WHERE 1=1"
     params = []
@@ -1342,7 +1342,7 @@ async def create_slot_config(
     slot: AppointmentSlotConfigCreate = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_appointments"))
+    _=Depends(permission_required("admin.manage_appointment"))
 ):
     from loguru import logger
 
@@ -1429,7 +1429,7 @@ async def create_slot_configs_batch(
     batch: AppointmentSlotConfigBatchCreate = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_appointments"))
+    _=Depends(permission_required("admin.manage_appointment"))
 ):
     """
     Create slot configurations for multiple days at once.
@@ -1541,7 +1541,7 @@ async def update_slot_config(
     slot: AppointmentSlotConfigUpdate = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_appointments"))
+    _=Depends(permission_required("admin.manage_appointment"))
 ):
     updates = []
     params = [slot_id]
@@ -1641,7 +1641,7 @@ async def delete_slot_config(
     slot_id: str = Path(..., description="Slot config ID (UUID)"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_appointments"))
+    _=Depends(permission_required("admin.manage_appointment"))
 ):
     result = await db.execute(
         "DELETE FROM appointment_slot_configs WHERE id = $1::uuid", slot_id
@@ -1668,7 +1668,7 @@ async def list_blocked_dates(
     to_date: Optional[date] = Query(None, description="To date"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_appointments"))
+    _=Depends(permission_required("admin.manage_appointment"))
 ):
     query = "SELECT * FROM appointment_blocked_dates WHERE 1=1"
     params = []
@@ -1712,7 +1712,7 @@ async def add_blocked_date(
     blocked: AppointmentBlockedDateCreate = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_appointments"))
+    _=Depends(permission_required("admin.manage_appointment"))
 ):
     row = await db.fetchrow("""
         INSERT INTO appointment_blocked_dates (entity_code, blocked_date, reason, is_recurring)
@@ -1741,7 +1741,7 @@ async def update_blocked_date(
     data: AppointmentBlockedDateUpdate = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_appointments"))
+    _=Depends(permission_required("admin.manage_appointment"))
 ):
     # Build update query dynamically
     updates = []
@@ -1795,7 +1795,7 @@ async def remove_blocked_date(
     blocked_date_id: str = Path(..., description="Blocked date ID (UUID)"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_appointments"))
+    _=Depends(permission_required("admin.manage_appointment"))
 ):
     result = await db.execute(
         "DELETE FROM appointment_blocked_dates WHERE id = $1::uuid", blocked_date_id
@@ -1824,7 +1824,7 @@ async def list_delay_rules(
     workflow_code: Optional[str] = Query(None, description="Filter by workflow"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_appointments"))
+    _=Depends(permission_required("admin.manage_appointment"))
 ):
     query = "SELECT * FROM appointment_delay_rules WHERE 1=1"
     params = []
@@ -1860,7 +1860,7 @@ async def create_delay_rule(
     rule: AppointmentDelayRuleCreate = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_appointments"))
+    _=Depends(permission_required("admin.manage_appointment"))
 ):
     row = await db.fetchrow("""
         INSERT INTO appointment_delay_rules (
@@ -1892,7 +1892,7 @@ async def update_delay_rule(
     data: AppointmentDelayRuleUpdate = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_appointments"))
+    _=Depends(permission_required("admin.manage_appointment"))
 ):
     # Build update query dynamically
     updates = []
@@ -1946,7 +1946,7 @@ async def delete_delay_rule(
     rule_id: str = Path(..., description="Delay rule ID (UUID)"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_appointments"))
+    _=Depends(permission_required("admin.manage_appointment"))
 ):
     result = await db.execute(
         "DELETE FROM appointment_delay_rules WHERE id = $1::uuid", rule_id
@@ -2042,7 +2042,7 @@ async def list_supplements(
     active_only: bool = Query(False, description="Filter active supplements only"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_tariffs"))
+    _=Depends(permission_required("admin.manage_tariff"))
 ):
     where_clause = "WHERE is_active = true" if active_only else ""
     query = f"""
@@ -2067,7 +2067,7 @@ async def get_supplement(
     code: str = Path(..., description="Supplement code"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_tariffs"))
+    _=Depends(permission_required("admin.manage_tariff"))
 ):
     query = """
         SELECT id, code, name_es, amount, currency, legal_reference,
@@ -2096,7 +2096,7 @@ async def create_supplement(
     data: TariffSupplementCreate,
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_tariffs"))
+    _=Depends(permission_required("admin.manage_tariff"))
 ):
     # Check if code already exists
     existing = await db.fetchrow(
@@ -2144,7 +2144,7 @@ async def update_supplement(
     data: TariffSupplementUpdate = None,
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_tariffs"))
+    _=Depends(permission_required("admin.manage_tariff"))
 ):
     # Build dynamic update query
     params = [code]
@@ -2218,7 +2218,7 @@ async def delete_supplement(
     code: str = Path(..., description="Supplement code"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_tariffs"))
+    _=Depends(permission_required("admin.manage_tariff"))
 ):
     # Check if supplement is used in any workflow config
     usage = await db.fetchrow(
@@ -2258,7 +2258,7 @@ async def list_workflow_supplements(
     workflow_code: str = Path(..., description="Workflow code"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_tariffs"))
+    _=Depends(permission_required("admin.manage_tariff"))
 ):
     query = """
         SELECT wsc.id, wsc.workflow_code, wsc.supplement_code,
@@ -2286,7 +2286,7 @@ async def add_workflow_supplement(
     data: WorkflowSupplementConfigCreate = None,
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_tariffs"))
+    _=Depends(permission_required("admin.manage_tariff"))
 ):
     # Check if supplement exists
     supplement = await db.fetchrow(
@@ -2345,7 +2345,7 @@ async def update_workflow_supplement(
     data: WorkflowSupplementConfigUpdate = None,
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_tariffs"))
+    _=Depends(permission_required("admin.manage_tariff"))
 ):
     # Build dynamic update query
     params = [workflow_code, supplement_code]
@@ -2409,7 +2409,7 @@ async def remove_workflow_supplement(
     supplement_code: str = Path(..., description="Supplement code"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_tariffs"))
+    _=Depends(permission_required("admin.manage_tariff"))
 ):
     result = await db.execute(
         """DELETE FROM workflow_supplement_config
@@ -2464,7 +2464,7 @@ async def cleanup_abandoned_requests(
     max_age_hours: int = Query(2, ge=1, le=168, description="Maximum age in hours for DRAFT requests (1-168)"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin:manage_system"))
+    _=Depends(permission_required("admin.manage_system"))
 ):
     """Clean up abandoned DRAFT requests older than max_age_hours"""
     from ..services.service_request_service import service_request_service
@@ -2564,7 +2564,7 @@ async def get_pending_payments(
     offset: int = Query(0, ge=0),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury:validate_payments"))
+    _=Depends(permission_required("treasury.validate_payment"))
 ):
     """Get payments pending Treasury Agent validation"""
     from datetime import datetime
@@ -2669,7 +2669,7 @@ async def get_payment_details(
     payment_id: str = Path(..., description="Payment UUID"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury:validate_payments"))
+    _=Depends(permission_required("treasury.validate_payment"))
 ):
     """Get single payment details for Treasury Agent review"""
     query = """
@@ -2746,7 +2746,7 @@ async def lock_payment(
     body: PaymentLockRequest = Body(default=PaymentLockRequest()),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury:validate_payments"))
+    _=Depends(permission_required("treasury.validate_payment"))
 ):
     """Lock payment for exclusive review"""
     from datetime import datetime, timedelta
@@ -2814,7 +2814,7 @@ async def validate_payment(
     body: PaymentValidationRequest = Body(default=PaymentValidationRequest()),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury:validate_payments"))
+    _=Depends(permission_required("treasury.validate_payment"))
 ):
     """Validate (approve) a payment"""
     from app.modules.payments.services.processors import payment_processor_registry
@@ -2935,7 +2935,7 @@ async def reject_payment(
     body: PaymentRejectionRequest = ...,
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury:validate_payments"))
+    _=Depends(permission_required("treasury.validate_payment"))
 ):
     """Reject a payment"""
     from app.modules.payments.services.processors import payment_processor_registry
@@ -3032,7 +3032,7 @@ async def unlock_payment(
     payment_id: str = Path(..., description="Payment UUID"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury:validate_payments"))
+    _=Depends(permission_required("treasury.validate_payment"))
 ):
     """Release lock on a payment"""
     # Verify ownership
@@ -3541,7 +3541,7 @@ async def get_treasury_audit(
     page_size: int = Query(50, ge=1, le=100),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury.audit.view"))
+    _=Depends(permission_required("treasury_audit.view"))
 ):
     """Get Treasury audit trail"""
     # Build dynamic WHERE clause
@@ -3660,7 +3660,7 @@ async def get_payment_audit_history(
     payment_id: str = Path(..., description="Payment ID"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury.audit.view"))
+    _=Depends(permission_required("treasury_audit.view"))
 ):
     """Get complete audit history for a payment"""
     # Get payment info
@@ -3791,7 +3791,7 @@ class SLAStatsResponse(BaseModel):
 async def get_sla_stats(
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury.stats.view"))
+    _=Depends(permission_required("treasury_stat.view"))
 ):
     """Get SLA statistics for Treasury dashboard"""
     # Get SLA breakdown for pending payments
@@ -3999,7 +3999,7 @@ async def get_treasury_kpis(
     date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD) for custom period"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury.stats.view"))
+    _=Depends(permission_required("treasury_stat.view"))
 ):
     """Get Treasury KPIs for executive dashboard"""
     from datetime import datetime, timedelta
@@ -4199,7 +4199,7 @@ async def get_agent_performance(
     date_to: Optional[str] = Query(None),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury.stats.view"))
+    _=Depends(permission_required("treasury_stat.view"))
 ):
     """Get agent performance statistics"""
     from datetime import datetime, timedelta
@@ -4430,7 +4430,7 @@ async def list_anomalies(
     page_size: int = Query(20, ge=1, le=100),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury.anomalies.view"))
+    _=Depends(permission_required("treasury_anomaly.view"))
 ):
     """Get list of payment anomalies."""
     # Build dynamic WHERE clause
@@ -4585,7 +4585,7 @@ async def get_anomaly(
     anomaly_id: str = Path(..., description="Anomaly ID"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury.anomalies.view"))
+    _=Depends(permission_required("treasury_anomaly.view"))
 ):
     """Get anomaly by ID."""
     row = await db.fetchrow("""
@@ -4661,7 +4661,7 @@ async def create_anomaly(
     body: AnomalyCreate,
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury.anomalies.create"))
+    _=Depends(permission_required("treasury_anomaly.create"))
 ):
     """Create manual anomaly."""
     # Get payment reference if entity is service_payment
@@ -4754,7 +4754,7 @@ async def update_anomaly_status(
     body: AnomalyStatusUpdate = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury.anomalies.update"))
+    _=Depends(permission_required("treasury_anomaly.update"))
 ):
     """Update anomaly status."""
     # Get current anomaly
@@ -4832,7 +4832,7 @@ async def get_anomaly_actions(
     anomaly_id: str = Path(..., description="Anomaly ID"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury.anomalies.view"))
+    _=Depends(permission_required("treasury_anomaly.view"))
 ):
     """Get anomaly action history."""
     rows = await db.fetch("""
@@ -4882,7 +4882,7 @@ async def add_anomaly_comment(
     body: Dict[str, str] = Body(..., example={"comment": "Comment text"}),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury.anomalies.update"))
+    _=Depends(permission_required("treasury_anomaly.update"))
 ):
     """Add comment to anomaly."""
     comment = body.get("comment")
@@ -4954,7 +4954,7 @@ async def run_anomaly_detection(
     body: Optional[AnomalyDetectionRequest] = Body(None),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury.anomalies.create"))
+    _=Depends(permission_required("treasury_anomaly.create"))
 ):
     """Run automatic anomaly detection."""
     from app.modules.service_requests.services.treasury_anomaly_service import treasury_anomaly_service
@@ -5098,7 +5098,7 @@ async def list_treasury_exports(
     page_size: int = Query(20, ge=1, le=100),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury.exports.view"))
+    _=Depends(permission_required("treasury_export.view"))
 ):
     """List treasury exports with filters."""
     conditions = []
@@ -5213,7 +5213,7 @@ async def list_export_templates(
     export_type: Optional[ExportType] = Query(None, description="Filter by type"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury.exports.view"))
+    _=Depends(permission_required("treasury_export.view"))
 ):
     """List available export templates."""
     if export_type:
@@ -5277,7 +5277,7 @@ async def generate_treasury_export(
     background_tasks: BackgroundTasks,
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury.exports.create"))
+    _=Depends(permission_required("treasury_export.create"))
 ):
     """Generate a new treasury export."""
     from ..services.treasury_export_service import treasury_export_service
@@ -5406,7 +5406,7 @@ async def get_treasury_export(
     export_id: str = Path(..., description="Export ID"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury.exports.view"))
+    _=Depends(permission_required("treasury_export.view"))
 ):
     """Get treasury export details."""
     row = await db.fetchrow("""
@@ -5477,7 +5477,7 @@ async def download_treasury_export(
     export_id: str = Path(..., description="Export ID"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury.exports.download"))
+    _=Depends(permission_required("treasury_export.download"))
 ):
     """Download treasury export file."""
     # Get export details
@@ -5587,7 +5587,7 @@ async def get_analytics_statistics(
     date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury.stats.view"))
+    _=Depends(permission_required("treasury_stat.view"))
 ):
     """Get descriptive statistics for treasury data."""
     return await treasury_analytics_service.get_statistics(
@@ -5625,7 +5625,7 @@ async def get_analytics_correlations(
     date_to: Optional[str] = Query(None),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury.stats.view"))
+    _=Depends(permission_required("treasury_stat.view"))
 ):
     """Get correlation analysis for treasury data."""
     return await treasury_analytics_service.get_correlations(
@@ -5663,7 +5663,7 @@ async def get_analytics_trends(
     date_to: Optional[str] = Query(None),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury.stats.view"))
+    _=Depends(permission_required("treasury_stat.view"))
 ):
     """Get trend analysis for treasury data."""
     return await treasury_analytics_service.get_trends(
@@ -5700,7 +5700,7 @@ async def get_analytics_anomalies(
     date_to: Optional[str] = Query(None),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury.stats.view"))
+    _=Depends(permission_required("treasury_stat.view"))
 ):
     """Get statistical anomalies in treasury data."""
     return await treasury_analytics_service.get_anomalies(
@@ -5741,7 +5741,7 @@ async def get_analytics_predictions(
     horizon_days: int = Query(7, ge=1, le=90, description="Days to predict"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury.stats.view"))
+    _=Depends(permission_required("treasury_stat.view"))
 ):
     """Get revenue predictions."""
     return await treasury_analytics_service.get_predictions(
@@ -5791,7 +5791,7 @@ async def get_analytics_report(
     language: str = Query("es", regex="^(es|fr|en)$", description="Report language"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury.stats.view"))
+    _=Depends(permission_required("treasury_stat.view"))
 ):
     """Get complete analytics report."""
     return await treasury_analytics_service.generate_report(
@@ -5830,7 +5830,7 @@ async def explore_analytics(
     date_to: Optional[str] = Query(None),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury.stats.view"))
+    _=Depends(permission_required("treasury_stat.view"))
 ):
     """Explore custom variable analysis."""
     # Validate variables
@@ -5904,3 +5904,217 @@ async def explore_analytics(
         "anomalies": [a.model_dump() for a in anomalies],
         "total_records": len(df)
     }
+
+
+# ═══════════════════════════════════════════════════════════════
+# WORKFLOW SYNC - Sync predefined workflows to database
+# ═══════════════════════════════════════════════════════════════
+
+class WorkflowSyncResult(BaseModel):
+    """Result of workflow sync operation"""
+    workflows_synced: int = 0
+    workflows_created: int = 0
+    workflows_updated: int = 0
+    tariffs_synced: int = 0
+    tariffs_created: int = 0
+    tariffs_updated: int = 0
+    errors: List[str] = Field(default_factory=list)
+    details: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+@router.post(
+    "/sync/workflows",
+    response_model=WorkflowSyncResult,
+    summary="Sync predefined workflows to database",
+    description="""
+    Synchronize all predefined workflow classes to the database.
+
+    This endpoint reads from the Python workflow classes (source of truth) and:
+    1. Creates/updates workflow entries in the `workflows` table
+    2. Creates/updates tariff entries in the `workflow_tariffs` table
+
+    Use this after deploying new workflow code to ensure DB is aligned.
+    """
+)
+async def sync_predefined_workflows(
+    dry_run: bool = Query(False, description="If true, don't commit changes, just report what would change"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("admin.manage_workflow"))
+):
+    """Sync predefined workflow classes to database."""
+    from ..services.workflow_engine import workflow_engine
+    from ..models.enums import WorkflowCode, SolicitudType
+    from ..workflows.workflow_interface import PredefinedWorkflow, RenovacionMotivo
+
+    result = WorkflowSyncResult()
+
+    # Get all registered workflows
+    all_workflows = workflow_engine.get_all_workflows()
+
+    for workflow_code, workflow in all_workflows.items():
+        try:
+            # Skip if not a PredefinedWorkflow
+            if not isinstance(workflow, PredefinedWorkflow):
+                continue
+
+            code = workflow_code.value
+
+            # Extract workflow metadata
+            workflow_data = {
+                "code": code,
+                "name_es": getattr(workflow, 'service_name_es', code.replace('_', ' ').title()),
+                "description_es": getattr(workflow, 'description_es', None),
+                "category": workflow.category.value,
+                "entity_code": workflow.entity_code.value if hasattr(workflow, 'entity_code') else 'GENERAL',
+                "workflow_type": "standard",
+                "requires_agent_validation": getattr(workflow, 'requires_agent_review', True),
+                "requires_appointment": getattr(workflow, 'requires_appointment', False),
+                "is_generic": False,  # Predefined workflows are NOT generic
+                "sla_hours": getattr(workflow, 'sla_hours', 48),
+                "is_active": True,
+            }
+
+            # Determine parent workflow code (e.g., PASAPORTE_PERDIDA -> PASAPORTE)
+            parent_code = None
+            if '_' in code:
+                base_parts = code.split('_')
+                if len(base_parts) > 1:
+                    # Check if base code exists (e.g., PASAPORTE from PASAPORTE_PERDIDA)
+                    potential_parent = base_parts[0]
+                    # Common parent mapping
+                    parent_mapping = {
+                        "PASAPORTE": "PASAPORTE",
+                        "RESIDENCIA": "RESIDENCIA",
+                        "VEHICULO": "VEHICULO",
+                        "CONDUCIR": "CONDUCIR",
+                        "CONTRATO": "CONTRATO",
+                        "FUNCIONARIO": "FUNCIONARIO",
+                    }
+                    parent_code = parent_mapping.get(potential_parent)
+
+            if dry_run:
+                result.details.append({
+                    "action": "would_sync",
+                    "workflow_code": code,
+                    "parent_code": parent_code,
+                    "data": workflow_data
+                })
+                result.workflows_synced += 1
+                continue
+
+            # Check if workflow exists
+            existing = await db.fetchrow(
+                "SELECT code, is_generic FROM workflows WHERE code = $1",
+                code
+            )
+
+            if existing:
+                # Update existing workflow (only predefined, not generic)
+                if existing['is_generic']:
+                    result.details.append({
+                        "action": "skipped",
+                        "workflow_code": code,
+                        "reason": "is_generic workflow - managed via admin UI"
+                    })
+                    continue
+
+                await db.execute("""
+                    UPDATE workflows SET
+                        name_es = $2,
+                        description_es = $3,
+                        category = $4,
+                        entity_code = $5,
+                        workflow_type = $6,
+                        requires_agent_validation = $7,
+                        requires_appointment = $8,
+                        sla_hours = $9,
+                        parent_workflow_code = $10,
+                        is_parent = $11,
+                        updated_at = NOW()
+                    WHERE code = $1
+                """, code, workflow_data['name_es'], workflow_data['description_es'],
+                    workflow_data['category'], workflow_data['entity_code'],
+                    workflow_data['workflow_type'], workflow_data['requires_agent_validation'],
+                    workflow_data['requires_appointment'], workflow_data['sla_hours'],
+                    parent_code, parent_code is None)  # is_parent = True if no parent
+
+                result.workflows_updated += 1
+            else:
+                # Insert new workflow
+                await db.execute("""
+                    INSERT INTO workflows (
+                        code, name_es, description_es, category, entity_code,
+                        workflow_type, requires_agent_validation, requires_appointment,
+                        is_generic, sla_hours, is_active, parent_workflow_code, is_parent
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                """, code, workflow_data['name_es'], workflow_data['description_es'],
+                    workflow_data['category'], workflow_data['entity_code'],
+                    workflow_data['workflow_type'], workflow_data['requires_agent_validation'],
+                    workflow_data['requires_appointment'], workflow_data['is_generic'],
+                    workflow_data['sla_hours'], workflow_data['is_active'],
+                    parent_code, parent_code is None)
+
+                result.workflows_created += 1
+
+            result.workflows_synced += 1
+
+            # Sync tariffs from workflow
+            tariff_config = getattr(workflow, '_tariff_config', None)
+            if tariff_config and hasattr(tariff_config, 'fixed_amounts'):
+                for amount_key, amount in tariff_config.fixed_amounts.items():
+                    # Determine solicitud_type from key
+                    solicitud_type = None
+                    if amount_key in [s.value for s in SolicitudType]:
+                        solicitud_type = amount_key
+                    elif amount_key in [r.value for r in RenovacionMotivo]:
+                        # For motivos, use renovacion as base type
+                        solicitud_type = SolicitudType.RENOVACION.value
+
+                    if not solicitud_type:
+                        solicitud_type = SolicitudType.EXPEDICION.value
+
+                    # Check if tariff exists
+                    existing_tariff = await db.fetchrow("""
+                        SELECT id FROM workflow_tariffs
+                        WHERE workflow_code = $1 AND solicitud_type = $2
+                    """, code, solicitud_type)
+
+                    if dry_run:
+                        result.details.append({
+                            "action": "would_sync_tariff",
+                            "workflow_code": code,
+                            "solicitud_type": solicitud_type,
+                            "amount": amount
+                        })
+                        result.tariffs_synced += 1
+                        continue
+
+                    if existing_tariff:
+                        await db.execute("""
+                            UPDATE workflow_tariffs SET
+                                amount = $3,
+                                updated_at = NOW()
+                            WHERE workflow_code = $1 AND solicitud_type = $2
+                        """, code, solicitud_type, amount)
+                        result.tariffs_updated += 1
+                    else:
+                        await db.execute("""
+                            INSERT INTO workflow_tariffs (
+                                workflow_code, solicitud_type, amount, tariff_type, is_active
+                            ) VALUES ($1, $2, $3, 'FIXED', true)
+                        """, code, solicitud_type, amount)
+                        result.tariffs_created += 1
+
+                    result.tariffs_synced += 1
+
+            result.details.append({
+                "action": "synced",
+                "workflow_code": code,
+                "parent_code": parent_code
+            })
+
+        except Exception as e:
+            result.errors.append(f"Error syncing {workflow_code.value}: {str(e)}")
+
+    return result

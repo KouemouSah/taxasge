@@ -422,6 +422,43 @@ export const delayRulesApi = {
 }
 
 // =============================================================================
+// SYNC API - Synchronize predefined workflows to database
+// =============================================================================
+
+export interface WorkflowSyncResult {
+  workflows_synced: number
+  workflows_created: number
+  workflows_updated: number
+  tariffs_synced: number
+  tariffs_created: number
+  tariffs_updated: number
+  errors: string[]
+  details: Array<{
+    action: string
+    workflow_code: string
+    parent_code?: string | null
+    data?: Record<string, unknown>
+    reason?: string
+    solicitud_type?: string
+    amount?: number
+  }>
+}
+
+export const syncApi = {
+  /**
+   * Sync predefined workflows from Python classes to database
+   * BACKEND: POST /api/v1/admin/service-requests/sync/workflows
+   */
+  syncWorkflows: async (dryRun: boolean = false): Promise<WorkflowSyncResult> => {
+    return fetchClient.post<WorkflowSyncResult>(
+      `${ADMIN_BASE}/sync/workflows`,
+      undefined,
+      { dry_run: dryRun }
+    )
+  },
+}
+
+// =============================================================================
 // COMBINED EXPORT
 // =============================================================================
 
@@ -434,6 +471,7 @@ export const serviceRequestsAdminApi = {
   slotConfigs: slotConfigsApi,
   blockedDates: blockedDatesApi,
   delayRules: delayRulesApi,
+  sync: syncApi,
 }
 
 export default serviceRequestsAdminApi
