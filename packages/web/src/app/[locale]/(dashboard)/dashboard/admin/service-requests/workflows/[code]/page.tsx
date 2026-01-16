@@ -65,7 +65,6 @@ import {
 import {
   useWorkflow,
   useWorkflows,
-  useCreateWorkflow,
   useUpdateWorkflow,
   useTariffs,
   useCreateTariff,
@@ -94,7 +93,6 @@ import {
   DAY_OF_WEEK_LABELS,
 } from '@/modules/service-requests-admin'
 import type {
-  WorkflowCreate,
   WorkflowUpdate,
   WorkflowTariff,
   WorkflowTariffCreate,
@@ -125,29 +123,10 @@ export default function WorkflowDetailPage() {
   const initialTab = searchParams.get('tab') || 'info'
   const [activeTab, setActiveTab] = useState(initialTab)
 
-  // Detect create mode
-  const isCreateMode = workflowCode === 'new'
-
-  // Workflow data (skip fetch in create mode - hook has enabled: !!code)
-  const { data: workflow, isLoading: loadingWorkflow, error: workflowError, refetch } = useWorkflow(
-    isCreateMode ? '' : workflowCode
-  )
+  // Workflow data
+  const { data: workflow, isLoading: loadingWorkflow, error: workflowError, refetch } = useWorkflow(workflowCode)
   const { data: allWorkflows } = useWorkflows()
-  const createWorkflowMutation = useCreateWorkflow()
   const updateWorkflowMutation = useUpdateWorkflow()
-
-  // Create mode form state
-  const [createForm, setCreateForm] = useState<WorkflowCreate>({
-    code: '',
-    entity_code: '',
-    name_es: '',
-    description_es: '',
-    category: 'IDENTIDAD',
-    workflow_type: 'standard',
-    requires_appointment: false,
-    is_active: true,
-  })
-  const [isCreating, setIsCreating] = useState(false)
 
   // Calculate prev/next navigation
   const workflowCodes = allWorkflows?.map((w) => w.code) || []
@@ -299,22 +278,6 @@ export default function WorkflowDetailPage() {
   }, [workflow])
 
   // Handlers - Workflow
-  const handleCreateWorkflow = async () => {
-    if (!createForm.code || !createForm.entity_code || !createForm.name_es) {
-      return
-    }
-    setIsCreating(true)
-    try {
-      const newWorkflow = await createWorkflowMutation.mutateAsync(createForm)
-      // Redirect to the created workflow's detail page in edit mode to add tariffs/documents
-      router.push(`/${locale}/dashboard/admin/service-requests/workflows/${newWorkflow.code}?mode=edit&tab=tariffs`)
-    } catch {
-      // Error handled by mutation
-    } finally {
-      setIsCreating(false)
-    }
-  }
-
   const handleSaveWorkflow = async () => {
     try {
       await updateWorkflowMutation.mutateAsync({ code: workflowCode, data: editForm as WorkflowUpdate })
@@ -323,8 +286,6 @@ export default function WorkflowDetailPage() {
       // Error handled by mutation
     }
   }
-
-  const isCreateFormValid = createForm.code && createForm.entity_code && createForm.name_es
 
   // Handlers - Tariffs
   const resetTariffForm = () => {
@@ -781,168 +742,6 @@ export default function WorkflowDetailPage() {
   const isPredefined = workflow && workflow.is_generic === false
 
   // Loading state
-  // Create Mode UI
-  if (isCreateMode) {
-    return (
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b pb-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => router.push(`/${locale}/dashboard/admin/service-requests/workflows`)}
-            className="gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Lista
-          </Button>
-        </div>
-
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t('createNew')}</h1>
-          <p className="text-muted-foreground">{t('createNewDescription')}</p>
-        </div>
-
-        {/* Create Workflow Form */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <GitBranch className="h-5 w-5" />
-              {t('workflowDetails')}
-            </CardTitle>
-            <CardDescription>{t('workflowDetailsDescription')}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="create_code">{t('code')} *</Label>
-                <Input
-                  id="create_code"
-                  value={createForm.code}
-                  onChange={(e) => setCreateForm({ ...createForm, code: e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_') })}
-                  placeholder="TR_PERMISO_CONDUCIR"
-                />
-                <p className="text-xs text-muted-foreground">Codigo unico del workflow (ej: TR_PERMISO_CONDUCIR)</p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="create_entity_code">{t('entityCode')} *</Label>
-                <Input
-                  id="create_entity_code"
-                  value={createForm.entity_code}
-                  onChange={(e) => setCreateForm({ ...createForm, entity_code: e.target.value.toUpperCase() })}
-                  placeholder="MIN_TRANSPORTE"
-                />
-                <p className="text-xs text-muted-foreground">Entidad responsable (ej: MIN_TRANSPORTE)</p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="create_name_es">{t('nameEs')} *</Label>
-                <Input
-                  id="create_name_es"
-                  value={createForm.name_es}
-                  onChange={(e) => setCreateForm({ ...createForm, name_es: e.target.value })}
-                  placeholder="Permiso de Conducir"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="create_category">{t('category')} *</Label>
-                <Select
-                  value={createForm.category}
-                  onValueChange={(v) => setCreateForm({ ...createForm, category: v })}
-                >
-                  <SelectTrigger id="create_category">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {WORKFLOW_CATEGORIES.map((cat) => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="create_workflow_type">{t('type')} *</Label>
-                <Select
-                  value={createForm.workflow_type || 'standard'}
-                  onValueChange={(v) => setCreateForm({ ...createForm, workflow_type: v as 'standard' | 'direct_payment' | 'multi_phase' })}
-                >
-                  <SelectTrigger id="create_workflow_type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="standard">Estandar</SelectItem>
-                    <SelectItem value="direct_payment">Pago Directo</SelectItem>
-                    <SelectItem value="multi_phase">Multi-fase</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="create_description_es">{t('descriptionEs')}</Label>
-              <Textarea
-                id="create_description_es"
-                value={createForm.description_es || ''}
-                onChange={(e) => setCreateForm({ ...createForm, description_es: e.target.value })}
-                rows={3}
-                placeholder="Descripcion del tramite..."
-              />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="create_requires_appointment">Requiere Cita</Label>
-                <Switch
-                  id="create_requires_appointment"
-                  checked={createForm.requires_appointment || false}
-                  onCheckedChange={(checked) => setCreateForm({ ...createForm, requires_appointment: checked })}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="create_is_active">{t('isActive')}</Label>
-                <Switch
-                  id="create_is_active"
-                  checked={createForm.is_active}
-                  onCheckedChange={(checked) => setCreateForm({ ...createForm, is_active: checked })}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Info about next steps */}
-        <Card className="bg-muted/50">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-4">
-              <DollarSign className="h-5 w-5 text-muted-foreground mt-0.5" />
-              <div>
-                <p className="font-medium">Siguiente paso: Configurar tarifas</p>
-                <p className="text-sm text-muted-foreground">
-                  Al crear el workflow, sera redirigido a la pagina de configuracion donde podra agregar tarifas, suplementos y documentos requeridos.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Actions */}
-        <div className="flex justify-end gap-4">
-          <Button
-            variant="outline"
-            onClick={() => router.push(`/${locale}/dashboard/admin/service-requests/workflows`)}
-          >
-            {tCommon('cancel')}
-          </Button>
-          <Button
-            onClick={handleCreateWorkflow}
-            disabled={!isCreateFormValid || isCreating}
-          >
-            {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            <Save className="mr-2 h-4 w-4" />
-            {t('create')}
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
   if (loadingWorkflow) {
     return (
       <div className="flex items-center justify-center h-64">
