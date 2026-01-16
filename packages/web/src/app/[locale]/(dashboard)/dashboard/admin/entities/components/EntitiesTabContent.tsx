@@ -6,6 +6,7 @@
  */
 
 import { useState, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -76,6 +77,7 @@ import {
   useUpdateEntity,
   useDeleteEntity,
 } from '@/modules/cities'
+import { hierarchyApi } from '@/modules/fiscal-services/services/api'
 import type {
   EntityWithDetails,
   EntityCreate,
@@ -134,6 +136,14 @@ export default function EntitiesTabContent() {
   const { data: entitiesData, isLoading, error, refetch } = useEntitiesWithDetails(apiFilters)
   const { data: parentEntities } = useEntitiesSimple(true)
   const { data: availableWorkflows, isLoading: isLoadingWorkflows } = useWorkflows({ is_active: true })
+
+  // Fetch ministries for entity linking
+  const { data: ministriesData, isLoading: isLoadingMinistries } = useQuery({
+    queryKey: ['ministries', 'list'],
+    queryFn: () => hierarchyApi.ministries.list('es'),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
+  const ministries = ministriesData?.map(m => ({ id: m.id, name: m.nameEs || m.name_es || '' })) || []
 
   // Mutations
   const createMutation = useCreateEntity()
@@ -391,7 +401,7 @@ export default function EntitiesTabContent() {
                         ) : (
                           <Layers className="h-3 w-3 mr-1" />
                         )}
-                        {entity.entity_type}
+                        {entity.entity_type === 'entity' ? t('typeEntity') : t('typeDepartment')}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -528,6 +538,33 @@ export default function EntitiesTabContent() {
                       ))}
                   </SelectContent>
                 </Select>
+              </div>
+            )}
+
+            {formData.entity_type === 'entity' && (
+              <div className="space-y-2">
+                <Label htmlFor="ministry_id">{t('fieldMinistry')}</Label>
+                <Select
+                  value={formData.ministry_id?.toString() || '_none'}
+                  onValueChange={(v) => setFormData({ ...formData, ministry_id: v === '_none' ? null : parseInt(v) })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('selectMinistry')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">{t('independentEntity')}</SelectItem>
+                    {isLoadingMinistries ? (
+                      <SelectItem value="_loading" disabled>{tCommon('loading')}</SelectItem>
+                    ) : (
+                      ministries.map((m) => (
+                        <SelectItem key={m.id} value={m.id.toString()}>
+                          {m.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">{t('ministryHint')}</p>
               </div>
             )}
 

@@ -610,6 +610,10 @@
       "noWorkflowsFound": "No se encontraron workflows",
       "saveChanges": "Guardar cambios",
       "deleteDescription": "¿Está seguro de eliminar \"{name}\"? Esta acción no se puede deshacer.",
+      "fieldMinistry": "Ministerio asociado",
+      "selectMinistry": "Seleccionar ministerio...",
+      "independentEntity": "Entidad independiente (sin ministerio)",
+      "ministryHint": "Opcional: vincular la entidad a un ministerio para establecer una jerarquía",
       "table": {
         "code": "Código",
         "name": "Nombre",
