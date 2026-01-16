@@ -708,6 +708,7 @@
       "webhooks": "Webhooks",
       "serviceRequests": "Solicitudes de Servicio",
       "workflows": "Flujos de Trabajo",
+      "workflowsConfig": "Flujos de Trabajo",
       "documentRequirements": "Documentos Requeridos",
       "tariffs": "Tarifas",
       "appointments": "Citas",
