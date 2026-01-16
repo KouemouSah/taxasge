@@ -46,7 +46,7 @@ import { useEntitiesSimple } from '@/modules/cities/hooks'
 import { cn } from '@/lib/utils'
 
 export default function NewWorkflowPage() {
-  const t = useTranslations('admin.serviceRequests.workflows')
+  const _t = useTranslations('admin.serviceRequests.workflows')
   const tCommon = useTranslations('common')
   const router = useRouter()
   const params = useParams()

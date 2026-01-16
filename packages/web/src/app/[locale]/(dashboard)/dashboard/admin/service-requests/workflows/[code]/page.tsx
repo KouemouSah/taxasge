@@ -86,7 +86,6 @@ import {
   useCreateDelayRule,
   useUpdateDelayRule,
   useDeleteDelayRule,
-  WORKFLOW_CATEGORIES,
   DOCUMENT_CONDITION_TYPES,
   TARIFF_TYPES,
   PRIORITY_LABELS,
