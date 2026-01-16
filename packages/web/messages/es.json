@@ -633,6 +633,8 @@
       "documentRequirements": "Documentos Requeridos",
       "tariffs": "Tarifas",
       "appointments": "Citas",
+      "entities": "Entidades",
+      "entityLocations": "Ubicaciones de Entidades",
       "slots": "Horarios de Cita",
       "blocked": "Fechas Bloqueadas",
       "delays": "Reglas de Espera"

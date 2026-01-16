@@ -47,6 +47,8 @@ import {
   FileCheck,
   DollarSign,
   CalendarClock,
+  Landmark,
+  MapPin,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { clearAuthData } from '@/core/auth/storage'
@@ -222,6 +224,17 @@ export default function AdminSidebar() {
           title: t('nav.appointments'),
           href: `/${locale}/dashboard/admin/service-requests/appointments`,
           icon: CalendarClock,
+        },
+        // Entities & Locations
+        {
+          title: t('nav.entities'),
+          href: `/${locale}/dashboard/admin/entities`,
+          icon: Landmark,
+        },
+        {
+          title: t('nav.entityLocations'),
+          href: `/${locale}/dashboard/admin/entity-locations`,
+          icon: MapPin,
         },
         // System
         {
