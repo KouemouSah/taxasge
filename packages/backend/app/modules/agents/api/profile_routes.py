@@ -67,6 +67,115 @@ async def get_my_profile(
 
 
 # ============================================================================
+# AGENT AVAILABLE WORKFLOWS
+# ============================================================================
+
+from pydantic import BaseModel
+from enum import Enum
+
+
+class WorkflowSourceType(str, Enum):
+    """
+    Type de source du workflow.
+    - predefined: Workflow avec classe Python hardcodée (PasaporteWorkflow, etc.)
+    - dynamic: Workflow créé en BD, utilise GenericWorkflow
+    """
+    PREDEFINED = "predefined"
+    DYNAMIC = "dynamic"
+
+
+class AgentWorkflowResponse(BaseModel):
+    """Workflow disponible pour un agent avec détails et source_type"""
+    code: str
+    name_es: str
+    description_es: Optional[str] = None
+    category: str
+    entity_code: str
+    workflow_type: str
+    requires_agent_validation: bool
+    requires_appointment: bool
+    is_generic: bool
+    sla_hours: int
+    display_order: int
+    icon: Optional[str] = None
+    color: Optional[str] = None
+    is_active: bool
+    # Computed field
+    source_type: WorkflowSourceType
+
+
+@router.get("/me/workflows", response_model=List[AgentWorkflowResponse])
+async def get_my_available_workflows(
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db = Depends(get_database),
+):
+    """
+    Get current agent's available workflows with details.
+
+    Returns workflows the agent can work on based on:
+    1. Explicit specializations (if set)
+    2. Entity workflow_codes (inherited)
+    3. Parent entity workflow_codes (if department)
+
+    Each workflow includes source_type to distinguish:
+    - predefined: Has dedicated Python class (PasaporteWorkflow, etc.)
+    - dynamic: Uses GenericWorkflow, config loaded from DB
+    """
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
+
+    # Get agent's available workflow codes
+    profile = await profile_repository.get_with_details(db, user_id=UUID(user_id))
+
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No agent profile found for current user"
+        )
+
+    available_codes = profile.get('available_workflows', [])
+
+    if not available_codes:
+        return []
+
+    # Fetch workflow details from workflows table
+    placeholders = ', '.join([f'${i+1}' for i in range(len(available_codes))])
+    query = f"""
+        SELECT
+            code, name_es, description_es, category, entity_code,
+            workflow_type, requires_agent_validation, requires_appointment,
+            is_generic, sla_hours, display_order, icon, color, is_active
+        FROM workflows
+        WHERE code IN ({placeholders})
+        AND is_active = true
+        ORDER BY display_order, name_es
+    """
+
+    rows = await db.fetch(query, *available_codes)
+
+    return [
+        AgentWorkflowResponse(
+            code=row['code'],
+            name_es=row['name_es'],
+            description_es=row['description_es'],
+            category=row['category'],
+            entity_code=row['entity_code'],
+            workflow_type=row['workflow_type'],
+            requires_agent_validation=row['requires_agent_validation'],
+            requires_appointment=row['requires_appointment'],
+            is_generic=row['is_generic'],
+            sla_hours=row['sla_hours'],
+            display_order=row['display_order'] or 0,
+            icon=row['icon'],
+            color=row['color'],
+            is_active=row['is_active'],
+            # Compute source_type based on is_generic
+            source_type=WorkflowSourceType.DYNAMIC if row['is_generic'] else WorkflowSourceType.PREDEFINED,
+        )
+        for row in rows
+    ]
+
+
+# ============================================================================
 # CRUD OPERATIONS
 # ============================================================================
 

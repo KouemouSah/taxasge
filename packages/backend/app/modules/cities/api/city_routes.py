@@ -2,6 +2,12 @@
 City API Routes.
 
 Endpoints for cities and entities management.
+
+Updated to support:
+- entity_type (entity/department)
+- parent_entity_id (hierarchy)
+- ministry_id (FK to ministries)
+- workflow_codes (JSONB array)
 """
 
 from typing import List, Optional
@@ -15,6 +21,7 @@ from app.modules.cities.services.city_service import CityService, EntityService
 from app.modules.cities.models.city import (
     CityCreate, CityUpdate, CityResponse, CitySimple, CityListResponse,
     EntityCreate, EntityUpdate, EntityResponse, EntitySimple, EntityListResponse,
+    EntityWithDetails, EntityWithDetailsListResponse, EntityType,
 )
 
 router = APIRouter(tags=["cities"])
@@ -109,12 +116,34 @@ async def delete_city(
 
 @router.get("/entities", response_model=EntityListResponse)
 async def get_entities(
+    entity_type: Optional[EntityType] = Query(None, description="Filter by entity type (entity/department)"),
+    ministry_id: Optional[int] = Query(None, description="Filter by ministry ID"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     db: Connection = Depends(get_database),
 ):
     """Get all entities with optional filters."""
     service = EntityService(db)
-    return await service.get_all_entities(is_active=is_active)
+    return await service.get_all_entities(
+        entity_type=entity_type,
+        ministry_id=ministry_id,
+        is_active=is_active
+    )
+
+
+@router.get("/entities/with-details", response_model=EntityWithDetailsListResponse)
+async def get_entities_with_details(
+    entity_type: Optional[EntityType] = Query(None, description="Filter by entity type (entity/department)"),
+    ministry_id: Optional[int] = Query(None, description="Filter by ministry ID"),
+    is_active: Optional[bool] = Query(None, description="Filter by active status"),
+    db: Connection = Depends(get_database),
+):
+    """Get all entities with parent and ministry details joined."""
+    service = EntityService(db)
+    return await service.get_all_entities_with_details(
+        entity_type=entity_type,
+        ministry_id=ministry_id,
+        is_active=is_active
+    )
 
 
 @router.get("/entities/simple", response_model=List[EntitySimple])
@@ -140,13 +169,45 @@ async def get_entity(
     return entity
 
 
+@router.get("/entities/{entity_id}/details", response_model=EntityWithDetails)
+async def get_entity_with_details(
+    entity_id: UUID,
+    db: Connection = Depends(get_database),
+):
+    """Get an entity by ID with parent and ministry details."""
+    service = EntityService(db)
+    entity = await service.get_entity_by_id_with_details(entity_id)
+    if not entity:
+        raise HTTPException(status_code=404, detail="Entity not found")
+    return entity
+
+
+@router.get("/entities/{entity_id}/departments", response_model=List[EntityResponse])
+async def get_entity_departments(
+    entity_id: UUID,
+    db: Connection = Depends(get_database),
+):
+    """Get all departments under a parent entity."""
+    service = EntityService(db)
+    # First verify parent exists
+    parent = await service.get_entity_by_id(entity_id)
+    if not parent:
+        raise HTTPException(status_code=404, detail="Entity not found")
+    return await service.get_departments_by_parent(entity_id)
+
+
 @router.post("/entities", response_model=EntityResponse, status_code=status.HTTP_201_CREATED)
 async def create_entity(
     data: EntityCreate,
     db: Connection = Depends(get_database),
     current_user: dict = Depends(require_admin),
 ):
-    """Create a new entity. Requires admin role."""
+    """
+    Create a new entity. Requires admin role.
+
+    - For entity_type='department', parent_entity_id is required
+    - workflow_codes must reference existing codes in workflows table
+    """
     service = EntityService(db)
     try:
         return await service.create_entity(data, created_by=current_user.get("id"))

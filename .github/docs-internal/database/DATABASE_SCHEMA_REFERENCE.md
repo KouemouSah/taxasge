@@ -3,7 +3,7 @@
 TAXASGE DATABASE SCHEMA - COMPLETE REFERENCE
 ====================================================================================================
 
-Extracted on: 2026-01-15 16:03:33
+Extracted on: 2026-01-16 14:08:53
 Database: Supabase PostgreSQL
 Project: taxasge-dev
 
@@ -1947,6 +1947,8 @@ parent_entity_id                    uuid                      YES
   └─ Description: For departments: the parent entity. NULL for top-level entities.
 entity_type                         entity_type_enum          NO         'entity'::entity_type_enum    
   └─ Description: entity = top-level (can be independent or ministry-linked), department = must have parent
+workflow_codes                      jsonb                     YES        '[]'::jsonb                   
+  └─ Description: Array of workflow codes this entity/department/ministry handles. Agents assigned via entity_id inherit these workflows automatically. Empty array means inherit from parent or match all workflows with same entity_code.
 
 Primary Key: id
 
@@ -1972,6 +1974,8 @@ Indexes:
     CREATE INDEX idx_entities_active ON public.entities USING btree (is_active) WHERE (is_active = true)
   - idx_entities_code
     CREATE INDEX idx_entities_code ON public.entities USING btree (code)
+  - idx_entities_workflow_codes
+    CREATE INDEX idx_entities_workflow_codes ON public.entities USING gin (workflow_codes jsonb_path_ops)
 
 ----------------------------------------------------------------------------------------------------
 Table: ENTITY_LOCATIONS
@@ -4993,7 +4997,7 @@ Column                              Type                      Nullable   Default
 ----------------------------------------------------------------------------------------------------
 id                                  uuid                      NO         gen_random_uuid()             
 workflow_code                       varchar(100)              NO                                       
-  └─ Description: Code du workflow (ex: pasaporte_nuevo)
+  └─ Description: Code du workflow (UPPERCASE). Must match workflows.code. Ex: PASAPORTE_NUEVO
 document_template_id                integer                   YES                                      
 document_code                       varchar(100)              NO                                       
   └─ Description: Code unique du document (ex: dip)
@@ -5014,6 +5018,7 @@ created_by                          uuid                      YES
 Primary Key: id
 
 Foreign Keys:
+  - workflow_code → workflows.code (ON UPDATE CASCADE, ON DELETE CASCADE)
   - created_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
   - document_template_id → document_templates.id (ON UPDATE NO ACTION, ON DELETE SET NULL)
 
@@ -5043,6 +5048,7 @@ Column                              Type                      Nullable   Default
 ----------------------------------------------------------------------------------------------------
 id                                  integer                   NO         nextval('workflow_supplement_c
 workflow_code                       varchar(100)              NO                                       
+  └─ Description: Code du workflow (UPPERCASE). Must match workflows.code. Ex: PASAPORTE_NUEVO
 supplement_code                     varchar(50)               NO                                       
 quantity_per_request                integer                   NO         1                             
   └─ Description: Nombre de suppléments par demande
@@ -5054,6 +5060,7 @@ updated_at                          timestamp with time zone  YES        now()
 Primary Key: id
 
 Foreign Keys:
+  - workflow_code → workflows.code (ON UPDATE CASCADE, ON DELETE CASCADE)
   - supplement_code → tariff_supplements.code (ON UPDATE NO ACTION, ON DELETE CASCADE)
 
 Unique Constraints:
@@ -5076,7 +5083,7 @@ Column                              Type                      Nullable   Default
 ----------------------------------------------------------------------------------------------------
 id                                  integer                   NO         nextval('workflow_tariffs_id_s
 workflow_code                       varchar(100)              NO                                       
-  └─ Description: Code du workflow (residencia, pasaporte_nuevo, etc.)
+  └─ Description: Code du workflow (UPPERCASE). Must match workflows.code. Ex: PASAPORTE_NUEVO
 solicitud_type                      varchar(50)               NO         'expedicion'::character varyin
   └─ Description: Type de sollicitation (expedicion, renovacion, duplicado)
 amount                              numeric                   NO                                       
@@ -5099,6 +5106,7 @@ percentage_rate                     numeric                   YES
 Primary Key: id
 
 Foreign Keys:
+  - workflow_code → workflows.code (ON UPDATE CASCADE, ON DELETE CASCADE)
   - created_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
   - updated_by → users.id (ON UPDATE NO ACTION, ON DELETE NO ACTION)
 
@@ -5343,6 +5351,17 @@ Definition:  SELECT m.id AS ministry_id,
     count(DISTINCT ap.id) AS total_agents,
     count(DISTINCT ap.id) FILTER (WHERE (ap.is_active = true)) AS active_ag...
 
+View: v_available_workflow_codes
+Definition:  SELECT code,
+    name_es,
+    category,
+    entity_code,
+    workflow_type,
+    is_generic,
+        CASE
+            WHEN (is_generic = false) THEN 'predefined'::text
+            ELSE 'generic'::text...
+
 View: v_bank_reconciliation_matching
 Definition:  SELECT id AS bank_transaction_id,
     bank_code,
@@ -5399,6 +5418,18 @@ View: v_embedding_status
 Definition:  SELECT count(*) FILTER (WHERE (embedding IS NOT NULL)) AS total_with_embeddings,
     count(*) FILTER (WHERE (embedding IS NULL)) AS total_without_embeddings,
     count(*) FILTER (WHERE (needs_embeddi...
+
+View: v_entities_with_workflows
+Definition:  SELECT e.id,
+    e.code,
+    e.name,
+    e.description,
+    e.entity_type,
+    e.parent_entity_id,
+    pe.code AS parent_entity_code,
+    pe.name AS parent_entity_name,
+    e.ministry_id,
+    m.name_...
 
 View: v_entity_locations
 Definition:  SELECT id,
@@ -5700,6 +5731,15 @@ Definition:  SELECT wt.workflow_code,
     COALESCE(supp.supplements_total, (0)::numeric) AS supplements_total,
     ...
 
+View: vw_agent_rbac_roles
+Definition:  SELECT r.id,
+    r.code,
+    r.name,
+    r.description,
+    r.entity_type,
+    count(rp.permission_id) AS permission_count,
+    array_agg(p.name ORDER BY p.name) FILTER (WHERE (p.name IS NOT NULL)) A...
+
 View: vw_agents
 Definition:  SELECT u.id AS user_id,
     u.email,
@@ -5858,11 +5898,17 @@ Returns: void
 Function: generate_service_request_reference
 Returns: character varying
 
+Function: get_agent_available_workflows
+Returns: jsonb
+
 Function: get_entity_locations
 Returns: record
 
 Function: get_entity_translation
 Returns: text
+
+Function: get_entity_workflows
+Returns: jsonb
 
 Function: get_next_available_slot
 Returns: record
@@ -6581,6 +6627,9 @@ Returns: record
 Function: validate_agent_assignment
 Returns: trigger
 
+Function: validate_entity_workflow_codes
+Returns: trigger
+
 Function: validate_fiscal_service_montants
 Returns: trigger
 
@@ -6890,8 +6939,11 @@ webhook_configurations.created_by → users.id
 webhook_logs.webhook_id → webhook_configurations.id
 workflow_document_requirements.created_by → users.id
 workflow_document_requirements.document_template_id → document_templates.id
+workflow_document_requirements.workflow_code → workflows.code
 workflow_supplement_config.supplement_code → tariff_supplements.code
+workflow_supplement_config.workflow_code → workflows.code
 workflow_tariffs.created_by → users.id
 workflow_tariffs.updated_by → users.id
+workflow_tariffs.workflow_code → workflows.code
 workflows.created_by → users.id
 workflows.updated_by → users.id

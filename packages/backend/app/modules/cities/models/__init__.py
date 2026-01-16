@@ -1,13 +1,21 @@
 """City models."""
 
 from app.modules.cities.models.city import (
+    # City models
     CityBase, CityCreate, CityUpdate, City, CityResponse, CitySimple, CityListResponse,
-    EntityBase, EntityCreate, EntityUpdate, Entity, EntityResponse, EntitySimple, EntityListResponse,
+    # Entity models
+    EntityType, EntityBase, EntityCreate, EntityUpdate, Entity, EntityResponse, EntitySimple,
+    EntityListResponse, EntityWithDetails, EntityWithDetailsListResponse,
+    # Constants
     VALID_REGIONS, RegionType,
 )
 
 __all__ = [
+    # City
     "CityBase", "CityCreate", "CityUpdate", "City", "CityResponse", "CitySimple", "CityListResponse",
-    "EntityBase", "EntityCreate", "EntityUpdate", "Entity", "EntityResponse", "EntitySimple", "EntityListResponse",
+    # Entity
+    "EntityType", "EntityBase", "EntityCreate", "EntityUpdate", "Entity", "EntityResponse", "EntitySimple",
+    "EntityListResponse", "EntityWithDetails", "EntityWithDetailsListResponse",
+    # Constants
     "VALID_REGIONS", "RegionType",
 ]

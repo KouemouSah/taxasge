@@ -13,6 +13,7 @@ from app.modules.cities.repositories.city_repository import CityRepository, Enti
 from app.modules.cities.models.city import (
     CityCreate, CityUpdate, CityResponse, CitySimple, CityListResponse,
     EntityCreate, EntityUpdate, EntityResponse, EntitySimple, EntityListResponse,
+    EntityWithDetails, EntityWithDetailsListResponse, EntityType,
 )
 
 logger = logging.getLogger(__name__)
@@ -84,30 +85,86 @@ class CityService:
 
 
 class EntityService:
-    """Service for entity operations."""
+    """Service for entity operations.
+
+    Supports the updated entity model with:
+    - entity_type (entity/department)
+    - parent_entity_id (hierarchy)
+    - ministry_id (FK to ministries)
+    - workflow_codes (JSONB array)
+    """
 
     def __init__(self, db: Connection):
         self.repository = EntityRepository(db)
 
+    # =========================================================================
+    # READ OPERATIONS
+    # =========================================================================
+
     async def get_all_entities(
         self,
+        entity_type: Optional[EntityType] = None,
+        ministry_id: Optional[int] = None,
         is_active: Optional[bool] = None,
     ) -> EntityListResponse:
         """Get all entities with optional filters."""
-        entities = await self.repository.get_all_entities(is_active=is_active)
-        return EntityListResponse(items=entities, total=len(entities))
+        entity_type_str = entity_type.value if entity_type else None
+        entities = await self.repository.get_all_entities(
+            entity_type=entity_type_str,
+            ministry_id=ministry_id,
+            is_active=is_active
+        )
+        return EntityListResponse(
+            items=[EntityResponse(**e) for e in entities],
+            total=len(entities)
+        )
+
+    async def get_all_entities_with_details(
+        self,
+        entity_type: Optional[EntityType] = None,
+        ministry_id: Optional[int] = None,
+        is_active: Optional[bool] = None,
+    ) -> EntityWithDetailsListResponse:
+        """Get all entities with parent and ministry details."""
+        entity_type_str = entity_type.value if entity_type else None
+        entities = await self.repository.get_all_entities_with_details(
+            entity_type=entity_type_str,
+            ministry_id=ministry_id,
+            is_active=is_active
+        )
+        return EntityWithDetailsListResponse(
+            items=[EntityWithDetails(**e) for e in entities],
+            total=len(entities)
+        )
 
     async def get_entities_simple(self, is_active: bool = True) -> List[EntitySimple]:
         """Get simplified entity list for dropdowns."""
-        return await self.repository.get_entities_simple(is_active)
+        entities = await self.repository.get_entities_simple(is_active)
+        return [EntitySimple(**e) for e in entities]
 
     async def get_entity_by_id(self, entity_id: UUID) -> Optional[EntityResponse]:
         """Get an entity by ID."""
-        return await self.repository.get_entity_by_id(entity_id)
+        entity = await self.repository.get_entity_by_id(entity_id)
+        return EntityResponse(**entity) if entity else None
+
+    async def get_entity_by_id_with_details(self, entity_id: UUID) -> Optional[EntityWithDetails]:
+        """Get an entity by ID with parent and ministry details."""
+        entity = await self.repository.get_entity_by_id_with_details(entity_id)
+        return EntityWithDetails(**entity) if entity else None
 
     async def get_entity_by_code(self, code: str) -> Optional[EntityResponse]:
         """Get an entity by code."""
-        return await self.repository.get_entity_by_code(code)
+        entity = await self.repository.get_entity_by_code(code)
+        return EntityResponse(**entity) if entity else None
+
+    async def get_departments_by_parent(self, parent_entity_id: UUID) -> List[EntityResponse]:
+        """Get all departments under a parent entity."""
+        departments = await self.repository.get_departments_by_parent(parent_entity_id)
+        return [EntityResponse(**d) for d in departments]
+
+    # =========================================================================
+    # CREATE OPERATIONS
+    # =========================================================================
 
     async def create_entity(
         self,
@@ -120,7 +177,28 @@ class EntityService:
         if existing:
             raise ValueError(f"Entity '{data.code}' already exists")
 
-        return await self.repository.create_entity(data, created_by)
+        # Validate department has parent
+        if data.entity_type == EntityType.DEPARTMENT and not data.parent_entity_id:
+            raise ValueError("Departments must have a parent_entity_id")
+
+        # Validate parent exists if provided
+        if data.parent_entity_id:
+            parent = await self.repository.get_entity_by_id(data.parent_entity_id)
+            if not parent:
+                raise ValueError(f"Parent entity '{data.parent_entity_id}' not found")
+
+        # Validate workflow_codes if provided
+        if data.workflow_codes:
+            is_valid, invalid_codes = await self.repository.validate_workflow_codes(data.workflow_codes)
+            if not is_valid:
+                raise ValueError(f"Invalid workflow codes: {', '.join(invalid_codes)}")
+
+        result = await self.repository.create_entity(data, created_by)
+        return EntityResponse(**result)
+
+    # =========================================================================
+    # UPDATE OPERATIONS
+    # =========================================================================
 
     async def update_entity(
         self,
@@ -135,12 +213,30 @@ class EntityService:
             return None
 
         # Check for code conflict if code is being updated
-        if data.code and data.code.upper() != existing.code.upper():
+        if data.code and data.code.upper() != existing['code'].upper():
             conflict = await self.repository.get_entity_by_code(data.code)
             if conflict:
                 raise ValueError(f"Entity '{data.code}' already exists")
 
-        return await self.repository.update_entity(entity_id, data, updated_by)
+        # Validate parent if changing to department
+        new_type = data.entity_type if data.entity_type else existing.get('entity_type')
+        new_parent = data.parent_entity_id if data.parent_entity_id is not None else existing.get('parent_entity_id')
+
+        if new_type == EntityType.DEPARTMENT.value and not new_parent:
+            raise ValueError("Departments must have a parent_entity_id")
+
+        # Validate workflow_codes if provided
+        if data.workflow_codes:
+            is_valid, invalid_codes = await self.repository.validate_workflow_codes(data.workflow_codes)
+            if not is_valid:
+                raise ValueError(f"Invalid workflow codes: {', '.join(invalid_codes)}")
+
+        result = await self.repository.update_entity(entity_id, data, updated_by)
+        return EntityResponse(**result) if result else None
+
+    # =========================================================================
+    # DELETE OPERATIONS
+    # =========================================================================
 
     async def delete_entity(self, entity_id: UUID) -> bool:
         """Delete an entity."""
