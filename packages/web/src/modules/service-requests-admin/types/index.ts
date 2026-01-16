@@ -35,6 +35,8 @@ export type AppointmentPriority = 'URGENT' | 'HIGH' | 'NORMAL' | 'LOW'
 // WORKFLOW TYPES
 // ============================================================================
 
+export type WorkflowSourceType = 'predefined' | 'dynamic'
+
 export interface Workflow {
   code: string
   name_es: string
@@ -54,9 +56,14 @@ export interface Workflow {
   color?: string | null
   config?: Record<string, unknown> | null
   is_active: boolean
+  // Hierarchical grouping fields (migration 049)
+  parent_workflow_code?: string | null
+  tags?: string[]
+  is_parent?: boolean
   // Computed fields
   documents_count?: number | null
   tariffs_count?: number | null
+  source_type?: WorkflowSourceType
 }
 
 export interface WorkflowCreate {
@@ -78,6 +85,10 @@ export interface WorkflowCreate {
   color?: string | null
   config?: Record<string, unknown>
   is_active?: boolean
+  // Hierarchical grouping fields (migration 049)
+  parent_workflow_code?: string | null
+  tags?: string[]
+  is_parent?: boolean
 }
 
 export interface WorkflowUpdate {
@@ -95,6 +106,10 @@ export interface WorkflowUpdate {
   color?: string | null
   config?: Record<string, unknown>
   is_active?: boolean
+  // Hierarchical grouping fields (migration 049)
+  parent_workflow_code?: string | null
+  tags?: string[]
+  is_parent?: boolean
 }
 
 export interface WorkflowFilters {
@@ -102,6 +117,8 @@ export interface WorkflowFilters {
   entity_code?: string
   is_active?: boolean
   is_generic?: boolean
+  parent_workflow_code?: string
+  is_parent?: boolean
   [key: string]: string | number | boolean | undefined
 }
 

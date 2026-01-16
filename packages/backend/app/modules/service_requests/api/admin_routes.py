@@ -71,6 +71,10 @@ class WorkflowCreate(BaseModel):
     color: Optional[str] = Field(None, max_length=20)
     config: Optional[Dict[str, Any]] = Field(default_factory=dict)
     is_active: bool = True
+    # Hierarchical grouping fields (migration 049)
+    parent_workflow_code: Optional[str] = Field(None, max_length=50, description="Parent workflow for UI grouping")
+    tags: Optional[List[str]] = Field(default_factory=list, description="Tags for sub-categorization")
+    is_parent: bool = Field(default=False, description="True = category header workflow")
 
 
 class WorkflowUpdate(BaseModel):
@@ -89,6 +93,20 @@ class WorkflowUpdate(BaseModel):
     color: Optional[str] = Field(None, max_length=20)
     config: Optional[Dict[str, Any]] = None
     is_active: Optional[bool] = None
+    # Hierarchical grouping fields (migration 049)
+    parent_workflow_code: Optional[str] = Field(None, max_length=50)
+    tags: Optional[List[str]] = None
+    is_parent: Optional[bool] = None
+
+
+class WorkflowSourceType(str, Enum):
+    """
+    Type de source du workflow.
+    - predefined: Workflow avec classe Python hardcodée (ex: PasaporteWorkflow)
+    - dynamic: Workflow créé en BD, utilise GenericWorkflow
+    """
+    PREDEFINED = "predefined"
+    DYNAMIC = "dynamic"
 
 
 class WorkflowResponse(BaseModel):
@@ -111,9 +129,58 @@ class WorkflowResponse(BaseModel):
     color: Optional[str]
     config: Optional[Dict[str, Any]]
     is_active: bool
+    # Hierarchical grouping fields (migration 049)
+    parent_workflow_code: Optional[str] = None
+    tags: List[str] = []
+    is_parent: bool = False
     # Computed fields (not in DB)
     documents_count: Optional[int] = None
     tariffs_count: Optional[int] = None
+    # Source type: predefined (Python class) or dynamic (DB only)
+    source_type: WorkflowSourceType = WorkflowSourceType.PREDEFINED
+
+    @classmethod
+    def from_row(cls, row: dict, documents_count: int = 0, tariffs_count: int = 0) -> "WorkflowResponse":
+        """Create WorkflowResponse from DB row with computed source_type"""
+        # Parse tags from JSONB (can be list or string)
+        tags_value = row.get('tags')
+        if isinstance(tags_value, list):
+            tags = tags_value
+        elif isinstance(tags_value, str):
+            import json
+            try:
+                tags = json.loads(tags_value)
+            except (json.JSONDecodeError, TypeError):
+                tags = []
+        else:
+            tags = []
+
+        return cls(
+            code=row['code'],
+            name_es=row['name_es'],
+            description_es=row['description_es'],
+            category=row['category'],
+            entity_code=row['entity_code'],
+            workflow_type=row['workflow_type'],
+            requires_agent_validation=row['requires_agent_validation'],
+            requires_appointment=row['requires_appointment'],
+            is_generic=row['is_generic'],
+            appointment_delay_days=row['appointment_delay_days'],
+            appointment_entity_code=row['appointment_entity_code'],
+            sla_hours=row['sla_hours'],
+            max_processing_days=row['max_processing_days'],
+            display_order=row['display_order'] or 0,
+            icon=row['icon'],
+            color=row['color'],
+            config=_parse_config(row.get('config')),
+            is_active=row['is_active'],
+            parent_workflow_code=row.get('parent_workflow_code'),
+            tags=tags,
+            is_parent=row.get('is_parent', False) or False,
+            documents_count=documents_count,
+            tariffs_count=tariffs_count,
+            source_type=WorkflowSourceType.DYNAMIC if row['is_generic'] else WorkflowSourceType.PREDEFINED,
+        )
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -493,31 +560,16 @@ async def list_workflows(
 
     rows = await db.fetch(query, *params)
 
-    return [
-        WorkflowResponse(
-            code=row['code'],
-            name_es=row['name_es'],
-            description_es=row['description_es'],
-            category=row['category'],
-            entity_code=row['entity_code'],
-            workflow_type=row['workflow_type'],
-            requires_agent_validation=row['requires_agent_validation'],
-            requires_appointment=row['requires_appointment'],
-            is_generic=row['is_generic'],
-            appointment_delay_days=row['appointment_delay_days'],
-            appointment_entity_code=row['appointment_entity_code'],
-            sla_hours=row['sla_hours'],
-            max_processing_days=row['max_processing_days'],
-            display_order=row['display_order'] or 0,
-            icon=row['icon'],
-            color=row['color'],
-            config=_parse_config(row['config']),
-            is_active=row['is_active'],
+    results = []
+    for row in rows:
+        row_dict = dict(row)
+        row_dict['config'] = _parse_config(row['config'])
+        results.append(WorkflowResponse.from_row(
+            row_dict,
             documents_count=row['documents_count'],
             tariffs_count=row['tariffs_count']
-        )
-        for row in rows
-    ]
+        ))
+    return results
 
 
 @router.get(
@@ -549,25 +601,10 @@ async def get_workflow(
             detail=f"Workflow not found: {code}"
         )
 
-    return WorkflowResponse(
-        code=row['code'],
-        name_es=row['name_es'],
-        description_es=row['description_es'],
-        category=row['category'],
-        entity_code=row['entity_code'],
-        workflow_type=row['workflow_type'],
-        requires_agent_validation=row['requires_agent_validation'],
-        requires_appointment=row['requires_appointment'],
-        is_generic=row['is_generic'],
-        appointment_delay_days=row['appointment_delay_days'],
-        appointment_entity_code=row['appointment_entity_code'],
-        sla_hours=row['sla_hours'],
-        max_processing_days=row['max_processing_days'],
-        display_order=row['display_order'] or 0,
-        icon=row['icon'],
-        color=row['color'],
-        config=_parse_config(row['config']),
-        is_active=row['is_active'],
+    row_dict = dict(row)
+    row_dict['config'] = _parse_config(row['config'])
+    return WorkflowResponse.from_row(
+        row_dict,
         documents_count=row['documents_count'],
         tariffs_count=row['tariffs_count']
     )
@@ -603,6 +640,7 @@ async def create_workflow(
 
     import json
     config_json = json.dumps(workflow.config) if workflow.config else '{}'
+    tags_json = json.dumps(workflow.tags) if workflow.tags else '[]'
 
     row = await db.fetchrow("""
         INSERT INTO workflows (
@@ -610,10 +648,11 @@ async def create_workflow(
             workflow_type, requires_agent_validation, requires_appointment,
             is_generic, appointment_delay_days, appointment_entity_code,
             sla_hours, max_processing_days, display_order, icon, color,
-            config, is_active, created_at, updated_at
+            config, is_active, parent_workflow_code, tags, is_parent,
+            created_at, updated_at
         ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
-            $17::jsonb, $18, NOW(), NOW()
+            $17::jsonb, $18, $19, $20::jsonb, $21, NOW(), NOW()
         )
         RETURNING *
     """, workflow.code, workflow.name_es, workflow.description_es,
@@ -622,28 +661,10 @@ async def create_workflow(
         workflow.is_generic, workflow.appointment_delay_days,
         workflow.appointment_entity_code, workflow.sla_hours,
         workflow.max_processing_days, workflow.display_order,
-        workflow.icon, workflow.color, config_json, workflow.is_active)
+        workflow.icon, workflow.color, config_json, workflow.is_active,
+        workflow.parent_workflow_code, tags_json, workflow.is_parent)
 
-    return WorkflowResponse(
-        code=row['code'],
-        name_es=row['name_es'],
-        description_es=row['description_es'],
-        category=row['category'],
-        entity_code=row['entity_code'],
-        workflow_type=row['workflow_type'],
-        requires_agent_validation=row['requires_agent_validation'],
-        requires_appointment=row['requires_appointment'],
-        is_generic=row['is_generic'],
-        appointment_delay_days=row['appointment_delay_days'],
-        appointment_entity_code=row['appointment_entity_code'],
-        sla_hours=row['sla_hours'],
-        max_processing_days=row['max_processing_days'],
-        display_order=row['display_order'] or 0,
-        icon=row['icon'],
-        color=row['color'],
-        config=_parse_config(row['config']),
-        is_active=row['is_active']
-    )
+    return WorkflowResponse.from_row(row)
 
 
 @router.put(
@@ -701,26 +722,7 @@ async def update_workflow(
 
     row = await db.fetchrow(query, *params)
 
-    return WorkflowResponse(
-        code=row['code'],
-        name_es=row['name_es'],
-        description_es=row['description_es'],
-        category=row['category'],
-        entity_code=row['entity_code'],
-        workflow_type=row['workflow_type'],
-        requires_agent_validation=row['requires_agent_validation'],
-        requires_appointment=row['requires_appointment'],
-        is_generic=row['is_generic'],
-        appointment_delay_days=row['appointment_delay_days'],
-        appointment_entity_code=row['appointment_entity_code'],
-        sla_hours=row['sla_hours'],
-        max_processing_days=row['max_processing_days'],
-        display_order=row['display_order'] or 0,
-        icon=row['icon'],
-        color=row['color'],
-        config=_parse_config(row['config']),
-        is_active=row['is_active']
-    )
+    return WorkflowResponse.from_row(row)
 
 
 @router.patch(
