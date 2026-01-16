@@ -5921,6 +5921,8 @@ class WorkflowSyncResult(BaseModel):
     tariffs_created: int = 0
     tariffs_updated: int = 0
     documents_synced: int = 0
+    documents_created: int = 0
+    documents_updated: int = 0
     errors: List[str] = Field(default_factory=list)
     details: List[Dict[str, Any]] = Field(default_factory=list)
 
@@ -5968,6 +5970,51 @@ SUBTYPE_NAMES_ES = {
     "FP_PERMISO_EXTRAORDINARIO": "Permiso Extraordinario",
     "FP_CERTIFICADO_ADMINISTRATIVO": "Certificado Administrativo",
 }
+
+def extract_document_requirements_from_workflow(workflow, sub_type: str) -> list:
+    """
+    Dynamically extract document requirements from a workflow class.
+
+    Args:
+        workflow: The workflow class instance
+        sub_type: The sub_type to get requirements for
+
+    Returns:
+        list: List of document requirement dicts
+    """
+    requirements = []
+
+    try:
+        # Try get_document_requirements_legacy first (for v2 workflows like Pasaporte)
+        if hasattr(workflow, 'get_document_requirements_legacy'):
+            docs = workflow.get_document_requirements_legacy(sub_type)
+        # Then try get_document_requirements with sub_type
+        elif hasattr(workflow, 'get_document_requirements'):
+            docs = workflow.get_document_requirements(sub_type)
+        else:
+            return requirements
+
+        # Convert DocumentRequirement objects to dicts
+        for doc in docs:
+            req = {
+                "document_code": doc.document_code,
+                "document_name_es": doc.document_name_es,
+                "is_required": doc.is_required,
+                "display_order": doc.display_order,
+                "condition_type": doc.condition_type.value if hasattr(doc.condition_type, 'value') else str(doc.condition_type),
+                "condition_value": doc.condition_value if hasattr(doc, 'condition_value') else {},
+                "instructions_es": doc.instructions_es if hasattr(doc, 'instructions_es') else None,
+                "extraction_schema_key": doc.schema_key if hasattr(doc, 'schema_key') else None,
+            }
+            requirements.append(req)
+
+    except Exception as e:
+        # Log but don't fail - documents are optional
+        import logging
+        logging.warning(f"Failed to extract documents from workflow {sub_type}: {e}")
+
+    return requirements
+
 
 def extract_tariff_from_workflow(workflow, sub_type: str) -> tuple:
     """
@@ -6272,12 +6319,72 @@ async def sync_predefined_workflows(
 
                         result.tariffs_synced += 1
 
+                    # Sync document requirements for this workflow code
+                    if not dry_run:
+                        doc_requirements = extract_document_requirements_from_workflow(workflow, sub_type)
+                        for doc_req in doc_requirements:
+                            # Check if document requirement exists
+                            existing_doc = await db.fetchrow("""
+                                SELECT id FROM workflow_document_requirements
+                                WHERE workflow_code = $1 AND document_code = $2
+                            """, code, doc_req['document_code'])
+
+                            condition_value = doc_req.get('condition_value') or {}
+                            import json
+                            condition_value_json = json.dumps(condition_value) if isinstance(condition_value, dict) else condition_value
+
+                            if existing_doc:
+                                await db.execute("""
+                                    UPDATE workflow_document_requirements SET
+                                        document_name_es = $3,
+                                        is_required = $4,
+                                        display_order = $5,
+                                        condition_type = $6::document_condition_type_enum,
+                                        condition_value = $7::jsonb,
+                                        instructions_es = $8,
+                                        extraction_schema_key = $9,
+                                        updated_at = NOW()
+                                    WHERE workflow_code = $1 AND document_code = $2
+                                """, code, doc_req['document_code'],
+                                    doc_req['document_name_es'],
+                                    doc_req['is_required'],
+                                    doc_req['display_order'],
+                                    doc_req['condition_type'].lower(),
+                                    condition_value_json,
+                                    doc_req.get('instructions_es'),
+                                    doc_req.get('extraction_schema_key'))
+                                result.documents_updated += 1
+                            else:
+                                await db.execute("""
+                                    INSERT INTO workflow_document_requirements (
+                                        workflow_code, document_code, document_name_es,
+                                        is_required, display_order, condition_type,
+                                        condition_value, instructions_es, extraction_schema_key,
+                                        is_active
+                                    ) VALUES ($1, $2, $3, $4, $5, $6::document_condition_type_enum, $7::jsonb, $8, $9, true)
+                                """, code, doc_req['document_code'],
+                                    doc_req['document_name_es'],
+                                    doc_req['is_required'],
+                                    doc_req['display_order'],
+                                    doc_req['condition_type'].lower(),
+                                    condition_value_json,
+                                    doc_req.get('instructions_es'),
+                                    doc_req.get('extraction_schema_key'))
+                                result.documents_created += 1
+
+                            result.documents_synced += 1
+                    else:
+                        # Dry run - just count documents
+                        doc_requirements = extract_document_requirements_from_workflow(workflow, sub_type)
+                        result.documents_synced += len(doc_requirements)
+
                     result.details.append({
                         "action": "synced",
                         "workflow_code": code,
                         "sub_type": sub_type,
                         "parent_code": parent_code,
-                        "tariff_amount": tariff_amount
+                        "tariff_amount": tariff_amount,
+                        "documents_count": len(doc_requirements) if not dry_run else result.documents_synced
                     })
 
                 except Exception as e:
