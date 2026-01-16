@@ -775,6 +775,11 @@ export default function WorkflowDetailPage() {
 
   const sortedDocuments = [...(documents || [])].sort((a, b) => a.display_order - b.display_order)
 
+  // Predefined workflow check - predefined workflows have tariffs/documents defined in Python code
+  // is_generic = false means it's a predefined workflow from Python
+  // is_generic = true means it's a dynamic workflow created via admin UI
+  const isPredefined = workflow && workflow.is_generic === false
+
   // Loading state
   // Create Mode UI
   if (isCreateMode) {
@@ -1012,6 +1017,12 @@ export default function WorkflowDetailPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-3xl font-bold tracking-tight">{workflow.name_es}</h1>
+            {isPredefined && (
+              <Badge variant="outline" className="gap-1 bg-blue-50 text-blue-700 border-blue-200">
+                <GitBranch className="h-3 w-3" />
+                Predefinido
+              </Badge>
+            )}
             {workflow.is_active ? (
               <Badge variant="default" className="gap-1">
                 <CheckCircle className="h-3 w-3" />
@@ -1029,11 +1040,16 @@ export default function WorkflowDetailPage() {
             {" - "}{workflow.entity_code} · {workflow.category}
           </p>
         </div>
-        {!isEditingPage && (
+        {!isEditingPage && !isPredefined && (
           <Button onClick={() => setIsEditingPage(true)}>
             <Pencil className="mr-2 h-4 w-4" />
             Editar
           </Button>
+        )}
+        {!isEditingPage && isPredefined && (
+          <div className="text-sm text-muted-foreground bg-blue-50 px-3 py-2 rounded-md border border-blue-200">
+            Workflow predefinido (solo lectura)
+          </div>
         )}
       </div>
 

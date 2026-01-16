@@ -5916,11 +5916,146 @@ class WorkflowSyncResult(BaseModel):
     workflows_synced: int = 0
     workflows_created: int = 0
     workflows_updated: int = 0
+    workflows_deleted: int = 0
     tariffs_synced: int = 0
     tariffs_created: int = 0
     tariffs_updated: int = 0
+    documents_synced: int = 0
     errors: List[str] = Field(default_factory=list)
     details: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+# Mapping from sub_type to Spanish name for each workflow family
+SUBTYPE_NAMES_ES = {
+    # PASAPORTE (5)
+    "PASAPORTE_NUEVO": "Pasaporte - Primera Expedición",
+    "PASAPORTE_RENOVACION": "Pasaporte - Renovación por Vencimiento",
+    "PASAPORTE_PERDIDA": "Pasaporte - Renovación por Pérdida",
+    "PASAPORTE_ROBO": "Pasaporte - Renovación por Robo",
+    "PASAPORTE_DETERIORO": "Pasaporte - Renovación por Deterioro",
+    # RESIDENCIA (5)
+    "RESIDENCIA_PRIMERA_VEZ": "Residencia - Primera Vez",
+    "RESIDENCIA_RENOVACION": "Residencia - Renovación",
+    "RESIDENCIA_DUPLICADO": "Residencia - Duplicado",
+    "RESIDENCIA_CAMBIO_DATOS": "Residencia - Cambio de Datos",
+    "RESIDENCIA_REAGRUPACION": "Residencia - Reagrupación Familiar",
+    # VEHICULO (7)
+    "VEHICULO_PRIMERA_MATRICULACION": "Vehículo - Primera Matriculación",
+    "VEHICULO_TRANSFERENCIA": "Vehículo - Transferencia",
+    "VEHICULO_RENOVACION_CUVE": "Vehículo - Renovación CUVE",
+    "VEHICULO_RENOVACION_ITV": "Vehículo - Inspección Técnica (ITV)",
+    "VEHICULO_DUPLICADO_PERMISO": "Vehículo - Duplicado Permiso",
+    "VEHICULO_DUPLICADO_CUVE": "Vehículo - Duplicado CUVE",
+    "VEHICULO_CAMBIO_CARACTERISTICAS": "Vehículo - Cambio Características",
+    # CONDUCIR (5)
+    "CONDUCIR_NUEVO": "Licencia de Conducir - Nueva",
+    "CONDUCIR_CANJE": "Licencia de Conducir - Canje",
+    "CONDUCIR_RENOVACION": "Licencia de Conducir - Renovación",
+    "CONDUCIR_DUPLICADO": "Licencia de Conducir - Duplicado",
+    "CONDUCIR_EXTENSION": "Licencia de Conducir - Extensión",
+    # CONTRATO (7)
+    "CONTRATO_OBRA": "Contrato - Obra",
+    "CONTRATO_SERVICIO": "Contrato - Servicio",
+    "CONTRATO_SUMINISTRO": "Contrato - Suministro",
+    "CONTRATO_CONCESION": "Contrato - Concesión",
+    "CONTRATO_JOINT_VENTURE": "Contrato - Joint Venture",
+    "CONTRATO_ARRENDAMIENTO": "Contrato - Arrendamiento",
+    "CONTRATO_OTRO": "Contrato - Otro",
+    # FUNCION PUBLICA (5)
+    "FP_VERIFICACION_FUNCIONARIO": "Verificación de Funcionario",
+    "FP_CARNET_FUNCIONARIO": "Carnet de Funcionario",
+    "FP_PROMOCION_ADMINISTRATIVA": "Promoción Administrativa",
+    "FP_PERMISO_EXTRAORDINARIO": "Permiso Extraordinario",
+    "FP_CERTIFICADO_ADMINISTRATIVO": "Certificado Administrativo",
+}
+
+def extract_tariff_from_workflow(workflow, sub_type: str) -> tuple:
+    """
+    Dynamically extract tariff amount and type from a workflow class.
+
+    Returns:
+        tuple: (tariff_amount, tariff_type)
+    """
+    # Check tariff type from _tariff_config
+    tariff_config = getattr(workflow, '_tariff_config', None)
+    tariff_type = "FIXED"
+
+    if tariff_config:
+        # Get tariff type from config
+        config_type = getattr(tariff_config, 'tariff_type', None)
+        if config_type:
+            tariff_type = config_type.value if hasattr(config_type, 'value') else str(config_type)
+
+        # For FIXED tariffs, get amount from fixed_amounts dict
+        if tariff_type == "FIXED" and hasattr(tariff_config, 'fixed_amounts'):
+            fixed_amounts = tariff_config.fixed_amounts
+            # Try different keys: sub_type, lowercase sub_type, solicitud_type values
+            tariff_amount = (
+                fixed_amounts.get(sub_type) or
+                fixed_amounts.get(sub_type.lower()) or
+                fixed_amounts.get('expedicion') or
+                fixed_amounts.get('renovacion') or
+                0
+            )
+            return (tariff_amount, tariff_type)
+
+    # Check for class-level TARIFF (single value)
+    if hasattr(workflow, 'TARIFF'):
+        return (getattr(workflow, 'TARIFF', 0), tariff_type)
+
+    # Check for class-level TARIFFS dict (keyed by sub_type)
+    if hasattr(workflow, 'TARIFFS'):
+        tariffs_dict = workflow.TARIFFS
+        tariff_amount = (
+            tariffs_dict.get(sub_type) or
+            tariffs_dict.get(sub_type.lower()) or
+            0
+        )
+        return (tariff_amount, tariff_type)
+
+    # For percentage/RBC/NOTA_INGRESO types, amount is 0 (calculated dynamically)
+    if tariff_type in ("PERCENTAGE", "RBC", "NOTA_INGRESO"):
+        return (0, tariff_type)
+
+    return (0, tariff_type)
+
+# Mapping from sub_type to parent family code
+SUBTYPE_PARENT_MAPPING = {
+    "PASAPORTE_NUEVO": None,  # Base workflow (is_parent=True)
+    "PASAPORTE_RENOVACION": "PASAPORTE_NUEVO",
+    "PASAPORTE_PERDIDA": "PASAPORTE_NUEVO",
+    "PASAPORTE_ROBO": "PASAPORTE_NUEVO",
+    "PASAPORTE_DETERIORO": "PASAPORTE_NUEVO",
+    "RESIDENCIA_PRIMERA_VEZ": None,
+    "RESIDENCIA_RENOVACION": "RESIDENCIA_PRIMERA_VEZ",
+    "RESIDENCIA_DUPLICADO": "RESIDENCIA_PRIMERA_VEZ",
+    "RESIDENCIA_CAMBIO_DATOS": "RESIDENCIA_PRIMERA_VEZ",
+    "RESIDENCIA_REAGRUPACION": "RESIDENCIA_PRIMERA_VEZ",
+    "VEHICULO_PRIMERA_MATRICULACION": None,
+    "VEHICULO_TRANSFERENCIA": "VEHICULO_PRIMERA_MATRICULACION",
+    "VEHICULO_RENOVACION_CUVE": "VEHICULO_PRIMERA_MATRICULACION",
+    "VEHICULO_RENOVACION_ITV": "VEHICULO_PRIMERA_MATRICULACION",
+    "VEHICULO_DUPLICADO_PERMISO": "VEHICULO_PRIMERA_MATRICULACION",
+    "VEHICULO_DUPLICADO_CUVE": "VEHICULO_PRIMERA_MATRICULACION",
+    "VEHICULO_CAMBIO_CARACTERISTICAS": "VEHICULO_PRIMERA_MATRICULACION",
+    "CONDUCIR_NUEVO": None,
+    "CONDUCIR_CANJE": "CONDUCIR_NUEVO",
+    "CONDUCIR_RENOVACION": "CONDUCIR_NUEVO",
+    "CONDUCIR_DUPLICADO": "CONDUCIR_NUEVO",
+    "CONDUCIR_EXTENSION": "CONDUCIR_NUEVO",
+    "CONTRATO_OBRA": None,
+    "CONTRATO_SERVICIO": "CONTRATO_OBRA",
+    "CONTRATO_SUMINISTRO": "CONTRATO_OBRA",
+    "CONTRATO_CONCESION": "CONTRATO_OBRA",
+    "CONTRATO_JOINT_VENTURE": "CONTRATO_OBRA",
+    "CONTRATO_ARRENDAMIENTO": "CONTRATO_OBRA",
+    "CONTRATO_OTRO": "CONTRATO_OBRA",
+    "FP_VERIFICACION_FUNCIONARIO": None,
+    "FP_CARNET_FUNCIONARIO": "FP_VERIFICACION_FUNCIONARIO",
+    "FP_PROMOCION_ADMINISTRATIVA": "FP_VERIFICACION_FUNCIONARIO",
+    "FP_PERMISO_EXTRAORDINARIO": "FP_VERIFICACION_FUNCIONARIO",
+    "FP_CERTIFICADO_ADMINISTRATIVO": "FP_VERIFICACION_FUNCIONARIO",
+}
 
 
 @router.post(
@@ -5928,194 +6063,227 @@ class WorkflowSyncResult(BaseModel):
     response_model=WorkflowSyncResult,
     summary="Sync predefined workflows to database",
     description="""
-    Synchronize all predefined workflow classes to the database.
+    Synchronize ALL 34 predefined workflow codes to the database.
 
     This endpoint reads from the Python workflow classes (source of truth) and:
-    1. Creates/updates workflow entries in the `workflows` table
-    2. Creates/updates tariff entries in the `workflow_tariffs` table
+    1. Iterates over ALL sub_types for each workflow class
+    2. Creates/updates workflow entries in the `workflows` table for each sub_type
+    3. Creates/updates tariff entries in the `workflow_tariffs` table
 
     Use this after deploying new workflow code to ensure DB is aligned.
+    Set delete_existing=true to first delete all existing workflows.
     """
 )
 async def sync_predefined_workflows(
     dry_run: bool = Query(False, description="If true, don't commit changes, just report what would change"),
+    delete_existing: bool = Query(False, description="If true, delete all existing workflows before sync"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
     _=Depends(permission_required("admin.manage_workflow"))
 ):
-    """Sync predefined workflow classes to database."""
+    """Sync ALL 34 predefined workflow codes to database."""
     from ..services.workflow_engine import workflow_engine
-    from ..models.enums import WorkflowCode, SolicitudType
-    from ..workflows.workflow_interface import PredefinedWorkflow, RenovacionMotivo
+    from ..models.enums import WorkflowCode, SolicitudType, TariffType
+    from ..workflows.workflow_interface import PredefinedWorkflow
+    from ..workflows.base_workflow import BaseWorkflow
 
     result = WorkflowSyncResult()
 
-    # Get all registered workflows
+    # Step 1: Optionally delete existing workflows
+    if delete_existing and not dry_run:
+        try:
+            # Delete tariffs first (FK constraint)
+            await db.execute("DELETE FROM workflow_tariffs")
+            # Delete document requirements
+            await db.execute("DELETE FROM workflow_document_requirements")
+            # Delete workflows
+            deleted = await db.execute("DELETE FROM workflows")
+            result.workflows_deleted = int(deleted.split()[-1]) if deleted else 0
+            result.details.append({
+                "action": "deleted_existing",
+                "count": result.workflows_deleted
+            })
+        except Exception as e:
+            result.errors.append(f"Error deleting existing workflows: {str(e)}")
+            return result
+    elif delete_existing and dry_run:
+        result.details.append({
+            "action": "would_delete_existing",
+            "note": "All existing workflows would be deleted"
+        })
+
+    # Step 2: Get all registered workflows from workflow_engine
     all_workflows = workflow_engine.get_all_workflows()
 
-    for workflow_code, workflow in all_workflows.items():
+    # Step 3: Iterate over each workflow class and its sub_types
+    for base_code, workflow in all_workflows.items():
         try:
-            # Skip if not a PredefinedWorkflow
-            if not isinstance(workflow, PredefinedWorkflow):
-                continue
+            # Get allowed_sub_types from workflow
+            allowed_sub_types = getattr(workflow, 'allowed_sub_types', [])
 
-            code = workflow_code.value
+            # If no sub_types, use the base workflow code directly
+            if not allowed_sub_types:
+                allowed_sub_types = [base_code.value.split('_')[-1] if '_' in base_code.value else base_code.value]
 
-            # Extract workflow metadata
-            workflow_data = {
-                "code": code,
-                "name_es": getattr(workflow, 'service_name_es', code.replace('_', ' ').title()),
-                "description_es": getattr(workflow, 'description_es', None),
-                "category": workflow.category.value,
-                "entity_code": workflow.entity_code.value if hasattr(workflow, 'entity_code') else 'GENERAL',
-                "workflow_type": "standard",
-                "requires_agent_validation": getattr(workflow, 'requires_agent_review', True),
-                "requires_appointment": getattr(workflow, 'requires_appointment', False),
-                "is_generic": False,  # Predefined workflows are NOT generic
-                "sla_hours": getattr(workflow, 'sla_hours', 48),
-                "is_active": True,
-            }
+            # Determine if workflow has get_workflow_code_for_subtype method
+            has_subtype_mapping = hasattr(workflow, 'get_workflow_code_for_subtype')
 
-            # Determine parent workflow code (e.g., PASAPORTE_PERDIDA -> PASAPORTE)
-            parent_code = None
-            if '_' in code:
-                base_parts = code.split('_')
-                if len(base_parts) > 1:
-                    # Check if base code exists (e.g., PASAPORTE from PASAPORTE_PERDIDA)
-                    potential_parent = base_parts[0]
-                    # Common parent mapping
-                    parent_mapping = {
-                        "PASAPORTE": "PASAPORTE",
-                        "RESIDENCIA": "RESIDENCIA",
-                        "VEHICULO": "VEHICULO",
-                        "CONDUCIR": "CONDUCIR",
-                        "CONTRATO": "CONTRATO",
-                        "FUNCIONARIO": "FUNCIONARIO",
+            for sub_type in allowed_sub_types:
+                try:
+                    # Get the actual WorkflowCode for this sub_type
+                    if has_subtype_mapping:
+                        workflow_code = workflow.get_workflow_code_for_subtype(sub_type)
+                        code = workflow_code.value
+                    else:
+                        # For workflows without sub_type mapping (like FP_*), use base code
+                        code = base_code.value
+
+                    # Skip if we've already processed this code
+                    if any(d.get('workflow_code') == code and d.get('action') == 'synced' for d in result.details):
+                        continue
+
+                    # Get workflow metadata from workflow class
+                    category = workflow.category.value if hasattr(workflow, 'category') else 'GENERAL'
+                    entity_code = workflow.entity_code.value if hasattr(workflow, 'entity_code') else 'GENERAL'
+
+                    # Use SUBTYPE_NAMES_ES for proper Spanish names
+                    name_es = SUBTYPE_NAMES_ES.get(code, code.replace('_', ' ').title())
+
+                    # Dynamically extract tariff from workflow class (no hardcoding)
+                    tariff_amount, tariff_type = extract_tariff_from_workflow(workflow, sub_type)
+
+                    # Get parent workflow code
+                    parent_code = SUBTYPE_PARENT_MAPPING.get(code)
+                    is_parent = parent_code is None
+
+                    # Build workflow data
+                    workflow_data = {
+                        "code": code,
+                        "name_es": name_es,
+                        "description_es": f"Trámite de {name_es}",
+                        "category": category,
+                        "entity_code": entity_code,
+                        "workflow_type": "standard",
+                        "requires_agent_validation": getattr(workflow, 'requires_agent_review', True),
+                        "requires_appointment": getattr(workflow, 'requires_appointment', False),
+                        "is_generic": False,  # Predefined workflows are NOT generic
+                        "sla_hours": getattr(workflow, 'sla_hours', 48),
+                        "is_active": True,
+                        "parent_workflow_code": parent_code,
+                        "is_parent": is_parent,
+                        "tariff_type": tariff_type,
+                        "tariff_amount": tariff_amount,
                     }
-                    parent_code = parent_mapping.get(potential_parent)
-
-            if dry_run:
-                result.details.append({
-                    "action": "would_sync",
-                    "workflow_code": code,
-                    "parent_code": parent_code,
-                    "data": workflow_data
-                })
-                result.workflows_synced += 1
-                continue
-
-            # Check if workflow exists
-            existing = await db.fetchrow(
-                "SELECT code, is_generic FROM workflows WHERE code = $1",
-                code
-            )
-
-            if existing:
-                # Update existing workflow (only predefined, not generic)
-                if existing['is_generic']:
-                    result.details.append({
-                        "action": "skipped",
-                        "workflow_code": code,
-                        "reason": "is_generic workflow - managed via admin UI"
-                    })
-                    continue
-
-                await db.execute("""
-                    UPDATE workflows SET
-                        name_es = $2,
-                        description_es = $3,
-                        category = $4,
-                        entity_code = $5,
-                        workflow_type = $6,
-                        requires_agent_validation = $7,
-                        requires_appointment = $8,
-                        sla_hours = $9,
-                        parent_workflow_code = $10,
-                        is_parent = $11,
-                        updated_at = NOW()
-                    WHERE code = $1
-                """, code, workflow_data['name_es'], workflow_data['description_es'],
-                    workflow_data['category'], workflow_data['entity_code'],
-                    workflow_data['workflow_type'], workflow_data['requires_agent_validation'],
-                    workflow_data['requires_appointment'], workflow_data['sla_hours'],
-                    parent_code, parent_code is None)  # is_parent = True if no parent
-
-                result.workflows_updated += 1
-            else:
-                # Insert new workflow
-                await db.execute("""
-                    INSERT INTO workflows (
-                        code, name_es, description_es, category, entity_code,
-                        workflow_type, requires_agent_validation, requires_appointment,
-                        is_generic, sla_hours, is_active, parent_workflow_code, is_parent
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-                """, code, workflow_data['name_es'], workflow_data['description_es'],
-                    workflow_data['category'], workflow_data['entity_code'],
-                    workflow_data['workflow_type'], workflow_data['requires_agent_validation'],
-                    workflow_data['requires_appointment'], workflow_data['is_generic'],
-                    workflow_data['sla_hours'], workflow_data['is_active'],
-                    parent_code, parent_code is None)
-
-                result.workflows_created += 1
-
-            result.workflows_synced += 1
-
-            # Sync tariffs from workflow
-            tariff_config = getattr(workflow, '_tariff_config', None)
-            if tariff_config and hasattr(tariff_config, 'fixed_amounts'):
-                for amount_key, amount in tariff_config.fixed_amounts.items():
-                    # Determine solicitud_type from key
-                    solicitud_type = None
-                    if amount_key in [s.value for s in SolicitudType]:
-                        solicitud_type = amount_key
-                    elif amount_key in [r.value for r in RenovacionMotivo]:
-                        # For motivos, use renovacion as base type
-                        solicitud_type = SolicitudType.RENOVACION.value
-
-                    if not solicitud_type:
-                        solicitud_type = SolicitudType.EXPEDICION.value
-
-                    # Check if tariff exists
-                    existing_tariff = await db.fetchrow("""
-                        SELECT id FROM workflow_tariffs
-                        WHERE workflow_code = $1 AND solicitud_type = $2
-                    """, code, solicitud_type)
 
                     if dry_run:
                         result.details.append({
-                            "action": "would_sync_tariff",
+                            "action": "would_sync",
                             "workflow_code": code,
-                            "solicitud_type": solicitud_type,
-                            "amount": amount
+                            "sub_type": sub_type,
+                            "parent_code": parent_code,
+                            "tariff_amount": tariff_amount,
+                            "tariff_type": tariff_type,
+                            "data": workflow_data
                         })
-                        result.tariffs_synced += 1
+                        result.workflows_synced += 1
                         continue
 
-                    if existing_tariff:
+                    # Check if workflow exists
+                    existing = await db.fetchrow(
+                        "SELECT code, is_generic FROM workflows WHERE code = $1",
+                        code
+                    )
+
+                    if existing:
+                        # Update existing workflow
+                        if existing['is_generic']:
+                            result.details.append({
+                                "action": "skipped",
+                                "workflow_code": code,
+                                "reason": "is_generic workflow - managed via admin UI"
+                            })
+                            continue
+
                         await db.execute("""
-                            UPDATE workflow_tariffs SET
-                                amount = $3,
+                            UPDATE workflows SET
+                                name_es = $2,
+                                description_es = $3,
+                                category = $4,
+                                entity_code = $5,
+                                workflow_type = $6,
+                                requires_agent_validation = $7,
+                                requires_appointment = $8,
+                                sla_hours = $9,
+                                parent_workflow_code = $10,
+                                is_parent = $11,
+                                is_generic = FALSE,
                                 updated_at = NOW()
-                            WHERE workflow_code = $1 AND solicitud_type = $2
-                        """, code, solicitud_type, amount)
-                        result.tariffs_updated += 1
+                            WHERE code = $1
+                        """, code, name_es, workflow_data['description_es'],
+                            category, entity_code,
+                            workflow_data['workflow_type'], workflow_data['requires_agent_validation'],
+                            workflow_data['requires_appointment'], workflow_data['sla_hours'],
+                            parent_code, is_parent)
+
+                        result.workflows_updated += 1
                     else:
+                        # Insert new workflow
                         await db.execute("""
-                            INSERT INTO workflow_tariffs (
-                                workflow_code, solicitud_type, amount, tariff_type, is_active
-                            ) VALUES ($1, $2, $3, 'FIXED', true)
-                        """, code, solicitud_type, amount)
-                        result.tariffs_created += 1
+                            INSERT INTO workflows (
+                                code, name_es, description_es, category, entity_code,
+                                workflow_type, requires_agent_validation, requires_appointment,
+                                is_generic, sla_hours, is_active, parent_workflow_code, is_parent
+                            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                        """, code, name_es, workflow_data['description_es'],
+                            category, entity_code,
+                            workflow_data['workflow_type'], workflow_data['requires_agent_validation'],
+                            workflow_data['requires_appointment'], workflow_data['is_generic'],
+                            workflow_data['sla_hours'], workflow_data['is_active'],
+                            parent_code, is_parent)
 
-                    result.tariffs_synced += 1
+                        result.workflows_created += 1
 
-            result.details.append({
-                "action": "synced",
-                "workflow_code": code,
-                "parent_code": parent_code
-            })
+                    result.workflows_synced += 1
+
+                    # Sync tariff for this workflow code
+                    if tariff_amount > 0 or tariff_type in ["RBC", "PERCENTAGE"]:
+                        # Check if tariff exists
+                        existing_tariff = await db.fetchrow("""
+                            SELECT id FROM workflow_tariffs
+                            WHERE workflow_code = $1
+                        """, code)
+
+                        if existing_tariff:
+                            await db.execute("""
+                                UPDATE workflow_tariffs SET
+                                    amount = $2,
+                                    tariff_type = $3,
+                                    updated_at = NOW()
+                                WHERE workflow_code = $1
+                            """, code, tariff_amount, tariff_type)
+                            result.tariffs_updated += 1
+                        else:
+                            await db.execute("""
+                                INSERT INTO workflow_tariffs (
+                                    workflow_code, solicitud_type, amount, tariff_type, currency, is_active
+                                ) VALUES ($1, 'expedicion', $2, $3, 'XAF', true)
+                            """, code, tariff_amount, tariff_type)
+                            result.tariffs_created += 1
+
+                        result.tariffs_synced += 1
+
+                    result.details.append({
+                        "action": "synced",
+                        "workflow_code": code,
+                        "sub_type": sub_type,
+                        "parent_code": parent_code,
+                        "tariff_amount": tariff_amount
+                    })
+
+                except Exception as e:
+                    result.errors.append(f"Error syncing sub_type {sub_type} of {base_code.value}: {str(e)}")
 
         except Exception as e:
-            result.errors.append(f"Error syncing {workflow_code.value}: {str(e)}")
+            result.errors.append(f"Error processing workflow {base_code.value}: {str(e)}")
 
     return result
