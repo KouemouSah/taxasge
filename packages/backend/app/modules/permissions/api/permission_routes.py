@@ -31,7 +31,7 @@ async def get_all_permissions(
     module_name: Optional[str] = Query(None, description="Filter by module name"),
     is_critical: Optional[bool] = Query(None, description="Filter by critical flag"),
     page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(50, ge=1, le=100, description="Results per page"),
+    page_size: int = Query(50, ge=1, le=500, description="Results per page (max 500 for permissions catalog)"),
     current_user: UserResponse = Depends(get_current_user),
     permission_service: PermissionService = Depends(get_permission_service),
 ):
