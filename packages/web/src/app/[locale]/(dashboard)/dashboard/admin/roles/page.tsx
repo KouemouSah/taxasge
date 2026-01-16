@@ -84,7 +84,6 @@ import {
   ChevronRight,
   ChevronLeft,
   Users,
-  Eye,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -402,13 +401,9 @@ function RolesTab() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              title={role.is_system ? "Voir" : "Modifier"}
+                              title="Modifier"
                             >
-                              {role.is_system ? (
-                                <Eye className="h-4 w-4" />
-                              ) : (
-                                <Pencil className="h-4 w-4" />
-                              )}
+                              <Pencil className="h-4 w-4" />
                             </Button>
                           </Link>
                           <Button
@@ -418,7 +413,6 @@ function RolesTab() {
                               setSelectedRole(role);
                               setIsDeleteDialogOpen(true);
                             }}
-                            disabled={role.is_system}
                             className="text-destructive hover:text-destructive"
                             title="Supprimer"
                           >

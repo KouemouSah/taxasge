@@ -91,6 +91,7 @@ interface EntityFormData {
   name: string
   description: string
   entity_type: EntityType
+  parent_type: 'ministry' | 'entity' | null  // Filter for parent selection
   parent_entity_id: string | null
   ministry_id: number | null
   workflow_codes: string[]
@@ -102,6 +103,7 @@ const defaultFormData: EntityFormData = {
   name: '',
   description: '',
   entity_type: 'entity',
+  parent_type: null,
   parent_entity_id: null,
   ministry_id: null,
   workflow_codes: [],
@@ -212,11 +214,19 @@ export default function EntitiesTabContent() {
   // Open edit dialog
   const handleEdit = (entity: EntityWithDetails) => {
     setSelectedEntity(entity)
+    // Determine parent_type based on existing data
+    let parentType: 'ministry' | 'entity' | null = null
+    if (entity.ministry_id) {
+      parentType = 'ministry'
+    } else if (entity.parent_entity_id) {
+      parentType = 'entity'
+    }
     setFormData({
       code: entity.code,
       name: entity.name,
       description: entity.description || '',
       entity_type: entity.entity_type,
+      parent_type: parentType,
       parent_entity_id: entity.parent_entity_id,
       ministry_id: entity.ministry_id,
       workflow_codes: entity.workflow_codes || [],
@@ -518,7 +528,64 @@ export default function EntitiesTabContent() {
               />
             </div>
 
-            {formData.entity_type === 'department' && (
+            {/* Parent Type Selector - shown for both entity types */}
+            <div className="space-y-2">
+              <Label htmlFor="parent_type">{t('fieldParentType')}</Label>
+              <Select
+                value={formData.parent_type || '_none'}
+                onValueChange={(v) => {
+                  const newParentType = v === '_none' ? null : v as 'ministry' | 'entity'
+                  setFormData({
+                    ...formData,
+                    parent_type: newParentType,
+                    // Reset parent selections when type changes
+                    parent_entity_id: newParentType === 'entity' ? formData.parent_entity_id : null,
+                    ministry_id: newParentType === 'ministry' ? formData.ministry_id : null,
+                  })
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t('selectParentType')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">{t('independentEntity')}</SelectItem>
+                  <SelectItem value="ministry">{t('parentTypeMinistry')}</SelectItem>
+                  <SelectItem value="entity">{t('parentTypeEntity')}</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">{t('parentTypeHint')}</p>
+            </div>
+
+            {/* Ministry Selector - shown when parent_type is 'ministry' */}
+            {formData.parent_type === 'ministry' && (
+              <div className="space-y-2">
+                <Label htmlFor="ministry_id">{t('fieldMinistry')} *</Label>
+                <Select
+                  value={formData.ministry_id?.toString() || ''}
+                  onValueChange={(v) => setFormData({ ...formData, ministry_id: v ? parseInt(v) : null })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('selectMinistry')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {isLoadingMinistries ? (
+                      <SelectItem value="_loading" disabled>{tCommon('loading')}</SelectItem>
+                    ) : ministries.length === 0 ? (
+                      <SelectItem value="_empty" disabled>{t('noMinistriesFound')}</SelectItem>
+                    ) : (
+                      ministries.map((m) => (
+                        <SelectItem key={m.id} value={m.id.toString()}>
+                          {m.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Parent Entity Selector - shown when parent_type is 'entity' */}
+            {formData.parent_type === 'entity' && (
               <div className="space-y-2">
                 <Label htmlFor="parent_entity_id">{t('fieldParent')} *</Label>
                 <Select
@@ -538,33 +605,6 @@ export default function EntitiesTabContent() {
                       ))}
                   </SelectContent>
                 </Select>
-              </div>
-            )}
-
-            {formData.entity_type === 'entity' && (
-              <div className="space-y-2">
-                <Label htmlFor="ministry_id">{t('fieldMinistry')}</Label>
-                <Select
-                  value={formData.ministry_id?.toString() || '_none'}
-                  onValueChange={(v) => setFormData({ ...formData, ministry_id: v === '_none' ? null : parseInt(v) })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t('selectMinistry')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="_none">{t('independentEntity')}</SelectItem>
-                    {isLoadingMinistries ? (
-                      <SelectItem value="_loading" disabled>{tCommon('loading')}</SelectItem>
-                    ) : (
-                      ministries.map((m) => (
-                        <SelectItem key={m.id} value={m.id.toString()}>
-                          {m.name}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">{t('ministryHint')}</p>
               </div>
             )}
 
