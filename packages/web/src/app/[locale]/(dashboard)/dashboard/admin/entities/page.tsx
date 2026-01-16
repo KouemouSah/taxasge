@@ -43,16 +43,16 @@ export default function EntitiesPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 lg:w-[500px]">
-          <TabsTrigger value="entities" className="flex items-center gap-2">
+        <TabsList className="grid w-full grid-cols-3 lg:w-[600px]">
+          <TabsTrigger value="entities" className="flex items-center justify-center gap-2 px-4 py-2">
             <Building className="h-4 w-4" />
             <span className="hidden sm:inline">{t('tabs.entities')}</span>
           </TabsTrigger>
-          <TabsTrigger value="locations" className="flex items-center gap-2">
+          <TabsTrigger value="locations" className="flex items-center justify-center gap-2 px-4 py-2">
             <MapPin className="h-4 w-4" />
             <span className="hidden sm:inline">{t('tabs.locations')}</span>
           </TabsTrigger>
-          <TabsTrigger value="cities" className="flex items-center gap-2">
+          <TabsTrigger value="cities" className="flex items-center justify-center gap-2 px-4 py-2">
             <Globe className="h-4 w-4" />
             <span className="hidden sm:inline">{t('tabs.cities')}</span>
           </TabsTrigger>
