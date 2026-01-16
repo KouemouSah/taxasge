@@ -169,21 +169,21 @@ class RoleRepository:
 
     async def get_agent_rbac_roles(self) -> List[Dict[str, Any]]:
         """
-        Get all predefined RBAC roles for agents
+        Get all RBAC roles assignable to agents
 
-        These are system roles with entity_type='agent' that define
-        what permissions an agent has.
+        Returns roles with entity_type='ministry_agent', 'entity_agent', or NULL (global).
+        These define what permissions an agent can have.
 
         Returns:
-            List of agent RBAC roles
+            List of agent RBAC roles (system and custom)
         """
         results = await self.db.fetch("""
             SELECT id, name, code, entity_type, description, is_system,
                    created_at, updated_at, created_by
             FROM roles
-            WHERE entity_type = 'agent'
-              AND is_system = TRUE
-            ORDER BY name
+            WHERE entity_type IN ('ministry_agent', 'entity_agent')
+               OR entity_type IS NULL
+            ORDER BY is_system DESC, name
         """)
 
         return [_row_to_dict(row) for row in results]
