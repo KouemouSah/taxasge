@@ -12,8 +12,9 @@ import { useQuery } from '@tanstack/react-query';
 import { useLocale } from 'next-intl';
 import { getAuthData } from '@/core/auth/storage';
 import apiClient from '@/core/api/client';
-import type { AgentDashboardContext, EntityCode, MenuItem } from '../types';
-import { getEntityConfig, getEntityCodeFromName } from '../config/entity-menus';
+import type { AgentDashboardContext, EntityCode, MenuItem, MinistryCode } from '../types';
+import { MINISTRY_ENTITIES } from '../types';
+import { getEntityConfig, getEntityCodeFromName, ENTITY_CONFIGS } from '../config/entity-menus';
 
 // =============================================================================
 // API RESPONSE TYPES
@@ -89,11 +90,16 @@ interface UseAgentDashboardReturn {
   entityConfig: ReturnType<typeof getEntityConfig> | null;
 
   // Menu items (filtered by permissions)
+  // For ministry_agent: merged menus from all entities of the ministry
   menuItems: MenuItem[];
 
   // Helper functions
   hasPermission: (permission: string) => boolean;
   getBasePath: () => string;
+
+  // Ministry agent specific
+  isMinistryAgent: boolean;
+  ministryEntities: EntityCode[];
 }
 
 export function useAgentDashboard(): UseAgentDashboardReturn {
@@ -179,13 +185,73 @@ export function useAgentDashboard(): UseAgentDashboardReturn {
       .filter(Boolean) as MenuItem[];
   };
 
-  // Get filtered menu items
-  const menuItems: MenuItem[] = entityConfig
-    ? filterMenuItems(entityConfig.menuItems)
+  // Determine if this is a ministry_agent (supervisor over ministry entities)
+  const isMinistryAgent = agentProfile?.agent_type === 'ministry_agent';
+  const ministryCode = agentProfile?.ministry_code as MinistryCode | undefined;
+
+  // Get ministry entities if ministry_agent
+  const ministryEntities: EntityCode[] = isMinistryAgent && ministryCode && MINISTRY_ENTITIES[ministryCode]
+    ? MINISTRY_ENTITIES[ministryCode]
     : [];
+
+  // Get filtered menu items
+  // For ministry_agent: merge menus from all entities of the ministry
+  const menuItems: MenuItem[] = (() => {
+    if (isMinistryAgent && ministryEntities.length > 0) {
+      // Merge menus from all ministry entities
+      const mergedMenus: MenuItem[] = [];
+      const seenIds = new Set<string>();
+
+      // Add ministry dashboard as first item
+      mergedMenus.push({
+        id: 'ministry-dashboard',
+        titleKey: 'agent.nav.ministryDashboard',
+        href: `/dashboard/agent/ministry`,
+        icon: entityConfig?.icon || ENTITY_CONFIGS.GENERAL.icon,
+      });
+
+      // Collect all menus from ministry entities (skip duplicates)
+      for (const entCode of ministryEntities) {
+        const entConfig = getEntityConfig(entCode);
+        if (!entConfig) continue;
+
+        for (const item of entConfig.menuItems) {
+          // Skip dashboard items (we already have ministry dashboard)
+          if (item.id === 'dashboard') continue;
+
+          // Prefix item ID with entity code to avoid collisions
+          const prefixedId = `${entCode}-${item.id}`;
+          if (seenIds.has(prefixedId)) continue;
+          seenIds.add(prefixedId);
+
+          // Add entity label to group titles for clarity
+          if ('items' in item && Array.isArray(item.items)) {
+            mergedMenus.push({
+              ...item,
+              id: prefixedId,
+              titleKey: `${item.titleKey}`, // Could prefix with entity name if needed
+            });
+          } else {
+            mergedMenus.push({
+              ...item,
+              id: prefixedId,
+            });
+          }
+        }
+      }
+
+      return filterMenuItems(mergedMenus);
+    }
+
+    // Regular entity agent: return entity-specific menus
+    return entityConfig ? filterMenuItems(entityConfig.menuItems) : [];
+  })();
 
   // Get base path with locale
   const getBasePath = (): string => {
+    if (isMinistryAgent) {
+      return `/${locale}/dashboard/agent/ministry`;
+    }
     if (!entityConfig) return `/${locale}/dashboard/agent`;
     return `/${locale}${entityConfig.basePath}`;
   };
@@ -200,6 +266,8 @@ export function useAgentDashboard(): UseAgentDashboardReturn {
     menuItems,
     hasPermission,
     getBasePath,
+    isMinistryAgent,
+    ministryEntities,
   };
 }
 

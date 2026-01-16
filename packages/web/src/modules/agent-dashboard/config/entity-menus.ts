@@ -41,8 +41,8 @@ import {
 import type { EntityDashboardConfig, EntityCode } from '../types';
 
 // =============================================================================
-// CNEDOGE - Centro Nacional de Expedición de Documentos
-// Handles: Passports, DIP, Residences for foreigners
+// CNEDOGE - Centro Nacional de Expedición de Documentos (Parent Entity)
+// Contains departments: CNEDOGE_PASAPORTE, CNEDOGE_RESIDENCIA
 // =============================================================================
 
 export const CNEDOGE_CONFIG: EntityDashboardConfig = {
@@ -164,6 +164,160 @@ export const CNEDOGE_CONFIG: EntityDashboardConfig = {
       href: '/dashboard/agent/cnedoge/settings',
       icon: Settings,
       permission: 'settings.read',
+    },
+  ],
+};
+
+// =============================================================================
+// CNEDOGE_PASAPORTE - Passport Department (child of CNEDOGE)
+// Handles: Only passport-related workflows
+// =============================================================================
+
+export const CNEDOGE_PASAPORTE_CONFIG: EntityDashboardConfig = {
+  entityCode: 'CNEDOGE_PASAPORTE',
+  titleKey: 'agent.entities.cnedogePasaporte.title',
+  icon: Plane,
+  basePath: '/dashboard/agent/cnedoge-pasaporte',
+  workflows: [
+    'PASAPORTE_NUEVO',
+    'PASAPORTE_RENOVACION',
+    'PASAPORTE_PERDIDA',
+    'PASAPORTE_ROBO',
+    'PASAPORTE_DETERIORO',
+  ],
+  menuItems: [
+    {
+      id: 'dashboard',
+      titleKey: 'agent.nav.dashboard',
+      href: '/dashboard/agent/cnedoge-pasaporte',
+      icon: LayoutDashboard,
+    },
+    {
+      id: 'pasaportes',
+      titleKey: 'agent.nav.passports',
+      icon: Plane,
+      items: [
+        {
+          id: 'pasaportes-pendientes',
+          titleKey: 'agent.nav.pending',
+          href: '/dashboard/agent/cnedoge-pasaporte/pending',
+          icon: Clock,
+          permission: 'service_requests.read',
+        },
+        {
+          id: 'pasaportes-validacion',
+          titleKey: 'agent.nav.validation',
+          href: '/dashboard/agent/cnedoge-pasaporte/validation',
+          icon: CheckCircle,
+          permission: 'service_requests.validate',
+        },
+        {
+          id: 'pasaportes-citas',
+          titleKey: 'agent.nav.appointments',
+          href: '/dashboard/agent/cnedoge-pasaporte/appointments',
+          icon: Calendar,
+          permission: 'appointments.manage',
+        },
+        {
+          id: 'pasaportes-historial',
+          titleKey: 'agent.nav.history',
+          href: '/dashboard/agent/cnedoge-pasaporte/history',
+          icon: History,
+          permission: 'service_requests.read',
+        },
+      ],
+    },
+    {
+      id: 'reports',
+      titleKey: 'agent.nav.reports',
+      icon: BarChart3,
+      items: [
+        {
+          id: 'stats',
+          titleKey: 'agent.nav.stats',
+          href: '/dashboard/agent/cnedoge-pasaporte/reports/stats',
+          icon: TrendingUp,
+          permission: 'reports.read',
+        },
+      ],
+      permission: 'reports.read',
+    },
+  ],
+};
+
+// =============================================================================
+// CNEDOGE_RESIDENCIA - Residence Permit Department (child of CNEDOGE)
+// Handles: Only residence-related workflows
+// =============================================================================
+
+export const CNEDOGE_RESIDENCIA_CONFIG: EntityDashboardConfig = {
+  entityCode: 'CNEDOGE_RESIDENCIA',
+  titleKey: 'agent.entities.cnedogeResidencia.title',
+  icon: Globe,
+  basePath: '/dashboard/agent/cnedoge-residencia',
+  workflows: [
+    'RESIDENCIA_PRIMERA_VEZ',
+    'RESIDENCIA_RENOVACION',
+    'RESIDENCIA_DUPLICADO',
+    'RESIDENCIA_CAMBIO_DATOS',
+    'RESIDENCIA_REAGRUPACION',
+  ],
+  menuItems: [
+    {
+      id: 'dashboard',
+      titleKey: 'agent.nav.dashboard',
+      href: '/dashboard/agent/cnedoge-residencia',
+      icon: LayoutDashboard,
+    },
+    {
+      id: 'residencias',
+      titleKey: 'agent.nav.residences',
+      icon: Globe,
+      items: [
+        {
+          id: 'residencias-pendientes',
+          titleKey: 'agent.nav.pending',
+          href: '/dashboard/agent/cnedoge-residencia/pending',
+          icon: Clock,
+          permission: 'service_requests.read',
+        },
+        {
+          id: 'residencias-validacion',
+          titleKey: 'agent.nav.validation',
+          href: '/dashboard/agent/cnedoge-residencia/validation',
+          icon: CheckCircle,
+          permission: 'service_requests.validate',
+        },
+        {
+          id: 'residencias-citas',
+          titleKey: 'agent.nav.appointments',
+          href: '/dashboard/agent/cnedoge-residencia/appointments',
+          icon: Calendar,
+          permission: 'appointments.manage',
+        },
+        {
+          id: 'residencias-historial',
+          titleKey: 'agent.nav.history',
+          href: '/dashboard/agent/cnedoge-residencia/history',
+          icon: History,
+          permission: 'service_requests.read',
+        },
+      ],
+    },
+    {
+      id: 'reports',
+      titleKey: 'agent.nav.reports',
+      icon: BarChart3,
+      items: [
+        {
+          id: 'stats',
+          titleKey: 'agent.nav.stats',
+          href: '/dashboard/agent/cnedoge-residencia/reports/stats',
+          icon: TrendingUp,
+          permission: 'reports.read',
+        },
+      ],
+      permission: 'reports.read',
     },
   ],
 };
@@ -691,6 +845,8 @@ export const EXTRANJERIA_CONFIG: EntityDashboardConfig = {
 
 export const ENTITY_CONFIGS: Record<EntityCode, EntityDashboardConfig> = {
   CNEDOGE: CNEDOGE_CONFIG,
+  CNEDOGE_PASAPORTE: CNEDOGE_PASAPORTE_CONFIG,
+  CNEDOGE_RESIDENCIA: CNEDOGE_RESIDENCIA_CONFIG,
   DGT: DGT_CONFIG,
   ONRC: ONRC_CONFIG,
   MINFP: MINFP_CONFIG,

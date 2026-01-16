@@ -125,6 +125,10 @@ class AgentProfileWithDetails(AgentProfileResponse):
     # Entity details
     entity_code: Optional[str] = None
     entity_name: Optional[str] = None
+    entity_type: Optional[str] = None  # 'entity' or 'department'
+    parent_entity_id: Optional[UUID] = None
+    parent_entity_code: Optional[str] = None
+    parent_entity_name: Optional[str] = None
 
     # Ministry details
     ministry_code: Optional[str] = None
@@ -132,6 +136,9 @@ class AgentProfileWithDetails(AgentProfileResponse):
 
     # Computed category (for filtering)
     agent_category: Optional[str] = None  # dgi, treasury, entity, ministry
+
+    # Available workflows (inherited from entity or explicit specializations)
+    available_workflows: List[str] = Field(default_factory=list)
 
     # Workload info (if joined)
     current_assignments: Optional[int] = None

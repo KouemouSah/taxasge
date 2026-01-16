@@ -16,16 +16,36 @@ import type { LucideIcon } from 'lucide-react';
 // =============================================================================
 
 export type EntityCode =
-  | 'CNEDOGE'      // Centro Nacional de Expedición de Documentos (Passports, DIP, Residences)
-  | 'EXTRANJERIA'  // Dirección General de Extranjería
-  | 'DGT'          // Dirección General de Tráfico (Licenses, Vehicles)
-  | 'OFIVE'        // Oficina de Vehículos (CUVE)
-  | 'ITVE'         // Inspección Técnica de Vehículos
-  | 'ONRC'         // Oficina Nacional de Registro de Contratos
-  | 'MINFP'        // Ministerio de Función Pública
-  | 'TESORO'       // Treasury (Trésor)
-  | 'DGI'          // Dirección General de Impuestos
-  | 'GENERAL';     // Generic/fallback
+  | 'CNEDOGE'           // Centro Nacional de Expedición de Documentos (parent entity)
+  | 'CNEDOGE_PASAPORTE' // CNEDOGE department - Passports
+  | 'CNEDOGE_RESIDENCIA'// CNEDOGE department - Residence permits
+  | 'EXTRANJERIA'       // Dirección General de Extranjería
+  | 'DGT'               // Dirección General de Tráfico (Licenses, Vehicles)
+  | 'OFIVE'             // Oficina de Vehículos (CUVE)
+  | 'ITVE'              // Inspección Técnica de Vehículos
+  | 'ONRC'              // Oficina Nacional de Registro de Contratos
+  | 'MINFP'             // Ministerio de Función Pública
+  | 'TESORO'            // Treasury (Trésor)
+  | 'DGI'               // Dirección General de Impuestos
+  | 'GENERAL';          // Generic/fallback
+
+// =============================================================================
+// MINISTRY CODES - For ministry_agent dashboard aggregation
+// =============================================================================
+// Using actual ministry_code values from the database
+
+export type MinistryCode =
+  | 'M-009'   // MINISTERIO DE INTERIOR Y COOPERACIONES LOCALES - DGT, CNEDOGE
+  | 'M-007';  // MINISTERIO DE HACIENDA ECONOMIA PLANIFICACIÓN E INVERSIONES - TESORO, DGI
+
+/**
+ * Mapping of ministry to its child entities
+ * Used by ministry_agent to aggregate menus from all entities
+ */
+export const MINISTRY_ENTITIES: Record<MinistryCode, EntityCode[]> = {
+  'M-009': ['CNEDOGE', 'CNEDOGE_PASAPORTE', 'CNEDOGE_RESIDENCIA', 'DGT', 'EXTRANJERIA'],
+  'M-007': ['TESORO', 'DGI'],
+};
 
 // =============================================================================
 // WORKFLOW CODES - Must match backend WorkflowCode enum

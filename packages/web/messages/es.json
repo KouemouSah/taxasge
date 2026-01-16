@@ -4614,6 +4614,12 @@
       "cnedoge": {
         "title": "CNEDOGE"
       },
+      "cnedogePasaporte": {
+        "title": "CNEDOGE - Pasaportes"
+      },
+      "cnedogeResidencia": {
+        "title": "CNEDOGE - Residencias"
+      },
       "dgt": {
         "title": "DG Tráfico"
       },
@@ -4644,6 +4650,7 @@
     },
     "nav": {
       "dashboard": "Panel de Control",
+      "ministryDashboard": "Panel del Ministerio",
       "passports": "Pasaportes",
       "residences": "Residencias",
       "driverLicenses": "Licencias de Conducir",

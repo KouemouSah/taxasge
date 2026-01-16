@@ -101,7 +101,7 @@ class AgentProfileRepository:
         profile_id: Optional[UUID] = None,
         user_id: Optional[UUID] = None,
     ) -> Optional[Dict[str, Any]]:
-        """Get agent profile with user, entity, and ministry details.
+        """Get agent profile with user, entity, ministry details and available workflows.
 
         Args:
             conn: Database connection
@@ -109,6 +109,12 @@ class AgentProfileRepository:
             user_id: User UUID to lookup profile by (optional)
 
         One of profile_id or user_id must be provided.
+
+        Returns agent profile with:
+        - User details (email, full_name, phone)
+        - Entity details (code, name, type, parent info)
+        - Ministry details (code, name)
+        - Available workflows (inherited from entity or explicit specializations)
         """
         base_query = """
             SELECT
@@ -118,6 +124,10 @@ class AgentProfileRepository:
                 u.phone_number as user_phone,
                 e.code as entity_code,
                 e.name as entity_name,
+                e.entity_type::text as entity_type,
+                e.parent_entity_id,
+                pe.code as parent_entity_code,
+                pe.name as parent_entity_name,
                 m.ministry_code,
                 m.name_es as ministry_name,
                 CASE
@@ -129,10 +139,21 @@ class AgentProfileRepository:
                 aw.current_assignments,
                 aw.capacity_percentage,
                 aw.workload_status::text,
-                aw.availability::text
+                aw.availability::text,
+                -- Available workflows: specializations if set, otherwise entity workflows
+                CASE
+                    WHEN ap.specializations IS NOT NULL AND jsonb_array_length(ap.specializations) > 0
+                    THEN ap.specializations
+                    WHEN e.workflow_codes IS NOT NULL AND jsonb_array_length(e.workflow_codes) > 0
+                    THEN e.workflow_codes
+                    WHEN pe.workflow_codes IS NOT NULL AND jsonb_array_length(pe.workflow_codes) > 0
+                    THEN pe.workflow_codes
+                    ELSE '[]'::jsonb
+                END as available_workflows_jsonb
             FROM agent_profiles ap
             JOIN users u ON ap.user_id = u.id
             LEFT JOIN entities e ON ap.entity_id = e.id
+            LEFT JOIN entities pe ON e.parent_entity_id = pe.id
             LEFT JOIN ministries m ON ap.ministry_id = m.id
             LEFT JOIN agent_workloads aw ON ap.id = aw.agent_profile_id
         """
@@ -146,7 +167,23 @@ class AgentProfileRepository:
         else:
             raise ValueError("Either profile_id or user_id must be provided")
 
-        return dict(result) if result else None
+        if not result:
+            return None
+
+        # Convert to dict and process available_workflows
+        data = dict(result)
+        workflows_jsonb = data.pop('available_workflows_jsonb', None)
+        if workflows_jsonb:
+            if isinstance(workflows_jsonb, str):
+                data['available_workflows'] = json.loads(workflows_jsonb)
+            elif isinstance(workflows_jsonb, list):
+                data['available_workflows'] = workflows_jsonb
+            else:
+                data['available_workflows'] = list(workflows_jsonb) if workflows_jsonb else []
+        else:
+            data['available_workflows'] = []
+
+        return data
 
     async def update(
         self,
