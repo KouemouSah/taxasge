@@ -89,10 +89,106 @@ interface WorkflowWithTariffs extends Workflow {
   tariffsList: WorkflowTariff[]
 }
 
+/**
+ * Business domain configuration for workflow grouping
+ * Each domain has a code prefix, display name, icon color, and description
+ */
+interface WorkflowDomain {
+  id: string
+  prefixes: string[]  // Workflow code prefixes that belong to this domain
+  name: string
+  description: string
+  icon: 'passport' | 'home' | 'car' | 'license' | 'contract' | 'public' | 'other'
+  color: string  // Tailwind color class
+}
+
+const WORKFLOW_DOMAINS: WorkflowDomain[] = [
+  {
+    id: 'pasaporte',
+    prefixes: ['PASAPORTE_'],
+    name: 'Pasaportes',
+    description: 'Solicitudes de pasaportes: nuevos, renovaciones, duplicados',
+    icon: 'passport',
+    color: 'blue',
+  },
+  {
+    id: 'residencia',
+    prefixes: ['RESIDENCIA_'],
+    name: 'Permisos de Residencia',
+    description: 'Permisos de residencia para extranjeros',
+    icon: 'home',
+    color: 'green',
+  },
+  {
+    id: 'vehiculo',
+    prefixes: ['VEHICULO_'],
+    name: 'Vehículos',
+    description: 'Matriculaciones, transferencias, ITV',
+    icon: 'car',
+    color: 'orange',
+  },
+  {
+    id: 'conducir',
+    prefixes: ['CONDUCIR_'],
+    name: 'Licencias de Conducir',
+    description: 'Certificados para conducir: nuevos, canjes, renovaciones',
+    icon: 'license',
+    color: 'purple',
+  },
+  {
+    id: 'contrato',
+    prefixes: ['CONTRATO_'],
+    name: 'Contratos',
+    description: 'Registro de contratos públicos y privados',
+    icon: 'contract',
+    color: 'amber',
+  },
+  {
+    id: 'funcion_publica',
+    prefixes: ['FP_'],
+    name: 'Función Pública',
+    description: 'Trámites de funcionarios públicos',
+    icon: 'public',
+    color: 'indigo',
+  },
+  {
+    id: 'otros',
+    prefixes: [],  // Catch-all - workflows that don't match any predefined prefix
+    name: 'Otros Trámites (Admin)',
+    description: 'Workflows dinámicos creados via la interfaz de administración',
+    icon: 'other',
+    color: 'slate',
+  },
+]
+
+/**
+ * Get the domain for a workflow based on its code
+ */
+const getWorkflowDomain = (code: string): WorkflowDomain => {
+  for (const domain of WORKFLOW_DOMAINS) {
+    if (domain.prefixes.some(prefix => code.startsWith(prefix))) {
+      return domain
+    }
+  }
+  return WORKFLOW_DOMAINS[WORKFLOW_DOMAINS.length - 1] // 'otros'
+}
+
+/**
+ * Get icon color classes for a domain
+ */
+const getDomainColorClasses = (color: string) => ({
+  bg: `bg-${color}-100`,
+  text: `text-${color}-700`,
+  border: `border-${color}-200`,
+  badgeBg: `bg-${color}-50`,
+  badgeText: `text-${color}-600`,
+})
+
 interface WorkflowGroup {
-  parent: Workflow | null
-  children: WorkflowWithTariffs[]
-  isExpanded: boolean
+  domain: WorkflowDomain
+  workflows: WorkflowWithTariffs[]
+  predefinedCount: number
+  dynamicCount: number
 }
 
 export default function WorkflowsPage() {
@@ -109,7 +205,10 @@ export default function WorkflowsPage() {
   const [sourceFilter, setSourceFilter] = useState<string>('all')
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [workflowToDelete, setWorkflowToDelete] = useState<Workflow | null>(null)
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
+  // Start with all groups expanded by default
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
+    new Set(WORKFLOW_DOMAINS.map(d => d.id))
+  )
 
   // Mutations
   const deleteWorkflowMutation = useDeleteWorkflow()
@@ -120,13 +219,12 @@ export default function WorkflowsPage() {
 
   const isLoading = loadingWorkflows || loadingTariffs
 
-  // Build hierarchical structure
+  // Build groups by business domain (métier)
   const workflowGroups = useMemo(() => {
     if (!workflows || !tariffs) return []
 
-    // Separate parent workflows from child workflows
-    const parentWorkflows = workflows.filter((wf) => wf.is_parent === true)
-    const childWorkflows = workflows.filter((wf) => wf.is_parent !== true)
+    // Filter out parent workflows (is_parent=true) - we only show actual workflows
+    const actualWorkflows = workflows.filter((wf) => wf.is_parent !== true)
 
     // Map tariffs by workflow_code for quick lookup
     const tariffsByWorkflow = new Map<string, WorkflowTariff[]>()
@@ -137,81 +235,72 @@ export default function WorkflowsPage() {
       tariffsByWorkflow.get(t.workflow_code)?.push(t)
     })
 
-    // Create groups
+    // Group workflows by domain based on code prefix
+    const groupsByDomain = new Map<string, WorkflowWithTariffs[]>()
+
+    actualWorkflows.forEach((wf) => {
+      const domain = getWorkflowDomain(wf.code)
+      if (!groupsByDomain.has(domain.id)) {
+        groupsByDomain.set(domain.id, [])
+      }
+      groupsByDomain.get(domain.id)?.push({
+        ...wf,
+        tariffsList: tariffsByWorkflow.get(wf.code) || [],
+      })
+    })
+
+    // Create WorkflowGroup array from WORKFLOW_DOMAINS order
     const groups: WorkflowGroup[] = []
-    const assignedChildren = new Set<string>()
 
-    // First, create groups for parent workflows
-    parentWorkflows.forEach((parent) => {
-      const children = childWorkflows
-        .filter((child) => child.parent_workflow_code === parent.code)
-        .map((child) => ({
-          ...child,
-          tariffsList: tariffsByWorkflow.get(child.code) || [],
-        }))
-        .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
+    WORKFLOW_DOMAINS.forEach((domain) => {
+      const domainWorkflows = groupsByDomain.get(domain.id) || []
+      if (domainWorkflows.length > 0) {
+        // Sort workflows by display_order then by name
+        domainWorkflows.sort((a, b) => {
+          const orderDiff = (a.display_order || 0) - (b.display_order || 0)
+          if (orderDiff !== 0) return orderDiff
+          return a.name_es.localeCompare(b.name_es)
+        })
 
-      children.forEach((child) => assignedChildren.add(child.code))
-
-      groups.push({
-        parent,
-        children,
-        isExpanded: expandedGroups.has(parent.code),
-      })
+        groups.push({
+          domain,
+          workflows: domainWorkflows,
+          predefinedCount: domainWorkflows.filter((wf) => wf.is_generic === false).length,
+          dynamicCount: domainWorkflows.filter((wf) => wf.is_generic === true).length,
+        })
+      }
     })
 
-    // Then, create a group for orphan workflows (those without parent)
-    const orphanWorkflows = childWorkflows
-      .filter((child) => !assignedChildren.has(child.code) && !child.parent_workflow_code)
-      .map((child) => ({
-        ...child,
-        tariffsList: tariffsByWorkflow.get(child.code) || [],
-      }))
-      .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
-
-    if (orphanWorkflows.length > 0) {
-      groups.push({
-        parent: null,
-        children: orphanWorkflows,
-        isExpanded: expandedGroups.has('_orphans'),
-      })
-    }
-
-    // Sort groups by display_order of parent
-    return groups.sort((a, b) => {
-      const orderA = a.parent?.display_order || 999
-      const orderB = b.parent?.display_order || 999
-      return orderA - orderB
-    })
-  }, [workflows, tariffs, expandedGroups])
+    return groups
+  }, [workflows, tariffs])
 
   // Filter groups based on search and filters
   const filteredGroups = useMemo(() => {
     return workflowGroups
       .map((group) => {
-        let filteredChildren = group.children
+        let filteredWorkflows = group.workflows
 
         // Apply category filter
         if (categoryFilter !== 'all') {
-          filteredChildren = filteredChildren.filter((wf) => wf.category === categoryFilter)
+          filteredWorkflows = filteredWorkflows.filter((wf) => wf.category === categoryFilter)
         }
 
         // Apply status filter
         if (statusFilter !== 'all') {
           const isActive = statusFilter === 'active'
-          filteredChildren = filteredChildren.filter((wf) => wf.is_active === isActive)
+          filteredWorkflows = filteredWorkflows.filter((wf) => wf.is_active === isActive)
         }
 
         // Apply source filter (predefined vs dynamic)
         if (sourceFilter !== 'all') {
           const isGeneric = sourceFilter === 'dynamic'
-          filteredChildren = filteredChildren.filter((wf) => wf.is_generic === isGeneric)
+          filteredWorkflows = filteredWorkflows.filter((wf) => wf.is_generic === isGeneric)
         }
 
         // Apply search filter
         if (searchQuery) {
           const query = searchQuery.toLowerCase()
-          filteredChildren = filteredChildren.filter(
+          filteredWorkflows = filteredWorkflows.filter(
             (wf) =>
               wf.code.toLowerCase().includes(query) ||
               wf.name_es.toLowerCase().includes(query) ||
@@ -220,9 +309,14 @@ export default function WorkflowsPage() {
           )
         }
 
-        return { ...group, children: filteredChildren }
+        return {
+          ...group,
+          workflows: filteredWorkflows,
+          predefinedCount: filteredWorkflows.filter((wf) => wf.is_generic === false).length,
+          dynamicCount: filteredWorkflows.filter((wf) => wf.is_generic === true).length,
+        }
       })
-      .filter((group) => group.children.length > 0)
+      .filter((group) => group.workflows.length > 0)
   }, [workflowGroups, categoryFilter, statusFilter, sourceFilter, searchQuery])
 
   // Stats
@@ -231,13 +325,13 @@ export default function WorkflowsPage() {
   const dynamicCount = workflows?.filter((wf) => wf.is_parent !== true && wf.is_generic === true).length || 0
 
   // Toggle group expansion
-  const toggleGroup = (code: string) => {
+  const toggleGroup = (domainId: string) => {
     setExpandedGroups((prev) => {
       const next = new Set(prev)
-      if (next.has(code)) {
-        next.delete(code)
+      if (next.has(domainId)) {
+        next.delete(domainId)
       } else {
-        next.add(code)
+        next.add(domainId)
       }
       return next
     })
@@ -245,8 +339,8 @@ export default function WorkflowsPage() {
 
   // Expand all groups
   const expandAllGroups = () => {
-    const allCodes = new Set(workflowGroups.map((g) => g.parent?.code || '_orphans'))
-    setExpandedGroups(allCodes)
+    const allIds = new Set(workflowGroups.map((g) => g.domain.id))
+    setExpandedGroups(allIds)
   }
 
   // Collapse all groups
@@ -404,7 +498,7 @@ export default function WorkflowsPage() {
                 Workflows Agrupados
               </CardTitle>
               <CardDescription>
-                {filteredGroups.reduce((acc, g) => acc + g.children.length, 0)} workflows en {filteredGroups.length} grupos
+                {filteredGroups.reduce((acc, g) => acc + g.workflows.length, 0)} workflows en {filteredGroups.length} grupos por métier
               </CardDescription>
             </div>
             <div className="flex gap-2">
@@ -466,65 +560,73 @@ export default function WorkflowsPage() {
             </Select>
           </div>
 
-          {/* Hierarchical Workflow List */}
+          {/* Workflow List by Business Domain */}
           {filteredGroups.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <GitBranch className="h-12 w-12 mb-4 opacity-50" />
               <p>{t('noWorkflowsFound')}</p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {filteredGroups.map((group) => {
-                const groupCode = group.parent?.code || '_orphans'
-                const isExpanded = expandedGroups.has(groupCode)
+                const isExpanded = expandedGroups.has(group.domain.id)
+                const colorClasses = getDomainColorClasses(group.domain.color)
 
                 return (
                   <Collapsible
-                    key={groupCode}
+                    key={group.domain.id}
                     open={isExpanded}
-                    onOpenChange={() => toggleGroup(groupCode)}
-                    className="border rounded-lg"
+                    onOpenChange={() => toggleGroup(group.domain.id)}
+                    className={cn('border rounded-lg overflow-hidden', colorClasses.border)}
                   >
-                    {/* Group Header */}
+                    {/* Group Header - Domain */}
                     <CollapsibleTrigger asChild>
-                      <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors">
+                      <div className={cn(
+                        'flex items-center justify-between p-4 cursor-pointer transition-colors',
+                        isExpanded ? colorClasses.bg : 'hover:bg-muted/50'
+                      )}>
                         <div className="flex items-center gap-3">
                           <ChevronRight
                             className={cn(
                               'h-5 w-5 transition-transform duration-200',
+                              colorClasses.text,
                               isExpanded && 'transform rotate-90'
                             )}
                           />
                           <div>
                             <div className="font-semibold text-lg flex items-center gap-2">
-                              {group.parent?.name_es || 'Otros Workflows'}
+                              {group.domain.name}
                               <Badge variant="secondary" className="text-xs">
-                                {group.children.length}
+                                {group.workflows.length}
                               </Badge>
                             </div>
-                            {group.parent?.description_es && (
-                              <p className="text-sm text-muted-foreground">
-                                {group.parent.description_es}
-                              </p>
-                            )}
+                            <p className="text-sm text-muted-foreground">
+                              {group.domain.description}
+                            </p>
                           </div>
                         </div>
-                        {group.parent?.tags && group.parent.tags.length > 0 && (
-                          <div className="hidden md:flex gap-1">
-                            {group.parent.tags.slice(0, 3).map((tag, idx) => (
-                              <Badge key={idx} variant="outline" className="text-xs">
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
+                        {/* Stats badges */}
+                        <div className="hidden md:flex gap-2">
+                          {group.predefinedCount > 0 && (
+                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                              <Lock className="h-3 w-3 mr-1" />
+                              {group.predefinedCount} predefinidos
+                            </Badge>
+                          )}
+                          {group.dynamicCount > 0 && (
+                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                              <Pencil className="h-3 w-3 mr-1" />
+                              {group.dynamicCount} dinámicos
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </CollapsibleTrigger>
 
-                    {/* Group Content - Child Workflows */}
+                    {/* Group Content - Workflows */}
                     <CollapsibleContent>
-                      <div className="border-t bg-muted/30">
-                        {group.children.map((wf) => (
+                      <div className="border-t bg-white">
+                        {group.workflows.map((wf) => (
                           <div
                             key={wf.code}
                             className="flex items-center justify-between px-4 py-3 border-b last:border-b-0 hover:bg-muted/50 cursor-pointer transition-colors"
