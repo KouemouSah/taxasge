@@ -836,23 +836,31 @@ async def list_document_requirements(
         ORDER BY display_order, document_code
     """, code)
 
-    return [
-        DocumentRequirementResponse(
+    result = []
+    for row in rows:
+        # Explicit type conversions for PostgreSQL enum and JSONB
+        condition_type_val = row.get('condition_type')
+        condition_type_str = str(condition_type_val) if condition_type_val else 'always'
+
+        condition_value_val = row.get('condition_value')
+        condition_value_dict = dict(condition_value_val) if condition_value_val else None
+
+        result.append(DocumentRequirementResponse(
             id=str(row['id']),
             workflow_code=row['workflow_code'],
             document_code=row['document_code'],
             document_name_es=row['document_name_es'],
             document_template_id=row.get('document_template_id'),
-            condition_type=row.get('condition_type', 'always'),
-            condition_value=row.get('condition_value'),
+            condition_type=condition_type_str,
+            condition_value=condition_value_dict,
             is_required=row['is_required'],
-            display_order=row['display_order'],
-            instructions_es=row['instructions_es'],
-            extraction_schema_key=row['extraction_schema_key'],
+            display_order=row['display_order'] or 0,
+            instructions_es=row.get('instructions_es'),
+            extraction_schema_key=row.get('extraction_schema_key'),
             is_active=row.get('is_active', True)
-        )
-        for row in rows
-    ]
+        ))
+
+    return result
 
 
 @router.post(
