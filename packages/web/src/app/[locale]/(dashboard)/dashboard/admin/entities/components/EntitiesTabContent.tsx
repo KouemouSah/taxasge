@@ -5,15 +5,22 @@
  * CRUD management for entities with workflow_codes
  */
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import {
   Table,
   TableBody,
@@ -57,8 +64,11 @@ import {
   AlertTriangle,
   Layers,
   Workflow,
+  ChevronsUpDown,
+  X,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { useWorkflows } from '@/modules/service-requests-admin/hooks'
 import {
   useEntitiesWithDetails,
   useEntitiesSimple,
@@ -111,7 +121,8 @@ export default function EntitiesTabContent() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [selectedEntity, setSelectedEntity] = useState<EntityWithDetails | null>(null)
   const [formData, setFormData] = useState<EntityFormData>(defaultFormData)
-  const [workflowCodesInput, setWorkflowCodesInput] = useState('')
+  const [workflowSearchQuery, setWorkflowSearchQuery] = useState('')
+  const [isWorkflowPopoverOpen, setIsWorkflowPopoverOpen] = useState(false)
 
   // API filters
   const apiFilters: EntityFilters = {
@@ -122,6 +133,7 @@ export default function EntitiesTabContent() {
   // Queries
   const { data: entitiesData, isLoading, error, refetch } = useEntitiesWithDetails(apiFilters)
   const { data: parentEntities } = useEntitiesSimple(true)
+  const { data: availableWorkflows, isLoading: isLoadingWorkflows } = useWorkflows({ is_active: true })
 
   // Mutations
   const createMutation = useCreateEntity()
@@ -129,6 +141,43 @@ export default function EntitiesTabContent() {
   const deleteMutation = useDeleteEntity()
 
   const entities = entitiesData?.items || []
+
+  // Filter available workflows by search query in the popover
+  const filteredWorkflows = useMemo(() => {
+    if (!availableWorkflows) return []
+    if (!workflowSearchQuery) return availableWorkflows
+    const search = workflowSearchQuery.toLowerCase()
+    return availableWorkflows.filter(
+      (w) =>
+        w.code.toLowerCase().includes(search) ||
+        w.name_es.toLowerCase().includes(search)
+    )
+  }, [availableWorkflows, workflowSearchQuery])
+
+  // Toggle workflow code selection
+  const handleToggleWorkflowCode = (code: string) => {
+    const currentCodes = formData.workflow_codes || []
+    const isSelected = currentCodes.includes(code)
+    if (isSelected) {
+      setFormData({
+        ...formData,
+        workflow_codes: currentCodes.filter((c) => c !== code),
+      })
+    } else {
+      setFormData({
+        ...formData,
+        workflow_codes: [...currentCodes, code],
+      })
+    }
+  }
+
+  // Remove a specific workflow code
+  const handleRemoveWorkflowCode = (code: string) => {
+    setFormData({
+      ...formData,
+      workflow_codes: (formData.workflow_codes || []).filter((c) => c !== code),
+    })
+  }
 
   // Filter entities by search
   const filteredEntities = entities.filter((e) => {
@@ -146,7 +195,7 @@ export default function EntitiesTabContent() {
   const handleCreate = () => {
     setSelectedEntity(null)
     setFormData(defaultFormData)
-    setWorkflowCodesInput('')
+    setWorkflowSearchQuery('')
     setIsDialogOpen(true)
   }
 
@@ -163,7 +212,7 @@ export default function EntitiesTabContent() {
       workflow_codes: entity.workflow_codes || [],
       is_active: entity.is_active,
     })
-    setWorkflowCodesInput((entity.workflow_codes || []).join(', '))
+    setWorkflowSearchQuery('')
     setIsDialogOpen(true)
   }
 
@@ -171,14 +220,6 @@ export default function EntitiesTabContent() {
   const handleDeleteClick = (entity: EntityWithDetails) => {
     setSelectedEntity(entity)
     setIsDeleteDialogOpen(true)
-  }
-
-  // Parse workflow codes from input
-  const parseWorkflowCodes = (input: string): string[] => {
-    return input
-      .split(/[,\n]/)
-      .map((code) => code.trim().toUpperCase())
-      .filter((code) => code.length > 0)
   }
 
   // Submit form
@@ -192,8 +233,7 @@ export default function EntitiesTabContent() {
       return
     }
 
-    const workflowCodes = parseWorkflowCodes(workflowCodesInput)
-    const data = { ...formData, workflow_codes: workflowCodes }
+    const data = { ...formData }
 
     try {
       if (selectedEntity) {
@@ -494,27 +534,113 @@ export default function EntitiesTabContent() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="workflow_codes">
-                Workflow Codes
-                <span className="text-xs text-muted-foreground ml-2">
-                  (comma or newline separated, will be uppercased)
-                </span>
-              </Label>
-              <Textarea
-                id="workflow_codes"
-                value={workflowCodesInput}
-                onChange={(e) => setWorkflowCodesInput(e.target.value)}
-                placeholder="PASAPORTE_NUEVO, PASAPORTE_RENOVACION&#10;RESIDENCIA_PRIMERA_VEZ"
-                rows={3}
-                className="font-mono text-sm"
-              />
-              {workflowCodesInput && (
+              <Label>Workflow Codes</Label>
+              <Popover open={isWorkflowPopoverOpen} onOpenChange={setIsWorkflowPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={isWorkflowPopoverOpen}
+                    className="w-full justify-between font-normal h-auto min-h-10"
+                  >
+                    {formData.workflow_codes.length > 0 ? (
+                      <span className="text-sm">
+                        {formData.workflow_codes.length} workflow(s) selected
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">Select workflows...</span>
+                    )}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[400px] p-0" align="start">
+                  <div className="p-2 border-b">
+                    <div className="relative">
+                      <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        placeholder="Search workflows..."
+                        value={workflowSearchQuery}
+                        onChange={(e) => setWorkflowSearchQuery(e.target.value)}
+                        className="pl-8 h-8"
+                      />
+                    </div>
+                  </div>
+                  <ScrollArea className="h-[250px]">
+                    {isLoadingWorkflows ? (
+                      <div className="flex items-center justify-center py-6">
+                        <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+                        <span className="ml-2 text-sm text-muted-foreground">Loading...</span>
+                      </div>
+                    ) : filteredWorkflows.length === 0 ? (
+                      <div className="py-6 text-center text-sm text-muted-foreground">
+                        No workflows found
+                      </div>
+                    ) : (
+                      <div className="p-2 space-y-1">
+                        {filteredWorkflows.map((workflow) => {
+                          const isSelected = formData.workflow_codes.includes(workflow.code)
+                          return (
+                            <div
+                              key={workflow.code}
+                              className={`flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-muted ${
+                                isSelected ? 'bg-muted' : ''
+                              }`}
+                              onClick={() => handleToggleWorkflowCode(workflow.code)}
+                            >
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => handleToggleWorkflowCode(workflow.code)}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="font-mono text-sm font-medium truncate">
+                                  {workflow.code}
+                                </div>
+                                <div className="text-xs text-muted-foreground truncate">
+                                  {workflow.name_es}
+                                </div>
+                              </div>
+                              {!workflow.is_generic && (
+                                <Badge variant="outline" className="text-xs shrink-0">
+                                  Predefined
+                                </Badge>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </ScrollArea>
+                </PopoverContent>
+              </Popover>
+
+              {/* Selected workflow codes as badges */}
+              {formData.workflow_codes.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2">
-                  {parseWorkflowCodes(workflowCodesInput).map((code, i) => (
-                    <Badge key={i} variant="secondary" className="text-xs">
-                      {code}
-                    </Badge>
-                  ))}
+                  {formData.workflow_codes.map((code) => {
+                    const workflow = availableWorkflows?.find((w) => w.code === code)
+                    return (
+                      <Badge
+                        key={code}
+                        variant="secondary"
+                        className="text-xs pr-1 flex items-center gap-1"
+                      >
+                        <span className="font-mono">{code}</span>
+                        {workflow && (
+                          <span className="text-muted-foreground max-w-[100px] truncate">
+                            - {workflow.name_es}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveWorkflowCode(code)}
+                          className="ml-1 rounded-full hover:bg-muted p-0.5"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    )
+                  })}
                 </div>
               )}
             </div>
