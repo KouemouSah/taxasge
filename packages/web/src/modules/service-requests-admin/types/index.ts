@@ -421,17 +421,17 @@ export interface AppointmentsAdminState {
 // HELPER CONSTANTS
 // ============================================================================
 
-// Database values (lowercase) with display labels
+// Database values (UPPERCASE) with display labels - must match backend workflow.category values
 export const WORKFLOW_CATEGORIES_MAP: { value: string; label: string }[] = [
-  { value: 'identite', label: 'Identidad' },
-  { value: 'vehiculo', label: 'Vehículos' },
-  { value: 'contrato', label: 'Contratos' },
-  { value: 'conducir', label: 'Conducción' },
-  { value: 'funcion_publica', label: 'Función Pública' },
-  { value: 'extranjeria', label: 'Extranjería' },
-  { value: 'registro_civil', label: 'Registro Civil' },
-  { value: 'comercio', label: 'Comercio' },
-  { value: 'otros', label: 'Otros' },
+  { value: 'IDENTIDAD', label: 'Identidad' },
+  { value: 'VEHICULOS', label: 'Vehículos' },
+  { value: 'CONTRATOS', label: 'Contratos' },
+  { value: 'CONDUCCION', label: 'Conducción' },
+  { value: 'FUNCION_PUBLICA', label: 'Función Pública' },
+  { value: 'EXTRANJERIA', label: 'Extranjería' },
+  { value: 'REGISTRO_CIVIL', label: 'Registro Civil' },
+  { value: 'COMERCIO', label: 'Comercio' },
+  { value: 'OTROS', label: 'Otros' },
 ]
 
 // Keep the old constant for backwards compatibility (use the values from the map)
