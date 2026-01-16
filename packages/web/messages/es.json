@@ -568,6 +568,13 @@
       "uploading": "Subiendo..."
     },
     "entities": {
+      "pageTitle": "Gestión de Entidades",
+      "pageSubtitle": "Administrar entidades, ubicaciones y ciudades de Guinea Ecuatorial",
+      "tabs": {
+        "entities": "Entidades",
+        "locations": "Ubicaciones",
+        "cities": "Ciudades"
+      },
       "title": "Gestión de Entidades",
       "subtitle": "Administrar entidades, departamentos y asignación de workflows",
       "listTitle": "Lista de Entidades",
@@ -587,7 +594,78 @@
       "typeEntity": "Entidad",
       "typeDepartment": "Departamento",
       "noEntitiesFound": "No se encontraron entidades",
-      "workflowCodesHint": "Separados por coma o salto de línea"
+      "workflowCodesHint": "Separados por coma o salto de línea",
+      "locations": {
+        "title": "Ubicaciones de Entidades",
+        "subtitle": "Gestionar ubicaciones físicas de las entidades",
+        "addLocation": "Agregar Ubicación",
+        "createSuccess": "Ubicación creada exitosamente",
+        "updateSuccess": "Ubicación actualizada exitosamente",
+        "deleteSuccess": "Ubicación eliminada exitosamente",
+        "activated": "Ubicación activada",
+        "deactivated": "Ubicación desactivada",
+        "mainOffice": "Principal",
+        "stats": {
+          "total": "Total Ubicaciones",
+          "active": "activas",
+          "insular": "Insular",
+          "continental": "Continental",
+          "entities": "Entidades",
+          "registeredEntities": "registradas"
+        },
+        "filters": {
+          "city": "Ciudad",
+          "entity": "Entidad",
+          "status": "Estado",
+          "allCities": "Todas las ciudades",
+          "allEntities": "Todas las entidades",
+          "allStatus": "Todos los estados",
+          "activeOnly": "Solo activas",
+          "inactiveOnly": "Solo inactivas",
+          "searchPlaceholder": "Buscar ubicación..."
+        },
+        "table": {
+          "entity": "Entidad",
+          "city": "Ciudad",
+          "region": "Región",
+          "name": "Nombre",
+          "contact": "Contacto",
+          "status": "Estado",
+          "actions": "Acciones"
+        },
+        "status": {
+          "active": "Activa",
+          "inactive": "Inactiva"
+        },
+        "actions": {
+          "activate": "Activar",
+          "deactivate": "Desactivar"
+        },
+        "empty": {
+          "title": "No hay ubicaciones",
+          "description": "No se encontraron ubicaciones de entidades",
+          "createFirst": "Crear primera ubicación"
+        },
+        "form": {
+          "createTitle": "Crear Ubicación",
+          "createDescription": "Agregar una nueva ubicación para una entidad",
+          "editTitle": "Editar Ubicación",
+          "editDescription": "Modificar los datos de la ubicación"
+        },
+        "deleteConfirm": {
+          "title": "Eliminar Ubicación",
+          "description": "¿Está seguro de eliminar la ubicación \"{name}\" en {city}? Esta acción no se puede deshacer."
+        },
+        "pagination": {
+          "showing": "Mostrando {from} a {to} de {total}",
+          "loading": "Cargando...",
+          "loadMore": "Cargar más"
+        }
+      },
+      "cities": {
+        "title": "Gestión de Ciudades",
+        "subtitle": "Administrar las ciudades de Guinea Ecuatorial"
+      }
     },
     "nav": {
       "accessManagement": "Gestión de Accesos",
