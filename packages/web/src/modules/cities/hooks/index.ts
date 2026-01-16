@@ -10,6 +10,7 @@ import type {
   CityUpdate,
   EntityCreate,
   EntityUpdate,
+  EntityFilters,
   Region,
 } from '../types'
 import * as api from '../services/api'
@@ -28,10 +29,13 @@ export const citiesKeys = {
 export const entitiesKeys = {
   all: ['entities'] as const,
   lists: () => [...entitiesKeys.all, 'list'] as const,
-  list: (filters: { is_active?: boolean }) => [...entitiesKeys.lists(), filters] as const,
+  list: (filters: EntityFilters) => [...entitiesKeys.lists(), filters] as const,
+  withDetails: (filters: EntityFilters) => [...entitiesKeys.all, 'with-details', filters] as const,
   simple: (isActive: boolean) => [...entitiesKeys.all, 'simple', isActive] as const,
   details: () => [...entitiesKeys.all, 'detail'] as const,
   detail: (id: string) => [...entitiesKeys.details(), id] as const,
+  detailWithDetails: (id: string) => [...entitiesKeys.all, 'detail-with-details', id] as const,
+  departments: (id: string) => [...entitiesKeys.all, 'departments', id] as const,
 }
 
 // ============================================================================
@@ -100,10 +104,17 @@ export function useDeleteCity() {
 // Entity Hooks
 // ============================================================================
 
-export function useEntities(params?: { is_active?: boolean }) {
+export function useEntities(params?: EntityFilters) {
   return useQuery({
     queryKey: entitiesKeys.list(params || {}),
     queryFn: () => api.getEntities(params),
+  })
+}
+
+export function useEntitiesWithDetails(params?: EntityFilters) {
+  return useQuery({
+    queryKey: entitiesKeys.withDetails(params || {}),
+    queryFn: () => api.getEntitiesWithDetails(params),
   })
 }
 
@@ -119,6 +130,22 @@ export function useEntity(entityId: string) {
   return useQuery({
     queryKey: entitiesKeys.detail(entityId),
     queryFn: () => api.getEntityById(entityId),
+    enabled: !!entityId,
+  })
+}
+
+export function useEntityWithDetails(entityId: string) {
+  return useQuery({
+    queryKey: entitiesKeys.detailWithDetails(entityId),
+    queryFn: () => api.getEntityWithDetails(entityId),
+    enabled: !!entityId,
+  })
+}
+
+export function useEntityDepartments(entityId: string) {
+  return useQuery({
+    queryKey: entitiesKeys.departments(entityId),
+    queryFn: () => api.getEntityDepartments(entityId),
     enabled: !!entityId,
   })
 }

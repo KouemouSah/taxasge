@@ -13,9 +13,12 @@ import type {
   CityListResponse,
   Entity,
   EntitySimple,
+  EntityWithDetails,
   EntityCreate,
   EntityUpdate,
   EntityListResponse,
+  EntityWithDetailsListResponse,
+  EntityFilters,
   Region,
 } from '../types'
 
@@ -61,8 +64,17 @@ export async function deleteCity(cityId: string): Promise<void> {
 // Entity API
 // ============================================================================
 
-export async function getEntities(params?: { is_active?: boolean }): Promise<EntityListResponse> {
+export async function getEntities(params?: EntityFilters): Promise<EntityListResponse> {
   const response = await apiClient.get<EntityListResponse>('/entities', { params })
+  return response.data
+}
+
+export async function getEntitiesWithDetails(
+  params?: EntityFilters
+): Promise<EntityWithDetailsListResponse> {
+  const response = await apiClient.get<EntityWithDetailsListResponse>('/entities/with-details', {
+    params,
+  })
   return response.data
 }
 
@@ -75,6 +87,16 @@ export async function getEntitiesSimple(isActive: boolean = true): Promise<Entit
 
 export async function getEntityById(entityId: string): Promise<Entity> {
   const response = await apiClient.get<Entity>(`/entities/${entityId}`)
+  return response.data
+}
+
+export async function getEntityWithDetails(entityId: string): Promise<EntityWithDetails> {
+  const response = await apiClient.get<EntityWithDetails>(`/entities/${entityId}/details`)
+  return response.data
+}
+
+export async function getEntityDepartments(entityId: string): Promise<Entity[]> {
+  const response = await apiClient.get<Entity[]>(`/entities/${entityId}/departments`)
   return response.data
 }
 

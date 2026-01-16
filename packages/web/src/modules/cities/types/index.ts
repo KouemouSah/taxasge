@@ -48,12 +48,20 @@ export interface CityListResponse {
   total: number
 }
 
+// Entity type enum
+export const ENTITY_TYPES = ['entity', 'department'] as const
+export type EntityType = (typeof ENTITY_TYPES)[number]
+
 // Entity interfaces
 export interface Entity {
   id: string
   code: string
   name: string
   description: string | null
+  entity_type: EntityType
+  parent_entity_id: string | null
+  ministry_id: number | null
+  workflow_codes: string[]
   is_active: boolean
   created_at: string
   updated_at: string
@@ -63,12 +71,26 @@ export interface EntitySimple {
   id: string
   code: string
   name: string
+  entity_type: EntityType
+}
+
+export interface EntityWithDetails extends Entity {
+  parent_entity_code: string | null
+  parent_entity_name: string | null
+  ministry_code: string | null
+  ministry_name: string | null
+  resolved_workflow_codes: string[]
+  workflow_count: number
 }
 
 export interface EntityCreate {
   code: string
   name: string
   description?: string | null
+  entity_type?: EntityType
+  parent_entity_id?: string | null
+  ministry_id?: number | null
+  workflow_codes?: string[]
   is_active?: boolean
 }
 
@@ -76,10 +98,26 @@ export interface EntityUpdate {
   code?: string
   name?: string
   description?: string | null
+  entity_type?: EntityType
+  parent_entity_id?: string | null
+  ministry_id?: number | null
+  workflow_codes?: string[]
   is_active?: boolean
 }
 
 export interface EntityListResponse {
   items: Entity[]
   total: number
+}
+
+export interface EntityWithDetailsListResponse {
+  items: EntityWithDetails[]
+  total: number
+}
+
+// Entity filters for API calls
+export interface EntityFilters {
+  entity_type?: EntityType
+  ministry_id?: number
+  is_active?: boolean
 }

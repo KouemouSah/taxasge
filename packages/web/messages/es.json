@@ -567,6 +567,28 @@
       "uploadImage": "Subir imagen",
       "uploading": "Subiendo..."
     },
+    "entities": {
+      "title": "Gestión de Entidades",
+      "subtitle": "Administrar entidades, departamentos y asignación de workflows",
+      "listTitle": "Lista de Entidades",
+      "createEntity": "Crear Entidad",
+      "editEntity": "Editar Entidad",
+      "deleteEntity": "Eliminar Entidad",
+      "entityCreated": "Entidad creada exitosamente",
+      "entityUpdated": "Entidad actualizada exitosamente",
+      "entityDeleted": "Entidad eliminada exitosamente",
+      "fieldCode": "Código",
+      "fieldName": "Nombre",
+      "fieldDescription": "Descripción",
+      "fieldType": "Tipo",
+      "fieldParent": "Entidad Padre",
+      "fieldWorkflowCodes": "Códigos de Workflow",
+      "fieldActive": "Activo",
+      "typeEntity": "Entidad",
+      "typeDepartment": "Departamento",
+      "noEntitiesFound": "No se encontraron entidades",
+      "workflowCodesHint": "Separados por coma o salto de línea"
+    },
     "nav": {
       "accessManagement": "Gestión de Accesos",
       "agents": "Agentes & Admins",
