@@ -227,8 +227,8 @@ export default function EntitiesTabContent() {
     if (!formData.code || !formData.name) {
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: 'Code and name are required',
+        title: tCommon('error'),
+        description: t('codeAndNameRequired'),
       })
       return
     }
@@ -241,18 +241,18 @@ export default function EntitiesTabContent() {
           entityId: selectedEntity.id,
           data: data as EntityUpdate,
         })
-        toast({ title: 'Success', description: 'Entity updated successfully' })
+        toast({ title: tCommon('success'), description: t('entityUpdated') })
       } else {
         await createMutation.mutateAsync(data as EntityCreate)
-        toast({ title: 'Success', description: 'Entity created successfully' })
+        toast({ title: tCommon('success'), description: t('entityCreated') })
       }
       setIsDialogOpen(false)
       refetch()
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to save entity',
+        title: tCommon('error'),
+        description: err instanceof Error ? err.message : tCommon('errorSaving'),
       })
     }
   }
@@ -263,14 +263,14 @@ export default function EntitiesTabContent() {
 
     try {
       await deleteMutation.mutateAsync(selectedEntity.id)
-      toast({ title: 'Success', description: 'Entity deleted successfully' })
+      toast({ title: tCommon('success'), description: t('entityDeleted') })
       setIsDeleteDialogOpen(false)
       refetch()
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to delete entity',
+        title: tCommon('error'),
+        description: err instanceof Error ? err.message : tCommon('errorDeleting'),
       })
     }
   }
@@ -285,7 +285,7 @@ export default function EntitiesTabContent() {
               <div>
                 <CardTitle>{t('listTitle') || 'Entities List'}</CardTitle>
                 <CardDescription>
-                  {filteredEntities.length} entities found
+                  {t('entitiesFound', { count: filteredEntities.length })}
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">
@@ -305,7 +305,7 @@ export default function EntitiesTabContent() {
               <div className="relative max-w-sm">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Search by code, name..."
+                  placeholder={t('searchPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9"
@@ -316,12 +316,12 @@ export default function EntitiesTabContent() {
                 onValueChange={(v) => setTypeFilter(v as 'all' | EntityType)}
               >
                 <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Type" />
+                  <SelectValue placeholder={t('fieldType')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="entity">Entity</SelectItem>
-                  <SelectItem value="department">Department</SelectItem>
+                  <SelectItem value="all">{t('allTypes')}</SelectItem>
+                  <SelectItem value="entity">{t('typeEntity')}</SelectItem>
+                  <SelectItem value="department">{t('typeDepartment')}</SelectItem>
                 </SelectContent>
               </Select>
               <Select
@@ -329,12 +329,12 @@ export default function EntitiesTabContent() {
                 onValueChange={(v) => setStatusFilter(v as 'all' | 'active' | 'inactive')}
               >
                 <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Status" />
+                  <SelectValue placeholder={t('table.status')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="all">{t('allStatus')}</SelectItem>
+                  <SelectItem value="active">{t('status.active')}</SelectItem>
+                  <SelectItem value="inactive">{t('status.inactive')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -344,7 +344,7 @@ export default function EntitiesTabContent() {
           {isLoading && (
             <div className="flex items-center justify-center py-8">
               <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-              <span className="ml-2 text-muted-foreground">Loading...</span>
+              <span className="ml-2 text-muted-foreground">{tCommon('loading')}</span>
             </div>
           )}
 
@@ -358,10 +358,10 @@ export default function EntitiesTabContent() {
           {!isLoading && !error && filteredEntities.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <Building className="h-12 w-12 mb-4 opacity-50" />
-              <p>No entities found</p>
+              <p>{t('noEntitiesFound')}</p>
               <Button className="mt-4" onClick={handleCreate}>
                 <Plus className="h-4 w-4 mr-2" />
-                Create First Entity
+                {t('createFirstEntity')}
               </Button>
             </div>
           )}
@@ -370,13 +370,13 @@ export default function EntitiesTabContent() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Parent</TableHead>
-                  <TableHead>Workflows</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t('table.code')}</TableHead>
+                  <TableHead>{t('table.name')}</TableHead>
+                  <TableHead>{t('table.type')}</TableHead>
+                  <TableHead>{t('table.parent')}</TableHead>
+                  <TableHead>{t('table.workflows')}</TableHead>
+                  <TableHead>{t('table.status')}</TableHead>
+                  <TableHead className="text-right">{t('table.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -424,7 +424,7 @@ export default function EntitiesTabContent() {
                             : 'bg-gray-100 text-gray-700'
                         }
                       >
-                        {entity.is_active ? 'Active' : 'Inactive'}
+                        {entity.is_active ? t('status.active') : t('status.inactive')}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -450,30 +450,28 @@ export default function EntitiesTabContent() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {selectedEntity ? 'Edit Entity' : 'Create Entity'}
+              {selectedEntity ? t('editEntity') : t('createEntity')}
             </DialogTitle>
             <DialogDescription>
-              {selectedEntity
-                ? 'Update entity information and workflow assignments'
-                : 'Create a new entity or department'}
+              {selectedEntity ? t('editDescription') : t('createDescription')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="code">Code *</Label>
+                <Label htmlFor="code">{t('fieldCode')} *</Label>
                 <Input
                   id="code"
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                  placeholder="e.g., CNEDOGE"
+                  placeholder="Ej: CNEDOGE"
                   maxLength={50}
                   disabled={!!selectedEntity}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="entity_type">Type *</Label>
+                <Label htmlFor="entity_type">{t('fieldType')} *</Label>
                 <Select
                   value={formData.entity_type}
                   onValueChange={(v) => setFormData({ ...formData, entity_type: v as EntityType })}
@@ -482,43 +480,43 @@ export default function EntitiesTabContent() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="entity">Entity (Top-level)</SelectItem>
-                    <SelectItem value="department">Department</SelectItem>
+                    <SelectItem value="entity">{t('entityTypes.entity')}</SelectItem>
+                    <SelectItem value="department">{t('entityTypes.department')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="name">Name *</Label>
+              <Label htmlFor="name">{t('fieldName')} *</Label>
               <Input
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., Centro Nacional de Documentos de Guinea Ecuatorial"
+                placeholder="Ej: Centro Nacional de Documentos de Guinea Ecuatorial"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">{t('fieldDescription')}</Label>
               <Textarea
                 id="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Optional description..."
+                placeholder={t('fieldDescription') + '...'}
                 rows={2}
               />
             </div>
 
             {formData.entity_type === 'department' && (
               <div className="space-y-2">
-                <Label htmlFor="parent_entity_id">Parent Entity *</Label>
+                <Label htmlFor="parent_entity_id">{t('fieldParent')} *</Label>
                 <Select
                   value={formData.parent_entity_id || ''}
                   onValueChange={(v) => setFormData({ ...formData, parent_entity_id: v || null })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select parent entity" />
+                    <SelectValue placeholder={t('selectParent')} />
                   </SelectTrigger>
                   <SelectContent>
                     {parentEntities
@@ -534,7 +532,7 @@ export default function EntitiesTabContent() {
             )}
 
             <div className="space-y-2">
-              <Label>Workflow Codes</Label>
+              <Label>{t('fieldWorkflowCodes')}</Label>
               <Popover open={isWorkflowPopoverOpen} onOpenChange={setIsWorkflowPopoverOpen}>
                 <PopoverTrigger asChild>
                   <Button
@@ -545,10 +543,10 @@ export default function EntitiesTabContent() {
                   >
                     {formData.workflow_codes.length > 0 ? (
                       <span className="text-sm">
-                        {formData.workflow_codes.length} workflow(s) selected
+                        {t('workflowsSelected', { count: formData.workflow_codes.length })}
                       </span>
                     ) : (
-                      <span className="text-muted-foreground">Select workflows...</span>
+                      <span className="text-muted-foreground">{t('selectWorkflows')}</span>
                     )}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
@@ -558,7 +556,7 @@ export default function EntitiesTabContent() {
                     <div className="relative">
                       <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
-                        placeholder="Search workflows..."
+                        placeholder={t('searchWorkflows')}
                         value={workflowSearchQuery}
                         onChange={(e) => setWorkflowSearchQuery(e.target.value)}
                         className="pl-8 h-8"
@@ -569,11 +567,11 @@ export default function EntitiesTabContent() {
                     {isLoadingWorkflows ? (
                       <div className="flex items-center justify-center py-6">
                         <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
-                        <span className="ml-2 text-sm text-muted-foreground">Loading...</span>
+                        <span className="ml-2 text-sm text-muted-foreground">{tCommon('loading')}</span>
                       </div>
                     ) : filteredWorkflows.length === 0 ? (
                       <div className="py-6 text-center text-sm text-muted-foreground">
-                        No workflows found
+                        {t('noWorkflowsFound')}
                       </div>
                     ) : (
                       <div className="p-2 space-y-1">
@@ -651,13 +649,13 @@ export default function EntitiesTabContent() {
                 checked={formData.is_active}
                 onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
               />
-              <Label htmlFor="is_active">Active</Label>
+              <Label htmlFor="is_active">{t('fieldActive')}</Label>
             </div>
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              {tCommon('cancel') || 'Cancel'}
+              {tCommon('cancel')}
             </Button>
             <Button
               onClick={handleSubmit}
@@ -666,7 +664,7 @@ export default function EntitiesTabContent() {
               {(createMutation.isPending || updateMutation.isPending) && (
                 <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
               )}
-              {selectedEntity ? 'Save Changes' : 'Create'}
+              {selectedEntity ? t('saveChanges') : tCommon('create')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -676,21 +674,20 @@ export default function EntitiesTabContent() {
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Entity</AlertDialogTitle>
+            <AlertDialogTitle>{t('deleteEntity')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{selectedEntity?.name}&quot;? This action cannot
-              be undone.
+              {t('deleteDescription', { name: selectedEntity?.name || '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{tCommon('cancel') || 'Cancel'}</AlertDialogCancel>
+            <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-red-600 hover:bg-red-700"
               disabled={deleteMutation.isPending}
             >
               {deleteMutation.isPending && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
-              Delete
+              {tCommon('delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

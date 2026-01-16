@@ -594,7 +594,39 @@
       "typeEntity": "Entidad",
       "typeDepartment": "Departamento",
       "noEntitiesFound": "No se encontraron entidades",
+      "entitiesFound": "{count} entidad(es) encontrada(s)",
       "workflowCodesHint": "Separados por coma o salto de línea",
+      "searchPlaceholder": "Buscar por código, nombre...",
+      "allTypes": "Todos los tipos",
+      "allStatus": "Todos los estados",
+      "createFirstEntity": "Crear primera entidad",
+      "codeAndNameRequired": "Código y nombre son requeridos",
+      "editDescription": "Actualizar información y asignación de workflows",
+      "createDescription": "Crear una nueva entidad o departamento",
+      "selectParent": "Seleccionar entidad padre",
+      "selectWorkflows": "Seleccionar workflows...",
+      "workflowsSelected": "{count} workflow(s) seleccionado(s)",
+      "searchWorkflows": "Buscar workflows...",
+      "noWorkflowsFound": "No se encontraron workflows",
+      "saveChanges": "Guardar cambios",
+      "deleteDescription": "¿Está seguro de eliminar \"{name}\"? Esta acción no se puede deshacer.",
+      "table": {
+        "code": "Código",
+        "name": "Nombre",
+        "type": "Tipo",
+        "parent": "Padre",
+        "workflows": "Workflows",
+        "status": "Estado",
+        "actions": "Acciones"
+      },
+      "status": {
+        "active": "Activo",
+        "inactive": "Inactivo"
+      },
+      "entityTypes": {
+        "entity": "Entidad (Principal)",
+        "department": "Departamento"
+      },
       "locations": {
         "title": "Ubicaciones de Entidades",
         "subtitle": "Gestionar ubicaciones físicas de las entidades",
@@ -2724,7 +2756,9 @@
     "actions": "Acciones",
     "create": "Crear",
     "yes": "Sí",
-    "no": "No"
+    "no": "No",
+    "errorSaving": "Error al guardar",
+    "errorDeleting": "Error al eliminar"
   },
   "dashboard": {
     "actions": "Acciones",
