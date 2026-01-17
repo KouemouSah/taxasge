@@ -528,10 +528,10 @@ class AgentProfileService:
             raise
 
         if not metadata:
-            raise ValueError("Code de vérification invalide ou expiré")
+            raise ValueError("Code de vérification invalide ou expiré. Veuillez demander une nouvelle invitation.")
 
         if metadata.get('registration_type') != 'agent':
-            raise ValueError("Cette invitation n'est pas pour un agent")
+            raise ValueError("Ce code d'invitation n'est pas valide pour un agent. Vérifiez le type d'invitation.")
 
         user_data = metadata.get('user_data', {})
         agent_data = metadata.get('agent_data', {})
@@ -668,10 +668,43 @@ class AgentProfileService:
                 """, profile_id)
                 logger.info(f"[AGENT_ACTIVATION] Step 5 OK - Workload record created")
 
+        except asyncpg.UniqueViolationError as e:
+            logger.error(f"[AGENT_ACTIVATION] FAILED - Duplicate entry: {e}")
+            if 'users_email_key' in str(e):
+                raise ValueError(f"Un compte existe déjà avec l'email {email}")
+            elif 'agent_profiles_user_id_key' in str(e):
+                raise ValueError(f"Ce compte utilisateur a déjà un profil agent")
+            else:
+                raise ValueError(f"Violation de contrainte d'unicité: {e}")
+        except asyncpg.ForeignKeyViolationError as e:
+            logger.error(f"[AGENT_ACTIVATION] FAILED - Foreign key violation: {e}")
+            if 'entity_id' in str(e):
+                raise ValueError("L'entité sélectionnée n'existe pas ou a été supprimée")
+            elif 'ministry_id' in str(e):
+                raise ValueError("Le ministère sélectionné n'existe pas ou a été supprimé")
+            else:
+                raise ValueError(f"Référence invalide: {e}")
+        except asyncpg.CheckViolationError as e:
+            logger.error(f"[AGENT_ACTIVATION] FAILED - Check constraint violation: {e}")
+            if 'entity_agent' in str(e) and 'ministry' in str(e):
+                raise ValueError("Configuration invalide: un agent d'entité ne peut pas être assigné directement à un ministère")
+            else:
+                raise ValueError(f"Contrainte de validation non respectée: {e}")
+        except asyncpg.RaiseError as e:
+            # Custom errors raised by triggers
+            logger.error(f"[AGENT_ACTIVATION] FAILED - Trigger error: {e}")
+            error_msg = str(e)
+            if 'entity_agent' in error_msg and 'entity_id' in error_msg:
+                raise ValueError("Un agent d'entité doit être assigné à une entité")
+            elif 'ministry_agent' in error_msg and 'ministry' in error_msg:
+                raise ValueError("Un agent ministériel doit être lié à un ministère")
+            else:
+                raise ValueError(f"Erreur de validation: {error_msg}")
         except Exception as e:
             logger.error(f"[AGENT_ACTIVATION] FAILED during transaction: {type(e).__name__}: {e}")
             logger.error(f"[AGENT_ACTIVATION] Traceback: {traceback.format_exc()}")
-            raise
+            # Re-raise with a cleaner message for unknown errors
+            raise ValueError(f"Erreur lors de la création du compte: {type(e).__name__}")
 
         # Step 6: Delete pending registration (outside transaction)
         try:
@@ -786,10 +819,10 @@ class AgentProfileService:
         metadata = await pending_repo.verify_code_and_get_data(email.lower(), verification_code)
 
         if not metadata:
-            raise ValueError("Code de vérification invalide ou expiré")
+            raise ValueError("Code de vérification invalide ou expiré. Veuillez demander une nouvelle invitation.")
 
         if metadata.get('registration_type') != 'admin':
-            raise ValueError("Cette invitation n'est pas pour un administrateur")
+            raise ValueError("Ce code d'invitation n'est pas valide pour un administrateur. Vérifiez le type d'invitation.")
 
         user_data = metadata.get('user_data', {})
 

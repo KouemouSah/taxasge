@@ -387,11 +387,24 @@ async def invite_agent(
 
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
-    service = AgentProfileService()
-    result = await service.initiate_agent_invitation(data, UUID(user_id))
+    try:
+        service = AgentProfileService()
+        result = await service.initiate_agent_invitation(data, UUID(user_id))
 
-    logger.info(f"User {user_id} invited agent {data.user.email}")
-    return AgentInviteResponse(**result)
+        logger.info(f"User {user_id} invited agent {data.user.email}")
+        return AgentInviteResponse(**result)
+
+    except ValueError as e:
+        # Validation errors (email exists, invalid data, etc.)
+        logger.warning(f"Agent invitation failed for {data.user.email}: {e}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        # Unexpected errors
+        logger.error(f"Agent invitation error for {data.user.email}: {type(e).__name__}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erreur lors de l'invitation: {str(e)}"
+        )
 
 
 @router.post("/activate", response_model=AgentActivateResponse, status_code=status.HTTP_201_CREATED)
@@ -497,11 +510,24 @@ async def invite_admin(
 
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
-    service = AgentProfileService()
-    result = await service.initiate_admin_invitation(data, UUID(user_id))
+    try:
+        service = AgentProfileService()
+        result = await service.initiate_admin_invitation(data, UUID(user_id))
 
-    logger.info(f"User {user_id} invited admin {data.email}")
-    return AdminInviteResponse(**result)
+        logger.info(f"User {user_id} invited admin {data.email}")
+        return AdminInviteResponse(**result)
+
+    except ValueError as e:
+        # Validation errors (email exists, invalid data, etc.)
+        logger.warning(f"Admin invitation failed for {data.email}: {e}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        # Unexpected errors
+        logger.error(f"Admin invitation error for {data.email}: {type(e).__name__}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erreur lors de l'invitation: {str(e)}"
+        )
 
 
 @router.post("/admin/activate", response_model=AdminActivateResponse, status_code=status.HTTP_201_CREATED)
