@@ -259,9 +259,13 @@ class PendingRegistrationRepository:
                 logger.warning(f"Wrong verification code for {email}")
                 return None
 
-            # Success - return metadata
+            # Success - return metadata (parse JSON if needed)
             logger.info(f"Verification code valid for {email}, returning metadata")
-            return pending.get('metadata', {})
+            metadata = pending.get('metadata', {})
+            # asyncpg may return JSONB as string depending on pool config
+            if isinstance(metadata, str):
+                metadata = json.loads(metadata) if metadata else {}
+            return metadata if metadata else {}
 
         except Exception as e:
             logger.error(f"Error verifying code for {email}: {e}")
