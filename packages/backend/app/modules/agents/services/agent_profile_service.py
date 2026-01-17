@@ -511,12 +511,21 @@ class AgentProfileService:
             Dict with user_id, profile_id, tokens, etc.
         """
         import bcrypt
+        import traceback
         from app.modules.auth.repositories.pending_registration_repository import PendingRegistrationRepository
+
+        logger.info(f"[AGENT_ACTIVATION] Starting activation for {email}")
 
         pending_repo = PendingRegistrationRepository()
 
-        # Verify code and get metadata
-        metadata = await pending_repo.verify_code_and_get_data(email.lower(), verification_code)
+        # Step 1: Verify code and get metadata
+        try:
+            metadata = await pending_repo.verify_code_and_get_data(email.lower(), verification_code)
+            logger.info(f"[AGENT_ACTIVATION] Step 1 - Metadata retrieved: {list(metadata.keys()) if metadata else 'None'}")
+        except Exception as e:
+            logger.error(f"[AGENT_ACTIVATION] Step 1 FAILED - verify_code_and_get_data: {type(e).__name__}: {e}")
+            logger.error(f"[AGENT_ACTIVATION] Traceback: {traceback.format_exc()}")
+            raise
 
         if not metadata:
             raise ValueError("Code de vérification invalide ou expiré")
@@ -528,124 +537,152 @@ class AgentProfileService:
         agent_data = metadata.get('agent_data', {})
         created_by = metadata.get('created_by')
 
+        # Log agent_data for debugging
+        logger.info(f"[AGENT_ACTIVATION] agent_data keys: {list(agent_data.keys())}")
+        logger.info(f"[AGENT_ACTIVATION] agent_type={agent_data.get('agent_type')}, ministry_id={agent_data.get('ministry_id')}, entity_id={agent_data.get('entity_id')}")
+
         # Hash password
         password_hash = bcrypt.hashpw(
             password.encode('utf-8'),
             bcrypt.gensalt(rounds=12)
         ).decode('utf-8')
 
-        async with conn.transaction():
-            # 1. Create user
-            user_query = """
-                INSERT INTO users (email, password_hash, first_name, last_name,
-                                   phone_number, role, preferred_language, status,
-                                   email_verified, created_at, updated_at)
-                VALUES ($1, $2, $3, $4, $5, 'agent', $6, 'active', TRUE, NOW(), NOW())
-                RETURNING id, email, first_name, last_name
-            """
-            user_row = await conn.fetchrow(
-                user_query,
-                email.lower(),
-                password_hash,
-                user_data.get('first_name'),
-                user_data.get('last_name'),
-                user_data.get('phone_number'),
-                user_data.get('preferred_language', 'es'),
-            )
-            user_id = user_row["id"]
-
-            # 2. Create agent profile
-            entity_id = UUID(agent_data['entity_id']) if agent_data.get('entity_id') else None
-            rbac_role_id = UUID(agent_data['rbac_role_id']) if agent_data.get('rbac_role_id') else None
-            assigned_by = UUID(created_by) if created_by else None
-
-            # Convert time strings back to datetime.time objects for PostgreSQL TIME columns
-            from datetime import time as dt_time
-            working_hours_start = None
-            working_hours_end = None
-            if agent_data.get('working_hours_start'):
-                try:
-                    parts = agent_data['working_hours_start'].split(':')
-                    working_hours_start = dt_time(int(parts[0]), int(parts[1]))
-                except (ValueError, IndexError):
-                    working_hours_start = dt_time(8, 0)  # Default 08:00
-            if agent_data.get('working_hours_end'):
-                try:
-                    parts = agent_data['working_hours_end'].split(':')
-                    working_hours_end = dt_time(int(parts[0]), int(parts[1]))
-                except (ValueError, IndexError):
-                    working_hours_end = dt_time(17, 0)  # Default 17:00
-
-            profile_query = """
-                INSERT INTO agent_profiles (
-                    user_id, agent_type, is_supervisor, entity_id, ministry_id,
-                    agent_role, can_approve_unlimited, max_approval_amount,
-                    can_escalate, can_assign_tasks, can_reassign,
-                    specializations, working_hours_start, working_hours_end,
-                    working_days, is_active, assigned_by, assigned_at
-                ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14, $15, TRUE, $16, NOW()
+        try:
+            async with conn.transaction():
+                # Step 2: Create user
+                logger.info(f"[AGENT_ACTIVATION] Step 2 - Creating user...")
+                user_query = """
+                    INSERT INTO users (email, password_hash, first_name, last_name,
+                                       phone_number, role, preferred_language, status,
+                                       email_verified, created_at, updated_at)
+                    VALUES ($1, $2, $3, $4, $5, 'agent', $6, 'active', TRUE, NOW(), NOW())
+                    RETURNING id, email, first_name, last_name
+                """
+                user_row = await conn.fetchrow(
+                    user_query,
+                    email.lower(),
+                    password_hash,
+                    user_data.get('first_name'),
+                    user_data.get('last_name'),
+                    user_data.get('phone_number'),
+                    user_data.get('preferred_language', 'es'),
                 )
-                RETURNING id
-            """
-            profile_row = await conn.fetchrow(
-                profile_query,
-                user_id,
-                agent_data.get('agent_type'),
-                agent_data.get('is_supervisor', False),
-                entity_id,
-                agent_data.get('ministry_id'),
-                agent_data.get('agent_role', 'validator'),
-                agent_data.get('can_approve_unlimited', False),
-                agent_data.get('max_approval_amount'),
-                agent_data.get('can_escalate', True),
-                agent_data.get('can_assign_tasks', False),
-                agent_data.get('can_reassign', False),
-                json.dumps(agent_data.get('specializations', [])),
-                working_hours_start,
-                working_hours_end,
-                agent_data.get('working_days', [1, 2, 3, 4, 5]),
-                assigned_by,
-            )
-            profile_id = profile_row["id"]
+                user_id = user_row["id"]
+                logger.info(f"[AGENT_ACTIVATION] Step 2 OK - User created: {user_id}")
 
-            # 3. Assign RBAC role if provided
-            if rbac_role_id:
-                role_check = await conn.fetchrow(
-                    """SELECT id FROM roles WHERE id = $1
-                       AND (entity_type IN ('agent', 'ministry_agent', 'entity_agent')
-                            OR entity_type IS NULL)""",
-                    rbac_role_id
+                # Step 3: Create agent profile
+                logger.info(f"[AGENT_ACTIVATION] Step 3 - Creating agent profile...")
+                entity_id = UUID(agent_data['entity_id']) if agent_data.get('entity_id') else None
+                rbac_role_id = UUID(agent_data['rbac_role_id']) if agent_data.get('rbac_role_id') else None
+                assigned_by = UUID(created_by) if created_by else None
+
+                # Convert time strings back to datetime.time objects for PostgreSQL TIME columns
+                from datetime import time as dt_time
+                working_hours_start = None
+                working_hours_end = None
+                if agent_data.get('working_hours_start'):
+                    try:
+                        parts = agent_data['working_hours_start'].split(':')
+                        working_hours_start = dt_time(int(parts[0]), int(parts[1]))
+                    except (ValueError, IndexError):
+                        working_hours_start = dt_time(8, 0)  # Default 08:00
+                if agent_data.get('working_hours_end'):
+                    try:
+                        parts = agent_data['working_hours_end'].split(':')
+                        working_hours_end = dt_time(int(parts[0]), int(parts[1]))
+                    except (ValueError, IndexError):
+                        working_hours_end = dt_time(17, 0)  # Default 17:00
+
+                logger.info(f"[AGENT_ACTIVATION] Profile params: entity_id={entity_id}, ministry_id={agent_data.get('ministry_id')}, working_hours={working_hours_start}-{working_hours_end}")
+
+                profile_query = """
+                    INSERT INTO agent_profiles (
+                        user_id, agent_type, is_supervisor, entity_id, ministry_id,
+                        agent_role, can_approve_unlimited, max_approval_amount,
+                        can_escalate, can_assign_tasks, can_reassign,
+                        specializations, working_hours_start, working_hours_end,
+                        working_days, is_active, assigned_by, assigned_at
+                    ) VALUES (
+                        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14, $15, TRUE, $16, NOW()
+                    )
+                    RETURNING id
+                """
+                profile_row = await conn.fetchrow(
+                    profile_query,
+                    user_id,
+                    agent_data.get('agent_type'),
+                    agent_data.get('is_supervisor', False),
+                    entity_id,
+                    agent_data.get('ministry_id'),
+                    agent_data.get('agent_role', 'validator'),
+                    agent_data.get('can_approve_unlimited', False),
+                    agent_data.get('max_approval_amount'),
+                    agent_data.get('can_escalate', True),
+                    agent_data.get('can_assign_tasks', False),
+                    agent_data.get('can_reassign', False),
+                    json.dumps(agent_data.get('specializations', [])),
+                    working_hours_start,
+                    working_hours_end,
+                    agent_data.get('working_days', [1, 2, 3, 4, 5]),
+                    assigned_by,
                 )
-                if role_check:
-                    perms_query = """
-                        SELECT permission_id FROM role_permissions
-                        WHERE role_id = $1 AND granted = TRUE
-                    """
-                    role_permissions = await conn.fetch(perms_query, rbac_role_id)
+                profile_id = profile_row["id"]
+                logger.info(f"[AGENT_ACTIVATION] Step 3 OK - Profile created: {profile_id}")
 
-                    for perm in role_permissions:
-                        await conn.execute("""
-                            INSERT INTO user_permissions (user_id, permission_id, granted, granted_by, granted_at)
-                            VALUES ($1, $2, TRUE, $3, NOW())
-                            ON CONFLICT (user_id, permission_id) DO UPDATE SET granted = TRUE
-                        """, user_id, perm["permission_id"], assigned_by)
+                # Step 4: Assign RBAC role if provided
+                if rbac_role_id:
+                    logger.info(f"[AGENT_ACTIVATION] Step 4 - Assigning RBAC role {rbac_role_id}...")
+                    role_check = await conn.fetchrow(
+                        """SELECT id FROM roles WHERE id = $1
+                           AND (entity_type IN ('agent', 'ministry_agent', 'entity_agent')
+                                OR entity_type IS NULL)""",
+                        rbac_role_id
+                    )
+                    if role_check:
+                        perms_query = """
+                            SELECT permission_id FROM role_permissions
+                            WHERE role_id = $1 AND granted = TRUE
+                        """
+                        role_permissions = await conn.fetch(perms_query, rbac_role_id)
 
-                    logger.info(f"Assigned RBAC role {rbac_role_id} to agent {user_id}")
+                        for perm in role_permissions:
+                            await conn.execute("""
+                                INSERT INTO user_permissions (user_id, permission_id, granted, granted_by, granted_at)
+                                VALUES ($1, $2, TRUE, $3, NOW())
+                                ON CONFLICT (user_id, permission_id) DO UPDATE SET granted = TRUE
+                            """, user_id, perm["permission_id"], assigned_by)
 
-            # 4. Create workload record
-            await conn.execute("""
-                INSERT INTO agent_workloads (agent_profile_id, current_assignments,
-                    pending_declarations, in_progress_declarations, max_concurrent_assignments,
-                    capacity_percentage, workload_status, availability)
-                VALUES ($1, 0, 0, 0, 10, 0, 'available', 'available')
-            """, profile_id)
+                        logger.info(f"[AGENT_ACTIVATION] Step 4 OK - RBAC role assigned with {len(role_permissions)} permissions")
+                    else:
+                        logger.warning(f"[AGENT_ACTIVATION] Step 4 - RBAC role {rbac_role_id} not found or invalid")
+                else:
+                    logger.info(f"[AGENT_ACTIVATION] Step 4 - No RBAC role to assign")
 
-        # 5. Delete pending registration
-        await pending_repo.delete_by_email(email.lower())
+                # Step 5: Create workload record
+                logger.info(f"[AGENT_ACTIVATION] Step 5 - Creating workload record...")
+                await conn.execute("""
+                    INSERT INTO agent_workloads (agent_profile_id, current_assignments,
+                        pending_declarations, in_progress_declarations, max_concurrent_assignments,
+                        capacity_percentage, workload_status, availability)
+                    VALUES ($1, 0, 0, 0, 10, 0, 'available', 'available')
+                """, profile_id)
+                logger.info(f"[AGENT_ACTIVATION] Step 5 OK - Workload record created")
+
+        except Exception as e:
+            logger.error(f"[AGENT_ACTIVATION] FAILED during transaction: {type(e).__name__}: {e}")
+            logger.error(f"[AGENT_ACTIVATION] Traceback: {traceback.format_exc()}")
+            raise
+
+        # Step 6: Delete pending registration (outside transaction)
+        try:
+            await pending_repo.delete_by_email(email.lower())
+            logger.info(f"[AGENT_ACTIVATION] Step 6 OK - Pending registration deleted")
+        except Exception as e:
+            logger.warning(f"[AGENT_ACTIVATION] Step 6 - Failed to delete pending registration: {e}")
+            # Don't fail the whole process for this
 
         logger.info(
-            f"Agent creation finalized: user={user_id}, profile={profile_id}, "
+            f"[AGENT_ACTIVATION] SUCCESS - user={user_id}, profile={profile_id}, "
             f"type={agent_data.get('agent_type')}"
         )
 
