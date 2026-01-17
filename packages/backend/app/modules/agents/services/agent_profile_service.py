@@ -559,6 +559,23 @@ class AgentProfileService:
             rbac_role_id = UUID(agent_data['rbac_role_id']) if agent_data.get('rbac_role_id') else None
             assigned_by = UUID(created_by) if created_by else None
 
+            # Convert time strings back to datetime.time objects for PostgreSQL TIME columns
+            from datetime import time as dt_time
+            working_hours_start = None
+            working_hours_end = None
+            if agent_data.get('working_hours_start'):
+                try:
+                    parts = agent_data['working_hours_start'].split(':')
+                    working_hours_start = dt_time(int(parts[0]), int(parts[1]))
+                except (ValueError, IndexError):
+                    working_hours_start = dt_time(8, 0)  # Default 08:00
+            if agent_data.get('working_hours_end'):
+                try:
+                    parts = agent_data['working_hours_end'].split(':')
+                    working_hours_end = dt_time(int(parts[0]), int(parts[1]))
+                except (ValueError, IndexError):
+                    working_hours_end = dt_time(17, 0)  # Default 17:00
+
             profile_query = """
                 INSERT INTO agent_profiles (
                     user_id, agent_type, is_supervisor, entity_id, ministry_id,
@@ -585,8 +602,8 @@ class AgentProfileService:
                 agent_data.get('can_assign_tasks', False),
                 agent_data.get('can_reassign', False),
                 json.dumps(agent_data.get('specializations', [])),
-                agent_data.get('working_hours_start'),
-                agent_data.get('working_hours_end'),
+                working_hours_start,
+                working_hours_end,
                 agent_data.get('working_days', [1, 2, 3, 4, 5]),
                 assigned_by,
             )

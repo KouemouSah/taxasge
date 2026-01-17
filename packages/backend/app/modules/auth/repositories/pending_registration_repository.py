@@ -261,10 +261,29 @@ class PendingRegistrationRepository:
 
             # Success - return metadata (parse JSON if needed)
             logger.info(f"Verification code valid for {email}, returning metadata")
-            metadata = pending.get('metadata', {})
+            raw_metadata = pending.get('metadata', {})
+            logger.info(f"Raw metadata type: {type(raw_metadata)}, value: {raw_metadata}")
+
             # asyncpg may return JSONB as string depending on pool config
-            if isinstance(metadata, str):
-                metadata = json.loads(metadata) if metadata else {}
+            metadata = raw_metadata
+            if isinstance(metadata, (str, bytes)):
+                if isinstance(metadata, bytes):
+                    metadata = metadata.decode('utf-8')
+                try:
+                    metadata = json.loads(metadata) if metadata else {}
+                    # Handle double-serialization case
+                    while isinstance(metadata, str):
+                        logger.warning(f"Double-serialized metadata detected, parsing again")
+                        metadata = json.loads(metadata)
+                except json.JSONDecodeError as e:
+                    logger.error(f"Failed to parse metadata JSON: {e}, raw: {raw_metadata}")
+                    return {}
+
+            if not isinstance(metadata, dict):
+                logger.error(f"Metadata is not a dict after parsing: {type(metadata)}")
+                return {}
+
+            logger.info(f"Parsed metadata keys: {list(metadata.keys()) if metadata else 'empty'}")
             return metadata if metadata else {}
 
         except Exception as e:

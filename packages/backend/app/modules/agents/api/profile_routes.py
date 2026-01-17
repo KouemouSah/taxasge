@@ -413,16 +413,29 @@ async def activate_agent(
     """
     from app.modules.agents.services.agent_profile_service import AgentProfileService
 
-    service = AgentProfileService()
-    result = await service.finalize_agent_creation(
-        db,
-        email=data.email,
-        verification_code=data.verification_code,
-        password=data.password,
-    )
+    try:
+        service = AgentProfileService()
+        result = await service.finalize_agent_creation(
+            db,
+            email=data.email,
+            verification_code=data.verification_code,
+            password=data.password,
+        )
 
-    logger.info(f"Agent activated: {data.email}")
-    return AgentActivateResponse(**result)
+        logger.info(f"Agent activated: {data.email}")
+        return AgentActivateResponse(**result)
+
+    except ValueError as e:
+        # Validation errors (invalid code, expired, etc.)
+        logger.warning(f"Agent activation failed for {data.email}: {e}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        # Database or unexpected errors
+        logger.error(f"Agent activation error for {data.email}: {type(e).__name__}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erreur lors de l'activation: {str(e)}"
+        )
 
 
 # Keep legacy endpoint for backward compatibility (deprecated)
@@ -507,16 +520,27 @@ async def activate_admin(
     """
     from app.modules.agents.services.agent_profile_service import AgentProfileService
 
-    service = AgentProfileService()
-    result = await service.finalize_admin_creation(
-        db,
-        email=data.email,
-        verification_code=data.verification_code,
-        password=data.password,
-    )
+    try:
+        service = AgentProfileService()
+        result = await service.finalize_admin_creation(
+            db,
+            email=data.email,
+            verification_code=data.verification_code,
+            password=data.password,
+        )
 
-    logger.info(f"Admin activated: {data.email}")
-    return AdminActivateResponse(**result)
+        logger.info(f"Admin activated: {data.email}")
+        return AdminActivateResponse(**result)
+
+    except ValueError as e:
+        logger.warning(f"Admin activation failed for {data.email}: {e}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error(f"Admin activation error for {data.email}: {type(e).__name__}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erreur lors de l'activation: {str(e)}"
+        )
 
 
 # Keep legacy endpoint for backward compatibility (deprecated)
