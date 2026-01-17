@@ -79,9 +79,12 @@ export const agentProfilesApi = {
   /**
    * List agent profiles with filters
    * BACKEND: GET /api/v1/agents/profiles
+   * Handles both array response (legacy) and paginated response (new)
    */
   list: async (filters?: AgentListFilters): Promise<AgentListResponse> => {
     const params = new URLSearchParams();
+    const page = filters?.page || 1;
+    const pageSize = filters?.page_size || 100;
 
     if (filters) {
       if (filters.agent_type) params.append('agent_type', filters.agent_type);
@@ -97,7 +100,23 @@ export const agentProfilesApi = {
     const queryString = params.toString();
     const url = `${AGENTS_BASE}/profiles${queryString ? `?${queryString}` : ''}`;
 
-    return fetchClient.get<AgentListResponse>(url);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const response = await fetchClient.get<AgentListResponse | AgentProfile[]>(url);
+
+    // Handle both array response (legacy) and paginated response (new)
+    if (Array.isArray(response)) {
+      // Legacy: Convert array to paginated format
+      return {
+        items: response,
+        total: response.length,
+        page: page,
+        page_size: pageSize,
+        pages: Math.ceil(response.length / pageSize) || 1,
+      };
+    }
+
+    // New paginated format
+    return response;
   },
 
   /**
