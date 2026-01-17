@@ -454,16 +454,15 @@ export default function LocationsTabContent() {
             <>
               <div
                 ref={tableContainerRef}
-                className="border rounded-md max-h-[500px] overflow-y-auto"
+                className="border rounded-md max-h-[500px] overflow-auto"
               >
                 <Table>
                   <TableHeader className="sticky top-0 bg-background z-10">
                     <TableRow>
                       <TableHead>{t('table.entity')}</TableHead>
                       <TableHead>{t('table.city')}</TableHead>
-                      <TableHead>{t('table.region')}</TableHead>
+                      <TableHead className="hidden md:table-cell">{t('table.region')}</TableHead>
                       <TableHead>{t('table.name')}</TableHead>
-                      <TableHead>{t('table.contact')}</TableHead>
                       <TableHead>{t('table.status')}</TableHead>
                       <TableHead className="text-right">{t('table.actions')}</TableHead>
                     </TableRow>
@@ -485,7 +484,7 @@ export default function LocationsTabContent() {
                             {location.city}
                           </Badge>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden md:table-cell">
                           <Badge
                             variant="secondary"
                             className={
@@ -512,23 +511,6 @@ export default function LocationsTabContent() {
                                 {location.location_address}
                               </div>
                             )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col gap-1 text-sm text-muted-foreground">
-                            {location.phone && (
-                              <span className="flex items-center gap-1">
-                                <Phone className="h-3 w-3" />
-                                {location.phone}
-                              </span>
-                            )}
-                            {location.email && (
-                              <span className="flex items-center gap-1">
-                                <Mail className="h-3 w-3" />
-                                <span className="truncate max-w-[120px]">{location.email}</span>
-                              </span>
-                            )}
-                            {!location.phone && !location.email && '-'}
                           </div>
                         </TableCell>
                         <TableCell>

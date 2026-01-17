@@ -253,7 +253,18 @@ export default function EntitiesTabContent() {
       return
     }
 
-    const data = { ...formData }
+    // Prepare data for API - exclude parent_type which is frontend-only
+    const { parent_type, ...apiData } = formData
+    const data: EntityCreate | EntityUpdate = {
+      code: apiData.code,
+      name: apiData.name,
+      description: apiData.description || null,
+      entity_type: apiData.entity_type,
+      parent_entity_id: apiData.parent_entity_id || null,
+      ministry_id: apiData.ministry_id || null,
+      workflow_codes: apiData.workflow_codes || [],
+      is_active: apiData.is_active,
+    }
 
     try {
       if (selectedEntity) {
@@ -387,14 +398,15 @@ export default function EntitiesTabContent() {
           )}
 
           {!isLoading && !error && filteredEntities.length > 0 && (
+            <div className="border rounded-md overflow-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>{t('table.code')}</TableHead>
                   <TableHead>{t('table.name')}</TableHead>
-                  <TableHead>{t('table.type')}</TableHead>
-                  <TableHead>{t('table.parent')}</TableHead>
-                  <TableHead>{t('table.workflows')}</TableHead>
+                  <TableHead className="hidden md:table-cell">{t('table.type')}</TableHead>
+                  <TableHead className="hidden lg:table-cell">{t('table.parent')}</TableHead>
+                  <TableHead className="hidden md:table-cell">{t('table.workflows')}</TableHead>
                   <TableHead>{t('table.status')}</TableHead>
                   <TableHead className="text-right">{t('table.actions')}</TableHead>
                 </TableRow>
@@ -403,8 +415,8 @@ export default function EntitiesTabContent() {
                 {filteredEntities.map((entity) => (
                   <TableRow key={entity.id}>
                     <TableCell className="font-mono text-sm">{entity.code}</TableCell>
-                    <TableCell className="font-medium">{entity.name}</TableCell>
-                    <TableCell>
+                    <TableCell className="font-medium max-w-[200px] truncate">{entity.name}</TableCell>
+                    <TableCell className="hidden md:table-cell">
                       <Badge variant={entity.entity_type === 'entity' ? 'default' : 'secondary'}>
                         {entity.entity_type === 'entity' ? (
                           <Building className="h-3 w-3 mr-1" />
@@ -414,7 +426,7 @@ export default function EntitiesTabContent() {
                         {entity.entity_type === 'entity' ? t('typeEntity') : t('typeDepartment')}
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden lg:table-cell">
                       {entity.parent_entity_code ? (
                         <span className="text-sm text-muted-foreground">
                           {entity.parent_entity_code}
@@ -423,7 +435,7 @@ export default function EntitiesTabContent() {
                         <span className="text-sm text-muted-foreground">-</span>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                       <div className="flex items-center gap-1">
                         <Workflow className="h-3 w-3 text-muted-foreground" />
                         <span className="text-sm">{entity.workflow_count}</span>
@@ -461,6 +473,7 @@ export default function EntitiesTabContent() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>
