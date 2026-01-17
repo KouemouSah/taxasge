@@ -10,6 +10,7 @@ from uuid import UUID
 from loguru import logger
 from decimal import Decimal
 import asyncpg
+import json
 
 from app.modules.agents.repositories.agent_profile_repository import (
     agent_profile_repository,
@@ -459,7 +460,7 @@ class AgentProfileService:
                 data.can_escalate,
                 data.can_assign_tasks,
                 data.can_reassign,
-                data.specializations or [],
+                json.dumps(data.specializations or []),  # JSONB requires JSON string
                 data.working_hours_start,
                 data.working_hours_end,
                 data.working_days or [1, 2, 3, 4, 5],
