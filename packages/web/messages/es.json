@@ -1088,6 +1088,7 @@
           "allEntities": "Todas las entidades",
           "deleteConfirmTitle": "¿Eliminar horario?",
           "deleteConfirmDescription": "Se eliminará el horario de {entity} para {day}. Esta acción no se puede deshacer.",
+          "bulkDeleteDescription": "Se eliminarán los horarios seleccionados. Esta acción no se puede deshacer.",
           "created": "Horario creado exitosamente",
           "updated": "Horario actualizado exitosamente",
           "deleted": "Horario eliminado exitosamente",

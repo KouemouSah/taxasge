@@ -406,8 +406,11 @@ class AppointmentSlotConfigResponse(BaseModel):
     slot_duration_minutes: int
     max_appointments_per_slot: int
     is_active: bool
-    # Note: location_name/location_address removed in migration 030
-    # Get from entity_locations table via entity_location_id FK
+    # Joined from entity_locations table via entity_location_id FK
+    location_name: Optional[str] = None
+    location_address: Optional[str] = None
+    city: Optional[str] = None
+    region: Optional[str] = None
 
 
 class AppointmentSlotConfigBatchCreate(BaseModel):
@@ -1342,27 +1345,51 @@ async def delete_tariff(
 async def list_slot_configs(
     entity_code: Optional[str] = Query(None, description="Filter by entity code"),
     entity_location_id: Optional[str] = Query(None, description="Filter by entity location ID"),
+    city: Optional[str] = Query(None, description="Filter by city (Malabo, Bata, etc.)"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
     _=Depends(permission_required("admin.manage_appointment"))
 ):
-    query = "SELECT * FROM appointment_slot_configs WHERE 1=1"
+    # JOIN with entity_locations to get location details
+    query = """
+        SELECT
+            sc.id,
+            sc.entity_location_id,
+            sc.entity_code,
+            sc.day_of_week,
+            sc.start_time,
+            sc.end_time,
+            sc.slot_duration_minutes,
+            sc.max_appointments_per_slot,
+            sc.is_active,
+            el.location_name,
+            el.location_address,
+            el.city,
+            el.region
+        FROM appointment_slot_configs sc
+        LEFT JOIN entity_locations el ON sc.entity_location_id = el.id
+        WHERE 1=1
+    """
     params = []
 
     if entity_location_id:
         params.append(entity_location_id)
-        query += f" AND entity_location_id = ${len(params)}::uuid"
+        query += f" AND sc.entity_location_id = ${len(params)}::uuid"
 
     if entity_code:
         params.append(entity_code)
-        query += f" AND entity_code = ${len(params)}"
+        query += f" AND sc.entity_code = ${len(params)}"
+
+    if city:
+        params.append(city)
+        query += f" AND el.city = ${len(params)}"
 
     if is_active is not None:
         params.append(is_active)
-        query += f" AND is_active = ${len(params)}"
+        query += f" AND sc.is_active = ${len(params)}"
 
-    query += " ORDER BY entity_code, day_of_week, start_time"
+    query += " ORDER BY sc.entity_code, sc.day_of_week, sc.start_time"
 
     rows = await db.fetch(query, *params)
 
@@ -1376,7 +1403,11 @@ async def list_slot_configs(
             end_time=str(row['end_time']),
             slot_duration_minutes=row['slot_duration_minutes'],
             max_appointments_per_slot=row['max_appointments_per_slot'],
-            is_active=row['is_active']
+            is_active=row['is_active'],
+            location_name=row.get('location_name'),
+            location_address=row.get('location_address'),
+            city=row.get('city'),
+            region=row.get('region')
         )
         for row in rows
     ]
@@ -1402,9 +1433,9 @@ async def create_slot_config(
         start_time_obj = parse_time_string(slot.start_time)
         end_time_obj = parse_time_string(slot.end_time)
 
-        # 1. Fetch entity_location to resolve entity_code, location_name, location_address
+        # 1. Fetch entity_location to resolve entity_code and location details
         location = await db.fetchrow("""
-            SELECT id, entity_code, location_name, location_address
+            SELECT id, entity_code, location_name, location_address, city, region
             FROM entity_locations
             WHERE id = $1::uuid AND is_active = TRUE
         """, slot.entity_location_id)
@@ -1456,7 +1487,11 @@ async def create_slot_config(
             end_time=str(row['end_time']),
             slot_duration_minutes=row['slot_duration_minutes'],
             max_appointments_per_slot=row['max_appointments_per_slot'],
-            is_active=row['is_active']
+            is_active=row['is_active'],
+            location_name=location.get('location_name'),
+            location_address=location.get('location_address'),
+            city=location.get('city'),
+            region=location.get('region')
         )
 
     except HTTPException:
@@ -1497,9 +1532,9 @@ async def create_slot_configs_batch(
         start_time_obj = parse_time_string(batch.start_time)
         end_time_obj = parse_time_string(batch.end_time)
 
-        # 1. Fetch entity_location
+        # 1. Fetch entity_location with all details
         location = await db.fetchrow("""
-            SELECT id, entity_code, location_name, location_address
+            SELECT id, entity_code, location_name, location_address, city, region
             FROM entity_locations
             WHERE id = $1::uuid AND is_active = TRUE
         """, batch.entity_location_id)
@@ -1556,7 +1591,11 @@ async def create_slot_configs_batch(
                 end_time=str(row['end_time']),
                 slot_duration_minutes=row['slot_duration_minutes'],
                 max_appointments_per_slot=row['max_appointments_per_slot'],
-                is_active=row['is_active']
+                is_active=row['is_active'],
+                location_name=location.get('location_name'),
+                location_address=location.get('location_address'),
+                city=location.get('city'),
+                region=location.get('region')
             ))
 
         logger.info(
@@ -1598,12 +1637,12 @@ async def update_slot_config(
     params = [slot_id]
     param_idx = 2
 
-    # Handle entity_location_id change - need to also update entity_code, location_name, location_address
+    # Handle entity_location_id change - need to also update entity_code
     slot_data = slot.model_dump(exclude_unset=True)
     if 'entity_location_id' in slot_data and slot_data['entity_location_id']:
         # Fetch the new location data
         new_location = await db.fetchrow("""
-            SELECT id, entity_code, location_name, location_address
+            SELECT id, entity_code, location_name, location_address, city, region
             FROM entity_locations
             WHERE id = $1::uuid AND is_active = TRUE
         """, slot_data['entity_location_id'])
@@ -1631,10 +1670,21 @@ async def update_slot_config(
             params.append(value)
             param_idx += 1
 
+    # Helper function to fetch slot config with location details
+    async def fetch_slot_with_location(slot_id: str):
+        return await db.fetchrow("""
+            SELECT
+                sc.id, sc.entity_location_id, sc.entity_code, sc.day_of_week,
+                sc.start_time, sc.end_time, sc.slot_duration_minutes,
+                sc.max_appointments_per_slot, sc.is_active,
+                el.location_name, el.location_address, el.city, el.region
+            FROM appointment_slot_configs sc
+            LEFT JOIN entity_locations el ON sc.entity_location_id = el.id
+            WHERE sc.id = $1::uuid
+        """, slot_id)
+
     if not updates:
-        row = await db.fetchrow(
-            "SELECT * FROM appointment_slot_configs WHERE id = $1::uuid", slot_id
-        )
+        row = await fetch_slot_with_location(slot_id)
         if not row:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -1649,7 +1699,11 @@ async def update_slot_config(
             end_time=str(row['end_time']),
             slot_duration_minutes=row['slot_duration_minutes'],
             max_appointments_per_slot=row['max_appointments_per_slot'],
-            is_active=row['is_active']
+            is_active=row['is_active'],
+            location_name=row.get('location_name'),
+            location_address=row.get('location_address'),
+            city=row.get('city'),
+            region=row.get('region')
         )
 
     updates.append("updated_at = NOW()")
@@ -1658,16 +1712,19 @@ async def update_slot_config(
         UPDATE appointment_slot_configs
         SET {', '.join(updates)}
         WHERE id = $1::uuid
-        RETURNING *
+        RETURNING id
     """
 
-    row = await db.fetchrow(query, *params)
+    result = await db.fetchrow(query, *params)
 
-    if not row:
+    if not result:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Slot configuration not found"
         )
+
+    # Fetch the updated slot with location details
+    row = await fetch_slot_with_location(slot_id)
 
     return AppointmentSlotConfigResponse(
         id=str(row['id']),
@@ -1678,7 +1735,11 @@ async def update_slot_config(
         end_time=str(row['end_time']),
         slot_duration_minutes=row['slot_duration_minutes'],
         max_appointments_per_slot=row['max_appointments_per_slot'],
-        is_active=row['is_active']
+        is_active=row['is_active'],
+        location_name=row.get('location_name'),
+        location_address=row.get('location_address'),
+        city=row.get('city'),
+        region=row.get('region')
     )
 
 

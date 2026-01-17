@@ -1088,6 +1088,7 @@
           "allEntities": "Toutes les entités",
           "deleteConfirmTitle": "Supprimer le créneau ?",
           "deleteConfirmDescription": "Le créneau de {entity} pour {day} sera supprimé. Cette action est irréversible.",
+          "bulkDeleteDescription": "Les créneaux sélectionnés seront supprimés. Cette action est irréversible.",
           "created": "Créneau créé avec succès",
           "updated": "Créneau mis à jour avec succès",
           "deleted": "Créneau supprimé avec succès",

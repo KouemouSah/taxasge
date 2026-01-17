@@ -1,30 +1,12 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter, useParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import {
   Select,
   SelectContent,
@@ -47,8 +29,9 @@ import {
 import { useSlotConfigs, useDeleteSlotConfig } from '@/modules/service-requests-admin'
 import type { AppointmentSlotConfig } from '@/modules/service-requests-admin'
 import { DAY_OF_WEEK_LABELS } from '@/modules/service-requests-admin'
-import { DataTablePagination, usePagination } from '@/modules/service-requests-admin/components'
 import { DEFAULT_CITIES } from '@/modules/entity-locations/types'
+import { DataTable, createBulkDeleteAction } from '@/components/ui/data-table'
+import type { DataTableColumn, BulkAction } from '@/components/ui/data-table'
 
 // Short labels for compact display
 const DAY_SHORT_LABELS: Record<number, string> = {
@@ -172,19 +155,6 @@ export default function SlotsTabContent() {
   const [searchQuery, setSearchQuery] = useState('')
   const [entityFilter, setEntityFilter] = useState<string>('all')
   const [cityFilter, setCityFilter] = useState<string>('all')
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [selectedGroup, setSelectedGroup] = useState<GroupedSlotConfig | null>(null)
-
-  // Pagination
-  const {
-    currentPage,
-    pageSize,
-    setCurrentPage,
-    setPageSize,
-    paginateData,
-    getTotalPages,
-    resetPage,
-  } = usePagination(10)
 
   // Queries
   const {
@@ -225,38 +195,140 @@ export default function SlotsTabContent() {
     )
   }, [cityFilteredGroups, searchQuery])
 
-  // Pagination
-  const paginatedGroups = paginateData(filteredGroups)
-  const totalPages = getTotalPages(filteredGroups.length)
-
   // Handlers
-  const handleNavigateToCreate = () => {
+  const handleNavigateToCreate = useCallback(() => {
     router.push(`/${locale}/dashboard/admin/service-requests/appointments/slots/new`)
-  }
+  }, [router, locale])
 
-  const handleEditSlot = (slot: AppointmentSlotConfig) => {
+  const handleEditSlot = useCallback((slot: AppointmentSlotConfig) => {
     router.push(`/${locale}/dashboard/admin/service-requests/appointments/slots/${slot.id}/edit`)
-  }
+  }, [router, locale])
 
-  const handleDeleteGroup = async () => {
-    if (!selectedGroup) return
-
-    try {
-      // Delete all slots in the group
-      for (const slot of selectedGroup.originalSlots) {
+  // Bulk delete handler - deletes all slots in selected groups
+  const handleBulkDelete = useCallback(async (selectedGroups: GroupedSlotConfig[]) => {
+    for (const group of selectedGroups) {
+      for (const slot of group.originalSlots) {
         await deleteMutation.mutateAsync(slot.id)
       }
-      setIsDeleteDialogOpen(false)
-      setSelectedGroup(null)
-    } catch {
-      // Error handled by mutation
     }
-  }
+    refetch()
+  }, [deleteMutation, refetch])
 
-  const openDeleteDialog = (group: GroupedSlotConfig) => {
-    setSelectedGroup(group)
-    setIsDeleteDialogOpen(true)
-  }
+  // Table columns
+  const columns: DataTableColumn<GroupedSlotConfig>[] = useMemo(() => [
+    {
+      id: 'entity',
+      header: t('entity'),
+      cell: (group) => <Badge variant="outline">{group.entity_code}</Badge>,
+    },
+    {
+      id: 'day',
+      header: t('day'),
+      cell: (group) => (
+        <div className="flex items-center gap-2">
+          <span className="font-medium">{group.dayRangeDisplay}</span>
+          {group.days.length > 1 && (
+            <Badge variant="secondary" className="text-xs">
+              {group.days.length}d
+            </Badge>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: 'hours',
+      header: t('hours'),
+      cell: (group) => (
+        <span className="font-mono text-sm">
+          {group.start_time} - {group.end_time}
+        </span>
+      ),
+    },
+    {
+      id: 'duration',
+      header: t('duration'),
+      className: 'text-center',
+      cell: (group) => `${group.slot_duration_minutes} min`,
+    },
+    {
+      id: 'capacity',
+      header: t('capacity'),
+      className: 'text-center',
+      cell: (group) => group.max_appointments_per_slot,
+    },
+    {
+      id: 'location',
+      header: t('location'),
+      cell: (group) =>
+        group.location_name ? (
+          <div className="flex flex-col">
+            <div className="flex items-center gap-1">
+              <MapPin className="h-3 w-3 text-muted-foreground" />
+              <span className="text-sm truncate max-w-[150px]">{group.location_name}</span>
+            </div>
+            {group.location_address && (
+              <span className="text-xs text-muted-foreground truncate max-w-[150px]">
+                {group.location_address}
+              </span>
+            )}
+          </div>
+        ) : (
+          <span className="text-muted-foreground">-</span>
+        ),
+    },
+    {
+      id: 'city',
+      header: t('city'),
+      cell: (group) =>
+        group.city ? (
+          <div className="flex flex-col">
+            <Badge variant="secondary">{group.city}</Badge>
+            {group.region && (
+              <span className="text-xs text-muted-foreground">{group.region}</span>
+            )}
+          </div>
+        ) : (
+          <span className="text-muted-foreground">-</span>
+        ),
+    },
+    {
+      id: 'status',
+      header: t('status'),
+      className: 'text-center',
+      cell: (group) =>
+        group.is_active ? (
+          <CheckCircle className="h-5 w-5 text-green-500 mx-auto" />
+        ) : (
+          <XCircle className="h-5 w-5 text-red-500 mx-auto" />
+        ),
+    },
+    {
+      id: 'actions',
+      header: t('actions'),
+      className: 'text-right',
+      cell: (group) => (
+        <div className="flex items-center justify-end gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => handleEditSlot(group.originalSlots[0])}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ], [t, handleEditSlot])
+
+  // Bulk actions
+  const bulkActions: BulkAction<GroupedSlotConfig>[] = useMemo(() => [
+    createBulkDeleteAction({
+      label: tCommon('delete'),
+      onDelete: handleBulkDelete,
+      confirmTitle: t('deleteConfirmTitle'),
+      confirmDescription: t('bulkDeleteDescription'),
+    }),
+  ], [tCommon, t, handleBulkDelete])
 
   // Render loading state
   if (isLoading) {
@@ -312,20 +384,11 @@ export default function SlotsTabContent() {
               <Input
                 placeholder={t('searchPlaceholder')}
                 value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value)
-                  resetPage()
-                }}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
               />
             </div>
-            <Select
-              value={cityFilter}
-              onValueChange={(v) => {
-                setCityFilter(v)
-                resetPage()
-              }}
-            >
+            <Select value={cityFilter} onValueChange={setCityFilter}>
               <SelectTrigger className="w-[150px]">
                 <SelectValue placeholder={t('filterByCity')} />
               </SelectTrigger>
@@ -338,13 +401,7 @@ export default function SlotsTabContent() {
                 ))}
               </SelectContent>
             </Select>
-            <Select
-              value={entityFilter}
-              onValueChange={(v) => {
-                setEntityFilter(v)
-                resetPage()
-              }}
-            >
+            <Select value={entityFilter} onValueChange={setEntityFilter}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder={t('filterByEntity')} />
               </SelectTrigger>
@@ -359,155 +416,20 @@ export default function SlotsTabContent() {
             </Select>
           </div>
 
-          {/* Slots Table with Grouped Days */}
-          <div className="border rounded-md">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('entity')}</TableHead>
-                  <TableHead>{t('day')}</TableHead>
-                  <TableHead>{t('hours')}</TableHead>
-                  <TableHead className="text-center">{t('duration')}</TableHead>
-                  <TableHead className="text-center">{t('capacity')}</TableHead>
-                  <TableHead>{t('location')}</TableHead>
-                  <TableHead>{t('city')}</TableHead>
-                  <TableHead className="text-center">{t('status')}</TableHead>
-                  <TableHead className="text-right">{t('actions')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedGroups.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
-                      {t('noSlotsFound')}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  paginatedGroups.map((group) => (
-                    <TableRow key={group.id}>
-                      <TableCell>
-                        <Badge variant="outline">{group.entity_code}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{group.dayRangeDisplay}</span>
-                          {group.days.length > 1 && (
-                            <Badge variant="secondary" className="text-xs">
-                              {group.days.length}d
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-mono text-sm">
-                          {group.start_time} - {group.end_time}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">{group.slot_duration_minutes} min</TableCell>
-                      <TableCell className="text-center">{group.max_appointments_per_slot}</TableCell>
-                      <TableCell>
-                        {group.location_name ? (
-                          <div className="flex flex-col">
-                            <div className="flex items-center gap-1">
-                              <MapPin className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-sm truncate max-w-[150px]">{group.location_name}</span>
-                            </div>
-                            {group.location_address && (
-                              <span className="text-xs text-muted-foreground truncate max-w-[150px]">
-                                {group.location_address}
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {group.city ? (
-                          <div className="flex flex-col">
-                            <Badge variant="secondary">{group.city}</Badge>
-                            {group.region && (
-                              <span className="text-xs text-muted-foreground">{group.region}</span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {group.is_active ? (
-                          <CheckCircle className="h-5 w-5 text-green-500 mx-auto" />
-                        ) : (
-                          <XCircle className="h-5 w-5 text-red-500 mx-auto" />
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEditSlot(group.originalSlots[0])}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openDeleteDialog(group)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Pagination */}
-          <DataTablePagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalItems={filteredGroups.length}
-            pageSize={pageSize}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={setPageSize}
-            pageSizeOptions={[10, 20, 30, 50]}
+          {/* DataTable with selection and bulk actions */}
+          <DataTable
+            data={filteredGroups}
+            columns={columns}
+            getRowId={(group) => group.id}
+            bulkActions={bulkActions}
+            selectable={true}
+            isLoading={isLoading}
+            emptyMessage={t('noSlotsFound')}
+            emptyIcon={<CalendarClock className="h-12 w-12" />}
+            onRefresh={refetch}
           />
         </CardContent>
       </Card>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('deleteConfirmTitle')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {selectedGroup && selectedGroup.days.length > 1
-                ? `¿Eliminar ${selectedGroup.days.length} configuraciones para ${selectedGroup.entity_code} (${selectedGroup.dayRangeDisplay})?`
-                : t('deleteConfirmDescription', {
-                    entity: selectedGroup?.entity_code,
-                    day: selectedGroup ? DAY_OF_WEEK_LABELS[selectedGroup.days[0]] : '',
-                  })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteGroup}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {selectedGroup && selectedGroup.days.length > 1
-                ? `Eliminar ${selectedGroup.days.length} días`
-                : tCommon('delete')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }
