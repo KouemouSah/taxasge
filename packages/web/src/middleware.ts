@@ -52,39 +52,20 @@ function getUserRole(request: NextRequest): string | null {
 
 /**
  * Check if user has admin/supervisor permissions
+ * Migration 048: Simplified to 'admin' and 'agent' roles
  */
 function hasAdminPermissions(role: string | null): boolean {
   if (!role) return false;
-
-  const adminRoles = [
-    'admin',
-    'dgi_agent',
-    'supervisor_junior_dgi',
-    'supervisor_dgi',
-    'supervisor_senior',
-    'supervisor_readonly',
-    'ministry_agent',
-  ];
-
-  return adminRoles.includes(role);
+  return ['admin', 'agent'].includes(role);
 }
 
 /**
- * Check if user has write permissions (excludes readonly supervisors)
+ * Check if user has write permissions
+ * Migration 048: Simplified to 'admin' and 'agent' roles
  */
 function hasWritePermissions(role: string | null): boolean {
   if (!role) return false;
-
-  const writeRoles = [
-    'admin',
-    'dgi_agent',
-    'supervisor_junior_dgi',
-    'supervisor_dgi',
-    'supervisor_senior',
-    'ministry_agent',
-  ];
-
-  return writeRoles.includes(role);
+  return ['admin', 'agent'].includes(role);
 }
 
 /**

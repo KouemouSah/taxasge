@@ -29,21 +29,13 @@ export const APP_CONSTANTS = {
   },
 
   // User Roles (aligned with backend - MUST match user_role_enum in database)
+  // Migration 048: Simplified to 6 roles
   USER_ROLES: {
-    // Public Users
     CITIZEN: 'citizen',
     BUSINESS: 'business',
     ACCOUNTANT: 'accountant',
-
-    // DGI Staff
-    DGI_AGENT: 'dgi_agent',
-    SUPERVISOR_JUNIOR_DGI: 'supervisor_junior_dgi',
-    SUPERVISOR_DGI: 'supervisor_dgi',
-    SUPERVISOR_SENIOR: 'supervisor_senior',
-    SUPERVISOR_READONLY: 'supervisor_readonly',
-
-    // Ministry & Admin
-    MINISTRY_AGENT: 'ministry_agent',
+    AGENT: 'agent',           // Unified agent role (supervisors via is_supervisor flag)
+    FUNCIONARIO: 'funcionario',
     ADMIN: 'admin',
   } as const,
 
