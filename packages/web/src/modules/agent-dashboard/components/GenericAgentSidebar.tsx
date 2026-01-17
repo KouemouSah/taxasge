@@ -27,6 +27,8 @@ import {
   ChevronDown,
   LogOut,
   Shield,
+  User,
+  Settings,
 } from 'lucide-react';
 import { clearAuthData } from '@/core/auth/storage';
 import { useToast } from '@/hooks/use-toast';
@@ -233,8 +235,41 @@ export function GenericAgentSidebar({
         </nav>
       </ScrollArea>
 
-      {/* Footer with logout */}
-      <div className="p-4 border-t space-y-3">
+      {/* Footer with profile, settings, and logout */}
+      <div className="p-4 border-t space-y-2">
+        {/* Profile link */}
+        <Link
+          href={`/${locale}/dashboard/profile`}
+          className={cn(
+            'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent',
+            pathname?.includes('/dashboard/profile')
+              ? 'bg-primary/10 text-primary font-medium'
+              : 'text-muted-foreground hover:text-foreground',
+            collapsed && 'justify-center px-2'
+          )}
+          title={collapsed ? tCommon('profile') : undefined}
+        >
+          <User className="h-4 w-4 flex-shrink-0" />
+          {!collapsed && <span>{tCommon('profile')}</span>}
+        </Link>
+
+        {/* Settings link */}
+        <Link
+          href={`/${locale}/dashboard/settings/security`}
+          className={cn(
+            'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent',
+            pathname?.includes('/dashboard/settings')
+              ? 'bg-primary/10 text-primary font-medium'
+              : 'text-muted-foreground hover:text-foreground',
+            collapsed && 'justify-center px-2'
+          )}
+          title={collapsed ? tCommon('settings') : undefined}
+        >
+          <Settings className="h-4 w-4 flex-shrink-0" />
+          {!collapsed && <span>{tCommon('settings')}</span>}
+        </Link>
+
+        {/* Logout button */}
         <Button
           variant="outline"
           className={cn(
@@ -250,7 +285,7 @@ export function GenericAgentSidebar({
 
         {/* Version info */}
         {!collapsed && (
-          <div className="text-xs text-muted-foreground text-center">
+          <div className="text-xs text-muted-foreground text-center pt-1">
             {entityConfig.entityCode} Agent v1.0
           </div>
         )}
