@@ -402,10 +402,9 @@ class AgentProfileService:
         """
         import bcrypt
 
-        # Determine user role based on agent type and is_supervisor
-        user_role = "dgi_agent" if data.agent_type.value == "ministry_agent" else "ministry_agent"
-        if data.is_supervisor:
-            user_role = "supervisor"
+        # User role is always "agent" (per migration 048)
+        # The agent_type and is_supervisor are stored in agent_profiles
+        user_role = "agent"
 
         # Hash password
         password_hash = bcrypt.hashpw(
