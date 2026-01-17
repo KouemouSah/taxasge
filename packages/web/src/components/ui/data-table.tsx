@@ -188,7 +188,7 @@ export function DataTable<T>({
   // Selection for current page only
   const currentPageSelection = React.useMemo(() => {
     const pageIds = new Set(paginatedData.map(getRowId))
-    const selectedOnPage = [...selection.selectedIds].filter((id) => pageIds.has(id))
+    const selectedOnPage = Array.from(selection.selectedIds).filter((id) => pageIds.has(id))
     return {
       isAllSelected: paginatedData.length > 0 && selectedOnPage.length === paginatedData.length,
       isPartiallySelected: selectedOnPage.length > 0 && selectedOnPage.length < paginatedData.length,
