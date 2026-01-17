@@ -5,6 +5,8 @@
  * BACKEND INTEGRATION:
  * - Users stats: GET /api/v1/admin/users/stats (users-admin module)
  * - Audit stats: GET /api/v1/audit-logs/stats (audit-logs-admin module)
+ * - Roles: GET /api/v1/roles (permissions-admin module)
+ * - Permissions: GET /api/v1/permissions (permissions-admin module)
  *
  * @module modules/admin/components
  * @author Claude Code
@@ -19,6 +21,7 @@ import { Users, Shield, Key, Activity, AlertTriangle, RefreshCw } from 'lucide-r
 import { Card, CardContent } from '@/components/ui/card'
 import usersApi from '@/modules/users-admin/services/api'
 import auditLogsApi from '@/modules/audit-logs-admin/services/api'
+import { permissionsApi, rolesApi } from '@/modules/permissions-admin/services/api'
 
 interface UserStats {
   // Backend returns snake_case, transformKeys converts to camelCase
@@ -44,6 +47,8 @@ export default function StatsCards() {
   const t = useTranslations('admin.dashboard')
   const [userStats, setUserStats] = useState<UserStats | null>(null)
   const [auditStats, setAuditStats] = useState<AuditStats | null>(null)
+  const [totalRoles, setTotalRoles] = useState<number>(0)
+  const [totalPermissions, setTotalPermissions] = useState<number>(0)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -53,10 +58,17 @@ export default function StatsCards() {
       setError(null)
 
       try {
-        // Fetch both stats in parallel
-        const [usersData, auditData] = await Promise.allSettled([
+        // Calculate 24h ago for activity filter
+        const now = new Date()
+        const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+        const startDate = twentyFourHoursAgo.toISOString()
+
+        // Fetch all stats in parallel
+        const [usersData, auditData, rolesData, permissionsData] = await Promise.allSettled([
           usersApi.getStats(),
-          auditLogsApi.getStats(),
+          auditLogsApi.getStats({ start_date: startDate }), // Filter for last 24h
+          rolesApi.getAll(),
+          permissionsApi.getAll(),
         ])
 
         if (usersData.status === 'fulfilled') {
@@ -73,6 +85,16 @@ export default function StatsCards() {
         if (auditData.status === 'fulfilled') {
           setAuditStats(auditData.value)
         }
+
+        if (rolesData.status === 'fulfilled') {
+          // rolesApi.getAll() returns Role[] array
+          setTotalRoles(rolesData.value?.length ?? 0)
+        }
+
+        if (permissionsData.status === 'fulfilled') {
+          // permissionsApi.getAll() returns Permission[] array
+          setTotalPermissions(permissionsData.value?.length ?? 0)
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error fetching stats')
       } finally {
@@ -83,27 +105,24 @@ export default function StatsCards() {
     fetchStats()
   }, [])
 
-  // Calculate derived stats
-  const totalUsers = userStats?.totalUsers ?? userStats?.total_users ?? 0
-  const usersByRole = userStats?.usersByRole ?? userStats?.users_by_role ?? {}
-  const activeRoles = Object.keys(usersByRole).length
-  const totalPermissions = 52 // Static for now - permissions catalog
-  const activityCount = auditStats?.total_logs || 0
+  // Calculate derived stats from real API data
+  const totalUsersCount = userStats?.totalUsers ?? userStats?.total_users ?? 0
   const activeUsers = userStats?.activeUsers ?? userStats?.active_users ?? 0
+  const activityCount = auditStats?.total_logs || 0
 
   const stats = [
     {
       name: t('totalUsersLabel'),
-      value: totalUsers.toLocaleString(),
-      change: activeUsers && totalUsers ? `${Math.round((activeUsers / totalUsers) * 100)}% activos` : '0%',
+      value: totalUsersCount.toLocaleString(),
+      change: activeUsers && totalUsersCount ? `${Math.round((activeUsers / totalUsersCount) * 100)}% activos` : '0%',
       changeType: 'positive' as const,
       icon: Users,
       description: t('vsLastMonth'),
     },
     {
       name: t('activeRolesLabel'),
-      value: activeRoles.toString(),
-      change: `${activeRoles}`,
+      value: totalRoles.toString(),
+      change: `${totalRoles} roles`,
       changeType: 'neutral' as const,
       icon: Shield,
       description: t('rolesDescription'),
@@ -111,7 +130,7 @@ export default function StatsCards() {
     {
       name: t('permissionsLabel'),
       value: totalPermissions.toString(),
-      change: '0',
+      change: totalPermissions > 0 ? `${totalPermissions} permisos` : '0',
       changeType: 'neutral' as const,
       icon: Key,
       description: t('completeCatalog'),
