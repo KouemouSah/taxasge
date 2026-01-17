@@ -171,7 +171,7 @@ class RoleRepository:
         """
         Get all RBAC roles assignable to agents
 
-        Returns roles with entity_type='ministry_agent', 'entity_agent', or NULL (global).
+        Returns roles with entity_type='agent', 'ministry_agent', 'entity_agent', or NULL (global).
         These define what permissions an agent can have.
 
         Returns:
@@ -181,7 +181,7 @@ class RoleRepository:
             SELECT id, name, code, entity_type, description, is_system,
                    created_at, updated_at, created_by
             FROM roles
-            WHERE entity_type IN ('ministry_agent', 'entity_agent')
+            WHERE entity_type IN ('agent', 'ministry_agent', 'entity_agent')
                OR entity_type IS NULL
             ORDER BY is_system DESC, name
         """)

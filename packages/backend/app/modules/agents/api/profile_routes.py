@@ -33,7 +33,7 @@ from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.permissions.middleware.permission_middleware import permission_required
 from app.database.connection import get_database
 
-router = APIRouter(prefix="/profiles", tags=["Agent Profiles"])
+router = APIRouter(tags=["Agent Profiles"])
 
 profile_repository = AgentProfileRepository()
 

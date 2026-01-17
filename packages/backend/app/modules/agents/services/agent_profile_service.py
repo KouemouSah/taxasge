@@ -471,8 +471,11 @@ class AgentProfileService:
             # 3. Assign RBAC role if provided
             if data.rbac_role_id:
                 # First verify the role exists and is an agent role
+                # Accept entity_type: 'agent', 'ministry_agent', 'entity_agent', or NULL
                 role_check = await conn.fetchrow(
-                    "SELECT id FROM roles WHERE id = $1 AND entity_type = 'agent'",
+                    """SELECT id FROM roles WHERE id = $1
+                       AND (entity_type IN ('agent', 'ministry_agent', 'entity_agent')
+                            OR entity_type IS NULL)""",
                     data.rbac_role_id
                 )
                 if role_check:
