@@ -169,6 +169,18 @@ class AgentListFilters(BaseModel):
     offset: int = 0
 
 
+class AgentListResponse(BaseModel):
+    """Paginated response for agent profiles list"""
+    items: List["AgentProfileWithDetails"]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+    class Config:
+        from_attributes = True
+
+
 class AgentAssignmentRequest(BaseModel):
     """Request to assign agent to entity/ministry"""
     user_id: UUID

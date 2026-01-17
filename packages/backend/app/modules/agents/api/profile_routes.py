@@ -22,6 +22,7 @@ from app.modules.agents.models.agent_profile import (
     AgentProfileResponse,
     AgentProfileWithDetails,
     AgentListFilters,
+    AgentListResponse,
     AgentCompleteCreate,
     AgentCompleteResponse,
     AdminCreateRequest,
@@ -179,7 +180,7 @@ async def get_my_available_workflows(
 # CRUD OPERATIONS
 # ============================================================================
 
-@router.get("/profiles", response_model=List[AgentProfileWithDetails])
+@router.get("/profiles", response_model=AgentListResponse)
 async def list_profiles(
     agent_type: Optional[AgentType] = None,
     is_supervisor: Optional[bool] = None,
@@ -191,7 +192,7 @@ async def list_profiles(
     current_user: Dict[str, Any] = Depends(get_current_user),
     db = Depends(get_database),
 ):
-    """List agent profiles with optional filters"""
+    """List agent profiles with optional filters (paginated response)"""
     filters = AgentListFilters(
         agent_type=agent_type,
         is_supervisor=is_supervisor,
@@ -202,8 +203,20 @@ async def list_profiles(
         offset=(page - 1) * page_size,
     )
 
-    profiles = await profile_repository.list_with_details(db, filters)
-    return [AgentProfileWithDetails(**p) for p in profiles]
+    # list_agents returns (data, total_count)
+    profiles, total = await profile_repository.list_agents(db, filters)
+    items = [AgentProfileWithDetails(**p) for p in profiles]
+
+    # Calculate total pages
+    pages = (total + page_size - 1) // page_size if total > 0 else 1
+
+    return AgentListResponse(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+        pages=pages,
+    )
 
 
 @router.get("/profiles/{profile_id}", response_model=AgentProfileWithDetails)
