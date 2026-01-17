@@ -32,7 +32,7 @@ class WorkloadRepository:
         conn: asyncpg.Connection,
         agent_id: str,
     ) -> Dict[str, Any]:
-        """Create initial workload record for agent"""
+        """Create initial workload record for agent (legacy method using agent_id)"""
         query = """
             INSERT INTO agent_workloads (
                 agent_id, current_assignments, pending_declarations,
@@ -45,6 +45,29 @@ class WorkloadRepository:
             RETURNING *
         """
         result = await conn.fetchrow(query, agent_id)
+        return dict(result) if result else None
+
+    async def create_workload_for_profile(
+        self,
+        conn: asyncpg.Connection,
+        agent_profile_id: str,
+    ) -> Optional[Dict[str, Any]]:
+        """Create initial workload record for agent profile (migration 047+)
+
+        Uses agent_profile_id as the primary identifier per migration 054.
+        """
+        query = """
+            INSERT INTO agent_workloads (
+                agent_profile_id, current_assignments, pending_declarations,
+                in_progress_declarations, max_concurrent_assignments,
+                capacity_percentage, workload_status, availability,
+                last_updated_at
+            )
+            VALUES ($1, 0, 0, 0, 20, 0.00, 'available', 'available', NOW())
+            ON CONFLICT (agent_profile_id) DO NOTHING
+            RETURNING *
+        """
+        result = await conn.fetchrow(query, agent_profile_id)
         return dict(result) if result else None
 
     async def update_workload(
