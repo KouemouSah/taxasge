@@ -830,6 +830,48 @@ async def list_document_requirements(
     current_user=Depends(get_current_user),
     _=Depends(permission_required("admin.manage_workflow"))
 ):
+    # First check if workflow exists and if it's predefined
+    workflow_row = await db.fetchrow("""
+        SELECT code, is_generic FROM workflows WHERE code = $1
+    """, code)
+
+    if not workflow_row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Workflow not found: {code}"
+        )
+
+    # For predefined workflows (is_generic=False), read from Python workflow classes
+    if not workflow_row['is_generic']:
+        from ..services.workflow_engine import workflow_engine
+
+        # Extract sub_type from workflow code (e.g., PASAPORTE_NUEVO -> NUEVO)
+        parts = code.split('_', 1)
+        sub_type = parts[1] if len(parts) > 1 else code
+
+        # Try to get workflow class from engine
+        workflow = workflow_engine.get_workflow_by_string(code)
+        if workflow:
+            doc_requirements = extract_document_requirements_from_workflow(workflow, sub_type)
+            result = []
+            for i, doc_req in enumerate(doc_requirements):
+                result.append(DocumentRequirementResponse(
+                    id=f"predefined-{code}-{doc_req['document_code']}",
+                    workflow_code=code,
+                    document_code=doc_req['document_code'],
+                    document_name_es=doc_req['document_name_es'],
+                    document_template_id=None,
+                    condition_type=doc_req.get('condition_type', 'always'),
+                    condition_value=doc_req.get('condition_value'),
+                    is_required=doc_req['is_required'],
+                    display_order=doc_req.get('display_order', i + 1),
+                    instructions_es=doc_req.get('instructions_es'),
+                    extraction_schema_key=doc_req.get('extraction_schema_key'),
+                    is_active=True
+                ))
+            return result
+
+    # For dynamic workflows (is_generic=True), read from database
     rows = await db.fetch("""
         SELECT * FROM workflow_document_requirements
         WHERE workflow_code = $1
