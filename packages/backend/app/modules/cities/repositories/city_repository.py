@@ -370,13 +370,19 @@ class EntityRepository:
         """Create a new entity."""
         import json
 
-        query = f"""
+        # Note: RETURNING clause cannot use alias prefix like SELECT queries
+        query = """
             INSERT INTO entities (
                 code, name, description, entity_type, parent_entity_id,
                 ministry_id, workflow_codes, is_active, created_by
             )
             VALUES ($1, $2, $3, $4::entity_type_enum, $5, $6, $7::jsonb, $8, $9)
-            RETURNING {self._BASE_FIELDS}
+            RETURNING
+                id, code, name, description,
+                entity_type::text as entity_type,
+                parent_entity_id, ministry_id,
+                COALESCE(workflow_codes, '[]'::jsonb) as workflow_codes,
+                is_active, created_at, updated_at
         """
         row = await self.db.fetchrow(
             query,
