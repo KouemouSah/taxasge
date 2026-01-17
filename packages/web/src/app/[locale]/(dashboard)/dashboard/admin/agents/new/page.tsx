@@ -40,7 +40,7 @@ import {
 } from '@/components/ui/select';
 import { ArrowLeft, Loader2, UserCog, Shield, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useCreateAgent, useCreateAdmin } from '@/modules/agents-admin/hooks';
+import { useInviteAgent, useInviteAdmin } from '@/modules/agents-admin/hooks';
 import { AgentType } from '@/modules/agents-admin/types';
 import { hierarchyApi } from '@/modules/fiscal-services/services/api';
 import { useEntitiesSimple } from '@/modules/cities/hooks';
@@ -53,7 +53,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 const adminSchema = z.object({
   email: z.string().email('Email invalide'),
-  password: z.string().min(8, 'Minimum 8 caractères'),
   first_name: z.string().min(2, 'Minimum 2 caractères').max(100),
   last_name: z.string().min(2, 'Minimum 2 caractères').max(100),
   phone_number: z
@@ -65,9 +64,8 @@ const adminSchema = z.object({
 });
 
 const agentSchema = z.object({
-  // User info
+  // User info (password will be set by agent after email verification)
   email: z.string().email('Email invalide'),
-  password: z.string().min(8, 'Minimum 8 caractères'),
   first_name: z.string().min(2, 'Minimum 2 caractères').max(100),
   last_name: z.string().min(2, 'Minimum 2 caractères').max(100),
   phone_number: z
@@ -129,14 +127,13 @@ export default function CreateAgentPage() {
   const type = searchParams.get('type') || 'agent';
   const isAdmin = type === 'admin';
 
-  const createAgentMutation = useCreateAgent();
-  const createAdminMutation = useCreateAdmin();
+  const inviteAgentMutation = useInviteAgent();
+  const inviteAdminMutation = useInviteAdmin();
 
   const adminForm = useForm<AdminFormData>({
     resolver: zodResolver(adminSchema),
     defaultValues: {
       email: '',
-      password: '',
       first_name: '',
       last_name: '',
       phone_number: '',
@@ -148,7 +145,6 @@ export default function CreateAgentPage() {
     resolver: zodResolver(agentSchema),
     defaultValues: {
       email: '',
-      password: '',
       first_name: '',
       last_name: '',
       phone_number: '',
@@ -171,9 +167,8 @@ export default function CreateAgentPage() {
 
   const handleAdminSubmit = async (data: AdminFormData) => {
     try {
-      await createAdminMutation.mutateAsync({
+      const response = await inviteAdminMutation.mutateAsync({
         email: data.email,
-        password: data.password,
         first_name: data.first_name,
         last_name: data.last_name,
         phone_number: data.phone_number || undefined,
@@ -181,8 +176,8 @@ export default function CreateAgentPage() {
       });
 
       toast({
-        title: 'Administrateur créé',
-        description: 'Un email de vérification a été envoyé.',
+        title: 'Invitation envoyée',
+        description: response.message || `Un email d'activation a été envoyé à ${data.email}. L'administrateur devra définir son mot de passe.`,
       });
 
       router.push('/dashboard/admin/agents?tab=admins');
@@ -190,17 +185,16 @@ export default function CreateAgentPage() {
       toast({
         variant: 'destructive',
         title: 'Erreur',
-        description: error?.message || "Impossible de créer l'administrateur",
+        description: error?.message || "Impossible d'envoyer l'invitation",
       });
     }
   };
 
   const handleAgentSubmit = async (data: AgentFormData) => {
     try {
-      await createAgentMutation.mutateAsync({
+      const response = await inviteAgentMutation.mutateAsync({
         user: {
           email: data.email,
-          password: data.password,
           first_name: data.first_name,
           last_name: data.last_name,
           phone_number: data.phone_number || undefined,
@@ -222,8 +216,8 @@ export default function CreateAgentPage() {
       });
 
       toast({
-        title: 'Agent créé',
-        description: 'Un email de vérification a été envoyé.',
+        title: 'Invitation envoyée',
+        description: response.message || `Un email d'activation a été envoyé à ${data.email}. L'agent devra définir son mot de passe.`,
       });
 
       router.push('/dashboard/admin/agents');
@@ -231,12 +225,12 @@ export default function CreateAgentPage() {
       toast({
         variant: 'destructive',
         title: 'Erreur',
-        description: error?.message || "Impossible de créer l'agent",
+        description: error?.message || "Impossible d'envoyer l'invitation",
       });
     }
   };
 
-  const isLoading = createAgentMutation.isPending || createAdminMutation.isPending;
+  const isLoading = inviteAgentMutation.isPending || inviteAdminMutation.isPending;
 
   return (
     <div className="space-y-6">
@@ -288,20 +282,9 @@ export default function CreateAgentPage() {
                       <FormControl>
                         <Input type="email" placeholder="admin@example.com" {...field} />
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={adminForm.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Mot de passe *</FormLabel>
-                      <FormControl>
-                        <Input type="password" placeholder="Minimum 8 caractères" {...field} />
-                      </FormControl>
+                      <FormDescription>
+                        Un email d&apos;activation sera envoyé à cette adresse
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -381,7 +364,7 @@ export default function CreateAgentPage() {
               </Button>
               <Button type="submit" disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Créer l&apos;Administrateur
+                Envoyer l&apos;Invitation
               </Button>
             </div>
           </form>
@@ -410,20 +393,9 @@ export default function CreateAgentPage() {
                       <FormControl>
                         <Input type="email" placeholder="agent@example.com" {...field} />
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={agentForm.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Mot de passe *</FormLabel>
-                      <FormControl>
-                        <Input type="password" placeholder="Minimum 8 caractères" {...field} />
-                      </FormControl>
+                      <FormDescription>
+                        Un email d&apos;activation sera envoyé à cette adresse
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -843,7 +815,7 @@ export default function CreateAgentPage() {
               </Button>
               <Button type="submit" disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Créer l&apos;Agent
+                Envoyer l&apos;Invitation
               </Button>
             </div>
           </form>

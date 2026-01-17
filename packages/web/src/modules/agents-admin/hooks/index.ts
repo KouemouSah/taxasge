@@ -14,6 +14,8 @@ import type {
   AgentProfileUpdateRequest,
   AgentWorkloadUpdateRequest,
   AgentListFilters,
+  AgentInviteRequest,
+  AdminInviteRequest,
 } from '../types';
 
 // =============================================================================
@@ -174,12 +176,49 @@ export function useCreateAgent() {
 
 /**
  * Hook to create admin user
+ * @deprecated Use useInviteAdmin instead
  */
 export function useCreateAdmin() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (data: AdminCreateRequest) => agentCreationApi.createAdmin(data),
+    onSuccess: () => {
+      // Invalidate admin users list
+      queryClient.invalidateQueries({ queryKey: agentQueryKeys.admins() });
+    },
+  });
+}
+
+// =============================================================================
+// MUTATION HOOKS - INVITATION FLOW (RECOMMENDED)
+// =============================================================================
+
+/**
+ * Hook to invite agent (sends email with verification code)
+ * Step 1 of 2-step invitation flow
+ */
+export function useInviteAgent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: AgentInviteRequest) => agentCreationApi.inviteAgent(data),
+    onSuccess: () => {
+      // Invalidate agent profiles list (pending invitation will show)
+      queryClient.invalidateQueries({ queryKey: agentQueryKeys.profiles() });
+    },
+  });
+}
+
+/**
+ * Hook to invite admin (sends email with verification code)
+ * Step 1 of 2-step invitation flow
+ */
+export function useInviteAdmin() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: AdminInviteRequest) => agentCreationApi.inviteAdmin(data),
     onSuccess: () => {
       // Invalidate admin users list
       queryClient.invalidateQueries({ queryKey: agentQueryKeys.admins() });
