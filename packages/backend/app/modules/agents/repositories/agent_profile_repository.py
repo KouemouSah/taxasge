@@ -357,7 +357,34 @@ class AgentProfileRepository:
         """
 
         results = await conn.fetch(data_query, *params)
-        return [dict(r) for r in results], total
+
+        # Process results to handle JSONB fields properly
+        processed_results = []
+        for row in results:
+            data = dict(row)
+            # Handle specializations JSONB field
+            if 'specializations' in data:
+                specs = data['specializations']
+                if specs is None:
+                    data['specializations'] = []
+                elif isinstance(specs, str):
+                    data['specializations'] = json.loads(specs)
+                elif not isinstance(specs, list):
+                    data['specializations'] = list(specs) if specs else []
+            # Handle working_days array field
+            if 'working_days' in data:
+                days = data['working_days']
+                if days is None:
+                    data['working_days'] = [1, 2, 3, 4, 5]
+                elif isinstance(days, str):
+                    data['working_days'] = json.loads(days)
+                elif not isinstance(days, list):
+                    data['working_days'] = list(days) if days else [1, 2, 3, 4, 5]
+            # Provide default for available_workflows (not returned by this query)
+            data['available_workflows'] = []
+            processed_results.append(data)
+
+        return processed_results, total
 
     def _get_category_condition(
         self,
