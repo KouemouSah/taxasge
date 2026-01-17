@@ -254,7 +254,7 @@ export default function EntitiesTabContent() {
     }
 
     // Prepare data for API - exclude parent_type which is frontend-only
-    const { parent_type, ...apiData } = formData
+    const { parent_type: _parent_type, ...apiData } = formData
     const data: EntityCreate | EntityUpdate = {
       code: apiData.code,
       name: apiData.name,

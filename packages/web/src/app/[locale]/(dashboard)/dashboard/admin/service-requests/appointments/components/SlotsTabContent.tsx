@@ -19,7 +19,6 @@ import {
   Plus,
   Search,
   Pencil,
-  Trash2,
   Loader2,
   AlertCircle,
   CheckCircle,

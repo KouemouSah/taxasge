@@ -12,11 +12,13 @@
  * - ONLY Activate/Deactivate functionality
  * - View details in read-only mode
  *
+ * REFACTORED: Using DataTable component with row selection and pagination
+ *
  * @module dashboard/admin/users
- * @date 2025-01-14
+ * @date 2025-01-17
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,14 +26,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,7 +46,6 @@ import {
 import {
   Users,
   RefreshCw,
-  AlertTriangle,
   Search,
   Shield,
   Eye,
@@ -70,6 +63,7 @@ import type { User } from '@/modules/users-admin/types';
 import { UserRole } from '@/types/user';
 import { useUserLabels } from '@/hooks/use-user-labels';
 import { BackendUnavailableAlert } from '@/modules/admin/components';
+import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table';
 
 // Roles managed in this page (NOT admin/agent - those are in /admin/agents)
 const PUBLIC_ROLES = [
@@ -84,13 +78,14 @@ type PublicRole = typeof PUBLIC_ROLES[number];
 export default function UsersPage() {
   const locale = useLocale();
   const t = useTranslations('admin.users');
+  const tCommon = useTranslations('common');
   const { toast } = useToast();
   const router = useRouter();
   const { getRoleLabel } = useUserLabels();
 
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [_error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | PublicRole>('all');
   const [isBackendUnavailable, setIsBackendUnavailable] = useState(false);
@@ -103,7 +98,7 @@ export default function UsersPage() {
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Fetch users - filter to only public roles
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -131,12 +126,11 @@ export default function UsersPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [t, toast]);
 
   useEffect(() => {
     fetchUsers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchUsers]);
 
   // Filter users based on search and tab
   const filteredUsers = useMemo(() => {
@@ -188,7 +182,7 @@ export default function UsersPage() {
   };
 
   const handleViewDetails = (user: User) => {
-    router.push(`/dashboard/admin/users/${user.id}`);
+    router.push(`/${locale}/dashboard/admin/users/${user.id}`);
   };
 
   const handleActivate = async () => {
@@ -250,6 +244,156 @@ export default function UsersPage() {
     setDeactivateDialogOpen(true);
   };
 
+  // DataTable columns
+  const columns: DataTableColumn<User>[] = useMemo(() => [
+    {
+      id: 'fullName',
+      header: t('tableFullName'),
+      cell: (user) => (
+        <span className="font-medium">
+          {user.first_name} {user.last_name}
+        </span>
+      ),
+    },
+    {
+      id: 'email',
+      header: t('tableEmail'),
+      cell: (user) => user.email,
+    },
+    {
+      id: 'role',
+      header: t('tableRole'),
+      cell: (user) => getRoleBadge(user.role),
+    },
+    {
+      id: 'status',
+      header: t('tableStatus'),
+      cell: (user) => (
+        user.is_active ? (
+          <Badge variant="outline" className="bg-green-50 text-green-700">
+            {t('statusActive')}
+          </Badge>
+        ) : (
+          <Badge variant="outline" className="bg-red-50 text-red-700">
+            {t('statusInactive')}
+          </Badge>
+        )
+      ),
+    },
+    {
+      id: '2fa',
+      header: t('table2FA'),
+      cell: (user) => (
+        user.two_factor_enabled ? (
+          <Shield className="h-4 w-4 text-green-500" />
+        ) : (
+          <Shield className="h-4 w-4 text-gray-300" />
+        )
+      ),
+    },
+    {
+      id: 'lastLogin',
+      header: t('tableLastLogin'),
+      cell: (user) => (
+        user.last_login ? (
+          new Date(user.last_login).toLocaleDateString(locale, {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        ) : (
+          <span className="text-muted-foreground">{t('never')}</span>
+        )
+      ),
+    },
+    {
+      id: 'actions',
+      header: t('tableActions'),
+      className: 'text-right',
+      cell: (user) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleViewDetails(user)}>
+              <Eye className="h-4 w-4 mr-2" />
+              {t('viewDetails')}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {user.is_active ? (
+              <DropdownMenuItem
+                className="text-red-600"
+                onClick={() => openDeactivateDialog(user)}
+              >
+                <PowerOff className="h-4 w-4 mr-2" />
+                {t('deactivate')}
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem
+                className="text-green-600"
+                onClick={() => openActivateDialog(user)}
+              >
+                <Power className="h-4 w-4 mr-2" />
+                {t('activate')}
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ], [t, locale, getRoleBadge, getRoleLabel, handleViewDetails, openActivateDialog, openDeactivateDialog]);
+
+  // Bulk actions
+  const bulkActions: BulkAction<User>[] = useMemo(() => [
+    {
+      id: 'activate',
+      label: t('activateSelected'),
+      icon: <Power className="h-4 w-4" />,
+      variant: 'outline',
+      requiresConfirmation: true,
+      confirmTitle: t('confirmActivateTitle'),
+      confirmDescription: t('confirmActivateDescription'),
+      confirmButtonLabel: t('activate'),
+      onExecute: async (selectedUsers) => {
+        for (const user of selectedUsers) {
+          if (!user.is_active) {
+            await usersApi.setActive(user.id, true);
+          }
+        }
+        toast({
+          title: t('successTitle'),
+          description: t('usersActivated', { count: selectedUsers.length }),
+        });
+      },
+    },
+    {
+      id: 'deactivate',
+      label: t('deactivateSelected'),
+      icon: <PowerOff className="h-4 w-4" />,
+      variant: 'destructive',
+      requiresConfirmation: true,
+      confirmTitle: t('confirmDeactivateTitle'),
+      confirmDescription: t('confirmDeactivateDescription'),
+      confirmButtonLabel: t('deactivate'),
+      onExecute: async (selectedUsers) => {
+        for (const user of selectedUsers) {
+          if (user.is_active) {
+            await usersApi.setActive(user.id, false);
+          }
+        }
+        toast({
+          title: t('successTitle'),
+          description: t('usersDeactivated', { count: selectedUsers.length }),
+        });
+      },
+    },
+  ], [t, toast]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -259,7 +403,7 @@ export default function UsersPage() {
           {t('title')}
         </h1>
         <p className="text-muted-foreground mt-2">
-          Gestion des comptes publics (citoyens, entreprises, comptables, fonctionnaires)
+          {t('subtitle')}
         </p>
       </div>
 
@@ -275,7 +419,7 @@ export default function UsersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.total}</div>
-            <p className="text-xs text-muted-foreground">comptes publics</p>
+            <p className="text-xs text-muted-foreground">{t('publicAccounts')}</p>
           </CardContent>
         </Card>
 
@@ -286,7 +430,7 @@ export default function UsersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{stats.active}</div>
-            <p className="text-xs text-muted-foreground">utilisateurs actifs</p>
+            <p className="text-xs text-muted-foreground">{t('activeUsers')}</p>
           </CardContent>
         </Card>
 
@@ -297,18 +441,18 @@ export default function UsersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{stats.inactive}</div>
-            <p className="text-xs text-muted-foreground">utilisateurs désactivés</p>
+            <p className="text-xs text-muted-foreground">{t('inactiveUsers')}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Entreprises</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('businessAccounts')}</CardTitle>
             <Building2 className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.byRole.business}</div>
-            <p className="text-xs text-muted-foreground">comptes entreprise</p>
+            <p className="text-xs text-muted-foreground">{t('companies')}</p>
           </CardContent>
         </Card>
       </div>
@@ -335,7 +479,7 @@ export default function UsersPage() {
               </div>
               <Button variant="outline" size="sm" onClick={fetchUsers}>
                 <RefreshCw className="h-4 w-4 mr-2" />
-                {t('refresh')}
+                {tCommon('refresh')}
               </Button>
             </div>
           </div>
@@ -345,138 +489,40 @@ export default function UsersPage() {
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="mb-4">
             <TabsList>
               <TabsTrigger value="all">
-                Tous ({stats.total})
+                {t('tabAll')} ({stats.total})
               </TabsTrigger>
               <TabsTrigger value={UserRole.CITIZEN}>
                 <UserIcon className="h-4 w-4 mr-1" />
-                Citoyens ({stats.byRole.citizen})
+                {t('tabCitizens')} ({stats.byRole.citizen})
               </TabsTrigger>
               <TabsTrigger value={UserRole.BUSINESS}>
                 <Building2 className="h-4 w-4 mr-1" />
-                Entreprises ({stats.byRole.business})
+                {t('tabBusinesses')} ({stats.byRole.business})
               </TabsTrigger>
               <TabsTrigger value={UserRole.ACCOUNTANT}>
                 <Briefcase className="h-4 w-4 mr-1" />
-                Comptables ({stats.byRole.accountant})
+                {t('tabAccountants')} ({stats.byRole.accountant})
               </TabsTrigger>
               <TabsTrigger value={UserRole.FUNCIONARIO}>
                 <UserCheck className="h-4 w-4 mr-1" />
-                Fonctionnaires ({stats.byRole.funcionario})
+                {t('tabFuncionarios')} ({stats.byRole.funcionario})
               </TabsTrigger>
             </TabsList>
           </Tabs>
 
-          {isLoading && (
-            <div className="flex items-center justify-center py-8">
-              <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-              <span className="ml-2 text-muted-foreground">{t('loading')}</span>
-            </div>
-          )}
-
-          {error && (
-            <div className="flex items-center justify-center py-8 text-red-500">
-              <AlertTriangle className="h-5 w-5 mr-2" />
-              {error}
-            </div>
-          )}
-
-          {!isLoading && !error && filteredUsers.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <Users className="h-12 w-12 mb-4 opacity-50" />
-              <p>{t('noUsersFound')}</p>
-            </div>
-          )}
-
-          {!isLoading && !error && filteredUsers.length > 0 && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('tableFullName')}</TableHead>
-                  <TableHead>{t('tableEmail')}</TableHead>
-                  <TableHead>{t('tableRole')}</TableHead>
-                  <TableHead>{t('tableStatus')}</TableHead>
-                  <TableHead>{t('table2FA')}</TableHead>
-                  <TableHead>{t('tableLastLogin')}</TableHead>
-                  <TableHead className="text-right">{t('tableActions')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">
-                      {user.first_name} {user.last_name}
-                    </TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>{getRoleBadge(user.role)}</TableCell>
-                    <TableCell>
-                      {user.is_active ? (
-                        <Badge variant="outline" className="bg-green-50 text-green-700">
-                          {t('statusActive')}
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="bg-red-50 text-red-700">
-                          {t('statusInactive')}
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {user.two_factor_enabled ? (
-                        <Shield className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <Shield className="h-4 w-4 text-gray-300" />
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {user.last_login ? (
-                        new Date(user.last_login).toLocaleDateString(locale, {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })
-                      ) : (
-                        <span className="text-muted-foreground">{t('never')}</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleViewDetails(user)}>
-                            <Eye className="h-4 w-4 mr-2" />
-                            Voir détails
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          {user.is_active ? (
-                            <DropdownMenuItem
-                              className="text-red-600"
-                              onClick={() => openDeactivateDialog(user)}
-                            >
-                              <PowerOff className="h-4 w-4 mr-2" />
-                              Désactiver
-                            </DropdownMenuItem>
-                          ) : (
-                            <DropdownMenuItem
-                              className="text-green-600"
-                              onClick={() => openActivateDialog(user)}
-                            >
-                              <Power className="h-4 w-4 mr-2" />
-                              Activer
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+          {/* DataTable with row selection and pagination */}
+          <DataTable
+            data={filteredUsers}
+            columns={columns}
+            getRowId={(user) => user.id}
+            bulkActions={bulkActions}
+            selectable={true}
+            isLoading={isLoading}
+            emptyMessage={t('noUsersFound')}
+            emptyIcon={<Users className="h-12 w-12" />}
+            defaultPageSize={10}
+            onRefresh={fetchUsers}
+          />
         </CardContent>
       </Card>
 
@@ -484,18 +530,20 @@ export default function UsersPage() {
       <AlertDialog open={activateDialogOpen} onOpenChange={setActivateDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Activer l&apos;utilisateur ?</AlertDialogTitle>
+            <AlertDialogTitle>{t('activateUserTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
               {selectedUser && (
                 <>
-                  L&apos;utilisateur <strong>{selectedUser.first_name} {selectedUser.last_name}</strong> ({selectedUser.email})
-                  pourra à nouveau accéder à son compte.
+                  {t('activateUserDescription', {
+                    name: `${selectedUser.first_name} ${selectedUser.last_name}`,
+                    email: selectedUser.email,
+                  })}
                 </>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isProcessing}>Annuler</AlertDialogCancel>
+            <AlertDialogCancel disabled={isProcessing}>{tCommon('cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleActivate}
               disabled={isProcessing}
@@ -506,7 +554,7 @@ export default function UsersPage() {
               ) : (
                 <Power className="h-4 w-4 mr-2" />
               )}
-              Activer
+              {t('activate')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -516,25 +564,27 @@ export default function UsersPage() {
       <AlertDialog open={deactivateDialogOpen} onOpenChange={setDeactivateDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Désactiver l&apos;utilisateur ?</AlertDialogTitle>
+            <AlertDialogTitle>{t('deactivateUserTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
               {selectedUser && (
                 <>
-                  L&apos;utilisateur <strong>{selectedUser.first_name} {selectedUser.last_name}</strong> ({selectedUser.email})
-                  ne pourra plus accéder à son compte. Cette action est réversible.
+                  {t('deactivateUserDescription', {
+                    name: `${selectedUser.first_name} ${selectedUser.last_name}`,
+                    email: selectedUser.email,
+                  })}
                 </>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="py-4">
             <Input
-              placeholder="Raison de la désactivation (optionnel)"
+              placeholder={t('deactivateReasonPlaceholder')}
               value={deactivateReason}
               onChange={(e) => setDeactivateReason(e.target.value)}
             />
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isProcessing}>Annuler</AlertDialogCancel>
+            <AlertDialogCancel disabled={isProcessing}>{tCommon('cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeactivate}
               disabled={isProcessing}
@@ -545,7 +595,7 @@ export default function UsersPage() {
               ) : (
                 <PowerOff className="h-4 w-4 mr-2" />
               )}
-              Désactiver
+              {t('deactivate')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

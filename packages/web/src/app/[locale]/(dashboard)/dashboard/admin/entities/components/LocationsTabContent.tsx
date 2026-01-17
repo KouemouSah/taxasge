@@ -61,8 +61,6 @@ import {
   Pencil,
   Trash2,
   Power,
-  Phone,
-  Mail,
   RefreshCw,
 } from 'lucide-react'
 import { toast } from 'sonner'
