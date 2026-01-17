@@ -12,7 +12,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { useLocale, useTranslations } from 'next-intl'
-import { UserPlus, ShieldPlus, KeyRound, FileText } from 'lucide-react'
+import { UserCog, ShieldPlus, KeyRound, FileText } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export default function QuickActions() {
@@ -21,10 +21,10 @@ export default function QuickActions() {
 
   const quickActions = [
     {
-      title: t('newUser'),
-      description: t('newUserDesc'),
-      icon: UserPlus,
-      href: `/${locale}/dashboard/admin/users/new`,
+      title: t('newAgent'),
+      description: t('newAgentDesc'),
+      icon: UserCog,
+      href: `/${locale}/dashboard/admin/agents/new`,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
     },
