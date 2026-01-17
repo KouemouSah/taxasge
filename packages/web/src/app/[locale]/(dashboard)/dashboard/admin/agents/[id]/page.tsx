@@ -92,6 +92,7 @@ const profileSchema = z.object({
   can_reassign: z.boolean(),
   working_hours_start: z.string().optional(),
   working_hours_end: z.string().optional(),
+  working_days: z.array(z.number()).default([1, 2, 3, 4, 5]),
   is_active: z.boolean(),
   is_backup_agent: z.boolean(),
 });
@@ -169,6 +170,7 @@ export default function AgentDetailPage() {
         can_reassign: profile.can_reassign,
         working_hours_start: profile.working_hours_start ?? '08:00',
         working_hours_end: profile.working_hours_end ?? '17:00',
+        working_days: profile.working_days ?? [1, 2, 3, 4, 5],
         is_active: profile.is_active,
         is_backup_agent: profile.is_backup_agent,
       });
@@ -194,6 +196,7 @@ export default function AgentDetailPage() {
         can_reassign: data.can_reassign,
         working_hours_start: data.working_hours_start,
         working_hours_end: data.working_hours_end,
+        working_days: data.working_days,
         is_active: data.is_active,
         is_backup_agent: data.is_backup_agent,
       };
@@ -530,11 +533,34 @@ export default function AgentDetailPage() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Créé le</p>
-                      <p className="font-medium">
-                        {new Date(profile.created_at).toLocaleDateString()}
-                      </p>
+                      <p className="text-sm text-muted-foreground">Jours de travail</p>
+                      <div className="flex flex-wrap gap-1">
+                        {[
+                          { value: 1, label: 'Lun' },
+                          { value: 2, label: 'Mar' },
+                          { value: 3, label: 'Mer' },
+                          { value: 4, label: 'Jeu' },
+                          { value: 5, label: 'Ven' },
+                          { value: 6, label: 'Sam' },
+                          { value: 0, label: 'Dim' },
+                        ].map((day) => (
+                          <Badge
+                            key={day.value}
+                            variant={(profile.working_days || [1, 2, 3, 4, 5]).includes(day.value) ? 'default' : 'outline'}
+                            className="text-xs"
+                          >
+                            {day.label}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-muted-foreground">Créé le</p>
+                    <p className="font-medium">
+                      {new Date(profile.created_at).toLocaleDateString()}
+                    </p>
                   </div>
                 </div>
               ) : (
@@ -804,6 +830,44 @@ export default function AgentDetailPage() {
                           )}
                         />
                       </div>
+
+                      <FormField
+                        control={form.control}
+                        name="working_days"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Jours de travail</FormLabel>
+                            <div className="flex flex-wrap gap-2">
+                              {[
+                                { value: 1, label: 'Lun' },
+                                { value: 2, label: 'Mar' },
+                                { value: 3, label: 'Mer' },
+                                { value: 4, label: 'Jeu' },
+                                { value: 5, label: 'Ven' },
+                                { value: 6, label: 'Sam' },
+                                { value: 0, label: 'Dim' },
+                              ].map((day) => (
+                                <Button
+                                  key={day.value}
+                                  type="button"
+                                  variant={field.value?.includes(day.value) ? 'default' : 'outline'}
+                                  size="sm"
+                                  onClick={() => {
+                                    const current = field.value || [];
+                                    const updated = current.includes(day.value)
+                                      ? current.filter((d) => d !== day.value)
+                                      : [...current, day.value];
+                                    field.onChange(updated);
+                                  }}
+                                >
+                                  {day.label}
+                                </Button>
+                              ))}
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
 
                     <div className="flex justify-end gap-3 pt-4">

@@ -89,6 +89,7 @@ const agentSchema = z.object({
   can_reassign: z.boolean().default(false),
   working_hours_start: z.string().optional(),
   working_hours_end: z.string().optional(),
+  working_days: z.array(z.number()).default([1, 2, 3, 4, 5]),
 });
 
 type AdminFormData = z.infer<typeof adminSchema>;
@@ -159,6 +160,7 @@ export default function CreateAgentPage() {
       can_reassign: false,
       working_hours_start: '08:00',
       working_hours_end: '17:00',
+      working_days: [1, 2, 3, 4, 5],
     },
   });
 
@@ -213,6 +215,7 @@ export default function CreateAgentPage() {
         can_reassign: data.can_reassign,
         working_hours_start: data.working_hours_start,
         working_hours_end: data.working_hours_end,
+        working_days: data.working_days,
       });
 
       toast({
@@ -805,6 +808,44 @@ export default function CreateAgentPage() {
                       )}
                     />
                   </div>
+
+                  <FormField
+                    control={agentForm.control}
+                    name="working_days"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Jours de travail</FormLabel>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            { value: 1, label: 'Lun' },
+                            { value: 2, label: 'Mar' },
+                            { value: 3, label: 'Mer' },
+                            { value: 4, label: 'Jeu' },
+                            { value: 5, label: 'Ven' },
+                            { value: 6, label: 'Sam' },
+                            { value: 0, label: 'Dim' },
+                          ].map((day) => (
+                            <Button
+                              key={day.value}
+                              type="button"
+                              variant={field.value?.includes(day.value) ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => {
+                                const current = field.value || [];
+                                const updated = current.includes(day.value)
+                                  ? current.filter((d) => d !== day.value)
+                                  : [...current, day.value];
+                                field.onChange(updated);
+                              }}
+                            >
+                              {day.label}
+                            </Button>
+                          ))}
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
               </CardContent>
             </Card>
