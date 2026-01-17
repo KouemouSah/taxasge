@@ -569,6 +569,148 @@
       "uploadImage": "Télécharger l'image",
       "uploading": "Téléchargement..."
     },
+    "entities": {
+      "pageTitle": "Gestion des Entités",
+      "pageSubtitle": "Gérer les entités, emplacements et villes de Guinée Équatoriale",
+      "tabs": {
+        "entities": "Entités",
+        "locations": "Emplacements",
+        "cities": "Villes"
+      },
+      "title": "Gestion des Entités",
+      "subtitle": "Gérer les entités, départements et assignation des workflows",
+      "listTitle": "Liste des Entités",
+      "createEntity": "Créer Entité",
+      "editEntity": "Modifier Entité",
+      "deleteEntity": "Supprimer Entité",
+      "entityCreated": "Entité créée avec succès",
+      "entityUpdated": "Entité mise à jour avec succès",
+      "entityDeleted": "Entité supprimée avec succès",
+      "fieldCode": "Code",
+      "fieldName": "Nom",
+      "fieldDescription": "Description",
+      "fieldType": "Type",
+      "fieldParent": "Entité Parent",
+      "fieldWorkflowCodes": "Codes de Workflow",
+      "fieldActive": "Actif",
+      "typeEntity": "Entité",
+      "typeDepartment": "Département",
+      "noEntitiesFound": "Aucune entité trouvée",
+      "entitiesFound": "{count} entité(s) trouvée(s)",
+      "workflowCodesHint": "Séparés par virgule ou saut de ligne",
+      "searchPlaceholder": "Rechercher par code, nom...",
+      "allTypes": "Tous les types",
+      "allStatus": "Tous les statuts",
+      "createFirstEntity": "Créer la première entité",
+      "codeAndNameRequired": "Code et nom sont requis",
+      "editDescription": "Mettre à jour les informations et assignation des workflows",
+      "createDescription": "Créer une nouvelle entité ou département",
+      "selectParent": "Sélectionner l'entité parent",
+      "selectWorkflows": "Sélectionner les workflows...",
+      "workflowsSelected": "{count} workflow(s) sélectionné(s)",
+      "searchWorkflows": "Rechercher des workflows...",
+      "noWorkflowsFound": "Aucun workflow trouvé",
+      "saveChanges": "Enregistrer les modifications",
+      "deleteDescription": "Êtes-vous sûr de vouloir supprimer \"{name}\" ? Cette action est irréversible.",
+      "fieldMinistry": "Ministère",
+      "selectMinistry": "Sélectionner un ministère...",
+      "independentEntity": "Indépendante (sans parent)",
+      "ministryHint": "Optionnel: lier l'entité à un ministère pour établir une hiérarchie",
+      "fieldParentType": "Type de parent",
+      "selectParentType": "Sélectionner le type de parent...",
+      "parentTypeMinistry": "Ministère",
+      "parentTypeEntity": "Entité",
+      "parentTypeHint": "Sélectionnez si cette entité est liée à un ministère ou à une autre entité",
+      "noMinistriesFound": "Aucun ministère trouvé",
+      "table": {
+        "code": "Code",
+        "name": "Nom",
+        "type": "Type",
+        "parent": "Parent",
+        "workflows": "Workflows",
+        "status": "Statut",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Actif",
+        "inactive": "Inactif"
+      },
+      "entityTypes": {
+        "entity": "Entité (Principale)",
+        "department": "Département"
+      },
+      "locations": {
+        "title": "Emplacements des Entités",
+        "subtitle": "Gérer les emplacements physiques des entités",
+        "addLocation": "Ajouter un Emplacement",
+        "createSuccess": "Emplacement créé avec succès",
+        "updateSuccess": "Emplacement mis à jour avec succès",
+        "deleteSuccess": "Emplacement supprimé avec succès",
+        "activated": "Emplacement activé",
+        "deactivated": "Emplacement désactivé",
+        "mainOffice": "Principal",
+        "stats": {
+          "total": "Total Emplacements",
+          "active": "actifs",
+          "insular": "Insulaire",
+          "continental": "Continentale",
+          "entities": "Entités",
+          "registeredEntities": "enregistrées"
+        },
+        "filters": {
+          "city": "Ville",
+          "entity": "Entité",
+          "status": "Statut",
+          "allCities": "Toutes les villes",
+          "allEntities": "Toutes les entités",
+          "allStatus": "Tous les statuts",
+          "activeOnly": "Actifs uniquement",
+          "inactiveOnly": "Inactifs uniquement",
+          "searchPlaceholder": "Rechercher un emplacement..."
+        },
+        "table": {
+          "entity": "Entité",
+          "city": "Ville",
+          "region": "Région",
+          "name": "Nom",
+          "contact": "Contact",
+          "status": "Statut",
+          "actions": "Actions"
+        },
+        "status": {
+          "active": "Active",
+          "inactive": "Inactive"
+        },
+        "actions": {
+          "activate": "Activer",
+          "deactivate": "Désactiver"
+        },
+        "empty": {
+          "title": "Aucun emplacement",
+          "description": "Aucun emplacement d'entité trouvé",
+          "createFirst": "Créer le premier emplacement"
+        },
+        "form": {
+          "createTitle": "Créer un Emplacement",
+          "createDescription": "Ajouter un nouvel emplacement pour une entité",
+          "editTitle": "Modifier l'Emplacement",
+          "editDescription": "Modifier les données de l'emplacement"
+        },
+        "deleteConfirm": {
+          "title": "Supprimer l'Emplacement",
+          "description": "Êtes-vous sûr de vouloir supprimer l'emplacement \"{name}\" à {city} ? Cette action est irréversible."
+        },
+        "pagination": {
+          "showing": "Affichage de {from} à {to} sur {total}",
+          "loading": "Chargement...",
+          "loadMore": "Charger plus"
+        }
+      },
+      "cities": {
+        "title": "Gestion des Villes",
+        "subtitle": "Gérer les villes de Guinée Équatoriale"
+      }
+    },
     "nav": {
       "accessManagement": "Gestion des Accès",
       "agents": "Agents & Admins",
@@ -610,9 +752,12 @@
       "webhooks": "Webhooks",
       "serviceRequests": "Demandes de Service",
       "workflows": "Flux de Travail",
+      "workflowsConfig": "Configuration des Flux",
       "documentRequirements": "Documents Requis",
       "tariffs": "Tarifs",
       "appointments": "Rendez-vous",
+      "entities": "Entités",
+      "entityLocations": "Emplacements des Entités",
       "slots": "Créneaux de RDV",
       "blocked": "Dates Bloquées",
       "delays": "Règles de Délai"
