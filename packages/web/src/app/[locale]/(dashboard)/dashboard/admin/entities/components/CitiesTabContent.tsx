@@ -83,7 +83,7 @@ const defaultFormData: CityFormData = {
 }
 
 export default function CitiesTabContent() {
-  const _t = useTranslations('admin.entities.cities')
+  const t = useTranslations('admin.entities.cities')
   const tCommon = useTranslations('common')
   const { toast } = useToast()
 
@@ -146,8 +146,8 @@ export default function CitiesTabContent() {
     if (!formData.name) {
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: 'City name is required',
+        title: tCommon('error'),
+        description: t('messages.nameRequired'),
       })
       return
     }
@@ -158,18 +158,18 @@ export default function CitiesTabContent() {
           cityId: selectedCity.id,
           data: formData as CityUpdate,
         })
-        toast({ title: 'Success', description: 'City updated successfully' })
+        toast({ title: tCommon('success'), description: t('messages.updateSuccess') })
       } else {
         await createMutation.mutateAsync(formData as CityCreate)
-        toast({ title: 'Success', description: 'City created successfully' })
+        toast({ title: tCommon('success'), description: t('messages.createSuccess') })
       }
       setIsDialogOpen(false)
       refetch()
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to save city',
+        title: tCommon('error'),
+        description: err instanceof Error ? err.message : t('messages.saveError'),
       })
     }
   }
@@ -180,14 +180,14 @@ export default function CitiesTabContent() {
 
     try {
       await deleteMutation.mutateAsync(selectedCity.id)
-      toast({ title: 'Success', description: 'City deleted successfully' })
+      toast({ title: tCommon('success'), description: t('messages.deleteSuccess') })
       setIsDeleteDialogOpen(false)
       refetch()
     } catch (err) {
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to delete city',
+        title: tCommon('error'),
+        description: err instanceof Error ? err.message : t('messages.deleteError'),
       })
     }
   }
@@ -202,7 +202,7 @@ export default function CitiesTabContent() {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Cities</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('stats.totalCities')}</CardTitle>
             <MapPin className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -211,7 +211,7 @@ export default function CitiesTabContent() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Insular</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('stats.insular')}</CardTitle>
             <MapPin className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
@@ -220,7 +220,7 @@ export default function CitiesTabContent() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Continental</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('stats.continental')}</CardTitle>
             <MapPin className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
@@ -235,19 +235,19 @@ export default function CitiesTabContent() {
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Cities List</CardTitle>
+                <CardTitle>{t('list.title')}</CardTitle>
                 <CardDescription>
-                  {filteredCities.length} cities found
+                  {t('list.found', { count: filteredCities.length })}
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">
                 <Button size="sm" variant="outline" onClick={() => refetch()}>
                   <RefreshCw className="h-4 w-4 mr-2" />
-                  {tCommon('refresh') || 'Refresh'}
+                  {tCommon('refresh')}
                 </Button>
                 <Button size="sm" onClick={handleCreate}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Add City
+                  {t('list.addCity')}
                 </Button>
               </div>
             </div>
@@ -257,7 +257,7 @@ export default function CitiesTabContent() {
               <div className="relative max-w-sm">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Search cities..."
+                  placeholder={t('list.searchPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9"
@@ -268,12 +268,12 @@ export default function CitiesTabContent() {
                 onValueChange={(v) => setRegionFilter(v as 'all' | Region)}
               >
                 <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Region" />
+                  <SelectValue placeholder={t('table.region')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Regions</SelectItem>
-                  <SelectItem value="Insular">Insular</SelectItem>
-                  <SelectItem value="Continental">Continental</SelectItem>
+                  <SelectItem value="all">{t('list.allRegions')}</SelectItem>
+                  <SelectItem value="Insular">{t('stats.insular')}</SelectItem>
+                  <SelectItem value="Continental">{t('stats.continental')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -283,7 +283,7 @@ export default function CitiesTabContent() {
           {isLoading && (
             <div className="flex items-center justify-center py-8">
               <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-              <span className="ml-2 text-muted-foreground">Loading...</span>
+              <span className="ml-2 text-muted-foreground">{t('loading')}</span>
             </div>
           )}
 
@@ -297,10 +297,10 @@ export default function CitiesTabContent() {
           {!isLoading && !error && filteredCities.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <MapPin className="h-12 w-12 mb-4 opacity-50" />
-              <p>No cities found</p>
+              <p>{t('list.noCitiesFound')}</p>
               <Button className="mt-4" onClick={handleCreate}>
                 <Plus className="h-4 w-4 mr-2" />
-                Add First City
+                {t('list.addFirstCity')}
               </Button>
             </div>
           )}
@@ -309,11 +309,11 @@ export default function CitiesTabContent() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Region</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t('table.name')}</TableHead>
+                  <TableHead>{t('table.region')}</TableHead>
+                  <TableHead>{t('table.description')}</TableHead>
+                  <TableHead>{t('table.status')}</TableHead>
+                  <TableHead className="text-right">{t('table.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -329,7 +329,7 @@ export default function CitiesTabContent() {
                     </TableCell>
                     <TableCell>
                       <Badge variant={city.region === 'Insular' ? 'default' : 'secondary'}>
-                        {city.region}
+                        {city.region === 'Insular' ? t('stats.insular') : t('stats.continental')}
                       </Badge>
                     </TableCell>
                     <TableCell className="max-w-[200px] truncate text-muted-foreground">
@@ -344,7 +344,7 @@ export default function CitiesTabContent() {
                             : 'bg-gray-100 text-gray-700'
                         }
                       >
-                        {city.is_active ? 'Active' : 'Inactive'}
+                        {city.is_active ? t('status.active') : t('status.inactive')}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -370,26 +370,26 @@ export default function CitiesTabContent() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {selectedCity ? 'Edit City' : 'Add City'}
+              {selectedCity ? t('form.editTitle') : t('form.addTitle')}
             </DialogTitle>
             <DialogDescription>
-              {selectedCity ? 'Update city information' : 'Add a new city'}
+              {selectedCity ? t('form.editDescription') : t('form.addDescription')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Name *</Label>
+              <Label htmlFor="name">{t('form.nameRequired')}</Label>
               <Input
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., Malabo"
+                placeholder={t('form.namePlaceholder')}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="region">Region *</Label>
+              <Label htmlFor="region">{t('form.regionRequired')}</Label>
               <Select
                 value={formData.region}
                 onValueChange={(v) => setFormData({ ...formData, region: v as Region })}
@@ -398,19 +398,19 @@ export default function CitiesTabContent() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Insular">Insular</SelectItem>
-                  <SelectItem value="Continental">Continental</SelectItem>
+                  <SelectItem value="Insular">{t('stats.insular')}</SelectItem>
+                  <SelectItem value="Continental">{t('stats.continental')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">{t('form.description')}</Label>
               <Textarea
                 id="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Optional description..."
+                placeholder={t('form.descriptionPlaceholder')}
                 rows={2}
               />
             </div>
@@ -421,7 +421,7 @@ export default function CitiesTabContent() {
                 checked={formData.is_capital}
                 onCheckedChange={(checked) => setFormData({ ...formData, is_capital: checked })}
               />
-              <Label htmlFor="is_capital">Capital city</Label>
+              <Label htmlFor="is_capital">{t('form.capitalCity')}</Label>
             </div>
 
             <div className="flex items-center space-x-2">
@@ -430,13 +430,13 @@ export default function CitiesTabContent() {
                 checked={formData.is_active}
                 onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
               />
-              <Label htmlFor="is_active">Active</Label>
+              <Label htmlFor="is_active">{t('form.active')}</Label>
             </div>
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              {tCommon('cancel') || 'Cancel'}
+              {tCommon('cancel')}
             </Button>
             <Button
               onClick={handleSubmit}
@@ -445,7 +445,7 @@ export default function CitiesTabContent() {
               {(createMutation.isPending || updateMutation.isPending) && (
                 <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
               )}
-              {selectedCity ? 'Save Changes' : 'Create'}
+              {selectedCity ? t('form.saveChanges') : t('form.create')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -455,21 +455,20 @@ export default function CitiesTabContent() {
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete City</AlertDialogTitle>
+            <AlertDialogTitle>{t('delete.title')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{selectedCity?.name}&quot;? This action cannot
-              be undone.
+              {t('delete.description', { name: selectedCity?.name || '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{tCommon('cancel') || 'Cancel'}</AlertDialogCancel>
+            <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-red-600 hover:bg-red-700"
               disabled={deleteMutation.isPending}
             >
               {deleteMutation.isPending && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
-              Delete
+              {t('delete.button')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

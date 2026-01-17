@@ -708,7 +708,63 @@
       },
       "cities": {
         "title": "Gestion des Villes",
-        "subtitle": "Gérer les villes de Guinée Équatoriale"
+        "subtitle": "Gérer les villes de Guinée Équatoriale",
+        "stats": {
+          "totalCities": "Total Villes",
+          "insular": "Insulaire",
+          "continental": "Continentale"
+        },
+        "list": {
+          "title": "Liste des Villes",
+          "found": "{count} ville(s) trouvée(s)",
+          "addCity": "Ajouter une Ville",
+          "addFirstCity": "Ajouter la Première Ville",
+          "noCitiesFound": "Aucune ville trouvée",
+          "searchPlaceholder": "Rechercher des villes...",
+          "allRegions": "Toutes les Régions"
+        },
+        "table": {
+          "name": "Nom",
+          "region": "Région",
+          "description": "Description",
+          "status": "Statut",
+          "actions": "Actions"
+        },
+        "status": {
+          "active": "Active",
+          "inactive": "Inactive"
+        },
+        "form": {
+          "addTitle": "Ajouter une Ville",
+          "editTitle": "Modifier la Ville",
+          "addDescription": "Ajouter une nouvelle ville",
+          "editDescription": "Mettre à jour les informations de la ville",
+          "name": "Nom",
+          "nameRequired": "Nom *",
+          "namePlaceholder": "ex., Malabo",
+          "region": "Région",
+          "regionRequired": "Région *",
+          "description": "Description",
+          "descriptionPlaceholder": "Description optionnelle...",
+          "capitalCity": "Ville capitale",
+          "active": "Active",
+          "saveChanges": "Enregistrer",
+          "create": "Créer"
+        },
+        "delete": {
+          "title": "Supprimer la Ville",
+          "description": "Êtes-vous sûr de vouloir supprimer \"{name}\" ? Cette action est irréversible.",
+          "button": "Supprimer"
+        },
+        "messages": {
+          "nameRequired": "Le nom de la ville est requis",
+          "createSuccess": "Ville créée avec succès",
+          "updateSuccess": "Ville mise à jour avec succès",
+          "deleteSuccess": "Ville supprimée avec succès",
+          "saveError": "Erreur lors de l'enregistrement de la ville",
+          "deleteError": "Erreur lors de la suppression de la ville"
+        },
+        "loading": "Chargement..."
       }
     },
     "nav": {

@@ -708,7 +708,63 @@
       },
       "cities": {
         "title": "Gestión de Ciudades",
-        "subtitle": "Administrar las ciudades de Guinea Ecuatorial"
+        "subtitle": "Administrar las ciudades de Guinea Ecuatorial",
+        "stats": {
+          "totalCities": "Total Ciudades",
+          "insular": "Insular",
+          "continental": "Continental"
+        },
+        "list": {
+          "title": "Lista de Ciudades",
+          "found": "{count} ciudad(es) encontrada(s)",
+          "addCity": "Añadir Ciudad",
+          "addFirstCity": "Añadir Primera Ciudad",
+          "noCitiesFound": "No se encontraron ciudades",
+          "searchPlaceholder": "Buscar ciudades...",
+          "allRegions": "Todas las Regiones"
+        },
+        "table": {
+          "name": "Nombre",
+          "region": "Región",
+          "description": "Descripción",
+          "status": "Estado",
+          "actions": "Acciones"
+        },
+        "status": {
+          "active": "Activa",
+          "inactive": "Inactiva"
+        },
+        "form": {
+          "addTitle": "Añadir Ciudad",
+          "editTitle": "Editar Ciudad",
+          "addDescription": "Añadir una nueva ciudad",
+          "editDescription": "Actualizar información de la ciudad",
+          "name": "Nombre",
+          "nameRequired": "Nombre *",
+          "namePlaceholder": "ej., Malabo",
+          "region": "Región",
+          "regionRequired": "Región *",
+          "description": "Descripción",
+          "descriptionPlaceholder": "Descripción opcional...",
+          "capitalCity": "Ciudad capital",
+          "active": "Activa",
+          "saveChanges": "Guardar Cambios",
+          "create": "Crear"
+        },
+        "delete": {
+          "title": "Eliminar Ciudad",
+          "description": "¿Está seguro de eliminar \"{name}\"? Esta acción no se puede deshacer.",
+          "button": "Eliminar"
+        },
+        "messages": {
+          "nameRequired": "El nombre de la ciudad es requerido",
+          "createSuccess": "Ciudad creada exitosamente",
+          "updateSuccess": "Ciudad actualizada exitosamente",
+          "deleteSuccess": "Ciudad eliminada exitosamente",
+          "saveError": "Error al guardar la ciudad",
+          "deleteError": "Error al eliminar la ciudad"
+        },
+        "loading": "Cargando..."
       }
     },
     "nav": {
