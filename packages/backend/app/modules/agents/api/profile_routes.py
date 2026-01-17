@@ -42,7 +42,7 @@ profile_repository = AgentProfileRepository()
 # CURRENT USER PROFILE
 # ============================================================================
 
-@router.get("/me", response_model=AgentProfileWithDetails)
+@router.get("/profiles/me", response_model=AgentProfileWithDetails)
 async def get_my_profile(
     current_user: Dict[str, Any] = Depends(get_current_user),
     db = Depends(get_database),
@@ -104,7 +104,7 @@ class AgentWorkflowResponse(BaseModel):
     source_type: WorkflowSourceType
 
 
-@router.get("/me/workflows", response_model=List[AgentWorkflowResponse])
+@router.get("/profiles/me/workflows", response_model=List[AgentWorkflowResponse])
 async def get_my_available_workflows(
     current_user: Dict[str, Any] = Depends(get_current_user),
     db = Depends(get_database),
@@ -179,7 +179,7 @@ async def get_my_available_workflows(
 # CRUD OPERATIONS
 # ============================================================================
 
-@router.get("", response_model=List[AgentProfileWithDetails])
+@router.get("/profiles", response_model=List[AgentProfileWithDetails])
 async def list_profiles(
     agent_type: Optional[AgentType] = None,
     is_supervisor: Optional[bool] = None,
@@ -206,7 +206,7 @@ async def list_profiles(
     return [AgentProfileWithDetails(**p) for p in profiles]
 
 
-@router.get("/{profile_id}", response_model=AgentProfileWithDetails)
+@router.get("/profiles/{profile_id}", response_model=AgentProfileWithDetails)
 async def get_profile(
     profile_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user),
@@ -224,7 +224,7 @@ async def get_profile(
     return AgentProfileWithDetails(**profile)
 
 
-@router.get("/user/{user_id}", response_model=AgentProfileWithDetails)
+@router.get("/profiles/user/{user_id}", response_model=AgentProfileWithDetails)
 async def get_profile_by_user(
     user_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user),
@@ -242,7 +242,7 @@ async def get_profile_by_user(
     return AgentProfileWithDetails(**profile)
 
 
-@router.post("", response_model=AgentProfileResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/profiles", response_model=AgentProfileResponse, status_code=status.HTTP_201_CREATED)
 async def create_profile(
     profile: AgentProfileCreate,
     current_user: Dict[str, Any] = Depends(get_current_user),
@@ -275,7 +275,7 @@ async def create_profile(
     return AgentProfileResponse(**result)
 
 
-@router.put("/{profile_id}", response_model=AgentProfileResponse)
+@router.put("/profiles/{profile_id}", response_model=AgentProfileResponse)
 async def update_profile(
     profile_id: str,
     update_data: AgentProfileUpdate,
@@ -296,7 +296,7 @@ async def update_profile(
     return AgentProfileResponse(**updated)
 
 
-@router.post("/{profile_id}/deactivate", status_code=status.HTTP_200_OK)
+@router.post("/profiles/{profile_id}/deactivate", status_code=status.HTTP_200_OK)
 async def deactivate_profile(
     profile_id: str,
     reason: Optional[str] = None,
@@ -319,7 +319,7 @@ async def deactivate_profile(
     return {"message": "Agent profile deactivated successfully", "profile_id": profile_id}
 
 
-@router.post("/{profile_id}/reactivate", status_code=status.HTTP_200_OK)
+@router.post("/profiles/{profile_id}/reactivate", status_code=status.HTTP_200_OK)
 async def reactivate_profile(
     profile_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user),
@@ -396,7 +396,7 @@ async def create_admin(
 # STATISTICS & LISTS
 # ============================================================================
 
-@router.get("/supervisors/list", response_model=List[AgentProfileWithDetails])
+@router.get("/profiles/supervisors/list", response_model=List[AgentProfileWithDetails])
 async def list_supervisors(
     ministry_id: Optional[int] = None,
     entity_id: Optional[str] = None,
@@ -416,7 +416,7 @@ async def list_supervisors(
     return [AgentProfileWithDetails(**p) for p in profiles]
 
 
-@router.get("/ministry/{ministry_id}/available", response_model=List[AgentProfileWithDetails])
+@router.get("/profiles/ministry/{ministry_id}/available", response_model=List[AgentProfileWithDetails])
 async def list_available_by_ministry(
     ministry_id: int,
     current_user: Dict[str, Any] = Depends(get_current_user),
@@ -427,7 +427,7 @@ async def list_available_by_ministry(
     return [AgentProfileWithDetails(**p) for p in profiles]
 
 
-@router.get("/entity/{entity_id}/available", response_model=List[AgentProfileWithDetails])
+@router.get("/profiles/entity/{entity_id}/available", response_model=List[AgentProfileWithDetails])
 async def list_available_by_entity(
     entity_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user),
