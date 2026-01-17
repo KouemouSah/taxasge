@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from asyncpg import Connection
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user, require_admin
+from app.modules.users.models.user import UserResponse
 from app.modules.cities.services.city_service import CityService, EntityService
 from app.modules.cities.models.city import (
     CityCreate, CityUpdate, CityResponse, CitySimple, CityListResponse,
@@ -69,12 +70,12 @@ async def get_city(
 async def create_city(
     data: CityCreate,
     db: Connection = Depends(get_database),
-    current_user: dict = Depends(require_admin),
+    current_user: UserResponse = Depends(require_admin),
 ):
     """Create a new city. Requires admin role."""
     service = CityService(db)
     try:
-        return await service.create_city(data, created_by=current_user.get("id"))
+        return await service.create_city(data, created_by=current_user.id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -84,12 +85,12 @@ async def update_city(
     city_id: UUID,
     data: CityUpdate,
     db: Connection = Depends(get_database),
-    current_user: dict = Depends(require_admin),
+    current_user: UserResponse = Depends(require_admin),
 ):
     """Update a city. Requires admin role."""
     service = CityService(db)
     try:
-        city = await service.update_city(city_id, data, updated_by=current_user.get("id"))
+        city = await service.update_city(city_id, data, updated_by=current_user.id)
         if not city:
             raise HTTPException(status_code=404, detail="City not found")
         return city
@@ -101,7 +102,7 @@ async def update_city(
 async def delete_city(
     city_id: UUID,
     db: Connection = Depends(get_database),
-    current_user: dict = Depends(require_admin),
+    current_user: UserResponse = Depends(require_admin),
 ):
     """Delete a city. Requires admin role."""
     service = CityService(db)
@@ -200,7 +201,7 @@ async def get_entity_departments(
 async def create_entity(
     data: EntityCreate,
     db: Connection = Depends(get_database),
-    current_user: dict = Depends(require_admin),
+    current_user: UserResponse = Depends(require_admin),
 ):
     """
     Create a new entity. Requires admin role.
@@ -210,7 +211,7 @@ async def create_entity(
     """
     service = EntityService(db)
     try:
-        return await service.create_entity(data, created_by=current_user.get("id"))
+        return await service.create_entity(data, created_by=current_user.id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -220,12 +221,12 @@ async def update_entity(
     entity_id: UUID,
     data: EntityUpdate,
     db: Connection = Depends(get_database),
-    current_user: dict = Depends(require_admin),
+    current_user: UserResponse = Depends(require_admin),
 ):
     """Update an entity. Requires admin role."""
     service = EntityService(db)
     try:
-        entity = await service.update_entity(entity_id, data, updated_by=current_user.get("id"))
+        entity = await service.update_entity(entity_id, data, updated_by=current_user.id)
         if not entity:
             raise HTTPException(status_code=404, detail="Entity not found")
         return entity
@@ -237,7 +238,7 @@ async def update_entity(
 async def delete_entity(
     entity_id: UUID,
     db: Connection = Depends(get_database),
-    current_user: dict = Depends(require_admin),
+    current_user: UserResponse = Depends(require_admin),
 ):
     """Delete an entity. Requires admin role."""
     service = EntityService(db)
