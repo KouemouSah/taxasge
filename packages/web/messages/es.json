@@ -1052,6 +1052,8 @@
           "allCities": "Todas las ciudades",
           "selectCity": "Seleccionar ciudad",
           "selectLocation": "Seleccionar ubicación",
+          "loadingCities": "Cargando ciudades...",
+          "noCitiesAvailable": "No hay ciudades disponibles",
           "loadingLocations": "Cargando ubicaciones...",
           "noLocationsForCity": "No hay ubicaciones en esta ciudad",
           "noAddressProvided": "Sin dirección",

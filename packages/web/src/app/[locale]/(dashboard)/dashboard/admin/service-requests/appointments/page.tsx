@@ -63,25 +63,25 @@ export default function AppointmentsPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 lg:w-[600px]">
-          <TabsTrigger value="slots" className="flex items-center gap-2">
-            <CalendarClock className="h-4 w-4" />
-            <span className="hidden sm:inline">{t('slots.title')}</span>
+        <TabsList className="grid w-full grid-cols-4 lg:w-[700px] h-auto">
+          <TabsTrigger value="slots" className="flex items-center gap-2 px-4 py-2.5">
+            <CalendarClock className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline truncate">{t('slots.title')}</span>
             <span className="sm:hidden">{t('tabs.slots')}</span>
           </TabsTrigger>
-          <TabsTrigger value="blocked" className="flex items-center gap-2">
-            <CalendarX className="h-4 w-4" />
-            <span className="hidden sm:inline">{t('blocked.title')}</span>
+          <TabsTrigger value="blocked" className="flex items-center gap-2 px-4 py-2.5">
+            <CalendarX className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline truncate">{t('blocked.title')}</span>
             <span className="sm:hidden">{t('tabs.blocked')}</span>
           </TabsTrigger>
-          <TabsTrigger value="delays" className="flex items-center gap-2">
-            <Clock className="h-4 w-4" />
-            <span className="hidden sm:inline">{t('delays.title')}</span>
+          <TabsTrigger value="delays" className="flex items-center gap-2 px-4 py-2.5">
+            <Clock className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline truncate">{t('delays.title')}</span>
             <span className="sm:hidden">{t('tabs.delays')}</span>
           </TabsTrigger>
-          <TabsTrigger value="stats" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            <span className="hidden sm:inline">{t('stats.title')}</span>
+          <TabsTrigger value="stats" className="flex items-center gap-2 px-4 py-2.5">
+            <BarChart3 className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline truncate">{t('stats.title')}</span>
             <span className="sm:hidden">{t('tabs.stats')}</span>
           </TabsTrigger>
         </TabsList>

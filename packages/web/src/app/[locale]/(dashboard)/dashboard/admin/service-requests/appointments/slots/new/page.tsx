@@ -31,10 +31,7 @@ import { DAY_OF_WEEK_LABELS } from '@/modules/service-requests-admin'
 import type { AppointmentSlotConfigBatchCreate } from '@/modules/service-requests-admin'
 import { toast } from 'sonner'
 import { useEntityLocations } from '@/modules/entity-locations/hooks'
-import {
-  DEFAULT_CITIES,
-  DEFAULT_CITY_REGION_MAP,
-} from '@/modules/entity-locations/types'
+import { useCitiesSimple } from '@/modules/cities/hooks'
 
 export default function NewSlotConfigPage() {
   const t = useTranslations('admin.serviceRequests.appointments.slots')
@@ -51,8 +48,12 @@ export default function NewSlotConfigPage() {
   // Multi-day selection state
   const [selectedDays, setSelectedDays] = useState<number[]>([0])
 
-  // City filter state
-  const [selectedCity, setSelectedCity] = useState<string>(urlCity || 'Malabo')
+  // Fetch cities from database
+  const { data: citiesData, isLoading: citiesLoading } = useCitiesSimple(true)
+  const availableCities = useMemo(() => citiesData || [], [citiesData])
+
+  // City filter state - default to first available city or URL param
+  const [selectedCity, setSelectedCity] = useState<string>(urlCity || '')
   const [selectedLocationId, setSelectedLocationId] = useState<string>('')
 
   // Fetch entity locations filtered by city
@@ -71,6 +72,20 @@ export default function NewSlotConfigPage() {
   const selectedLocation = useMemo(() => {
     return availableLocations.find((loc) => loc.id === selectedLocationId)
   }, [availableLocations, selectedLocationId])
+
+  // Get selected city object (for region display)
+  const selectedCityObj = useMemo(() => {
+    return availableCities.find((c) => c.name === selectedCity)
+  }, [availableCities, selectedCity])
+
+  // Set default city when cities are loaded
+  useEffect(() => {
+    if (availableCities.length > 0 && !selectedCity) {
+      // Prefer URL param, then first available city
+      const defaultCity = urlCity || availableCities[0]?.name || ''
+      setSelectedCity(defaultCity)
+    }
+  }, [availableCities, selectedCity, urlCity])
 
   // Form state (entity_code is resolved on backend from entity_location_id)
   const [formData, setFormData] = useState<Omit<AppointmentSlotConfigBatchCreate, 'days_of_week'>>({
@@ -207,25 +222,39 @@ export default function NewSlotConfigPage() {
                   setSelectedCity(v)
                   setSelectedLocationId('')
                 }}
+                disabled={citiesLoading || availableCities.length === 0}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={t('selectCity')} />
+                  <SelectValue
+                    placeholder={
+                      citiesLoading
+                        ? t('loadingCities')
+                        : availableCities.length === 0
+                          ? t('noCitiesAvailable')
+                          : t('selectCity')
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  {DEFAULT_CITIES.map((city) => (
-                    <SelectItem key={city} value={city}>
+                  {availableCities.map((city) => (
+                    <SelectItem key={city.id} value={city.name}>
                       <div className="flex items-center gap-2">
-                        <span>{city}</span>
+                        <span>{city.name}</span>
                         <Badge variant="outline" className="text-xs">
-                          {DEFAULT_CITY_REGION_MAP[city]}
+                          {city.region}
                         </Badge>
+                        {city.is_capital && (
+                          <Badge variant="secondary" className="text-xs">
+                            Capital
+                          </Badge>
+                        )}
                       </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground">
-                {t('region')}: <span className="font-medium">{DEFAULT_CITY_REGION_MAP[selectedCity] || 'Continental'}</span>
+                {t('region')}: <span className="font-medium">{selectedCityObj?.region || '-'}</span>
               </p>
             </div>
 

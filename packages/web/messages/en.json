@@ -907,6 +907,8 @@
           "allCities": "All cities",
           "selectCity": "Select city",
           "selectLocation": "Select location",
+          "loadingCities": "Loading cities...",
+          "noCitiesAvailable": "No cities available",
           "loadingLocations": "Loading locations...",
           "noLocationsForCity": "No locations in this city",
           "noAddressProvided": "No address",
