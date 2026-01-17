@@ -34,15 +34,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Loader2 } from 'lucide-react';
 import { AgentType } from '../types';
-import type { AgentCompleteCreateRequest, AgentProfileUpdateRequest } from '../types';
+import type { AgentInviteRequest, AgentProfileUpdateRequest } from '../types';
 
 // =============================================================================
 // VALIDATION SCHEMAS
 // =============================================================================
 
-const agentUserSchema = z.object({
+/**
+ * User info schema for invitation (NO password - agent will set it via email link)
+ */
+const agentUserInviteSchema = z.object({
   email: z.string().email('Email invalide'),
-  password: z.string().min(8, 'Minimum 8 caractères'),
   first_name: z.string().min(2, 'Minimum 2 caractères').max(100),
   last_name: z.string().min(2, 'Minimum 2 caractères').max(100),
   phone_number: z
@@ -70,13 +72,16 @@ const agentProfileSchema = z.object({
   working_days: z.array(z.number()).default([1, 2, 3, 4, 5]),
 });
 
-const createAgentSchema = z.object({
-  user: agentUserSchema,
+/**
+ * Schema for agent invitation (Step 1 - no password)
+ */
+const inviteAgentSchema = z.object({
+  user: agentUserInviteSchema,
 }).merge(agentProfileSchema);
 
 const updateAgentSchema = agentProfileSchema.partial();
 
-type CreateAgentFormData = z.infer<typeof createAgentSchema>;
+type InviteAgentFormData = z.infer<typeof inviteAgentSchema>;
 type UpdateAgentFormData = z.infer<typeof updateAgentSchema>;
 
 // =============================================================================
@@ -86,7 +91,11 @@ type UpdateAgentFormData = z.infer<typeof updateAgentSchema>;
 interface AgentProfileFormProps {
   mode: 'create' | 'edit';
   initialData?: Partial<UpdateAgentFormData>;
-  onSubmit: (data: AgentCompleteCreateRequest | AgentProfileUpdateRequest) => Promise<void>;
+  /**
+   * For create mode: receives AgentInviteRequest (no password - sends invitation email)
+   * For edit mode: receives AgentProfileUpdateRequest
+   */
+  onSubmit: (data: AgentInviteRequest | AgentProfileUpdateRequest) => Promise<void>;
   onCancel: () => void;
   isLoading?: boolean;
   ministries?: Array<{ id: number; name: string }>;
@@ -111,12 +120,11 @@ export function AgentProfileForm({
     initialData?.can_approve_unlimited === false && !!initialData?.max_approval_amount
   );
 
-  const form = useForm<CreateAgentFormData>({
-    resolver: zodResolver(mode === 'create' ? createAgentSchema : updateAgentSchema),
+  const form = useForm<InviteAgentFormData>({
+    resolver: zodResolver(mode === 'create' ? inviteAgentSchema : updateAgentSchema),
     defaultValues: {
       user: {
         email: '',
-        password: '',
         first_name: '',
         last_name: '',
         phone_number: '',
@@ -142,9 +150,10 @@ export function AgentProfileForm({
   const watchAgentType = form.watch('agent_type');
   const watchCanApproveUnlimited = form.watch('can_approve_unlimited');
 
-  const handleSubmit = async (data: CreateAgentFormData) => {
+  const handleSubmit = async (data: InviteAgentFormData) => {
     if (mode === 'create') {
-      await onSubmit(data as AgentCompleteCreateRequest);
+      // Invitation flow: No password in request
+      await onSubmit(data as AgentInviteRequest);
     } else {
       // For edit mode, exclude user data
       const { user: _user, ...profileData } = data;
@@ -165,11 +174,14 @@ export function AgentProfileForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-        {/* User Information - Only for create mode */}
+        {/* User Information - Only for create mode (Invitation Flow) */}
         {mode === 'create' && (
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Informations Utilisateur</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                L&apos;agent recevra un email d&apos;invitation pour définir son mot de passe.
+              </p>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
               <FormField
@@ -181,20 +193,9 @@ export function AgentProfileForm({
                     <FormControl>
                       <Input type="email" placeholder="agent@example.com" {...field} />
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="user.password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Mot de passe *</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="Minimum 8 caractères" {...field} />
-                    </FormControl>
+                    <FormDescription>
+                      Un email d&apos;invitation sera envoyé à cette adresse
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -571,7 +572,7 @@ export function AgentProfileForm({
           </Button>
           <Button type="submit" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {mode === 'create' ? "Créer l'Agent" : 'Enregistrer'}
+            {mode === 'create' ? "Envoyer l'Invitation" : 'Enregistrer'}
           </Button>
         </div>
       </form>

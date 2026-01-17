@@ -376,40 +376,161 @@ class AgentProfileService:
         return {"valid": True, "error": None}
 
     # ========================================================================
-    # COMPLETE CREATION (User + Profile atomically)
+    # AGENT INVITATION FLOW (2-step: invite → activate)
     # ========================================================================
 
-    async def create_agent_complete(
+    async def initiate_agent_invitation(
         self,
-        conn: asyncpg.Connection,
-        data,  # AgentCompleteCreate
+        data,  # AgentInviteRequest
         created_by: UUID,
     ) -> Dict[str, Any]:
         """
-        Create agent user + profile atomically.
+        Step 1: Initiate agent invitation.
 
         This method:
-        1. Creates a user with role matching agent_type
-        2. Creates an agent_profile linked to that user
-        3. Optionally assigns an RBAC role for permissions
+        1. Validates the data
+        2. Generates a verification code
+        3. Stores invitation in pending_registrations with metadata
+        4. Sends invitation email to the agent
+
+        The agent must click the link and set their password to complete registration.
+
+        Args:
+            data: AgentInviteRequest model (no password)
+            created_by: UUID of admin performing the invitation
+
+        Returns:
+            Dict with email, message, expires_at
+        """
+        import secrets
+        from app.modules.auth.repositories.pending_registration_repository import PendingRegistrationRepository
+        from app.modules.communications.services.email_service import EmailService
+
+        # Check if email already exists
+        from app.database.connection import db_manager
+        existing = await db_manager.execute_single(
+            "SELECT id FROM users WHERE email = $1",
+            data.user.email.lower()
+        )
+        if existing:
+            raise ValueError(f"Un compte existe déjà avec l'email {data.user.email}")
+
+        # Generate 6-digit verification code
+        verification_code = ''.join([str(secrets.randbelow(10)) for _ in range(6)])
+
+        # Prepare user data (without password)
+        user_data = {
+            'first_name': data.user.first_name,
+            'last_name': data.user.last_name,
+            'phone_number': data.user.phone_number,
+            'preferred_language': data.user.preferred_language,
+        }
+
+        # Prepare agent profile data
+        agent_data = {
+            'agent_type': data.agent_type.value,
+            'is_supervisor': data.is_supervisor,
+            'entity_id': str(data.entity_id) if data.entity_id else None,
+            'ministry_id': data.ministry_id,
+            'agent_role': data.agent_role,
+            'rbac_role_id': str(data.rbac_role_id) if data.rbac_role_id else None,
+            'can_approve_unlimited': data.can_approve_unlimited,
+            'max_approval_amount': float(data.max_approval_amount) if data.max_approval_amount else None,
+            'can_escalate': data.can_escalate,
+            'can_assign_tasks': data.can_assign_tasks,
+            'can_reassign': data.can_reassign,
+            'specializations': data.specializations or [],
+            'working_hours_start': str(data.working_hours_start) if data.working_hours_start else None,
+            'working_hours_end': str(data.working_hours_end) if data.working_hours_end else None,
+            'working_days': data.working_days or [1, 2, 3, 4, 5],
+        }
+
+        # Store in pending_registrations
+        pending_repo = PendingRegistrationRepository()
+        await pending_repo.create_agent_invitation(
+            email=data.user.email.lower(),
+            verification_code=verification_code,
+            user_data=user_data,
+            agent_data=agent_data,
+            created_by=str(created_by),
+            expires_in_minutes=1440  # 24 hours
+        )
+
+        # Send invitation email
+        from app.modules.communications.services.email_service import get_email_service
+        email_service = get_email_service()
+        try:
+            email_service.send_agent_invitation(
+                to_email=data.user.email,
+                first_name=data.user.first_name,
+                verification_code=verification_code,
+                language=data.user.preferred_language or 'es'
+            )
+            logger.info(f"Agent invitation email sent to {data.user.email}")
+        except Exception as e:
+            logger.error(f"Failed to send agent invitation email: {e}")
+            # Don't fail the invitation, email can be resent
+
+        logger.info(
+            f"Agent invitation initiated: email={data.user.email}, "
+            f"type={data.agent_type.value}, created_by={created_by}"
+        )
+
+        return {
+            "email": data.user.email,
+            "full_name": f"{data.user.first_name} {data.user.last_name}",
+            "message": "Invitation envoyée. L'agent doit valider son email et définir son mot de passe.",
+            "expires_in_hours": 24,
+        }
+
+    async def finalize_agent_creation(
+        self,
+        conn,
+        email: str,
+        verification_code: str,
+        password: str,
+    ) -> Dict[str, Any]:
+        """
+        Step 2: Finalize agent creation after email validation.
+
+        This method:
+        1. Verifies the code and retrieves stored metadata
+        2. Creates the user with the provided password
+        3. Creates the agent profile
+        4. Assigns RBAC permissions
+        5. Creates workload record
+        6. Deletes the pending registration
 
         Args:
             conn: Database connection
-            data: AgentCompleteCreate model
-            created_by: UUID of user performing the creation
+            email: Agent's email
+            verification_code: 6-digit code from email
+            password: Password chosen by the agent
 
         Returns:
-            Dict with user_id, profile_id, etc.
+            Dict with user_id, profile_id, tokens, etc.
         """
         import bcrypt
+        from app.modules.auth.repositories.pending_registration_repository import PendingRegistrationRepository
 
-        # User role is always "agent" (per migration 048)
-        # The agent_type and is_supervisor are stored in agent_profiles
-        user_role = "agent"
+        pending_repo = PendingRegistrationRepository()
+
+        # Verify code and get metadata
+        metadata = await pending_repo.verify_code_and_get_data(email.lower(), verification_code)
+
+        if not metadata:
+            raise ValueError("Code de vérification invalide ou expiré")
+
+        if metadata.get('registration_type') != 'agent':
+            raise ValueError("Cette invitation n'est pas pour un agent")
+
+        user_data = metadata.get('user_data', {})
+        agent_data = metadata.get('agent_data', {})
+        created_by = metadata.get('created_by')
 
         # Hash password
         password_hash = bcrypt.hashpw(
-            data.user.password.encode('utf-8'),
+            password.encode('utf-8'),
             bcrypt.gensalt(rounds=12)
         ).decode('utf-8')
 
@@ -419,22 +540,25 @@ class AgentProfileService:
                 INSERT INTO users (email, password_hash, first_name, last_name,
                                    phone_number, role, preferred_language, status,
                                    email_verified, created_at, updated_at)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', FALSE, NOW(), NOW())
+                VALUES ($1, $2, $3, $4, $5, 'agent', $6, 'active', TRUE, NOW(), NOW())
                 RETURNING id, email, first_name, last_name
             """
             user_row = await conn.fetchrow(
                 user_query,
-                data.user.email.lower(),
+                email.lower(),
                 password_hash,
-                data.user.first_name,
-                data.user.last_name,
-                data.user.phone_number,
-                user_role,
-                data.user.preferred_language,
+                user_data.get('first_name'),
+                user_data.get('last_name'),
+                user_data.get('phone_number'),
+                user_data.get('preferred_language', 'es'),
             )
             user_id = user_row["id"]
 
             # 2. Create agent profile
+            entity_id = UUID(agent_data['entity_id']) if agent_data.get('entity_id') else None
+            rbac_role_id = UUID(agent_data['rbac_role_id']) if agent_data.get('rbac_role_id') else None
+            assigned_by = UUID(created_by) if created_by else None
+
             profile_query = """
                 INSERT INTO agent_profiles (
                     user_id, agent_type, is_supervisor, entity_id, ministry_id,
@@ -443,65 +567,54 @@ class AgentProfileService:
                     specializations, working_hours_start, working_hours_end,
                     working_days, is_active, assigned_by, assigned_at
                 ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, TRUE, $16, NOW()
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14, $15, TRUE, $16, NOW()
                 )
                 RETURNING id
             """
             profile_row = await conn.fetchrow(
                 profile_query,
                 user_id,
-                data.agent_type.value,
-                data.is_supervisor,
-                data.entity_id,
-                data.ministry_id,
-                data.agent_role,
-                data.can_approve_unlimited,
-                float(data.max_approval_amount) if data.max_approval_amount else None,
-                data.can_escalate,
-                data.can_assign_tasks,
-                data.can_reassign,
-                json.dumps(data.specializations or []),  # JSONB requires JSON string
-                data.working_hours_start,
-                data.working_hours_end,
-                data.working_days or [1, 2, 3, 4, 5],
-                created_by,
+                agent_data.get('agent_type'),
+                agent_data.get('is_supervisor', False),
+                entity_id,
+                agent_data.get('ministry_id'),
+                agent_data.get('agent_role', 'validator'),
+                agent_data.get('can_approve_unlimited', False),
+                agent_data.get('max_approval_amount'),
+                agent_data.get('can_escalate', True),
+                agent_data.get('can_assign_tasks', False),
+                agent_data.get('can_reassign', False),
+                json.dumps(agent_data.get('specializations', [])),
+                agent_data.get('working_hours_start'),
+                agent_data.get('working_hours_end'),
+                agent_data.get('working_days', [1, 2, 3, 4, 5]),
+                assigned_by,
             )
             profile_id = profile_row["id"]
 
             # 3. Assign RBAC role if provided
-            if data.rbac_role_id:
-                # First verify the role exists and is an agent role
-                # Accept entity_type: 'agent', 'ministry_agent', 'entity_agent', or NULL
+            if rbac_role_id:
                 role_check = await conn.fetchrow(
                     """SELECT id FROM roles WHERE id = $1
                        AND (entity_type IN ('agent', 'ministry_agent', 'entity_agent')
                             OR entity_type IS NULL)""",
-                    data.rbac_role_id
+                    rbac_role_id
                 )
                 if role_check:
-                    # Get all permissions from the role
                     perms_query = """
                         SELECT permission_id FROM role_permissions
                         WHERE role_id = $1 AND granted = TRUE
                     """
-                    role_permissions = await conn.fetch(perms_query, data.rbac_role_id)
+                    role_permissions = await conn.fetch(perms_query, rbac_role_id)
 
-                    # Assign each permission to the user
                     for perm in role_permissions:
                         await conn.execute("""
                             INSERT INTO user_permissions (user_id, permission_id, granted, granted_by, granted_at)
                             VALUES ($1, $2, TRUE, $3, NOW())
                             ON CONFLICT (user_id, permission_id) DO UPDATE SET granted = TRUE
-                        """, user_id, perm["permission_id"], created_by)
+                        """, user_id, perm["permission_id"], assigned_by)
 
-                    logger.info(
-                        f"Assigned RBAC role {data.rbac_role_id} to agent {user_id} "
-                        f"({len(role_permissions)} permissions)"
-                    )
-                else:
-                    logger.warning(
-                        f"RBAC role {data.rbac_role_id} not found or not an agent role"
-                    )
+                    logger.info(f"Assigned RBAC role {rbac_role_id} to agent {user_id}")
 
             # 4. Create workload record
             await conn.execute("""
@@ -511,43 +624,124 @@ class AgentProfileService:
                 VALUES ($1, 0, 0, 0, 10, 0, 'available', 'available')
             """, profile_id)
 
+        # 5. Delete pending registration
+        await pending_repo.delete_by_email(email.lower())
+
         logger.info(
-            f"Created complete agent: user={user_id}, profile={profile_id}, "
-            f"type={data.agent_type.value}, supervisor={data.is_supervisor}"
+            f"Agent creation finalized: user={user_id}, profile={profile_id}, "
+            f"type={agent_data.get('agent_type')}"
         )
 
         return {
             "user_id": user_id,
-            "user_email": data.user.email,
-            "user_full_name": f"{data.user.first_name} {data.user.last_name}",
+            "user_email": email,
+            "user_full_name": f"{user_data.get('first_name')} {user_data.get('last_name')}",
             "profile_id": profile_id,
-            "agent_type": data.agent_type,
-            "is_supervisor": data.is_supervisor,
-            "message": "Agent created successfully. Email verification required.",
+            "agent_type": agent_data.get('agent_type'),
+            "is_supervisor": agent_data.get('is_supervisor', False),
+            "message": "Compte agent créé avec succès. Vous pouvez maintenant vous connecter.",
         }
 
-    async def create_admin(
+    # ========================================================================
+    # ADMIN INVITATION FLOW (2-step: invite → activate)
+    # ========================================================================
+
+    async def initiate_admin_invitation(
         self,
-        conn: asyncpg.Connection,
-        data,  # AdminCreateRequest
+        data,  # AdminInviteRequest
         created_by: UUID,
     ) -> Dict[str, Any]:
         """
-        Create admin user (no agent profile needed).
+        Step 1: Initiate admin invitation.
 
-        Args:
-            conn: Database connection
-            data: AdminCreateRequest model
-            created_by: UUID of user performing the creation
+        Similar to agent invitation but for admin users (no profile needed).
+        """
+        import secrets
+        from app.modules.auth.repositories.pending_registration_repository import PendingRegistrationRepository
+        from app.modules.communications.services.email_service import EmailService
+        from app.database.connection import db_manager
 
-        Returns:
-            Dict with user_id, email, etc.
+        # Check if email already exists
+        existing = await db_manager.execute_single(
+            "SELECT id FROM users WHERE email = $1",
+            data.email.lower()
+        )
+        if existing:
+            raise ValueError(f"Un compte existe déjà avec l'email {data.email}")
+
+        # Generate 6-digit verification code
+        verification_code = ''.join([str(secrets.randbelow(10)) for _ in range(6)])
+
+        # Prepare user data
+        user_data = {
+            'first_name': data.first_name,
+            'last_name': data.last_name,
+            'phone_number': data.phone_number,
+            'preferred_language': data.preferred_language,
+        }
+
+        # Store in pending_registrations
+        pending_repo = PendingRegistrationRepository()
+        await pending_repo.create_admin_invitation(
+            email=data.email.lower(),
+            verification_code=verification_code,
+            user_data=user_data,
+            created_by=str(created_by),
+            expires_in_minutes=1440  # 24 hours
+        )
+
+        # Send invitation email
+        from app.modules.communications.services.email_service import get_email_service
+        email_service = get_email_service()
+        try:
+            email_service.send_admin_invitation(
+                to_email=data.email,
+                first_name=data.first_name,
+                verification_code=verification_code,
+                language=data.preferred_language or 'es'
+            )
+            logger.info(f"Admin invitation email sent to {data.email}")
+        except Exception as e:
+            logger.error(f"Failed to send admin invitation email: {e}")
+
+        logger.info(f"Admin invitation initiated: email={data.email}, created_by={created_by}")
+
+        return {
+            "email": data.email,
+            "full_name": f"{data.first_name} {data.last_name}",
+            "message": "Invitation envoyée. L'administrateur doit valider son email et définir son mot de passe.",
+            "expires_in_hours": 24,
+        }
+
+    async def finalize_admin_creation(
+        self,
+        conn,
+        email: str,
+        verification_code: str,
+        password: str,
+    ) -> Dict[str, Any]:
+        """
+        Step 2: Finalize admin creation after email validation.
         """
         import bcrypt
+        from app.modules.auth.repositories.pending_registration_repository import PendingRegistrationRepository
+
+        pending_repo = PendingRegistrationRepository()
+
+        # Verify code and get metadata
+        metadata = await pending_repo.verify_code_and_get_data(email.lower(), verification_code)
+
+        if not metadata:
+            raise ValueError("Code de vérification invalide ou expiré")
+
+        if metadata.get('registration_type') != 'admin':
+            raise ValueError("Cette invitation n'est pas pour un administrateur")
+
+        user_data = metadata.get('user_data', {})
 
         # Hash password
         password_hash = bcrypt.hashpw(
-            data.password.encode('utf-8'),
+            password.encode('utf-8'),
             bcrypt.gensalt(rounds=12)
         ).decode('utf-8')
 
@@ -556,27 +750,30 @@ class AgentProfileService:
             INSERT INTO users (email, password_hash, first_name, last_name,
                                phone_number, role, preferred_language, status,
                                email_verified, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, 'admin', $6, 'active', FALSE, NOW(), NOW())
+            VALUES ($1, $2, $3, $4, $5, 'admin', $6, 'active', TRUE, NOW(), NOW())
             RETURNING id, email, first_name, last_name
         """
         user_row = await conn.fetchrow(
             user_query,
-            data.email.lower(),
+            email.lower(),
             password_hash,
-            data.first_name,
-            data.last_name,
-            data.phone_number,
-            data.preferred_language,
+            user_data.get('first_name'),
+            user_data.get('last_name'),
+            user_data.get('phone_number'),
+            user_data.get('preferred_language', 'es'),
         )
 
-        logger.info(f"Created admin user: {user_row['id']} ({data.email})")
+        # Delete pending registration
+        await pending_repo.delete_by_email(email.lower())
+
+        logger.info(f"Admin creation finalized: user={user_row['id']} ({email})")
 
         return {
             "user_id": user_row["id"],
-            "email": data.email,
-            "full_name": f"{data.first_name} {data.last_name}",
+            "email": email,
+            "full_name": f"{user_data.get('first_name')} {user_data.get('last_name')}",
             "role": "admin",
-            "message": "Admin created successfully. Email verification required.",
+            "message": "Compte administrateur créé avec succès. Vous pouvez maintenant vous connecter.",
         }
 
 

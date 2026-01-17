@@ -307,6 +307,59 @@ class TemplateService:
 
         return html, plain_text
 
+    def render_invitation_email(
+        self,
+        user_name: Optional[str],
+        verification_code: str,
+        activation_url: str,
+        invitation_type: str,  # "agent" or "admin"
+        language: str = "es",
+    ) -> tuple[str, str]:
+        """
+        Render agent/admin invitation email template
+
+        Args:
+            user_name: User's name (optional)
+            verification_code: 6-digit code
+            activation_url: URL to activate the account
+            invitation_type: "agent" or "admin"
+            language: Language code
+
+        Returns:
+            Tuple of (html, plain_text)
+        """
+        from app.modules.communications.services.email_content import get_email_content
+
+        template_code = f"{invitation_type}_invitation"
+        content = get_email_content(template_code, language)
+
+        greeting = content["greeting"].format(user_name=user_name) if user_name else content["greeting_default"]
+
+        context = {
+            "subject": content["subject"],
+            "title": content["title"],
+            "greeting": greeting,
+            "message": content["message"],
+            "instructions": content["instructions"],
+            "verification_code": verification_code,
+            "activation_url": activation_url,
+            "button_text": content["button_text"],
+            "or_copy_text": content["or_copy_text"],
+            "expiry_label": content["expiry_label"],
+            "expiry_time": content["expiry_time"],
+            "ignore_text": content["ignore_text"],
+            "footer_text": content["footer_text"],
+            "support_text": content["support_text"],
+            "rights_reserved": content["rights_reserved"],
+        }
+
+        # Use invitation_email.html template (we'll create it)
+        # For now, fallback to verification_email.html with button
+        html = self.render_template("invitation_email.html", context, language)
+        plain_text = self._html_to_plain_text(context)
+
+        return html, plain_text
+
     def _html_to_plain_text(self, context: Dict[str, Any]) -> str:
         """
         Generate plain text version from context
@@ -343,6 +396,10 @@ class TemplateService:
 
         if "reset_url" in context:
             lines.append(f"Reset URL: {context['reset_url']}")
+            lines.append("")
+
+        if "activation_url" in context:
+            lines.append(f"Activation URL: {context['activation_url']}")
             lines.append("")
 
         if "footer_text" in context:

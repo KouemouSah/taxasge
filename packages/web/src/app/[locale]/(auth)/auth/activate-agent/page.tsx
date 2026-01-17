@@ -1,0 +1,334 @@
+'use client'
+
+/**
+ * Agent Account Activation Page
+ * Allows invited agents to set their password and activate their account
+ *
+ * Flow:
+ * 1. Agent receives email with activation link containing email and code
+ * 2. Agent clicks link, lands here with pre-filled email/code
+ * 3. Agent sets their password
+ * 4. Account is created and agent can login
+ *
+ * Backend: POST /api/v1/agents/activate
+ */
+
+import { useState, useEffect, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useToast } from "@/hooks/use-toast"
+import { Loader2, CheckCircle, UserCheck, Eye, EyeOff } from "lucide-react"
+import Header from "@/components/layout/Header"
+import Footer from "@/components/layout/Footer"
+import { agentCreationApi } from "@/modules/agents-admin/services/api"
+import { useLocale } from 'next-intl'
+
+function ActivateAgentContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { toast } = useToast()
+  const locale = useLocale()
+
+  // Form state
+  const [email, setEmail] = useState("")
+  const [verificationCode, setVerificationCode] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
+  // UI state
+  const [isLoading, setIsLoading] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
+  const [isActivated, setIsActivated] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+
+    // Pre-fill from URL params if present
+    const urlEmail = searchParams?.get('email')
+    const urlCode = searchParams?.get('code')
+
+    if (urlEmail) setEmail(urlEmail)
+    if (urlCode) setVerificationCode(urlCode)
+  }, [searchParams])
+
+  const validateForm = (): boolean => {
+    if (!email) {
+      toast({
+        variant: "destructive",
+        title: "Email requis",
+        description: "Veuillez entrer votre adresse email.",
+      })
+      return false
+    }
+
+    if (verificationCode.length !== 6) {
+      toast({
+        variant: "destructive",
+        title: "Code invalide",
+        description: "Le code de verification doit contenir 6 chiffres.",
+      })
+      return false
+    }
+
+    if (password.length < 8) {
+      toast({
+        variant: "destructive",
+        title: "Mot de passe trop court",
+        description: "Le mot de passe doit contenir au moins 8 caracteres.",
+      })
+      return false
+    }
+
+    if (password !== confirmPassword) {
+      toast({
+        variant: "destructive",
+        title: "Mots de passe differents",
+        description: "Les mots de passe ne correspondent pas.",
+      })
+      return false
+    }
+
+    return true
+  }
+
+  const handleActivate = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!validateForm()) return
+
+    setIsLoading(true)
+
+    try {
+      const response = await agentCreationApi.activateAgent({
+        email,
+        verification_code: verificationCode,
+        password,
+      })
+
+      setIsActivated(true)
+
+      toast({
+        title: "Compte active!",
+        description: response.message || "Votre compte agent a ete active avec succes.",
+      })
+
+      // Redirect to login after 2 seconds
+      setTimeout(() => {
+        router.push(`/${locale}/auth`)
+      }, 2000)
+
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Erreur lors de l'activation"
+      toast({
+        variant: "destructive",
+        title: "Erreur d'activation",
+        description: errorMessage,
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Show loading state during SSR
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  // Show success message
+  if (isActivated) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 container mx-auto px-4 py-12">
+          <div className="max-w-md mx-auto text-center">
+            <div className="flex justify-center mb-4">
+              <CheckCircle className="h-16 w-16 text-green-500" />
+            </div>
+            <h1 className="text-2xl font-bold mb-2">Compte Active!</h1>
+            <p className="text-muted-foreground mb-4">
+              Votre compte agent a ete active avec succes. Vous allez etre redirige vers la page de connexion...
+            </p>
+            <Button onClick={() => router.push(`/${locale}/auth`)}>
+              Se connecter maintenant
+            </Button>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Header />
+
+      <main className="flex-1 container mx-auto px-4 py-12">
+        <div className="max-w-md mx-auto">
+          <div className="text-center mb-8">
+            <div className="flex justify-center mb-4">
+              <UserCheck className="h-16 w-16 text-primary" />
+            </div>
+            <h1 className="text-3xl font-bold mb-2">Activer votre compte Agent</h1>
+            <p className="text-muted-foreground">
+              Entrez le code recu par email et choisissez votre mot de passe
+            </p>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Activation du compte</CardTitle>
+              <CardDescription>
+                Completez les informations ci-dessous pour activer votre compte agent TaxasGE.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleActivate} className="space-y-4">
+                {/* Email */}
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="votre.email@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    disabled={isLoading || !!searchParams?.get('email')}
+                  />
+                </div>
+
+                {/* Verification Code */}
+                <div className="space-y-2">
+                  <Label htmlFor="code">Code de verification</Label>
+                  <Input
+                    id="code"
+                    type="text"
+                    placeholder="000000"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    maxLength={6}
+                    required
+                    disabled={isLoading}
+                    className="text-center text-2xl tracking-widest"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Code a 6 chiffres recu par email
+                  </p>
+                </div>
+
+                {/* Password */}
+                <div className="space-y-2">
+                  <Label htmlFor="password">Mot de passe</Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Minimum 8 caracteres"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      disabled={isLoading}
+                      minLength={8}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Confirm Password */}
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Confirmez votre mot de passe"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                      disabled={isLoading}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={isLoading || verificationCode.length !== 6 || password.length < 8}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Activation en cours...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                      Activer mon compte
+                    </>
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Help text */}
+          <p className="text-sm text-center text-muted-foreground mt-4">
+            Vous avez deja un compte?{' '}
+            <Button variant="link" className="p-0" onClick={() => router.push(`/${locale}/auth`)}>
+              Se connecter
+            </Button>
+          </p>
+        </div>
+      </main>
+
+      <Footer />
+    </div>
+  )
+}
+
+export default function ActivateAgentPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <ActivateAgentContent />
+    </Suspense>
+  )
+}

@@ -33,6 +33,8 @@ LEGACY_TEMPLATE_CODES: Set[str] = {
     "password_reset_confirmation",
     "2fa_code",
     "account_lockout",
+    "agent_invitation",
+    "admin_invitation",
 }
 
 
@@ -325,6 +327,88 @@ class EmailService:
 
         return self.send_email(to_email, subject, html, plain_text)
 
+    def send_agent_invitation(
+        self,
+        to_email: str,
+        first_name: str,
+        verification_code: str,
+        language: str = "es",
+    ) -> bool:
+        """
+        Send agent invitation email with verification code
+
+        Args:
+            to_email: Recipient email address
+            first_name: Agent's first name
+            verification_code: 6-digit verification code
+            language: Language code (es/fr/en, default: es)
+
+        Returns:
+            bool: True if email sent successfully, False otherwise
+        """
+        from app.modules.communications.services.email_content import get_email_content
+        from app.config import get_settings
+
+        settings = get_settings()
+
+        # Build activation URL
+        frontend_url = settings.FRONTEND_URL
+        activation_url = f"{frontend_url}/auth/activate-agent?email={to_email}&code={verification_code}"
+
+        content = get_email_content("agent_invitation", language)
+        subject = content["subject"]
+
+        html, plain_text = self.template_service.render_invitation_email(
+            user_name=first_name,
+            verification_code=verification_code,
+            activation_url=activation_url,
+            invitation_type="agent",
+            language=language,
+        )
+
+        return self.send_email(to_email, subject, html, plain_text)
+
+    def send_admin_invitation(
+        self,
+        to_email: str,
+        first_name: str,
+        verification_code: str,
+        language: str = "es",
+    ) -> bool:
+        """
+        Send admin invitation email with verification code
+
+        Args:
+            to_email: Recipient email address
+            first_name: Admin's first name
+            verification_code: 6-digit verification code
+            language: Language code (es/fr/en, default: es)
+
+        Returns:
+            bool: True if email sent successfully, False otherwise
+        """
+        from app.modules.communications.services.email_content import get_email_content
+        from app.config import get_settings
+
+        settings = get_settings()
+
+        # Build activation URL
+        frontend_url = settings.FRONTEND_URL
+        activation_url = f"{frontend_url}/auth/activate-admin?email={to_email}&code={verification_code}"
+
+        content = get_email_content("admin_invitation", language)
+        subject = content["subject"]
+
+        html, plain_text = self.template_service.render_invitation_email(
+            user_name=first_name,
+            verification_code=verification_code,
+            activation_url=activation_url,
+            invitation_type="admin",
+            language=language,
+        )
+
+        return self.send_email(to_email, subject, html, plain_text)
+
     # =========================================================================
     # UNIFIED TEMPLATE SENDING (Legacy + Database routing)
     # =========================================================================
@@ -410,6 +494,20 @@ class EmailService:
                     to_email=to_email,
                     user_name=variables.get("user_name"),
                     locked_until=locked_until,
+                    language=language,
+                )
+            elif template_code == "agent_invitation":
+                return self.send_agent_invitation(
+                    to_email=to_email,
+                    first_name=variables.get("first_name", ""),
+                    verification_code=variables.get("verification_code", "000000"),
+                    language=language,
+                )
+            elif template_code == "admin_invitation":
+                return self.send_admin_invitation(
+                    to_email=to_email,
+                    first_name=variables.get("first_name", ""),
+                    verification_code=variables.get("verification_code", "000000"),
                     language=language,
                 )
             else:

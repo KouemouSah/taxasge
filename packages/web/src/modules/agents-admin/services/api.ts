@@ -34,6 +34,15 @@ import type {
   AgentListFilters,
   AgentListResponse,
   AgentStats,
+  // Invitation flow types
+  AgentInviteRequest,
+  AgentInviteResponse,
+  AgentActivateRequest,
+  AgentActivateResponse,
+  AdminInviteRequest,
+  AdminInviteResponse,
+  AdminActivateRequest,
+  AdminActivateResponse,
 } from '../types';
 
 // =============================================================================
@@ -48,25 +57,73 @@ const ADMIN_USERS_BASE = '/admin/users';
 // =============================================================================
 
 export const agentCreationApi = {
+  // =========================================================================
+  // INVITATION FLOW (2-step: invite → activate) - RECOMMENDED
+  // =========================================================================
+
   /**
-   * Create complete agent (user + profile atomically)
-   * BACKEND: POST /api/v1/agents/complete
+   * Step 1: Invite agent (sends email with verification code)
+   * BACKEND: POST /api/v1/agents/invite
    *
-   * Creates:
-   * 1. User with role='agent', email_verified=false
-   * 2. Agent profile linked to user
+   * Agent will receive email with code and activation link.
+   * They must set their password via POST /agents/activate.
+   */
+  inviteAgent: async (data: AgentInviteRequest): Promise<AgentInviteResponse> => {
+    return fetchClient.post<AgentInviteResponse>(`${AGENTS_BASE}/invite`, data);
+  },
+
+  /**
+   * Step 2: Activate agent account (PUBLIC - no auth)
+   * BACKEND: POST /api/v1/agents/activate
+   *
+   * Agent provides code from email and chooses password.
+   * Account is created with email_verified=true.
+   */
+  activateAgent: async (data: AgentActivateRequest): Promise<AgentActivateResponse> => {
+    return fetchClient.post<AgentActivateResponse>(`${AGENTS_BASE}/activate`, data);
+  },
+
+  /**
+   * Step 1: Invite admin (sends email with verification code)
+   * BACKEND: POST /api/v1/agents/admin/invite
+   *
+   * Admin will receive email with code and activation link.
+   * They must set their password via POST /agents/admin/activate.
+   */
+  inviteAdmin: async (data: AdminInviteRequest): Promise<AdminInviteResponse> => {
+    return fetchClient.post<AdminInviteResponse>(`${AGENTS_BASE}/admin/invite`, data);
+  },
+
+  /**
+   * Step 2: Activate admin account (PUBLIC - no auth)
+   * BACKEND: POST /api/v1/agents/admin/activate
+   *
+   * Admin provides code from email and chooses password.
+   * Account is created with email_verified=true.
+   */
+  activateAdmin: async (data: AdminActivateRequest): Promise<AdminActivateResponse> => {
+    return fetchClient.post<AdminActivateResponse>(`${AGENTS_BASE}/admin/activate`, data);
+  },
+
+  // =========================================================================
+  // LEGACY METHODS (DEPRECATED - will return 410 GONE)
+  // =========================================================================
+
+  /**
+   * @deprecated Use inviteAgent + activateAgent instead
+   * BACKEND: POST /api/v1/agents/complete (returns 410 GONE)
    */
   createAgent: async (data: AgentCompleteCreateRequest): Promise<AgentCompleteResponse> => {
+    console.warn('[DEPRECATED] Use inviteAgent() instead of createAgent()');
     return fetchClient.post<AgentCompleteResponse>(`${AGENTS_BASE}/complete`, data);
   },
 
   /**
-   * Create admin user (no agent profile)
-   * BACKEND: POST /api/v1/agents/admin
-   *
-   * Creates user with role='admin', email_verified=false
+   * @deprecated Use inviteAdmin + activateAdmin instead
+   * BACKEND: POST /api/v1/agents/admin (returns 410 GONE)
    */
   createAdmin: async (data: AdminCreateRequest): Promise<AdminCreateResponse> => {
+    console.warn('[DEPRECATED] Use inviteAdmin() instead of createAdmin()');
     return fetchClient.post<AdminCreateResponse>(`${AGENTS_BASE}/admin`, data);
   },
 };

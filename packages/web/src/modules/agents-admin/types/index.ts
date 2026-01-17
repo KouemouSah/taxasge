@@ -368,3 +368,122 @@ export interface AdminUser {
   last_login?: string;
   email_verified?: boolean;
 }
+
+// =============================================================================
+// INVITATION FLOW TYPES (2-step: invite → activate)
+// =============================================================================
+
+/**
+ * User info for agent invitation (NO password - agent sets it after email validation)
+ * BACKEND: AgentUserInfoInvite in agent_profile.py
+ */
+export interface AgentUserInfoInvite {
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone_number?: string;
+  preferred_language?: 'es' | 'fr' | 'en';
+}
+
+/**
+ * Agent invitation request (Step 1)
+ * BACKEND: AgentInviteRequest in agent_profile.py
+ */
+export interface AgentInviteRequest {
+  user: AgentUserInfoInvite;
+  agent_type: AgentType;
+  is_supervisor?: boolean;
+  entity_id?: string;
+  ministry_id?: number;
+  agent_role?: AgentRole | string;
+  rbac_role_id?: string;
+  can_approve_unlimited?: boolean;
+  max_approval_amount?: number;
+  can_escalate?: boolean;
+  can_assign_tasks?: boolean;
+  can_reassign?: boolean;
+  specializations?: string[];
+  working_hours_start?: string;
+  working_hours_end?: string;
+  working_days?: number[];
+}
+
+/**
+ * Response for agent invitation
+ * BACKEND: AgentInviteResponse in agent_profile.py
+ */
+export interface AgentInviteResponse {
+  email: string;
+  full_name: string;
+  message: string;
+  expires_in_hours: number;
+}
+
+/**
+ * Agent activation request (Step 2)
+ * BACKEND: AgentActivateRequest in agent_profile.py
+ */
+export interface AgentActivateRequest {
+  email: string;
+  verification_code: string;
+  password: string;
+}
+
+/**
+ * Response for agent activation
+ * BACKEND: AgentActivateResponse in agent_profile.py
+ */
+export interface AgentActivateResponse {
+  user_id: string;
+  user_email: string;
+  user_full_name: string;
+  profile_id: string;
+  agent_type: AgentType;
+  is_supervisor: boolean;
+  message: string;
+}
+
+/**
+ * Admin invitation request (Step 1)
+ * BACKEND: AdminInviteRequest in agent_profile.py
+ */
+export interface AdminInviteRequest {
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone_number?: string;
+  preferred_language?: 'es' | 'fr' | 'en';
+}
+
+/**
+ * Response for admin invitation
+ * BACKEND: AdminInviteResponse in agent_profile.py
+ */
+export interface AdminInviteResponse {
+  email: string;
+  full_name: string;
+  message: string;
+  expires_in_hours: number;
+}
+
+/**
+ * Admin activation request (Step 2)
+ * BACKEND: AdminActivateRequest in agent_profile.py
+ */
+export interface AdminActivateRequest {
+  email: string;
+  verification_code: string;
+  password: string;
+}
+
+/**
+ * Response for admin activation
+ * BACKEND: AdminActivateResponse in agent_profile.py
+ */
+export interface AdminActivateResponse {
+  user_id: string;
+  email: string;
+  full_name: string;
+  role: 'admin';
+  message: string;
+}

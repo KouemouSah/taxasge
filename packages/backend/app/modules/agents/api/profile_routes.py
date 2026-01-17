@@ -28,6 +28,15 @@ from app.modules.agents.models.agent_profile import (
     AdminCreateRequest,
     AdminCreateResponse,
     AgentType,
+    # Invitation flow models
+    AgentInviteRequest,
+    AgentInviteResponse,
+    AgentActivateRequest,
+    AgentActivateResponse,
+    AdminInviteRequest,
+    AdminInviteResponse,
+    AdminActivateRequest,
+    AdminActivateResponse,
 )
 from app.modules.agents.repositories.agent_profile_repository import AgentProfileRepository
 from app.modules.auth.middleware.auth_middleware import get_current_user
@@ -352,10 +361,73 @@ async def reactivate_profile(
 
 
 # ============================================================================
-# COMPLETE CREATION (User + Profile atomically)
+# AGENT INVITATION FLOW (2-step: invite → activate)
 # ============================================================================
 
-@router.post("/complete", response_model=AgentCompleteResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/invite", response_model=AgentInviteResponse, status_code=status.HTTP_201_CREATED)
+async def invite_agent(
+    data: AgentInviteRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db = Depends(get_database),
+    _: None = Depends(permission_required("agents.create"))
+):
+    """
+    Step 1: Invite agent.
+
+    This endpoint:
+    1. Validates the agent data
+    2. Generates a verification code
+    3. Stores the invitation in pending_registrations
+    4. Sends an invitation email to the agent
+
+    The agent must click the link in the email and set their password
+    to complete registration (via POST /agents/activate).
+    """
+    from app.modules.agents.services.agent_profile_service import AgentProfileService
+
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
+
+    service = AgentProfileService()
+    result = await service.initiate_agent_invitation(data, UUID(user_id))
+
+    logger.info(f"User {user_id} invited agent {data.user.email}")
+    return AgentInviteResponse(**result)
+
+
+@router.post("/activate", response_model=AgentActivateResponse, status_code=status.HTTP_201_CREATED)
+async def activate_agent(
+    data: AgentActivateRequest,
+    db = Depends(get_database),
+):
+    """
+    Step 2: Activate agent account.
+
+    This endpoint (PUBLIC - no auth required):
+    1. Verifies the code from the invitation email
+    2. Creates the user account with the provided password
+    3. Creates the agent profile
+    4. Assigns RBAC permissions
+    5. Creates workload record
+
+    The agent can then log in with their email and password.
+    """
+    from app.modules.agents.services.agent_profile_service import AgentProfileService
+
+    service = AgentProfileService()
+    result = await service.finalize_agent_creation(
+        db,
+        email=data.email,
+        verification_code=data.verification_code,
+        password=data.password,
+    )
+
+    logger.info(f"Agent activated: {data.email}")
+    return AgentActivateResponse(**result)
+
+
+# Keep legacy endpoint for backward compatibility (deprecated)
+@router.post("/complete", response_model=AgentCompleteResponse, status_code=status.HTTP_201_CREATED,
+             deprecated=True, summary="[DEPRECATED] Use POST /invite instead")
 async def create_agent_complete(
     data: AgentCompleteCreate,
     current_user: Dict[str, Any] = Depends(get_current_user),
@@ -363,26 +435,93 @@ async def create_agent_complete(
     _: None = Depends(permission_required("agents.create"))
 ):
     """
-    Create agent user + profile atomically.
+    [DEPRECATED] Create agent user + profile atomically.
 
-    This endpoint:
-    1. Creates a user with role='agent' and email_verified=False
-    2. Creates an agent_profile linked to that user
+    This endpoint is deprecated. Use the new invitation flow:
+    1. POST /agents/invite - Send invitation email
+    2. POST /agents/activate - Agent sets password and activates
 
-    Use for: Creating new agents from admin panel.
+    This old endpoint creates accounts with email_verified=False,
+    which requires a separate email verification step.
     """
     from app.modules.agents.services.agent_profile_service import AgentProfileService
 
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     service = AgentProfileService()
-    result = await service.create_agent_complete(db, data, UUID(user_id))
+    # Note: This uses the old flow, not the invitation flow
+    # For backward compatibility only
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="This endpoint is deprecated. Use POST /agents/invite and POST /agents/activate instead."
+    )
 
-    logger.info(f"User {user_id} created complete agent {result['user_id']}")
-    return AgentCompleteResponse(**result)
+
+# ============================================================================
+# ADMIN INVITATION FLOW (2-step: invite → activate)
+# ============================================================================
+
+@router.post("/admin/invite", response_model=AdminInviteResponse, status_code=status.HTTP_201_CREATED)
+async def invite_admin(
+    data: AdminInviteRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db = Depends(get_database),
+    _: None = Depends(permission_required("admins.create"))
+):
+    """
+    Step 1: Invite admin.
+
+    This endpoint:
+    1. Validates the admin data
+    2. Generates a verification code
+    3. Stores the invitation in pending_registrations
+    4. Sends an invitation email to the admin
+
+    The admin must click the link and set their password
+    to complete registration (via POST /agents/admin/activate).
+    """
+    from app.modules.agents.services.agent_profile_service import AgentProfileService
+
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
+
+    service = AgentProfileService()
+    result = await service.initiate_admin_invitation(data, UUID(user_id))
+
+    logger.info(f"User {user_id} invited admin {data.email}")
+    return AdminInviteResponse(**result)
 
 
-@router.post("/admin", response_model=AdminCreateResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/admin/activate", response_model=AdminActivateResponse, status_code=status.HTTP_201_CREATED)
+async def activate_admin(
+    data: AdminActivateRequest,
+    db = Depends(get_database),
+):
+    """
+    Step 2: Activate admin account.
+
+    This endpoint (PUBLIC - no auth required):
+    1. Verifies the code from the invitation email
+    2. Creates the admin user with the provided password
+
+    The admin can then log in with their email and password.
+    """
+    from app.modules.agents.services.agent_profile_service import AgentProfileService
+
+    service = AgentProfileService()
+    result = await service.finalize_admin_creation(
+        db,
+        email=data.email,
+        verification_code=data.verification_code,
+        password=data.password,
+    )
+
+    logger.info(f"Admin activated: {data.email}")
+    return AdminActivateResponse(**result)
+
+
+# Keep legacy endpoint for backward compatibility (deprecated)
+@router.post("/admin", response_model=AdminCreateResponse, status_code=status.HTTP_201_CREATED,
+             deprecated=True, summary="[DEPRECATED] Use POST /admin/invite instead")
 async def create_admin(
     data: AdminCreateRequest,
     current_user: Dict[str, Any] = Depends(get_current_user),
@@ -390,19 +529,16 @@ async def create_admin(
     _: None = Depends(permission_required("admins.create"))
 ):
     """
-    Create admin user (no agent profile needed).
+    [DEPRECATED] Create admin user.
 
-    This endpoint creates a user with role='admin' and email_verified=False.
+    This endpoint is deprecated. Use the new invitation flow:
+    1. POST /agents/admin/invite - Send invitation email
+    2. POST /agents/admin/activate - Admin sets password and activates
     """
-    from app.modules.agents.services.agent_profile_service import AgentProfileService
-
-    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
-
-    service = AgentProfileService()
-    result = await service.create_admin(db, data, UUID(user_id))
-
-    logger.info(f"User {user_id} created admin {result['user_id']}")
-    return AdminCreateResponse(**result)
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="This endpoint is deprecated. Use POST /agents/admin/invite and POST /agents/admin/activate instead."
+    )
 
 
 # ============================================================================

@@ -289,3 +289,140 @@ class AdminCreateResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ============================================================================
+# INVITATION FLOW MODELS (2-step: invite → activate)
+# ============================================================================
+
+class AgentUserInfoInvite(BaseModel):
+    """User information for agent invitation (NO password - agent sets it after email validation)"""
+    email: str = Field(..., description="Email address")
+    first_name: str = Field(..., min_length=2, max_length=100, description="First name")
+    last_name: str = Field(..., min_length=2, max_length=100, description="Last name")
+    phone_number: Optional[str] = Field(
+        None,
+        pattern=r"^(222|555|551|333)\d{6}$",
+        description="Guinée Équatoriale phone (9 digits: 222/555/551/333 + 6 digits)"
+    )
+    preferred_language: str = Field(default="es", pattern="^(es|fr|en)$")
+
+
+class AgentInviteRequest(BaseModel):
+    """
+    Invite agent - Step 1 of the invitation flow.
+
+    Admin provides agent info and profile config, but NO password.
+    The agent receives an email with a code and sets their password.
+    """
+    # User information (without password)
+    user: AgentUserInfoInvite
+
+    # Agent profile configuration
+    agent_type: AgentType
+    is_supervisor: bool = False
+    entity_id: Optional[UUID] = None
+    ministry_id: Optional[int] = None
+    agent_role: str = Field(default="validator", pattern="^(validator|approver|auditor|reviewer)$")
+
+    # RBAC role for permissions
+    rbac_role_id: Optional[UUID] = Field(
+        None,
+        description="RBAC role ID to assign to the agent for permissions"
+    )
+
+    can_approve_unlimited: bool = False
+    max_approval_amount: Optional[Decimal] = None
+    can_escalate: bool = True
+    can_assign_tasks: bool = False
+    can_reassign: bool = False
+    specializations: List[str] = Field(default_factory=list)
+    working_hours_start: Optional[time] = None
+    working_hours_end: Optional[time] = None
+    working_days: List[int] = Field(default_factory=lambda: [1, 2, 3, 4, 5])
+
+
+class AgentInviteResponse(BaseModel):
+    """Response for agent invitation initiation"""
+    email: str
+    full_name: str
+    message: str = "Invitation envoyée. L'agent doit valider son email et définir son mot de passe."
+    expires_in_hours: int = 24
+
+    class Config:
+        from_attributes = True
+
+
+class AgentActivateRequest(BaseModel):
+    """
+    Activate agent - Step 2 of the invitation flow.
+
+    Agent provides the verification code from email and chooses their password.
+    """
+    email: str = Field(..., description="Email address from invitation")
+    verification_code: str = Field(..., min_length=6, max_length=6, description="6-digit code from email")
+    password: str = Field(..., min_length=8, max_length=100, description="Password chosen by agent")
+
+
+class AgentActivateResponse(BaseModel):
+    """Response for agent activation"""
+    user_id: UUID
+    user_email: str
+    user_full_name: str
+    profile_id: UUID
+    agent_type: AgentType
+    is_supervisor: bool
+    message: str = "Compte agent créé avec succès. Vous pouvez maintenant vous connecter."
+
+    class Config:
+        from_attributes = True
+
+
+class AdminInviteRequest(BaseModel):
+    """
+    Invite admin - Step 1 of the admin invitation flow.
+
+    Admin provides user info but NO password.
+    The new admin receives an email with a code and sets their password.
+    """
+    email: str = Field(..., description="Email address")
+    first_name: str = Field(..., min_length=2, max_length=100, description="First name")
+    last_name: str = Field(..., min_length=2, max_length=100, description="Last name")
+    phone_number: Optional[str] = Field(
+        None,
+        pattern=r"^(222|555|551|333)\d{6}$",
+        description="Guinée Équatoriale phone"
+    )
+    preferred_language: str = Field(default="es", pattern="^(es|fr|en)$")
+
+
+class AdminInviteResponse(BaseModel):
+    """Response for admin invitation initiation"""
+    email: str
+    full_name: str
+    message: str = "Invitation envoyée. L'administrateur doit valider son email et définir son mot de passe."
+    expires_in_hours: int = 24
+
+    class Config:
+        from_attributes = True
+
+
+class AdminActivateRequest(BaseModel):
+    """
+    Activate admin - Step 2 of the admin invitation flow.
+    """
+    email: str = Field(..., description="Email address from invitation")
+    verification_code: str = Field(..., min_length=6, max_length=6, description="6-digit code from email")
+    password: str = Field(..., min_length=8, max_length=100, description="Password chosen by admin")
+
+
+class AdminActivateResponse(BaseModel):
+    """Response for admin activation"""
+    user_id: UUID
+    email: str
+    full_name: str
+    role: str = "admin"
+    message: str = "Compte administrateur créé avec succès. Vous pouvez maintenant vous connecter."
+
+    class Config:
+        from_attributes = True

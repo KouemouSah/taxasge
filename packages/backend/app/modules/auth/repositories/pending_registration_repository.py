@@ -1,13 +1,20 @@
 """
-Repository for pending_registrations table (minimal 6-column version)
-Handles email verification codes with expiration
+Repository for pending_registrations table
+Handles email verification codes with expiration and metadata for agent/admin invitations
 
 Module: Auth
 Architecture: 3-tier (Routes → Services → Repositories)
+
+Migration 055 adds metadata JSONB column for storing:
+- registration_type: 'user' | 'agent' | 'admin'
+- agent_data: profile configuration for agents
+- user_data: name, phone, language for agents/admins
+- created_by: admin UUID who initiated the invitation
 """
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Optional, Dict, Any
 from loguru import logger
+import json
 
 from app.database.connection import db_manager
 
@@ -22,7 +29,8 @@ class PendingRegistrationRepository:
         self,
         email: str,
         verification_code: str,
-        expires_in_minutes: int = 15
+        expires_in_minutes: int = 15,
+        metadata: Optional[Dict[str, Any]] = None
     ) -> str:
         """
         Create pending registration entry
@@ -31,6 +39,7 @@ class PendingRegistrationRepository:
             email: User email
             verification_code: 6-digit code
             expires_in_minutes: TTL in minutes (default 15)
+            metadata: Optional JSONB data for agent/admin invitations
 
         Returns:
             str: Created record ID
@@ -40,28 +49,102 @@ class PendingRegistrationRepository:
         """
         try:
             expires_at = datetime.now(timezone.utc) + timedelta(minutes=expires_in_minutes)
+            metadata_json = json.dumps(metadata or {})
 
             query = """
-                INSERT INTO pending_registrations (email, verification_code, expires_at)
-                VALUES ($1, $2, $3)
+                INSERT INTO pending_registrations (email, verification_code, expires_at, metadata)
+                VALUES ($1, $2, $3, $4::jsonb)
                 ON CONFLICT (email) DO UPDATE
                 SET verification_code = $2,
                     expires_at = $3,
+                    metadata = $4::jsonb,
                     created_at = NOW(),
                     verification_attempts = 0
                 RETURNING id
             """
 
             row = await self.db_manager.execute_single(
-                query, email, verification_code, expires_at
+                query, email, verification_code, expires_at, metadata_json
             )
 
-            logger.info(f"Pending registration created/updated for {email}, expires {expires_at}")
+            reg_type = (metadata or {}).get('registration_type', 'user')
+            logger.info(f"Pending registration created/updated for {email} (type={reg_type}), expires {expires_at}")
             return str(row['id'])
 
         except Exception as e:
             logger.error(f"Error creating pending registration for {email}: {e}")
             raise
+
+    async def create_agent_invitation(
+        self,
+        email: str,
+        verification_code: str,
+        user_data: Dict[str, Any],
+        agent_data: Dict[str, Any],
+        created_by: str,
+        expires_in_minutes: int = 1440  # 24 hours for agent invitations
+    ) -> str:
+        """
+        Create pending agent invitation
+
+        Args:
+            email: Agent's email
+            verification_code: 6-digit code
+            user_data: User info (first_name, last_name, phone_number, preferred_language)
+            agent_data: Agent profile config (agent_type, entity_id, ministry_id, etc.)
+            created_by: Admin UUID who initiated the invitation
+            expires_in_minutes: TTL in minutes (default 24 hours)
+
+        Returns:
+            str: Created record ID
+        """
+        metadata = {
+            'registration_type': 'agent',
+            'user_data': user_data,
+            'agent_data': agent_data,
+            'created_by': str(created_by),
+        }
+
+        return await self.create(
+            email=email,
+            verification_code=verification_code,
+            expires_in_minutes=expires_in_minutes,
+            metadata=metadata
+        )
+
+    async def create_admin_invitation(
+        self,
+        email: str,
+        verification_code: str,
+        user_data: Dict[str, Any],
+        created_by: str,
+        expires_in_minutes: int = 1440  # 24 hours
+    ) -> str:
+        """
+        Create pending admin invitation
+
+        Args:
+            email: Admin's email
+            verification_code: 6-digit code
+            user_data: User info (first_name, last_name, phone_number, preferred_language)
+            created_by: Admin UUID who initiated the invitation
+            expires_in_minutes: TTL in minutes (default 24 hours)
+
+        Returns:
+            str: Created record ID
+        """
+        metadata = {
+            'registration_type': 'admin',
+            'user_data': user_data,
+            'created_by': str(created_by),
+        }
+
+        return await self.create(
+            email=email,
+            verification_code=verification_code,
+            expires_in_minutes=expires_in_minutes,
+            metadata=metadata
+        )
 
     async def find_by_email(self, email: str) -> Optional[dict]:
         """
@@ -133,6 +216,56 @@ class PendingRegistrationRepository:
         except Exception as e:
             logger.error(f"Error verifying code for {email}: {e}")
             return False
+
+    async def verify_code_and_get_data(self, email: str, code: str) -> Optional[Dict[str, Any]]:
+        """
+        Verify code and return metadata if valid
+
+        Args:
+            email: User email
+            code: 6-digit code
+
+        Returns:
+            Optional[Dict]: Metadata if valid, None if invalid/expired
+
+        Side effects:
+            - Increments verification_attempts if code is wrong
+            - Deletes record if attempts >= 5 or expired
+        """
+        try:
+            pending = await self.find_by_email(email)
+
+            if not pending:
+                logger.warning(f"No pending registration found for {email}")
+                return None
+
+            now_utc = datetime.now(timezone.utc)
+
+            # Check if expired
+            if now_utc > pending['expires_at']:
+                await self.delete_by_email(email)
+                logger.info(f"Verification code expired for {email}")
+                return None
+
+            # Check if too many attempts
+            if pending['verification_attempts'] >= 5:
+                await self.delete_by_email(email)
+                logger.warning(f"Too many verification attempts for {email}")
+                return None
+
+            # Check code
+            if pending['verification_code'] != code:
+                await self.increment_attempts(email)
+                logger.warning(f"Wrong verification code for {email}")
+                return None
+
+            # Success - return metadata
+            logger.info(f"Verification code valid for {email}, returning metadata")
+            return pending.get('metadata', {})
+
+        except Exception as e:
+            logger.error(f"Error verifying code for {email}: {e}")
+            return None
 
     async def delete_by_email(self, email: str) -> bool:
         """
