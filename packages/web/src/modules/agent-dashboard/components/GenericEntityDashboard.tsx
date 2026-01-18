@@ -22,15 +22,13 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle,
-  FileText,
-  Calendar,
   Users,
   BarChart3,
   ClipboardList,
 } from 'lucide-react';
 import { useAgentDashboard, useEntityAccess } from '../hooks';
 import { AccessDenied } from './AccessDenied';
-import type { EntityCode, MenuItem, MenuGroup } from '../types';
+import type { EntityCode, MenuItem } from '../types';
 import { isMenuGroup } from '../types';
 
 // =============================================================================

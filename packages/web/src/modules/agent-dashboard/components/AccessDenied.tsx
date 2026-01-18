@@ -13,7 +13,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ShieldX, ArrowLeft, Home, LogOut } from 'lucide-react';
+import { ShieldX, ArrowLeft, Home } from 'lucide-react';
 import type { EntityCode } from '../types';
 
 // =============================================================================
@@ -45,7 +45,7 @@ export function AccessDenied({
   const tCommon = useTranslations('common');
   const locale = useLocale();
   const router = useRouter();
-  const pathname = usePathname();
+  const _pathname = usePathname();
 
   // Determine redirect URL based on user's entity
   const getRedirectUrl = (): string => {

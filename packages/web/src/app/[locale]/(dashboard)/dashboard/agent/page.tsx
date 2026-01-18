@@ -28,7 +28,7 @@ export default function AgentDashboardPage() {
     isError,
     error,
     context,
-    entityCode,
+    entityCode: _entityCode,
     entityConfig,
     getBasePath,
     isMinistryAgent,
