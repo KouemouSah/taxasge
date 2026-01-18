@@ -314,7 +314,7 @@ async def list_agents(
     **List all agents under supervision**
 
     Permissions:
-    - supervisor_dgi, supervisor_ministry, admin
+    - Requires appropriate RBAC permission (see @require_permission decorator)
 
     Returns:
     - List of agents with workload metrics
@@ -385,7 +385,7 @@ async def get_agent_stats(
     **Get detailed statistics for an agent**
 
     Permissions:
-    - supervisor_dgi, supervisor_ministry, admin
+    - Requires appropriate RBAC permission (see @require_permission decorator)
 
     Returns:
     - Total assignments (period)
@@ -431,7 +431,7 @@ async def get_agent_forecast(
     **Get capacity forecast for an agent**
 
     Permissions:
-    - supervisor_dgi, supervisor_ministry, admin
+    - Requires appropriate RBAC permission (see @require_permission decorator)
 
     Returns:
     - Current capacity
@@ -483,7 +483,7 @@ async def get_workload_balance(
     **Get workload balance report for team**
 
     Permissions:
-    - supervisor_dgi, supervisor_ministry, admin
+    - Requires appropriate RBAC permission (see @require_permission decorator)
 
     Returns:
     - Balance report (balance score, statistics)
@@ -600,7 +600,7 @@ async def create_rule(
     **Create a new assignment rule (Supervisor only)**
 
     Permissions:
-    - supervisor_dgi, supervisor_ministry, admin
+    - Requires appropriate RBAC permission (see @require_permission decorator)
 
     Request Body:
     - name: Rule name (required)
@@ -670,7 +670,7 @@ async def list_rules(
     **List assignment rules**
 
     Permissions:
-    - supervisor_dgi, supervisor_ministry, admin
+    - Requires appropriate RBAC permission (see @require_permission decorator)
 
     Returns:
     - All rules for supervisor's entity
