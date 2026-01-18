@@ -635,3 +635,98 @@ async def list_available_by_entity(
     """List available agents for an entity"""
     profiles = await profile_repository.list_available_by_entity(db, UUID(entity_id))
     return [AgentProfileWithDetails(**p) for p in profiles]
+
+
+# ============================================================================
+# WORKLOAD & PERFORMANCE (for agent profiles)
+# ============================================================================
+
+from app.modules.agents.models.agent import AgentWorkload, AgentWorkloadUpdate, AgentPerformanceStats
+from app.modules.agents.repositories.workload_repository import WorkloadRepository
+
+workload_repository = WorkloadRepository()
+
+
+@router.get("/profiles/{profile_id}/workload", response_model=AgentWorkload)
+async def get_profile_workload(
+    profile_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db = Depends(get_database),
+):
+    """Get agent workload by profile ID"""
+    workload = await workload_repository.get_workload_by_profile_id(db, profile_id)
+
+    if not workload:
+        # Try to create workload record if it doesn't exist
+        workload = await workload_repository.create_workload_for_profile(db, profile_id)
+
+    if not workload:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Workload not found for this agent profile"
+        )
+
+    return AgentWorkload(**workload)
+
+
+@router.put("/profiles/{profile_id}/workload", response_model=AgentWorkload)
+async def update_profile_workload(
+    profile_id: str,
+    update_data: AgentWorkloadUpdate,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db = Depends(get_database),
+    _: None = Depends(permission_required("agents.manage_workload"))
+):
+    """Update agent workload by profile ID - Requires agents.manage_workload permission"""
+    # First check if workload exists
+    existing = await workload_repository.get_workload_by_profile_id(db, profile_id)
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Workload not found for this agent profile"
+        )
+
+    # Update workload using the existing agent_id from the workload record
+    updated = await workload_repository.update_workload(db, existing['agent_id'], update_data)
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Failed to update workload"
+        )
+
+    logger.info(f"Workload updated for agent profile {profile_id}")
+    return AgentWorkload(**updated)
+
+
+@router.get("/profiles/{profile_id}/performance", response_model=AgentPerformanceStats)
+async def get_profile_performance(
+    profile_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db = Depends(get_database),
+):
+    """Get agent performance statistics by profile ID"""
+    # Get profile to find related data
+    profile = await profile_repository.get_by_id(db, UUID(profile_id))
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Agent profile not found"
+        )
+
+    # Get performance stats using the user_id from profile
+    stats = await workload_repository.get_performance_stats(db, profile['user_id'])
+
+    if not stats:
+        # Return empty performance stats if none exist
+        return AgentPerformanceStats(
+            agent_id=profile_id,
+            period_start=None,
+            period_end=None,
+            total_assignments=0,
+            completed_assignments=0,
+            avg_processing_time_hours=0.0,
+            on_time_completion_rate=0.0,
+            quality_score_avg=0.0,
+        )
+
+    return AgentPerformanceStats(**stats)

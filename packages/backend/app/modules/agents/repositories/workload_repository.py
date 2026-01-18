@@ -20,11 +20,23 @@ class WorkloadRepository:
         conn: asyncpg.Connection,
         agent_id: str,
     ) -> Optional[Dict[str, Any]]:
-        """Get agent workload"""
+        """Get agent workload by agent_id (legacy)"""
         query = """
             SELECT * FROM agent_workloads WHERE agent_id = $1
         """
         result = await conn.fetchrow(query, agent_id)
+        return dict(result) if result else None
+
+    async def get_workload_by_profile_id(
+        self,
+        conn: asyncpg.Connection,
+        agent_profile_id: str,
+    ) -> Optional[Dict[str, Any]]:
+        """Get agent workload by agent_profile_id (migration 054+)"""
+        query = """
+            SELECT * FROM agent_workloads WHERE agent_profile_id = $1
+        """
+        result = await conn.fetchrow(query, agent_profile_id)
         return dict(result) if result else None
 
     async def create_workload(

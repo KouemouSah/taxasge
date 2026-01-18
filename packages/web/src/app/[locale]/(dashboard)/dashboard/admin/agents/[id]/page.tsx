@@ -15,6 +15,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useQuery } from '@tanstack/react-query';
 import * as z from 'zod';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -74,6 +75,8 @@ import {
 import { WorkloadStats, PerformanceStats } from '@/modules/agents-admin/components';
 import { AgentType } from '@/modules/agents-admin/types';
 import type { AgentProfileUpdateRequest } from '@/modules/agents-admin/types';
+import { hierarchyApi } from '@/modules/fiscal-services/services/api';
+import { useEntitiesSimple } from '@/modules/cities/hooks';
 
 // =============================================================================
 // VALIDATION SCHEMA
@@ -100,25 +103,22 @@ const profileSchema = z.object({
 type ProfileFormData = z.infer<typeof profileSchema>;
 
 // =============================================================================
-// MOCK DATA (replace with API calls)
-// =============================================================================
-
-const MOCK_MINISTRIES = [
-  { id: 1, name: 'Ministerio de Hacienda y Presupuestos' },
-  { id: 2, name: 'Ministerio del Interior' },
-  { id: 3, name: 'Ministerio de Justicia' },
-];
-
-const MOCK_ENTITIES = [
-  { id: '550e8400-e29b-41d4-a716-446655440001', name: 'DGI - Dirección General de Impuestos' },
-  { id: '550e8400-e29b-41d4-a716-446655440002', name: 'DGIP - Dirección General de Inmigración' },
-];
-
-// =============================================================================
 // COMPONENT
 // =============================================================================
 
 export default function AgentDetailPage() {
+  // Fetch ministries and entities dynamically from API
+  const { data: ministriesData, isLoading: isLoadingMinistries } = useQuery({
+    queryKey: ['ministries', 'list'],
+    queryFn: () => hierarchyApi.ministries.list('es'),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const { data: entitiesData, isLoading: isLoadingEntities } = useEntitiesSimple(true);
+
+  // Transform data for select components
+  const ministries = ministriesData?.map(m => ({ id: m.id, name: m.name_es || m.nameEs || '' })) || [];
+  const entities = entitiesData?.map(e => ({ id: e.id, name: e.name })) || [];
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
@@ -608,11 +608,17 @@ export default function AgentDetailPage() {
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  {MOCK_MINISTRIES.map((m) => (
-                                    <SelectItem key={m.id} value={m.id.toString()}>
-                                      {m.name}
-                                    </SelectItem>
-                                  ))}
+                                  {isLoadingMinistries ? (
+                                    <SelectItem value="" disabled>Chargement...</SelectItem>
+                                  ) : ministries.length === 0 ? (
+                                    <SelectItem value="" disabled>Aucun ministère</SelectItem>
+                                  ) : (
+                                    ministries.map((m) => (
+                                      <SelectItem key={m.id} value={m.id.toString()}>
+                                        {m.name}
+                                      </SelectItem>
+                                    ))
+                                  )}
                                 </SelectContent>
                               </Select>
                               <FormMessage />
@@ -633,11 +639,17 @@ export default function AgentDetailPage() {
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  {MOCK_ENTITIES.map((e) => (
-                                    <SelectItem key={e.id} value={e.id}>
-                                      {e.name}
-                                    </SelectItem>
-                                  ))}
+                                  {isLoadingEntities ? (
+                                    <SelectItem value="" disabled>Chargement...</SelectItem>
+                                  ) : entities.length === 0 ? (
+                                    <SelectItem value="" disabled>Aucune entité</SelectItem>
+                                  ) : (
+                                    entities.map((e) => (
+                                      <SelectItem key={e.id} value={e.id}>
+                                        {e.name}
+                                      </SelectItem>
+                                    ))
+                                  )}
                                 </SelectContent>
                               </Select>
                               <FormMessage />
