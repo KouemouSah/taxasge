@@ -3867,8 +3867,85 @@ async def get_payment_audit_history(
 
 
 # ═══════════════════════════════════════════════════════════════
+# TREASURY DASHBOARD STATS
+# ═══════════════════════════════════════════════════════════════
+
+
+class TreasuryDashboardStatsResponse(BaseModel):
+    """Dashboard statistics for Treasury Agent main page."""
+    pending_validation_count: int
+    unreconciled_count: int
+    today_validated_count: int
+    today_validated_amount: float
+    currency: str = "XAF"
+
+
+@router.get(
+    "/treasury/stats/dashboard",
+    response_model=TreasuryDashboardStatsResponse,
+    summary="Get Treasury Dashboard Stats",
+    description="""
+    Get aggregated statistics for the Treasury Agent dashboard.
+
+    **Returns:**
+    - pending_validation_count: Payments awaiting agent validation
+    - unreconciled_count: Bank transactions not yet matched to payments
+    - today_validated_count: Payments validated today
+    - today_validated_amount: Total amount validated today
+
+    **Permissions:**
+    - Requires 'treasury.validate_payment' or 'treasury_stat.view' permission
+    """
+)
+async def get_treasury_dashboard_stats(
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.validate_payment"))
+):
+    """Get aggregated statistics for Treasury Agent dashboard"""
+    # Get pending validation count (payments awaiting agent review)
+    pending_count = await db.fetchval("""
+        SELECT COUNT(*)
+        FROM service_payments
+        WHERE workflow_status IN (
+            'submitted',
+            'pending_agent_review',
+            'docs_resubmitted'
+        )
+          AND requires_agent_validation = true
+    """)
+
+    # Get unreconciled bank transactions count
+    unreconciled_count = await db.fetchval("""
+        SELECT COUNT(*)
+        FROM bank_transactions
+        WHERE status = 'unreconciled'
+    """)
+
+    # Get today's validated payments (approved or completed today)
+    today_stats = await db.fetchrow("""
+        SELECT
+            COUNT(*) AS validated_count,
+            COALESCE(SUM(total_amount), 0) AS validated_amount
+        FROM service_payments
+        WHERE workflow_status IN ('approved_by_agent', 'completed')
+          AND validated_at >= CURRENT_DATE
+          AND validated_at < CURRENT_DATE + INTERVAL '1 day'
+    """)
+
+    return TreasuryDashboardStatsResponse(
+        pending_validation_count=pending_count or 0,
+        unreconciled_count=unreconciled_count or 0,
+        today_validated_count=today_stats["validated_count"] or 0,
+        today_validated_amount=float(today_stats["validated_amount"] or 0),
+        currency="XAF",
+    )
+
+
+# ═══════════════════════════════════════════════════════════════
 # TREASURY SLA STATS (Phase 1B)
 # ═══════════════════════════════════════════════════════════════
+
 
 class SLAStatsResponse(BaseModel):
     """SLA statistics for Treasury dashboard."""

@@ -372,21 +372,19 @@ export const treasuryApi = {
 
   /**
    * Get treasury dashboard stats
-   * Aggregates multiple calls
+   * BACKEND: GET /api/v1/admin/service-requests/treasury/stats/dashboard
    */
   getDashboardStats: async (): Promise<TreasuryStats> => {
-    // Get pending count
-    const pendingResponse = await treasuryApi.getPendingPayments({ pageSize: 1 });
-
-    // Get unreconciled count
-    const unreconciledResponse = await treasuryApi.getUnreconciledTransactions({ pageSize: 1 });
+    const response = await fetchClient.get<Record<string, unknown>>(
+      `${TREASURY_BASE}/stats/dashboard`
+    );
 
     return {
-      pendingValidationCount: pendingResponse.total,
-      unreconciledCount: unreconciledResponse.total,
-      todayValidatedCount: 0, // TODO: Add backend endpoint
-      todayValidatedAmount: 0, // TODO: Add backend endpoint
-      currency: 'XAF',
+      pendingValidationCount: (response.pending_validation_count as number) || 0,
+      unreconciledCount: (response.unreconciled_count as number) || 0,
+      todayValidatedCount: (response.today_validated_count as number) || 0,
+      todayValidatedAmount: (response.today_validated_amount as number) || 0,
+      currency: (response.currency as string) || 'XAF',
     };
   },
 
