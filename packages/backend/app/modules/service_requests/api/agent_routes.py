@@ -101,19 +101,28 @@ class QueueStatsResponse(BaseModel):
 
     Returns items ordered by priority (highest first) and creation time.
     Only shows items from the agent's assigned ministry/entity.
+
+    **Pagination:**
+    - Use `page` and `page_size` for paginated results
+    - Default returns all items (no limit) for agent visibility
     """
 )
 async def get_queue(
     entity_code: Optional[str] = Query(None, description="Filter by entity code"),
-    limit: int = Query(20, ge=1, le=100),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(1000, ge=1, description="Items per page (default: all)"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
     _=Depends(permission_required("service_request.view_queue"))
 ):
+    # Calculate offset for pagination
+    offset = (page - 1) * page_size
+
     items = await agent_queue_service.get_pending_items(
         db=db,
         entity_code=entity_code,
-        limit=limit
+        limit=page_size,
+        offset=offset
     )
 
     result = []
@@ -169,20 +178,31 @@ async def get_queue_stats(
     "/my-queue",
     response_model=List[QueueItemResponse],
     summary="Get my assigned items",
-    description="Get all queue items currently assigned to the authenticated agent."
+    description="""
+    Get all queue items currently assigned to the authenticated agent.
+
+    **Pagination:**
+    - Use `page` and `page_size` for paginated results
+    - Default returns all assigned items (no limit)
+    """
 )
 async def get_my_queue(
     include_completed: bool = Query(False, description="Include completed items"),
-    limit: int = Query(50, ge=1, le=100),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(1000, ge=1, description="Items per page (default: all)"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
     _=Depends(permission_required("service_request.process"))
 ):
+    # Calculate offset for pagination
+    offset = (page - 1) * page_size
+
     items = await agent_queue_service.get_agent_queue(
         db=db,
         agent_id=str(current_user.id),
         include_completed=include_completed,
-        limit=limit
+        limit=page_size,
+        offset=offset
     )
 
     result = []
@@ -695,7 +715,7 @@ async def cancel_appointment(
 async def get_available_slots(
     entity_code: str = Query(..., description="Entity code (e.g., CNEDOGE)"),
     from_date: Optional[date] = Query(None, description="Start date (defaults to today)"),
-    limit: int = Query(10, ge=1, le=50),
+    limit: int = Query(30, ge=1, description="Number of slots to return"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
     _=Depends(permission_required("service_request.view"))

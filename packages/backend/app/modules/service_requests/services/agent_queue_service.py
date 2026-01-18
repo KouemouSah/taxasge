@@ -244,12 +244,20 @@ class AgentQueueService:
         db: asyncpg.Connection,
         entity_code: Optional[str] = None,
         ministry_id: Optional[int] = None,
-        limit: int = 20
+        limit: int = 1000,
+        offset: int = 0
     ) -> List[Dict[str, Any]]:
         """
         Get pending service_request items from the queue.
 
         Returns items ordered by priority (highest first) and creation time.
+
+        Args:
+            db: Database connection
+            entity_code: Optional entity code filter
+            ministry_id: Optional ministry ID filter
+            limit: Maximum items to return (default: 1000 for agents to see all)
+            offset: Offset for pagination
         """
         if not ministry_id and entity_code:
             ministry_id = await self._get_ministry_id(db, entity_code)
@@ -257,30 +265,32 @@ class AgentQueueService:
         query = """
             SELECT
                 q.*,
-                sr.reference,
+                sr.reference AS reference_number,
                 sr.workflow_code,
                 sr.status as request_status,
                 sr.created_at as request_created_at,
                 u.full_name as citizen_name,
                 u.email as citizen_email
             FROM agent_work_queue q
-            JOIN service_requests sr ON sr.id = q.item_id
+            JOIN service_requests sr ON sr.id::text = q.item_id
             JOIN users u ON u.id = sr.user_id
             WHERE q.item_type = $1
             AND q.status = 'pending'
             AND (q.assigned_to IS NULL OR q.locked_until < NOW())
         """
         params = [self.ITEM_TYPE]
+        param_idx = 2
 
         if ministry_id:
-            query += " AND q.ministry_id = $2"
+            query += f" AND q.ministry_id = ${param_idx}"
             params.append(ministry_id)
+            param_idx += 1
 
-        query += """
+        query += f"""
             ORDER BY q.priority_score DESC, q.created_at ASC
-            LIMIT ${}
-        """.format(len(params) + 1)
-        params.append(limit)
+            LIMIT ${param_idx} OFFSET ${param_idx + 1}
+        """
+        params.extend([limit, offset])
 
         rows = await db.fetch(query, *params)
         return [dict(row) for row in rows]
@@ -412,10 +422,18 @@ class AgentQueueService:
         db: asyncpg.Connection,
         agent_id: str,
         include_completed: bool = False,
-        limit: int = 50
+        limit: int = 1000,
+        offset: int = 0
     ) -> List[Dict[str, Any]]:
         """
         Get all queue items assigned to an agent.
+
+        Args:
+            db: Database connection
+            agent_id: The agent's user ID
+            include_completed: Whether to include completed items
+            limit: Maximum items to return (default: 1000 for agents to see all)
+            offset: Offset for pagination
         """
         status_filter = "AND q.status IN ('assigned', 'pending')"
         if include_completed:
@@ -424,20 +442,20 @@ class AgentQueueService:
         rows = await db.fetch(f"""
             SELECT
                 q.*,
-                sr.reference,
+                sr.reference AS reference_number,
                 sr.workflow_code,
                 sr.status as request_status,
                 sr.form_data,
                 u.full_name as citizen_name
             FROM agent_work_queue q
-            JOIN service_requests sr ON sr.id = q.item_id
+            JOIN service_requests sr ON sr.id::text = q.item_id
             JOIN users u ON u.id = sr.user_id
             WHERE q.item_type = $1
             AND q.assigned_to = $2
             {status_filter}
             ORDER BY q.priority_score DESC, q.assigned_at DESC
-            LIMIT $3
-        """, self.ITEM_TYPE, agent_id, limit)
+            LIMIT $3 OFFSET $4
+        """, self.ITEM_TYPE, agent_id, limit, offset)
 
         return [dict(row) for row in rows]
 
