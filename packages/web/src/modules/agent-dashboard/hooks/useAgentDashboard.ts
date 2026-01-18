@@ -168,6 +168,20 @@ export function useAgentDashboard(): UseAgentDashboardReturn {
   // Get entity configuration
   const entityConfig = entityCode ? getEntityConfig(entityCode) : null;
 
+  // Debug logging for troubleshooting menu issues
+  if (typeof window !== 'undefined' && agentProfile) {
+    console.log('[AgentDashboard] Debug:', {
+      userId: user?.id,
+      role: user?.role,
+      entityCode,
+      entityConfigFound: !!entityConfig,
+      entityName: agentProfile?.entity_name,
+      ministryName: agentProfile?.ministry_name,
+      isSupervisor: agentProfile?.is_supervisor,
+      permissionsCount: user?.permissions?.length || 0,
+    });
+  }
+
   // Get user permissions (from auth data or agent profile)
   const userPermissions = new Set(user?.permissions || []);
 
@@ -273,6 +287,15 @@ export function useAgentDashboard(): UseAgentDashboardReturn {
     // Regular entity agent: return entity-specific menus
     return entityConfig ? filterMenuItems(entityConfig.menuItems) : [];
   })();
+
+  // Debug: log menu items count
+  if (typeof window !== 'undefined' && entityConfig) {
+    console.log('[AgentDashboard] Menu items:', {
+      rawMenuItemsCount: entityConfig?.menuItems?.length || 0,
+      filteredMenuItemsCount: menuItems.length,
+      menuItemIds: menuItems.map(m => m.id),
+    });
+  }
 
   // Get base path with locale
   const getBasePath = (): string => {

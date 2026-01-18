@@ -81,7 +81,7 @@ export function PaymentValidationDialog({
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Metodo:</span>
-                <span className="capitalize">{payment.paymentMethod.replace('_', ' ')}</span>
+                <span className="capitalize">{payment.paymentMethod?.replace('_', ' ') || 'N/A'}</span>
               </div>
               {payment.userName && (
                 <div className="flex justify-between">

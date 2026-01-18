@@ -81,6 +81,7 @@ async def lifespan(app: FastAPI):
             from app.core.events import EventBus
             from app.modules.communications.handlers import register_notification_handlers
             from app.modules.admin.handlers import register_audit_handlers
+            from app.modules.service_requests.handlers import register_agent_queue_handlers
 
             # Initialize the EventBus
             EventBus.initialize()
@@ -88,6 +89,8 @@ async def lifespan(app: FastAPI):
             # Register event handlers
             notification_handler = register_notification_handlers()
             audit_handler = register_audit_handlers()
+            agent_queue_handler = register_agent_queue_handlers()
+            logger.info("✅ Agent queue event handlers registered")
 
             # Register verification event handlers (external document verification)
             try:
