@@ -2802,7 +2802,8 @@ async def get_pending_payments(
                     penalties=float(row["penalties"]) if row["penalties"] else None,
                     discounts=float(row["discounts"]) if row["discounts"] else None,
                     currency=row["currency"],
-                    calculation_details=row["calculation_details"],
+                    # Parse JSON string if needed (asyncpg may return JSONB as string)
+                    calculation_details=json.loads(row["calculation_details"]) if isinstance(row["calculation_details"], str) else row["calculation_details"],
                     workflow_status=row["workflow_status"],
                     locked_by_agent_profile_id=str(row["locked_by_agent_profile_id"]) if row["locked_by_agent_profile_id"] else None,
                     locked_at=row["locked_at"].isoformat() if row["locked_at"] else None,
