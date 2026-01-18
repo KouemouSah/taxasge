@@ -172,33 +172,89 @@ PERMISSIONS = [
 ]
 
 
-# Default role permissions mapping
-# NOTE: After Migration 051, agent types are determined by agent_profiles
-# Treasury-specific permissions are granted to agents with agent_category='treasury'
-# This is checked at runtime via agent_profiles.ministry_id → ministries.ministry_code='TESORO'
+# =============================================================================
+# ROLE PERMISSIONS MAPPING
+# =============================================================================
+# Treasury roles are defined in Migration 062.
+# Entity-based access is determined by agent_profiles.entity_id → entities.code = 'TESORO'
+#
+# Available roles for TESORO entity:
+#   - agent_tesoro: Unified agent (validation + reconciliation + transactions)
+#   - agent_tesoro_validation: Validation only (specific use cases)
+#   - agent_tesoro_reconciliation: Reconciliation only (specific use cases)
+#   - supervisor_tesoro: Full access
+# =============================================================================
+
 ROLE_PERMISSIONS = {
     "admin": ["*"],  # All permissions
 
-    # Supervisors (agent_profiles.is_supervisor = true)
-    "supervisor": [
-        # View and some management
+    # -------------------------------------------------------------------------
+    # AGENT_TESORO (Unified)
+    # Menus: Validation, Reconciliation, Transactions
+    # Scope: Only their own operations
+    # -------------------------------------------------------------------------
+    "agent_tesoro": [
+        # Payment operations
         "treasury.view_payment",
         "treasury.validate_payment",
-        "treasury_audit.view",
-        "treasury_stat.view",
-        "treasury_anomaly.view",
-        "treasury_anomaly.update",
-        "treasury_export.view",
-        "treasury_export.download",
+        "treasury.reject_payment",
+        "treasury.process_payment",
+        # Reconciliation operations
+        "treasury.reconcile",
         "treasury.view_reconciliation",
-        "treasury.manage_settings",  # Settings management - supervisor only
     ],
 
-    # Generic agent role - treasury-specific permissions are granted
-    # to agents with agent_category='treasury' at runtime
-    # Base permissions for all agents
-    "agent": [
+    # -------------------------------------------------------------------------
+    # AGENT_TESORO_VALIDATION (Specific - validation only)
+    # Menus: Validation only
+    # -------------------------------------------------------------------------
+    "agent_tesoro_validation": [
         "treasury.view_payment",
+        "treasury.validate_payment",
+        "treasury.reject_payment",
+        "treasury.process_payment",
+    ],
+
+    # -------------------------------------------------------------------------
+    # AGENT_TESORO_RECONCILIATION (Specific - reconciliation only)
+    # Menus: Reconciliation only
+    # -------------------------------------------------------------------------
+    "agent_tesoro_reconciliation": [
+        "treasury.view_payment",
+        "treasury.reconcile",
+        "treasury.view_reconciliation",
+    ],
+
+    # -------------------------------------------------------------------------
+    # SUPERVISOR_TESORO (Full access)
+    # Menus: ALL
+    # Scope: Team operations + Settings
+    # -------------------------------------------------------------------------
+    "supervisor_tesoro": [
+        # ALL Payment operations
+        "treasury.view_payment",
+        "treasury.validate_payment",
+        "treasury.reject_payment",
+        "treasury.process_payment",
+        # ALL Reconciliation operations
+        "treasury.reconcile",
+        "treasury.view_reconciliation",
+        # ALL Audit operations
+        "treasury_audit.view",
+        "treasury_audit.export",
+        # ALL Statistics operations
         "treasury_stat.view",
+        "treasury_stat.export",
+        # ALL Anomaly operations
+        "treasury_anomaly.view",
+        "treasury_anomaly.create",
+        "treasury_anomaly.update",
+        "treasury_anomaly.resolve",
+        # ALL Export operations
+        "treasury_export.view",
+        "treasury_export.create",
+        "treasury_export.download",
+        # Settings management (SUPERVISOR ONLY)
+        "treasury.manage_settings",
     ],
 }
