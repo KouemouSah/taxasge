@@ -195,9 +195,29 @@ try:
 except ImportError:
     TreasuryError = None
 
+def get_cors_headers(request: Request) -> dict:
+    """Get CORS headers based on request origin."""
+    origin = request.headers.get("origin", "")
+    allowed_origins = [
+        "https://taxasge.emacsah.com",
+        "https://taxasge-frontend-staging-xrlbgdr5eq-uc.a.run.app",
+        "https://taxasge-dev.web.app",
+        "https://taxasge-pro.web.app",
+    ]
+    # Check if origin is allowed or matches staging pattern
+    import re
+    if origin in allowed_origins or re.match(r"https://taxasge-(dev|frontend-staging)--[\w-]+\.(web\.app|run\.app)", origin):
+        return {
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+            "Access-Control-Allow-Headers": "*",
+        }
+    return {}
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    """Handle uncaught exceptions and return JSON with proper status code."""
+    """Handle uncaught exceptions and return JSON with proper status code and CORS headers."""
     logger.error(f"Unhandled exception: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,
@@ -205,12 +225,13 @@ async def global_exception_handler(request: Request, exc: Exception):
             "detail": "Internal server error",
             "error_code": "INTERNAL_ERROR",
             "message_es": "Error interno del servidor. Por favor intente de nuevo."
-        }
+        },
+        headers=get_cors_headers(request)
     )
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    """Handle HTTP exceptions and return JSON response."""
+    """Handle HTTP exceptions and return JSON response with CORS headers."""
     # Handle structured detail (dict) vs string detail
     if isinstance(exc.detail, dict):
         content = exc.detail
@@ -223,7 +244,8 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         }
     return JSONResponse(
         status_code=exc.status_code,
-        content=content
+        content=content,
+        headers=get_cors_headers(request)
     )
 
 # Language detection middleware - Detects user language from headers/query
