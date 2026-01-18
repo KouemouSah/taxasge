@@ -76,8 +76,8 @@ export default function AgentAuthPage() {
         if (response.user.role !== 'agent' && response.user.role !== 'admin') {
           toast({
             variant: 'destructive',
-            title: 'Accès refusé',
-            description: 'Ce portail est réservé aux agents. Utilisez la page de connexion standard.',
+            title: t('accessDenied'),
+            description: t('agentOnlyPortal'),
           });
           setLoading(false);
           return;
@@ -87,7 +87,7 @@ export default function AgentAuthPage() {
 
         toast({
           title: t('loginSuccess'),
-          description: `Bienvenue, ${response.user.first_name || response.user.email}`,
+          description: t('loginWelcome', { name: response.user.first_name || response.user.email }),
         });
 
         // Redirect to agent dashboard
@@ -146,7 +146,7 @@ export default function AgentAuthPage() {
 
       toast({
         title: t('loginSuccess'),
-        description: `Bienvenue, ${response.user.first_name || response.user.email}`,
+        description: t('loginWelcome', { name: response.user.first_name || response.user.email }),
       });
 
       setTimeout(() => {
@@ -169,18 +169,18 @@ export default function AgentAuthPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-      {/* Header Minimaliste */}
-      <header className="w-full py-6">
+      {/* Header Minimaliste - Logo centré mais discret */}
+      <header className="w-full py-4">
         <div className="container mx-auto px-4">
-          <Link href={`/${locale}`} className="flex items-center justify-center space-x-3 group">
+          <Link href={`/${locale}`} className="flex items-center justify-center space-x-2 group">
             <Image
               src="/logo.png"
               alt="TaxasGE Logo"
-              width={48}
-              height={48}
-              className="h-12 w-12 transition-transform group-hover:scale-105"
+              width={36}
+              height={36}
+              className="h-9 w-9 transition-transform group-hover:scale-105"
             />
-            <span className="text-xl font-bold text-foreground group-hover:text-primary transition-colors">
+            <span className="text-base font-medium text-muted-foreground group-hover:text-primary transition-colors">
               {tCommon('appName')}
             </span>
           </Link>
@@ -200,9 +200,9 @@ export default function AgentAuthPage() {
           {/* Auth Card */}
           <Card className="shadow-xl border-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
             <CardHeader className="text-center pb-2">
-              <CardTitle className="text-2xl font-bold">Portail Agent</CardTitle>
+              <CardTitle className="text-2xl font-bold">{t('agentPortalTitle')}</CardTitle>
               <CardDescription className="text-base">
-                Accès réservé aux agents autorisés
+                {t('agentPortalDescription')}
               </CardDescription>
             </CardHeader>
 
@@ -270,12 +270,12 @@ export default function AgentAuthPage() {
                     {loading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Connexion en cours...
+                        {t('loginButtonLoading')}
                       </>
                     ) : (
                       <>
                         <Shield className="mr-2 h-4 w-4" />
-                        Se connecter
+                        {t('loginButton')}
                       </>
                     )}
                   </Button>
@@ -322,7 +322,7 @@ export default function AgentAuthPage() {
                     {loading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Vérification...
+                        {t('verifyButtonLoading')}
                       </>
                     ) : (
                       t('verifyButton')
@@ -348,23 +348,19 @@ export default function AgentAuthPage() {
 
           {/* Info Text */}
           <p className="text-center text-sm text-muted-foreground mt-6">
-            Vous n&apos;êtes pas agent?{' '}
+            {t('notAnAgent')}{' '}
             <Link href={`/${locale}/auth`} className="text-primary hover:underline font-medium">
-              Connexion standard
+              {t('standardLogin')}
             </Link>
           </p>
         </div>
       </main>
 
-      {/* Footer Minimaliste */}
+      {/* Footer Minimaliste - Sans bouton aide */}
       <footer className="py-4 border-t bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center justify-center text-sm text-muted-foreground">
             <span>&copy; {new Date().getFullYear()} TaxasGE</span>
-            <span className="hidden sm:inline">•</span>
-            <Link href={`/${locale}/support`} className="hover:text-primary transition-colors">
-              Besoin d&apos;aide?
-            </Link>
           </div>
         </div>
       </footer>

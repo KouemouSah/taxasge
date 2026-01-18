@@ -2654,7 +2654,13 @@
     "verifyEmailTitle": "Vérifiez votre email",
     "weakPassword": "Mot de passe faible",
     "welcome": "Bienvenue",
-    "welcomeSubtitle": "Connectez-vous pour accéder à vos services fiscaux"
+    "welcomeSubtitle": "Connectez-vous pour accéder à vos services fiscaux",
+    "agentPortalTitle": "Portail Agent",
+    "agentPortalDescription": "Accès réservé aux agents autorisés",
+    "accessDenied": "Accès refusé",
+    "agentOnlyPortal": "Ce portail est réservé aux agents. Utilisez la page de connexion standard.",
+    "notAnAgent": "Vous n'êtes pas agent ?",
+    "standardLogin": "Connexion standard"
   },
   "calculatorPage": {
     "addVat": "Ajouter TVA",

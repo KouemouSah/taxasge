@@ -2452,7 +2452,13 @@
     "verifyEmailTitle": "Verify your email",
     "weakPassword": "Weak password",
     "welcome": "Welcome",
-    "welcomeSubtitle": "Sign in to access your tax services"
+    "welcomeSubtitle": "Sign in to access your tax services",
+    "agentPortalTitle": "Agent Portal",
+    "agentPortalDescription": "Access reserved for authorized agents",
+    "accessDenied": "Access denied",
+    "agentOnlyPortal": "This portal is reserved for agents. Please use the standard login page.",
+    "notAnAgent": "Not an agent?",
+    "standardLogin": "Standard login"
   },
   "calculatorPage": {
     "addVat": "Add VAT",

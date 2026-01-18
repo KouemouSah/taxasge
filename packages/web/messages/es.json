@@ -2668,7 +2668,13 @@
     "verifyEmailTitle": "Verifique su correo electrónico",
     "weakPassword": "Contraseña débil",
     "welcome": "Bienvenido",
-    "welcomeSubtitle": "Inicie sesión para acceder a sus servicios fiscales"
+    "welcomeSubtitle": "Inicie sesión para acceder a sus servicios fiscales",
+    "agentPortalTitle": "Portal de Agente",
+    "agentPortalDescription": "Acceso reservado a agentes autorizados",
+    "accessDenied": "Acceso denegado",
+    "agentOnlyPortal": "Este portal está reservado a agentes. Utilice la página de inicio de sesión estándar.",
+    "notAnAgent": "¿No es agente?",
+    "standardLogin": "Inicio de sesión estándar"
   },
   "calculatorPage": {
     "addVat": "Agregar IVA",
