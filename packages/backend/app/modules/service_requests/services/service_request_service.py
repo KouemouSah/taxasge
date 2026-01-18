@@ -32,6 +32,7 @@ from ..models.service_request import (
     RiskAnalysisResult
 )
 from ..models.enums import ServiceRequestStatus, SolicitudType
+from ..workflows.workflow_interface import WorkflowContext, RenovacionMotivo
 from .tariff_service import tariff_service
 from .tariff_calculator import tariff_calculator
 from .schema_loader import schema_loader
@@ -122,8 +123,15 @@ class ServiceRequestService:
         Returns:
             Complete service request response
         """
-        # Get required documents for workflow
-        required_docs = await self._get_required_documents(db, data.workflow_code)
+        # Get required documents for workflow with context
+        form_data = data.form_data or {}
+        required_docs = await self._get_required_documents(
+            db,
+            data.workflow_code,
+            solicitud_type=data.solicitud_type.value if data.solicitud_type else "expedicion",
+            motivo=form_data.get("motivo") if isinstance(form_data, dict) else None,
+            form_data=form_data
+        )
 
         if not required_docs:
             logger.warning(f"No document requirements found for workflow: {data.workflow_code}")
@@ -223,7 +231,8 @@ class ServiceRequestService:
             file_path = f"service-requests/{request_id}/{file.filename}"
 
         # Get document name and extraction_schema_key from requirements
-        required_docs = await self._get_required_documents(db, request["workflow_code"])
+        params = self._extract_workflow_params(request)
+        required_docs = await self._get_required_documents(db, request["workflow_code"], **params)
         doc_name = document_code
         extraction_schema_key = None
         for req_doc in required_docs:
@@ -358,7 +367,8 @@ class ServiceRequestService:
             )
 
         # Get document name and extraction_schema_key from requirements
-        required_docs = await self._get_required_documents(db, request["workflow_code"])
+        params = self._extract_workflow_params(request)
+        required_docs = await self._get_required_documents(db, request["workflow_code"], **params)
         doc_name = document_code
         extraction_schema_key = None
         for req_doc in required_docs:
@@ -862,7 +872,8 @@ class ServiceRequestService:
                 detail="Access denied"
             )
 
-        required_docs = await self._get_required_documents(db, request["workflow_code"])
+        params = self._extract_workflow_params(request)
+        required_docs = await self._get_required_documents(db, request["workflow_code"], **params)
         return await self._build_response(db, request, required_docs)
 
     async def list_requests(
@@ -884,7 +895,8 @@ class ServiceRequestService:
 
         results = []
         for req in requests:
-            required_docs = await self._get_required_documents(db, req["workflow_code"])
+            params = self._extract_workflow_params(req)
+            required_docs = await self._get_required_documents(db, req["workflow_code"], **params)
             results.append(await self._build_response(db, req, required_docs))
 
         return results
@@ -957,7 +969,8 @@ class ServiceRequestService:
 
         if not update_fields:
             # Nothing to update
-            required_docs = await self._get_required_documents(db, request["workflow_code"])
+            params = self._extract_workflow_params(request)
+            required_docs = await self._get_required_documents(db, request["workflow_code"], **params)
             return await self._build_response(db, request, required_docs)
 
         # Add updated_at
@@ -977,7 +990,8 @@ class ServiceRequestService:
 
         logger.info(f"Updated service request: {request['reference']}")
 
-        required_docs = await self._get_required_documents(db, updated["workflow_code"])
+        params = self._extract_workflow_params(dict(updated))
+        required_docs = await self._get_required_documents(db, updated["workflow_code"], **params)
         return await self._build_response(db, dict(updated), required_docs)
 
     async def delete_request(
@@ -1075,8 +1089,9 @@ class ServiceRequestService:
                 detail=f"Cannot submit request in status: {request['status']}"
             )
 
-        # Check all required documents are provided
-        required_docs = await self._get_required_documents(db, request["workflow_code"])
+        # Check all required documents are provided (with context)
+        params = self._extract_workflow_params(request)
+        required_docs = await self._get_required_documents(db, request["workflow_code"], **params)
         provided_docs = await document_repository.find_by_request(db, request_id)
 
         required_codes = {d.document_code for d in required_docs if d.is_required}
@@ -1168,8 +1183,9 @@ class ServiceRequestService:
                 detail=f"Cannot prepare for payment in status: {request['status']}"
             )
 
-        # Check all required documents are provided and validated
-        required_docs = await self._get_required_documents(db, request["workflow_code"])
+        # Check all required documents are provided and validated (with context)
+        params = self._extract_workflow_params(request)
+        required_docs = await self._get_required_documents(db, request["workflow_code"], **params)
         provided_docs = await document_repository.find_by_request(db, request_id)
 
         required_codes = {doc.document_code for doc in required_docs if doc.is_required}
@@ -1267,7 +1283,8 @@ class ServiceRequestService:
 
         # Refresh request data
         updated = await service_request_repository.find_by_id(db, request_id)
-        required_docs = await self._get_required_documents(db, updated["workflow_code"])
+        params = self._extract_workflow_params(updated)
+        required_docs = await self._get_required_documents(db, updated["workflow_code"], **params)
 
         logger.info(f"Service request cancelled: {request['reference']}")
 
@@ -1290,60 +1307,64 @@ class ServiceRequestService:
         db: asyncpg.Connection,
         workflow_code: str,
         solicitud_type: str = "expedicion",
-        sub_type: Optional[str] = None
+        motivo: Optional[str] = None,
+        form_data: Optional[Dict[str, Any]] = None
     ) -> List[RequiredDocument]:
         """
-        Get required documents for a workflow.
+        Get required documents for a workflow with dynamic context.
 
-        Strategy:
-        1. First, query workflow_document_requirements table (DB config)
-        2. If no DB config, fallback to workflow class definition (code config)
+        Strategy (OPTIMIZED):
+        1. FIRST, try workflow class (predefined/hardcoded workflows)
+           - Passes full context (form_data) for dynamic document requirements
+           - Handles is_minor, representante_unico, motivo, etc.
+        2. FALLBACK to database if no workflow class found
 
-        This allows admin to override document requirements via DB while
-        maintaining code-defined defaults for new workflows.
+        Args:
+            db: Database connection
+            workflow_code: Code du workflow (ex: pasaporte_nuevo)
+            solicitud_type: Type de sollicitude (expedicion, renovacion)
+            motivo: Motif pour RENOVACION (vencimiento, perdida, robo, deterioro)
+            form_data: Données du formulaire (is_minor, representante_unico, etc.)
 
-        Table schema (migration 021):
-        - document_code: VARCHAR(100)
-        - document_name_es: VARCHAR(255)
-        - is_required: BOOLEAN
-        - display_order: INTEGER
-        - extraction_schema_key: VARCHAR(100)
-        - instructions_es: TEXT
-
-        Note: accepted_formats and max_size_mb are NOT in DB - use defaults.
+        Returns:
+            List of required documents based on context
         """
-        # 1. Try database configuration first
-        query = """
-            SELECT document_code,
-                   document_name_es,
-                   is_required,
-                   display_order,
-                   extraction_schema_key,
-                   instructions_es
-            FROM workflow_document_requirements
-            WHERE workflow_code = $1 AND is_active = TRUE
-            ORDER BY display_order
-        """
-        rows = await db.fetch(query, workflow_code)
-
-        if rows:
-            return [
-                RequiredDocument(
-                    document_code=row["document_code"],
-                    document_name=row["document_name_es"],
-                    is_required=row["is_required"] if row["is_required"] is not None else True,
-                    display_order=row["display_order"] or 0,
-                    extraction_schema_key=row["extraction_schema_key"],
-                    instructions=row["instructions_es"]
-                )
-                for row in rows
-            ]
-
-        # 2. Fallback to workflow class definition
+        # 1. PRIORITIZE workflow class (for predefined/hardcoded workflows)
         workflow = workflow_engine.get_workflow_by_string(workflow_code)
         if workflow:
             logger.info(f"Using workflow class for document requirements: {workflow_code}")
-            doc_requirements = workflow.get_document_requirements(sub_type or "")
+
+            # Create WorkflowContext with form_data for dynamic requirements
+            context = None
+            if form_data:
+                context = WorkflowContext(form_data=form_data)
+
+            # Convert solicitud_type string to enum
+            try:
+                solicitud_enum = SolicitudType(solicitud_type) if solicitud_type else SolicitudType.EXPEDICION
+            except ValueError:
+                solicitud_enum = SolicitudType.EXPEDICION
+
+            # Convert motivo string to enum (if applicable)
+            motivo_enum = None
+            if motivo:
+                try:
+                    motivo_enum = RenovacionMotivo(motivo)
+                except ValueError:
+                    motivo_enum = None
+
+            # Call workflow's get_document_requirements with proper parameters
+            try:
+                doc_requirements = workflow.get_document_requirements(
+                    solicitud_type=solicitud_enum,
+                    motivo=motivo_enum,
+                    context=context
+                )
+            except TypeError:
+                # Fallback for workflows that don't support the new signature
+                logger.warning(f"Workflow {workflow_code} doesn't support context-aware signature, using legacy")
+                doc_requirements = workflow.get_document_requirements(solicitud_type or "")
+
             return [
                 RequiredDocument(
                     document_code=doc.document_code,
@@ -1358,8 +1379,62 @@ class ServiceRequestService:
                 for doc in doc_requirements
             ]
 
+        # 2. FALLBACK to database configuration (for generic workflows)
+        query = """
+            SELECT document_code,
+                   document_name_es,
+                   is_required,
+                   display_order,
+                   extraction_schema_key,
+                   instructions_es
+            FROM workflow_document_requirements
+            WHERE workflow_code = $1 AND is_active = TRUE
+            ORDER BY display_order
+        """
+        rows = await db.fetch(query, workflow_code)
+
+        if rows:
+            logger.info(f"Using database config for document requirements: {workflow_code}")
+            return [
+                RequiredDocument(
+                    document_code=row["document_code"],
+                    document_name=row["document_name_es"],
+                    is_required=row["is_required"] if row["is_required"] is not None else True,
+                    display_order=row["display_order"] or 0,
+                    extraction_schema_key=row["extraction_schema_key"],
+                    instructions=row["instructions_es"]
+                )
+                for row in rows
+            ]
+
         logger.warning(f"No document requirements found for workflow: {workflow_code}")
         return []
+
+    def _extract_workflow_params(self, request: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Extract workflow parameters from a service request record.
+
+        Helper method to avoid repetition when calling _get_required_documents.
+
+        Args:
+            request: Service request dict from database
+
+        Returns:
+            Dict with solicitud_type, motivo, and form_data
+        """
+        form_data = request.get("form_data") or {}
+        # Handle case where form_data might be a string (JSONB parsing issue)
+        if isinstance(form_data, str):
+            try:
+                form_data = json.loads(form_data)
+            except (json.JSONDecodeError, TypeError):
+                form_data = {}
+
+        return {
+            "solicitud_type": request.get("solicitud_type", "expedicion"),
+            "motivo": form_data.get("motivo"),
+            "form_data": form_data
+        }
 
     def _get_extraction_schema_key(
         self,
@@ -1638,7 +1713,8 @@ class ServiceRequestService:
         after ALL required steps (document upload, form review, validation) are completed.
         """
         request = await service_request_repository.find_by_id(db, request_id)
-        required = await self._get_required_documents(db, request["workflow_code"])
+        params = self._extract_workflow_params(request)
+        required = await self._get_required_documents(db, request["workflow_code"], **params)
         provided = await document_repository.find_by_request(db, request_id)
 
         required_codes = {d.document_code for d in required if d.is_required}
