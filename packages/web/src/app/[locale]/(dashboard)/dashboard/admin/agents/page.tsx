@@ -169,7 +169,7 @@ export default function AgentsPage() {
   };
 
   const handleEditAgent = (agent: AgentProfile) => {
-    router.push(`/dashboard/admin/agents/${agent.id}/edit`);
+    router.push(`/dashboard/admin/agents/${agent.id}?mode=edit`);
   };
 
   const handleToggleAgentStatus = async (agent: AgentProfile) => {
@@ -397,15 +397,16 @@ export default function AgentsPage() {
                   <p>Aucun agent trouvé</p>
                 </div>
               ) : (
+                <div className="border rounded-md overflow-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Agent</TableHead>
                       <TableHead>Type</TableHead>
-                      <TableHead>Organisation</TableHead>
-                      <TableHead>Rôle</TableHead>
+                      <TableHead className="hidden lg:table-cell">Organisation</TableHead>
+                      <TableHead className="hidden md:table-cell">Rôle</TableHead>
                       <TableHead>Statut</TableHead>
-                      <TableHead>Tâches</TableHead>
+                      <TableHead className="hidden md:table-cell">Tâches</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -430,15 +431,15 @@ export default function AgentsPage() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden lg:table-cell">
                           <div className="flex items-center gap-2">
                             <Building2 className="h-4 w-4 text-muted-foreground" />
                             <span>{agent.ministry_name || agent.entity_name || '-'}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="capitalize">{agent.agent_role || 'validator'}</TableCell>
+                        <TableCell className="hidden md:table-cell capitalize">{agent.agent_role || 'validator'}</TableCell>
                         <TableCell>{getStatusBadge(agent.is_active)}</TableCell>
-                        <TableCell>
+                        <TableCell className="hidden md:table-cell">
                           {agent.current_assignments !== undefined ? (
                             <span>{agent.current_assignments}</span>
                           ) : (
@@ -494,6 +495,7 @@ export default function AgentsPage() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -559,13 +561,14 @@ export default function AgentsPage() {
                   <p>Aucun administrateur trouvé</p>
                 </div>
               ) : (
+                <div className="border rounded-md overflow-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Administrateur</TableHead>
                       <TableHead>Statut</TableHead>
-                      <TableHead>Dernière connexion</TableHead>
-                      <TableHead>Créé le</TableHead>
+                      <TableHead className="hidden md:table-cell">Dernière connexion</TableHead>
+                      <TableHead className="hidden lg:table-cell">Créé le</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -587,7 +590,7 @@ export default function AgentsPage() {
                             <Badge variant="destructive">Inactif</Badge>
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden md:table-cell">
                           {admin.last_login
                             ? new Date(admin.last_login).toLocaleDateString('fr-FR', {
                                 day: '2-digit',
@@ -598,7 +601,7 @@ export default function AgentsPage() {
                               })
                             : 'Jamais'}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden lg:table-cell">
                           {new Date(admin.created_at).toLocaleDateString('fr-FR')}
                         </TableCell>
                         <TableCell className="text-right">
@@ -631,6 +634,7 @@ export default function AgentsPage() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               )}
             </CardContent>
           </Card>

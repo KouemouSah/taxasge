@@ -12,7 +12,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
@@ -25,6 +25,12 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import {
   Form,
   FormControl,
@@ -63,10 +69,15 @@ import {
   Power,
   PowerOff,
   GraduationCap,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  Shield,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   useAgentProfile,
+  useAgentProfiles,
   useAgentWorkload,
   useAgentPerformance,
   useUpdateAgentProfile,
@@ -129,10 +140,14 @@ export default function AgentDetailPage() {
   const workflows = workflowsData || [];
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('profile');
-  const [isEditing, setIsEditing] = useState(false);
+  // Check if mode=edit is passed in URL
+  const [isEditing, setIsEditing] = useState(searchParams.get('mode') === 'edit');
   const [deactivateReason, setDeactivateReason] = useState('');
+  // Workflow filter for specializations tab
+  const [workflowFilter, setWorkflowFilter] = useState('');
 
   const profileId = params.id as string;
 
@@ -140,6 +155,15 @@ export default function AgentDetailPage() {
   const { data: profile, isLoading: profileLoading, error: profileError } = useAgentProfile(profileId);
   const { data: workload, isLoading: workloadLoading } = useAgentWorkload(profileId, !!profile);
   const { data: performance, isLoading: performanceLoading } = useAgentPerformance(profileId, !!profile);
+
+  // Fetch all agents for navigation
+  const { data: allAgentsData } = useAgentProfiles({ page_size: 500 });
+  const allAgents = allAgentsData?.items || [];
+
+  // Compute prev/next agent IDs for navigation
+  const currentIndex = allAgents.findIndex(a => a.id === profileId);
+  const prevAgentId = currentIndex > 0 ? allAgents[currentIndex - 1]?.id : null;
+  const nextAgentId = currentIndex < allAgents.length - 1 ? allAgents[currentIndex + 1]?.id : null;
 
   // Mutations
   const updateMutation = useUpdateAgentProfile();
@@ -342,6 +366,31 @@ export default function AgentDetailPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Agent Navigation */}
+          <div className="flex items-center gap-1 mr-2 border-r pr-4">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => prevAgentId && router.push(`/dashboard/admin/agents/${prevAgentId}`)}
+              disabled={!prevAgentId}
+              title="Agent précédent"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm text-muted-foreground px-2">
+              {currentIndex >= 0 ? `${currentIndex + 1}/${allAgents.length}` : '-'}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => nextAgentId && router.push(`/dashboard/admin/agents/${nextAgentId}`)}
+              disabled={!nextAgentId}
+              title="Agent suivant"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
           {profile.is_active ? (
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -465,8 +514,17 @@ export default function AgentDetailPage() {
               {!isEditing ? (
                 // Read-only view
                 <div className="space-y-6">
-                  {/* Type & Organization */}
-                  <div className="grid gap-4 md:grid-cols-2">
+                  {/* RBAC Role & Type */}
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div>
+                      <p className="text-sm text-muted-foreground flex items-center gap-1">
+                        <Shield className="h-3 w-3" />
+                        Rôle RBAC (Système)
+                      </p>
+                      <Badge variant="secondary" className="mt-1">
+                        agent
+                      </Badge>
+                    </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Type d&apos;agent</p>
                       <p className="font-medium">{agentTypeLabel}</p>
@@ -964,104 +1022,191 @@ export default function AgentDetailPage() {
                   <FormField
                     control={form.control}
                     name="specializations"
-                    render={({ field }) => (
-                      <FormItem>
-                        <div className="space-y-4">
-                          {isLoadingWorkflows ? (
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              Chargement des workflows...
+                    render={({ field }) => {
+                      // Filter workflows based on search
+                      const filteredWorkflows = workflowFilter
+                        ? workflows.filter(wf =>
+                            wf.name_es?.toLowerCase().includes(workflowFilter.toLowerCase()) ||
+                            wf.code.toLowerCase().includes(workflowFilter.toLowerCase()) ||
+                            wf.entity_code?.toLowerCase().includes(workflowFilter.toLowerCase())
+                          )
+                        : workflows;
+
+                      // Group filtered workflows by entity_code
+                      const groupedWorkflows = filteredWorkflows.reduce((acc, wf) => {
+                        const key = wf.entity_code || 'Général';
+                        if (!acc[key]) acc[key] = [];
+                        acc[key].push(wf);
+                        return acc;
+                      }, {} as Record<string, WorkflowOption[]>);
+
+                      // Get count of selected workflows per group
+                      const getSelectedCount = (entityWorkflows: WorkflowOption[]) =>
+                        entityWorkflows.filter(wf => field.value?.includes(wf.code)).length;
+
+                      // Select/deselect all workflows in a group
+                      const toggleGroup = (entityWorkflows: WorkflowOption[], select: boolean) => {
+                        const codes = entityWorkflows.map(wf => wf.code);
+                        const current = field.value || [];
+                        if (select) {
+                          const newCodes = codes.filter(c => !current.includes(c));
+                          field.onChange([...current, ...newCodes]);
+                        } else {
+                          field.onChange(current.filter(c => !codes.includes(c)));
+                        }
+                      };
+
+                      return (
+                        <FormItem>
+                          <div className="space-y-4">
+                            {/* Search/Filter Input */}
+                            <div className="relative">
+                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                placeholder="Filtrer les workflows par nom, code ou entité..."
+                                value={workflowFilter}
+                                onChange={(e) => setWorkflowFilter(e.target.value)}
+                                className="pl-9"
+                              />
                             </div>
-                          ) : workflows.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">
-                              Aucun workflow disponible. Les workflows seront hérités de l&apos;entité sélectionnée.
-                            </p>
-                          ) : (
-                            <>
-                              {/* Group workflows by entity_code */}
-                              {Object.entries(
-                                workflows.reduce((acc, wf) => {
-                                  const key = wf.entity_code || 'Général';
-                                  if (!acc[key]) acc[key] = [];
-                                  acc[key].push(wf);
-                                  return acc;
-                                }, {} as Record<string, WorkflowOption[]>)
-                              ).map(([entityCode, entityWorkflows]) => (
-                                <div key={entityCode} className="space-y-2">
-                                  <h5 className="text-sm font-medium text-muted-foreground">{entityCode}</h5>
-                                  <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-                                    {entityWorkflows.map((wf) => (
-                                      <div
-                                        key={wf.code}
-                                        className={`flex items-start space-x-3 rounded-lg border p-3 cursor-pointer transition-colors ${
-                                          field.value?.includes(wf.code)
-                                            ? 'border-primary bg-primary/5'
-                                            : 'border-muted hover:border-primary/50'
-                                        }`}
-                                        onClick={() => {
-                                          const current = field.value || [];
-                                          const updated = current.includes(wf.code)
-                                            ? current.filter((c) => c !== wf.code)
-                                            : [...current, wf.code];
-                                          field.onChange(updated);
-                                        }}
-                                      >
-                                        <Checkbox
-                                          checked={field.value?.includes(wf.code)}
-                                          onCheckedChange={(checked) => {
-                                            const current = field.value || [];
-                                            const updated = checked
-                                              ? [...current, wf.code]
-                                              : current.filter((c) => c !== wf.code);
-                                            field.onChange(updated);
-                                          }}
-                                        />
-                                        <div className="space-y-1">
-                                          <p className="text-sm font-medium leading-none">{wf.name_es}</p>
-                                          {wf.description_es && (
-                                            <p className="text-xs text-muted-foreground line-clamp-2">
-                                              {wf.description_es}
-                                            </p>
-                                          )}
-                                          <div className="flex gap-1">
-                                            {wf.requires_agent_validation && (
-                                              <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
-                                                Validation
-                                              </span>
-                                            )}
-                                            {wf.sla_hours && (
-                                              <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-                                                SLA: {wf.sla_hours}h
-                                              </span>
-                                            )}
+
+                            {isLoadingWorkflows ? (
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Chargement des workflows...
+                              </div>
+                            ) : workflows.length === 0 ? (
+                              <p className="text-sm text-muted-foreground">
+                                Aucun workflow disponible. Les workflows seront hérités de l&apos;entité sélectionnée.
+                              </p>
+                            ) : filteredWorkflows.length === 0 ? (
+                              <p className="text-sm text-muted-foreground text-center py-8">
+                                Aucun workflow ne correspond à votre recherche &quot;{workflowFilter}&quot;
+                              </p>
+                            ) : (
+                              <Accordion type="multiple" defaultValue={Object.keys(groupedWorkflows)} className="w-full">
+                                {Object.entries(groupedWorkflows).map(([entityCode, entityWorkflows]) => {
+                                  const selectedCount = getSelectedCount(entityWorkflows);
+                                  const allSelected = selectedCount === entityWorkflows.length;
+
+                                  return (
+                                    <AccordionItem key={entityCode} value={entityCode}>
+                                      <AccordionTrigger className="hover:no-underline">
+                                        <div className="flex items-center justify-between w-full pr-4">
+                                          <div className="flex items-center gap-3">
+                                            <Badge variant="outline" className="font-mono">
+                                              {entityCode}
+                                            </Badge>
+                                            <span className="text-sm text-muted-foreground">
+                                              {entityWorkflows.length} workflow(s)
+                                            </span>
                                           </div>
+                                          {selectedCount > 0 && (
+                                            <Badge variant="default" className="ml-auto mr-2">
+                                              {selectedCount} sélectionné(s)
+                                            </Badge>
+                                          )}
                                         </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              ))}
-                            </>
-                          )}
-                          {field.value && field.value.length > 0 && (
-                            <div className="flex items-center justify-between pt-4 border-t">
-                              <span className="text-sm text-muted-foreground">
-                                {field.value.length} workflow(s) sélectionné(s)
-                              </span>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => field.onChange([])}
-                              >
-                                Tout désélectionner
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                                      </AccordionTrigger>
+                                      <AccordionContent>
+                                        {/* Group Actions */}
+                                        <div className="flex items-center justify-end gap-2 mb-3 pb-2 border-b">
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => toggleGroup(entityWorkflows, true)}
+                                            disabled={allSelected}
+                                          >
+                                            Tout sélectionner
+                                          </Button>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => toggleGroup(entityWorkflows, false)}
+                                            disabled={selectedCount === 0}
+                                          >
+                                            Tout désélectionner
+                                          </Button>
+                                        </div>
+                                        {/* Workflow Grid */}
+                                        <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+                                          {entityWorkflows.map((wf) => (
+                                            <div
+                                              key={wf.code}
+                                              className={`flex items-start space-x-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+                                                field.value?.includes(wf.code)
+                                                  ? 'border-primary bg-primary/5'
+                                                  : 'border-muted hover:border-primary/50'
+                                              }`}
+                                              onClick={() => {
+                                                const current = field.value || [];
+                                                const updated = current.includes(wf.code)
+                                                  ? current.filter((c) => c !== wf.code)
+                                                  : [...current, wf.code];
+                                                field.onChange(updated);
+                                              }}
+                                            >
+                                              <Checkbox
+                                                checked={field.value?.includes(wf.code)}
+                                                onCheckedChange={(checked) => {
+                                                  const current = field.value || [];
+                                                  const updated = checked
+                                                    ? [...current, wf.code]
+                                                    : current.filter((c) => c !== wf.code);
+                                                  field.onChange(updated);
+                                                }}
+                                              />
+                                              <div className="space-y-1">
+                                                <p className="text-sm font-medium leading-none">{wf.name_es}</p>
+                                                {wf.description_es && (
+                                                  <p className="text-xs text-muted-foreground line-clamp-2">
+                                                    {wf.description_es}
+                                                  </p>
+                                                )}
+                                                <div className="flex gap-1">
+                                                  {wf.requires_agent_validation && (
+                                                    <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+                                                      Validation
+                                                    </span>
+                                                  )}
+                                                  {wf.sla_hours && (
+                                                    <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                                                      SLA: {wf.sla_hours}h
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </AccordionContent>
+                                    </AccordionItem>
+                                  );
+                                })}
+                              </Accordion>
+                            )}
+                            {field.value && field.value.length > 0 && (
+                              <div className="flex items-center justify-between pt-4 border-t">
+                                <span className="text-sm text-muted-foreground">
+                                  {field.value.length} workflow(s) sélectionné(s)
+                                </span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => field.onChange([])}
+                                >
+                                  Tout désélectionner
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
                   />
                   <div className="flex justify-end gap-3 pt-6">
                     <Button type="submit" disabled={updateMutation.isPending}>
