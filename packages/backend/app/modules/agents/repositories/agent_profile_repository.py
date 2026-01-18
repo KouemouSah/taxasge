@@ -130,11 +130,14 @@ class AgentProfileRepository:
                 pe.name as parent_entity_name,
                 m.ministry_code,
                 m.name_es as ministry_name,
+                -- Agent category based on entity_code (stable identifier)
+                -- Entity is the source of truth, not ministry (can be reorganized)
                 CASE
-                    WHEN m.ministry_code = 'DGI' THEN 'dgi'
-                    WHEN m.ministry_code = 'TESORO' THEN 'treasury'
-                    WHEN ap.agent_type = 'entity_agent' THEN 'entity'
-                    ELSE 'ministry'
+                    WHEN e.code = 'DGI' THEN 'dgi'
+                    WHEN e.code = 'TESORO' THEN 'treasury'
+                    WHEN e.code IS NOT NULL THEN 'entity'
+                    WHEN ap.agent_type = 'ministry_agent' THEN 'ministry'
+                    ELSE 'general'
                 END as agent_category,
                 aw.current_assignments,
                 aw.capacity_percentage,
@@ -154,7 +157,8 @@ class AgentProfileRepository:
             JOIN users u ON ap.user_id = u.id
             LEFT JOIN entities e ON ap.entity_id = e.id
             LEFT JOIN entities pe ON e.parent_entity_id = pe.id
-            LEFT JOIN ministries m ON ap.ministry_id = m.id
+            -- Ministry: prefer entity's ministry over direct assignment (entity is source of truth)
+            LEFT JOIN ministries m ON COALESCE(e.ministry_id, ap.ministry_id) = m.id
             LEFT JOIN agent_workloads aw ON ap.id = aw.agent_profile_id
         """
 
@@ -315,12 +319,13 @@ class AgentProfileRepository:
 
         where_clause = f"WHERE {' AND '.join(where_conditions)}" if where_conditions else ""
 
-        # Count query
+        # Count query - must include entities join for category filtering
         count_query = f"""
             SELECT COUNT(*)
             FROM agent_profiles ap
+            LEFT JOIN entities e ON ap.entity_id = e.id
             LEFT JOIN agent_workloads aw ON ap.id = aw.agent_profile_id
-            LEFT JOIN ministries m ON ap.ministry_id = m.id
+            LEFT JOIN ministries m ON COALESCE(e.ministry_id, ap.ministry_id) = m.id
             {where_clause}
         """
         total = await conn.fetchval(count_query, *params)
@@ -336,11 +341,13 @@ class AgentProfileRepository:
                 e.name as entity_name,
                 m.ministry_code,
                 m.name_es as ministry_name,
+                -- Agent category based on entity_code (stable identifier)
                 CASE
-                    WHEN m.ministry_code = 'DGI' THEN 'dgi'
-                    WHEN m.ministry_code = 'TESORO' THEN 'treasury'
-                    WHEN ap.agent_type = 'entity_agent' THEN 'entity'
-                    ELSE 'ministry'
+                    WHEN e.code = 'DGI' THEN 'dgi'
+                    WHEN e.code = 'TESORO' THEN 'treasury'
+                    WHEN e.code IS NOT NULL THEN 'entity'
+                    WHEN ap.agent_type = 'ministry_agent' THEN 'ministry'
+                    ELSE 'general'
                 END as agent_category,
                 aw.current_assignments,
                 aw.capacity_percentage,
@@ -349,7 +356,7 @@ class AgentProfileRepository:
             FROM agent_profiles ap
             JOIN users u ON ap.user_id = u.id
             LEFT JOIN entities e ON ap.entity_id = e.id
-            LEFT JOIN ministries m ON ap.ministry_id = m.id
+            LEFT JOIN ministries m ON COALESCE(ap.ministry_id, e.ministry_id) = m.id
             LEFT JOIN agent_workloads aw ON ap.id = aw.agent_profile_id
             {where_clause}
             ORDER BY ap.created_at DESC
@@ -391,15 +398,28 @@ class AgentProfileRepository:
         category: str,
         param_idx: int
     ) -> Optional[tuple[str, list]]:
-        """Get SQL condition for agent category filter"""
+        """
+        Get SQL condition for agent category filter.
+
+        Uses entity_code as the stable identifier (not ministry_code).
+        Entity is the source of truth - ministries can be reorganized.
+
+        Categories:
+        - 'dgi': Agents assigned to DGI entity
+        - 'treasury': Agents assigned to TESORO entity
+        - 'entity': Agents assigned to other entities (CNEDOGE, DGT, etc.)
+        - 'ministry': Ministry agents without specific entity assignment
+        """
         if category == 'dgi':
-            return (f"m.ministry_code = ${param_idx}", ['DGI'])
+            return (f"e.code = ${param_idx}", ['DGI'])
         elif category == 'treasury':
-            return (f"m.ministry_code = ${param_idx}", ['TESORO'])
+            return (f"e.code = ${param_idx}", ['TESORO'])
         elif category == 'entity':
-            return ("ap.agent_type = 'entity_agent'", [])
+            # All entity agents except DGI and TESORO (they have their own categories)
+            return ("e.code IS NOT NULL AND e.code NOT IN ('DGI', 'TESORO')", [])
         elif category == 'ministry':
-            return ("ap.agent_type = 'ministry_agent' AND m.ministry_code NOT IN ('DGI', 'TESORO')", [])
+            # Ministry agents without direct entity assignment
+            return ("ap.agent_type = 'ministry_agent' AND e.code IS NULL", [])
         return None
 
     # ========================================================================
