@@ -110,13 +110,79 @@ class AgentProfileService:
         conn: asyncpg.Connection,
         profile_id: UUID,
         update_data: AgentProfileUpdate,
+        updated_by: Optional[UUID] = None,
     ) -> Optional[Dict[str, Any]]:
-        """Update an agent profile."""
-        profile = await self.profile_repo.update(conn, profile_id, update_data)
-        if profile:
-            logger.info(f"Updated agent profile {profile_id}")
-            return await self.profile_repo.get_with_details(conn, profile_id)
-        return None
+        """
+        Update an agent profile.
+
+        If rbac_role_id is provided, replaces the user's permissions with the role's permissions.
+        """
+        # Handle RBAC role change if provided
+        rbac_role_id = update_data.rbac_role_id
+        if rbac_role_id is not None:
+            # Get the profile to find user_id
+            current_profile = await self.profile_repo.get_by_id(conn, profile_id)
+            if current_profile:
+                user_id = UUID(str(current_profile["user_id"]))
+                await self._update_user_rbac_role(conn, user_id, rbac_role_id, updated_by)
+
+        # Create a copy of update_data without rbac_role_id (it's not a column in agent_profiles)
+        update_dict = update_data.model_dump(exclude_unset=True)
+        update_dict.pop('rbac_role_id', None)
+
+        # Only call repository update if there are fields to update
+        if update_dict:
+            from app.modules.agents.models.agent_profile import AgentProfileUpdate
+            filtered_update = AgentProfileUpdate(**update_dict)
+            profile = await self.profile_repo.update(conn, profile_id, filtered_update)
+            if profile:
+                logger.info(f"Updated agent profile {profile_id}")
+
+        return await self.profile_repo.get_with_details(conn, profile_id)
+
+    async def _update_user_rbac_role(
+        self,
+        conn: asyncpg.Connection,
+        user_id: UUID,
+        rbac_role_id: UUID,
+        granted_by: Optional[UUID] = None,
+    ) -> None:
+        """
+        Update user's permissions to match the specified RBAC role.
+        Removes existing permissions and copies permissions from the role.
+        """
+        # Verify role exists
+        role_check = await conn.fetchrow(
+            """SELECT id, code FROM roles WHERE id = $1""",
+            rbac_role_id
+        )
+        if not role_check:
+            logger.warning(f"RBAC role {rbac_role_id} not found")
+            return
+
+        logger.info(f"Updating user {user_id} RBAC role to {role_check['code']}")
+
+        # Remove existing user permissions (from previous RBAC role assignment)
+        await conn.execute(
+            """DELETE FROM user_permissions WHERE user_id = $1""",
+            user_id
+        )
+
+        # Copy permissions from the new role
+        perms_query = """
+            SELECT permission_id FROM role_permissions
+            WHERE role_id = $1 AND granted = TRUE
+        """
+        role_permissions = await conn.fetch(perms_query, rbac_role_id)
+
+        for perm in role_permissions:
+            await conn.execute("""
+                INSERT INTO user_permissions (user_id, permission_id, granted, granted_by, granted_at)
+                VALUES ($1, $2, TRUE, $3, NOW())
+                ON CONFLICT (user_id, permission_id) DO UPDATE SET granted = TRUE, granted_by = $3, granted_at = NOW()
+            """, user_id, perm["permission_id"], str(granted_by) if granted_by else None)
+
+        logger.info(f"RBAC role updated: {len(role_permissions)} permissions assigned")
 
     async def deactivate_agent_profile(
         self,

@@ -86,6 +86,10 @@ class AgentProfileUpdate(BaseModel):
     entity_id: Optional[UUID] = None
     ministry_id: Optional[int] = None
     agent_role: Optional[str] = None
+    rbac_role_id: Optional[UUID] = Field(
+        None,
+        description="RBAC role ID to assign. Replaces user permissions with role's permissions."
+    )
     can_approve_unlimited: Optional[bool] = None
     max_approval_amount: Optional[Decimal] = None
     can_escalate: Optional[bool] = None

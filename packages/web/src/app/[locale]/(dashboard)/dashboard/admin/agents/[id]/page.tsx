@@ -90,6 +90,7 @@ import { AgentType } from '@/modules/agents-admin/types';
 import type { AgentProfileUpdateRequest, WorkflowOption } from '@/modules/agents-admin/types';
 import { hierarchyApi } from '@/modules/fiscal-services/services/api';
 import { useEntitiesSimple } from '@/modules/cities/hooks';
+import { useRoles } from '@/modules/roles-admin/hooks/useRoles';
 
 // =============================================================================
 // VALIDATION SCHEMA
@@ -101,6 +102,8 @@ const profileSchema = z.object({
   ministry_id: z.coerce.number().int().positive().optional().nullable(),
   entity_id: z.string().uuid().optional().nullable().or(z.literal('')),
   agent_role: z.enum(['validator', 'approver', 'auditor', 'reviewer']),
+  // RBAC role for permissions
+  rbac_role_id: z.string().uuid().optional().nullable().or(z.literal('')),
   can_approve_unlimited: z.boolean(),
   max_approval_amount: z.coerce.number().positive().optional().nullable(),
   can_escalate: z.boolean(),
@@ -134,10 +137,14 @@ export default function AgentDetailPage() {
   // Fetch available workflows for specializations
   const { data: workflowsData, isLoading: isLoadingWorkflows } = useAvailableWorkflows();
 
+  // Fetch RBAC roles for agent permissions
+  const { data: rolesData, isLoading: isLoadingRoles } = useRoles({ entity_type: null });
+
   // Transform data for select components
   const ministries = ministriesData?.map(m => ({ id: m.id, name: m.name_es || m.nameEs || '' })) || [];
   const entities = entitiesData?.map(e => ({ id: e.id, name: e.name })) || [];
   const workflows = workflowsData || [];
+  const rbacRoles = rolesData?.roles || [];
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
@@ -177,6 +184,7 @@ export default function AgentDetailPage() {
       agent_type: AgentType.MINISTRY_AGENT,
       is_supervisor: false,
       agent_role: 'validator',
+      rbac_role_id: '',
       can_approve_unlimited: false,
       can_escalate: true,
       can_assign_tasks: false,
@@ -196,6 +204,7 @@ export default function AgentDetailPage() {
         ministry_id: profile.ministry_id ?? null,
         entity_id: profile.entity_id ?? '',
         agent_role: (profile.agent_role as 'validator' | 'approver' | 'auditor' | 'reviewer') || 'validator',
+        rbac_role_id: '', // RBAC role is not stored on profile, it's derived from user_permissions
         can_approve_unlimited: profile.can_approve_unlimited,
         max_approval_amount: profile.max_approval_amount ?? null,
         can_escalate: profile.can_escalate,
@@ -223,6 +232,8 @@ export default function AgentDetailPage() {
         ministry_id: data.agent_type === AgentType.MINISTRY_AGENT ? data.ministry_id ?? undefined : undefined,
         entity_id: data.agent_type === AgentType.ENTITY_AGENT && data.entity_id ? data.entity_id : undefined,
         agent_role: data.agent_role,
+        // Only include rbac_role_id if a role was selected (non-empty string)
+        rbac_role_id: data.rbac_role_id || undefined,
         can_approve_unlimited: data.can_approve_unlimited,
         max_approval_amount: data.can_approve_unlimited ? undefined : data.max_approval_amount ?? undefined,
         can_escalate: data.can_escalate,
@@ -772,6 +783,47 @@ export default function AgentDetailPage() {
                                 Peut gérer les agents et reassigner les tâches
                               </FormDescription>
                             </div>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* RBAC Role */}
+                    <div className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="rbac_role_id"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="flex items-center gap-2">
+                              <Shield className="h-4 w-4" />
+                              Rôle RBAC (Permissions)
+                            </FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value || ''}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Sélectionner un rôle pour modifier les permissions" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {isLoadingRoles ? (
+                                  <SelectItem value="" disabled>Chargement...</SelectItem>
+                                ) : rbacRoles.length === 0 ? (
+                                  <SelectItem value="" disabled>Aucun rôle disponible</SelectItem>
+                                ) : (
+                                  rbacRoles.map((role) => (
+                                    <SelectItem key={role.id} value={role.id}>
+                                      {role.name} ({role.code})
+                                    </SelectItem>
+                                  ))
+                                )}
+                              </SelectContent>
+                            </Select>
+                            <FormDescription>
+                              Sélectionnez un rôle pour remplacer les permissions actuelles de l&apos;agent.
+                              Laissez vide pour conserver les permissions existantes.
+                            </FormDescription>
+                            <FormMessage />
                           </FormItem>
                         )}
                       />

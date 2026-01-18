@@ -373,7 +373,18 @@ async def update_profile(
     _: None = Depends(permission_required("agents.update"))
 ):
     """Update agent profile"""
-    updated = await profile_repository.update(db, UUID(profile_id), update_data)
+    from app.modules.agents.services.agent_profile_service import AgentProfileService
+
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
+
+    # Use service to handle RBAC role updates
+    service = AgentProfileService()
+    updated = await service.update_agent_profile(
+        db,
+        UUID(profile_id),
+        update_data,
+        updated_by=UUID(user_id) if user_id else None
+    )
 
     if not updated:
         raise HTTPException(
@@ -381,7 +392,7 @@ async def update_profile(
             detail="Agent profile not found"
         )
 
-    logger.info(f"Agent profile {profile_id} updated")
+    logger.info(f"Agent profile {profile_id} updated by {user_id}")
     return AgentProfileResponse(**updated)
 
 

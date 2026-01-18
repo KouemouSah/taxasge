@@ -270,6 +270,8 @@ export interface AgentProfileUpdateRequest {
   entity_id?: string;
   ministry_id?: number;
   agent_role?: AgentRole | string;
+  /** RBAC role ID - replaces user's permissions with role's permissions */
+  rbac_role_id?: string;
   can_approve_unlimited?: boolean;
   max_approval_amount?: number;
   can_escalate?: boolean;

@@ -84,6 +84,142 @@ class UserRepository(BaseRepository[UserResponse]):
             "business_profile": model.business_profile.model_dump() if model.business_profile else None
         }
 
+    async def find_all(
+        self,
+        filters: Optional[Dict[str, Any]] = None,
+        order_by: Optional[str] = None,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
+        conn = None,
+        use_supabase: bool = True
+    ) -> List[UserResponse]:
+        """
+        Find all users with optional filtering.
+        Overrides base to handle 'search' filter with ILIKE on name/email.
+
+        Args:
+            filters: Dictionary of filters. Special 'search' key does ILIKE on first_name, last_name, email.
+            order_by: ORDER BY clause
+            limit: Maximum results
+            offset: Results to skip
+
+        Returns:
+            List[UserResponse]: List of matching users
+        """
+        try:
+            query_parts = [f"SELECT * FROM {self.table_name}"]
+            conditions = []
+            params = []
+            param_count = 0
+
+            if filters:
+                # Handle 'search' filter specially with ILIKE on multiple columns
+                search_term = filters.pop('search', None)
+                if search_term:
+                    param_count += 1
+                    search_condition = f"""(
+                        first_name ILIKE ${param_count}
+                        OR last_name ILIKE ${param_count}
+                        OR email ILIKE ${param_count}
+                    )"""
+                    conditions.append(search_condition)
+                    params.append(f"%{search_term}%")
+
+                # Handle remaining filters as exact match
+                for key, value in filters.items():
+                    param_count += 1
+                    conditions.append(f"{key} = ${param_count}")
+                    params.append(value)
+
+            if conditions:
+                query_parts.append(f"WHERE {' AND '.join(conditions)}")
+
+            if order_by:
+                query_parts.append(f"ORDER BY {order_by}")
+
+            if limit:
+                param_count += 1
+                query_parts.append(f"LIMIT ${param_count}")
+                params.append(limit)
+
+            if offset:
+                param_count += 1
+                query_parts.append(f"OFFSET ${param_count}")
+                params.append(offset)
+
+            query = " ".join(query_parts)
+
+            if conn:
+                results = await conn.fetch(query, *params)
+            else:
+                results = await self.db_manager.execute_query(query, *params)
+
+            return [self._map_to_model(dict(row)) for row in results]
+
+        except Exception as e:
+            logger.error(f"❌ Error finding all users: {e}")
+            return []
+
+    async def count(
+        self,
+        filters: Optional[Dict[str, Any]] = None,
+        conn = None,
+        use_supabase: bool = True
+    ) -> int:
+        """
+        Count users with optional filtering.
+        Overrides base to handle 'search' filter with ILIKE on name/email.
+
+        Args:
+            filters: Dictionary of filters. Special 'search' key does ILIKE on first_name, last_name, email.
+
+        Returns:
+            int: Number of matching users
+        """
+        try:
+            query_parts = [f"SELECT COUNT(*) FROM {self.table_name}"]
+            conditions = []
+            params = []
+            param_count = 0
+
+            if filters:
+                # Copy filters to avoid modifying original
+                filters = filters.copy()
+
+                # Handle 'search' filter specially with ILIKE on multiple columns
+                search_term = filters.pop('search', None)
+                if search_term:
+                    param_count += 1
+                    search_condition = f"""(
+                        first_name ILIKE ${param_count}
+                        OR last_name ILIKE ${param_count}
+                        OR email ILIKE ${param_count}
+                    )"""
+                    conditions.append(search_condition)
+                    params.append(f"%{search_term}%")
+
+                # Handle remaining filters as exact match
+                for key, value in filters.items():
+                    param_count += 1
+                    conditions.append(f"{key} = ${param_count}")
+                    params.append(value)
+
+            if conditions:
+                query_parts.append(f"WHERE {' AND '.join(conditions)}")
+
+            query = " ".join(query_parts)
+
+            if conn:
+                result = await conn.fetchval(query, *params)
+            else:
+                result = await self.db_manager.execute_scalar(query, *params)
+
+            return result or 0
+
+        except Exception as e:
+            logger.error(f"❌ Error counting users: {e}")
+            return 0
+
     async def find_by_email(self, email: str, use_supabase: bool = False) -> Optional[UserResponse]:
         """
         Find user by email address.

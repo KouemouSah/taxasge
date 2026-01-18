@@ -16,7 +16,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -86,6 +86,7 @@ import { BackendUnavailableAlert } from '@/modules/admin/components';
 
 export default function AgentsPage() {
   const router = useRouter();
+  const locale = useLocale();
   const t = useTranslations('admin.agents');
   const { toast } = useToast();
 
@@ -157,19 +158,19 @@ export default function AgentsPage() {
   };
 
   const handleCreateAgent = () => {
-    router.push('/dashboard/admin/agents/new?type=agent');
+    router.push(`/${locale}/dashboard/admin/agents/new?type=agent`);
   };
 
   const handleCreateAdmin = () => {
-    router.push('/dashboard/admin/agents/new?type=admin');
+    router.push(`/${locale}/dashboard/admin/agents/new?type=admin`);
   };
 
   const handleViewAgent = (agent: AgentProfile) => {
-    router.push(`/dashboard/admin/agents/${agent.id}`);
+    router.push(`/${locale}/dashboard/admin/agents/${agent.id}`);
   };
 
   const handleEditAgent = (agent: AgentProfile) => {
-    router.push(`/dashboard/admin/agents/${agent.id}?mode=edit`);
+    router.push(`/${locale}/dashboard/admin/agents/${agent.id}?mode=edit`);
   };
 
   const handleToggleAgentStatus = async (agent: AgentProfile) => {
