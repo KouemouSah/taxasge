@@ -161,8 +161,8 @@ export default function RolesPermissionsPage() {
             Catalogue Permissions
           </TabsTrigger>
           <TabsTrigger value="user-permissions" className="flex items-center gap-2">
-            <User className="h-4 w-4" />
-            Permissions Utilisateurs
+            <Users className="h-4 w-4" />
+            Permissions Agents
           </TabsTrigger>
         </TabsList>
 
@@ -336,13 +336,13 @@ function RolesTab() {
             </Select>
           </div>
 
-          <div className="border rounded-md">
+          <div className="border rounded-md overflow-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Nom</TableHead>
                   <TableHead>Code</TableHead>
-                  <TableHead>Type</TableHead>
+                  <TableHead className="hidden md:table-cell">Type</TableHead>
                   <TableHead>Statut</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -373,7 +373,7 @@ function RolesTab() {
                       <TableCell>
                         <code className="text-sm bg-muted px-2 py-1 rounded">{role.code}</code>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         {role.entity_type ? (
                           <Badge variant="outline" className="gap-1">
                             <Building2 className="h-3 w-3" />
@@ -963,21 +963,28 @@ function UserPermissionsTab() {
 
   return (
     <div className="space-y-4">
-      {/* User Selection */}
+      {/* Agent Selection */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Sélectionner un Utilisateur
+            <Users className="h-5 w-5" />
+            Sélectionner un Agent
           </CardTitle>
           <CardDescription>
-            Rechercher un utilisateur pour gérer ses permissions individuelles
+            Rechercher un agent pour gérer ses permissions individuelles (overrides RBAC)
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-4">
             <div className="flex-1 max-w-md">
-              <UserSelector value={selectedUserId} onValueChange={handleUserSelect} />
+              <UserSelector
+                value={selectedUserId}
+                onValueChange={handleUserSelect}
+                roleFilter="agent"
+                placeholder="Rechercher un agent..."
+                searchPlaceholder="Tapez le nom ou l'email..."
+                emptyLabel="Aucun agent trouvé"
+              />
             </div>
             {selectedUserId && (
               <Button
@@ -1112,26 +1119,26 @@ function UserPermissionsTab() {
           <CardContent className="py-12">
             <div className="text-center">
               <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <p className="text-lg font-medium text-foreground">Sélectionnez un utilisateur</p>
+              <p className="text-lg font-medium text-foreground">Sélectionnez un agent</p>
               <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
-                Recherchez un utilisateur par nom ou email pour gérer ses permissions individuelles.
+                Recherchez un agent par nom ou email pour gérer ses permissions individuelles (RBAC overrides).
                 Tapez au moins 2 caractères pour lancer la recherche.
               </p>
               <Separator className="my-6 max-w-xs mx-auto" />
               <div className="text-left max-w-md mx-auto space-y-3">
-                <h4 className="text-sm font-medium text-foreground">À propos des permissions utilisateurs</h4>
+                <h4 className="text-sm font-medium text-foreground">Permissions Agents vs Spécialisations</h4>
                 <ul className="text-sm text-muted-foreground space-y-2">
                   <li className="flex items-start gap-2">
                     <ChevronRight className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                    <span>Les <strong>overrides</strong> permettent d&apos;accorder ou refuser des permissions spécifiques à un utilisateur</span>
+                    <span><strong>Spécialisations</strong> (onglet Agents) : Types de workflows que l&apos;agent peut traiter (passeport, résidence, etc.)</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <ChevronRight className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                    <span>Ces permissions s&apos;ajoutent ou se soustraient à celles du rôle de l&apos;utilisateur</span>
+                    <span><strong>Permissions (ici)</strong> : Overrides RBAC individuels pour accorder/refuser des actions spécifiques</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <ChevronRight className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                    <span>Utilisez cette fonctionnalité pour des cas exceptionnels uniquement</span>
+                    <span>Utilisez cette fonctionnalité pour des cas exceptionnels uniquement (ex: accès temporaire)</span>
                   </li>
                 </ul>
               </div>

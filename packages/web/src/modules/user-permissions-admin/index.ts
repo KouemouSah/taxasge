@@ -19,6 +19,7 @@ export {
   useUserPermissionsList,
   useUserPermissions,
   useSearchUsers,
+  useSearchAgents,
   useGrantPermission,
   useRevokePermission,
   useCheckPermission,

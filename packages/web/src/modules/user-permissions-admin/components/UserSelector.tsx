@@ -29,6 +29,12 @@ interface UserSelectorProps {
   onValueChange: (userId: string | null, user: SimpleUser | null) => void
   placeholder?: string
   disabled?: boolean
+  /** Filter by role (e.g., 'agent') */
+  roleFilter?: string
+  /** Label for the search input */
+  searchPlaceholder?: string
+  /** Label for empty state */
+  emptyLabel?: string
 }
 
 export function UserSelector({
@@ -36,6 +42,9 @@ export function UserSelector({
   onValueChange,
   placeholder,
   disabled = false,
+  roleFilter,
+  searchPlaceholder,
+  emptyLabel,
 }: UserSelectorProps) {
   const t = useTranslations('admin.userPermissions')
 
@@ -43,7 +52,7 @@ export function UserSelector({
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedUser, setSelectedUser] = useState<SimpleUser | null>(null)
 
-  const { data: users = [], isLoading } = useSearchUsers(searchQuery)
+  const { data: users = [], isLoading } = useSearchUsers(searchQuery, roleFilter)
 
   // Update selected user display when value changes externally
   useEffect(() => {
@@ -95,7 +104,7 @@ export function UserSelector({
       <PopoverContent className="w-[400px] p-0" align="start">
         <div className="p-2">
           <Input
-            placeholder={t('searchUsers') || 'Search users...'}
+            placeholder={searchPlaceholder || t('searchUsers') || 'Search users...'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="h-9"
@@ -112,7 +121,7 @@ export function UserSelector({
             </div>
           ) : users.length === 0 ? (
             <div className="py-6 text-center text-sm text-muted-foreground">
-              {t('noUsersFound') || 'No users found.'}
+              {emptyLabel || t('noUsersFound') || 'No users found.'}
             </div>
           ) : (
             <div className="p-1">

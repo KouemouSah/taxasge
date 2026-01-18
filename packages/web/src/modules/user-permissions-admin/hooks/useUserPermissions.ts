@@ -46,11 +46,25 @@ export function useUserPermissions(userId: string | null) {
 
 /**
  * Search users for selection
+ * @param query - Search query
+ * @param role - Optional role filter
  */
-export function useSearchUsers(query: string) {
+export function useSearchUsers(query: string, role?: string) {
   return useQuery({
-    queryKey: userPermissionsKeys.usersSearch(query),
-    queryFn: () => userPermissionsApi.searchUsers(query),
+    queryKey: [...userPermissionsKeys.usersSearch(query), role],
+    queryFn: () => userPermissionsApi.searchUsers(query, role),
+    enabled: query.length >= 2,
+    staleTime: 30 * 1000, // 30 seconds
+  })
+}
+
+/**
+ * Search agents only for selection
+ */
+export function useSearchAgents(query: string) {
+  return useQuery({
+    queryKey: ['agents', 'search', query],
+    queryFn: () => userPermissionsApi.searchAgents(query),
     enabled: query.length >= 2,
     staleTime: 30 * 1000, // 30 seconds
   })

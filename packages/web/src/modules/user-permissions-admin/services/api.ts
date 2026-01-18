@@ -108,13 +108,27 @@ export const userPermissionsApi = {
   /**
    * Search users for selection (uses admin users endpoint)
    * BACKEND: GET /api/v1/admin/users
+   * @param query - Search query (name, email)
+   * @param role - Optional role filter (e.g., 'agent')
+   * @param limit - Max results
    */
-  searchUsers: async (query?: string, limit: number = 20): Promise<SimpleUser[]> => {
-    const response = await fetchClient.get<{ items: SimpleUser[] }>('/admin/users', {
-      search: query,
+  searchUsers: async (query?: string, role?: string, limit: number = 20): Promise<SimpleUser[]> => {
+    const params: Record<string, string | number> = {
       size: limit,
-    })
+    }
+    if (query) params.search = query
+    if (role) params.role = role
+
+    const response = await fetchClient.get<{ items: SimpleUser[] }>('/admin/users', params)
     return response.items || []
+  },
+
+  /**
+   * Search agents only (convenience method)
+   * BACKEND: GET /api/v1/admin/users?role=agent
+   */
+  searchAgents: async (query?: string, limit: number = 20): Promise<SimpleUser[]> => {
+    return userPermissionsApi.searchUsers(query, 'agent', limit)
   },
 }
 
