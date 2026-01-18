@@ -2,6 +2,7 @@
  * Treasury Validation Page
  * Lists pending payments requiring manual validation (cash/check)
  * Treasury agents can lock, validate, or reject payments
+ * @version 1.1.3 - Fixed translations and CORS
  */
 
 'use client';
