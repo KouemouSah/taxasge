@@ -315,9 +315,17 @@ class AgentWorkloadUpdate(BaseModel):
 
 
 class AgentWorkload(AgentWorkloadBase):
-    """Full agent workload model"""
+    """Full agent workload model.
+
+    Note: The database uses agent_profile_id (UUID) as the primary identifier
+    since migration 054. The legacy agent_id column may still exist for
+    backward compatibility.
+    """
     id: str
-    agent_id: str
+    # Primary identifier (migration 054+)
+    agent_profile_id: Optional[str] = None
+    # Legacy field (kept for backward compatibility)
+    agent_id: Optional[str] = None
     avg_processing_time_hours: Optional[Decimal] = None
     avg_daily_completions: Decimal = Decimal("0.00")
     completion_rate_7d: Decimal = Decimal("0.00")

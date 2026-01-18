@@ -7,7 +7,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { agentCreationApi, agentProfilesApi, agentWorkloadApi, adminUsersApi } from '../services/api';
+import { agentCreationApi, agentProfilesApi, agentWorkloadApi, adminUsersApi, workflowsApi } from '../services/api';
 import type {
   AgentCompleteCreateRequest,
   AdminCreateRequest,
@@ -338,5 +338,21 @@ export function useDeleteAgentUser() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: agentQueryKeys.profiles() });
     },
+  });
+}
+
+// =============================================================================
+// WORKFLOWS HOOKS
+// =============================================================================
+
+/**
+ * Hook to fetch available workflows for specializations
+ */
+export function useAvailableWorkflows(entityId?: string, category?: string, enabled = true) {
+  return useQuery({
+    queryKey: ['workflows', 'available', entityId, category],
+    queryFn: () => workflowsApi.getAvailable(entityId, category),
+    enabled,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }

@@ -62,6 +62,8 @@ import {
   Settings,
   Power,
   PowerOff,
+  GraduationCap,
+  Info,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -71,10 +73,11 @@ import {
   useUpdateAgentProfile,
   useDeactivateAgent,
   useReactivateAgent,
+  useAvailableWorkflows,
 } from '@/modules/agents-admin/hooks';
 import { WorkloadStats, PerformanceStats } from '@/modules/agents-admin/components';
 import { AgentType } from '@/modules/agents-admin/types';
-import type { AgentProfileUpdateRequest } from '@/modules/agents-admin/types';
+import type { AgentProfileUpdateRequest, WorkflowOption } from '@/modules/agents-admin/types';
 import { hierarchyApi } from '@/modules/fiscal-services/services/api';
 import { useEntitiesSimple } from '@/modules/cities/hooks';
 
@@ -98,6 +101,8 @@ const profileSchema = z.object({
   working_days: z.array(z.number()).default([1, 2, 3, 4, 5]),
   is_active: z.boolean(),
   is_backup_agent: z.boolean(),
+  // Specializations - workflow codes the agent can handle
+  specializations: z.array(z.string()).default([]),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
@@ -116,9 +121,13 @@ export default function AgentDetailPage() {
 
   const { data: entitiesData, isLoading: isLoadingEntities } = useEntitiesSimple(true);
 
+  // Fetch available workflows for specializations
+  const { data: workflowsData, isLoading: isLoadingWorkflows } = useAvailableWorkflows();
+
   // Transform data for select components
   const ministries = ministriesData?.map(m => ({ id: m.id, name: m.name_es || m.nameEs || '' })) || [];
   const entities = entitiesData?.map(e => ({ id: e.id, name: e.name })) || [];
+  const workflows = workflowsData || [];
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
@@ -151,6 +160,7 @@ export default function AgentDetailPage() {
       can_reassign: false,
       is_active: true,
       is_backup_agent: false,
+      specializations: [],
     },
   });
 
@@ -173,6 +183,7 @@ export default function AgentDetailPage() {
         working_days: profile.working_days ?? [1, 2, 3, 4, 5],
         is_active: profile.is_active,
         is_backup_agent: profile.is_backup_agent,
+        specializations: profile.specializations ?? [],
       });
     }
   }, [profile, form]);
@@ -199,6 +210,7 @@ export default function AgentDetailPage() {
         working_days: data.working_days,
         is_active: data.is_active,
         is_backup_agent: data.is_backup_agent,
+        specializations: data.specializations,
       };
 
       await updateMutation.mutateAsync({
@@ -411,14 +423,18 @@ export default function AgentDetailPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             Profil
           </TabsTrigger>
+          <TabsTrigger value="specializations" className="flex items-center gap-2">
+            <GraduationCap className="h-4 w-4" />
+            Spécialisations
+          </TabsTrigger>
           <TabsTrigger value="workload" className="flex items-center gap-2">
             <Briefcase className="h-4 w-4" />
-            Charge de travail
+            Charge
           </TabsTrigger>
           <TabsTrigger value="performance" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
@@ -922,6 +938,142 @@ export default function AgentDetailPage() {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        {/* Specializations Tab */}
+        <TabsContent value="specializations" className="mt-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    Spécialisations
+                    <Badge variant="outline">
+                      {form.watch('specializations')?.length || 0} workflow(s)
+                    </Badge>
+                  </CardTitle>
+                  <CardDescription>
+                    Les spécialisations définissent les types de demandes que l&apos;agent peut traiter.
+                    Si aucune n&apos;est sélectionnée, l&apos;agent héritera des workflows de son entité.
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(handleSubmit)}>
+                  <FormField
+                    control={form.control}
+                    name="specializations"
+                    render={({ field }) => (
+                      <FormItem>
+                        <div className="space-y-4">
+                          {isLoadingWorkflows ? (
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Chargement des workflows...
+                            </div>
+                          ) : workflows.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                              Aucun workflow disponible. Les workflows seront hérités de l&apos;entité sélectionnée.
+                            </p>
+                          ) : (
+                            <>
+                              {/* Group workflows by entity_code */}
+                              {Object.entries(
+                                workflows.reduce((acc, wf) => {
+                                  const key = wf.entity_code || 'Général';
+                                  if (!acc[key]) acc[key] = [];
+                                  acc[key].push(wf);
+                                  return acc;
+                                }, {} as Record<string, WorkflowOption[]>)
+                              ).map(([entityCode, entityWorkflows]) => (
+                                <div key={entityCode} className="space-y-2">
+                                  <h5 className="text-sm font-medium text-muted-foreground">{entityCode}</h5>
+                                  <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+                                    {entityWorkflows.map((wf) => (
+                                      <div
+                                        key={wf.code}
+                                        className={`flex items-start space-x-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+                                          field.value?.includes(wf.code)
+                                            ? 'border-primary bg-primary/5'
+                                            : 'border-muted hover:border-primary/50'
+                                        }`}
+                                        onClick={() => {
+                                          const current = field.value || [];
+                                          const updated = current.includes(wf.code)
+                                            ? current.filter((c) => c !== wf.code)
+                                            : [...current, wf.code];
+                                          field.onChange(updated);
+                                        }}
+                                      >
+                                        <Checkbox
+                                          checked={field.value?.includes(wf.code)}
+                                          onCheckedChange={(checked) => {
+                                            const current = field.value || [];
+                                            const updated = checked
+                                              ? [...current, wf.code]
+                                              : current.filter((c) => c !== wf.code);
+                                            field.onChange(updated);
+                                          }}
+                                        />
+                                        <div className="space-y-1">
+                                          <p className="text-sm font-medium leading-none">{wf.name_es}</p>
+                                          {wf.description_es && (
+                                            <p className="text-xs text-muted-foreground line-clamp-2">
+                                              {wf.description_es}
+                                            </p>
+                                          )}
+                                          <div className="flex gap-1">
+                                            {wf.requires_agent_validation && (
+                                              <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+                                                Validation
+                                              </span>
+                                            )}
+                                            {wf.sla_hours && (
+                                              <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                                                SLA: {wf.sla_hours}h
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </>
+                          )}
+                          {field.value && field.value.length > 0 && (
+                            <div className="flex items-center justify-between pt-4 border-t">
+                              <span className="text-sm text-muted-foreground">
+                                {field.value.length} workflow(s) sélectionné(s)
+                              </span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => field.onChange([])}
+                              >
+                                Tout désélectionner
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="flex justify-end gap-3 pt-6">
+                    <Button type="submit" disabled={updateMutation.isPending}>
+                      {updateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Enregistrer les spécialisations
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Workload Tab */}

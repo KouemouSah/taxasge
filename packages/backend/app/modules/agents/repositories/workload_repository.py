@@ -262,12 +262,78 @@ class WorkloadRepository:
         conn: asyncpg.Connection,
         agent_id: int,
     ) -> Optional[Dict[str, Any]]:
-        """Get agent performance stats"""
+        """Get agent performance stats by legacy agent_id (INTEGER)"""
         query = """
             SELECT * FROM agent_performance_stats WHERE agent_id = $1
         """
         result = await conn.fetchrow(query, agent_id)
         return dict(result) if result else None
+
+    async def get_performance_by_profile_id(
+        self,
+        conn: asyncpg.Connection,
+        agent_profile_id: str,
+    ) -> Optional[Dict[str, Any]]:
+        """Get agent performance stats by agent_profile_id (UUID).
+
+        Since agent_performance_stats.agent_id references the legacy ministry_agents table,
+        we need to compute performance from assignments table for the new architecture.
+
+        Returns computed performance metrics based on completed assignments.
+        """
+        query = """
+            WITH assignment_stats AS (
+                SELECT
+                    COUNT(*) FILTER (WHERE status = 'completed') as total_completed,
+                    COUNT(*) FILTER (WHERE status = 'completed' AND validation_status = 'approved') as approved,
+                    COUNT(*) FILTER (WHERE status = 'completed' AND validation_status = 'rejected') as rejected,
+                    COUNT(*) FILTER (WHERE status = 'completed' AND validation_status = 'escalated') as escalated,
+                    COUNT(*) FILTER (WHERE deadline_met = true) as sla_respected,
+                    COUNT(*) FILTER (WHERE deadline_met = false) as sla_missed,
+                    AVG(EXTRACT(EPOCH FROM (completed_at - started_at)) / 60)::numeric as avg_processing_minutes,
+                    MAX(completed_at) as last_action_at
+                FROM assignments a
+                WHERE a.agent_id = (
+                    SELECT user_id::text FROM agent_profiles WHERE id = $1
+                )
+                AND a.created_at >= date_trunc('month', CURRENT_DATE)
+            ),
+            lock_stats AS (
+                SELECT
+                    COUNT(*) FILTER (WHERE locked_by = (SELECT user_id::text FROM agent_profiles WHERE id = $1) AND is_locked = true) as active_locks
+                FROM service_payments
+            )
+            SELECT
+                $1 as agent_profile_id,
+                COALESCE(s.total_completed, 0) as current_month_processed,
+                COALESCE(s.approved, 0) as current_month_approved,
+                COALESCE(s.rejected, 0) as current_month_rejected,
+                COALESCE(s.escalated, 0) as current_month_escalated,
+                ROUND(s.avg_processing_minutes, 2) as avg_processing_minutes,
+                NULL::numeric as avg_lock_duration_minutes,
+                COALESCE(s.sla_respected, 0) as sla_respected_count,
+                COALESCE(s.sla_missed, 0) as sla_missed_count,
+                CASE
+                    WHEN COALESCE(s.sla_respected, 0) + COALESCE(s.sla_missed, 0) > 0
+                    THEN ROUND((s.sla_respected::numeric / (s.sla_respected + s.sla_missed)) * 100, 2)
+                    ELSE NULL
+                END as sla_respect_percentage,
+                COALESCE(l.active_locks, 0)::int as current_active_locks,
+                0 as max_concurrent_locks,
+                s.last_action_at,
+                NULL::timestamp as last_login_at,
+                date_trunc('month', CURRENT_DATE)::date as stats_period_start,
+                NULL::date as stats_period_end,
+                NOW() as updated_at
+            FROM assignment_stats s
+            CROSS JOIN lock_stats l
+        """
+        try:
+            result = await conn.fetchrow(query, agent_profile_id)
+            return dict(result) if result else None
+        except Exception as e:
+            logger.warning(f"Error fetching performance by profile_id {agent_profile_id}: {e}")
+            return None
 
     async def create_performance_stats(
         self,

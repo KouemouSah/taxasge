@@ -34,6 +34,7 @@ import type {
   AgentListFilters,
   AgentListResponse,
   AgentStats,
+  WorkflowOption,
   // Invitation flow types
   AgentInviteRequest,
   AgentInviteResponse,
@@ -324,6 +325,27 @@ export const agentWorkloadApi = {
     const url = `${AGENTS_BASE}/ministries/${ministryId}/workload-rebalancing${queryString ? `?${queryString}` : ''}`;
 
     return fetchClient.get(url);
+  },
+};
+
+// =============================================================================
+// WORKFLOWS API (for specializations)
+// =============================================================================
+
+export const workflowsApi = {
+  /**
+   * Get all available workflows for specializations
+   * BACKEND: GET /api/v1/agents/workflows/available
+   */
+  getAvailable: async (entityId?: string, category?: string): Promise<WorkflowOption[]> => {
+    const params = new URLSearchParams();
+    if (entityId) params.append('entity_id', entityId);
+    if (category) params.append('category', category);
+
+    const queryString = params.toString();
+    const url = `${AGENTS_BASE}/workflows/available${queryString ? `?${queryString}` : ''}`;
+
+    return fetchClient.get<WorkflowOption[]>(url);
   },
 };
 

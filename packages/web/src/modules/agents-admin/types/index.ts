@@ -123,7 +123,10 @@ export interface AgentProfile {
  */
 export interface AgentWorkload {
   id: string;
-  agent_profile_id: string;
+  /** Primary identifier (migration 054+) */
+  agent_profile_id?: string;
+  /** Legacy field (kept for backward compatibility) */
+  agent_id?: string;
   current_assignments: number;
   pending_declarations: number;
   in_progress_declarations: number;
@@ -341,6 +344,32 @@ export interface AgentStats {
   busy: number;
   overloaded: number;
   unavailable: number;
+}
+
+// =============================================================================
+// WORKFLOW TYPES (for specializations)
+// =============================================================================
+
+/**
+ * Workflow available for specialization
+ * BACKEND: AgentWorkflowResponse in profile_routes.py
+ */
+export interface WorkflowOption {
+  code: string;
+  name_es: string;
+  description_es?: string;
+  category: string;
+  entity_code: string;
+  workflow_type: string;
+  requires_agent_validation: boolean;
+  requires_appointment: boolean;
+  is_generic: boolean;
+  sla_hours: number;
+  display_order: number;
+  icon?: string;
+  color?: string;
+  is_active: boolean;
+  source_type: 'predefined' | 'dynamic';
 }
 
 // =============================================================================

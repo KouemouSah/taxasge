@@ -186,6 +186,73 @@ async def get_my_available_workflows(
 
 
 # ============================================================================
+# AVAILABLE WORKFLOWS FOR SPECIALIZATIONS
+# ============================================================================
+
+@router.get("/workflows/available", response_model=List[AgentWorkflowResponse])
+async def list_available_workflows(
+    entity_id: Optional[str] = Query(None, description="Filter by entity"),
+    category: Optional[str] = Query(None, description="Filter by category"),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db = Depends(get_database),
+):
+    """
+    List all available workflows that can be assigned as specializations.
+
+    Returns all active workflows, optionally filtered by entity or category.
+    Used by admin UI to populate the specializations dropdown.
+    """
+    conditions = ["is_active = true"]
+    params = []
+    param_idx = 1
+
+    if entity_id:
+        conditions.append(f"entity_code = (SELECT code FROM entities WHERE id = ${param_idx})")
+        params.append(entity_id)
+        param_idx += 1
+
+    if category:
+        conditions.append(f"category = ${param_idx}")
+        params.append(category)
+        param_idx += 1
+
+    where_clause = " AND ".join(conditions)
+
+    query = f"""
+        SELECT
+            code, name_es, description_es, category, entity_code,
+            workflow_type, requires_agent_validation, requires_appointment,
+            is_generic, sla_hours, display_order, icon, color, is_active
+        FROM workflows
+        WHERE {where_clause}
+        ORDER BY entity_code, category, display_order, name_es
+    """
+
+    rows = await db.fetch(query, *params)
+
+    return [
+        AgentWorkflowResponse(
+            code=row['code'],
+            name_es=row['name_es'],
+            description_es=row['description_es'],
+            category=row['category'],
+            entity_code=row['entity_code'],
+            workflow_type=row['workflow_type'],
+            requires_agent_validation=row['requires_agent_validation'],
+            requires_appointment=row['requires_appointment'],
+            is_generic=row['is_generic'],
+            sla_hours=row['sla_hours'],
+            display_order=row['display_order'] or 0,
+            icon=row['icon'],
+            color=row['color'],
+            is_active=row['is_active'],
+            source_type=WorkflowSourceType.DYNAMIC if row['is_generic'] else WorkflowSourceType.PREDEFINED,
+        )
+        for row in rows
+    ]
+
+
+# ============================================================================
 # CRUD OPERATIONS
 # ============================================================================
 
@@ -704,8 +771,12 @@ async def get_profile_performance(
     current_user: Dict[str, Any] = Depends(get_current_user),
     db = Depends(get_database),
 ):
-    """Get agent performance statistics by profile ID"""
-    # Get profile to find related data
+    """Get agent performance statistics by profile ID.
+
+    Uses the new get_performance_by_profile_id method that computes
+    performance metrics from assignments table for the new architecture.
+    """
+    # Verify profile exists
     profile = await profile_repository.get_by_id(db, UUID(profile_id))
     if not profile:
         raise HTTPException(
@@ -713,20 +784,41 @@ async def get_profile_performance(
             detail="Agent profile not found"
         )
 
-    # Get performance stats using the user_id from profile
-    stats = await workload_repository.get_performance_stats(db, profile['user_id'])
+    # Get computed performance stats using profile_id
+    stats = await workload_repository.get_performance_by_profile_id(db, profile_id)
 
     if not stats:
         # Return empty performance stats if none exist
         return AgentPerformanceStats(
-            agent_id=profile_id,
-            period_start=None,
-            period_end=None,
-            total_assignments=0,
-            completed_assignments=0,
-            avg_processing_time_hours=0.0,
-            on_time_completion_rate=0.0,
-            quality_score_avg=0.0,
+            agent_id=0,  # Legacy field, not used with new architecture
+            ministry_id=profile.get('ministry_id') or 0,
+            current_month_processed=0,
+            current_month_approved=0,
+            current_month_rejected=0,
+            current_month_escalated=0,
+            sla_respected_count=0,
+            sla_missed_count=0,
+            current_active_locks=0,
+            max_concurrent_locks=0,
         )
 
-    return AgentPerformanceStats(**stats)
+    # Map computed stats to AgentPerformanceStats model
+    return AgentPerformanceStats(
+        agent_id=0,  # Legacy field
+        ministry_id=profile.get('ministry_id') or 0,
+        current_month_processed=stats.get('current_month_processed', 0),
+        current_month_approved=stats.get('current_month_approved', 0),
+        current_month_rejected=stats.get('current_month_rejected', 0),
+        current_month_escalated=stats.get('current_month_escalated', 0),
+        avg_processing_minutes=stats.get('avg_processing_minutes'),
+        avg_lock_duration_minutes=stats.get('avg_lock_duration_minutes'),
+        sla_respected_count=stats.get('sla_respected_count', 0),
+        sla_missed_count=stats.get('sla_missed_count', 0),
+        sla_respect_percentage=stats.get('sla_respect_percentage'),
+        current_active_locks=stats.get('current_active_locks', 0),
+        max_concurrent_locks=stats.get('max_concurrent_locks', 0),
+        last_action_at=stats.get('last_action_at'),
+        last_login_at=stats.get('last_login_at'),
+        stats_period_start=stats.get('stats_period_start'),
+        stats_period_end=stats.get('stats_period_end'),
+    )
