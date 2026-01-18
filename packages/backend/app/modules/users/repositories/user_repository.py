@@ -3,6 +3,7 @@ User repository for TaxasGE Backend
 Handles user data persistence with PostgreSQL and Supabase
 """
 
+import json
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 from loguru import logger
@@ -405,33 +406,81 @@ class UserRepository(BaseRepository[UserResponse]):
             )
 
     async def log_user_activity(self, activity: UserActivity) -> bool:
-        """Log user activity
+        """Log user activity to audit_logs table
 
-        Note: user_activities table does not exist in current schema.
-        This function is a no-op until the table is created via migration.
-        Activity logging is handled via audit_logs table instead.
+        Maps UserActivity fields to audit_logs schema:
+        - resource → entity_type (e.g., 'login', 'profile', 'declaration')
+        - user_id as entity_id for user-centric activities
+        - metadata → new_values (jsonb)
         """
-        # TODO: Create user_activities table if activity tracking is needed
-        # For now, log to debug and return success to avoid breaking callers
-        logger.debug(
-            f"Activity logged (no-op): user={activity.user_id}, "
-            f"action={activity.action}, resource={activity.resource}"
-        )
-        return True
+        try:
+            # Parse resource to get entity_type (default to 'user_activity')
+            entity_type = activity.resource or "user_activity"
+            entity_id = activity.user_id
+
+            # Prepare metadata as JSONB
+            metadata_json = json.dumps(activity.metadata) if activity.metadata else None
+
+            query = """
+                INSERT INTO audit_logs
+                (user_id, entity_type, entity_id, action, new_values, ip_address, user_agent, created_at)
+                VALUES ($1, $2, $3, $4, $5::jsonb, $6::inet, $7, $8)
+            """
+            result = await self.db_manager.execute_command(
+                query,
+                activity.user_id,
+                entity_type,
+                entity_id,
+                activity.action,
+                metadata_json,
+                activity.ip_address,
+                activity.user_agent,
+                activity.timestamp
+            )
+            return "INSERT" in result
+
+        except Exception as e:
+            logger.error(f"❌ Error logging user activity to audit_logs: {e}")
+            return False
 
     async def get_user_activities(
         self,
         user_id: str,
         limit: int = 50
     ) -> List[UserActivity]:
-        """Get user activity history
+        """Get user activity history from audit_logs table
 
-        Note: user_activities table does not exist in current schema.
-        Returns empty list until the table is created via migration.
+        Maps audit_logs fields back to UserActivity model:
+        - entity_type → resource
+        - new_values → metadata
+        - created_at → timestamp
         """
-        # TODO: Create user_activities table if activity tracking is needed
-        logger.debug(f"get_user_activities called for user={user_id} (no-op, table doesn't exist)")
-        return []
+        try:
+            query = """
+                SELECT user_id, action, entity_type as resource,
+                       ip_address::text, user_agent, new_values as metadata, created_at as timestamp
+                FROM audit_logs
+                WHERE user_id = $1
+                ORDER BY created_at DESC
+                LIMIT $2
+            """
+            results = await self.db_manager.execute_query(query, user_id, limit)
+            return [
+                UserActivity(
+                    user_id=str(row["user_id"]),
+                    action=row["action"],
+                    resource=row.get("resource"),
+                    ip_address=row.get("ip_address"),
+                    user_agent=row.get("user_agent"),
+                    metadata=row.get("metadata"),
+                    timestamp=row["timestamp"]
+                )
+                for row in results
+            ]
+
+        except Exception as e:
+            logger.error(f"❌ Error getting user activities for {user_id}: {e}")
+            return []
 
     # =========================================================================
     # PASSWORD RESET METHODS (MODULE_02)
