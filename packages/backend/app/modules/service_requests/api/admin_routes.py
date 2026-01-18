@@ -2990,7 +2990,7 @@ async def validate_payment(
             payment_id
         )
         payment_info = await db.fetchrow(
-            "SELECT amount, currency, receipt_number, payment_method FROM service_payments WHERE id = $1",
+            "SELECT total_amount, currency, receipt_number, payment_method FROM service_payments WHERE id = $1",
             payment_id
         )
 
@@ -3005,7 +3005,7 @@ async def validate_payment(
                     "user_phone": user_info["phone_number"],
                     "preferred_language": user_info["preferred_language"] or "es",
                     "request_id": payment["service_request_id"],
-                    "amount": float(payment_info["amount"]) if payment_info["amount"] else None,
+                    "amount": float(payment_info["total_amount"]) if payment_info["total_amount"] else None,
                     "currency": payment_info["currency"] or "XAF",
                     "receipt_number": payment_info["receipt_number"],
                     "payment_method": payment_info["payment_method"],
@@ -3084,7 +3084,7 @@ async def reject_payment(
         user_info = await db.fetchrow(
             """
             SELECT u.id, u.email, u.first_name, u.last_name, u.phone_number, u.preferred_language,
-                   sp.service_request_id, sp.amount, sp.currency, sp.payment_method
+                   sp.service_request_id, sp.total_amount, sp.currency, sp.payment_method
             FROM service_payments sp
             JOIN service_requests sr ON sr.id = sp.service_request_id
             JOIN users u ON u.id = sr.user_id
@@ -3104,7 +3104,7 @@ async def reject_payment(
                     "user_phone": user_info["phone_number"],
                     "preferred_language": user_info["preferred_language"] or "es",
                     "request_id": user_info["service_request_id"],
-                    "amount": float(user_info["amount"]) if user_info["amount"] else None,
+                    "amount": float(user_info["total_amount"]) if user_info["total_amount"] else None,
                     "currency": user_info["currency"] or "XAF",
                     "payment_method": user_info["payment_method"],
                     "reason": body.reason,
