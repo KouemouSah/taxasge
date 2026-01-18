@@ -65,7 +65,7 @@ export function GenericAgentSidebar({
   const router = useRouter();
   const locale = useLocale();
   const t = useTranslations('agent');
-  const tCommon = useTranslations('common');
+  const tDashboard = useTranslations('dashboard');
   const { toast } = useToast();
 
   // State
@@ -122,8 +122,8 @@ export function GenericAgentSidebar({
   const handleLogout = () => {
     clearAuthData();
     toast({
-      title: tCommon('logoutSuccess') || 'Logged out',
-      description: tCommon('logoutMessage') || 'You have been logged out successfully.',
+      title: tDashboard('logoutSuccess') || 'Logged out',
+      description: tDashboard('logoutMessage') || 'You have been logged out successfully.',
     });
     router.push(`/${locale}`);
   };
@@ -247,10 +247,10 @@ export function GenericAgentSidebar({
               : 'text-muted-foreground hover:text-foreground',
             collapsed && 'justify-center px-2'
           )}
-          title={collapsed ? tCommon('profile') : undefined}
+          title={collapsed ? tDashboard('profile') : undefined}
         >
           <User className="h-4 w-4 flex-shrink-0" />
-          {!collapsed && <span>{tCommon('profile')}</span>}
+          {!collapsed && <span>{tDashboard('profile')}</span>}
         </Link>
 
         {/* Settings link */}
@@ -263,10 +263,10 @@ export function GenericAgentSidebar({
               : 'text-muted-foreground hover:text-foreground',
             collapsed && 'justify-center px-2'
           )}
-          title={collapsed ? tCommon('settings') : undefined}
+          title={collapsed ? tDashboard('settings') : undefined}
         >
           <Settings className="h-4 w-4 flex-shrink-0" />
-          {!collapsed && <span>{tCommon('settings')}</span>}
+          {!collapsed && <span>{tDashboard('settings')}</span>}
         </Link>
 
         {/* Logout button */}
@@ -277,10 +277,10 @@ export function GenericAgentSidebar({
             collapsed && 'justify-center px-2'
           )}
           onClick={handleLogout}
-          title={collapsed ? tCommon('logout') : undefined}
+          title={collapsed ? tDashboard('logout') : undefined}
         >
           <LogOut className="h-4 w-4 flex-shrink-0" />
-          {!collapsed && <span className="ml-2">{tCommon('logout')}</span>}
+          {!collapsed && <span className="ml-2">{tDashboard('logout')}</span>}
         </Button>
 
         {/* Version info */}

@@ -8,6 +8,7 @@
 
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocale } from 'next-intl';
 import { getAuthData } from '@/core/auth/storage';
@@ -43,17 +44,42 @@ interface AgentProfileResponse {
 // =============================================================================
 
 export function useAgentProfile() {
-  const authData = getAuthData();
-  const userId = authData?.user?.id;
-  const userRole = authData?.user?.role;
+  // Use state to handle SSR/hydration timing - getAuthData() relies on localStorage
+  const [authState, setAuthState] = useState<{
+    userId: string | null;
+    role: string | null;
+    isLoaded: boolean;
+  }>({
+    userId: null,
+    role: null,
+    isLoaded: false,
+  });
+
+  // Load auth data on client-side only (after hydration)
+  useEffect(() => {
+    const authData = getAuthData();
+    if (authData?.user) {
+      setAuthState({
+        userId: authData.user.id,
+        role: authData.user.role,
+        isLoaded: true,
+      });
+    } else {
+      setAuthState({
+        userId: null,
+        role: null,
+        isLoaded: true,
+      });
+    }
+  }, []);
 
   // Only fetch if user is an agent (new unified role from migration 048)
-  const isAgent = userRole === 'agent';
+  const isAgent = authState.role === 'agent';
 
   return useQuery<AgentProfileResponse | null>({
-    queryKey: ['agent-profile', 'me', userId],
+    queryKey: ['agent-profile', 'me', authState.userId],
     queryFn: async () => {
-      if (!userId || !isAgent) return null;
+      if (!authState.userId || !isAgent) return null;
 
       try {
         const response = await apiClient.get<AgentProfileResponse>(
@@ -65,7 +91,8 @@ export function useAgentProfile() {
         return null;
       }
     },
-    enabled: !!userId && isAgent,
+    // Only enable after auth state is loaded and user is an agent
+    enabled: authState.isLoaded && !!authState.userId && isAgent,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000,
   });
