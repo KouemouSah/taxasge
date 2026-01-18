@@ -4783,6 +4783,43 @@
     }
   },
   "agent": {
+    "dashboard": {
+      "title": "Tableau de Bord Agent",
+      "welcome": "Bienvenue sur le tableau de bord de {name}"
+    },
+    "profile": {
+      "title": "Informations de l'Agent",
+      "entity": "Entité/Ministère",
+      "role": "Rôle",
+      "type": "Type",
+      "supervisor": "Superviseur",
+      "agent": "Agent"
+    },
+    "quickActions": {
+      "pendingTasks": "Tâches en Attente",
+      "pendingTasksDescription": "Voir et gérer les tâches assignées",
+      "viewTasks": "Voir les Tâches",
+      "serviceRequests": "Demandes de Service",
+      "serviceRequestsDescription": "Examiner les demandes entrantes",
+      "viewRequests": "Voir les Demandes",
+      "team": "Équipe",
+      "teamDescription": "Gérer les agents de l'équipe",
+      "viewTeam": "Voir l'Équipe"
+    },
+    "ministryEntities": {
+      "title": "Entités du Ministère",
+      "description": "Accédez aux tableaux de bord des entités sous votre supervision",
+      "viewDashboard": "Voir le tableau de bord"
+    },
+    "errors": {
+      "profileNotFound": "Profil d'agent non trouvé",
+      "profileNotFoundDescription": "Impossible de charger votre profil d'agent. Contactez l'administrateur.",
+      "contactAdmin": "Veuillez contacter l'administrateur du système."
+    },
+    "actions": {
+      "backToLogin": "Retour à la connexion"
+    },
+    "redirecting": "Redirection vers le tableau de bord de {entity}...",
     "entities": {
       "cnedoge": {
         "title": "CNEDOGE"

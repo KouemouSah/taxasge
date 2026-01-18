@@ -4691,6 +4691,43 @@
     }
   },
   "agent": {
+    "dashboard": {
+      "title": "Panel del Agente",
+      "welcome": "Bienvenido al panel de {name}"
+    },
+    "profile": {
+      "title": "Información del Agente",
+      "entity": "Entidad/Ministerio",
+      "role": "Rol",
+      "type": "Tipo",
+      "supervisor": "Supervisor",
+      "agent": "Agente"
+    },
+    "quickActions": {
+      "pendingTasks": "Tareas Pendientes",
+      "pendingTasksDescription": "Ver y gestionar tareas asignadas",
+      "viewTasks": "Ver Tareas",
+      "serviceRequests": "Solicitudes de Servicio",
+      "serviceRequestsDescription": "Revisar solicitudes entrantes",
+      "viewRequests": "Ver Solicitudes",
+      "team": "Equipo",
+      "teamDescription": "Gestionar agentes del equipo",
+      "viewTeam": "Ver Equipo"
+    },
+    "ministryEntities": {
+      "title": "Entidades del Ministerio",
+      "description": "Acceda a los paneles de las entidades bajo su supervisión",
+      "viewDashboard": "Ver panel"
+    },
+    "errors": {
+      "profileNotFound": "Perfil de agente no encontrado",
+      "profileNotFoundDescription": "No se pudo cargar su perfil de agente. Contacte al administrador.",
+      "contactAdmin": "Por favor contacte al administrador del sistema."
+    },
+    "actions": {
+      "backToLogin": "Volver al inicio de sesión"
+    },
+    "redirecting": "Redirigiendo al panel de {entity}...",
     "entities": {
       "cnedoge": {
         "title": "CNEDOGE"

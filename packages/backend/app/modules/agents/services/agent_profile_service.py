@@ -208,28 +208,37 @@ class AgentProfileService:
         profiles, _ = await self.profile_repo.list_agents(conn, filters)
         return profiles
 
-    async def get_dgi_agents(
+    async def get_agents_by_ministry_code(
         self,
         conn: asyncpg.Connection,
+        ministry_code: str,
+        supervisors_only: bool = False,
         active_only: bool = True,
     ) -> List[Dict[str, Any]]:
-        """Get all DGI agents."""
-        filters = AgentListFilters(
-            agent_category="dgi",
-            is_active=active_only,
-            limit=1000,
-        )
-        profiles, _ = await self.profile_repo.list_agents(conn, filters)
-        return profiles
+        """
+        Get all agents for a ministry by its code.
 
-    async def get_treasury_agents(
-        self,
-        conn: asyncpg.Connection,
-        active_only: bool = True,
-    ) -> List[Dict[str, Any]]:
-        """Get all Treasury agents."""
+        Args:
+            conn: Database connection
+            ministry_code: Ministry code (e.g., 'HACIENDA', 'JUSTICIA', 'INTERIOR')
+            supervisors_only: Only return supervisors
+            active_only: Only return active agents
+
+        Returns:
+            List of agent profiles for the specified ministry
+        """
+        # First, get the ministry_id from the ministry_code
+        ministry = await conn.fetchrow(
+            "SELECT id FROM ministries WHERE ministry_code = $1",
+            ministry_code.upper()
+        )
+        if not ministry:
+            logger.warning(f"Ministry with code '{ministry_code}' not found")
+            return []
+
         filters = AgentListFilters(
-            agent_category="treasury",
+            ministry_id=ministry["id"],
+            is_supervisor=True if supervisors_only else None,
             is_active=active_only,
             limit=1000,
         )

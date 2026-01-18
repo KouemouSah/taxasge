@@ -4581,6 +4581,43 @@
     }
   },
   "agent": {
+    "dashboard": {
+      "title": "Agent Dashboard",
+      "welcome": "Welcome to {name} dashboard"
+    },
+    "profile": {
+      "title": "Agent Information",
+      "entity": "Entity/Ministry",
+      "role": "Role",
+      "type": "Type",
+      "supervisor": "Supervisor",
+      "agent": "Agent"
+    },
+    "quickActions": {
+      "pendingTasks": "Pending Tasks",
+      "pendingTasksDescription": "View and manage assigned tasks",
+      "viewTasks": "View Tasks",
+      "serviceRequests": "Service Requests",
+      "serviceRequestsDescription": "Review incoming requests",
+      "viewRequests": "View Requests",
+      "team": "Team",
+      "teamDescription": "Manage team agents",
+      "viewTeam": "View Team"
+    },
+    "ministryEntities": {
+      "title": "Ministry Entities",
+      "description": "Access the dashboards of entities under your supervision",
+      "viewDashboard": "View dashboard"
+    },
+    "errors": {
+      "profileNotFound": "Agent profile not found",
+      "profileNotFoundDescription": "Could not load your agent profile. Please contact the administrator.",
+      "contactAdmin": "Please contact the system administrator."
+    },
+    "actions": {
+      "backToLogin": "Back to login"
+    },
+    "redirecting": "Redirecting to {entity} dashboard...",
     "entities": {
       "cnedoge": {
         "title": "CNEDOGE"
