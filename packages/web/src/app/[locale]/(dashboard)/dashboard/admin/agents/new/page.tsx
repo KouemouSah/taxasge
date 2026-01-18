@@ -173,7 +173,6 @@ export default function CreateAgentPage() {
   });
 
   const watchAgentType = agentForm.watch('agent_type');
-  const watchEntityId = agentForm.watch('entity_id');
   const watchCanApproveUnlimited = agentForm.watch('can_approve_unlimited');
 
   const handleAdminSubmit = async (data: AdminFormData) => {
