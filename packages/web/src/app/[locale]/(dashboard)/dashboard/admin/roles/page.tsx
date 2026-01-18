@@ -79,7 +79,6 @@ import {
   Lock,
   Building2,
   Key,
-  User,
   RefreshCw,
   ChevronRight,
   ChevronLeft,
