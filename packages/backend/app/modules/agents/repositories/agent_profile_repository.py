@@ -102,7 +102,8 @@ class AgentProfileRepository:
             profile.working_days,
             str(profile.assigned_by) if profile.assigned_by else None,
         )
-        return dict(result)
+        data = dict(result)
+        return self._process_jsonb_fields(data)
 
     async def get_by_id(
         self,
@@ -114,7 +115,10 @@ class AgentProfileRepository:
             SELECT * FROM agent_profiles WHERE id = $1
         """
         result = await conn.fetchrow(query, str(profile_id))
-        return dict(result) if result else None
+        if not result:
+            return None
+        data = dict(result)
+        return self._process_jsonb_fields(data)
 
     async def get_by_user_id(
         self,
@@ -131,7 +135,10 @@ class AgentProfileRepository:
             query += " AND is_active = true"
 
         result = await conn.fetchrow(query, str(user_id))
-        return dict(result) if result else None
+        if not result:
+            return None
+        data = dict(result)
+        return self._process_jsonb_fields(data)
 
     async def get_with_details(
         self,
