@@ -188,6 +188,44 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
+# Global exception handlers to ensure CORS headers are set on all error responses
+# Import TreasuryError for specific handling
+try:
+    from app.modules.treasury.errors import TreasuryError
+except ImportError:
+    TreasuryError = None
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Handle uncaught exceptions and return JSON with proper status code."""
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Internal server error",
+            "error_code": "INTERNAL_ERROR",
+            "message_es": "Error interno del servidor. Por favor intente de nuevo."
+        }
+    )
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Handle HTTP exceptions and return JSON response."""
+    # Handle structured detail (dict) vs string detail
+    if isinstance(exc.detail, dict):
+        content = exc.detail
+        if "error_code" not in content:
+            content["error_code"] = f"HTTP_{exc.status_code}"
+    else:
+        content = {
+            "detail": exc.detail,
+            "error_code": f"HTTP_{exc.status_code}"
+        }
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=content
+    )
+
 # Language detection middleware - Detects user language from headers/query
 try:
     from app.modules.translations.middleware.language_middleware import language_middleware

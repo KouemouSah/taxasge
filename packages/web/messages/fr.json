@@ -4305,6 +4305,8 @@
       "transactions": "Historique",
       "audit": "Audit",
       "slaStats": "Statistiques SLA",
+      "anomalies": "Anomalies",
+      "exports": "Exportations",
       "settings": "Parametres",
       "banks": "Banques",
       "paymentMethods": "Modes de Paiement",
