@@ -22,6 +22,44 @@ class AgentProfileRepository:
     """Repository for agent profiles"""
 
     # ========================================================================
+    # HELPER METHODS
+    # ========================================================================
+
+    def _process_jsonb_fields(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Process JSONB and array fields for Pydantic compatibility.
+
+        Converts:
+        - specializations: JSONB → List[str]
+        - working_days: INTEGER[] → List[int]
+        - agent_type: ensure string for enum conversion
+        """
+        # Process specializations JSONB field
+        if 'specializations' in data:
+            specs = data['specializations']
+            if specs is None:
+                data['specializations'] = []
+            elif isinstance(specs, str):
+                data['specializations'] = json.loads(specs)
+            else:
+                data['specializations'] = list(specs) if specs else []
+
+        # Process working_days array field
+        if 'working_days' in data:
+            days = data['working_days']
+            if days is None:
+                data['working_days'] = [1, 2, 3, 4, 5]
+            elif isinstance(days, str):
+                data['working_days'] = json.loads(days)
+            else:
+                data['working_days'] = list(days) if days else [1, 2, 3, 4, 5]
+
+        # Ensure agent_type is a string for enum conversion
+        if 'agent_type' in data and data['agent_type'] is not None:
+            data['agent_type'] = str(data['agent_type'])
+
+        return data
+
+    # ========================================================================
     # CRUD OPERATIONS
     # ========================================================================
 
@@ -177,7 +215,7 @@ class AgentProfileRepository:
         # Convert to dict and process JSONB/array fields
         data = dict(result)
 
-        # Process available_workflows
+        # Process available_workflows (specific to get_with_details)
         workflows_jsonb = data.pop('available_workflows_jsonb', None)
         if workflows_jsonb:
             if isinstance(workflows_jsonb, str):
@@ -189,31 +227,8 @@ class AgentProfileRepository:
         else:
             data['available_workflows'] = []
 
-        # Process specializations JSONB field
-        if 'specializations' in data:
-            specs = data['specializations']
-            if specs is None:
-                data['specializations'] = []
-            elif isinstance(specs, str):
-                data['specializations'] = json.loads(specs)
-            else:
-                data['specializations'] = list(specs) if specs else []
-
-        # Process working_days array field
-        if 'working_days' in data:
-            days = data['working_days']
-            if days is None:
-                data['working_days'] = [1, 2, 3, 4, 5]
-            elif isinstance(days, str):
-                data['working_days'] = json.loads(days)
-            else:
-                data['working_days'] = list(days) if days else [1, 2, 3, 4, 5]
-
-        # Ensure agent_type is a string for enum conversion
-        if 'agent_type' in data and data['agent_type'] is not None:
-            data['agent_type'] = str(data['agent_type'])
-
-        return data
+        # Process common JSONB/array fields
+        return self._process_jsonb_fields(data)
 
     async def update(
         self,
@@ -250,7 +265,12 @@ class AgentProfileRepository:
             RETURNING *
         """
         result = await conn.fetchrow(query, *params)
-        return dict(result) if result else None
+        if not result:
+            return None
+
+        # Convert to dict and process JSONB/array fields
+        data = dict(result)
+        return self._process_jsonb_fields(data)
 
     async def deactivate(
         self,
@@ -395,24 +415,8 @@ class AgentProfileRepository:
         processed_results = []
         for row in results:
             data = dict(row)
-            # Handle specializations JSONB field
-            if 'specializations' in data:
-                specs = data['specializations']
-                if specs is None:
-                    data['specializations'] = []
-                elif isinstance(specs, str):
-                    data['specializations'] = json.loads(specs)
-                elif not isinstance(specs, list):
-                    data['specializations'] = list(specs) if specs else []
-            # Handle working_days array field
-            if 'working_days' in data:
-                days = data['working_days']
-                if days is None:
-                    data['working_days'] = [1, 2, 3, 4, 5]
-                elif isinstance(days, str):
-                    data['working_days'] = json.loads(days)
-                elif not isinstance(days, list):
-                    data['working_days'] = list(days) if days else [1, 2, 3, 4, 5]
+            # Process common JSONB/array fields
+            data = self._process_jsonb_fields(data)
             # Provide default for available_workflows (not returned by this query)
             data['available_workflows'] = []
             processed_results.append(data)
