@@ -4,3 +4,4 @@
  */
 
 export { GenericAgentSidebar, default } from './GenericAgentSidebar';
+export { GenericEntityDashboard } from './GenericEntityDashboard';

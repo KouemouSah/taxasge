@@ -4591,9 +4591,23 @@
       "role": "Role",
       "type": "Type",
       "supervisor": "Supervisor",
-      "agent": "Agent"
+      "agent": "Agent",
+      "supervisorAccess": "Supervisor Access",
+      "supervisorDescription": "You have full access to all dashboard features",
+      "fullAccessMessage": "As a supervisor, you can view and manage all requests and settings."
+    },
+    "stats": {
+      "pending": "Pending",
+      "awaitingReview": "Awaiting review",
+      "inProgress": "In Progress",
+      "beingProcessed": "Currently being processed",
+      "completedToday": "Completed Today",
+      "processedToday": "Processed today",
+      "thisWeek": "This Week",
+      "totalProcessed": "Total processed"
     },
     "quickActions": {
+      "title": "Quick Actions",
       "pendingTasks": "Pending Tasks",
       "pendingTasksDescription": "View and manage assigned tasks",
       "viewTasks": "View Tasks",
@@ -4612,7 +4626,8 @@
     "errors": {
       "profileNotFound": "Agent profile not found",
       "profileNotFoundDescription": "Could not load your agent profile. Please contact the administrator.",
-      "contactAdmin": "Please contact the system administrator."
+      "contactAdmin": "Please contact the system administrator.",
+      "loadingFailed": "Failed to load dashboard. Please refresh the page."
     },
     "actions": {
       "backToLogin": "Back to login"
@@ -4621,6 +4636,12 @@
     "entities": {
       "cnedoge": {
         "title": "CNEDOGE"
+      },
+      "cnedogePasaporte": {
+        "title": "CNEDOGE - Passports"
+      },
+      "cnedogeResidencia": {
+        "title": "CNEDOGE - Residences"
       },
       "dgt": {
         "title": "DG Traffic"

@@ -4701,9 +4701,23 @@
       "role": "Rol",
       "type": "Tipo",
       "supervisor": "Supervisor",
-      "agent": "Agente"
+      "agent": "Agente",
+      "supervisorAccess": "Acceso de Supervisor",
+      "supervisorDescription": "Tiene acceso completo a todas las funcionalidades del panel",
+      "fullAccessMessage": "Como supervisor, puede ver y gestionar todas las solicitudes y configuraciones."
+    },
+    "stats": {
+      "pending": "Pendientes",
+      "awaitingReview": "En espera de revisión",
+      "inProgress": "En Proceso",
+      "beingProcessed": "Actualmente en proceso",
+      "completedToday": "Completadas Hoy",
+      "processedToday": "Procesadas hoy",
+      "thisWeek": "Esta Semana",
+      "totalProcessed": "Total procesadas"
     },
     "quickActions": {
+      "title": "Acciones Rápidas",
       "pendingTasks": "Tareas Pendientes",
       "pendingTasksDescription": "Ver y gestionar tareas asignadas",
       "viewTasks": "Ver Tareas",
@@ -4722,7 +4736,8 @@
     "errors": {
       "profileNotFound": "Perfil de agente no encontrado",
       "profileNotFoundDescription": "No se pudo cargar su perfil de agente. Contacte al administrador.",
-      "contactAdmin": "Por favor contacte al administrador del sistema."
+      "contactAdmin": "Por favor contacte al administrador del sistema.",
+      "loadingFailed": "Error al cargar el panel. Por favor refresque la página."
     },
     "actions": {
       "backToLogin": "Volver al inicio de sesión"

@@ -4793,9 +4793,23 @@
       "role": "Rôle",
       "type": "Type",
       "supervisor": "Superviseur",
-      "agent": "Agent"
+      "agent": "Agent",
+      "supervisorAccess": "Accès Superviseur",
+      "supervisorDescription": "Vous avez un accès complet à toutes les fonctionnalités du tableau de bord",
+      "fullAccessMessage": "En tant que superviseur, vous pouvez voir et gérer toutes les demandes et configurations."
+    },
+    "stats": {
+      "pending": "En Attente",
+      "awaitingReview": "En attente de révision",
+      "inProgress": "En Cours",
+      "beingProcessed": "Actuellement en traitement",
+      "completedToday": "Terminées Aujourd'hui",
+      "processedToday": "Traitées aujourd'hui",
+      "thisWeek": "Cette Semaine",
+      "totalProcessed": "Total traité"
     },
     "quickActions": {
+      "title": "Actions Rapides",
       "pendingTasks": "Tâches en Attente",
       "pendingTasksDescription": "Voir et gérer les tâches assignées",
       "viewTasks": "Voir les Tâches",
@@ -4814,7 +4828,8 @@
     "errors": {
       "profileNotFound": "Profil d'agent non trouvé",
       "profileNotFoundDescription": "Impossible de charger votre profil d'agent. Contactez l'administrateur.",
-      "contactAdmin": "Veuillez contacter l'administrateur du système."
+      "contactAdmin": "Veuillez contacter l'administrateur du système.",
+      "loadingFailed": "Erreur lors du chargement du tableau de bord. Veuillez rafraîchir la page."
     },
     "actions": {
       "backToLogin": "Retour à la connexion"
@@ -4824,8 +4839,14 @@
       "cnedoge": {
         "title": "CNEDOGE"
       },
+      "cnedogePasaporte": {
+        "title": "CNEDOGE - Passeports"
+      },
+      "cnedogeResidencia": {
+        "title": "CNEDOGE - Résidences"
+      },
       "dgt": {
-        "title": "DG Tráfico"
+        "title": "DG Trafic"
       },
       "onrc": {
         "title": "ONRC"

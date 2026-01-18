@@ -61,4 +61,4 @@ export {
 } from './hooks';
 
 // Components
-export { GenericAgentSidebar } from './components';
+export { GenericAgentSidebar, GenericEntityDashboard } from './components';
