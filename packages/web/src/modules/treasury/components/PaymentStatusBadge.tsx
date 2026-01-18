@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import type { PaymentStatus, PaymentWorkflowStatus } from '../types';
 
 interface PaymentStatusBadgeProps {
-  status: PaymentStatus;
+  status: PaymentStatus | string | undefined;
   className?: string;
 }
 
@@ -26,7 +26,10 @@ const statusConfig: Record<
 };
 
 export function PaymentStatusBadge({ status, className }: PaymentStatusBadgeProps) {
-  const config = statusConfig[status] || { label: status, variant: 'secondary' as const };
+  if (!status) {
+    return <Badge variant="secondary" className={className}>-</Badge>;
+  }
+  const config = statusConfig[status as PaymentStatus] || { label: status, variant: 'secondary' as const };
 
   return (
     <Badge variant={config.variant} className={className}>
@@ -37,7 +40,7 @@ export function PaymentStatusBadge({ status, className }: PaymentStatusBadgeProp
 
 // Workflow status badge
 interface WorkflowStatusBadgeProps {
-  status: PaymentWorkflowStatus;
+  status: PaymentWorkflowStatus | string;
   className?: string;
 }
 
@@ -64,7 +67,7 @@ const workflowStatusConfig: Record<
 };
 
 export function WorkflowStatusBadge({ status, className }: WorkflowStatusBadgeProps) {
-  const config = workflowStatusConfig[status] || { label: status, color: 'bg-gray-500' };
+  const config = workflowStatusConfig[status as PaymentWorkflowStatus] || { label: status, color: 'bg-gray-500' };
 
   return (
     <span

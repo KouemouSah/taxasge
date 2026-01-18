@@ -419,10 +419,10 @@ export interface SLAStats {
  */
 export function calculateSLAStatus(
   slaTargetDate: string | undefined | null,
-  workflowStatus: PaymentWorkflowStatus
+  workflowStatus: PaymentWorkflowStatus | string
 ): SLAStatus | 'completed' {
   // Completed statuses
-  const completedStatuses: PaymentWorkflowStatus[] = [
+  const completedStatuses: string[] = [
     'completed',
     'cancelled_by_user',
     'cancelled_by_agent',

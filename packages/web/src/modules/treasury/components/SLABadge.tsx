@@ -18,7 +18,7 @@ import { calculateSLAStatus } from '../types';
 
 interface SLABadgeProps {
   slaTargetDate?: string | null;
-  workflowStatus?: PaymentWorkflowStatus;
+  workflowStatus?: PaymentWorkflowStatus | string;
   status?: SLAStatus | 'completed';
   showCountdown?: boolean;
   className?: string;
