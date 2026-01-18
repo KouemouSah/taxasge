@@ -55,7 +55,7 @@ export default function TreasuryDashboardPage() {
         <Card className="border-red-200 bg-red-50">
           <CardContent className="flex items-center gap-3 py-4">
             <AlertCircle className="h-5 w-5 text-red-500" />
-            <p className="text-red-700">Error al cargar estadisticas</p>
+            <p className="text-red-700">{t('errors.loadingStats')}</p>
           </CardContent>
         </Card>
       )}
@@ -79,7 +79,7 @@ export default function TreasuryDashboardPage() {
                   {stats?.pendingValidationCount ?? 0}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Pagos en espera de revision
+                  {t('stats.pendingDescription')}
                 </p>
               </>
             )}
@@ -103,7 +103,7 @@ export default function TreasuryDashboardPage() {
                   {stats?.unreconciledCount ?? 0}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Transacciones sin reconciliar
+                  {t('stats.unreconciledDescription')}
                 </p>
               </>
             )}
@@ -127,7 +127,7 @@ export default function TreasuryDashboardPage() {
                   {stats?.todayValidatedCount ?? 0}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Pagos validados hoy
+                  {t('stats.todayValidatedDescription')}
                 </p>
               </>
             )}
@@ -151,7 +151,7 @@ export default function TreasuryDashboardPage() {
                   {formatCurrency(stats?.todayValidatedAmount ?? 0)}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Monto validado hoy
+                  {t('stats.todayAmountDescription')}
                 </p>
               </>
             )}
@@ -169,13 +169,13 @@ export default function TreasuryDashboardPage() {
               {t('nav.validation')}
             </CardTitle>
             <CardDescription>
-              Validar pagos en efectivo y cheque pendientes de revision
+              {t('validation.description')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Link href={`/${locale}/dashboard/agent/treasury/validation`}>
               <Button className="w-full">
-                Ir a Validacion
+                {t('actions.goToValidation')}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
@@ -190,13 +190,13 @@ export default function TreasuryDashboardPage() {
               {t('nav.reconciliation')}
             </CardTitle>
             <CardDescription>
-              Reconciliar transacciones bancarias con pagos del sistema
+              {t('reconciliation.description')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Link href={`/${locale}/dashboard/agent/treasury/reconciliation`}>
               <Button variant="outline" className="w-full">
-                Ir a Reconciliacion
+                {t('actions.goToReconciliation')}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
@@ -211,13 +211,13 @@ export default function TreasuryDashboardPage() {
               {t('nav.transactions')}
             </CardTitle>
             <CardDescription>
-              Ver historial completo de pagos y transacciones
+              {t('transactions.description')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Link href={`/${locale}/dashboard/agent/treasury/transactions`}>
               <Button variant="outline" className="w-full">
-                Ver Historial
+                {t('actions.viewHistory')}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
@@ -238,7 +238,7 @@ export default function TreasuryDashboardPage() {
           <CardContent>
             <Link href={`/${locale}/dashboard/agent/treasury/audit`}>
               <Button variant="outline" className="w-full">
-                Ver Auditoria
+                {t('actions.viewAudit')}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
@@ -259,7 +259,7 @@ export default function TreasuryDashboardPage() {
           <CardContent>
             <Link href={`/${locale}/dashboard/agent/treasury/stats/sla`}>
               <Button variant="outline" className="w-full">
-                Ver Estadisticas
+                {t('actions.viewStats')}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
@@ -280,7 +280,7 @@ export default function TreasuryDashboardPage() {
           <CardContent>
             <Link href={`/${locale}/dashboard/agent/treasury/anomalies`}>
               <Button variant="outline" className="w-full">
-                Ver Anomalias
+                {t('actions.viewAnomalies')}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
@@ -301,7 +301,7 @@ export default function TreasuryDashboardPage() {
           <CardContent>
             <Link href={`/${locale}/dashboard/agent/treasury/exports`}>
               <Button variant="outline" className="w-full">
-                Ver Exportaciones
+                {t('actions.viewExports')}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
@@ -322,7 +322,7 @@ export default function TreasuryDashboardPage() {
           <CardContent>
             <Link href={`/${locale}/dashboard/agent/treasury/stats`}>
               <Button variant="outline" className="w-full">
-                Ver KPIs
+                {t('actions.viewKPIs')}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
@@ -343,7 +343,7 @@ export default function TreasuryDashboardPage() {
           <CardContent>
             <Link href={`/${locale}/dashboard/agent/treasury/analytics`}>
               <Button variant="outline" className="w-full">
-                Ver Analisis
+                {t('actions.viewAnalytics')}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>

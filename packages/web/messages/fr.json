@@ -4311,9 +4311,27 @@
     },
     "stats": {
       "pendingValidation": "En Attente Validation",
+      "pendingDescription": "Paiements en attente de revision",
       "unreconciled": "Non Reconcilies",
+      "unreconciledDescription": "Transactions non reconciliees",
       "todayValidated": "Valides Aujourd hui",
-      "todayAmount": "Montant Aujourd hui"
+      "todayValidatedDescription": "Paiements valides aujourd hui",
+      "todayAmount": "Montant Aujourd hui",
+      "todayAmountDescription": "Montant valide aujourd hui"
+    },
+    "errors": {
+      "loadingStats": "Erreur lors du chargement des statistiques"
+    },
+    "actions": {
+      "goToValidation": "Aller a la Validation",
+      "goToReconciliation": "Aller a la Reconciliation",
+      "viewHistory": "Voir Historique",
+      "viewAudit": "Voir Audit",
+      "viewStats": "Voir Statistiques",
+      "viewAnomalies": "Voir Anomalies",
+      "viewExports": "Voir Exportations",
+      "viewKPIs": "Voir KPIs",
+      "viewAnalytics": "Voir Analyse"
     },
     "validation": {
       "title": "Validation des Paiements",
@@ -4830,6 +4848,15 @@
       "profileNotFoundDescription": "Impossible de charger votre profil d'agent. Contactez l'administrateur.",
       "contactAdmin": "Veuillez contacter l'administrateur du système.",
       "loadingFailed": "Erreur lors du chargement du tableau de bord. Veuillez rafraîchir la page."
+    },
+    "accessDenied": {
+      "title": "Accès Refusé",
+      "description": "Vous n'avez pas la permission d'accéder à ce tableau de bord.",
+      "requestedEntity": "Entité demandée",
+      "yourEntity": "Votre entité",
+      "allowedEntities": "Entités autorisées",
+      "helpText": "Si vous pensez qu'il s'agit d'une erreur, contactez l'administrateur système.",
+      "goToMyDashboard": "Aller à Mon Tableau de Bord"
     },
     "actions": {
       "backToLogin": "Retour à la connexion"

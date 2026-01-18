@@ -138,6 +138,18 @@ export function isMenuGroup(item: MenuItem): item is MenuGroup {
 // =============================================================================
 
 /**
+ * Menu source determines how menu permissions are resolved:
+ * - 'workflow': Entity uses service_requests with workflow_code filtering
+ * - 'module': Entity uses a dedicated module (treasury, declarations) without workflows
+ */
+export type MenuSource = 'workflow' | 'module';
+
+/**
+ * Data source for entity dashboard queries
+ */
+export type DataSource = 'service_requests' | 'service_payments' | 'tax_declarations';
+
+/**
  * Configuration for an entity's agent dashboard
  */
 export interface EntityDashboardConfig {
@@ -148,6 +160,29 @@ export interface EntityDashboardConfig {
   menuItems: MenuItem[];
   workflows: WorkflowCode[];  // All workflows handled by this entity
   description?: string;
+
+  /**
+   * Menu source type - determines permission resolution strategy
+   * - 'workflow': Uses service_requests.read, service_requests.validate, etc.
+   * - 'module': Uses module-specific permissions (e.g., treasury.validate_payment)
+   * @default 'workflow'
+   */
+  menuSource?: MenuSource;
+
+  /**
+   * Permission prefix for module-based entities
+   * Used when menuSource is 'module' to construct full permission names
+   * Example: 'treasury' → permissions like 'treasury.validate_payment'
+   */
+  modulePermissionPrefix?: string;
+
+  /**
+   * Data source table for dashboard queries
+   * - 'service_requests': Standard workflow entities (CNEDOGE, DGT, etc.)
+   * - 'service_payments': Treasury entity
+   * - 'tax_declarations': DGI entity
+   */
+  dataSource?: DataSource;
 }
 
 // =============================================================================

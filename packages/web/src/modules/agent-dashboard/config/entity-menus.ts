@@ -589,6 +589,7 @@ export const MINFP_CONFIG: EntityDashboardConfig = {
 // =============================================================================
 // TESORO - Treasury (Agent de Trésorerie)
 // Handles: Payment validation, reconciliation
+// Module-based entity (no workflows, uses treasury module directly)
 // =============================================================================
 
 export const TESORO_CONFIG: EntityDashboardConfig = {
@@ -597,6 +598,12 @@ export const TESORO_CONFIG: EntityDashboardConfig = {
   icon: Wallet,
   basePath: '/dashboard/agent/treasury',
   workflows: [],  // Treasury handles all payment validation, not specific workflows
+
+  // Module-based configuration
+  menuSource: 'module',
+  modulePermissionPrefix: 'treasury',
+  dataSource: 'service_payments',
+
   menuItems: [
     {
       id: 'dashboard',
@@ -614,21 +621,21 @@ export const TESORO_CONFIG: EntityDashboardConfig = {
           titleKey: 'agent.nav.validation',
           href: '/dashboard/agent/treasury/validation',
           icon: CheckCircle,
-          permission: 'payments.validate',
+          permission: 'treasury.validate_payment',  // Aligned with backend
         },
         {
           id: 'reconciliation',
           titleKey: 'agent.nav.reconciliation',
           href: '/dashboard/agent/treasury/reconciliation',
           icon: RefreshCw,
-          permission: 'payments.reconcile',
+          permission: 'treasury.reconcile',  // Aligned with backend
         },
         {
           id: 'transactions',
           titleKey: 'agent.nav.transactions',
           href: '/dashboard/agent/treasury/transactions',
           icon: History,
-          permission: 'payments.read',
+          permission: 'treasury.view_payment',  // Aligned with backend
         },
       ],
     },
@@ -642,42 +649,42 @@ export const TESORO_CONFIG: EntityDashboardConfig = {
           titleKey: 'agent.nav.stats',
           href: '/dashboard/agent/treasury/stats',
           icon: TrendingUp,
-          permission: 'reports.read',
+          permission: 'treasury_stat.view',  // Aligned with backend
         },
         {
           id: 'analytics',
           titleKey: 'agent.nav.analytics',
           href: '/dashboard/agent/treasury/analytics',
           icon: Activity,
-          permission: 'reports.read',
+          permission: 'treasury_stat.view',  // Aligned with backend
         },
         {
           id: 'audit',
           titleKey: 'agent.nav.audit',
           href: '/dashboard/agent/treasury/audit',
           icon: FileSearch,
-          permission: 'audit.read',
+          permission: 'treasury_audit.view',  // Aligned with backend
         },
         {
           id: 'sla',
           titleKey: 'agent.nav.slaStats',
           href: '/dashboard/agent/treasury/stats/sla',
           icon: BarChart3,
-          permission: 'reports.read',
+          permission: 'treasury_stat.view',  // Aligned with backend
         },
         {
           id: 'anomalies',
           titleKey: 'agent.nav.anomalies',
           href: '/dashboard/agent/treasury/anomalies',
           icon: ShieldAlert,
-          permission: 'anomalies.read',
+          permission: 'treasury_anomaly.view',  // Aligned with backend
         },
         {
           id: 'exports',
           titleKey: 'agent.nav.exports',
           href: '/dashboard/agent/treasury/exports',
           icon: FileSpreadsheet,
-          permission: 'exports.create',
+          permission: 'treasury_export.view',  // Aligned with backend
         },
       ],
     },
@@ -691,17 +698,17 @@ export const TESORO_CONFIG: EntityDashboardConfig = {
           titleKey: 'agent.nav.banks',
           href: '/dashboard/agent/treasury/settings/banks',
           icon: Building2,
-          permission: 'banks.manage',
+          permission: 'treasury.manage_settings',  // New permission - supervisor only
         },
         {
           id: 'payment-methods',
           titleKey: 'agent.nav.paymentMethods',
           href: '/dashboard/agent/treasury/settings/payment-methods',
           icon: Banknote,
-          permission: 'payment_methods.manage',
+          permission: 'treasury.manage_settings',  // New permission - supervisor only
         },
       ],
-      permission: 'settings.manage',
+      permission: 'treasury.manage_settings',  // Group-level permission
     },
   ],
 };

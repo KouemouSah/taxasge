@@ -4219,9 +4219,27 @@
     },
     "stats": {
       "pendingValidation": "Pendientes Validacion",
+      "pendingDescription": "Pagos en espera de revision",
       "unreconciled": "Sin Reconciliar",
+      "unreconciledDescription": "Transacciones sin reconciliar",
       "todayValidated": "Validados Hoy",
-      "todayAmount": "Monto Hoy"
+      "todayValidatedDescription": "Pagos validados hoy",
+      "todayAmount": "Monto Hoy",
+      "todayAmountDescription": "Monto validado hoy"
+    },
+    "errors": {
+      "loadingStats": "Error al cargar estadisticas"
+    },
+    "actions": {
+      "goToValidation": "Ir a Validacion",
+      "goToReconciliation": "Ir a Reconciliacion",
+      "viewHistory": "Ver Historial",
+      "viewAudit": "Ver Auditoria",
+      "viewStats": "Ver Estadisticas",
+      "viewAnomalies": "Ver Anomalias",
+      "viewExports": "Ver Exportaciones",
+      "viewKPIs": "Ver KPIs",
+      "viewAnalytics": "Ver Analisis"
     },
     "validation": {
       "title": "Validacion de Pagos",
@@ -4738,6 +4756,15 @@
       "profileNotFoundDescription": "No se pudo cargar su perfil de agente. Contacte al administrador.",
       "contactAdmin": "Por favor contacte al administrador del sistema.",
       "loadingFailed": "Error al cargar el panel. Por favor refresque la página."
+    },
+    "accessDenied": {
+      "title": "Acceso Denegado",
+      "description": "No tiene permiso para acceder a este panel de entidad.",
+      "requestedEntity": "Entidad solicitada",
+      "yourEntity": "Su entidad",
+      "allowedEntities": "Entidades permitidas",
+      "helpText": "Si cree que esto es un error, contacte al administrador del sistema.",
+      "goToMyDashboard": "Ir a Mi Panel"
     },
     "actions": {
       "backToLogin": "Volver al inicio de sesión"

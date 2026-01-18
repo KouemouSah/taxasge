@@ -3,7 +3,9 @@
  * Reusable dashboard for any entity type
  *
  * @module agent-dashboard/components
- * @date 2025-01-18
+ * @date 2026-01-18
+ *
+ * Security: Includes entity access verification to prevent unauthorized access
  */
 
 'use client';
@@ -26,7 +28,8 @@ import {
   BarChart3,
   ClipboardList,
 } from 'lucide-react';
-import { useAgentDashboard } from '../hooks';
+import { useAgentDashboard, useEntityAccess } from '../hooks';
+import { AccessDenied } from './AccessDenied';
 import type { EntityCode, MenuItem, MenuGroup } from '../types';
 import { isMenuGroup } from '../types';
 
@@ -73,8 +76,16 @@ export function GenericEntityDashboard({
   const tCommon = useTranslations('common');
   const locale = useLocale();
 
+  // Entity access verification (security check)
   const {
-    isLoading,
+    hasAccess,
+    isLoading: accessLoading,
+    agentEntityCode,
+    allowedEntities,
+  } = useEntityAccess(entityCode);
+
+  const {
+    isLoading: dashboardLoading,
     isError,
     error,
     context,
@@ -83,6 +94,8 @@ export function GenericEntityDashboard({
   } = useAgentDashboard();
 
   const { isLoading: statsLoading, stats } = useEntityStats(entityCode);
+
+  const isLoading = accessLoading || dashboardLoading;
 
   // Loading state
   if (isLoading) {
@@ -105,6 +118,18 @@ export function GenericEntityDashboard({
           ))}
         </div>
       </div>
+    );
+  }
+
+  // Access denied state (security check)
+  if (!hasAccess) {
+    return (
+      <AccessDenied
+        requestedEntity={entityCode}
+        userEntity={agentEntityCode}
+        allowedEntities={allowedEntities}
+        className={className}
+      />
     );
   }
 

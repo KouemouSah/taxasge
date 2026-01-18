@@ -4109,9 +4109,27 @@
     },
     "stats": {
       "pendingValidation": "Pending Validation",
+      "pendingDescription": "Payments awaiting review",
       "unreconciled": "Unreconciled",
+      "unreconciledDescription": "Unreconciled transactions",
       "todayValidated": "Validated Today",
-      "todayAmount": "Today Amount"
+      "todayValidatedDescription": "Payments validated today",
+      "todayAmount": "Today Amount",
+      "todayAmountDescription": "Amount validated today"
+    },
+    "errors": {
+      "loadingStats": "Error loading statistics"
+    },
+    "actions": {
+      "goToValidation": "Go to Validation",
+      "goToReconciliation": "Go to Reconciliation",
+      "viewHistory": "View History",
+      "viewAudit": "View Audit",
+      "viewStats": "View Statistics",
+      "viewAnomalies": "View Anomalies",
+      "viewExports": "View Exports",
+      "viewKPIs": "View KPIs",
+      "viewAnalytics": "View Analytics"
     },
     "validation": {
       "title": "Payment Validation",
@@ -4628,6 +4646,15 @@
       "profileNotFoundDescription": "Could not load your agent profile. Please contact the administrator.",
       "contactAdmin": "Please contact the system administrator.",
       "loadingFailed": "Failed to load dashboard. Please refresh the page."
+    },
+    "accessDenied": {
+      "title": "Access Denied",
+      "description": "You do not have permission to access this entity dashboard.",
+      "requestedEntity": "Requested entity",
+      "yourEntity": "Your entity",
+      "allowedEntities": "Allowed entities",
+      "helpText": "If you believe this is an error, please contact the system administrator.",
+      "goToMyDashboard": "Go to My Dashboard"
     },
     "actions": {
       "backToLogin": "Back to login"
