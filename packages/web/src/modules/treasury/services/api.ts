@@ -147,11 +147,15 @@ export const treasuryApi = {
       limit: params.pageSize || 20,
     };
 
-    if (params.paymentMethod) {
-      queryParams.payment_method = params.paymentMethod;
+    // Support both canonical names and aliases
+    const paymentMethod = params.paymentMethod || params.method;
+    const workflowStatus = params.workflowStatus || params.status;
+
+    if (paymentMethod) {
+      queryParams.payment_method = paymentMethod;
     }
-    if (params.workflowStatus) {
-      queryParams.workflow_status = params.workflowStatus;
+    if (workflowStatus) {
+      queryParams.workflow_status = workflowStatus;
     }
 
     const response = await fetchClient.get<Record<string, unknown>>(

@@ -21,7 +21,7 @@ import { PENDING_PAYMENTS_QUERY_KEY } from './usePendingPayments';
 export function usePaymentActions() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const t = useTranslations('treasury.errors');
+  const tTreasury = useTranslations('treasury');
   const tCommon = useTranslations('common');
 
   const invalidatePayments = () => {
@@ -36,16 +36,16 @@ export function usePaymentActions() {
     if (errorCode) {
       // Try to get translation for this error code
       try {
-        return t(errorCode);
+        return tTreasury(`errors.${errorCode}`);
       } catch {
         // Fall through to fallback
       }
     }
     // Use fallback translation key
     try {
-      return t(fallbackKey);
+      return tTreasury(`errors.${fallbackKey}`);
     } catch {
-      return t('generic');
+      return tTreasury('errors.generic');
     }
   };
 
