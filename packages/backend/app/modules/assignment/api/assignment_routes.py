@@ -7,7 +7,7 @@ Date: 2025-11-16
 Version: 1.0 - Initial implementation
 """
 
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field
@@ -60,6 +60,54 @@ router = APIRouter(prefix="/api/v1/assignments", tags=["assignments"])
 
 
 # ============================================================================
+# AGENT CONTEXT HELPER (Migration 048 - Unified agent role)
+# ============================================================================
+
+async def get_agent_context(user_id: str, db) -> Dict[str, Any]:
+    """
+    Get agent context from agent_profiles table.
+
+    Returns:
+        dict with keys:
+        - is_supervisor: bool
+        - agent_type: 'ministry_agent' or 'entity_agent'
+        - ministry_id: int or None
+        - entity_id: UUID or None
+        - entity_type: 'ministry' or 'entity' (derived from agent_type)
+    """
+    query = """
+        SELECT
+            ap.is_supervisor,
+            ap.agent_type,
+            ap.ministry_id,
+            ap.entity_id
+        FROM agent_profiles ap
+        WHERE ap.user_id = $1 AND ap.is_active = true
+    """
+    result = await db.fetchrow(query, user_id)
+
+    if not result:
+        return {
+            "is_supervisor": False,
+            "agent_type": None,
+            "ministry_id": None,
+            "entity_id": None,
+            "entity_type": None,
+        }
+
+    agent_type = result.get("agent_type")
+    entity_type = "ministry" if agent_type == "ministry_agent" else "entity"
+
+    return {
+        "is_supervisor": result.get("is_supervisor", False),
+        "agent_type": agent_type,
+        "ministry_id": result.get("ministry_id"),
+        "entity_id": result.get("entity_id"),
+        "entity_type": entity_type,
+    }
+
+
+# ============================================================================
 # REQUEST/RESPONSE SCHEMAS
 # ============================================================================
 
@@ -78,7 +126,7 @@ class AutoAssignmentRequest(BaseModel):
     declaration_id: UUID
     declaration_type: str = Field(..., description="tax_declaration or fiscal_service")
     declaration_data: dict = Field(..., description="Declaration data for rule evaluation")
-    entity_type: str = Field(default="DGI", pattern="^(DGI|Ministry)$")
+    entity_type: str = Field(default="ministry", pattern="^(ministry|entity)$")
     entity_id: Optional[str] = None
 
 
@@ -287,9 +335,13 @@ async def get_assignment(
             detail=f"Assignment {assignment_id} not found"
         )
 
-    # Authorization check
+    # Authorization check (Migration 048: uses agent_profiles for supervisor check)
     is_assigned_agent = str(assignment.agent_id) == current_user.id
-    is_supervisor = current_user.role in ["supervisor_dgi", "supervisor_ministry", "admin"]
+    is_admin = current_user.role == "admin"
+
+    # Check if user is a supervisor via agent_profiles
+    agent_ctx = await get_agent_context(current_user.id, db) if not is_admin else {}
+    is_supervisor = is_admin or agent_ctx.get("is_supervisor", False)
 
     if not (is_assigned_agent or is_supervisor):
         raise HTTPException(
@@ -327,12 +379,20 @@ async def list_assignments(
     - declaration_id: Get assignment for specific declaration
     - limit: Max results (default 50, max 200)
     - offset: Pagination offset
+
+    Migration 048: Uses unified 'agent' role with agent_profiles for authorization
     """
 
     repo = get_assignment_repository(db)
 
-    # If agent, force filter to own assignments
-    if current_user.role in ["dgi_agent", "ministry_agent"]:
+    # Get agent context for authorization (Migration 048)
+    is_admin = current_user.role == "admin"
+    agent_ctx = await get_agent_context(current_user.id, db) if not is_admin else {}
+    is_supervisor = is_admin or agent_ctx.get("is_supervisor", False)
+    is_agent = current_user.role == "agent" and not is_supervisor
+
+    # If regular agent (not supervisor), force filter to own assignments
+    if is_agent:
         agent_id = UUID(current_user.id)
 
     try:
@@ -348,7 +408,7 @@ async def list_assignments(
 
         elif status_filter:
             # Get by status (supervisor/admin only)
-            if current_user.role not in ["supervisor_dgi", "supervisor_ministry", "admin"]:
+            if not is_supervisor:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Only supervisors can list all assignments by status"
@@ -361,7 +421,7 @@ async def list_assignments(
 
         else:
             # Get all (supervisor/admin only)
-            if current_user.role not in ["supervisor_dgi", "supervisor_ministry", "admin"]:
+            if not is_supervisor:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Only supervisors can list all assignments"

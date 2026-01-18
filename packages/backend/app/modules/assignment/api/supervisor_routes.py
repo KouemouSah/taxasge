@@ -56,6 +56,60 @@ router = APIRouter(prefix="/api/v1/supervisor", tags=["supervisor"])
 
 
 # ============================================================================
+# AGENT CONTEXT HELPER (Migration 048 - Unified agent role)
+# ============================================================================
+
+async def get_agent_context(user_id: str, db) -> Dict[str, Any]:
+    """
+    Get agent context from agent_profiles table.
+
+    Returns:
+        dict with keys:
+        - is_supervisor: bool
+        - agent_type: 'ministry_agent' or 'entity_agent'
+        - ministry_id: int or None (for ministry_agent)
+        - entity_id: UUID or None (for entity_agent)
+        - entity_type: 'ministry' or 'entity' (derived from agent_type)
+        - ministry_code: str or None (e.g., 'DGI', 'TREASURY')
+    """
+    query = """
+        SELECT
+            ap.is_supervisor,
+            ap.agent_type,
+            ap.ministry_id,
+            ap.entity_id,
+            m.ministry_code
+        FROM agent_profiles ap
+        LEFT JOIN ministries m ON ap.ministry_id = m.id
+        WHERE ap.user_id = $1 AND ap.is_active = true
+    """
+    result = await db.fetchrow(query, user_id)
+
+    if not result:
+        return {
+            "is_supervisor": False,
+            "agent_type": None,
+            "ministry_id": None,
+            "entity_id": None,
+            "entity_type": None,
+            "ministry_code": None,
+        }
+
+    # entity_type is derived directly from agent_type
+    agent_type = result.get("agent_type")
+    entity_type = "ministry" if agent_type == "ministry_agent" else "entity"
+
+    return {
+        "is_supervisor": result.get("is_supervisor", False),
+        "agent_type": agent_type,
+        "ministry_id": result.get("ministry_id"),
+        "entity_id": result.get("entity_id"),
+        "entity_type": entity_type,
+        "ministry_code": result.get("ministry_code"),
+    }
+
+
+# ============================================================================
 # REQUEST/RESPONSE SCHEMAS
 # ============================================================================
 
@@ -107,16 +161,7 @@ class WorkloadBalanceResponse(BaseModel):
 # AUTHORIZATION HELPERS
 # ============================================================================
 # Note: Authorization is now handled via @require_permission decorators
-# Legacy check_supervisor_permission function has been removed (replaced by RBAC system)
-
-def get_entity_context(current_user: UserResponse) -> tuple[str, Optional[str]]:
-    """Get entity type and ID based on supervisor role"""
-    if current_user.role == "supervisor_dgi":
-        return ("DGI", current_user.department_id)
-    elif current_user.role == "supervisor_ministry":
-        return ("Ministry", current_user.ministry_id)
-    else:  # admin
-        return ("DGI", None)  # Admin sees all by default
+# and agent context from agent_profiles table
 
 
 # ============================================================================
@@ -147,9 +192,16 @@ async def get_dashboard(
     - Scoped to supervisor's entity (department or ministry)
     - Real-time from PostgreSQL views
     - Cached for 30 seconds for performance
+
+    Migration 048: Uses agent_profiles for context instead of deprecated roles
     """
 
-    entity_type, entity_id = get_entity_context(current_user)
+    # Get agent context from agent_profiles
+    # Admin sees all (no filtering by ministry/entity)
+    if current_user.role == "admin":
+        agent_ctx = {"entity_type": None, "ministry_id": None, "entity_id": None, "is_supervisor": True}
+    else:
+        agent_ctx = await get_agent_context(current_user.id, db)
 
     assignment_repo = get_assignment_repository(db)
     workload_repo = get_workload_repository(db)
@@ -161,16 +213,11 @@ async def get_dashboard(
         in_progress = [a for a in all_assignments if a.status == AssignmentStatus.in_progress]
         overdue = await assignment_repo.get_overdue_assignments()
 
-        # Get agent workloads
-        # TODO: Filter by entity (need to join with users table)
-        # For now, get all available agents
-        role = "dgi_agent" if entity_type == "DGI" else "ministry_agent"
+        # Get agent workloads - now uses unified 'agent' role
+        # Agents are filtered by ministry_id in the workload repository
         available_agents = await workload_repo.get_available_agents(
-            role=role,
-            department_id=entity_id if entity_type == "DGI" else None,
-            ministry_id=entity_id if entity_type == "Ministry" else None,
-            max_capacity_percentage=100.0,
-            limit=100
+            db=db,
+            max_workload_pct=100.0
         )
 
         # Get recent assignments (last 20)
@@ -217,8 +264,8 @@ async def get_dashboard(
             "overdue_count": len(overdue),
             "avg_capacity": sum(a.get("capacity_percentage", 0) for a in available_agents) / max(len(available_agents), 1),
             "alerts_count": len(performance_alerts),
-            "entity_type": entity_type,
-            "entity_id": entity_id
+            "entity_type": agent_ctx.get("entity_type"),
+            "entity_id": str(agent_ctx.get("ministry_id") or agent_ctx.get("entity_id") or "")
         }
 
         # Build agent workload list
@@ -239,7 +286,7 @@ async def get_dashboard(
 
         logger.info(
             f"Dashboard loaded for supervisor {current_user.email} - "
-            f"Entity: {entity_type}/{entity_id}"
+            f"Entity: {agent_ctx.get('entity_type')}/{agent_ctx.get('ministry_id') or agent_ctx.get('entity_id')}"
         )
 
         return response
@@ -276,21 +323,24 @@ async def list_agents(
 
     Query Parameters:
     - include_unavailable: Include unavailable agents (default: false)
+
+    Migration 048: Uses unified 'agent' role with agent_profiles for filtering
     """
-    entity_type, entity_id = get_entity_context(current_user)
+    # Get agent context from agent_profiles
+    # Admin sees all (no filtering by ministry/entity)
+    if current_user.role == "admin":
+        agent_ctx = {"entity_type": None, "ministry_id": None, "entity_id": None, "is_supervisor": True}
+    else:
+        agent_ctx = await get_agent_context(current_user.id, db)
+
     workload_repo = get_workload_repository(db)
 
     try:
-        role = "dgi_agent" if entity_type == "DGI" else "ministry_agent"
-
-        # Get agents
-        max_capacity = 100.0 if include_unavailable else 100.0
+        # Get agents - now uses unified 'agent' role
+        max_capacity = 100.0 if include_unavailable else 80.0
         agents_data = await workload_repo.get_available_agents(
-            role=role,
-            department_id=entity_id if entity_type == "DGI" else None,
-            ministry_id=entity_id if entity_type == "Ministry" else None,
-            max_capacity_percentage=max_capacity,
-            limit=100
+            db=db,
+            max_workload_pct=max_capacity
         )
 
         # Build response
@@ -449,25 +499,30 @@ async def get_workload_balance(
     Recommendations:
     - Auto-generated based on balance score
     - Suggests specific reassignments
+
+    Migration 048: Uses unified 'agent' role with agent_profiles for filtering
     """
-    entity_type, entity_id = get_entity_context(current_user)
+    # Get agent context from agent_profiles
+    # Admin sees all (no filtering by ministry/entity)
+    if current_user.role == "admin":
+        agent_ctx = {"entity_type": None, "ministry_id": None, "entity_id": None, "is_supervisor": True}
+    else:
+        agent_ctx = await get_agent_context(current_user.id, db)
+
+    entity_type = agent_ctx.get("entity_type")
     workload_repo = get_workload_repository(db)
 
     try:
         # Get balance report
         report = await workload_repo.get_workload_balance_report(
             entity_type,
-            entity_id
+            agent_ctx.get("ministry_id") or agent_ctx.get("entity_id")
         )
 
-        # Get agent list
-        role = "dgi_agent" if entity_type == "DGI" else "ministry_agent"
+        # Get agent list - now uses unified 'agent' role
         agents_data = await workload_repo.get_available_agents(
-            role=role,
-            department_id=entity_id if entity_type == "DGI" else None,
-            ministry_id=entity_id if entity_type == "Ministry" else None,
-            max_capacity_percentage=100.0,
-            limit=100
+            db=db,
+            max_workload_pct=100.0
         )
 
         agents_list = []
@@ -516,7 +571,7 @@ async def get_workload_balance(
         )
 
         logger.info(
-            f"Workload balance report generated for {entity_type}/{entity_id} "
+            f"Workload balance report generated for {entity_type}/{agent_ctx.get('ministry_id') or agent_ctx.get('entity_id')} "
             f"by supervisor {current_user.email}"
         )
 
@@ -551,8 +606,8 @@ async def create_rule(
     - name: Rule name (required)
     - description: Rule description
     - priority: Priority 1-100 (lower = higher priority)
-    - entity_type: DGI or Ministry
-    - entity_id: Department ID or Ministry ID (optional for global rules)
+    - entity_type: 'ministry' or 'entity'
+    - entity_id: Ministry ID or Entity ID (optional for global rules)
     - conditions: List of conditions (AND logic)
     - actions: List of actions to apply
 
@@ -572,9 +627,16 @@ async def create_rule(
         # Set created_by
         rule_data.created_by = UUID(current_user.id)
 
-        # Validate entity context
-        entity_type, entity_id = get_entity_context(current_user)
-        if rule_data.entity_type != entity_type and current_user.role != "admin":
+        # Validate entity context (Migration 048: uses agent_profiles)
+        # Admin can create rules for any entity_type
+        if current_user.role == "admin":
+            agent_ctx = {"entity_type": None, "ministry_id": None, "entity_id": None, "is_supervisor": True}
+        else:
+            agent_ctx = await get_agent_context(current_user.id, db)
+
+        entity_type = agent_ctx.get("entity_type")
+        # Non-admin agents can only create rules for their own entity_type
+        if entity_type and rule_data.entity_type != entity_type:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Can only create rules for {entity_type}"
@@ -616,8 +678,18 @@ async def list_rules(
 
     Query Parameters:
     - status: Filter by status (active, inactive, draft, archived)
+
+    Migration 048: Uses unified 'agent' role with agent_profiles for filtering
     """
-    entity_type, entity_id = get_entity_context(current_user)
+    # Get agent context from agent_profiles
+    # Admin sees all rules (no filtering by ministry/entity)
+    if current_user.role == "admin":
+        agent_ctx = {"entity_type": None, "ministry_id": None, "entity_id": None, "is_supervisor": True}
+    else:
+        agent_ctx = await get_agent_context(current_user.id, db)
+
+    entity_type = agent_ctx.get("entity_type")
+    entity_id = agent_ctx.get("ministry_id") or agent_ctx.get("entity_id")
     rules_repo = get_rules_repository(db)
 
     try:
@@ -835,8 +907,17 @@ async def get_rules_effectiveness(
 
     Query Parameters:
     - min_applications: Minimum times_applied (default: 10)
+
+    Migration 048: Uses unified 'agent' role with agent_profiles for filtering
     """
-    entity_type, _ = get_entity_context(current_user)
+    # Get agent context from agent_profiles
+    # Admin sees all rules (no filtering by ministry/entity)
+    if current_user.role == "admin":
+        agent_ctx = {"entity_type": None, "ministry_id": None, "entity_id": None, "is_supervisor": True}
+    else:
+        agent_ctx = await get_agent_context(current_user.id, db)
+
+    entity_type = agent_ctx.get("entity_type")
     rules_repo = get_rules_repository(db)
 
     try:

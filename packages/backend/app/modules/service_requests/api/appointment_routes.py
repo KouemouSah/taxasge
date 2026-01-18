@@ -555,11 +555,11 @@ async def confirm_appointment_hold(
     if not request:
         raise HTTPException(status_code=404, detail="Service request not found")
 
-    # Verify ownership or admin
+    # Verify ownership or admin/agent (Migration 048: unified 'agent' role)
     is_owner = str(request['user_id']) == str(current_user.id)
-    is_admin = current_user.role in ['admin', 'supervisor', 'dgi_agent']
+    is_staff = current_user.role in ['admin', 'agent']
 
-    if not is_owner and not is_admin:
+    if not is_owner and not is_staff:
         raise HTTPException(status_code=403, detail="Access denied")
 
     # Validate status allows appointment confirmation (payment must be at least pending)

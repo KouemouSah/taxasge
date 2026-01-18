@@ -92,19 +92,57 @@ class ExportRequest(BaseModel):
 
 
 # ============================================================================
-# AUTHORIZATION HELPERS
+# AGENT CONTEXT HELPER (Migration 048 - Unified agent role)
 # ============================================================================
-# Note: Authorization is now handled via @require_permission decorators
-# Legacy check_*_permission functions have been removed (replaced by RBAC system)
 
-def get_entity_context(current_user: UserResponse) -> tuple[str, Optional[str]]:
-    """Get entity type and ID based on supervisor role"""
-    if current_user.role == "supervisor_dgi":
-        return ("DGI", current_user.department_id)
-    elif current_user.role == "supervisor_ministry":
-        return ("Ministry", current_user.ministry_id)
-    else:  # admin
-        return ("DGI", None)  # Admin sees all by default
+async def get_agent_context(user_id: str, db) -> Dict[str, Any]:
+    """
+    Get agent context from agent_profiles table.
+
+    Returns:
+        dict with keys:
+        - is_supervisor: bool
+        - agent_type: 'ministry_agent' or 'entity_agent'
+        - ministry_id: int or None (for ministry_agent)
+        - entity_id: UUID or None (for entity_agent)
+        - entity_type: 'ministry' or 'entity' (derived from agent_type)
+        - ministry_code: str or None (e.g., 'TREASURY')
+    """
+    query = """
+        SELECT
+            ap.is_supervisor,
+            ap.agent_type,
+            ap.ministry_id,
+            ap.entity_id,
+            m.ministry_code
+        FROM agent_profiles ap
+        LEFT JOIN ministries m ON ap.ministry_id = m.id
+        WHERE ap.user_id = $1 AND ap.is_active = true
+    """
+    result = await db.fetchrow(query, user_id)
+
+    if not result:
+        return {
+            "is_supervisor": False,
+            "agent_type": None,
+            "ministry_id": None,
+            "entity_id": None,
+            "entity_type": None,
+            "ministry_code": None,
+        }
+
+    # entity_type is derived directly from agent_type
+    agent_type = result.get("agent_type")
+    entity_type = "ministry" if agent_type == "ministry_agent" else "entity"
+
+    return {
+        "is_supervisor": result.get("is_supervisor", False),
+        "agent_type": agent_type,
+        "ministry_id": result.get("ministry_id"),
+        "entity_id": result.get("entity_id"),
+        "entity_type": entity_type,
+        "ministry_code": result.get("ministry_code"),
+    }
 
 
 # ============================================================================
@@ -137,11 +175,17 @@ async def get_agent_statistics(
 
     Query Parameters:
     - period_days: Statistics period (default: 30, max: 365)
+
+    Migration 048: Uses unified 'agent' role with agent_profiles for supervisor check
     """
 
-    # Authorization check
+    # Authorization check - admins and supervisors can view any stats
     is_own_stats = str(agent_id) == current_user.id
-    is_supervisor = current_user.role in ["supervisor_dgi", "supervisor_ministry", "admin"]
+    is_admin = current_user.role == "admin"
+
+    # Check if user is a supervisor via agent_profiles
+    agent_ctx = await get_agent_context(current_user.id, db) if not is_admin else {}
+    is_supervisor = is_admin or agent_ctx.get("is_supervisor", False)
 
     if not (is_own_stats or is_supervisor):
         raise HTTPException(
@@ -192,11 +236,17 @@ async def get_agent_performance(
     - Deadline compliance rate
 
     Note: This data comes from agent_workloads table (real-time)
+
+    Migration 048: Uses unified 'agent' role with agent_profiles for supervisor check
     """
 
-    # Authorization check
+    # Authorization check - admins and supervisors can view any metrics
     is_own_metrics = str(agent_id) == current_user.id
-    is_supervisor = current_user.role in ["supervisor_dgi", "supervisor_ministry", "admin"]
+    is_admin = current_user.role == "admin"
+
+    # Check if user is a supervisor via agent_profiles
+    agent_ctx = await get_agent_context(current_user.id, db) if not is_admin else {}
+    is_supervisor = is_admin or agent_ctx.get("is_supervisor", False)
 
     if not (is_own_metrics or is_supervisor):
         raise HTTPException(
@@ -266,11 +316,17 @@ async def get_agent_trends(
     Query Parameters:
     - period_days: Trend period (default: 30, min: 7, max: 180)
     - granularity: "daily" or "weekly" (default: daily)
+
+    Migration 048: Uses unified 'agent' role with agent_profiles for supervisor check
     """
 
-    # Authorization check
+    # Authorization check - admins and supervisors can view any trends
     is_own_trends = str(agent_id) == current_user.id
-    is_supervisor = current_user.role in ["supervisor_dgi", "supervisor_ministry", "admin"]
+    is_admin = current_user.role == "admin"
+
+    # Check if user is a supervisor via agent_profiles
+    agent_ctx = await get_agent_context(current_user.id, db) if not is_admin else {}
+    is_supervisor = is_admin or agent_ctx.get("is_supervisor", False)
 
     if not (is_own_trends or is_supervisor):
         raise HTTPException(
@@ -323,9 +379,20 @@ async def get_team_performance(
 
     Query Parameters:
     - period_days: Statistics period (default: 30, max: 365)
+
+    Migration 048: Uses unified 'agent' role with agent_profiles for filtering
     """
 
-    entity_type, entity_id = get_entity_context(current_user)
+    # Get agent context from agent_profiles
+    # Admin sees all (no filtering by ministry/entity)
+    if current_user.role == "admin":
+        agent_ctx = {"entity_type": None, "ministry_id": None, "entity_id": None, "is_supervisor": True}
+    else:
+        agent_ctx = await get_agent_context(current_user.id, db)
+
+    entity_type = agent_ctx.get("entity_type")
+    entity_id = agent_ctx.get("ministry_id") or agent_ctx.get("entity_id")
+
     assignment_repo = get_assignment_repository(db)
     workload_repo = get_workload_repository(db)
 
@@ -333,14 +400,10 @@ async def get_team_performance(
         # TODO: Implement team aggregation query
         # For now, aggregate from individual agent stats
 
-        # Get all agents in team
-        role = "dgi_agent" if entity_type == "DGI" else "ministry_agent"
+        # Get all agents in team - uses unified 'agent' role
         agents_data = await workload_repo.get_available_agents(
-            role=role,
-            department_id=entity_id if entity_type == "DGI" else None,
-            ministry_id=entity_id if entity_type == "Ministry" else None,
-            max_capacity_percentage=100.0,
-            limit=100
+            db=db,
+            max_workload_pct=100.0
         )
 
         # Aggregate stats
@@ -461,9 +524,20 @@ async def get_team_workload(
     - 70-99 = Good balance
     - 50-69 = Moderate imbalance
     - <50 = High imbalance (rebalancing recommended)
+
+    Migration 048: Uses unified 'agent' role with agent_profiles for filtering
     """
 
-    entity_type, entity_id = get_entity_context(current_user)
+    # Get agent context from agent_profiles
+    # Admin sees all (no filtering by ministry/entity)
+    if current_user.role == "admin":
+        agent_ctx = {"entity_type": None, "ministry_id": None, "entity_id": None, "is_supervisor": True}
+    else:
+        agent_ctx = await get_agent_context(current_user.id, db)
+
+    entity_type = agent_ctx.get("entity_type")
+    entity_id = agent_ctx.get("ministry_id") or agent_ctx.get("entity_id")
+
     workload_repo = get_workload_repository(db)
 
     try:
@@ -660,9 +734,20 @@ async def get_realtime_summary(
 
     Note: Optimized for frequent polling (every 30-60 seconds)
     Uses materialized views for performance
+
+    Migration 048: Uses unified 'agent' role with agent_profiles for filtering
     """
 
-    entity_type, entity_id = get_entity_context(current_user)
+    # Get agent context from agent_profiles
+    # Admin sees all (no filtering by ministry/entity)
+    if current_user.role == "admin":
+        agent_ctx = {"entity_type": None, "ministry_id": None, "entity_id": None, "is_supervisor": True}
+    else:
+        agent_ctx = await get_agent_context(current_user.id, db)
+
+    entity_type = agent_ctx.get("entity_type")
+    entity_id = agent_ctx.get("ministry_id") or agent_ctx.get("entity_id")
+
     assignment_repo = get_assignment_repository(db)
     workload_repo = get_workload_repository(db)
 
@@ -673,14 +758,10 @@ async def get_realtime_summary(
         in_progress = [a for a in active_assignments if a.status == "in_progress"]
         overdue = await assignment_repo.get_overdue_assignments()
 
-        # Get agent availability
-        role = "dgi_agent" if entity_type == "DGI" else "ministry_agent"
+        # Get agent availability - uses unified 'agent' role
         agents_data = await workload_repo.get_available_agents(
-            role=role,
-            department_id=entity_id if entity_type == "DGI" else None,
-            ministry_id=entity_id if entity_type == "Ministry" else None,
-            max_capacity_percentage=100.0,
-            limit=100
+            db=db,
+            max_workload_pct=100.0
         )
 
         available_count = sum(1 for a in agents_data if a.get("workload_status") == "available")

@@ -53,7 +53,11 @@ class WorkloadRepository:
         return AgentWorkload(**data)
 
     async def get_available_agents(self, db, max_workload_pct: float = 80) -> List[AgentWorkload]:
-        """Get available agents for assignment"""
+        """Get available agents for assignment
+
+        Migration 048: Uses unified 'agent' role with agent_profiles table
+        for supervisor/type filtering.
+        """
         query = """
             SELECT
                 u.id as agent_id,
@@ -65,8 +69,9 @@ class WorkloadRepository:
                 COUNT(da.id) FILTER (WHERE da.status = 'completed' AND da.completed_at::date = CURRENT_DATE) as completed_today,
                 MAX(da.assigned_at) as last_assignment_at
             FROM users u
+            INNER JOIN agent_profiles ap ON ap.user_id = u.id AND ap.is_active = true
             LEFT JOIN declaration_assignments da ON da.agent_id = u.id
-            WHERE u.role IN ('dgi_agent', 'dgi_supervisor')
+            WHERE u.role = 'agent'
             AND u.status = 'active'
             GROUP BY u.id, u.first_name, u.last_name
             HAVING (COUNT(da.id) FILTER (WHERE da.status IN ('assigned', 'in_progress'))::float / 20) * 100 < $1
