@@ -9,19 +9,22 @@ from pydantic import BaseModel, Field, EmailStr, validator, ConfigDict
 from enum import Enum
 import phonenumbers
 
-# User enums (aligned with user_role_enum from schema_taxage.sql)
+# User enums (aligned with user_role_enum from DATABASE_SCHEMA_REFERENCE.md)
 class UserRole(str, Enum):
-    """User role enumeration - MUST match user_role_enum in database"""
+    """User role enumeration - MUST match user_role_enum in database
+
+    Database enum values (from DATABASE_SCHEMA_REFERENCE.md lines 439-444):
+    - citizen: Regular citizen user
+    - business: Business/company user
+    - accountant: Professional accountant
+    - admin: System administrator
+    - agent: Government agent (unified role, supervisors via is_supervisor flag)
+    """
     citizen = "citizen"
     business = "business"
     accountant = "accountant"
     admin = "admin"
-    dgi_agent = "dgi_agent"
-    supervisor_junior_dgi = "supervisor_junior_dgi"
-    supervisor_readonly = "supervisor_readonly"
-    supervisor_senior = "supervisor_senior"
-    ministry_agent = "ministry_agent"
-    supervisor_dgi = "supervisor_dgi"
+    agent = "agent"
 
 
 class UserStatus(str, Enum):
