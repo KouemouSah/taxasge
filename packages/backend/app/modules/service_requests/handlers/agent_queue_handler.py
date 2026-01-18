@@ -103,7 +103,7 @@ class AgentQueueEventHandler:
             sr = await conn.fetchrow("""
                 SELECT
                     id,
-                    reference_number,
+                    reference,
                     workflow_code,
                     entity_code,
                     status,
@@ -121,7 +121,7 @@ class AgentQueueEventHandler:
             # Check if payment is actually completed
             if sr["payment_status"] != "completed":
                 logger.warning(
-                    f"Service request {sr['reference_number']} payment_status is "
+                    f"Service request {sr['reference']} payment_status is "
                     f"'{sr['payment_status']}', expected 'completed'. Skipping queue addition."
                 )
                 return
@@ -131,7 +131,7 @@ class AgentQueueEventHandler:
 
             if not workflow_code or not entity_code:
                 logger.error(
-                    f"Service request {sr['reference_number']} missing workflow_code "
+                    f"Service request {sr['reference']} missing workflow_code "
                     f"or entity_code. workflow_code={workflow_code}, entity_code={entity_code}"
                 )
                 return
@@ -146,22 +146,13 @@ class AgentQueueEventHandler:
             )
 
             logger.info(
-                f"Service request {sr['reference_number']} added to agent queue. "
+                f"Service request {sr['reference']} added to agent queue. "
                 f"Queue item ID: {queue_item.get('id')}, "
                 f"Priority: {queue_item.get('priority_score')}, "
                 f"Entity: {entity_code}"
             )
 
-            # Optionally update service_request status to indicate it's queued
-            # This is informational - the main status is still 'PAID'
-            await conn.execute("""
-                UPDATE service_requests
-                SET
-                    agent_notes = COALESCE(agent_notes, '') ||
-                        E'\n[' || NOW()::text || '] Ajouté à la file d''attente agent après paiement ' || $2,
-                    updated_at = NOW()
-                WHERE id = $1
-            """, UUID(service_request_id), payment_method)
+            # Note: service_request status remains 'PAID', agent queue handles the workflow
 
         except Exception as e:
             logger.error(

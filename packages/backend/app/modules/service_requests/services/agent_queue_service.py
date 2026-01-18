@@ -257,14 +257,14 @@ class AgentQueueService:
         query = """
             SELECT
                 q.*,
-                sr.reference_number,
+                sr.reference,
                 sr.workflow_code,
                 sr.status as request_status,
                 sr.created_at as request_created_at,
                 u.full_name as citizen_name,
                 u.email as citizen_email
             FROM agent_work_queue q
-            JOIN service_requests sr ON sr.id::text = q.item_id
+            JOIN service_requests sr ON sr.id = q.item_id
             JOIN users u ON u.id = sr.user_id
             WHERE q.item_type = $1
             AND q.status = 'pending'
@@ -316,9 +316,10 @@ class AgentQueueService:
         await db.execute("""
             UPDATE service_requests
             SET status = 'UNDER_REVIEW',
-                assigned_agent_id = $2,
+                assigned_to = $2::uuid,
+                assigned_at = NOW(),
                 updated_at = NOW()
-            WHERE id = $1::uuid
+            WHERE id = $1
         """, row['item_id'], agent_id)
 
         logger.info(f"Assigned queue item {queue_id} to agent {agent_id}")
@@ -391,14 +392,13 @@ class AgentQueueService:
         if not row:
             raise ValueError("Queue item not found")
 
-        # Update service_request
+        # Update service_request notes to track escalation
+        # Note: service_requests table doesn't have dedicated escalation columns
         await db.execute("""
             UPDATE service_requests
-            SET is_escalated = true,
-                escalation_reason = $2,
-                escalated_at = NOW(),
+            SET notes = COALESCE(notes, '') || E'\n[ESCALATED] ' || $2,
                 updated_at = NOW()
-            WHERE id = $1::uuid
+            WHERE id = $1
         """, row['item_id'], reason)
 
         logger.warning(
@@ -424,13 +424,13 @@ class AgentQueueService:
         rows = await db.fetch(f"""
             SELECT
                 q.*,
-                sr.reference_number,
+                sr.reference,
                 sr.workflow_code,
                 sr.status as request_status,
                 sr.form_data,
                 u.full_name as citizen_name
             FROM agent_work_queue q
-            JOIN service_requests sr ON sr.id::text = q.item_id
+            JOIN service_requests sr ON sr.id = q.item_id
             JOIN users u ON u.id = sr.user_id
             WHERE q.item_type = $1
             AND q.assigned_to = $2
