@@ -174,8 +174,10 @@ class AgentProfileRepository:
         if not result:
             return None
 
-        # Convert to dict and process available_workflows
+        # Convert to dict and process JSONB/array fields
         data = dict(result)
+
+        # Process available_workflows
         workflows_jsonb = data.pop('available_workflows_jsonb', None)
         if workflows_jsonb:
             if isinstance(workflows_jsonb, str):
@@ -186,6 +188,30 @@ class AgentProfileRepository:
                 data['available_workflows'] = list(workflows_jsonb) if workflows_jsonb else []
         else:
             data['available_workflows'] = []
+
+        # Process specializations JSONB field
+        if 'specializations' in data:
+            specs = data['specializations']
+            if specs is None:
+                data['specializations'] = []
+            elif isinstance(specs, str):
+                data['specializations'] = json.loads(specs)
+            else:
+                data['specializations'] = list(specs) if specs else []
+
+        # Process working_days array field
+        if 'working_days' in data:
+            days = data['working_days']
+            if days is None:
+                data['working_days'] = [1, 2, 3, 4, 5]
+            elif isinstance(days, str):
+                data['working_days'] = json.loads(days)
+            else:
+                data['working_days'] = list(days) if days else [1, 2, 3, 4, 5]
+
+        # Ensure agent_type is a string for enum conversion
+        if 'agent_type' in data and data['agent_type'] is not None:
+            data['agent_type'] = str(data['agent_type'])
 
         return data
 
