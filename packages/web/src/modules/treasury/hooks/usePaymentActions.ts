@@ -6,6 +6,7 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { useToast } from '@/hooks/use-toast';
 import { treasuryApi } from '../services/api';
 import type {
@@ -14,29 +15,52 @@ import type {
   PaymentRejectionRequest,
   PaymentActionResponse,
 } from '../types';
-import { getTreasuryErrorMessage } from '../types';
+import { getTreasuryErrorCode } from '../types';
 import { PENDING_PAYMENTS_QUERY_KEY } from './usePendingPayments';
 
 export function usePaymentActions() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const t = useTranslations('treasury.errors');
+  const tCommon = useTranslations('common');
 
   const invalidatePayments = () => {
     queryClient.invalidateQueries({ queryKey: [PENDING_PAYMENTS_QUERY_KEY] });
   };
 
-  const showError = (error: unknown, fallbackMessage: string) => {
-    const message = getTreasuryErrorMessage(error);
+  /**
+   * Get translated error message from API error
+   */
+  const getTranslatedError = (error: unknown, fallbackKey: string): string => {
+    const errorCode = getTreasuryErrorCode(error);
+    if (errorCode) {
+      // Try to get translation for this error code
+      try {
+        return t(errorCode);
+      } catch {
+        // Fall through to fallback
+      }
+    }
+    // Use fallback translation key
+    try {
+      return t(fallbackKey);
+    } catch {
+      return t('generic');
+    }
+  };
+
+  const showError = (error: unknown, fallbackKey: string) => {
+    const message = getTranslatedError(error, fallbackKey);
     toast({
-      title: 'Error',
-      description: message || fallbackMessage,
+      title: tCommon('error'),
+      description: message,
       variant: 'destructive',
     });
   };
 
   const showSuccess = (message: string) => {
     toast({
-      title: 'Operación exitosa',
+      title: tCommon('success'),
       description: message,
     });
   };
@@ -55,7 +79,7 @@ export function usePaymentActions() {
       }
     },
     onError: (error) => {
-      showError(error, 'No se pudo bloquear el pago.');
+      showError(error, 'lockFailed');
     },
   });
 
@@ -68,10 +92,12 @@ export function usePaymentActions() {
       treasuryApi.validatePayment(paymentId, request),
     onSuccess: (data) => {
       invalidatePayments();
-      showSuccess(data.messageEs || 'Pago validado correctamente.');
+      if (data.messageEs) {
+        showSuccess(data.messageEs);
+      }
     },
     onError: (error) => {
-      showError(error, 'No se pudo validar el pago.');
+      showError(error, 'validateFailed');
     },
   });
 
@@ -84,10 +110,12 @@ export function usePaymentActions() {
       treasuryApi.rejectPayment(paymentId, request),
     onSuccess: (data) => {
       invalidatePayments();
-      showSuccess(data.messageEs || 'Pago rechazado.');
+      if (data.messageEs) {
+        showSuccess(data.messageEs);
+      }
     },
     onError: (error) => {
-      showError(error, 'No se pudo rechazar el pago.');
+      showError(error, 'rejectFailed');
     },
   });
 
@@ -95,10 +123,12 @@ export function usePaymentActions() {
     mutationFn: (paymentId) => treasuryApi.unlockPayment(paymentId),
     onSuccess: (data) => {
       invalidatePayments();
-      showSuccess(data.messageEs || 'Bloqueo liberado.');
+      if (data.messageEs) {
+        showSuccess(data.messageEs);
+      }
     },
     onError: (error) => {
-      showError(error, 'No se pudo desbloquear el pago.');
+      showError(error, 'unlockFailed');
     },
   });
 
