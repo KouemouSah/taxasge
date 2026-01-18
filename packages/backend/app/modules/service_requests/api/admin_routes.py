@@ -2593,6 +2593,19 @@ async def cleanup_abandoned_requests(
 # TREASURY AGENT - Payment Validation
 # ═══════════════════════════════════════════════════════════════
 
+
+async def get_agent_profile_id(db: asyncpg.Connection, user_id: str) -> Optional[str]:
+    """
+    Get agent_profile_id from user_id.
+    Treasury agents must have an active agent_profile linked to their user account.
+    """
+    result = await db.fetchval(
+        "SELECT id FROM agent_profiles WHERE user_id = $1::uuid AND is_active = true",
+        user_id
+    )
+    return str(result) if result else None
+
+
 class PaymentValidationRequest(BaseModel):
     """Request model for agent validation."""
     comment: Optional[str] = Field(None, max_length=500, description="Validation comment")
@@ -2628,10 +2641,16 @@ class PendingPaymentResponse(BaseModel):
     currency: str = "XAF"
     calculation_details: Optional[Dict[str, Any]] = None
     workflow_status: str
-    locked_by_agent_id: Optional[int] = None
+    # Agent lock info (using UUID-based agent_profile_id)
+    locked_by_agent_profile_id: Optional[str] = None
     lock_expires_at: Optional[str] = None
     created_at: str
     hours_waiting: float
+    # Additional fields for frontend compatibility
+    base_amount: Optional[float] = None
+    penalties: Optional[float] = None
+    discounts: Optional[float] = None
+    sla_target_date: Optional[str] = None
 
 
 class PendingPaymentsListResponse(BaseModel):
@@ -2672,14 +2691,17 @@ async def get_pending_payments(
         "pending_agent_review",
         description="Filter by workflow status"
     ),
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(20, ge=1, le=100, description="Items per page"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
     _=Depends(permission_required("treasury.validate_payment"))
 ):
     """Get payments pending Treasury Agent validation"""
     from datetime import datetime
+
+    # Calculate offset from page
+    offset = (page - 1) * limit
 
     # Build query
     where_clauses = ["sp.workflow_status = $1"]
@@ -2708,11 +2730,15 @@ async def get_pending_payments(
             u.email AS user_email,
             sp.payment_method,
             sp.total_amount,
+            sp.base_amount,
+            sp.penalties,
+            sp.discounts,
             sp.currency,
             sp.calculation_details,
             sp.workflow_status,
-            sp.locked_by_agent_id,
+            sp.locked_by_agent_profile_id,
             sp.lock_expires_at,
+            sp.sla_target_date,
             sp.created_at,
             EXTRACT(EPOCH FROM (NOW() - sp.created_at)) / 3600 AS hours_waiting
         FROM service_payments sp
@@ -2746,22 +2772,23 @@ async def get_pending_payments(
             user_email=row["user_email"],
             payment_method=row["payment_method"],
             total_amount=float(row["total_amount"]),
+            base_amount=float(row["base_amount"]) if row["base_amount"] else None,
+            penalties=float(row["penalties"]) if row["penalties"] else None,
+            discounts=float(row["discounts"]) if row["discounts"] else None,
             currency=row["currency"],
             calculation_details=row["calculation_details"],
             workflow_status=row["workflow_status"],
-            locked_by_agent_id=row["locked_by_agent_id"],
+            locked_by_agent_profile_id=str(row["locked_by_agent_profile_id"]) if row["locked_by_agent_profile_id"] else None,
             lock_expires_at=row["lock_expires_at"].isoformat() if row["lock_expires_at"] else None,
+            sla_target_date=row["sla_target_date"].isoformat() if row["sla_target_date"] else None,
             created_at=row["created_at"].isoformat(),
             hours_waiting=float(row["hours_waiting"] or 0),
         ))
 
-    # Calculate page from offset and limit
-    current_page = (offset // limit) + 1 if limit else 1
-
     return PendingPaymentsListResponse(
         payments=payments,
         total=total or 0,
-        page=current_page,
+        page=page,
         page_size=limit
     )
 
@@ -2796,11 +2823,15 @@ async def get_payment_details(
             u.email AS user_email,
             sp.payment_method,
             sp.total_amount,
+            sp.base_amount,
+            sp.penalties,
+            sp.discounts,
             sp.currency,
             sp.calculation_details,
             sp.workflow_status,
-            sp.locked_by_agent_id,
+            sp.locked_by_agent_profile_id,
             sp.lock_expires_at,
+            sp.sla_target_date,
             sp.created_at,
             EXTRACT(EPOCH FROM (NOW() - sp.created_at)) / 3600 AS hours_waiting
         FROM service_payments sp
@@ -2827,11 +2858,15 @@ async def get_payment_details(
         user_email=row["user_email"],
         payment_method=row["payment_method"],
         total_amount=float(row["total_amount"]),
+        base_amount=float(row["base_amount"]) if row["base_amount"] else None,
+        penalties=float(row["penalties"]) if row["penalties"] else None,
+        discounts=float(row["discounts"]) if row["discounts"] else None,
         currency=row["currency"],
         calculation_details=row["calculation_details"],
         workflow_status=row["workflow_status"],
-        locked_by_agent_id=row["locked_by_agent_id"],
+        locked_by_agent_profile_id=str(row["locked_by_agent_profile_id"]) if row["locked_by_agent_profile_id"] else None,
         lock_expires_at=row["lock_expires_at"].isoformat() if row["lock_expires_at"] else None,
+        sla_target_date=row["sla_target_date"].isoformat() if row["sla_target_date"] else None,
         created_at=row["created_at"].isoformat(),
         hours_waiting=float(row["hours_waiting"] or 0),
     )
@@ -2863,9 +2898,17 @@ async def lock_payment(
     """Lock payment for exclusive review"""
     from datetime import datetime, timedelta
 
+    # Get agent_profile_id for current user
+    agent_profile_id = await get_agent_profile_id(db, current_user.id)
+    if not agent_profile_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No active agent profile found for current user"
+        )
+
     # Check if payment exists and is pending
     payment = await db.fetchrow(
-        "SELECT id, workflow_status, locked_by_agent_id, lock_expires_at FROM service_payments WHERE id = $1",
+        "SELECT id, workflow_status, locked_by_agent_profile_id, lock_expires_at FROM service_payments WHERE id = $1::uuid",
         payment_id
     )
 
@@ -2876,7 +2919,8 @@ async def lock_payment(
         )
 
     # Check if already locked by another agent
-    if payment["locked_by_agent_id"] and payment["locked_by_agent_id"] != current_user.id:
+    current_lock = payment["locked_by_agent_profile_id"]
+    if current_lock and str(current_lock) != agent_profile_id:
         if payment["lock_expires_at"] and payment["lock_expires_at"] > datetime.utcnow():
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -2889,10 +2933,11 @@ async def lock_payment(
     await db.execute(
         """
         UPDATE service_payments
-        SET locked_by_agent_id = $1, lock_expires_at = $2, workflow_status = 'locked_by_agent'
-        WHERE id = $3
+        SET locked_by_agent_profile_id = $1::uuid, lock_expires_at = $2,
+            locked_at = NOW(), workflow_status = 'locked_by_agent'
+        WHERE id = $3::uuid
         """,
-        current_user.id, lock_expires, payment_id
+        agent_profile_id, lock_expires, payment_id
     )
 
     return PaymentActionResponse(
@@ -2931,9 +2976,17 @@ async def validate_payment(
     """Validate (approve) a payment"""
     from app.modules.payments.services.processors import payment_processor_registry
 
+    # Get agent_profile_id for current user
+    agent_profile_id = await get_agent_profile_id(db, current_user.id)
+    if not agent_profile_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No active agent profile found for current user"
+        )
+
     # Verify lock ownership
     payment = await db.fetchrow(
-        "SELECT id, locked_by_agent_id, service_request_id FROM service_payments WHERE id = $1",
+        "SELECT id, locked_by_agent_profile_id, service_request_id FROM service_payments WHERE id = $1::uuid",
         payment_id
     )
 
@@ -2943,17 +2996,18 @@ async def validate_payment(
             detail=f"Payment not found: {payment_id}"
         )
 
-    if payment["locked_by_agent_id"] != current_user.id:
+    current_lock = payment["locked_by_agent_profile_id"]
+    if not current_lock or str(current_lock) != agent_profile_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You must lock the payment before validating"
         )
 
-    # Validate via registry
+    # Validate via registry (using agent_profile_id instead of user_id)
     result = await payment_processor_registry.validate_manual_payment(
         db=db,
         payment_id=payment_id,
-        agent_id=current_user.id,
+        agent_id=agent_profile_id,
         comment=body.comment
     )
 
@@ -3052,9 +3106,17 @@ async def reject_payment(
     """Reject a payment"""
     from app.modules.payments.services.processors import payment_processor_registry
 
+    # Get agent_profile_id for current user
+    agent_profile_id = await get_agent_profile_id(db, current_user.id)
+    if not agent_profile_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No active agent profile found for current user"
+        )
+
     # Verify lock ownership
     payment = await db.fetchrow(
-        "SELECT id, locked_by_agent_id FROM service_payments WHERE id = $1",
+        "SELECT id, locked_by_agent_profile_id FROM service_payments WHERE id = $1::uuid",
         payment_id
     )
 
@@ -3064,17 +3126,18 @@ async def reject_payment(
             detail=f"Payment not found: {payment_id}"
         )
 
-    if payment["locked_by_agent_id"] != current_user.id:
+    current_lock = payment["locked_by_agent_profile_id"]
+    if not current_lock or str(current_lock) != agent_profile_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You must lock the payment before rejecting"
         )
 
-    # Reject via registry
+    # Reject via registry (using agent_profile_id instead of user_id)
     result = await payment_processor_registry.reject_manual_payment(
         db=db,
         payment_id=payment_id,
-        agent_id=current_user.id,
+        agent_id=agent_profile_id,
         reason=body.reason
     )
 
@@ -3147,9 +3210,17 @@ async def unlock_payment(
     _=Depends(permission_required("treasury.validate_payment"))
 ):
     """Release lock on a payment"""
+    # Get agent_profile_id for current user
+    agent_profile_id = await get_agent_profile_id(db, current_user.id)
+    if not agent_profile_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No active agent profile found for current user"
+        )
+
     # Verify ownership
     payment = await db.fetchrow(
-        "SELECT id, locked_by_agent_id FROM service_payments WHERE id = $1",
+        "SELECT id, locked_by_agent_profile_id FROM service_payments WHERE id = $1::uuid",
         payment_id
     )
 
@@ -3159,7 +3230,8 @@ async def unlock_payment(
             detail=f"Payment not found: {payment_id}"
         )
 
-    if payment["locked_by_agent_id"] != current_user.id:
+    current_lock = payment["locked_by_agent_profile_id"]
+    if not current_lock or str(current_lock) != agent_profile_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only unlock payments you locked"
@@ -3168,8 +3240,9 @@ async def unlock_payment(
     await db.execute(
         """
         UPDATE service_payments
-        SET locked_by_agent_id = NULL, lock_expires_at = NULL, workflow_status = 'pending_agent_review'
-        WHERE id = $1
+        SET locked_by_agent_profile_id = NULL, locked_at = NULL, lock_expires_at = NULL,
+            workflow_status = 'pending_agent_review'
+        WHERE id = $1::uuid
         """,
         payment_id
     )

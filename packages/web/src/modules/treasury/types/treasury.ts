@@ -81,26 +81,30 @@ export interface PendingPayment {
   id: string;
   paymentReference: string;
   serviceRequestId?: string;
+  requestReference?: string;
+  workflowCode?: string;
   userId: string;
   companyId?: string;
-  paymentType: string;
-  baseAmount: number;
-  penalties: number;
-  discounts: number;
+  paymentType?: string;
+  baseAmount?: number;
+  penalties?: number;
+  discounts?: number;
   totalAmount: number;
-  paymentMethod: PaymentMethod;
+  paymentMethod: PaymentMethod | string;
   currency: string;
-  paymentStatus: PaymentStatus;
-  status: PaymentStatus; // Alias for paymentStatus
-  workflowStatus: PaymentWorkflowStatus;
-  requiresAgentValidation: boolean;
-  lockedByAgentId?: number;
+  paymentStatus?: PaymentStatus;
+  status?: PaymentStatus; // Alias for paymentStatus
+  workflowStatus: PaymentWorkflowStatus | string;
+  requiresAgentValidation?: boolean;
+  // Agent lock info (using UUID-based agent_profile_id)
+  lockedByAgentProfileId?: string;
   lockedAt?: string;
   lockExpiresAt?: string;
   slaTargetDate?: string;
-  submittedAt: string;
+  submittedAt?: string;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
+  hoursWaiting?: number;
   // Joined data
   userName?: string;
   userEmail?: string;
