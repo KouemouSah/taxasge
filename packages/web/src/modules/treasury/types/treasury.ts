@@ -164,6 +164,106 @@ export interface PaymentActionResponse {
 }
 
 // =============================================================================
+// ERROR TYPES (aligned with backend TreasuryError)
+// =============================================================================
+
+/**
+ * Treasury error codes returned by the backend
+ */
+export enum TreasuryErrorCode {
+  // Authentication & Authorization
+  NO_AGENT_PROFILE = 'TREASURY_001',
+  UNAUTHORIZED = 'TREASURY_002',
+  INSUFFICIENT_PERMISSIONS = 'TREASURY_003',
+
+  // Payment Lock Errors
+  PAYMENT_NOT_FOUND = 'TREASURY_100',
+  PAYMENT_ALREADY_LOCKED = 'TREASURY_101',
+  PAYMENT_NOT_LOCKED = 'TREASURY_102',
+  PAYMENT_LOCKED_BY_OTHER = 'TREASURY_103',
+  LOCK_EXPIRED = 'TREASURY_104',
+
+  // Validation Errors
+  VALIDATION_FAILED = 'TREASURY_200',
+  INVALID_PAYMENT_STATUS = 'TREASURY_201',
+  ALREADY_VALIDATED = 'TREASURY_202',
+  ALREADY_REJECTED = 'TREASURY_203',
+
+  // Rejection Errors
+  REJECTION_REASON_REQUIRED = 'TREASURY_300',
+
+  // Reconciliation Errors
+  TRANSACTION_NOT_FOUND = 'TREASURY_400',
+  RECONCILIATION_FAILED = 'TREASURY_401',
+  AMOUNT_MISMATCH = 'TREASURY_402',
+
+  // Anomaly Errors
+  ANOMALY_NOT_FOUND = 'TREASURY_500',
+  ANOMALY_ALREADY_RESOLVED = 'TREASURY_501',
+  COMMENT_REQUIRED = 'TREASURY_502',
+
+  // Export Errors
+  EXPORT_NOT_FOUND = 'TREASURY_600',
+  EXPORT_NOT_READY = 'TREASURY_601',
+  EXPORT_EXPIRED = 'TREASURY_602',
+
+  // General Errors
+  INVALID_DATE_RANGE = 'TREASURY_700',
+  INTERNAL_ERROR = 'TREASURY_999',
+}
+
+/**
+ * Structured error response from treasury endpoints
+ */
+export interface TreasuryErrorResponse {
+  code: TreasuryErrorCode | string;
+  message: string;
+  info?: Record<string, unknown>;
+}
+
+/**
+ * Parse API error to get user-friendly message
+ */
+export function getTreasuryErrorMessage(error: unknown): string {
+  // Check if it's an Axios error with response data
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const axiosError = error as any;
+  if (axiosError?.response?.data?.detail) {
+    const detail = axiosError.response.data.detail;
+
+    // Structured error from TreasuryError
+    if (typeof detail === 'object' && detail.message) {
+      return detail.message;
+    }
+
+    // Simple string error
+    if (typeof detail === 'string') {
+      return detail;
+    }
+  }
+
+  // Check for generic error message
+  if (axiosError?.message) {
+    return axiosError.message;
+  }
+
+  // Default message
+  return 'Ha ocurrido un error. Intente nuevamente.';
+}
+
+/**
+ * Get error code from API error response
+ */
+export function getTreasuryErrorCode(error: unknown): TreasuryErrorCode | null {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const axiosError = error as any;
+  if (axiosError?.response?.data?.detail?.code) {
+    return axiosError.response.data.detail.code as TreasuryErrorCode;
+  }
+  return null;
+}
+
+// =============================================================================
 // BANK TRANSACTIONS (from bank_transactions table)
 // =============================================================================
 

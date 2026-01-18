@@ -21,6 +21,17 @@ from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.permissions.middleware.permission_middleware import permission_required
 from app.core.events import EventBus, EventType
+from app.modules.treasury.errors import (
+    TreasuryError,
+    TreasuryErrorCode,
+    payment_not_found,
+    no_agent_profile,
+    payment_locked_by_other,
+    must_lock_payment_first,
+    anomaly_not_found,
+    export_not_found,
+    comment_required,
+)
 
 
 router = APIRouter(
@@ -2901,10 +2912,7 @@ async def lock_payment(
     # Get agent_profile_id for current user
     agent_profile_id = await get_agent_profile_id(db, current_user.id)
     if not agent_profile_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No active agent profile found for current user"
-        )
+        no_agent_profile()
 
     # Check if payment exists and is pending
     payment = await db.fetchrow(
@@ -2913,19 +2921,13 @@ async def lock_payment(
     )
 
     if not payment:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Payment not found: {payment_id}"
-        )
+        payment_not_found(payment_id)
 
     # Check if already locked by another agent
     current_lock = payment["locked_by_agent_profile_id"]
     if current_lock and str(current_lock) != agent_profile_id:
         if payment["lock_expires_at"] and payment["lock_expires_at"] > datetime.utcnow():
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Payment is locked by another agent"
-            )
+            payment_locked_by_other()
 
     # Lock the payment
     lock_expires = datetime.utcnow() + timedelta(minutes=body.duration_minutes)
@@ -2979,10 +2981,7 @@ async def validate_payment(
     # Get agent_profile_id for current user
     agent_profile_id = await get_agent_profile_id(db, current_user.id)
     if not agent_profile_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No active agent profile found for current user"
-        )
+        no_agent_profile()
 
     # Verify lock ownership
     payment = await db.fetchrow(
@@ -2991,17 +2990,11 @@ async def validate_payment(
     )
 
     if not payment:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Payment not found: {payment_id}"
-        )
+        payment_not_found(payment_id)
 
     current_lock = payment["locked_by_agent_profile_id"]
     if not current_lock or str(current_lock) != agent_profile_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You must lock the payment before validating"
-        )
+        must_lock_payment_first()
 
     # Validate via registry (using agent_profile_id instead of user_id)
     result = await payment_processor_registry.validate_manual_payment(
@@ -3109,10 +3102,7 @@ async def reject_payment(
     # Get agent_profile_id for current user
     agent_profile_id = await get_agent_profile_id(db, current_user.id)
     if not agent_profile_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No active agent profile found for current user"
-        )
+        no_agent_profile()
 
     # Verify lock ownership
     payment = await db.fetchrow(
@@ -3121,17 +3111,11 @@ async def reject_payment(
     )
 
     if not payment:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Payment not found: {payment_id}"
-        )
+        payment_not_found(payment_id)
 
     current_lock = payment["locked_by_agent_profile_id"]
     if not current_lock or str(current_lock) != agent_profile_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You must lock the payment before rejecting"
-        )
+        must_lock_payment_first()
 
     # Reject via registry (using agent_profile_id instead of user_id)
     result = await payment_processor_registry.reject_manual_payment(
@@ -3213,10 +3197,7 @@ async def unlock_payment(
     # Get agent_profile_id for current user
     agent_profile_id = await get_agent_profile_id(db, current_user.id)
     if not agent_profile_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No active agent profile found for current user"
-        )
+        no_agent_profile()
 
     # Verify ownership
     payment = await db.fetchrow(
@@ -3225,16 +3206,14 @@ async def unlock_payment(
     )
 
     if not payment:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Payment not found: {payment_id}"
-        )
+        payment_not_found(payment_id)
 
     current_lock = payment["locked_by_agent_profile_id"]
     if not current_lock or str(current_lock) != agent_profile_id:
-        raise HTTPException(
+        raise TreasuryError(
+            error_code=TreasuryErrorCode.PAYMENT_LOCKED_BY_OTHER,
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only unlock payments you locked"
+            detail_override="Solo puede desbloquear pagos que usted haya bloqueado."
         )
 
     await db.execute(
@@ -4880,7 +4859,7 @@ async def get_anomaly(
     """, anomaly_id)
 
     if not row:
-        raise HTTPException(status_code=404, detail="Anomaly not found")
+        anomaly_not_found(anomaly_id)
 
     return AnomalyResponse(
         id=str(row["id"]),
@@ -5025,7 +5004,7 @@ async def update_anomaly_status(
         anomaly_id
     )
     if not current:
-        raise HTTPException(status_code=404, detail="Anomaly not found")
+        anomaly_not_found(anomaly_id)
 
     from_status = current["status"]
     to_status = body.status
@@ -5149,7 +5128,7 @@ async def add_anomaly_comment(
     """Add comment to anomaly."""
     comment = body.get("comment")
     if not comment:
-        raise HTTPException(status_code=400, detail="Comment is required")
+        comment_required()
 
     # Verify anomaly exists
     exists = await db.fetchval(
@@ -5157,7 +5136,7 @@ async def add_anomaly_comment(
         anomaly_id
     )
     if not exists:
-        raise HTTPException(status_code=404, detail="Anomaly not found")
+        anomaly_not_found(anomaly_id)
 
     # Insert comment action
     row = await db.fetchrow("""
@@ -5698,7 +5677,7 @@ async def get_treasury_export(
     """, export_id)
 
     if not row:
-        raise HTTPException(status_code=404, detail="Export not found")
+        export_not_found(export_id)
 
     return ExportResponse(
         id=str(row["id"]),
@@ -5751,18 +5730,19 @@ async def download_treasury_export(
     """, export_id)
 
     if not row:
-        raise HTTPException(status_code=404, detail="Export not found")
+        export_not_found(export_id)
 
     if row["status"] != "completed":
-        raise HTTPException(
-            status_code=400,
-            detail=f"Export is not ready for download. Status: {row['status']}"
+        raise TreasuryError(
+            error_code=TreasuryErrorCode.EXPORT_NOT_READY,
+            status_code=status.HTTP_400_BAD_REQUEST,
+            extra_info={"current_status": row["status"]}
         )
 
     if not row["file_path"]:
-        raise HTTPException(
-            status_code=404,
-            detail="Export file not found"
+        raise TreasuryError(
+            error_code=TreasuryErrorCode.EXPORT_EXPIRED,
+            status_code=status.HTTP_404_NOT_FOUND
         )
 
     # Update download count
