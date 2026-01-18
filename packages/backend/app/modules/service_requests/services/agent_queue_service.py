@@ -272,7 +272,7 @@ class AgentQueueService:
                 u.full_name as citizen_name,
                 u.email as citizen_email
             FROM agent_work_queue q
-            JOIN service_requests sr ON sr.id::text = q.item_id
+            JOIN service_requests sr ON sr.id = q.item_id
             JOIN users u ON u.id = sr.user_id
             WHERE q.item_type = $1
             AND q.status = 'pending'
@@ -448,7 +448,7 @@ class AgentQueueService:
                 sr.form_data,
                 u.full_name as citizen_name
             FROM agent_work_queue q
-            JOIN service_requests sr ON sr.id::text = q.item_id
+            JOIN service_requests sr ON sr.id = q.item_id
             JOIN users u ON u.id = sr.user_id
             WHERE q.item_type = $1
             AND q.assigned_to = $2
