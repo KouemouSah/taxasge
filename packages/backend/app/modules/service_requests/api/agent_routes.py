@@ -108,7 +108,7 @@ async def get_queue(
     limit: int = Query(20, ge=1, le=100),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("agent:view_queue"))
+    _=Depends(permission_required("service_request.view_queue"))
 ):
     items = await agent_queue_service.get_pending_items(
         db=db,
@@ -156,7 +156,7 @@ async def get_queue_stats(
     entity_code: Optional[str] = Query(None, description="Filter by entity code"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("agent:view_queue"))
+    _=Depends(permission_required("service_request.view_queue_stats"))
 ):
     stats = await agent_queue_service.get_queue_stats(
         db=db,
@@ -176,7 +176,7 @@ async def get_my_queue(
     limit: int = Query(50, ge=1, le=100),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("agent:process_requests"))
+    _=Depends(permission_required("service_request.process"))
 ):
     items = await agent_queue_service.get_agent_queue(
         db=db,
@@ -233,7 +233,7 @@ async def assign_to_self(
     queue_id: str = Path(..., description="Queue item ID"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("agent:process_requests"))
+    _=Depends(permission_required("service_request.process"))
 ):
     try:
         item = await agent_queue_service.assign_to_agent(
@@ -263,7 +263,7 @@ async def release_item(
     reason: Optional[str] = Body(None, embed=True),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("agent:process_requests"))
+    _=Depends(permission_required("service_request.process"))
 ):
     await db.execute("""
         UPDATE agent_work_queue
@@ -296,7 +296,7 @@ async def get_request_for_review(
     request_id: UUID = Path(..., description="Service request ID"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("agent:view_requests"))
+    _=Depends(permission_required("service_request.view"))
 ):
     # Agents can view any request assigned to their ministry
     request = await db.fetchrow("""
@@ -334,7 +334,7 @@ async def make_decision(
     decision: AgentDecision = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("agent:process_requests"))
+    _=Depends(permission_required("service_request.process"))
 ):
     # Verify agent is assigned to this request
     queue_item = await db.fetchrow("""
@@ -546,7 +546,7 @@ async def escalate_request(
     escalation: EscalationRequest = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("agent:escalate"))
+    _=Depends(permission_required("service_request.escalate"))
 ):
     # Find queue item
     queue_item = await db.fetchrow("""
@@ -594,7 +594,7 @@ async def schedule_appointment(
     schedule: AppointmentSchedule = Body(...),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("agent:schedule_appointments"))
+    _=Depends(permission_required("service_request.schedule_appointment"))
 ):
     # Check if appointment exists
     existing = await db.fetchrow("""
@@ -670,7 +670,7 @@ async def cancel_appointment(
     reason: Optional[str] = Body(None, embed=True),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("agent:schedule_appointments"))
+    _=Depends(permission_required("service_request.schedule_appointment"))
 ):
     cancelled = await appointment_scheduler.cancel_appointment(
         db=db,
@@ -698,7 +698,7 @@ async def get_available_slots(
     limit: int = Query(10, ge=1, le=50),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("agent:view_requests"))
+    _=Depends(permission_required("service_request.view"))
 ):
     if not from_date:
         from_date = date.today()
