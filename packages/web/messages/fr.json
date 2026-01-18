@@ -2659,6 +2659,8 @@
     "agentPortalDescription": "Accès réservé aux agents autorisés",
     "accessDenied": "Accès refusé",
     "agentOnlyPortal": "Ce portail est réservé aux agents. Utilisez la page de connexion standard.",
+    "userOnlyPortal": "Ce portail est réservé aux citoyens et entreprises. Les agents doivent utiliser le portail agents.",
+    "useAgentPortal": "Aller au Portail Agents",
     "notAnAgent": "Vous n'êtes pas agent ?",
     "standardLogin": "Connexion standard"
   },

@@ -2457,6 +2457,8 @@
     "agentPortalDescription": "Access reserved for authorized agents",
     "accessDenied": "Access denied",
     "agentOnlyPortal": "This portal is reserved for agents. Please use the standard login page.",
+    "userOnlyPortal": "This portal is for citizens and businesses. Agents must use the agent portal.",
+    "useAgentPortal": "Go to Agent Portal",
     "notAnAgent": "Not an agent?",
     "standardLogin": "Standard login"
   },

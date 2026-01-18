@@ -138,6 +138,27 @@ export default function AuthPage() {
 
       // Standard login (no 2FA) - TypeScript now knows response is TokenResponse
       if ('access_token' in response) {
+        // Validate role - agents and admins should use /auth/agent portal
+        const staffRoles = ['agent', 'admin']
+        if (staffRoles.includes(response.user.role)) {
+          toast({
+            variant: 'destructive',
+            title: t('accessDenied'),
+            description: t('userOnlyPortal'),
+            action: (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push(`/${locale}/auth/agent`)}
+              >
+                {t('useAgentPortal')}
+              </Button>
+            ),
+          })
+          setLoginLoading(false)
+          return
+        }
+
         setAuthData(response)
 
         // Toast succès
@@ -146,16 +167,11 @@ export default function AuthPage() {
           description: t('loginWelcome', { name: response.user.first_name || response.user.email }),
         })
 
-        // Redirect to dashboard based on user role
+        // Redirect to dashboard
         // Note: Email verification is mandatory during registration,
         // so all accounts are pre-verified. No need to check email_verified here.
         setTimeout(() => {
-          // Redirect admin users to admin dashboard
-          if (response.user.role === 'admin') {
-            router.push(`/${locale}/dashboard/admin`)
-          } else {
-            router.push(`/${locale}/dashboard`)
-          }
+          router.push(`/${locale}/dashboard`)
         }, 500)
       }
     } catch (error: unknown) {
@@ -230,6 +246,30 @@ export default function AuthPage() {
         code: twoFactorCode,
       })
 
+      // Validate role - agents and admins should use /auth/agent portal
+      const staffRoles = ['agent', 'admin']
+      if (staffRoles.includes(response.user.role)) {
+        toast({
+          variant: 'destructive',
+          title: t('accessDenied'),
+          description: t('userOnlyPortal'),
+          action: (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push(`/${locale}/auth/agent`)}
+            >
+              {t('useAgentPortal')}
+            </Button>
+          ),
+        })
+        setLoginLoading(false)
+        setRequires2FA(false)
+        setTempToken('')
+        setTwoFactorCode('')
+        return
+      }
+
       // Store tokens and user data
       setAuthData(response)
 
@@ -239,14 +279,9 @@ export default function AuthPage() {
         description: t('loginWelcome', { name: response.user.first_name || response.user.email }),
       })
 
-      // Redirect to dashboard based on user role
+      // Redirect to dashboard
       setTimeout(() => {
-        // Redirect admin users to admin dashboard
-        if (response.user.role === 'admin') {
-          router.push(`/${locale}/dashboard/admin`)
-        } else {
-          router.push(`/${locale}/dashboard`)
-        }
+        router.push(`/${locale}/dashboard`)
       }, 500)
     } catch (error: unknown) {
       toast({

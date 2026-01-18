@@ -2673,6 +2673,8 @@
     "agentPortalDescription": "Acceso reservado a agentes autorizados",
     "accessDenied": "Acceso denegado",
     "agentOnlyPortal": "Este portal está reservado a agentes. Utilice la página de inicio de sesión estándar.",
+    "userOnlyPortal": "Este portal es para ciudadanos y empresas. Los agentes deben usar el portal de agentes.",
+    "useAgentPortal": "Ir al Portal de Agentes",
     "notAnAgent": "¿No es agente?",
     "standardLogin": "Inicio de sesión estándar"
   },
