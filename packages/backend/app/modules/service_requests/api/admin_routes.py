@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
-from app.modules.permissions.middleware.permission_middleware import permission_required
+from app.modules.permissions.middleware.permission_middleware import permission_required, permission_required_any
 from app.core.events import EventBus, EventType
 from app.modules.treasury.errors import (
     TreasuryError,
@@ -3952,7 +3952,7 @@ class TreasuryDashboardStatsResponse(BaseModel):
 async def get_treasury_dashboard_stats(
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury.validate_payment"))
+    _=Depends(permission_required_any("treasury.validate_payment", "treasury_stat.view"))
 ):
     """Get aggregated statistics for Treasury Agent dashboard"""
     # Get pending validation count (payments awaiting agent review)

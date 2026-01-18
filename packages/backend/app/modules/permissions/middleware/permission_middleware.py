@@ -72,6 +72,71 @@ def permission_required(permission_name: str):
     return check_permission_dependency
 
 
+def permission_required_any(*permission_names: str):
+    """
+    FastAPI dependency factory that requires ANY of the specified permissions.
+
+    User needs at least ONE of the permissions to access the route.
+
+    Usage:
+        ```python
+        @router.get("/dashboard")
+        async def view_dashboard(
+            current_user: UserResponse = Depends(get_current_user),
+            _: None = Depends(permission_required_any(
+                "treasury.validate_payment",
+                "treasury_stat.view"
+            ))
+        ):
+            # Route handler code
+            ...
+        ```
+
+    Args:
+        *permission_names: Permission names (at least one required)
+
+    Returns:
+        Dependency function that checks permissions
+
+    Raises:
+        HTTPException: 401 if not authenticated, 403 if none of the permissions
+    """
+    async def check_any_permission_dependency(
+        current_user: UserResponse = Depends(get_current_user),
+        permission_service: PermissionService = Depends(get_permission_service)
+    ) -> None:
+        if not current_user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required"
+            )
+
+        user_id = str(current_user.id) if current_user.id else None
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid user: no ID found"
+            )
+
+        # Check if user has ANY of the required permissions
+        for permission_name in permission_names:
+            has_perm = await permission_service.has_permission(user_id, permission_name)
+            if has_perm:
+                return None  # User has at least one permission
+
+        # User has none of the permissions
+        permissions_str = "' or '".join(permission_names)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                f"Permission denied: '{permissions_str}' required. "
+                f"Contact your administrator to request this permission."
+            )
+        )
+
+    return check_any_permission_dependency
+
+
 def require_permission(permission_name: str, raise_on_deny: bool = True):
     """
     Decorator/Dependency for permission checking.

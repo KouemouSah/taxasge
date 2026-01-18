@@ -202,6 +202,8 @@ ROLE_PERMISSIONS = {
         # Reconciliation operations
         "treasury.reconcile",
         "treasury.view_reconciliation",
+        # Statistics (for dashboard)
+        "treasury_stat.view",
     ],
 
     # -------------------------------------------------------------------------
@@ -213,6 +215,8 @@ ROLE_PERMISSIONS = {
         "treasury.validate_payment",
         "treasury.reject_payment",
         "treasury.process_payment",
+        # Statistics (for dashboard)
+        "treasury_stat.view",
     ],
 
     # -------------------------------------------------------------------------
