@@ -33,15 +33,37 @@ def extract_supplements_list(calculation_details: Optional[Dict[str, Any]]) -> L
 
 
 class PaymentWorkflowStatus(str, Enum):
-    """Workflow status for payments requiring agent review."""
+    """
+    Workflow status for payments requiring agent review.
+    Must match database enum: payment_workflow_status (16 values)
+    """
+    # Initial states
     SUBMITTED = "submitted"
     AUTO_PROCESSING = "auto_processing"
+    AUTO_APPROVED = "auto_approved"
+
+    # Agent review states
     PENDING_AGENT_REVIEW = "pending_agent_review"
     LOCKED_BY_AGENT = "locked_by_agent"
-    APPROVED = "approved"
-    REJECTED = "rejected"
+    AGENT_REVIEWING = "agent_reviewing"
+
+    # Document states
+    REQUIRES_DOCUMENTS = "requires_documents"
+    DOCS_RESUBMITTED = "docs_resubmitted"
+
+    # Resolution states
+    APPROVED_BY_AGENT = "approved_by_agent"
+    REJECTED_BY_AGENT = "rejected_by_agent"
+
+    # Escalation states
+    ESCALATED_SUPERVISOR = "escalated_supervisor"
+    SUPERVISOR_REVIEWING = "supervisor_reviewing"
+
+    # Terminal states
     COMPLETED = "completed"
-    CANCELLED = "cancelled"
+    CANCELLED_BY_USER = "cancelled_by_user"
+    CANCELLED_BY_AGENT = "cancelled_by_agent"
+    EXPIRED = "expired"
 
 
 class ServicePaymentBase(BaseModel):
@@ -131,10 +153,11 @@ class ServicePaymentResponse(BaseModel):
 
     # Agent workflow
     requires_agent_validation: bool = False
-    locked_by_agent_id: Optional[int] = None
+    # UUID-based agent profile references (replaces deprecated integer agent_id fields)
+    locked_by_agent_profile_id: Optional[str] = None
     locked_at: Optional[datetime] = None
     lock_expires_at: Optional[datetime] = None
-    validated_by_agent_id: Optional[int] = None
+    validated_by_agent_profile_id: Optional[str] = None
     validated_at: Optional[datetime] = None
     validation_comment: Optional[str] = None
 
@@ -201,9 +224,14 @@ class PendingValidationResponse(BaseModel):
     # Status
     workflow_status: PaymentWorkflowStatus
 
-    # Lock
-    locked_by_agent_id: Optional[int] = None
+    # Lock (UUID-based agent profile reference)
+    locked_by_agent_profile_id: Optional[str] = None
+    locked_at: Optional[datetime] = None
     lock_expires_at: Optional[datetime] = None
+
+    # SLA tracking
+    sla_target_date: Optional[datetime] = None
+    submitted_at: Optional[datetime] = None
 
     # Timing
     created_at: datetime

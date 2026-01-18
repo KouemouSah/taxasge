@@ -2654,7 +2654,10 @@ class PendingPaymentResponse(BaseModel):
     workflow_status: str
     # Agent lock info (using UUID-based agent_profile_id)
     locked_by_agent_profile_id: Optional[str] = None
+    locked_at: Optional[str] = None
     lock_expires_at: Optional[str] = None
+    # Timestamps
+    submitted_at: Optional[str] = None
     created_at: str
     hours_waiting: float
     # Additional fields for frontend compatibility
@@ -2748,8 +2751,10 @@ async def get_pending_payments(
             sp.calculation_details,
             sp.workflow_status,
             sp.locked_by_agent_profile_id,
+            sp.locked_at,
             sp.lock_expires_at,
             sp.sla_target_date,
+            sr.submitted_at,
             sp.created_at,
             EXTRACT(EPOCH FROM (NOW() - sp.created_at)) / 3600 AS hours_waiting
         FROM service_payments sp
@@ -2790,7 +2795,9 @@ async def get_pending_payments(
             calculation_details=row["calculation_details"],
             workflow_status=row["workflow_status"],
             locked_by_agent_profile_id=str(row["locked_by_agent_profile_id"]) if row["locked_by_agent_profile_id"] else None,
+            locked_at=row["locked_at"].isoformat() if row["locked_at"] else None,
             lock_expires_at=row["lock_expires_at"].isoformat() if row["lock_expires_at"] else None,
+            submitted_at=row["submitted_at"].isoformat() if row["submitted_at"] else None,
             sla_target_date=row["sla_target_date"].isoformat() if row["sla_target_date"] else None,
             created_at=row["created_at"].isoformat(),
             hours_waiting=float(row["hours_waiting"] or 0),
