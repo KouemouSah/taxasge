@@ -15,6 +15,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError, ResponseValidationError
+from pydantic import ValidationError
 from loguru import logger
 import asyncpg
 import redis.asyncio as redis
@@ -30,7 +32,7 @@ class Settings(BaseSettings):
     database_url: str = os.getenv("DATABASE_URL", "postgresql://user:pass@localhost/taxasge")
     redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379")
     secret_key: str = os.getenv("SECRET_KEY", "taxasge-secret-key-change-in-production")
-    api_version: str = "1.1.3"  # v1.1.3: CORS exception handlers + treasury translations
+    api_version: str = "1.1.4"  # v1.1.4: ValidationError handlers + treasury logging
 
     # SMTP Configuration using secured secrets
     smtp_password: str = os.getenv("SMTP_PASSWORD_GMAIL", os.getenv("SMTP_PASSWORD", ""))
@@ -247,6 +249,54 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         content=content,
         headers=get_cors_headers(request)
     )
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle request validation errors with CORS headers."""
+    logger.warning(f"Request validation error: {exc.errors()}")
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": exc.errors(),
+            "error_code": "VALIDATION_ERROR",
+            "message_es": "Error de validación en los datos enviados."
+        },
+        headers=get_cors_headers(request)
+    )
+
+
+@app.exception_handler(ResponseValidationError)
+async def response_validation_exception_handler(request: Request, exc: ResponseValidationError):
+    """Handle response validation errors with CORS headers."""
+    logger.error(f"Response validation error on {request.url.path}: {exc.errors()}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Response validation error",
+            "error_code": "RESPONSE_VALIDATION_ERROR",
+            "message_es": "Error de validación en la respuesta del servidor.",
+            "validation_errors": str(exc.errors())[:500]  # Truncate for safety
+        },
+        headers=get_cors_headers(request)
+    )
+
+
+@app.exception_handler(ValidationError)
+async def pydantic_validation_exception_handler(request: Request, exc: ValidationError):
+    """Handle Pydantic validation errors with CORS headers."""
+    logger.error(f"Pydantic validation error: {exc.errors()}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Data validation error",
+            "error_code": "PYDANTIC_VALIDATION_ERROR",
+            "message_es": "Error de validación de datos.",
+            "validation_errors": str(exc.errors())[:500]
+        },
+        headers=get_cors_headers(request)
+    )
+
 
 # Language detection middleware - Detects user language from headers/query
 try:

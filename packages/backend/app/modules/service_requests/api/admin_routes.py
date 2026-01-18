@@ -2713,102 +2713,128 @@ async def get_pending_payments(
 ):
     """Get payments pending Treasury Agent validation"""
     from datetime import datetime
+    from loguru import logger
 
-    # Calculate offset from page
-    offset = (page - 1) * limit
+    try:
+        logger.info(f"[Treasury] get_pending_payments called: method={payment_method}, status={workflow_status}, page={page}")
 
-    # Build query
-    where_clauses = ["sp.workflow_status = $1"]
-    params = [workflow_status or "pending_agent_review"]
-    param_idx = 2
+        # Calculate offset from page
+        offset = (page - 1) * limit
 
-    if payment_method:
-        where_clauses.append(f"sp.payment_method = ${param_idx}")
-        params.append(payment_method)
-        param_idx += 1
-    else:
-        # Default: only manual validation methods
-        where_clauses.append(f"sp.payment_method IN ('cash', 'check')")
+        # Build query
+        where_clauses = ["sp.workflow_status = $1"]
+        params = [workflow_status or "pending_agent_review"]
+        param_idx = 2
 
-    where_sql = " AND ".join(where_clauses)
+        if payment_method:
+            where_clauses.append(f"sp.payment_method = ${param_idx}")
+            params.append(payment_method)
+            param_idx += 1
+        else:
+            # Default: only manual validation methods
+            where_clauses.append(f"sp.payment_method IN ('cash', 'check')")
 
-    query = f"""
-        SELECT
-            sp.id AS payment_id,
-            sp.payment_reference,
-            sp.service_request_id,
-            sr.reference AS request_reference,
-            sr.workflow_code,
-            sp.user_id,
-            u.first_name || ' ' || u.last_name AS user_name,
-            u.email AS user_email,
-            sp.payment_method,
-            sp.total_amount,
-            sp.base_amount,
-            sp.penalties,
-            sp.discounts,
-            sp.currency,
-            sp.calculation_details,
-            sp.workflow_status,
-            sp.locked_by_agent_profile_id,
-            sp.locked_at,
-            sp.lock_expires_at,
-            sp.sla_target_date,
-            sr.submitted_at,
-            sp.created_at,
-            EXTRACT(EPOCH FROM (NOW() - sp.created_at)) / 3600 AS hours_waiting
-        FROM service_payments sp
-        LEFT JOIN service_requests sr ON sr.id = sp.service_request_id
-        LEFT JOIN users u ON u.id = sp.user_id
-        WHERE {where_sql}
-        ORDER BY sp.created_at ASC
-        LIMIT ${param_idx} OFFSET ${param_idx + 1}
-    """
-    params.extend([limit, offset])
+        where_sql = " AND ".join(where_clauses)
 
-    rows = await db.fetch(query, *params)
+        query = f"""
+            SELECT
+                sp.id AS payment_id,
+                sp.payment_reference,
+                sp.service_request_id,
+                sr.reference AS request_reference,
+                sr.workflow_code,
+                sp.user_id,
+                u.first_name || ' ' || u.last_name AS user_name,
+                u.email AS user_email,
+                sp.payment_method,
+                sp.total_amount,
+                sp.base_amount,
+                sp.penalties,
+                sp.discounts,
+                sp.currency,
+                sp.calculation_details,
+                sp.workflow_status,
+                sp.locked_by_agent_profile_id,
+                sp.locked_at,
+                sp.lock_expires_at,
+                sp.sla_target_date,
+                sr.submitted_at,
+                sp.created_at,
+                EXTRACT(EPOCH FROM (NOW() - sp.created_at)) / 3600 AS hours_waiting
+            FROM service_payments sp
+            LEFT JOIN service_requests sr ON sr.id = sp.service_request_id
+            LEFT JOIN users u ON u.id = sp.user_id
+            WHERE {where_sql}
+            ORDER BY sp.created_at ASC
+            LIMIT ${param_idx} OFFSET ${param_idx + 1}
+        """
+        params.extend([limit, offset])
 
-    # Get total count
-    count_query = f"""
-        SELECT COUNT(*) FROM service_payments sp
-        WHERE {where_sql}
-    """
-    total = await db.fetchval(count_query, *params[:param_idx-1])
+        logger.debug(f"[Treasury] Executing query with params: {params[:3]}...")
+        rows = await db.fetch(query, *params)
+        logger.info(f"[Treasury] Found {len(rows)} payments")
 
-    payments = []
-    for row in rows:
-        payments.append(PendingPaymentResponse(
-            payment_id=str(row["payment_id"]),
-            payment_reference=row["payment_reference"],
-            service_request_id=str(row["service_request_id"]) if row["service_request_id"] else None,
-            request_reference=row["request_reference"],
-            workflow_code=row["workflow_code"],
-            user_id=str(row["user_id"]),
-            user_name=row["user_name"],
-            user_email=row["user_email"],
-            payment_method=row["payment_method"],
-            total_amount=float(row["total_amount"]),
-            base_amount=float(row["base_amount"]) if row["base_amount"] else None,
-            penalties=float(row["penalties"]) if row["penalties"] else None,
-            discounts=float(row["discounts"]) if row["discounts"] else None,
-            currency=row["currency"],
-            calculation_details=row["calculation_details"],
-            workflow_status=row["workflow_status"],
-            locked_by_agent_profile_id=str(row["locked_by_agent_profile_id"]) if row["locked_by_agent_profile_id"] else None,
-            locked_at=row["locked_at"].isoformat() if row["locked_at"] else None,
-            lock_expires_at=row["lock_expires_at"].isoformat() if row["lock_expires_at"] else None,
-            submitted_at=row["submitted_at"].isoformat() if row["submitted_at"] else None,
-            sla_target_date=row["sla_target_date"].isoformat() if row["sla_target_date"] else None,
-            created_at=row["created_at"].isoformat(),
-            hours_waiting=float(row["hours_waiting"] or 0),
-        ))
+        # Get total count
+        count_query = f"""
+            SELECT COUNT(*) FROM service_payments sp
+            WHERE {where_sql}
+        """
+        total = await db.fetchval(count_query, *params[:param_idx-1])
 
-    return PendingPaymentsListResponse(
-        payments=payments,
-        total=total or 0,
-        page=page,
-        page_size=limit
-    )
+        payments = []
+        for idx, row in enumerate(rows):
+            try:
+                # Log raw values for debugging
+                logger.debug(f"[Treasury] Processing row {idx}: payment_id={row['payment_id']}, payment_method={row['payment_method']}, workflow_status={row['workflow_status']}")
+
+                payment = PendingPaymentResponse(
+                    payment_id=str(row["payment_id"]),
+                    payment_reference=row["payment_reference"],
+                    service_request_id=str(row["service_request_id"]) if row["service_request_id"] else None,
+                    request_reference=row["request_reference"],
+                    workflow_code=row["workflow_code"],
+                    user_id=str(row["user_id"]),
+                    user_name=row["user_name"],
+                    user_email=row["user_email"],
+                    payment_method=row["payment_method"],
+                    total_amount=float(row["total_amount"]),
+                    base_amount=float(row["base_amount"]) if row["base_amount"] else None,
+                    penalties=float(row["penalties"]) if row["penalties"] else None,
+                    discounts=float(row["discounts"]) if row["discounts"] else None,
+                    currency=row["currency"],
+                    calculation_details=row["calculation_details"],
+                    workflow_status=row["workflow_status"],
+                    locked_by_agent_profile_id=str(row["locked_by_agent_profile_id"]) if row["locked_by_agent_profile_id"] else None,
+                    locked_at=row["locked_at"].isoformat() if row["locked_at"] else None,
+                    lock_expires_at=row["lock_expires_at"].isoformat() if row["lock_expires_at"] else None,
+                    submitted_at=row["submitted_at"].isoformat() if row["submitted_at"] else None,
+                    sla_target_date=row["sla_target_date"].isoformat() if row["sla_target_date"] else None,
+                    created_at=row["created_at"].isoformat(),
+                    hours_waiting=float(row["hours_waiting"] or 0),
+                )
+                payments.append(payment)
+            except Exception as row_error:
+                logger.error(f"[Treasury] Error processing row {idx}: {row_error}")
+                logger.error(f"[Treasury] Raw row data: payment_id={row['payment_id']}, payment_method={row['payment_method']}, workflow_status={row['workflow_status']}, total_amount={row['total_amount']}")
+                raise
+
+        logger.info(f"[Treasury] Successfully built {len(payments)} payment responses")
+
+        response = PendingPaymentsListResponse(
+            payments=payments,
+            total=total or 0,
+            page=page,
+            page_size=limit
+        )
+
+        logger.info(f"[Treasury] Returning response with {len(response.payments)} payments")
+        return response
+
+    except Exception as e:
+        logger.error(f"[Treasury] Error in get_pending_payments: {type(e).__name__}: {e}")
+        import traceback
+        logger.error(f"[Treasury] Traceback: {traceback.format_exc()}")
+        raise
 
 
 @router.get(
