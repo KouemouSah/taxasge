@@ -12,3 +12,6 @@ export {
 
 export { useEntityAccess } from './useEntityAccess';
 export type { EntityAccessResult } from './useEntityAccess';
+
+export { useEntityStats, ENTITY_STATS_QUERY_KEY } from './useEntityStats';
+export type { EntityQueueStats, UseEntityStatsReturn } from './useEntityStats';

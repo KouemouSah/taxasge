@@ -27,6 +27,7 @@ import {
   ClipboardList,
 } from 'lucide-react';
 import { useAgentDashboard, useEntityAccess } from '../hooks';
+import { useEntityStats } from '../hooks/useEntityStats';
 import { AccessDenied } from './AccessDenied';
 import type { EntityCode, MenuItem } from '../types';
 import { isMenuGroup } from '../types';
@@ -42,23 +43,6 @@ interface GenericEntityDashboardProps {
   statsComponent?: React.ReactNode;
   /** Optional: Additional class name */
   className?: string;
-}
-
-// =============================================================================
-// STATS HOOK (placeholder - can be enhanced per entity)
-// =============================================================================
-
-function useEntityStats(_entityCode: EntityCode) {
-  // Placeholder - each entity can implement its own stats
-  return {
-    isLoading: false,
-    stats: {
-      pendingCount: 0,
-      inProgressCount: 0,
-      completedTodayCount: 0,
-      totalThisWeek: 0,
-    },
-  };
 }
 
 // =============================================================================
