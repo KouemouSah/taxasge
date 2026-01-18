@@ -131,16 +131,37 @@ interface UseAgentDashboardReturn {
 
 export function useAgentDashboard(): UseAgentDashboardReturn {
   const locale = useLocale();
-  const authData = getAuthData();
-  const user = authData?.user;
+
+  // Use state to handle SSR/hydration timing - getAuthData() relies on localStorage
+  const [userState, setUserState] = useState<{
+    user: { id?: string; role?: string; permissions?: string[] } | null;
+    isLoaded: boolean;
+  }>({
+    user: null,
+    isLoaded: false,
+  });
+
+  // Load user data on client-side only (after hydration)
+  useEffect(() => {
+    const authData = getAuthData();
+    setUserState({
+      user: authData?.user || null,
+      isLoaded: true,
+    });
+  }, []);
+
+  const user = userState.user;
 
   // Fetch agent profile
   const {
     data: agentProfile,
-    isLoading,
+    isLoading: profileLoading,
     isError,
     error,
   } = useAgentProfile();
+
+  // Include userState.isLoaded in loading check to prevent SSR mismatch
+  const isLoading = !userState.isLoaded || profileLoading;
 
   // Build agent context
   const context: AgentDashboardContext | null = agentProfile

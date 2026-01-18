@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { DashboardSidebar, MobileSidebar } from './DashboardSidebar'
+import { DashboardErrorBoundary } from './DashboardErrorBoundary'
 import { AdminSidebar } from '@/modules/admin/components'
 import { GenericAgentSidebar } from '@/modules/agent-dashboard'
 import { getAuthData } from '@/core/auth/storage'
@@ -101,7 +102,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto bg-muted/10 p-4 md:p-6 lg:p-8">
-          {children}
+          <DashboardErrorBoundary>
+            {children}
+          </DashboardErrorBoundary>
         </main>
 
         {/* Footer */}
