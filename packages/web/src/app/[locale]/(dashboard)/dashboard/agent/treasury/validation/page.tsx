@@ -2,12 +2,12 @@
  * Treasury Validation Page
  * Lists pending payments requiring manual validation (cash/check)
  * Treasury agents can lock, validate, or reject payments
- * @version 1.1.3 - Fixed translations and CORS
+ * @version 1.1.4 - Added debugging for frontend error
  */
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -66,6 +66,19 @@ export default function TreasuryValidationPage() {
     status: statusFilter !== 'all' ? statusFilter : undefined,
     method: methodFilter !== 'all' ? methodFilter : undefined,
   });
+
+  // Debug logging
+  useEffect(() => {
+    console.log('[TreasuryValidation] paymentsData:', paymentsData);
+    console.log('[TreasuryValidation] isLoading:', isLoading);
+    console.log('[TreasuryValidation] error:', error);
+    if (paymentsData?.payments) {
+      console.log('[TreasuryValidation] First payment:', paymentsData.payments[0]);
+      paymentsData.payments.forEach((p, i) => {
+        console.log(`[TreasuryValidation] Payment ${i} id:`, p.id, 'paymentRef:', p.paymentReference);
+      });
+    }
+  }, [paymentsData, isLoading, error]);
 
   // Actions
   const {
