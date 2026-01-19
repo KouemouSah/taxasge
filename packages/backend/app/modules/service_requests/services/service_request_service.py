@@ -31,7 +31,7 @@ from ..models.service_request import (
     FieldIndicator,
     RiskAnalysisResult
 )
-from ..models.enums import ServiceRequestStatus, SolicitudType
+from ..models.enums import ServiceRequestStatus, SolicitudType, WorkflowCode
 from ..workflows.workflow_interface import WorkflowContext, RenovacionMotivo
 from .tariff_service import tariff_service
 from .tariff_calculator import tariff_calculator
@@ -1334,11 +1334,6 @@ class ServiceRequestService:
         if workflow:
             logger.info(f"Using workflow class for document requirements: {workflow_code}")
 
-            # Create WorkflowContext with form_data for dynamic requirements
-            context = None
-            if form_data:
-                context = WorkflowContext(form_data=form_data)
-
             # Convert solicitud_type string to enum
             try:
                 solicitud_enum = SolicitudType(solicitud_type) if solicitud_type else SolicitudType.EXPEDICION
@@ -1352,6 +1347,25 @@ class ServiceRequestService:
                     motivo_enum = RenovacionMotivo(motivo)
                 except ValueError:
                     motivo_enum = None
+
+            # Create WorkflowContext with form_data for dynamic requirements
+            # WorkflowContext requires: service_request_id, user_id, workflow_code, solicitud_type
+            # We use placeholder UUIDs since we're just checking document requirements
+            context = None
+            if form_data:
+                try:
+                    wf_code_enum = WorkflowCode(workflow_code) if workflow_code else WorkflowCode.PASAPORTE_NUEVO
+                except ValueError:
+                    wf_code_enum = WorkflowCode.PASAPORTE_NUEVO
+                    logger.warning(f"Unknown workflow_code '{workflow_code}', using default")
+
+                context = WorkflowContext(
+                    service_request_id=uuid4(),  # Placeholder for requirements check
+                    user_id=uuid4(),  # Placeholder for requirements check
+                    workflow_code=wf_code_enum,
+                    solicitud_type=solicitud_enum,
+                    form_data=form_data
+                )
 
             # Call workflow's get_document_requirements with proper parameters
             try:
