@@ -2,11 +2,12 @@
 
 /**
  * GrantPermissionDialog Component
- * Dialog for granting a permission to a user
+ * Dialog for granting permissions to a user (supports multi-select)
  *
  * @module user-permissions-admin/components
  * @author Claude Code
  * @date 2025-12-04
+ * @updated 2026-01-19 - Added multi-select support for bulk permission assignment
  */
 
 import { useState, useMemo } from 'react'
@@ -25,6 +26,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Select,
   SelectContent,
@@ -32,7 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Loader2, AlertTriangle, Search } from 'lucide-react'
+import { Loader2, AlertTriangle, Search, CheckSquare, Square } from 'lucide-react'
 import { toast } from 'sonner'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
@@ -59,13 +61,14 @@ export function GrantPermissionDialog({
   const t = useTranslations('admin.userPermissions')
   const tCommon = useTranslations('common')
 
-  // State
-  const [selectedPermissionId, setSelectedPermissionId] = useState<string | null>(null)
+  // State - Now supports multiple selection
+  const [selectedPermissionIds, setSelectedPermissionIds] = useState<Set<string>>(new Set())
   const [granted, setGranted] = useState<boolean>(true)
   const [durationType, setDurationType] = useState<DurationType>('permanent')
   const [customDays, setCustomDays] = useState<number>(7)
   const [reason, setReason] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [isGranting, setIsGranting] = useState(false)
 
   // Queries
   const { data: allPermissions = [], isLoading: isLoadingPermissions } = usePermissions()
@@ -128,34 +131,94 @@ export function GrantPermissionDialog({
     return now.toISOString()
   }
 
-  // Handlers
+  // Toggle single permission selection
+  const togglePermission = (permId: string) => {
+    setSelectedPermissionIds((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(permId)) {
+        newSet.delete(permId)
+      } else {
+        newSet.add(permId)
+      }
+      return newSet
+    })
+  }
+
+  // Select all visible permissions (filtered by search)
+  const selectAllVisible = () => {
+    setSelectedPermissionIds((prev) => {
+      const newSet = new Set(prev)
+      availablePermissions.forEach((perm) => newSet.add(perm.id))
+      return newSet
+    })
+  }
+
+  // Deselect all
+  const deselectAll = () => {
+    setSelectedPermissionIds(new Set())
+  }
+
+  // Select all in a specific module
+  const selectModule = (module: string) => {
+    const modulePerms = groupedPermissions[module] || []
+    setSelectedPermissionIds((prev) => {
+      const newSet = new Set(prev)
+      modulePerms.forEach((perm) => newSet.add(perm.id))
+      return newSet
+    })
+  }
+
+  // Handlers - Now grants multiple permissions
   const handleGrant = async () => {
-    if (!user || !selectedPermissionId) return
+    if (!user || selectedPermissionIds.size === 0) return
+
+    setIsGranting(true)
+    const permIds = Array.from(selectedPermissionIds)
+    let successCount = 0
+    let failCount = 0
+    const errors: string[] = []
 
     try {
-      await grantMutation.mutateAsync({
-        userId: user.id,
-        data: {
-          permission_id: selectedPermissionId,
-          granted,
-          expires_at: calculateExpiresAt(),
-          reason: reason.trim() || undefined,
-        },
-      })
+      // Grant each permission sequentially to avoid rate limits
+      for (const permId of permIds) {
+        try {
+          await grantMutation.mutateAsync({
+            userId: user.id,
+            data: {
+              permission_id: permId,
+              granted,
+              expires_at: calculateExpiresAt(),
+              reason: reason.trim() || undefined,
+            },
+          })
+          successCount++
+        } catch (error) {
+          failCount++
+          const permName = allPermissions.find((p) => p.id === permId)?.name || permId
+          errors.push(permName)
+        }
+      }
 
-      toast.success(
-        granted
-          ? t('permissionGranted') || 'Permission granted successfully'
-          : t('permissionDenied') || 'Permission denied successfully'
-      )
+      if (successCount > 0) {
+        toast.success(
+          granted
+            ? `${successCount} permission(s) granted successfully`
+            : `${successCount} permission(s) denied successfully`
+        )
+      }
+      if (failCount > 0) {
+        toast.error(`Failed to assign ${failCount} permission(s): ${errors.slice(0, 3).join(', ')}${errors.length > 3 ? '...' : ''}`)
+      }
       handleClose()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to grant permission')
+      toast.error(error instanceof Error ? error.message : 'Failed to grant permissions')
+    } finally {
+      setIsGranting(false)
     }
   }
 
   const handleClose = () => {
-    setSelectedPermissionId(null)
+    setSelectedPermissionIds(new Set())
     setGranted(true)
     setDurationType('permanent')
     setCustomDays(7)
@@ -164,7 +227,10 @@ export function GrantPermissionDialog({
     onOpenChange(false)
   }
 
-  const selectedPermission = allPermissions.find((p) => p.id === selectedPermissionId)
+  // Check if any selected permission is critical
+  const hasSelectedCritical = useMemo(() => {
+    return allPermissions.some((p) => selectedPermissionIds.has(p.id) && p.is_critical)
+  }, [allPermissions, selectedPermissionIds])
 
   if (!user) return null
 
@@ -173,30 +239,61 @@ export function GrantPermissionDialog({
       <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>
-            {t('grantPermission') || 'Grant Permission'}
+            {t('grantPermissions') || 'Grant Permissions'}
           </DialogTitle>
           <DialogDescription>
-            {t('grantPermissionDescription', {
+            {t('grantPermissionsDescription', {
               name: `${user.first_name} ${user.last_name}`,
-            }) || `Grant or deny a specific permission to ${user.first_name} ${user.last_name}.`}
+            }) || `Select one or more permissions to grant to ${user.first_name} ${user.last_name}.`}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden space-y-4">
+        <ScrollArea className="flex-1 max-h-[60vh]">
+          <div className="space-y-4 pr-4">
           {/* Permission Selection */}
           <div className="space-y-2">
-            <Label>{t('selectPermission') || 'Select Permission'}</Label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder={t('searchPermissions') || 'Search permissions...'}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
+            <div className="flex items-center justify-between">
+              <Label>{t('selectPermissions') || 'Select Permissions'}</Label>
+              {selectedPermissionIds.size > 0 && (
+                <Badge variant="secondary">
+                  {selectedPermissionIds.size} selected
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder={t('searchPermissions') || 'Search permissions...'}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              {/* Bulk selection buttons */}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={selectAllVisible}
+                disabled={availablePermissions.length === 0}
+              >
+                <CheckSquare className="h-4 w-4 mr-1" />
+                {t('selectAll') || 'All'}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={deselectAll}
+                disabled={selectedPermissionIds.size === 0}
+              >
+                <Square className="h-4 w-4 mr-1" />
+                {t('deselectAll') || 'None'}
+              </Button>
             </div>
 
-            <ScrollArea className="h-[200px] border rounded-md">
+            <ScrollArea className="h-[250px] border rounded-md">
               {isLoadingPermissions ? (
                 <div className="flex items-center justify-center h-full">
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -211,54 +308,78 @@ export function GrantPermissionDialog({
                 <div className="p-2 space-y-4">
                   {Object.entries(groupedPermissions)
                     .sort(([a], [b]) => a.localeCompare(b))
-                    .map(([module, perms]) => (
-                      <div key={module}>
-                        <div className="text-xs font-medium text-muted-foreground uppercase mb-2">
-                          {module.replace(/_/g, ' ')}
-                        </div>
-                        <div className="space-y-1">
-                          {perms.map((perm) => (
-                            <button
-                              key={perm.id}
+                    .map(([module, perms]) => {
+                      const moduleSelectedCount = perms.filter(p => selectedPermissionIds.has(p.id)).length
+                      return (
+                        <div key={module}>
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="text-xs font-medium text-muted-foreground uppercase">
+                              {module.replace(/_/g, ' ')} ({perms.length})
+                            </div>
+                            <Button
                               type="button"
-                              onClick={() => setSelectedPermissionId(perm.id)}
-                              className={`w-full text-left p-2 rounded-md transition-colors ${
-                                selectedPermissionId === perm.id
-                                  ? 'bg-primary/10 border border-primary'
-                                  : 'hover:bg-muted'
-                              }`}
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 text-xs"
+                              onClick={() => selectModule(module)}
                             >
-                              <div className="flex items-center gap-2">
-                                <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                                  {perm.name}
-                                </code>
-                                {perm.is_critical && (
-                                  <Badge variant="destructive" className="text-xs gap-1">
-                                    <AlertTriangle className="h-3 w-3" />
-                                    {t('critical') || 'Critical'}
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-xs text-muted-foreground mt-1 truncate">
-                                {perm.description}
-                              </p>
-                            </button>
-                          ))}
+                              {moduleSelectedCount === perms.length ? 'Selected' : `Select all ${perms.length}`}
+                            </Button>
+                          </div>
+                          <div className="space-y-1">
+                            {perms.map((perm) => {
+                              const isSelected = selectedPermissionIds.has(perm.id)
+                              return (
+                                <button
+                                  key={perm.id}
+                                  type="button"
+                                  onClick={() => togglePermission(perm.id)}
+                                  className={`w-full text-left p-2 rounded-md transition-colors flex items-start gap-2 ${
+                                    isSelected
+                                      ? 'bg-primary/10 border border-primary'
+                                      : 'hover:bg-muted border border-transparent'
+                                  }`}
+                                >
+                                  <Checkbox
+                                    checked={isSelected}
+                                    className="mt-0.5"
+                                    onCheckedChange={() => togglePermission(perm.id)}
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                                        {perm.name}
+                                      </code>
+                                      {perm.is_critical && (
+                                        <Badge variant="destructive" className="text-xs gap-1">
+                                          <AlertTriangle className="h-3 w-3" />
+                                          {t('critical') || 'Critical'}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-1 truncate">
+                                      {perm.description}
+                                    </p>
+                                  </div>
+                                </button>
+                              )
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                 </div>
               )}
             </ScrollArea>
           </div>
 
           {/* Selected Permission Warning */}
-          {selectedPermission?.is_critical && (
+          {hasSelectedCritical && (
             <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-md text-amber-700 dark:text-amber-400">
               <AlertTriangle className="h-4 w-4 flex-shrink-0" />
               <span className="text-sm">
                 {t('criticalPermissionWarning') ||
-                  'This is a critical permission. Make sure you understand the implications.'}
+                  'One or more critical permissions are selected. Make sure you understand the implications.'}
               </span>
             </div>
           )}
@@ -328,19 +449,23 @@ export function GrantPermissionDialog({
               rows={2}
             />
           </div>
-        </div>
+          </div>
+        </ScrollArea>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={grantMutation.isPending}>
+          <Button variant="outline" onClick={handleClose} disabled={isGranting}>
             {tCommon('cancel') || 'Cancel'}
           </Button>
           <Button
             onClick={handleGrant}
-            disabled={!selectedPermissionId || grantMutation.isPending}
+            disabled={selectedPermissionIds.size === 0 || isGranting}
             variant={granted ? 'default' : 'destructive'}
           >
-            {grantMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {granted ? t('grantPermission') || 'Grant Permission' : t('denyPermission') || 'Deny Permission'}
+            {isGranting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {granted
+              ? `${t('grantPermissions') || 'Grant'} ${selectedPermissionIds.size > 0 ? `(${selectedPermissionIds.size})` : ''}`
+              : `${t('denyPermissions') || 'Deny'} ${selectedPermissionIds.size > 0 ? `(${selectedPermissionIds.size})` : ''}`
+            }
           </Button>
         </DialogFooter>
       </DialogContent>
