@@ -24,6 +24,17 @@ from app.modules.agents.models.agent_profile import (
     AgentType,
 )
 
+# Import MenuConfigService for dynamic menu generation
+try:
+    from app.modules.menu_config.services.menu_config_service import (
+        MenuConfigService,
+        get_menu_config_service,
+    )
+    MENU_CONFIG_AVAILABLE = True
+except ImportError:
+    MENU_CONFIG_AVAILABLE = False
+    logger.warning("MenuConfigService not available - dynamic menus disabled")
+
 
 class AgentProfileService:
     """Service for agent profile management"""
@@ -104,6 +115,70 @@ class AgentProfileService:
         if profile:
             return await self.profile_repo.get_with_details(conn, UUID(str(profile["id"])))
         return None
+
+    async def get_agent_with_menu_config(
+        self,
+        conn: asyncpg.Connection,
+        user_id: UUID,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get agent profile with dynamic menu and dashboard configuration.
+
+        This method integrates with MenuConfigService to provide:
+        - For workflow-based agents: Auto-generated menus from entity.workflow_codes
+        - For module-based agents (TESORO): Explicit menus from roles.menu_config
+
+        Args:
+            conn: Database connection
+            user_id: User UUID
+
+        Returns:
+            Agent profile with menu_config, dashboard_config, and permissions
+        """
+        # First get the agent profile
+        profile = await self.profile_repo.get_by_user_id(conn, user_id, active_only=True)
+        if not profile:
+            return None
+
+        profile_id = UUID(str(profile["id"]))
+
+        # Get full profile details
+        profile_details = await self.profile_repo.get_with_details(conn, profile_id)
+        if not profile_details:
+            return None
+
+        # If MenuConfigService is available, fetch dynamic menu config
+        if MENU_CONFIG_AVAILABLE:
+            try:
+                menu_service = get_menu_config_service()
+                menu_config_response = await menu_service.get_agent_menu_config(
+                    agent_profile_id=profile_id,
+                    user_id=user_id,
+                    db_connection=conn
+                )
+
+                # Merge menu config into profile response
+                profile_details["menu_config"] = menu_config_response.menu_config.model_dump()
+                profile_details["dashboard_config"] = menu_config_response.dashboard_config.model_dump()
+                profile_details["available_workflows"] = menu_config_response.available_workflows
+                profile_details["entity_type"] = menu_config_response.entity_type
+                profile_details["permissions"] = menu_config_response.permissions
+
+                logger.debug(
+                    f"Menu config loaded for agent {profile_id}: "
+                    f"type={menu_config_response.entity_type}, "
+                    f"menus={len(menu_config_response.menu_config.menus)}"
+                )
+            except Exception as e:
+                logger.error(f"Failed to load menu config for agent {profile_id}: {e}")
+                # Return profile without menu config on error
+                profile_details["menu_config"] = None
+                profile_details["dashboard_config"] = None
+        else:
+            profile_details["menu_config"] = None
+            profile_details["dashboard_config"] = None
+
+        return profile_details
 
     async def update_agent_profile(
         self,

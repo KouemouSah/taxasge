@@ -1,7 +1,9 @@
 """
 Role Models - Pydantic schemas for roles
+
+Updated 2026-01-19: Added menu_config and dashboard_config for dynamic menu system
 """
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 from uuid import UUID
 from pydantic import BaseModel, Field, validator
@@ -13,6 +15,18 @@ class RoleBase(BaseModel):
     code: str = Field(..., min_length=2, max_length=50, description="Unique role code (used in code)")
     entity_type: Optional[str] = Field(None, max_length=50, description="Entity type: DGI, Ministry, or NULL for global")
     description: Optional[str] = Field(None, description="Role description")
+    menu_config: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Menu configuration JSON. NULL = auto-generate from entity.workflow_codes"
+    )
+    dashboard_config: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Dashboard widget configuration JSON. NULL = default dashboard"
+    )
+    ui_config: Optional[Dict[str, Any]] = Field(
+        None,
+        description="UI preferences (theme, shortcuts, display options). NULL = defaults"
+    )
 
 
 class RoleCreate(RoleBase):
@@ -41,6 +55,18 @@ class RoleUpdate(BaseModel):
     """Schema for updating an existing role"""
     name: Optional[str] = Field(None, min_length=2, max_length=100)
     description: Optional[str] = None
+    menu_config: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Menu configuration JSON. Set to empty dict {} to remove, NULL to keep unchanged"
+    )
+    dashboard_config: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Dashboard widget configuration JSON"
+    )
+    ui_config: Optional[Dict[str, Any]] = Field(
+        None,
+        description="UI preferences JSON"
+    )
 
 
 class RoleResponse(RoleBase):

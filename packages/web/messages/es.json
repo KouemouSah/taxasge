@@ -569,6 +569,85 @@
       "uploadImage": "Subir imagen",
       "uploading": "Subiendo..."
     },
+    "menuConfig": {
+      "title": "Configuración de Menús",
+      "subtitle": "Gestionar menús dinámicos y configuración de dashboards para agentes",
+      "tabs": {
+        "workflowMappings": "Mapeos de Workflow",
+        "menuTemplates": "Plantillas de Menú"
+      },
+      "workflowMappings": {
+        "title": "Mapeos de Workflow a Menú",
+        "subtitle": "Configurar cómo los workflows se agrupan en menús de navegación",
+        "createMapping": "Crear Mapeo",
+        "editMapping": "Editar Mapeo",
+        "deleteMapping": "Eliminar Mapeo",
+        "mappingCreated": "Mapeo creado exitosamente",
+        "mappingUpdated": "Mapeo actualizado exitosamente",
+        "mappingDeleted": "Mapeo eliminado exitosamente",
+        "noMappingsFound": "No se encontraron mapeos",
+        "mappingsFound": "{count} mapeo(s) encontrado(s)",
+        "fieldWorkflowPattern": "Patrón de Workflow",
+        "fieldMenuGroupId": "ID del Grupo de Menú",
+        "fieldMenuTitleKey": "Clave de Título (i18n)",
+        "fieldMenuIcon": "Icono",
+        "fieldIncludePending": "Incluir Pendientes",
+        "fieldIncludeValidation": "Incluir Validación",
+        "fieldIncludeHistory": "Incluir Historial",
+        "fieldDisplayOrder": "Orden de Visualización",
+        "confirmDelete": "¿Está seguro de eliminar este mapeo?"
+      },
+      "menuTemplates": {
+        "title": "Plantillas de Menú",
+        "subtitle": "Crear y gestionar plantillas de menú reutilizables",
+        "createTemplate": "Crear Plantilla",
+        "editTemplate": "Editar Plantilla",
+        "deleteTemplate": "Eliminar Plantilla",
+        "templateCreated": "Plantilla creada exitosamente",
+        "templateUpdated": "Plantilla actualizada exitosamente",
+        "templateDeleted": "Plantilla eliminada exitosamente",
+        "noTemplatesFound": "No se encontraron plantillas",
+        "templatesFound": "{count} plantilla(s) encontrada(s)",
+        "fieldCode": "Código",
+        "fieldName": "Nombre",
+        "fieldDescription": "Descripción",
+        "fieldTemplateType": "Tipo de Plantilla",
+        "fieldEntityCode": "Código de Entidad",
+        "fieldMenuStructure": "Estructura del Menú (JSON)",
+        "fieldDashboardWidgets": "Widgets del Dashboard (JSON)",
+        "typeWorkflow": "Workflow",
+        "typeModule": "Módulo",
+        "typeCustom": "Personalizado",
+        "confirmDelete": "¿Está seguro de eliminar esta plantilla?"
+      },
+      "table": {
+        "pattern": "Patrón",
+        "groupId": "ID Grupo",
+        "titleKey": "Clave Título",
+        "icon": "Icono",
+        "order": "Orden",
+        "actions": "Acciones",
+        "code": "Código",
+        "name": "Nombre",
+        "type": "Tipo",
+        "entity": "Entidad"
+      },
+      "actions": {
+        "edit": "Editar",
+        "delete": "Eliminar",
+        "save": "Guardar",
+        "cancel": "Cancelar",
+        "preview": "Vista Previa"
+      },
+      "errors": {
+        "loadingMappings": "Error al cargar mapeos",
+        "loadingTemplates": "Error al cargar plantillas",
+        "savingMapping": "Error al guardar mapeo",
+        "savingTemplate": "Error al guardar plantilla",
+        "deletingMapping": "Error al eliminar mapeo",
+        "deletingTemplate": "Error al eliminar plantilla"
+      }
+    },
     "entities": {
       "pageTitle": "Gestión de Entidades",
       "pageSubtitle": "Administrar entidades, ubicaciones y ciudades de Guinea Ecuatorial",

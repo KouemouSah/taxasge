@@ -569,6 +569,85 @@
       "uploadImage": "Télécharger l'image",
       "uploading": "Téléchargement..."
     },
+    "menuConfig": {
+      "title": "Configuration des Menus",
+      "subtitle": "Gérer les menus dynamiques et la configuration des tableaux de bord pour les agents",
+      "tabs": {
+        "workflowMappings": "Mappages de Workflow",
+        "menuTemplates": "Modèles de Menu"
+      },
+      "workflowMappings": {
+        "title": "Mappages Workflow vers Menu",
+        "subtitle": "Configurer comment les workflows sont groupés dans les menus de navigation",
+        "createMapping": "Créer Mappage",
+        "editMapping": "Modifier Mappage",
+        "deleteMapping": "Supprimer Mappage",
+        "mappingCreated": "Mappage créé avec succès",
+        "mappingUpdated": "Mappage mis à jour avec succès",
+        "mappingDeleted": "Mappage supprimé avec succès",
+        "noMappingsFound": "Aucun mappage trouvé",
+        "mappingsFound": "{count} mappage(s) trouvé(s)",
+        "fieldWorkflowPattern": "Modèle de Workflow",
+        "fieldMenuGroupId": "ID du Groupe de Menu",
+        "fieldMenuTitleKey": "Clé du Titre (i18n)",
+        "fieldMenuIcon": "Icône",
+        "fieldIncludePending": "Inclure En Attente",
+        "fieldIncludeValidation": "Inclure Validation",
+        "fieldIncludeHistory": "Inclure Historique",
+        "fieldDisplayOrder": "Ordre d'Affichage",
+        "confirmDelete": "Êtes-vous sûr de vouloir supprimer ce mappage ?"
+      },
+      "menuTemplates": {
+        "title": "Modèles de Menu",
+        "subtitle": "Créer et gérer des modèles de menu réutilisables",
+        "createTemplate": "Créer Modèle",
+        "editTemplate": "Modifier Modèle",
+        "deleteTemplate": "Supprimer Modèle",
+        "templateCreated": "Modèle créé avec succès",
+        "templateUpdated": "Modèle mis à jour avec succès",
+        "templateDeleted": "Modèle supprimé avec succès",
+        "noTemplatesFound": "Aucun modèle trouvé",
+        "templatesFound": "{count} modèle(s) trouvé(s)",
+        "fieldCode": "Code",
+        "fieldName": "Nom",
+        "fieldDescription": "Description",
+        "fieldTemplateType": "Type de Modèle",
+        "fieldEntityCode": "Code d'Entité",
+        "fieldMenuStructure": "Structure du Menu (JSON)",
+        "fieldDashboardWidgets": "Widgets du Tableau de Bord (JSON)",
+        "typeWorkflow": "Workflow",
+        "typeModule": "Module",
+        "typeCustom": "Personnalisé",
+        "confirmDelete": "Êtes-vous sûr de vouloir supprimer ce modèle ?"
+      },
+      "table": {
+        "pattern": "Modèle",
+        "groupId": "ID Groupe",
+        "titleKey": "Clé Titre",
+        "icon": "Icône",
+        "order": "Ordre",
+        "actions": "Actions",
+        "code": "Code",
+        "name": "Nom",
+        "type": "Type",
+        "entity": "Entité"
+      },
+      "actions": {
+        "edit": "Modifier",
+        "delete": "Supprimer",
+        "save": "Enregistrer",
+        "cancel": "Annuler",
+        "preview": "Aperçu"
+      },
+      "errors": {
+        "loadingMappings": "Erreur lors du chargement des mappages",
+        "loadingTemplates": "Erreur lors du chargement des modèles",
+        "savingMapping": "Erreur lors de l'enregistrement du mappage",
+        "savingTemplate": "Erreur lors de l'enregistrement du modèle",
+        "deletingMapping": "Erreur lors de la suppression du mappage",
+        "deletingTemplate": "Erreur lors de la suppression du modèle"
+      }
+    },
     "entities": {
       "pageTitle": "Gestion des Entités",
       "pageSubtitle": "Gérer les entités, emplacements et villes de Guinée Équatoriale",

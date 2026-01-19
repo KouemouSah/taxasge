@@ -76,6 +76,40 @@ async def get_my_profile(
     return AgentProfileWithDetails(**profile)
 
 
+@router.get("/profiles/me/with-menu")
+async def get_my_profile_with_menu(
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db = Depends(get_database),
+):
+    """
+    Get current user's agent profile WITH dynamic menu configuration.
+
+    Returns agent profile with:
+    - menu_config: Dynamic menu JSON (or NULL for auto-generate)
+    - dashboard_config: Dashboard widget configuration
+    - available_workflows: List of workflow codes agent can handle
+    - entity_type: 'workflow' or 'module'
+    - permissions: List of agent's permissions
+
+    Use this endpoint when you need menu configuration.
+    For basic profile info, use GET /profiles/me instead.
+    """
+    from app.modules.agents.services.agent_profile_service import AgentProfileService
+
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
+
+    service = AgentProfileService()
+    profile = await service.get_agent_with_menu_config(db, UUID(user_id))
+
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No agent profile found for current user"
+        )
+
+    return profile
+
+
 # ============================================================================
 # AGENT AVAILABLE WORKFLOWS
 # ============================================================================
