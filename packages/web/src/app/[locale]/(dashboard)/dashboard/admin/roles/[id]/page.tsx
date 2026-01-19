@@ -45,7 +45,6 @@ import {
 import {
   Shield,
   ArrowLeft,
-  ArrowRight,
   Loader2,
   Key,
   Search,
