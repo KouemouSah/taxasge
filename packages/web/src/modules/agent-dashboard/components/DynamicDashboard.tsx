@@ -19,7 +19,6 @@ import {
   CheckCircle,
   Loader2,
   TrendingUp,
-  AlertCircle,
   Activity,
   FileText,
   CreditCard,

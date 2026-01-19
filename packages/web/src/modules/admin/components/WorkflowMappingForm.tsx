@@ -98,7 +98,7 @@ interface WorkflowMappingFormProps {
   /** Existing mapping for editing (undefined for create mode) */
   mapping?: WorkflowMenuMapping;
   /** Called when form is submitted */
-  onSubmit: (data: WorkflowMappingCreateRequest | WorkflowMappingUpdateRequest) => void;
+  onSubmit: (data: WorkflowMappingCreateRequest | WorkflowMappingUpdateRequest) => void | Promise<void>;
   /** Called when cancel is clicked */
   onCancel: () => void;
   /** Loading state */

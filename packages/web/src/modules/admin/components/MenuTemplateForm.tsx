@@ -15,7 +15,6 @@ import { z } from 'zod';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -92,7 +91,7 @@ interface MenuTemplateFormProps {
   /** Existing template for editing (undefined for create mode) */
   template?: MenuTemplate;
   /** Called when form is submitted */
-  onSubmit: (data: MenuTemplateCreateRequest | MenuTemplateUpdateRequest) => void;
+  onSubmit: (data: MenuTemplateCreateRequest | MenuTemplateUpdateRequest) => void | Promise<void>;
   /** Called when cancel is clicked */
   onCancel: () => void;
   /** Loading state */
