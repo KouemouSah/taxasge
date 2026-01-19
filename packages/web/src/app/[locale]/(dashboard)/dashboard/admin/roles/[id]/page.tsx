@@ -87,7 +87,12 @@ export default function EditRolePage() {
   const _tPerm = useTranslations('admin.permissions');
 
   // Fetch all roles for navigation
-  const { data: allRolesData } = useRoles({ page_size: 200 });
+  const { data: allRolesData, isLoading: rolesListLoading, error: rolesListError } = useRoles({ page_size: 200 });
+
+  // Debug: Log navigation data issues
+  if (typeof window !== 'undefined' && rolesListError) {
+    console.error('[RoleEdit] Failed to load roles list for navigation:', rolesListError);
+  }
 
   // Fetch role with permissions
   const {
@@ -493,7 +498,7 @@ export default function EditRolePage() {
               variant="ghost"
               size="sm"
               onClick={() => navigationData.prev && navigateToRole(navigationData.prev.id)}
-              disabled={!navigationData.prev}
+              disabled={!navigationData.prev || rolesListLoading}
               title={navigationData.prev ? `Previous: ${navigationData.prev.name}` : 'No previous role'}
               className="h-8 px-2"
             >
@@ -501,15 +506,21 @@ export default function EditRolePage() {
               <span className="sr-only md:not-sr-only md:ml-1 text-xs">Prev</span>
             </Button>
             <span className="text-xs text-muted-foreground px-2 min-w-[60px] text-center">
-              {navigationData.currentIndex >= 0
-                ? `${navigationData.currentIndex + 1} / ${navigationData.total}`
-                : '...'}
+              {rolesListLoading ? (
+                <Loader2 className="h-3 w-3 animate-spin inline" />
+              ) : rolesListError ? (
+                <span className="text-destructive" title="Failed to load roles list">!</span>
+              ) : navigationData.currentIndex >= 0 ? (
+                `${navigationData.currentIndex + 1} / ${navigationData.total}`
+              ) : (
+                '- / -'
+              )}
             </span>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => navigationData.next && navigateToRole(navigationData.next.id)}
-              disabled={!navigationData.next}
+              disabled={!navigationData.next || rolesListLoading}
               title={navigationData.next ? `Next: ${navigationData.next.name}` : 'No next role'}
               className="h-8 px-2"
             >

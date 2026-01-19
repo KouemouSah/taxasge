@@ -13,6 +13,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
+import { useLocale } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
@@ -147,6 +148,7 @@ export default function AgentDetailPage() {
   const rbacRoles = rolesData?.roles || [];
   const router = useRouter();
   const params = useParams();
+  const locale = useLocale();
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('profile');
@@ -164,8 +166,13 @@ export default function AgentDetailPage() {
   const { data: performance, isLoading: performanceLoading } = useAgentPerformance(profileId, !!profile);
 
   // Fetch all agents for navigation
-  const { data: allAgentsData } = useAgentProfiles({ page_size: 500 });
+  const { data: allAgentsData, isLoading: agentsListLoading, error: agentsListError } = useAgentProfiles({ page_size: 500 });
   const allAgents = allAgentsData?.items || [];
+
+  // Debug: Log navigation data issues
+  if (typeof window !== 'undefined' && agentsListError) {
+    console.error('[AgentEdit] Failed to load agents list for navigation:', agentsListError);
+  }
 
   // Compute prev/next agent IDs for navigation
   const currentIndex = allAgents.findIndex(a => a.id === profileId);
@@ -382,21 +389,29 @@ export default function AgentDetailPage() {
             <Button
               variant="outline"
               size="icon"
-              onClick={() => prevAgentId && router.push(`/dashboard/admin/agents/${prevAgentId}`)}
-              disabled={!prevAgentId}
-              title="Agent précédent"
+              onClick={() => prevAgentId && router.push(`/${locale}/dashboard/admin/agents/${prevAgentId}`)}
+              disabled={!prevAgentId || agentsListLoading}
+              title={prevAgentId ? `Agent précédent` : 'Pas d\'agent précédent'}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="text-sm text-muted-foreground px-2">
-              {currentIndex >= 0 ? `${currentIndex + 1}/${allAgents.length}` : '-'}
+            <span className="text-sm text-muted-foreground px-2 min-w-[50px] text-center">
+              {agentsListLoading ? (
+                <Loader2 className="h-3 w-3 animate-spin inline" />
+              ) : agentsListError ? (
+                <span className="text-destructive" title="Échec du chargement">!</span>
+              ) : currentIndex >= 0 ? (
+                `${currentIndex + 1}/${allAgents.length}`
+              ) : (
+                '- / -'
+              )}
             </span>
             <Button
               variant="outline"
               size="icon"
-              onClick={() => nextAgentId && router.push(`/dashboard/admin/agents/${nextAgentId}`)}
-              disabled={!nextAgentId}
-              title="Agent suivant"
+              onClick={() => nextAgentId && router.push(`/${locale}/dashboard/admin/agents/${nextAgentId}`)}
+              disabled={!nextAgentId || agentsListLoading}
+              title={nextAgentId ? `Agent suivant` : 'Pas d\'agent suivant'}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
