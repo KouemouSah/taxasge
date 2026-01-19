@@ -282,3 +282,77 @@ export interface ApiError {
   detail: string;
   status_code?: number;
 }
+
+// =============================================================================
+// MENU & DASHBOARD CONFIGURATION
+// =============================================================================
+
+/**
+ * Dynamic menu configuration types
+ * Used for agent dashboards with configurable menus from backend
+ */
+
+// Menu badge configuration
+export interface MenuBadgeConfig {
+  type: 'count' | 'status';
+  source: string;
+}
+
+// Sub-menu item in a menu group
+export interface SubMenuItemConfig {
+  id: string;
+  titleKey: string;
+  href: string;
+  icon: string;
+  permission?: string;
+  badge?: MenuBadgeConfig;
+}
+
+// Menu item (can be a direct link or a group with sub-items)
+export interface MenuItemConfig {
+  id: string;
+  titleKey: string;
+  icon: string;
+  href?: string;
+  permission?: string;
+  items?: SubMenuItemConfig[];
+}
+
+// Source of menu configuration
+export type MenuConfigSource = 'workflow' | 'role' | 'custom';
+
+// Complete menu configuration
+export interface MenuConfig {
+  version: string;
+  source: MenuConfigSource;
+  menus: MenuItemConfig[];
+}
+
+// Widget size options
+export type WidgetSize = 'small' | 'medium' | 'large' | 'full';
+
+// Widget configuration for dashboard
+export interface WidgetConfig {
+  id: string;
+  visible: boolean;
+  position: number;
+  size: WidgetSize;
+  customConfig?: Record<string, unknown>;
+}
+
+// Dashboard layout options
+export type DashboardLayout = 'grid' | 'list' | 'custom';
+
+// Complete dashboard configuration
+export interface DashboardConfig {
+  version: string;
+  layout: DashboardLayout;
+  widgets: WidgetConfig[];
+}
+
+// Extended AuthData with menu configuration (for agents)
+export interface AuthDataWithMenuConfig extends AuthData {
+  menu_config?: MenuConfig;
+  dashboard_config?: DashboardConfig;
+  permissions?: string[];
+}
