@@ -15,3 +15,5 @@ export type { EntityAccessResult } from './useEntityAccess';
 
 export { useEntityStats, ENTITY_STATS_QUERY_KEY } from './useEntityStats';
 export type { EntityQueueStats, UseEntityStatsReturn } from './useEntityStats';
+
+export { useMenuConfig, useDynamicMenuItems } from './useMenuConfig';

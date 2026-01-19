@@ -3,10 +3,11 @@
  * Dynamically configured sidebar based on agent's entity
  *
  * @module agent-dashboard/components
- * @date 2025-01-14
+ * @date 2026-01-19
  *
  * This sidebar automatically adapts its menu based on:
- * - The agent's entity (CNEDOGE, DGT, ONRC, etc.)
+ * - Dynamic menu configuration from backend API (preferred)
+ * - Static entity-menus.ts fallback
  * - The agent's permissions
  * - The agent's role (supervisor gets all menus)
  */
@@ -29,12 +30,75 @@ import {
   Shield,
   User,
   Settings,
+  LayoutDashboard,
+  FileText,
+  Clock,
+  CheckCircle,
+  History,
+  Calendar,
+  Wallet,
+  CreditCard,
+  Receipt,
+  TrendingUp,
+  BarChart3,
+  FileSearch,
+  ClipboardList,
+  Building2,
+  Car,
+  BadgeCheck,
+  Briefcase,
+  Globe,
+  type LucideIcon,
 } from 'lucide-react';
 import { clearAuthData } from '@/core/auth/storage';
 import { useToast } from '@/hooks/use-toast';
 import type { MenuItem, MenuGroup, EntityDashboardConfig } from '../types';
 import { isMenuGroup } from '../types';
+import type { DynamicMenuItem, SubMenuItem } from '../types/menu-config';
+import { isDynamicMenuGroup, isDynamicMenuLink } from '../types/menu-config';
 import { useAgentDashboard } from '../hooks';
+
+// =============================================================================
+// ICON MAPPING
+// =============================================================================
+
+/**
+ * Map icon string names to Lucide components
+ * Used for dynamic menus where icons come from backend as strings
+ */
+const ICON_MAP: Record<string, LucideIcon> = {
+  LayoutDashboard,
+  FileText,
+  Clock,
+  CheckCircle,
+  History,
+  Calendar,
+  Wallet,
+  CreditCard,
+  Receipt,
+  TrendingUp,
+  BarChart3,
+  FileSearch,
+  ClipboardList,
+  Building2,
+  Car,
+  IdCard: BadgeCheck, // Alias for IdCard
+  BadgeCheck,
+  Briefcase,
+  Globe,
+  User,
+  Settings,
+  Shield,
+  LogOut,
+  ChevronDown,
+};
+
+/**
+ * Get Lucide icon component from string name
+ */
+function getIconComponent(iconName: string): LucideIcon {
+  return ICON_MAP[iconName] || FileText;
+}
 
 // =============================================================================
 // PROPS
@@ -77,6 +141,8 @@ export function GenericAgentSidebar({
     isLoading,
     entityConfig: hookConfig,
     menuItems,
+    dynamicMenuItems,
+    useDynamicMenus,
     context,
     getBasePath: _getBasePath,
   } = useAgentDashboard();
@@ -84,11 +150,38 @@ export function GenericAgentSidebar({
   // Use prop config if provided, otherwise use hook config
   const entityConfig = propConfig || hookConfig;
 
-  // Build menu items with locale in href
+  // Build menu items with locale in href (for static menus)
   const localizedMenuItems = menuItems.map((item) => localizeMenuItem(item, locale));
+
+  // Debug: log which menu system is being used
+  if (typeof window !== 'undefined') {
+    console.log('[GenericAgentSidebar] Menu system:', {
+      useDynamicMenus,
+      dynamicMenuCount: dynamicMenuItems.length,
+      staticMenuCount: localizedMenuItems.length,
+    });
+  }
 
   // Auto-expand group containing active route
   useEffect(() => {
+    // Handle dynamic menus
+    if (useDynamicMenus && dynamicMenuItems.length > 0) {
+      for (const item of dynamicMenuItems) {
+        if (isDynamicMenuGroup(item)) {
+          const hasActiveChild = item.items.some(
+            (sub) =>
+              pathname === sub.href || pathname?.startsWith(sub.href + '/')
+          );
+          if (hasActiveChild) {
+            setExpandedGroups((prev) => new Set(prev).add(item.id));
+            break;
+          }
+        }
+      }
+      return;
+    }
+
+    // Handle static menus
     if (!localizedMenuItems.length) return;
 
     for (const item of localizedMenuItems) {
@@ -103,7 +196,7 @@ export function GenericAgentSidebar({
         }
       }
     }
-  }, [pathname, localizedMenuItems]);
+  }, [pathname, localizedMenuItems, dynamicMenuItems, useDynamicMenus]);
 
   // Toggle group expansion
   const toggleGroup = useCallback((groupId: string) => {
@@ -225,13 +318,25 @@ export function GenericAgentSidebar({
       {/* Navigation */}
       <ScrollArea className="flex-1 py-4">
         <nav className="space-y-1 px-2">
-          {localizedMenuItems.map((item) => renderMenuItem(item, {
-            pathname,
-            collapsed,
-            expandedGroups,
-            toggleGroup,
-            getTitle,
-          }))}
+          {/* Use dynamic menus if available from API */}
+          {useDynamicMenus && dynamicMenuItems.length > 0 ? (
+            dynamicMenuItems.map((item) => renderDynamicMenuItem(item, {
+              pathname,
+              collapsed,
+              expandedGroups,
+              toggleGroup,
+              getTitle,
+            }))
+          ) : (
+            /* Fall back to static menus */
+            localizedMenuItems.map((item) => renderMenuItem(item, {
+              pathname,
+              collapsed,
+              expandedGroups,
+              toggleGroup,
+              getTitle,
+            }))
+          )}
         </nav>
       </ScrollArea>
 
@@ -442,6 +547,172 @@ function renderSingleItem(
         <span className="ml-auto bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full">
           {item.badge}
         </span>
+      )}
+    </Link>
+  );
+}
+
+// =============================================================================
+// DYNAMIC MENU RENDERING FUNCTIONS
+// =============================================================================
+
+/**
+ * Render a dynamic menu item (from backend API)
+ */
+function renderDynamicMenuItem(
+  item: DynamicMenuItem,
+  options: {
+    pathname: string | null;
+    collapsed: boolean;
+    expandedGroups: Set<string>;
+    toggleGroup: (id: string) => void;
+    getTitle: (key: string) => string;
+  }
+): React.ReactNode {
+  const { pathname, collapsed, getTitle } = options;
+
+  if (isDynamicMenuGroup(item)) {
+    return renderDynamicMenuGroup(item, options);
+  }
+
+  if (isDynamicMenuLink(item)) {
+    return renderDynamicSingleItem(item, { pathname, collapsed, getTitle });
+  }
+
+  return null;
+}
+
+/**
+ * Render a dynamic menu group with collapsible sub-items
+ */
+function renderDynamicMenuGroup(
+  group: DynamicMenuItem & { items: SubMenuItem[] },
+  options: {
+    pathname: string | null;
+    collapsed: boolean;
+    expandedGroups: Set<string>;
+    toggleGroup: (id: string) => void;
+    getTitle: (key: string) => string;
+  }
+): React.ReactNode {
+  const { pathname, collapsed, expandedGroups, toggleGroup, getTitle } = options;
+  const GroupIcon = getIconComponent(group.icon);
+  const isExpanded = expandedGroups.has(group.id);
+  const hasActiveChild = group.items.some(
+    (sub) => pathname === sub.href || pathname?.startsWith(sub.href + '/')
+  );
+
+  return (
+    <div key={group.id} className="pt-2">
+      {/* Group header */}
+      <button
+        onClick={() => toggleGroup(group.id)}
+        className={cn(
+          'flex items-center gap-3 rounded-lg px-3 py-2 text-sm w-full transition-all hover:bg-accent',
+          hasActiveChild
+            ? 'text-primary font-medium'
+            : 'text-muted-foreground hover:text-foreground'
+        )}
+        title={collapsed ? getTitle(group.titleKey) : undefined}
+      >
+        <GroupIcon className="h-5 w-5 flex-shrink-0" />
+        {!collapsed && (
+          <>
+            <span className="flex-1 text-left truncate">
+              {getTitle(group.titleKey)}
+            </span>
+            <ChevronDown
+              className={cn(
+                'h-4 w-4 transition-transform duration-200',
+                isExpanded ? 'rotate-180' : ''
+              )}
+            />
+          </>
+        )}
+      </button>
+
+      {/* Collapsible sub-items */}
+      <div
+        className={cn(
+          'overflow-hidden transition-all duration-200 ease-in-out',
+          isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+        )}
+      >
+        <div className={cn('space-y-1 mt-1', !collapsed && 'ml-4')}>
+          {group.items.map((subItem) =>
+            renderDynamicSubItem(subItem, { pathname, collapsed, getTitle })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Render a dynamic single menu item (no children)
+ */
+function renderDynamicSingleItem(
+  item: DynamicMenuItem & { href: string },
+  options: {
+    pathname: string | null;
+    collapsed: boolean;
+    getTitle: (key: string) => string;
+  }
+): React.ReactNode {
+  const { pathname, collapsed, getTitle } = options;
+  const Icon = getIconComponent(item.icon);
+  const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
+
+  return (
+    <Link
+      key={item.id}
+      href={item.href}
+      className={cn(
+        'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent',
+        isActive
+          ? 'bg-primary/10 text-primary font-medium'
+          : 'text-muted-foreground hover:text-foreground'
+      )}
+      title={collapsed ? getTitle(item.titleKey) : undefined}
+    >
+      <Icon className="h-5 w-5 flex-shrink-0" />
+      {!collapsed && (
+        <span className="truncate">{getTitle(item.titleKey)}</span>
+      )}
+    </Link>
+  );
+}
+
+/**
+ * Render a dynamic sub-menu item
+ */
+function renderDynamicSubItem(
+  item: SubMenuItem,
+  options: {
+    pathname: string | null;
+    collapsed: boolean;
+    getTitle: (key: string) => string;
+  }
+): React.ReactNode {
+  const { pathname, collapsed, getTitle } = options;
+  const Icon = getIconComponent(item.icon);
+  const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
+
+  return (
+    <Link
+      key={item.id}
+      href={item.href}
+      className={cn(
+        'flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition-all hover:bg-accent',
+        isActive
+          ? 'bg-primary/10 text-primary font-medium'
+          : 'text-muted-foreground hover:text-foreground'
+      )}
+      title={collapsed ? getTitle(item.titleKey) : undefined}
+    >
+      <Icon className="h-4 w-4 flex-shrink-0" />
+      {!collapsed && (
+        <span className="truncate">{getTitle(item.titleKey)}</span>
       )}
     </Link>
   );

@@ -1,0 +1,165 @@
+/**
+ * Menu Configuration Types
+ * Aligned with backend Pydantic models for dynamic menu/dashboard configuration
+ *
+ * @module agent-dashboard/types
+ * @date 2026-01-19
+ */
+
+// =============================================================================
+// MENU BADGE
+// =============================================================================
+
+export interface MenuBadge {
+  type: 'count' | 'status';
+  source: string;
+}
+
+// =============================================================================
+// SUB-MENU ITEM
+// =============================================================================
+
+export interface SubMenuItem {
+  id: string;
+  titleKey: string;
+  href: string;
+  icon: string;
+  permission?: string;
+  badge?: MenuBadge;
+}
+
+// =============================================================================
+// MENU ITEM
+// =============================================================================
+
+export interface DynamicMenuItem {
+  id: string;
+  titleKey: string;
+  icon: string;
+  href?: string;
+  permission?: string;
+  items?: SubMenuItem[];
+}
+
+// =============================================================================
+// MENU CONFIG
+// =============================================================================
+
+export type MenuSource = 'workflow' | 'role' | 'custom';
+
+export interface MenuConfig {
+  version: string;
+  source: MenuSource;
+  menus: DynamicMenuItem[];
+}
+
+// =============================================================================
+// WIDGET CONFIG
+// =============================================================================
+
+export type WidgetSize = 'small' | 'medium' | 'large' | 'full';
+
+export interface WidgetConfig {
+  id: string;
+  visible: boolean;
+  position: number;
+  size: WidgetSize;
+  customConfig?: Record<string, unknown>;
+}
+
+// =============================================================================
+// DASHBOARD CONFIG
+// =============================================================================
+
+export type DashboardLayout = 'grid' | 'list' | 'custom';
+
+export interface DashboardConfig {
+  version: string;
+  layout: DashboardLayout;
+  widgets: WidgetConfig[];
+}
+
+// =============================================================================
+// AGENT MENU CONFIG RESPONSE (from API)
+// =============================================================================
+
+export type EntityType = 'workflow' | 'module';
+
+export interface AgentMenuConfigResponse {
+  agent_profile_id: string;
+  entity_code: string | null;
+  entity_type: EntityType;
+  role_code: string | null;
+  available_workflows: string[];
+  menu_config: MenuConfig;
+  dashboard_config: DashboardConfig;
+  permissions: string[];
+}
+
+// =============================================================================
+// MENU TEMPLATE (Admin)
+// =============================================================================
+
+export interface MenuTemplate {
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  template_type: 'workflow' | 'module' | 'custom';
+  entity_code?: string;
+  menu_structure: Record<string, unknown>;
+  dashboard_widgets?: Record<string, unknown>;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by?: string;
+}
+
+export interface MenuTemplateListResponse {
+  items: MenuTemplate[];
+  total: number;
+  page: number;
+  page_size: number;
+  pages: number;
+}
+
+// =============================================================================
+// WORKFLOW MENU MAPPING (Admin)
+// =============================================================================
+
+export interface WorkflowMenuMapping {
+  id: number;
+  workflow_pattern: string;
+  menu_group_id: string;
+  menu_title_key: string;
+  menu_icon: string;
+  display_order: number;
+  include_pending: boolean;
+  include_validation: boolean;
+  include_appointments: boolean;
+  include_history: boolean;
+  permission_prefix?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorkflowMenuMappingListResponse {
+  items: WorkflowMenuMapping[];
+  total: number;
+  page: number;
+  page_size: number;
+  pages: number;
+}
+
+// =============================================================================
+// TYPE GUARDS
+// =============================================================================
+
+export function isDynamicMenuGroup(item: DynamicMenuItem): item is DynamicMenuItem & { items: SubMenuItem[] } {
+  return Array.isArray(item.items) && item.items.length > 0;
+}
+
+export function isDynamicMenuLink(item: DynamicMenuItem): item is DynamicMenuItem & { href: string } {
+  return typeof item.href === 'string' && item.href.length > 0;
+}

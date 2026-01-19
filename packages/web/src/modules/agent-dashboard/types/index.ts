@@ -205,3 +205,9 @@ export interface AgentDashboardContext {
   permissions: string[];
   specializations: string[];
 }
+
+// =============================================================================
+// RE-EXPORT MENU CONFIG TYPES
+// =============================================================================
+
+export * from './menu-config';

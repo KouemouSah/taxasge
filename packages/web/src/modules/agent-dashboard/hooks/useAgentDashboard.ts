@@ -2,13 +2,16 @@
  * useAgentDashboard Hook
  * Fetches current user's agent profile and determines dashboard configuration
  *
+ * Updated 2026-01-19: Now supports dynamic menu configuration from backend API.
+ * Falls back to static entity-menus.ts if API fails.
+ *
  * @module agent-dashboard/hooks
- * @date 2025-01-14
+ * @date 2026-01-19
  */
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocale } from 'next-intl';
 import { getAuthData } from '@/core/auth/storage';
@@ -16,6 +19,7 @@ import apiClient from '@/core/api/client';
 import type { AgentDashboardContext, EntityCode, MenuItem, MinistryCode } from '../types';
 import { MINISTRY_ENTITIES } from '../types';
 import { getEntityConfig, getEntityCodeFromName, ENTITY_CONFIGS } from '../config/entity-menus';
+import type { AgentMenuConfigResponse, DynamicMenuItem } from '../types/menu-config';
 
 // =============================================================================
 // API RESPONSE TYPES
@@ -118,7 +122,12 @@ interface UseAgentDashboardReturn {
 
   // Menu items (filtered by permissions)
   // For ministry_agent: merged menus from all entities of the ministry
+  // Now supports dynamic menus from backend API
   menuItems: MenuItem[];
+
+  // Dynamic menu items from API (if available)
+  dynamicMenuItems: DynamicMenuItem[];
+  useDynamicMenus: boolean;
 
   // Helper functions
   hasPermission: (permission: string) => boolean;
@@ -127,6 +136,9 @@ interface UseAgentDashboardReturn {
   // Ministry agent specific
   isMinistryAgent: boolean;
   ministryEntities: EntityCode[];
+
+  // Dynamic config
+  menuConfig: AgentMenuConfigResponse | null;
 }
 
 export function useAgentDashboard(): UseAgentDashboardReturn {
@@ -156,12 +168,41 @@ export function useAgentDashboard(): UseAgentDashboardReturn {
   const {
     data: agentProfile,
     isLoading: profileLoading,
-    isError,
-    error,
+    isError: profileError,
+    error: profileErr,
   } = useAgentProfile();
 
+  // Fetch dynamic menu configuration from backend API
+  const isAgent = userState.user?.role === 'agent';
+  const {
+    data: menuConfigData,
+    isLoading: menuConfigLoading,
+    isError: menuConfigError,
+  } = useQuery<AgentMenuConfigResponse | null>({
+    queryKey: ['agent-menu-config', 'me', userState.user?.id],
+    queryFn: async () => {
+      if (!userState.user?.id || !isAgent) return null;
+      try {
+        const response = await apiClient.get<AgentMenuConfigResponse>('/menu-config/me');
+        return response.data;
+      } catch (err) {
+        console.warn('[useAgentDashboard] Menu config API not available, using static config');
+        return null;
+      }
+    },
+    enabled: userState.isLoaded && !!userState.user?.id && isAgent,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    retry: 1, // Only retry once since we have static fallback
+  });
+
+  // Use dynamic menus if available from API
+  const useDynamicMenus = !!menuConfigData?.menu_config?.menus?.length;
+
   // Include userState.isLoaded in loading check to prevent SSR mismatch
-  const isLoading = !userState.isLoaded || profileLoading;
+  const isLoading = !userState.isLoaded || profileLoading || (isAgent && menuConfigLoading);
+  const isError = profileError || menuConfigError;
+  const error = profileErr;
 
   // Build agent context
   const context: AgentDashboardContext | null = agentProfile
@@ -315,8 +356,29 @@ export function useAgentDashboard(): UseAgentDashboardReturn {
       rawMenuItemsCount: entityConfig?.menuItems?.length || 0,
       filteredMenuItemsCount: menuItems.length,
       menuItemIds: menuItems.map(m => m.id),
+      useDynamicMenus,
+      dynamicMenuCount: menuConfigData?.menu_config?.menus?.length || 0,
     });
   }
+
+  // Process dynamic menu items with locale-prefixed hrefs
+  const dynamicMenuItems: DynamicMenuItem[] = useMemo(() => {
+    if (!menuConfigData?.menu_config?.menus) {
+      return [];
+    }
+    return menuConfigData.menu_config.menus.map((menu) => ({
+      ...menu,
+      href: menu.href
+        ? menu.href.startsWith('/')
+          ? `/${locale}${menu.href}`
+          : menu.href
+        : undefined,
+      items: menu.items?.map((item) => ({
+        ...item,
+        href: item.href.startsWith('/') ? `/${locale}${item.href}` : item.href,
+      })),
+    }));
+  }, [menuConfigData?.menu_config?.menus, locale]);
 
   // Get base path with locale
   const getBasePath = (): string => {
@@ -335,10 +397,13 @@ export function useAgentDashboard(): UseAgentDashboardReturn {
     entityCode,
     entityConfig,
     menuItems,
+    dynamicMenuItems,
+    useDynamicMenus,
     hasPermission,
     getBasePath,
     isMinistryAgent,
     ministryEntities,
+    menuConfig: menuConfigData || null,
   };
 }
 

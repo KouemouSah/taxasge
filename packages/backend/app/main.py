@@ -1121,6 +1121,16 @@ except Exception as e:
     logger.error(f"❌ Funcionario verification router failed: {e}")
     logger.error(traceback.format_exc())
 
+# Try to load menu config router (Module - Dynamic Menu Configuration)
+try:
+    from app.modules.menu_config.api import router as menu_config_router
+    app.include_router(menu_config_router, prefix="/api/v1", tags=["menu-configuration"])
+    routers_loaded.append("menu-config")
+    logger.info("✅ Menu configuration router loaded")
+except Exception as e:
+    logger.error(f"❌ Menu configuration router failed: {e}")
+    logger.error(traceback.format_exc())
+
 if routers_loaded:
     logger.info(f"✅ {len(routers_loaded)} API routers loaded: {', '.join(routers_loaded)}")
 else:
