@@ -34,9 +34,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Loader2, AlertTriangle, Search, CheckSquare, Square } from 'lucide-react'
+import { Loader2, AlertTriangle, Search, CheckSquare, Square, ChevronDown, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 
 import { usePermissions } from '@/modules/permissions-admin/hooks/usePermissions'
 import { useGrantPermission } from '../hooks/useUserPermissions'
@@ -69,6 +70,7 @@ export function GrantPermissionDialog({
   const [reason, setReason] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [isGranting, setIsGranting] = useState(false)
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set())
 
   // Queries
   const { data: allPermissions = [], isLoading: isLoadingPermissions } = usePermissions()
@@ -168,6 +170,29 @@ export function GrantPermissionDialog({
     })
   }
 
+  // Toggle module expansion
+  const toggleModuleExpanded = (module: string) => {
+    setExpandedModules((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(module)) {
+        newSet.delete(module)
+      } else {
+        newSet.add(module)
+      }
+      return newSet
+    })
+  }
+
+  // Expand all modules
+  const expandAllModules = () => {
+    setExpandedModules(new Set(Object.keys(groupedPermissions)))
+  }
+
+  // Collapse all modules
+  const collapseAllModules = () => {
+    setExpandedModules(new Set())
+  }
+
   // Handlers - Now grants multiple permissions
   const handleGrant = async () => {
     if (!user || selectedPermissionIds.size === 0) return
@@ -224,6 +249,7 @@ export function GrantPermissionDialog({
     setCustomDays(7)
     setReason('')
     setSearchQuery('')
+    setExpandedModules(new Set())
     onOpenChange(false)
   }
 
@@ -236,27 +262,27 @@ export function GrantPermissionDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle>
-            {t('grantPermissions') || 'Grant Permissions'}
+            {t('addOverride') || 'Add Override'}
           </DialogTitle>
           <DialogDescription>
-            {t('grantPermissionsDescription', {
+            {t('grantPermissionDescription', {
               name: `${user.first_name} ${user.last_name}`,
-            }) || `Select one or more permissions to grant to ${user.first_name} ${user.last_name}.`}
+            }) || `Grant or deny a specific permission to ${user.first_name} ${user.last_name}.`}
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 max-h-[60vh]">
-          <div className="space-y-4 pr-4">
+        <ScrollArea className="flex-1 pr-4" style={{ maxHeight: 'calc(90vh - 200px)' }}>
+          <div className="space-y-4">
           {/* Permission Selection */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>{t('selectPermissions') || 'Select Permissions'}</Label>
+              <Label>{t('selectPermission') || 'Select Permission'}</Label>
               {selectedPermissionIds.size > 0 && (
                 <Badge variant="secondary">
-                  {selectedPermissionIds.size} selected
+                  {selectedPermissionIds.size} {t('selected') || 'selected'}
                 </Badge>
               )}
             </div>
@@ -277,9 +303,10 @@ export function GrantPermissionDialog({
                 size="sm"
                 onClick={selectAllVisible}
                 disabled={availablePermissions.length === 0}
+                title={t('selectAll') || 'Select All'}
               >
                 <CheckSquare className="h-4 w-4 mr-1" />
-                {t('selectAll') || 'All'}
+                {t('all') || 'All'}
               </Button>
               <Button
                 type="button"
@@ -287,13 +314,39 @@ export function GrantPermissionDialog({
                 size="sm"
                 onClick={deselectAll}
                 disabled={selectedPermissionIds.size === 0}
+                title={t('clearSelection') || 'Clear Selection'}
               >
                 <Square className="h-4 w-4 mr-1" />
-                {t('deselectAll') || 'None'}
+                {t('none') || 'None'}
               </Button>
             </div>
 
-            <ScrollArea className="h-[250px] border rounded-md">
+            {/* Expand/Collapse All */}
+            {Object.keys(groupedPermissions).length > 1 && (
+              <div className="flex items-center gap-2 text-xs">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs"
+                  onClick={expandAllModules}
+                >
+                  {t('expandAll') || 'Expand All'}
+                </Button>
+                <span className="text-muted-foreground">|</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs"
+                  onClick={collapseAllModules}
+                >
+                  {t('collapseAll') || 'Collapse All'}
+                </Button>
+              </div>
+            )}
+
+            <ScrollArea className="h-[280px] border rounded-md overflow-auto">
               {isLoadingPermissions ? (
                 <div className="flex items-center justify-center h-full">
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -305,67 +358,90 @@ export function GrantPermissionDialog({
                     : t('allPermissionsAssigned') || 'All permissions are already assigned'}
                 </div>
               ) : (
-                <div className="p-2 space-y-4">
+                <div className="p-2 space-y-2">
                   {Object.entries(groupedPermissions)
                     .sort(([a], [b]) => a.localeCompare(b))
                     .map(([module, perms]) => {
                       const moduleSelectedCount = perms.filter(p => selectedPermissionIds.has(p.id)).length
+                      const isExpanded = expandedModules.has(module)
                       return (
-                        <div key={module}>
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="text-xs font-medium text-muted-foreground uppercase">
-                              {module.replace(/_/g, ' ')} ({perms.length})
-                            </div>
+                        <Collapsible
+                          key={module}
+                          open={isExpanded}
+                          onOpenChange={() => toggleModuleExpanded(module)}
+                          className="border rounded-md"
+                        >
+                          <div className="flex items-center justify-between px-3 py-2 bg-muted/50">
+                            <CollapsibleTrigger className="flex items-center gap-2 flex-1 text-left">
+                              {isExpanded ? (
+                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                              )}
+                              <span className="text-sm font-medium">
+                                {module.replace(/_/g, ' ')}
+                              </span>
+                              <Badge variant="outline" className="text-xs ml-2">
+                                {moduleSelectedCount > 0 ? `${moduleSelectedCount}/` : ''}{perms.length}
+                              </Badge>
+                            </CollapsibleTrigger>
                             <Button
                               type="button"
                               variant="ghost"
                               size="sm"
                               className="h-6 text-xs"
-                              onClick={() => selectModule(module)}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                selectModule(module)
+                              }}
                             >
-                              {moduleSelectedCount === perms.length ? 'Selected' : `Select all ${perms.length}`}
+                              {moduleSelectedCount === perms.length
+                                ? (t('allSelected') || 'All selected')
+                                : (t('selectAllModule') || 'Select all')}
                             </Button>
                           </div>
-                          <div className="space-y-1">
-                            {perms.map((perm) => {
-                              const isSelected = selectedPermissionIds.has(perm.id)
-                              return (
-                                <button
-                                  key={perm.id}
-                                  type="button"
-                                  onClick={() => togglePermission(perm.id)}
-                                  className={`w-full text-left p-2 rounded-md transition-colors flex items-start gap-2 ${
-                                    isSelected
-                                      ? 'bg-primary/10 border border-primary'
-                                      : 'hover:bg-muted border border-transparent'
-                                  }`}
-                                >
-                                  <Checkbox
-                                    checked={isSelected}
-                                    className="mt-0.5"
-                                    onCheckedChange={() => togglePermission(perm.id)}
-                                  />
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                                        {perm.name}
-                                      </code>
-                                      {perm.is_critical && (
-                                        <Badge variant="destructive" className="text-xs gap-1">
-                                          <AlertTriangle className="h-3 w-3" />
-                                          {t('critical') || 'Critical'}
-                                        </Badge>
-                                      )}
+                          <CollapsibleContent>
+                            <div className="p-2 space-y-1">
+                              {perms.map((perm) => {
+                                const isSelected = selectedPermissionIds.has(perm.id)
+                                return (
+                                  <button
+                                    key={perm.id}
+                                    type="button"
+                                    onClick={() => togglePermission(perm.id)}
+                                    className={`w-full text-left p-2 rounded-md transition-colors flex items-start gap-2 ${
+                                      isSelected
+                                        ? 'bg-primary/10 border border-primary'
+                                        : 'hover:bg-muted border border-transparent'
+                                    }`}
+                                  >
+                                    <Checkbox
+                                      checked={isSelected}
+                                      className="mt-0.5"
+                                      onCheckedChange={() => togglePermission(perm.id)}
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                                          {perm.name}
+                                        </code>
+                                        {perm.is_critical && (
+                                          <Badge variant="destructive" className="text-xs gap-1">
+                                            <AlertTriangle className="h-3 w-3" />
+                                            {t('critical') || 'Critical'}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      <p className="text-xs text-muted-foreground mt-1 truncate">
+                                        {perm.description}
+                                      </p>
                                     </div>
-                                    <p className="text-xs text-muted-foreground mt-1 truncate">
-                                      {perm.description}
-                                    </p>
-                                  </div>
-                                </button>
-                              )
-                            })}
-                          </div>
-                        </div>
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
                       )
                     })}
                 </div>
