@@ -31,10 +31,22 @@ export {
   useCancelAssignment,
 } from './useAssignments'
 
-// Priority & Deadline hooks
+// Priority, Deadline & Notes hooks
 export {
   useUpdateAssignmentPriority,
   useExtendAssignmentDeadline,
+  useUpdateAssignmentNotes,
+} from './useAssignments'
+
+// Bulk operations hooks
+export {
+  useBulkReassignAssignments,
+} from './useAssignments'
+
+// Statistics hooks
+export {
+  useAssignmentStats,
+  usePaginatedAssignments,
 } from './useAssignments'
 
 // Legacy exports (deprecated - for backward compatibility)

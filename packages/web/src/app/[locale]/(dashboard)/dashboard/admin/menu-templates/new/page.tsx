@@ -16,7 +16,10 @@ import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MenuTemplateForm } from '@/modules/admin/components/MenuTemplateForm';
 import { useCreateMenuTemplate } from '@/modules/admin/hooks/useMenuTemplates';
-import type { MenuTemplateCreateRequest } from '@/modules/admin/services/menuConfigService';
+import type {
+  MenuTemplateCreateRequest,
+  MenuTemplateUpdateRequest,
+} from '@/modules/admin/services/menuConfigService';
 
 export default function MenuTemplateCreatePage() {
   const router = useRouter();
@@ -26,9 +29,11 @@ export default function MenuTemplateCreatePage() {
   // Create mutation
   const createMutation = useCreateMenuTemplate();
 
-  const handleSubmit = async (data: MenuTemplateCreateRequest) => {
+  const handleSubmit = async (
+    data: MenuTemplateCreateRequest | MenuTemplateUpdateRequest
+  ) => {
     try {
-      await createMutation.mutateAsync(data);
+      await createMutation.mutateAsync(data as MenuTemplateCreateRequest);
       router.push(`/${locale}/dashboard/admin/menu-templates`);
     } catch {
       // Error is handled by the mutation's onError callback

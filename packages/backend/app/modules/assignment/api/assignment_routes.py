@@ -7,10 +7,10 @@ Date: 2025-11-16
 Version: 1.0 - Initial implementation
 """
 
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.users.models.user import UserResponse
@@ -107,25 +107,85 @@ async def get_agent_context(user_id: str, db) -> Dict[str, Any]:
     }
 
 
+async def _get_agent_profile_id_for_user(user_id: str, db) -> Optional[UUID]:
+    """
+    Get agent_profile_id from user_id.
+
+    Migration 054: agent_profile_id is the primary identifier, not user_id.
+    This helper converts user_id to agent_profile_id for authorization checks.
+    """
+    query = """
+        SELECT id FROM agent_profiles
+        WHERE user_id = $1 AND is_active = true
+    """
+    result = await db.fetchrow(query, UUID(user_id))
+    return result['id'] if result else None
+
+
 # ============================================================================
 # REQUEST/RESPONSE SCHEMAS
 # ============================================================================
 
+# Priority level mapping for backward compatibility
+# Legacy frontend may send string values like "low", "medium", "high", "urgent"
+PRIORITY_LEVEL_MAPPING = {
+    "low": 2,
+    "medium": 5,
+    "normal": 5,
+    "high": 7,
+    "urgent": 9,
+    "critical": 10,
+}
+
+
+def _convert_priority_level(value: Union[int, str]) -> int:
+    """Convert legacy string priority to integer (1-10)
+
+    Backward compatibility for Migration 053:
+    - DB schema uses integer (1-10)
+    - Legacy code may send strings ("low", "medium", "high", "urgent")
+    """
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        # Try to parse as integer first
+        try:
+            return int(value)
+        except ValueError:
+            pass
+        # Map legacy string values
+        return PRIORITY_LEVEL_MAPPING.get(value.lower(), 5)
+    return 5  # Default
+
+
 class ManualAssignmentRequest(BaseModel):
-    """Request to manually assign declaration to agent"""
-    declaration_id: UUID
-    declaration_type: str = Field(..., description="tax_declaration or fiscal_service")
-    agent_id: UUID
+    """Request to manually assign an item to an agent
+
+    Migration 053: Uses item_id + item_type instead of declaration_id + declaration_type
+    Migration 054: Uses agent_profile_id instead of agent_id
+    """
+    item_id: UUID = Field(..., description="UUID of the item (tax_declaration, service_request, etc.)")
+    item_type: str = Field(..., description="Type: declaration type or workflow code")
+    agent_profile_id: UUID = Field(..., description="Reference to agent_profiles.id")
     notes: Optional[str] = None
-    priority_level: str = Field(default="medium", pattern="^(low|medium|high|urgent)$")
+    priority_level: int = Field(default=5, ge=1, le=10, description="Priority 1-10")
     deadline_days: Optional[int] = Field(None, ge=1, le=90)
+
+    @field_validator('priority_level', mode='before')
+    @classmethod
+    def convert_legacy_priority(cls, v):
+        """Convert legacy string priority to integer for backward compatibility"""
+        return _convert_priority_level(v)
 
 
 class AutoAssignmentRequest(BaseModel):
-    """Request for automatic assignment"""
-    declaration_id: UUID
-    declaration_type: str = Field(..., description="tax_declaration or fiscal_service")
-    declaration_data: dict = Field(..., description="Declaration data for rule evaluation")
+    """Request for automatic assignment
+
+    Migration 053: Uses item_id + item_type instead of declaration_id + declaration_type
+    """
+    item_id: UUID = Field(..., description="UUID of the item (tax_declaration, service_request, etc.)")
+    item_type: str = Field(..., description="Type: declaration type or workflow code")
+    item_data: dict = Field(..., description="Item data for rule evaluation")
     entity_type: str = Field(default="ministry", pattern="^(ministry|entity)$")
     entity_id: Optional[str] = None
 
@@ -142,20 +202,37 @@ class CompleteAssignmentRequest(BaseModel):
 
 
 class ReassignmentRequest(BaseModel):
-    """Request to reassign declaration to new agent"""
-    new_agent_id: UUID
+    """Request to reassign item to new agent
+
+    Migration 054: Uses agent_profile_id instead of agent_id
+    """
+    new_agent_profile_id: UUID = Field(..., description="Reference to agent_profiles.id")
     reason: ReassignmentReason
     notes: Optional[str] = None
 
 
 class UpdatePriorityRequest(BaseModel):
-    """Request to update assignment priority"""
-    priority_level: str = Field(..., pattern="^(low|medium|high|urgent)$")
+    """Request to update assignment priority
+
+    Migration 053: priority_level is int (1-10) not string
+    """
+    priority_level: int = Field(..., ge=1, le=10, description="Priority 1-10")
+
+    @field_validator('priority_level', mode='before')
+    @classmethod
+    def convert_legacy_priority(cls, v):
+        """Convert legacy string priority to integer for backward compatibility"""
+        return _convert_priority_level(v)
 
 
 class ExtendDeadlineRequest(BaseModel):
     """Request to extend assignment deadline"""
     additional_days: int = Field(..., ge=1, le=90)
+
+
+class UpdateNotesRequest(BaseModel):
+    """Request to update assignment notes"""
+    notes: str = Field(..., min_length=0, max_length=5000, description="Notes content (max 5000 chars)")
 
 
 # ============================================================================
@@ -199,7 +276,8 @@ async def create_manual_assignment(
     request: ManualAssignmentRequest,
     current_user: UserResponse = Depends(get_current_user),
     permission_service: PermissionService = Depends(get_permission_service),
-    service: AssignmentService = Depends(get_assignment_service_dep)
+    service: AssignmentService = Depends(get_assignment_service_dep),
+    db = Depends(get_db_connection)
 ):
     """
     **Manually assign a declaration to an agent (Supervisor only)**
@@ -217,11 +295,21 @@ async def create_manual_assignment(
     """
 
     try:
+        # Convert user_id to agent_profile_id (Migration 054)
+        # assigned_by_profile_id must reference agent_profiles.id, not users.id
+        supervisor_profile_id = await _get_agent_profile_id_for_user(current_user.id, db)
+        if not supervisor_profile_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Supervisor agent profile not found. Only agents can create assignments."
+            )
+
         assignment = await service.assign_to_agent(
-            declaration_id=request.declaration_id,
-            declaration_type=request.declaration_type,
-            agent_id=request.agent_id,
-            supervisor_id=UUID(current_user.id),
+            db=db,
+            item_id=request.item_id,
+            item_type=request.item_type,
+            agent_profile_id=request.agent_profile_id,
+            supervisor_id=supervisor_profile_id,
             notes=request.notes,
             priority_level=request.priority_level,
             deadline_days=request.deadline_days
@@ -280,17 +368,16 @@ async def create_auto_assignment(
     """
 
     try:
-        assignment = await service.auto_assign_declaration(
-            declaration_id=request.declaration_id,
-            declaration_type=request.declaration_type,
-            declaration_data=request.declaration_data,
+        assignment = await service.auto_assign_item(
+            item_id=request.item_id,
+            item_type=request.item_type,
+            item_data=request.item_data,
             entity_type=request.entity_type,
             entity_id=request.entity_id
         )
 
         logger.info(
-            f"Auto-assignment created - Assignment {assignment.id} - "
-            f"Score: {assignment.auto_assignment_score:.2f}"
+            f"Auto-assignment created - Assignment {assignment.id}"
         )
 
         return assignment
@@ -327,7 +414,7 @@ async def get_assignment(
     """
 
     repo = get_assignment_repository(db)
-    assignment = await repo.get_by_id(assignment_id)
+    assignment = await repo.get_by_id(db, assignment_id)
 
     if not assignment:
         raise HTTPException(
@@ -335,13 +422,16 @@ async def get_assignment(
             detail=f"Assignment {assignment_id} not found"
         )
 
-    # Authorization check (Migration 048: uses agent_profiles for supervisor check)
-    is_assigned_agent = str(assignment.agent_id) == current_user.id
+    # Authorization check (Migration 048/054: uses agent_profiles)
     is_admin = current_user.role == "admin"
 
-    # Check if user is a supervisor via agent_profiles
+    # Get agent context for current user
     agent_ctx = await get_agent_context(current_user.id, db) if not is_admin else {}
     is_supervisor = is_admin or agent_ctx.get("is_supervisor", False)
+
+    # Check if current user is the assigned agent (compare via agent_profile)
+    user_agent_profile_id = await _get_agent_profile_id_for_user(current_user.id, db)
+    is_assigned_agent = user_agent_profile_id and str(assignment.agent_profile_id) == str(user_agent_profile_id)
 
     if not (is_assigned_agent or is_supervisor):
         raise HTTPException(
@@ -355,9 +445,10 @@ async def get_assignment(
 @router.get("/", response_model=List[Assignment])
 @require_permission("assignment.list")
 async def list_assignments(
-    agent_id: Optional[UUID] = Query(None, description="Filter by agent"),
+    agent_profile_id: Optional[UUID] = Query(None, description="Filter by agent_profile_id"),
     status_filter: Optional[AssignmentStatus] = Query(None, description="Filter by status"),
-    declaration_id: Optional[UUID] = Query(None, description="Filter by declaration"),
+    item_id: Optional[UUID] = Query(None, description="Filter by item_id"),
+    item_type: Optional[str] = Query(None, description="Filter by item_type"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     current_user: UserResponse = Depends(get_current_user),
@@ -374,13 +465,14 @@ async def list_assignments(
     - Admin can list all
 
     Query Parameters:
-    - agent_id: Filter by specific agent
+    - agent_profile_id: Filter by agent_profile.id (Migration 054)
     - status: Filter by status (assigned, in_progress, completed, etc.)
-    - declaration_id: Get assignment for specific declaration
+    - item_id: Get assignment for specific item (Migration 053)
+    - item_type: Filter by item type
     - limit: Max results (default 50, max 200)
     - offset: Pagination offset
 
-    Migration 048: Uses unified 'agent' role with agent_profiles for authorization
+    Migration 053/054: Uses item_id/item_type and agent_profile_id
     """
 
     repo = get_assignment_repository(db)
@@ -392,42 +484,27 @@ async def list_assignments(
     is_agent = current_user.role == "agent" and not is_supervisor
 
     # If regular agent (not supervisor), force filter to own assignments
+    # Convert user_id to agent_profile_id
     if is_agent:
-        agent_id = UUID(current_user.id)
+        user_agent_profile_id = await _get_agent_profile_id_for_user(current_user.id, db)
+        if not user_agent_profile_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Agent profile not found for current user"
+            )
+        agent_profile_id = user_agent_profile_id
 
     try:
-        if declaration_id:
-            # Get by declaration
-            assignment = await repo.get_by_declaration(declaration_id)
-            return [assignment] if assignment else []
-
-        elif agent_id:
-            # Get by agent
-            assignments = await repo.get_by_agent(agent_id, status_filter)
-            return assignments[offset:offset + limit]
-
-        elif status_filter:
-            # Get by status (supervisor/admin only)
-            if not is_supervisor:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Only supervisors can list all assignments by status"
-                )
-            # TODO: Add get_by_status method to repository
-            raise HTTPException(
-                status_code=status.HTTP_501_NOT_IMPLEMENTED,
-                detail="Status filtering not yet implemented"
-            )
-
-        else:
-            # Get all (supervisor/admin only)
-            if not is_supervisor:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Only supervisors can list all assignments"
-                )
-            assignments = await repo.get_active_assignments(None)
-            return assignments[offset:offset + limit]
+        # Use list_all with filters
+        assignments = await repo.list_all(
+            db=db,
+            agent_profile_id=agent_profile_id,
+            status=status_filter.value if status_filter else None,
+            item_type=item_type,
+            limit=limit,
+            offset=offset
+        )
+        return assignments
 
     except Exception as e:
         logger.error(f"Error listing assignments: {e}", exc_info=True)
@@ -462,7 +539,7 @@ async def start_processing(
     # Verify agent is assigned to this assignment
     db = service.assignment_repo.db
     repo = get_assignment_repository(db)
-    assignment = await repo.get_by_id(assignment_id)
+    assignment = await repo.get_by_id(db, assignment_id)
 
     if not assignment:
         raise HTTPException(
@@ -470,7 +547,9 @@ async def start_processing(
             detail=f"Assignment {assignment_id} not found"
         )
 
-    if str(assignment.agent_id) != current_user.id:
+    # Compare agent_profile_id (Migration 054)
+    user_agent_profile_id = await _get_agent_profile_id_for_user(current_user.id, db)
+    if not user_agent_profile_id or str(assignment.agent_profile_id) != str(user_agent_profile_id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only start your own assignments"
@@ -524,7 +603,7 @@ async def complete_assignment(
     # Verify agent is assigned
     db = service.assignment_repo.db
     repo = get_assignment_repository(db)
-    assignment = await repo.get_by_id(assignment_id)
+    assignment = await repo.get_by_id(db, assignment_id)
 
     if not assignment:
         raise HTTPException(
@@ -532,7 +611,9 @@ async def complete_assignment(
             detail=f"Assignment {assignment_id} not found"
         )
 
-    if str(assignment.agent_id) != current_user.id:
+    # Compare agent_profile_id (Migration 054)
+    user_agent_profile_id = await _get_agent_profile_id_for_user(current_user.id, db)
+    if not user_agent_profile_id or str(assignment.agent_profile_id) != str(user_agent_profile_id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only complete your own assignments"
@@ -567,7 +648,8 @@ async def reassign_assignment(
     request: ReassignmentRequest,
     current_user: UserResponse = Depends(get_current_user),
     permission_service: PermissionService = Depends(get_permission_service),
-    service: AssignmentService = Depends(get_assignment_service_dep)
+    service: AssignmentService = Depends(get_assignment_service_dep),
+    db = Depends(get_db_connection)
 ):
     """
     **Reassign declaration to a new agent (Supervisor only)**
@@ -597,7 +679,7 @@ async def reassign_assignment(
     # Additional permission check for in-progress assignments
     db = service.assignment_repo.db
     repo = get_assignment_repository(db)
-    assignment = await repo.get_by_id(assignment_id)
+    assignment = await repo.get_by_id(db, assignment_id)
 
     if assignment and assignment.status == "in_progress":
         # Requires critical permission for in-progress reassignment
@@ -616,11 +698,20 @@ async def reassign_assignment(
             )
 
     try:
+        # Convert user_id to agent_profile_id (Migration 054)
+        supervisor_profile_id = await _get_agent_profile_id_for_user(current_user.id, db)
+        if not supervisor_profile_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Supervisor agent profile not found"
+            )
+
         new_assignment = await service.reassign_to_new_agent(
+            db=db,
             assignment_id=assignment_id,
-            new_agent_id=request.new_agent_id,
+            new_agent_profile_id=request.new_agent_profile_id,
             reason=request.reason,
-            supervisor_id=UUID(current_user.id),
+            supervisor_id=supervisor_profile_id,
             notes=request.notes
         )
 
@@ -701,11 +792,11 @@ async def update_priority(
     Permissions:
     - Requires: assignment.update_priority
 
-    Priority Levels:
-    - low
-    - medium (default)
-    - high
-    - urgent
+    Priority Levels (Migration 053):
+    - 1-3: Low priority
+    - 4-6: Medium priority (default: 5)
+    - 7-8: High priority
+    - 9-10: Urgent
     """
 
     try:
@@ -784,3 +875,272 @@ async def extend_deadline(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to extend deadline"
         )
+
+
+@router.patch("/{assignment_id}/notes", response_model=Assignment)
+@require_permission("assignment.update_notes")
+async def update_notes(
+    assignment_id: UUID,
+    request: UpdateNotesRequest,
+    current_user: UserResponse = Depends(get_current_user),
+    permission_service: PermissionService = Depends(get_permission_service),
+    service: AssignmentService = Depends(get_assignment_service_dep),
+    db = Depends(get_db_connection)
+):
+    """
+    **Update assignment notes (Agent/Supervisor)**
+
+    Permissions:
+    - Requires: assignment.update_notes
+
+    Notes can be updated by the assigned agent or a supervisor.
+    Maximum length: 5000 characters.
+    """
+
+    try:
+        updated = await service.update_notes(
+            db=db,
+            assignment_id=assignment_id,
+            notes=request.notes
+        )
+
+        if not updated:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Assignment {assignment_id} not found"
+            )
+
+        logger.info(
+            f"Assignment {assignment_id} notes updated by {current_user.email}"
+        )
+
+        return updated
+
+    except Exception as e:
+        logger.error(f"Error updating notes: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update notes"
+        )
+
+
+# ============================================================================
+# ENDPOINTS - BULK OPERATIONS
+# ============================================================================
+
+class BulkReassignRequest(BaseModel):
+    """Request to bulk reassign multiple assignments
+
+    Migration 054: Uses agent_profile_id
+    """
+    assignment_ids: List[UUID] = Field(..., min_length=1, max_length=50)
+    new_agent_profile_id: UUID = Field(..., description="Reference to agent_profiles.id")
+    reason: ReassignmentReason
+    notes: Optional[str] = None
+
+
+class BulkReassignResult(BaseModel):
+    """Result of bulk reassignment operation"""
+    successful: List[str] = []
+    failed: List[Dict[str, str]] = []
+    total_processed: int = 0
+    success_count: int = 0
+    failure_count: int = 0
+
+
+@router.post("/bulk/reassign", response_model=BulkReassignResult)
+@require_permission("assignment.reassign")
+async def bulk_reassign(
+    request: BulkReassignRequest,
+    current_user: UserResponse = Depends(get_current_user),
+    permission_service: PermissionService = Depends(get_permission_service),
+    service: AssignmentService = Depends(get_assignment_service_dep),
+    db = Depends(get_db_connection)
+):
+    """
+    **Bulk reassign multiple assignments to a new agent (Supervisor only)**
+
+    Permissions:
+    - Requires: assignment.reassign
+
+    Request Body:
+    - assignment_ids: List of assignment UUIDs (max 50)
+    - new_agent_profile_id: Target agent
+    - reason: Reassignment reason (from reassignment_reason_enum)
+    - notes: Optional notes
+
+    Returns:
+    - successful: List of successfully reassigned assignment IDs
+    - failed: List of failed assignments with error messages
+    - total_processed, success_count, failure_count
+    """
+    # Get supervisor profile id
+    supervisor_profile_id = await _get_agent_profile_id_for_user(current_user.id, db)
+    if not supervisor_profile_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Supervisor agent profile not found"
+        )
+
+    result = BulkReassignResult(total_processed=len(request.assignment_ids))
+    successful = []
+    failed = []
+
+    for assignment_id in request.assignment_ids:
+        try:
+            await service.reassign_to_new_agent(
+                db=db,
+                assignment_id=assignment_id,
+                new_agent_profile_id=request.new_agent_profile_id,
+                reason=request.reason,
+                supervisor_id=supervisor_profile_id,
+                notes=request.notes
+            )
+            successful.append(str(assignment_id))
+        except Exception as e:
+            failed.append({
+                "assignment_id": str(assignment_id),
+                "error": str(e)
+            })
+
+    result.successful = successful
+    result.failed = failed
+    result.success_count = len(successful)
+    result.failure_count = len(failed)
+
+    logger.info(
+        f"Bulk reassignment by {current_user.email}: "
+        f"{result.success_count} successful, {result.failure_count} failed"
+    )
+
+    return result
+
+
+# ============================================================================
+# ENDPOINTS - STATISTICS
+# ============================================================================
+
+class AssignmentStatsResponse(BaseModel):
+    """Assignment statistics response
+
+    Provides aggregate statistics for assignments.
+    """
+    total_assigned: int = 0
+    total_in_progress: int = 0
+    total_pending_review: int = 0
+    total_completed: int = 0
+    total_cancelled: int = 0
+    total_reassigned: int = 0
+    total_rejected: int = 0
+    average_processing_time_hours: Optional[float] = None
+    on_time_completion_rate: Optional[float] = None
+    by_item_type: Dict[str, int] = {}
+    by_assignment_method: Dict[str, int] = {}
+
+
+@router.get("/stats/summary", response_model=AssignmentStatsResponse)
+@require_permission("assignment.view_stats")
+async def get_assignment_stats(
+    agent_profile_id: Optional[UUID] = Query(None, description="Filter by agent"),
+    item_type: Optional[str] = Query(None, description="Filter by item type"),
+    days: int = Query(30, ge=1, le=365, description="Period in days"),
+    current_user: UserResponse = Depends(get_current_user),
+    permission_service: PermissionService = Depends(get_permission_service),
+    db = Depends(get_db_connection)
+):
+    """
+    **Get assignment statistics summary**
+
+    Permissions:
+    - Requires: assignment.view_stats
+
+    Query Parameters:
+    - agent_profile_id: Filter by specific agent (optional)
+    - item_type: Filter by item type (optional)
+    - days: Period in days (default: 30, max: 365)
+
+    Returns:
+    - Counts by status
+    - Average processing time
+    - On-time completion rate
+    - Breakdown by item_type
+    - Breakdown by assignment_method
+    """
+    from datetime import datetime, timedelta
+
+    # Build base query
+    date_threshold = datetime.utcnow() - timedelta(days=days)
+
+    # Build filters
+    filters = ["created_at >= $1"]
+    params: List[Any] = [date_threshold]
+    param_idx = 2
+
+    if agent_profile_id:
+        filters.append(f"agent_profile_id = ${param_idx}")
+        params.append(agent_profile_id)
+        param_idx += 1
+
+    if item_type:
+        filters.append(f"item_type = ${param_idx}")
+        params.append(item_type)
+        param_idx += 1
+
+    where_clause = " AND ".join(filters)
+
+    # Get counts by status
+    status_query = f"""
+        SELECT
+            COUNT(*) FILTER (WHERE status = 'assigned') as assigned,
+            COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress,
+            COUNT(*) FILTER (WHERE status = 'pending_review') as pending_review,
+            COUNT(*) FILTER (WHERE status = 'completed') as completed,
+            COUNT(*) FILTER (WHERE status = 'cancelled') as cancelled,
+            COUNT(*) FILTER (WHERE status = 'reassigned') as reassigned,
+            COUNT(*) FILTER (WHERE status = 'rejected') as rejected,
+            AVG(processing_duration_hours) FILTER (WHERE status = 'completed') as avg_processing_time,
+            AVG(CASE WHEN deadline_met = true THEN 1.0 ELSE 0.0 END)
+                FILTER (WHERE status = 'completed' AND deadline IS NOT NULL) as on_time_rate
+        FROM assignments
+        WHERE {where_clause}
+    """
+
+    status_row = await db.fetchrow(status_query, *params)
+
+    # Get breakdown by item_type
+    type_query = f"""
+        SELECT item_type, COUNT(*) as count
+        FROM assignments
+        WHERE {where_clause}
+        GROUP BY item_type
+    """
+    type_rows = await db.fetch(type_query, *params)
+    by_item_type = {row['item_type']: row['count'] for row in type_rows}
+
+    # Get breakdown by assignment_method
+    method_query = f"""
+        SELECT assignment_method, COUNT(*) as count
+        FROM assignments
+        WHERE {where_clause}
+        GROUP BY assignment_method
+    """
+    method_rows = await db.fetch(method_query, *params)
+    by_assignment_method = {row['assignment_method']: row['count'] for row in method_rows}
+
+    response = AssignmentStatsResponse(
+        total_assigned=status_row['assigned'] or 0,
+        total_in_progress=status_row['in_progress'] or 0,
+        total_pending_review=status_row['pending_review'] or 0,
+        total_completed=status_row['completed'] or 0,
+        total_cancelled=status_row['cancelled'] or 0,
+        total_reassigned=status_row['reassigned'] or 0,
+        total_rejected=status_row['rejected'] or 0,
+        average_processing_time_hours=float(status_row['avg_processing_time']) if status_row['avg_processing_time'] else None,
+        on_time_completion_rate=float(status_row['on_time_rate']) if status_row['on_time_rate'] else None,
+        by_item_type=by_item_type,
+        by_assignment_method=by_assignment_method
+    )
+
+    logger.info(f"Assignment stats retrieved by {current_user.email} for period: {days} days")
+
+    return response

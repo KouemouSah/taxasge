@@ -4,10 +4,12 @@
  *
  * @module assignments-admin/hooks
  * @author Claude Code
- * @date 2025-11-25
+ * @date 2026-01-20
  *
  * BACKEND ALIGNMENT:
  * Routes: /api/v1/assignments (from app/modules/assignment/api/assignment_routes.py)
+ * Models: app/modules/assignment/models/assignment_history.py
+ * Database: Migration 053 (assignments table), Migration 054 (agent_profile_id)
  */
 
 'use client'
@@ -15,15 +17,19 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { assignmentsApi } from '../services/api'
 import type {
-
+  Assignment,
   ManualAssignmentRequest,
   AutoAssignmentRequest,
   CompleteAssignmentRequest,
   ReassignmentRequest,
   UpdatePriorityRequest,
   ExtendDeadlineRequest,
+  UpdateNotesRequest,
+  StartAssignmentRequest,
   AssignmentStatus,
   AssignmentFilters,
+  AssignmentStats,
+  BulkReassignRequest,
 } from '../types'
 
 // =============================================================================
@@ -116,10 +122,11 @@ export function useStartAssignment() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (id: string) => assignmentsApi.startProcessing(id),
-    onSuccess: (_, id) => {
+    mutationFn: ({ id, data }: { id: string; data?: StartAssignmentRequest }) =>
+      assignmentsApi.startProcessing(id, data),
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: assignmentsKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: assignmentsKeys.detail(id) })
+      queryClient.invalidateQueries({ queryKey: assignmentsKeys.detail(variables.id) })
     },
   })
 }
@@ -217,6 +224,24 @@ export function useExtendAssignmentDeadline() {
   })
 }
 
+/**
+ * Update assignment notes (Agent/Supervisor)
+ * BACKEND: PATCH /api/v1/assignments/{id}/notes
+ * Requires: assignment.update_notes permission
+ */
+export function useUpdateAssignmentNotes() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateNotesRequest }) =>
+      assignmentsApi.updateNotes(id, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: assignmentsKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: assignmentsKeys.detail(variables.id) })
+    },
+  })
+}
+
 // =============================================================================
 // LEGACY HOOKS (for backward compatibility)
 // =============================================================================
@@ -264,5 +289,51 @@ export function useUpdateAssignmentStatus() {
       queryClient.invalidateQueries({ queryKey: assignmentsKeys.lists() })
       queryClient.invalidateQueries({ queryKey: assignmentsKeys.detail(variables.id) })
     },
+  })
+}
+
+// =============================================================================
+// BULK OPERATIONS HOOKS
+// =============================================================================
+
+/**
+ * Bulk reassign multiple assignments
+ * BACKEND: POST /api/v1/assignments/bulk/reassign
+ * Requires: assignment.bulk_reassign permission
+ */
+export function useBulkReassignAssignments() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: BulkReassignRequest) => assignmentsApi.bulkReassign(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: assignmentsKeys.lists() })
+    },
+  })
+}
+
+// =============================================================================
+// STATISTICS HOOKS
+// =============================================================================
+
+/**
+ * Fetch assignment statistics
+ * BACKEND: GET /api/v1/assignments/stats/summary
+ */
+export function useAssignmentStats(params?: { agent_profile_id?: string; item_type?: string; days?: number }) {
+  return useQuery({
+    queryKey: [...assignmentsKeys.all, 'stats', params] as const,
+    queryFn: () => assignmentsApi.getStats(params),
+  })
+}
+
+/**
+ * Fetch paginated assignments with total count
+ * BACKEND: GET /api/v1/assignments
+ */
+export function usePaginatedAssignments(params?: AssignmentFilters) {
+  return useQuery({
+    queryKey: [...assignmentsKeys.list(params || {}), 'paginated'] as const,
+    queryFn: () => assignmentsApi.getPaginated(params),
   })
 }
