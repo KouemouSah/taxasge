@@ -14,7 +14,7 @@
  * - Navigation to next assignment after success
  */
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { useQuery } from '@tanstack/react-query'
@@ -55,7 +55,7 @@ import {
   useReassignAssignment,
 } from '@/modules/assignments-admin'
 import type { ReassignmentReason } from '@/modules/assignments-admin'
-import { agentsApi, type AgentProfile } from '@/modules/assignments-admin/services/agents'
+import { agentsApi } from '@/modules/assignments-admin/services/agents'
 
 // Reassignment reasons - aligned with reassignment_reason_enum DB
 const REASSIGNMENT_REASONS: ReassignmentReason[] = [

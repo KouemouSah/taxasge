@@ -16,14 +16,12 @@
 
 import { useParams, useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
-import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
 import { format, formatDistanceToNow } from 'date-fns'
 import { es, fr, enUS } from 'date-fns/locale'
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
@@ -34,7 +32,6 @@ import {
   Loader2,
   AlertCircle,
   ArrowLeft,
-  ArrowRight,
   ChevronLeft,
   ChevronRight,
   Pencil,

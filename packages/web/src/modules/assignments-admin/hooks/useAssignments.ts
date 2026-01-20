@@ -17,7 +17,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { assignmentsApi } from '../services/api'
 import type {
-  Assignment,
   ManualAssignmentRequest,
   AutoAssignmentRequest,
   CompleteAssignmentRequest,
@@ -28,7 +27,6 @@ import type {
   StartAssignmentRequest,
   AssignmentStatus,
   AssignmentFilters,
-  AssignmentStats,
   BulkReassignRequest,
 } from '../types'
 
