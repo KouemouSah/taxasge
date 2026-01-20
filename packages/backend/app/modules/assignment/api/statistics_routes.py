@@ -17,12 +17,11 @@ from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.users.models.user import UserResponse
 from app.modules.assignment.models.assignment_history import (
     Assignment,
-    SupervisorAssignmentStats,
     AgentAssignmentStats
 )
 from app.modules.assignment.models.agent_workload import (
     AgentPerformanceMetrics,
-    WorkloadBalanceReport
+    AgentWorkload
 )
 from app.modules.assignment.repositories.assignment_repository import (
     AssignmentRepository,
@@ -145,14 +144,28 @@ async def get_agent_context(user_id: str, db) -> Dict[str, Any]:
     }
 
 
+async def _get_agent_profile_id_for_user(user_id: str, db) -> Optional[UUID]:
+    """
+    Get agent_profile_id from user_id.
+
+    Migration 054: agent_profile_id is the primary identifier, not user_id.
+    """
+    query = """
+        SELECT id FROM agent_profiles
+        WHERE user_id = $1 AND is_active = true
+    """
+    result = await db.fetchrow(query, UUID(user_id))
+    return result['id'] if result else None
+
+
 # ============================================================================
 # ENDPOINTS - AGENT STATISTICS
 # ============================================================================
 
-@router.get("/agent/{agent_id}", response_model=AgentAssignmentStats)
+@router.get("/agent/{agent_profile_id}", response_model=AgentAssignmentStats)
 @require_permission("agents.view_performance")
 async def get_agent_statistics(
-    agent_id: UUID,
+    agent_profile_id: UUID,
     period_days: int = Query(30, ge=1, le=365, description="Statistics period in days"),
     current_user: UserResponse = Depends(get_current_user),
     db = Depends(get_db_connection)
@@ -171,21 +184,24 @@ async def get_agent_statistics(
     - Success rate (0-1)
     - Deadline compliance rate (0-1)
     - Breakdown by status
-    - Breakdown by declaration type
+    - Breakdown by item_type
 
     Query Parameters:
     - period_days: Statistics period (default: 30, max: 365)
 
-    Migration 048: Uses unified 'agent' role with agent_profiles for supervisor check
+    Migration 053/054: Uses agent_profile_id instead of agent_id
     """
 
     # Authorization check - admins and supervisors can view any stats
-    is_own_stats = str(agent_id) == current_user.id
     is_admin = current_user.role == "admin"
 
     # Check if user is a supervisor via agent_profiles
     agent_ctx = await get_agent_context(current_user.id, db) if not is_admin else {}
     is_supervisor = is_admin or agent_ctx.get("is_supervisor", False)
+
+    # Check if current user is viewing their own stats
+    user_agent_profile_id = await _get_agent_profile_id_for_user(current_user.id, db)
+    is_own_stats = user_agent_profile_id and str(agent_profile_id) == str(user_agent_profile_id)
 
     if not (is_own_stats or is_supervisor):
         raise HTTPException(
@@ -196,10 +212,10 @@ async def get_agent_statistics(
     assignment_repo = get_assignment_repository(db)
 
     try:
-        stats = await assignment_repo.get_agent_stats(agent_id, period_days)
+        stats = await assignment_repo.get_agent_stats(db, agent_profile_id, period_days)
 
         logger.info(
-            f"Agent statistics loaded for {agent_id} (period: {period_days} days) "
+            f"Agent statistics loaded for {agent_profile_id} (period: {period_days} days) "
             f"by {current_user.email}"
         )
 
@@ -213,10 +229,10 @@ async def get_agent_statistics(
         )
 
 
-@router.get("/agent/{agent_id}/performance", response_model=AgentPerformanceMetrics)
+@router.get("/agent/{agent_profile_id}/performance", response_model=AgentPerformanceMetrics)
 @require_permission("agents.view_performance")
 async def get_agent_performance(
-    agent_id: UUID,
+    agent_profile_id: UUID,
     current_user: UserResponse = Depends(get_current_user),
     db = Depends(get_db_connection)
 ):
@@ -229,24 +245,25 @@ async def get_agent_performance(
     Returns:
     - Current workload metrics
     - Avg processing time
-    - Avg daily completions
-    - 7-day completion rate
     - Quality score average
     - Success rate
     - Deadline compliance rate
 
     Note: This data comes from agent_workloads table (real-time)
 
-    Migration 048: Uses unified 'agent' role with agent_profiles for supervisor check
+    Migration 053/054: Uses agent_profile_id instead of agent_id
     """
 
     # Authorization check - admins and supervisors can view any metrics
-    is_own_metrics = str(agent_id) == current_user.id
     is_admin = current_user.role == "admin"
 
     # Check if user is a supervisor via agent_profiles
     agent_ctx = await get_agent_context(current_user.id, db) if not is_admin else {}
     is_supervisor = is_admin or agent_ctx.get("is_supervisor", False)
+
+    # Check if current user is viewing their own metrics
+    user_agent_profile_id = await _get_agent_profile_id_for_user(current_user.id, db)
+    is_own_metrics = user_agent_profile_id and str(agent_profile_id) == str(user_agent_profile_id)
 
     if not (is_own_metrics or is_supervisor):
         raise HTTPException(
@@ -257,28 +274,28 @@ async def get_agent_performance(
     workload_repo = get_workload_repository(db)
 
     try:
-        workload = await workload_repo.get_by_agent_id(agent_id)
+        workload = await workload_repo.get_agent_workload(db, agent_profile_id)
 
         if not workload:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"No workload data found for agent {agent_id}"
+                detail=f"No workload data found for agent_profile {agent_profile_id}"
             )
 
         # Convert to AgentPerformanceMetrics
         metrics = AgentPerformanceMetrics(
-            agent_id=workload.agent_id,
-            avg_processing_time_hours=workload.avg_processing_time_hours,
-            avg_daily_completions=workload.avg_daily_completions,
-            completion_rate_7d=workload.completion_rate_7d,
-            quality_score_avg=workload.quality_score_avg,
-            success_rate=workload.success_rate,
-            deadline_compliance_rate=workload.deadline_compliance_rate,
-            last_updated_at=workload.last_updated_at
+            agent_profile_id=workload.agent_profile_id,
+            agent_name=workload.agent_name,
+            period="current",
+            declarations_processed=workload.current_assignments,
+            average_time_to_complete_hours=workload.avg_processing_time_hours or 0.0,
+            on_time_completion_rate=0.0,  # TODO: Calculate from assignments
+            rejection_rate=0.0,  # TODO: Calculate from assignments
+            quality_score=0.0,  # TODO: Add to agent_workloads table
         )
 
         logger.info(
-            f"Agent performance metrics loaded for {agent_id} by {current_user.email}"
+            f"Agent performance metrics loaded for {agent_profile_id} by {current_user.email}"
         )
 
         return metrics
@@ -293,10 +310,10 @@ async def get_agent_performance(
         )
 
 
-@router.get("/agent/{agent_id}/trends", response_model=PerformanceTrendsResponse)
+@router.get("/agent/{agent_profile_id}/trends", response_model=PerformanceTrendsResponse)
 @require_permission("agents.view_performance")
 async def get_agent_trends(
-    agent_id: UUID,
+    agent_profile_id: UUID,
     period_days: int = Query(30, ge=7, le=180, description="Trend period in days"),
     granularity: str = Query("daily", pattern="^(daily|weekly)$"),
     current_user: UserResponse = Depends(get_current_user),
@@ -317,16 +334,19 @@ async def get_agent_trends(
     - period_days: Trend period (default: 30, min: 7, max: 180)
     - granularity: "daily" or "weekly" (default: daily)
 
-    Migration 048: Uses unified 'agent' role with agent_profiles for supervisor check
+    Migration 053/054: Uses agent_profile_id instead of agent_id
     """
 
     # Authorization check - admins and supervisors can view any trends
-    is_own_trends = str(agent_id) == current_user.id
     is_admin = current_user.role == "admin"
 
     # Check if user is a supervisor via agent_profiles
     agent_ctx = await get_agent_context(current_user.id, db) if not is_admin else {}
     is_supervisor = is_admin or agent_ctx.get("is_supervisor", False)
+
+    # Check if current user is viewing their own trends
+    user_agent_profile_id = await _get_agent_profile_id_for_user(current_user.id, db)
+    is_own_trends = user_agent_profile_id and str(agent_profile_id) == str(user_agent_profile_id)
 
     if not (is_own_trends or is_supervisor):
         raise HTTPException(
@@ -347,7 +367,7 @@ async def get_agent_trends(
     )
 
     logger.info(
-        f"Agent trends loaded for {agent_id} (period: {period_days} days, granularity: {granularity}) "
+        f"Agent trends loaded for {agent_profile_id} (period: {period_days} days, granularity: {granularity}) "
         f"by {current_user.email}"
     )
 
@@ -401,10 +421,8 @@ async def get_team_performance(
         # For now, aggregate from individual agent stats
 
         # Get all agents in team - uses unified 'agent' role
-        agents_data = await workload_repo.get_available_agents(
-            db=db,
-            max_workload_pct=100.0
-        )
+        # Returns List[AgentWorkload] objects
+        agents_data = await workload_repo.get_available_agents(db, max_workload_pct=100.0)
 
         # Aggregate stats
         total_assignments = 0
@@ -415,14 +433,13 @@ async def get_team_performance(
         total_processing_time = 0.0
         total_success = 0.0
         total_deadline_compliance = 0.0
-        auto_assignments = 0
-        manual_assignments = 0
 
         agent_performances = []
 
-        for agent_data in agents_data:
-            agent_id = agent_data["agent_id"]
-            stats = await assignment_repo.get_agent_stats(agent_id, period_days)
+        for agent_workload in agents_data:
+            # AgentWorkload uses agent_profile_id (Migration 054)
+            agent_profile_id = agent_workload.agent_profile_id
+            stats = await assignment_repo.get_agent_stats(db, agent_profile_id, period_days)
 
             total_assignments += stats.total_assignments
             completed_assignments += stats.completed_assignments
@@ -430,24 +447,21 @@ async def get_team_performance(
             in_progress_assignments += stats.by_status.get("in_progress", 0)
 
             if stats.completed_assignments > 0:
-                total_quality += stats.avg_quality_score * stats.completed_assignments
+                total_quality += stats.quality_score_avg * stats.completed_assignments
                 total_processing_time += stats.avg_processing_time_hours * stats.completed_assignments
                 total_success += stats.success_rate * stats.completed_assignments
                 total_deadline_compliance += stats.deadline_compliance_rate * stats.completed_assignments
 
-            # Track auto vs manual
-            # TODO: Get from assignment method field
-
             agent_performances.append({
-                "agent_id": str(agent_id),
-                "agent_name": agent_data.get("full_name", "Unknown"),
+                "agent_profile_id": str(agent_profile_id),
+                "agent_name": agent_workload.agent_name,
                 "total_assignments": stats.total_assignments,
                 "completed_assignments": stats.completed_assignments,
-                "avg_quality_score": stats.avg_quality_score,
+                "avg_quality_score": stats.quality_score_avg,
                 "success_rate": stats.success_rate,
                 "performance_score": (
                     stats.success_rate * 0.5 +
-                    (stats.avg_quality_score / 10.0) * 0.3 +
+                    (stats.quality_score_avg / 10.0) * 0.3 +
                     stats.deadline_compliance_rate * 0.2
                 )
             })
@@ -497,7 +511,7 @@ async def get_team_performance(
         )
 
 
-@router.get("/team/workload", response_model=WorkloadBalanceReport)
+@router.get("/team/workload")
 @require_permission("agents.view_workload")
 async def get_team_workload(
     current_user: UserResponse = Depends(get_current_user),
@@ -514,8 +528,6 @@ async def get_team_workload(
     - Available/busy/overloaded/unavailable counts
     - Total assignments
     - Avg assignments per agent
-    - Min/max assignments
-    - Workload std deviation
     - Balance score (0-100)
     - Rebalancing needed flag
 
@@ -525,7 +537,7 @@ async def get_team_workload(
     - 50-69 = Moderate imbalance
     - <50 = High imbalance (rebalancing recommended)
 
-    Migration 048: Uses unified 'agent' role with agent_profiles for filtering
+    Migration 053/054: Uses agent_profile_id
     """
 
     # Get agent context from agent_profiles
@@ -541,10 +553,48 @@ async def get_team_workload(
     workload_repo = get_workload_repository(db)
 
     try:
-        report = await workload_repo.get_workload_balance_report(
-            entity_type,
-            entity_id
-        )
+        # Get all agents - returns List[AgentWorkload]
+        agents = await workload_repo.get_available_agents(db, max_workload_pct=100.0)
+
+        if not agents:
+            return {
+                "total_agents": 0,
+                "available_count": 0,
+                "busy_count": 0,
+                "overloaded_count": 0,
+                "total_assignments": 0,
+                "avg_assignments_per_agent": 0.0,
+                "balance_score": 100.0,
+                "rebalancing_needed": False
+            }
+
+        # Calculate workload metrics
+        total_assignments = sum(a.current_assignments for a in agents)
+        available_count = sum(1 for a in agents if a.workload_status == "available")
+        busy_count = sum(1 for a in agents if a.workload_status in ["normal", "busy"])
+        overloaded_count = sum(1 for a in agents if a.workload_status == "overloaded")
+
+        avg_assignments = total_assignments / len(agents) if agents else 0
+        workloads = [a.current_assignments for a in agents]
+        max_workload = max(workloads) if workloads else 0
+        min_workload = min(workloads) if workloads else 0
+
+        # Simple balance score: 100 - (max - min) * 10, clamped to 0-100
+        balance_score = max(0, min(100, 100 - (max_workload - min_workload) * 10))
+        rebalancing_needed = balance_score < 50 or overloaded_count > 0
+
+        report = {
+            "total_agents": len(agents),
+            "available_count": available_count,
+            "busy_count": busy_count,
+            "overloaded_count": overloaded_count,
+            "total_assignments": total_assignments,
+            "avg_assignments_per_agent": round(avg_assignments, 2),
+            "min_assignments": min_workload,
+            "max_assignments": max_workload,
+            "balance_score": round(balance_score, 2),
+            "rebalancing_needed": rebalancing_needed
+        }
 
         logger.info(
             f"Team workload balance loaded for {entity_type}/{entity_id} "
@@ -565,10 +615,10 @@ async def get_team_workload(
 # ENDPOINTS - SUPERVISOR STATISTICS
 # ============================================================================
 
-@router.get("/supervisor/{supervisor_id}", response_model=SupervisorAssignmentStats)
+@router.get("/supervisor/{supervisor_profile_id}")
 @require_permission("dashboard.view")
 async def get_supervisor_statistics(
-    supervisor_id: UUID,
+    supervisor_profile_id: UUID,
     period_days: int = Query(30, ge=1, le=365, description="Statistics period in days"),
     current_user: UserResponse = Depends(get_current_user),
     db = Depends(get_db_connection)
@@ -581,19 +631,20 @@ async def get_supervisor_statistics(
 
     Returns:
     - Total assignments created (manual)
-    - Total auto-assignments triggered
     - Total reassignments
-    - Avg agent workload managed
-    - Team performance score
-    - Active rules count
+    - Team size
+    - Team assignments
 
     Query Parameters:
     - period_days: Statistics period (default: 30, max: 365)
+
+    Migration 054: Uses supervisor_profile_id (agent_profile with is_supervisor=true)
     """
 
-    # Authorization check
-    is_own_stats = str(supervisor_id) == current_user.id
+    # Authorization check - compare agent_profile_ids
     is_admin = current_user.role == "admin"
+    user_agent_profile_id = await _get_agent_profile_id_for_user(current_user.id, db)
+    is_own_stats = user_agent_profile_id and str(supervisor_profile_id) == str(user_agent_profile_id)
 
     if not (is_own_stats or is_admin):
         raise HTTPException(
@@ -601,13 +652,13 @@ async def get_supervisor_statistics(
             detail="You can only view your own statistics"
         )
 
-    assignment_repo = get_assignment_repository(db)
-
     try:
-        stats = await assignment_repo.get_supervisor_stats(supervisor_id, period_days)
+        # Use repository method instead of inline SQL (Architecture 3-tier)
+        assignment_repo = get_assignment_repository(db)
+        stats = await assignment_repo.get_supervisor_stats(db, supervisor_profile_id, period_days)
 
         logger.info(
-            f"Supervisor statistics loaded for {supervisor_id} (period: {period_days} days) "
+            f"Supervisor statistics loaded for {supervisor_profile_id} (period: {period_days} days) "
             f"by {current_user.email}"
         )
 
@@ -753,20 +804,17 @@ async def get_realtime_summary(
 
     try:
         # Get active assignments
-        active_assignments = await assignment_repo.get_active_assignments(None)
-        pending = [a for a in active_assignments if a.status == "assigned"]
-        in_progress = [a for a in active_assignments if a.status == "in_progress"]
-        overdue = await assignment_repo.get_overdue_assignments()
+        active_assignments = await assignment_repo.get_active_assignments(db, agent_profile_id=None)
+        pending = [a for a in active_assignments if a.status.value == "assigned"]
+        in_progress = [a for a in active_assignments if a.status.value == "in_progress"]
+        overdue = await assignment_repo.get_overdue_assignments(db)
 
-        # Get agent availability - uses unified 'agent' role
-        agents_data = await workload_repo.get_available_agents(
-            db=db,
-            max_workload_pct=100.0
-        )
+        # Get agent availability - returns List[AgentWorkload] objects
+        agents = await workload_repo.get_available_agents(db, max_workload_pct=100.0)
 
-        available_count = sum(1 for a in agents_data if a.get("workload_status") == "available")
-        busy_count = sum(1 for a in agents_data if a.get("workload_status") in ["normal", "busy"])
-        overloaded_count = sum(1 for a in agents_data if a.get("workload_status") == "overloaded")
+        available_count = sum(1 for a in agents if a.workload_status == "available")
+        busy_count = sum(1 for a in agents if a.workload_status in ["normal", "busy"])
+        overloaded_count = sum(1 for a in agents if a.workload_status == "overloaded")
 
         summary = {
             "timestamp": datetime.utcnow().isoformat(),
@@ -774,7 +822,7 @@ async def get_realtime_summary(
             "pending_assignments": len(pending),
             "in_progress_assignments": len(in_progress),
             "overdue_assignments": len(overdue),
-            "total_agents": len(agents_data),
+            "total_agents": len(agents),
             "available_agents": available_count,
             "busy_agents": busy_count,
             "overloaded_agents": overloaded_count,

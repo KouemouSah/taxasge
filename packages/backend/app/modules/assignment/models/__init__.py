@@ -17,6 +17,8 @@ from app.modules.assignment.models.agent_workload import (
     AgentWorkload,
     AgentWorkloadStats,
     AgentPerformanceMetrics,
+    WorkloadBalanceReport,
+    AgentCapacityForecast,
 )
 from app.modules.assignment.models.assignment_rule import (
     AssignmentRule,
@@ -37,6 +39,8 @@ __all__ = [
     "AgentWorkload",
     "AgentWorkloadStats",
     "AgentPerformanceMetrics",
+    "WorkloadBalanceReport",
+    "AgentCapacityForecast",
     "AssignmentRule",
     "AssignmentRuleCreate",
     "AssignmentRuleUpdate",

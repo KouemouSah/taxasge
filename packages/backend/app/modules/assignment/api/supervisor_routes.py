@@ -124,8 +124,9 @@ class DashboardResponse(BaseModel):
 
 
 class AgentListItem(BaseModel):
-    """Agent item in list"""
-    agent_id: UUID
+    """Agent item in list - aligned with agent_profiles table (Migration 054)"""
+    agent_profile_id: UUID  # Primary identifier from agent_profiles
+    agent_id: Optional[UUID] = None  # DEPRECATED: user_id, kept for backward compatibility
     agent_name: str
     agent_email: str
     current_assignments: int
@@ -224,62 +225,37 @@ async def get_dashboard(
         recent_assignments = all_assignments[:20]
 
         # Generate performance alerts
+        # Note: available_agents returns AgentWorkload objects now (Migration 054)
         performance_alerts = []
-        for agent_data in available_agents:
-            workload = await workload_repo.get_by_agent_id(agent_data["agent_id"])
-            if workload:
-                # Alert if overloaded
-                if workload.workload_status == "overloaded":
-                    performance_alerts.append({
-                        "type": "overloaded",
-                        "agent_id": str(workload.agent_id),
-                        "message": f"Agent at {workload.capacity_percentage:.0f}% capacity",
-                        "severity": "high"
-                    })
+        for agent_workload in available_agents:
+            # AgentWorkload object has capacity_percentage computed
+            if agent_workload.capacity_percentage > 80:
+                performance_alerts.append({
+                    "type": "overloaded",
+                    "agent_profile_id": str(agent_workload.agent_profile_id),
+                    "message": f"Agent at {agent_workload.capacity_percentage:.0f}% capacity",
+                    "severity": "high"
+                })
 
-                # Alert if low success rate
-                if workload.success_rate < 0.70:
-                    performance_alerts.append({
-                        "type": "low_success_rate",
-                        "agent_id": str(workload.agent_id),
-                        "message": f"Success rate: {workload.success_rate*100:.0f}%",
-                        "severity": "medium"
-                    })
-
-                # Alert if deadline compliance issues
-                if workload.deadline_compliance_rate < 0.80:
-                    performance_alerts.append({
-                        "type": "deadline_issues",
-                        "agent_id": str(workload.agent_id),
-                        "message": f"Deadline compliance: {workload.deadline_compliance_rate*100:.0f}%",
-                        "severity": "medium"
-                    })
-
-        # Build summary
+        # Build summary - available_agents is List[AgentWorkload]
         summary = {
             "total_agents": len(available_agents),
             "total_assignments": len(all_assignments),
             "pending_count": len(pending),
             "in_progress_count": len(in_progress),
             "overdue_count": len(overdue),
-            "avg_capacity": sum(a.get("capacity_percentage", 0) for a in available_agents) / max(len(available_agents), 1),
+            "avg_capacity": sum(a.capacity_percentage for a in available_agents) / max(len(available_agents), 1),
             "alerts_count": len(performance_alerts),
             "entity_type": agent_ctx.get("entity_type"),
             "entity_id": str(agent_ctx.get("ministry_id") or agent_ctx.get("entity_id") or "")
         }
 
-        # Build agent workload list
-        agent_workloads = []
-        for agent_data in available_agents:
-            workload = await workload_repo.get_by_agent_id(agent_data["agent_id"])
-            if workload:
-                agent_workloads.append(workload)
-
+        # available_agents is already List[AgentWorkload] - no need to fetch again
         response = DashboardResponse(
             summary=summary,
             pending_assignments=pending[:10],
             overdue_assignments=overdue,
-            agent_workloads=agent_workloads,
+            agent_workloads=available_agents,
             recent_assignments=recent_assignments,
             performance_alerts=performance_alerts
         )
@@ -336,29 +312,28 @@ async def list_agents(
     workload_repo = get_workload_repository(db)
 
     try:
-        # Get agents - now uses unified 'agent' role
+        # Get agents - uses unified 'agent' role with agent_profiles (Migration 054)
         max_capacity = 100.0 if include_unavailable else 80.0
-        agents_data = await workload_repo.get_available_agents(
+        agents_workloads = await workload_repo.get_available_agents(
             db=db,
             max_workload_pct=max_capacity
         )
 
-        # Build response
+        # Build response - agents_workloads is List[AgentWorkload]
         agents_list = []
-        for agent_data in agents_data:
-            # TODO: Get agent name and email from users table
-            # For now, use placeholder
+        for agent in agents_workloads:
             agents_list.append(AgentListItem(
-                agent_id=agent_data["agent_id"],
-                agent_name=agent_data.get("full_name", "Unknown"),
-                agent_email=agent_data.get("email", "unknown@example.com"),
-                current_assignments=agent_data.get("current_assignments", 0),
-                capacity_percentage=agent_data.get("capacity_percentage", 0.0),
-                workload_status=agent_data.get("workload_status", "available"),
-                availability=agent_data.get("availability", "available"),
-                specializations=agent_data.get("specializations"),
-                avg_processing_time_hours=agent_data.get("avg_processing_time_hours"),
-                success_rate=agent_data.get("success_rate", 0.0)
+                agent_profile_id=agent.agent_profile_id,
+                agent_id=agent.user_id,  # For backward compatibility
+                agent_name=agent.agent_name,
+                agent_email=agent.agent_email or "",
+                current_assignments=agent.current_assignments,
+                capacity_percentage=agent.capacity_percentage,
+                workload_status=agent.workload_status,
+                availability=agent.availability,
+                specializations=agent.specializations,
+                avg_processing_time_hours=agent.avg_processing_time_hours,
+                success_rate=agent.success_rate
             ))
 
         logger.info(f"Agents list loaded for supervisor {current_user.email}")
@@ -373,10 +348,10 @@ async def list_agents(
         )
 
 
-@router.get("/agents/{agent_id}/stats", response_model=AgentAssignmentStats)
+@router.get("/agents/{agent_profile_id}/stats", response_model=AgentAssignmentStats)
 @require_permission("agents.view_performance")
 async def get_agent_stats(
-    agent_id: UUID,
+    agent_profile_id: UUID,
     period_days: int = Query(30, ge=1, le=365, description="Statistics period in days"),
     current_user: UserResponse = Depends(get_current_user),
     db = Depends(get_db_connection)
@@ -399,14 +374,16 @@ async def get_agent_stats(
 
     Query Parameters:
     - period_days: Statistics period (default: 30, max: 365)
+
+    Migration 054: Uses agent_profile_id instead of agent_id
     """
     assignment_repo = get_assignment_repository(db)
 
     try:
-        stats = await assignment_repo.get_agent_stats(agent_id, period_days)
+        stats = await assignment_repo.get_agent_stats(db, agent_profile_id, period_days)
 
         logger.info(
-            f"Agent stats loaded for {agent_id} by supervisor {current_user.email}"
+            f"Agent stats loaded for agent_profile {agent_profile_id} by supervisor {current_user.email}"
         )
 
         return stats
@@ -419,10 +396,10 @@ async def get_agent_stats(
         )
 
 
-@router.get("/agents/{agent_id}/forecast", response_model=AgentCapacityForecast)
+@router.get("/agents/{agent_profile_id}/forecast", response_model=AgentCapacityForecast)
 @require_permission("agents.view_workload")
 async def get_agent_forecast(
-    agent_id: UUID,
+    agent_profile_id: UUID,
     horizon_days: int = Query(7, ge=1, le=30, description="Forecast horizon in days"),
     current_user: UserResponse = Depends(get_current_user),
     db = Depends(get_db_connection)
@@ -443,14 +420,16 @@ async def get_agent_forecast(
 
     Query Parameters:
     - horizon_days: Forecast horizon (default: 7, max: 30)
+
+    Migration 054: Uses agent_profile_id instead of agent_id
     """
     workload_repo = get_workload_repository(db)
 
     try:
-        forecast = await workload_repo.get_capacity_forecast(agent_id, horizon_days)
+        forecast = await workload_repo.get_capacity_forecast(db, agent_profile_id, horizon_days)
 
         logger.info(
-            f"Capacity forecast generated for agent {agent_id} "
+            f"Capacity forecast generated for agent_profile {agent_profile_id} "
             f"by supervisor {current_user.email}"
         )
 
@@ -519,25 +498,27 @@ async def get_workload_balance(
             agent_ctx.get("ministry_id") or agent_ctx.get("entity_id")
         )
 
-        # Get agent list - now uses unified 'agent' role
-        agents_data = await workload_repo.get_available_agents(
+        # Get agent list - uses unified 'agent' role with agent_profiles (Migration 054)
+        agents_workloads = await workload_repo.get_available_agents(
             db=db,
             max_workload_pct=100.0
         )
 
+        # Build response - agents_workloads is List[AgentWorkload]
         agents_list = []
-        for agent_data in agents_data:
+        for agent in agents_workloads:
             agents_list.append(AgentListItem(
-                agent_id=agent_data["agent_id"],
-                agent_name=agent_data.get("full_name", "Unknown"),
-                agent_email=agent_data.get("email", "unknown@example.com"),
-                current_assignments=agent_data.get("current_assignments", 0),
-                capacity_percentage=agent_data.get("capacity_percentage", 0.0),
-                workload_status=agent_data.get("workload_status", "available"),
-                availability=agent_data.get("availability", "available"),
-                specializations=agent_data.get("specializations"),
-                avg_processing_time_hours=agent_data.get("avg_processing_time_hours"),
-                success_rate=agent_data.get("success_rate", 0.0)
+                agent_profile_id=agent.agent_profile_id,
+                agent_id=agent.user_id,  # For backward compatibility
+                agent_name=agent.agent_name,
+                agent_email=agent.agent_email or "",
+                current_assignments=agent.current_assignments,
+                capacity_percentage=agent.capacity_percentage,
+                workload_status=agent.workload_status,
+                availability=agent.availability,
+                specializations=agent.specializations,
+                avg_processing_time_hours=agent.avg_processing_time_hours,
+                success_rate=agent.success_rate
             ))
 
         # Generate recommendations
@@ -878,6 +859,290 @@ async def archive_rule(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to archive rule"
         )
+
+
+# ============================================================================
+# ENDPOINTS - ESCALATIONS MANAGEMENT
+# ============================================================================
+
+class EscalationListItem(BaseModel):
+    """Escalation item for supervisor list"""
+    id: UUID
+    queue_id: UUID
+    reason: str
+    priority_score: float
+    status: str
+    escalation_status: str
+    case_reference: str
+    case_type: str
+    escalated_by_name: str
+    escalated_by_email: str
+    escalated_at: datetime
+    created_at: datetime
+    assigned_to_name: Optional[str] = None
+
+
+class EscalationStatsResponse(BaseModel):
+    """Escalation statistics"""
+    pending: int
+    in_review: int
+    resolved_today: int
+    total: int
+
+
+@router.get("/escalations", response_model=List[EscalationListItem])
+@require_permission("escalations.view")
+async def list_escalations(
+    status_filter: Optional[str] = Query(None, description="Filter by status: pending, in_review, resolved"),
+    include_resolved: bool = Query(False, description="Include resolved escalations"),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(50, ge=1, le=100, description="Items per page"),
+    current_user: UserResponse = Depends(get_current_user),
+    db = Depends(get_db_connection)
+):
+    """
+    **List all escalated items for supervisor review**
+
+    Permissions:
+    - Requires: escalations.view
+
+    Returns:
+    - Escalated queue items with agent info
+    - Sorted by escalation time (most recent first)
+    - Filters by ministry/entity for non-admin users
+
+    Query Parameters:
+    - status_filter: Filter by escalation_status
+    - include_resolved: Include completed items
+    - page, page_size: Pagination
+    """
+    # Get agent context
+    if current_user.role == "admin":
+        agent_ctx = {"ministry_id": None, "entity_id": None}
+    else:
+        agent_ctx = await get_agent_context(str(current_user.id), db)
+
+    offset = (page - 1) * page_size
+
+    # Build status filter
+    status_where = ""
+    if status_filter == "pending":
+        status_where = "AND q.assigned_to IS NULL AND q.status != 'completed'"
+    elif status_filter == "in_review":
+        status_where = "AND q.assigned_to IS NOT NULL AND q.status != 'completed'"
+    elif status_filter == "resolved":
+        status_where = "AND q.status = 'completed'"
+    elif not include_resolved:
+        status_where = "AND q.status != 'completed'"
+
+    # Ministry filter for non-admin
+    ministry_filter = ""
+    params = [page_size, offset]
+    param_idx = 3
+
+    if agent_ctx.get("ministry_id"):
+        ministry_filter = f"AND q.ministry_id = ${param_idx}"
+        params.insert(0, agent_ctx["ministry_id"])
+        param_idx += 1
+
+    query = f"""
+        SELECT
+            q.id as queue_id,
+            q.item_id,
+            q.escalation_reason,
+            q.priority_score,
+            q.status,
+            q.escalated_at,
+            q.created_at,
+            q.assigned_to,
+            sr.reference as case_reference,
+            sr.workflow_code as case_type,
+            escalator.full_name as escalated_by_name,
+            escalator.email as escalated_by_email,
+            assignee.full_name as assigned_to_name,
+            CASE
+                WHEN q.status = 'completed' THEN 'resolved'
+                WHEN q.assigned_to IS NOT NULL THEN 'in_review'
+                ELSE 'pending'
+            END as escalation_status
+        FROM agent_work_queue q
+        JOIN service_requests sr ON sr.id = q.item_id
+        LEFT JOIN users escalator ON escalator.id = q.escalated_by
+        LEFT JOIN users assignee ON assignee.id = q.assigned_to
+        WHERE q.item_type = 'service_request'
+        AND q.escalated = true
+        {ministry_filter}
+        {status_where}
+        ORDER BY q.escalated_at DESC
+        LIMIT ${param_idx - 1} OFFSET ${param_idx}
+    """
+
+    rows = await db.fetch(query, *params)
+
+    return [
+        EscalationListItem(
+            id=row['item_id'],
+            queue_id=row['queue_id'],
+            reason=row['escalation_reason'] or '',
+            priority_score=float(row['priority_score']),
+            status=row['status'],
+            escalation_status=row['escalation_status'],
+            case_reference=row['case_reference'] or '',
+            case_type=row['case_type'] or '',
+            escalated_by_name=row['escalated_by_name'] or 'Unknown',
+            escalated_by_email=row['escalated_by_email'] or '',
+            escalated_at=row['escalated_at'] or row['created_at'],
+            created_at=row['created_at'],
+            assigned_to_name=row['assigned_to_name']
+        )
+        for row in rows
+    ]
+
+
+@router.get("/escalations/stats", response_model=EscalationStatsResponse)
+@require_permission("escalations.view")
+async def get_escalation_stats(
+    current_user: UserResponse = Depends(get_current_user),
+    db = Depends(get_db_connection)
+):
+    """
+    **Get escalation statistics**
+
+    Returns counts of escalations by status.
+    """
+    # Get agent context
+    if current_user.role == "admin":
+        agent_ctx = {"ministry_id": None}
+    else:
+        agent_ctx = await get_agent_context(str(current_user.id), db)
+
+    ministry_filter = ""
+    params = []
+
+    if agent_ctx.get("ministry_id"):
+        ministry_filter = "AND ministry_id = $1"
+        params.append(agent_ctx["ministry_id"])
+
+    query = f"""
+        SELECT
+            COUNT(*) FILTER (WHERE assigned_to IS NULL AND status != 'completed') as pending,
+            COUNT(*) FILTER (WHERE assigned_to IS NOT NULL AND status != 'completed') as in_review,
+            COUNT(*) FILTER (WHERE status = 'completed' AND completed_at > NOW() - INTERVAL '24 hours') as resolved_today,
+            COUNT(*) as total
+        FROM agent_work_queue
+        WHERE item_type = 'service_request'
+        AND escalated = true
+        {ministry_filter}
+    """
+
+    row = await db.fetchrow(query, *params)
+
+    return EscalationStatsResponse(
+        pending=row['pending'] or 0,
+        in_review=row['in_review'] or 0,
+        resolved_today=row['resolved_today'] or 0,
+        total=row['total'] or 0
+    )
+
+
+@router.post("/escalations/{queue_id}/assign")
+@require_permission("escalations.assign")
+async def assign_escalation(
+    queue_id: UUID,
+    agent_id: Optional[UUID] = None,
+    current_user: UserResponse = Depends(get_current_user),
+    db = Depends(get_db_connection)
+):
+    """
+    **Assign an escalated item to an agent (or self)**
+
+    If agent_id is not provided, assigns to current user.
+    """
+    target_agent = agent_id or UUID(current_user.id)
+
+    result = await db.fetchrow("""
+        UPDATE agent_work_queue
+        SET assigned_to = $2,
+            assigned_at = NOW(),
+            locked_until = NOW() + INTERVAL '60 minutes',
+            status = 'assigned',
+            updated_at = NOW()
+        WHERE id = $1
+        AND escalated = true
+        AND status = 'pending'
+        RETURNING id
+    """, str(queue_id), str(target_agent))
+
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Escalation not found or already assigned"
+        )
+
+    logger.info(f"Escalation {queue_id} assigned to {target_agent} by {current_user.email}")
+
+    return {"message": "Escalation assigned", "queue_id": str(queue_id), "assigned_to": str(target_agent)}
+
+
+class ResolveEscalationRequest(BaseModel):
+    """Request to resolve an escalation"""
+    resolution_notes: str = Field(..., min_length=5, max_length=500)
+
+
+@router.post("/escalations/{queue_id}/resolve")
+@require_permission("escalations.resolve")
+async def resolve_escalation(
+    queue_id: UUID,
+    request_data: ResolveEscalationRequest,
+    current_user: UserResponse = Depends(get_current_user),
+    db = Depends(get_db_connection)
+):
+    """
+    **Resolve an escalation**
+
+    Marks the queue item as completed and adds resolution note to service_request.
+    """
+    # Get the queue item first to find the service request
+    queue_item = await db.fetchrow("""
+        SELECT item_id FROM agent_work_queue
+        WHERE id = $1 AND escalated = true
+    """, str(queue_id))
+
+    if not queue_item:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Escalation not found"
+        )
+
+    # Update queue item as completed
+    result = await db.fetchrow("""
+        UPDATE agent_work_queue
+        SET status = 'completed',
+            completed_at = NOW(),
+            completed_by = $2,
+            updated_at = NOW()
+        WHERE id = $1
+        AND escalated = true
+        RETURNING id, item_id
+    """, str(queue_id), str(current_user.id))
+
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Failed to update escalation"
+        )
+
+    # Add resolution notes to service_request
+    await db.execute("""
+        UPDATE service_requests
+        SET notes = COALESCE(notes, '') || E'\n[ESCALATION RESOLVED] ' || $2,
+            updated_at = NOW()
+        WHERE id = $1
+    """, result['item_id'], request_data.resolution_notes)
+
+    logger.info(f"Escalation {queue_id} resolved by {current_user.email}")
+
+    return {"message": "Escalation resolved", "queue_id": str(queue_id)}
 
 
 @router.get("/rules/effectiveness/report", response_model=List[RuleEffectivenessItem])
