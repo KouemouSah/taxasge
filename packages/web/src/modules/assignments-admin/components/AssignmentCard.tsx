@@ -3,6 +3,12 @@
  * Displays a single assignment as a card
  *
  * @module assignments-admin/components
+ * @date 2026-01-20
+ *
+ * BACKEND ALIGNMENT:
+ * - Migration 053: item_id, item_type (not declaration_id)
+ * - Migration 054: agent_profile_id, agent_name (not assignee_id/name)
+ * - priority_level is integer 1-10 (not string)
  */
 
 'use client'
@@ -13,7 +19,7 @@ import { Button } from '@/components/ui/button'
 import { User, Calendar, Edit, Trash2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { AssignmentStatusBadge } from './AssignmentStatusBadge'
-import type { Assignment, AssignmentPriority } from '../types'
+import type { Assignment, PriorityLevel } from '../types'
 
 interface AssignmentCardProps {
   assignment: Assignment
@@ -22,11 +28,18 @@ interface AssignmentCardProps {
   onDelete?: () => void
 }
 
-const priorityColors: Record<AssignmentPriority, string> = {
-  low: 'bg-gray-100 text-gray-800',
-  medium: 'bg-blue-100 text-blue-800',
-  high: 'bg-orange-100 text-orange-800',
-  urgent: 'bg-red-100 text-red-800',
+/**
+ * Get priority label and color based on numeric priority_level (1-10)
+ * - 1-3: Low (gray)
+ * - 4-6: Medium/Normal (blue)
+ * - 7-8: High (orange)
+ * - 9-10: Urgent/Critical (red)
+ */
+function getPriorityConfig(level: PriorityLevel): { label: string; color: string } {
+  if (level <= 3) return { label: 'low', color: 'bg-gray-100 text-gray-800' }
+  if (level <= 6) return { label: 'medium', color: 'bg-blue-100 text-blue-800' }
+  if (level <= 8) return { label: 'high', color: 'bg-orange-100 text-orange-800' }
+  return { label: 'urgent', color: 'bg-red-100 text-red-800' }
 }
 
 export function AssignmentCard({
@@ -36,6 +49,7 @@ export function AssignmentCard({
   onDelete,
 }: AssignmentCardProps) {
   const t = useTranslations('assignments')
+  const priorityConfig = getPriorityConfig(assignment.priority_level)
 
   return (
     <Card
@@ -45,15 +59,18 @@ export function AssignmentCard({
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
           <CardTitle className="text-base">
-            {t('declarationId')}: {assignment.declaration_id}
+            {t('itemId')}: {assignment.item_id}
           </CardTitle>
           <AssignmentStatusBadge status={assignment.status} />
         </div>
+        <span className="text-xs text-muted-foreground">
+          {t(`itemType.${assignment.item_type}`)}
+        </span>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <User className="h-4 w-4" />
-          <span>{assignment.assignee_name}</span>
+          <span>{assignment.agent_name || t('noAgent')}</span>
         </div>
 
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -64,8 +81,8 @@ export function AssignmentCard({
         </div>
 
         <div className="flex items-center justify-between">
-          <Badge className={priorityColors[assignment.priority]}>
-            {t(`priority.${assignment.priority}`)}
+          <Badge className={priorityConfig.color}>
+            {t(`priority.${priorityConfig.label}`)} ({assignment.priority_level})
           </Badge>
 
           <div className="flex gap-1">

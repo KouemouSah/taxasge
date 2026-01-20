@@ -3,6 +3,11 @@
  * Filter controls for assignment lists
  *
  * @module assignments-admin/components
+ * @date 2026-01-20
+ *
+ * BACKEND ALIGNMENT:
+ * - Migration 053: item_id, item_type
+ * - Migration 054: agent_profile_id
  */
 
 'use client'
@@ -22,7 +27,7 @@ import type { AssignmentStatus } from '../types'
 
 interface AssignmentFiltersState {
   status?: AssignmentStatus
-  assignee_id?: string
+  agent_profile_id?: string
   search?: string
 }
 
@@ -31,7 +36,16 @@ interface AssignmentFiltersProps {
   onFiltersChange: (filters: AssignmentFiltersState) => void
 }
 
-const statuses: AssignmentStatus[] = ['pending', 'in_progress', 'completed', 'cancelled']
+// Valid statuses from assignment_status_enum (DATABASE_SCHEMA_REFERENCE.md)
+const statuses: AssignmentStatus[] = [
+  'assigned',
+  'in_progress',
+  'pending_review',
+  'completed',
+  'reassigned',
+  'cancelled',
+  'rejected',
+]
 
 export function AssignmentFilters({
   filters,
@@ -54,7 +68,7 @@ export function AssignmentFilters({
     onFiltersChange({})
   }
 
-  const hasFilters = filters.search || filters.status || filters.assignee_id
+  const hasFilters = filters.search || filters.status || filters.agent_profile_id
 
   return (
     <div className="flex flex-col gap-4 md:flex-row md:items-center">

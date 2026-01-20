@@ -3,6 +3,12 @@
  * Form for creating/editing assignments
  *
  * @module assignments-admin/components
+ * @date 2026-01-20
+ *
+ * BACKEND ALIGNMENT:
+ * - Migration 053: item_id, item_type (not declaration_id)
+ * - Migration 054: agent_profile_id (not assignee_id)
+ * - priority_level is integer 1-10 (not string)
  */
 
 'use client'
@@ -12,6 +18,7 @@ import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -22,22 +29,43 @@ import {
 import { Loader2 } from 'lucide-react'
 import type {
   Assignment,
-  CreateAssignmentRequest,
-  UpdateAssignmentRequest,
-  AssignmentPriority,
+  ManualAssignmentRequest,
   AssignmentStatus,
+  ItemType,
+  PriorityLevel,
 } from '../types'
 
 interface AssignmentFormProps {
   initialData?: Assignment
-  onSubmit: (data: CreateAssignmentRequest | UpdateAssignmentRequest) => Promise<void>
+  onSubmit: (data: ManualAssignmentRequest) => Promise<void>
   onCancel: () => void
   isLoading?: boolean
   isEditMode?: boolean
 }
 
-const priorities: AssignmentPriority[] = ['low', 'medium', 'high', 'urgent']
-const statuses: AssignmentStatus[] = ['pending', 'in_progress', 'completed', 'cancelled']
+// Valid item types from database
+const itemTypes: ItemType[] = ['tax_declaration', 'service_request', 'service_payment', 'other']
+
+// Valid statuses from assignment_status_enum (for edit mode)
+const statuses: AssignmentStatus[] = [
+  'assigned',
+  'in_progress',
+  'pending_review',
+  'completed',
+  'reassigned',
+  'cancelled',
+  'rejected',
+]
+
+/**
+ * Get priority label based on numeric level (1-10)
+ */
+function getPriorityLabel(level: PriorityLevel): string {
+  if (level <= 3) return 'low'
+  if (level <= 6) return 'medium'
+  if (level <= 8) return 'high'
+  return 'urgent'
+}
 
 export function AssignmentForm({
   initialData,
@@ -49,32 +77,31 @@ export function AssignmentForm({
   const t = useTranslations('assignments')
 
   const [formData, setFormData] = useState({
-    declaration_id: initialData?.declaration_id || '',
-    assignee_id: initialData?.assignee_id || '',
-    priority: initialData?.priority || 'medium' as AssignmentPriority,
-    status: initialData?.status || 'pending' as AssignmentStatus,
+    item_id: initialData?.item_id || '',
+    item_type: initialData?.item_type || 'tax_declaration' as ItemType,
+    agent_profile_id: initialData?.agent_profile_id || '',
+    priority_level: initialData?.priority_level || 5,
+    status: initialData?.status || 'assigned' as AssignmentStatus,
     notes: initialData?.notes || '',
+    deadline_days: 7,
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (isEditMode) {
-      await onSubmit({
-        status: formData.status,
-        priority: formData.priority,
-        notes: formData.notes,
-      })
-    } else {
-      await onSubmit({
-        declaration_id: formData.declaration_id,
-        assignee_id: formData.assignee_id,
-        priority: formData.priority,
-        notes: formData.notes,
-      })
-    }
+    await onSubmit({
+      item_id: formData.item_id,
+      item_type: formData.item_type,
+      agent_profile_id: formData.agent_profile_id,
+      priority_level: formData.priority_level,
+      notes: formData.notes || undefined,
+      deadline_days: formData.deadline_days,
+    })
   }
 
-  const handleChange = (field: string, value: string | AssignmentPriority | AssignmentStatus) => {
+  const handleChange = <K extends keyof typeof formData>(
+    field: K,
+    value: typeof formData[K]
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
@@ -82,25 +109,60 @@ export function AssignmentForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       {!isEditMode && (
         <>
+          {/* Item ID */}
           <div className="space-y-2">
-            <Label htmlFor="declaration_id">{t('form.declarationId')}</Label>
+            <Label htmlFor="item_id">{t('form.itemId')}</Label>
             <Input
-              id="declaration_id"
-              value={formData.declaration_id}
-              onChange={(e) => handleChange('declaration_id', e.target.value)}
-              placeholder={t('form.declarationIdPlaceholder')}
+              id="item_id"
+              value={formData.item_id}
+              onChange={(e) => handleChange('item_id', e.target.value)}
+              placeholder={t('form.itemIdPlaceholder')}
               required
             />
           </div>
 
+          {/* Item Type */}
           <div className="space-y-2">
-            <Label htmlFor="assignee_id">{t('form.assigneeId')}</Label>
+            <Label htmlFor="item_type">{t('form.itemType')}</Label>
+            <Select
+              value={formData.item_type}
+              onValueChange={(value) => handleChange('item_type', value as ItemType)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {itemTypes.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {t(`itemType.${type}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Agent Profile ID */}
+          <div className="space-y-2">
+            <Label htmlFor="agent_profile_id">{t('form.agentProfileId')}</Label>
             <Input
-              id="assignee_id"
-              value={formData.assignee_id}
-              onChange={(e) => handleChange('assignee_id', e.target.value)}
-              placeholder={t('form.assigneeIdPlaceholder')}
+              id="agent_profile_id"
+              value={formData.agent_profile_id}
+              onChange={(e) => handleChange('agent_profile_id', e.target.value)}
+              placeholder={t('form.agentProfileIdPlaceholder')}
               required
+            />
+          </div>
+
+          {/* Deadline Days */}
+          <div className="space-y-2">
+            <Label htmlFor="deadline_days">{t('form.deadlineDays')}</Label>
+            <Input
+              id="deadline_days"
+              type="number"
+              min={1}
+              max={90}
+              value={formData.deadline_days}
+              onChange={(e) => handleChange('deadline_days', parseInt(e.target.value) || 7)}
             />
           </div>
         </>
@@ -111,7 +173,7 @@ export function AssignmentForm({
           <Label htmlFor="status">{t('form.status')}</Label>
           <Select
             value={formData.status}
-            onValueChange={(value) => handleChange('status', value)}
+            onValueChange={(value) => handleChange('status', value as AssignmentStatus)}
           >
             <SelectTrigger>
               <SelectValue />
@@ -127,35 +189,45 @@ export function AssignmentForm({
         </div>
       )}
 
+      {/* Priority Level (1-10) */}
       <div className="space-y-2">
-        <Label htmlFor="priority">{t('form.priority')}</Label>
-        <Select
-          value={formData.priority}
-          onValueChange={(value) => handleChange('priority', value)}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {priorities.map((priority) => (
-              <SelectItem key={priority} value={priority}>
-                {t(`priority.${priority}`)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="priority_level">{t('form.priorityLevel')}</Label>
+          <span className="text-sm text-muted-foreground">
+            {formData.priority_level} - {t(`priority.${getPriorityLabel(formData.priority_level)}`)}
+          </span>
+        </div>
+        <input
+          type="range"
+          id="priority_level"
+          min={1}
+          max={10}
+          step={1}
+          value={formData.priority_level}
+          onChange={(e) => handleChange('priority_level', parseInt(e.target.value))}
+          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+        />
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <span>{t('priority.low')}</span>
+          <span>{t('priority.medium')}</span>
+          <span>{t('priority.high')}</span>
+          <span>{t('priority.urgent')}</span>
+        </div>
       </div>
 
+      {/* Notes */}
       <div className="space-y-2">
         <Label htmlFor="notes">{t('form.notes')}</Label>
-        <Input
+        <Textarea
           id="notes"
           value={formData.notes}
           onChange={(e) => handleChange('notes', e.target.value)}
           placeholder={t('form.notesPlaceholder')}
+          rows={3}
         />
       </div>
 
+      {/* Actions */}
       <div className="flex justify-end gap-2 pt-4">
         <Button type="button" variant="outline" onClick={onCancel}>
           {t('form.cancel')}

@@ -3,6 +3,11 @@
  * Displays a grid of assignments
  *
  * @module assignments-admin/components
+ * @date 2026-01-20
+ *
+ * BACKEND ALIGNMENT:
+ * - Migration 053: item_id, item_type (not declaration_id)
+ * - Migration 054: agent_profile_id, agent_name (not assignee_id/name)
  */
 
 'use client'
@@ -17,7 +22,7 @@ import type { Assignment, AssignmentStatus } from '../types'
 interface AssignmentListProps {
   filters?: {
     status?: AssignmentStatus
-    assignee_id?: string
+    agent_profile_id?: string
     search?: string
   }
   onSelect?: (assignment: Assignment) => void
@@ -35,7 +40,7 @@ export function AssignmentList({
 
   const { data, isLoading, error } = useAssignments({
     status: filters?.status,
-    assignee_id: filters?.assignee_id,
+    agent_profile_id: filters?.agent_profile_id,
   })
 
   if (isLoading) {
@@ -72,8 +77,8 @@ export function AssignmentList({
     const searchLower = filters.search.toLowerCase()
     filteredData = data.filter(
       (assignment) =>
-        assignment.declaration_id.toLowerCase().includes(searchLower) ||
-        assignment.assignee_name?.toLowerCase().includes(searchLower) ||
+        assignment.item_id.toLowerCase().includes(searchLower) ||
+        assignment.agent_name?.toLowerCase().includes(searchLower) ||
         assignment.notes?.toLowerCase().includes(searchLower)
     )
   }
