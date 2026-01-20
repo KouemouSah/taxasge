@@ -302,7 +302,7 @@ export default function EditAssignmentPage() {
             </div>
             <Slider
               value={[priorityLevel]}
-              onValueChange={([value]) => setPriorityLevel(value)}
+              onValueChange={(values: number[]) => setPriorityLevel(values[0])}
               min={1}
               max={10}
               step={1}
