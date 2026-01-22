@@ -13,7 +13,7 @@
  * @date 2025-01-14
  */
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import Link from 'next/link';
@@ -958,9 +958,6 @@ function UserPermissionsTab() {
   const grantPermissionUrl = selectedUser
     ? `/${locale}/dashboard/admin/roles/grant-permission?userId=${selectedUser.id}&userName=${encodeURIComponent(`${selectedUser.first_name} ${selectedUser.last_name}`)}&userEmail=${encodeURIComponent(selectedUser.email)}`
     : null;
-
-  // Get existing permission IDs
-  const existingPermissionIds = userPermissionsData?.user_permissions?.map(p => p.permission_id) || [];
 
   return (
     <div className="space-y-4">
