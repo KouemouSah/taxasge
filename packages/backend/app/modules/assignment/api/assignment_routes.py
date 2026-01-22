@@ -449,7 +449,7 @@ async def list_assignments(
     status_filter: Optional[AssignmentStatus] = Query(None, description="Filter by status"),
     item_id: Optional[UUID] = Query(None, description="Filter by item_id"),
     item_type: Optional[str] = Query(None, description="Filter by item_type"),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=1000),  # Increased max to allow loading all data
     offset: int = Query(0, ge=0),
     current_user: UserResponse = Depends(get_current_user),
     permission_service: PermissionService = Depends(get_permission_service),

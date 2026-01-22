@@ -97,7 +97,6 @@ import type { Permission } from '@/modules/permissions-admin';
 // User Permissions module
 import {
   UserSelector,
-  GrantPermissionDialog,
   UserPermissionList,
   useUserPermissions,
 } from '@/modules/user-permissions-admin';
@@ -943,22 +942,25 @@ function UserPermissionsTab() {
   // Note: translation hooks kept for future i18n
   const _t = useTranslations('admin.userPermissions');
   const _tCommon = useTranslations('common');
+  const locale = useLocale();
 
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<SimpleUser | null>(null);
-  const [isGrantDialogOpen, setIsGrantDialogOpen] = useState(false);
 
   const { data: userPermissionsData, isLoading, error, refetch } = useUserPermissions(selectedUserId);
-
-  const existingPermissionIds = useMemo(() => {
-    if (!userPermissionsData?.user_permissions) return [];
-    return userPermissionsData.user_permissions.map((p) => p.permission_id);
-  }, [userPermissionsData]);
 
   const handleUserSelect = (userId: string | null, user: SimpleUser | null) => {
     setSelectedUserId(userId);
     setSelectedUser(user);
   };
+
+  // Build grant permission URL with user info
+  const grantPermissionUrl = selectedUser
+    ? `/${locale}/dashboard/admin/roles/grant-permission?userId=${selectedUser.id}&userName=${encodeURIComponent(`${selectedUser.first_name} ${selectedUser.last_name}`)}&userEmail=${encodeURIComponent(selectedUser.email)}`
+    : null;
+
+  // Get existing permission IDs
+  const existingPermissionIds = userPermissionsData?.user_permissions?.map(p => p.permission_id) || [];
 
   return (
     <div className="space-y-4">
@@ -1014,10 +1016,14 @@ function UserPermissionsTab() {
                   <Badge variant="secondary">{selectedUser.role}</Badge>
                 </CardDescription>
               </div>
-              <Button onClick={() => setIsGrantDialogOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Ajouter Override
-              </Button>
+              {grantPermissionUrl && (
+                <Link href={grantPermissionUrl}>
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Ajouter Override
+                  </Button>
+                </Link>
+              )}
             </div>
           </CardHeader>
           <CardContent>
@@ -1146,13 +1152,6 @@ function UserPermissionsTab() {
         </Card>
       )}
 
-      {/* Grant Permission Dialog */}
-      <GrantPermissionDialog
-        user={selectedUser}
-        existingPermissionIds={existingPermissionIds}
-        open={isGrantDialogOpen}
-        onOpenChange={setIsGrantDialogOpen}
-      />
     </div>
   );
 }

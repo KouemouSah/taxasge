@@ -144,10 +144,11 @@ export default function AssignmentsPage() {
   // Bulk action confirmation
   const [bulkCancelDialogOpen, setBulkCancelDialogOpen] = useState(false)
 
-  // Queries
+  // Queries - load all assignments without limit
   const { data: assignments = [], isLoading, error, refetch } = useAssignments({
     status: statusFilter === 'all' ? undefined : (statusFilter as AssignmentStatus),
-    limit: 100,
+    limit: 500,  // Load all data - user requirement
+    offset: 0,
   })
 
   // Mutations

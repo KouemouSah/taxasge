@@ -71,7 +71,7 @@ export const assignmentsApi = {
     return fetchClient.get<Assignment[]>(ASSIGNMENTS_BASE, {
       agent_profile_id: params?.agent_profile_id,
       assigned_by_profile_id: params?.assigned_by_profile_id,  // DB column name
-      status: params?.status,
+      status_filter: params?.status,  // Backend uses status_filter, not status
       item_type: params?.item_type,
       item_id: params?.item_id,
       assignment_method: params?.assignment_method,
@@ -79,7 +79,7 @@ export const assignmentsApi = {
       priority_level_max: params?.priority_level_max,
       deadline_from: params?.deadline_from,
       deadline_to: params?.deadline_to,
-      limit: params?.limit ?? 50,
+      limit: params?.limit ?? 200,  // Increased default to load more data
       offset: params?.offset ?? 0,
     })
   },
@@ -304,7 +304,7 @@ export const assignmentsApi = {
     const response = await fetchClient.get<Assignment[]>(ASSIGNMENTS_BASE, {
       agent_profile_id: params?.agent_profile_id,
       assigned_by_profile_id: params?.assigned_by_profile_id,  // DB column name
-      status: params?.status,
+      status_filter: params?.status,  // Backend uses status_filter, not status
       item_type: params?.item_type,
       item_id: params?.item_id,
       assignment_method: params?.assignment_method,
@@ -312,7 +312,7 @@ export const assignmentsApi = {
       priority_level_max: params?.priority_level_max,
       deadline_from: params?.deadline_from,
       deadline_to: params?.deadline_to,
-      limit: params?.limit ?? 50,
+      limit: params?.limit ?? 200,  // Increased default
       offset: params?.offset ?? 0,
     })
     // Note: Backend should return { items, total, page, page_size }
