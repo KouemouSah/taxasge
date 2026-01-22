@@ -859,13 +859,38 @@ except Exception as e:
     logger.error(traceback.format_exc())
 
 # Try to load assignment router (Module - Assignment System)
+logger.info("🔄 Loading assignment router...")
 try:
     from app.modules.assignment.api.assignment_routes import router as assignment_router
-    app.include_router(assignment_router, prefix="/api/v1/assignments", tags=["assignments"])
+    logger.info(f"📦 Assignment router imported, routes: {len(assignment_router.routes)}")
+    # Note: assignment_routes already has prefix="/api/v1/assignments" defined in the router
+    app.include_router(assignment_router, tags=["assignments"])
     routers_loaded.append("assignments")
-    logger.info("✅ Assignment router loaded")
+    logger.info("✅ Assignment router loaded successfully")
 except Exception as e:
     logger.error(f"❌ Assignment router failed: {e}")
+    logger.error(traceback.format_exc())
+
+# Try to load supervisor router (Module - Supervisor Dashboard & Team Management)
+try:
+    from app.modules.assignment.api.supervisor_routes import router as supervisor_router
+    # Note: supervisor_routes already has prefix="/api/v1/supervisor" defined
+    app.include_router(supervisor_router, tags=["supervisor"])
+    routers_loaded.append("supervisor")
+    logger.info("✅ Supervisor router loaded (dashboard, team management, rules)")
+except Exception as e:
+    logger.error(f"❌ Supervisor router failed: {e}")
+    logger.error(traceback.format_exc())
+
+# Try to load statistics router (Module - Analytics & Reporting)
+try:
+    from app.modules.assignment.api.statistics_routes import router as statistics_router
+    # Note: statistics_routes already has prefix="/api/v1/statistics" defined
+    app.include_router(statistics_router, tags=["statistics"])
+    routers_loaded.append("statistics")
+    logger.info("✅ Statistics router loaded (analytics, performance metrics)")
+except Exception as e:
+    logger.error(f"❌ Statistics router failed: {e}")
     logger.error(traceback.format_exc())
 
 # Try to load agent profile router (Module - Agent Profiles v2)
