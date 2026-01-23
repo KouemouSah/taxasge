@@ -14,7 +14,6 @@ export type PaymentWorkflowStatus =
   | 'auto_processing'
   | 'auto_approved'
   | 'pending_agent_review'
-  | 'locked_by_agent'
   | 'agent_reviewing'
   | 'requires_documents'
   | 'docs_resubmitted'
@@ -96,10 +95,6 @@ export interface PendingPayment {
   status?: PaymentStatus; // Alias for paymentStatus
   workflowStatus: PaymentWorkflowStatus | string;
   requiresAgentValidation?: boolean;
-  // Agent lock info (using UUID-based agent_profile_id)
-  lockedByAgentProfileId?: string;
-  lockedAt?: string;
-  lockExpiresAt?: string;
   slaTargetDate?: string;
   submittedAt?: string;
   createdAt: string;
@@ -142,10 +137,6 @@ export interface PendingPaymentsParams {
 // PAYMENT ACTIONS
 // =============================================================================
 
-export interface PaymentLockRequest {
-  durationMinutes?: number;
-}
-
 export interface PaymentValidationRequest {
   comment?: string;
 }
@@ -176,12 +167,8 @@ export enum TreasuryErrorCode {
   UNAUTHORIZED = 'TREASURY_002',
   INSUFFICIENT_PERMISSIONS = 'TREASURY_003',
 
-  // Payment Lock Errors
+  // Payment Errors
   PAYMENT_NOT_FOUND = 'TREASURY_100',
-  PAYMENT_ALREADY_LOCKED = 'TREASURY_101',
-  PAYMENT_NOT_LOCKED = 'TREASURY_102',
-  PAYMENT_LOCKED_BY_OTHER = 'TREASURY_103',
-  LOCK_EXPIRED = 'TREASURY_104',
 
   // Validation Errors
   VALIDATION_FAILED = 'TREASURY_200',
@@ -434,13 +421,10 @@ export interface PaymentMethodReorderRequest {
 // =============================================================================
 
 export type AgentActionType =
-  | 'lock_for_review'
   | 'approve'
   | 'reject'
   | 'request_documents'
-  | 'escalate'
-  | 'unlock_release'
-  | 'assign_to_colleague';
+  | 'escalate';
 
 export interface AuditEntry {
   id: string;
@@ -487,7 +471,6 @@ export interface PaymentAuditDetail {
   createdAt: string;
   timeline: AuditEntry[];
   totalProcessingMinutes?: number;
-  lockCount: number;
 }
 
 // =============================================================================

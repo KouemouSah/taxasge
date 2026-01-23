@@ -14,7 +14,6 @@ import type {
   PendingPayment,
   PendingPaymentsListResponse,
   PendingPaymentsParams,
-  PaymentLockRequest,
   PaymentValidationRequest,
   PaymentRejectionRequest,
   PaymentActionResponse,
@@ -183,23 +182,8 @@ export const treasuryApi = {
   },
 
   // -------------------------------------------------------------------------
-  // Payment Actions
+  // Payment Actions (Simplified: No lock/unlock with auto-assignment)
   // -------------------------------------------------------------------------
-
-  /**
-   * Lock payment for review
-   * BACKEND: POST /api/v1/admin/service-requests/treasury/payments/{id}/lock
-   */
-  lockPayment: async (
-    paymentId: string,
-    request: PaymentLockRequest = {}
-  ): Promise<PaymentActionResponse> => {
-    const response = await fetchClient.post<Record<string, unknown>>(
-      `${TREASURY_BASE}/payments/${paymentId}/lock`,
-      { duration_minutes: request.durationMinutes || 15 }
-    );
-    return toCamelCase<PaymentActionResponse>(response);
-  },
 
   /**
    * Validate (approve) payment
@@ -227,18 +211,6 @@ export const treasuryApi = {
     const response = await fetchClient.post<Record<string, unknown>>(
       `${TREASURY_BASE}/payments/${paymentId}/reject`,
       { reason: request.reason }
-    );
-    return toCamelCase<PaymentActionResponse>(response);
-  },
-
-  /**
-   * Unlock payment
-   * BACKEND: POST /api/v1/admin/service-requests/treasury/payments/{id}/unlock
-   */
-  unlockPayment: async (paymentId: string): Promise<PaymentActionResponse> => {
-    const response = await fetchClient.post<Record<string, unknown>>(
-      `${TREASURY_BASE}/payments/${paymentId}/unlock`,
-      {}
     );
     return toCamelCase<PaymentActionResponse>(response);
   },
@@ -552,7 +524,6 @@ export const treasuryApi = {
       createdAt: (response.created_at as string) || '',
       timeline: timeline.map((e) => toCamelCase<AuditEntry>(e)),
       totalProcessingMinutes: response.total_processing_minutes as number | undefined,
-      lockCount: (response.lock_count as number) || 0,
     } as PaymentAuditDetail;
   },
 

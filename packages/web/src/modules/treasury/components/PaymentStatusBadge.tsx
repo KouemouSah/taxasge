@@ -52,7 +52,6 @@ const workflowStatusConfig: Record<
   auto_processing: { label: 'Procesando Auto', color: 'bg-blue-500' },
   auto_approved: { label: 'Auto Aprobado', color: 'bg-green-500' },
   pending_agent_review: { label: 'Pendiente Revision', color: 'bg-yellow-500' },
-  locked_by_agent: { label: 'Bloqueado', color: 'bg-orange-500' },
   agent_reviewing: { label: 'En Revision', color: 'bg-blue-500' },
   requires_documents: { label: 'Requiere Docs', color: 'bg-yellow-600' },
   docs_resubmitted: { label: 'Docs Reenviados', color: 'bg-blue-400' },

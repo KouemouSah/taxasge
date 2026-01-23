@@ -183,7 +183,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
         self,
         db: asyncpg.Connection,
         payment_id: str,
-        agent_id: int,
+        agent_profile_id: str,
         validation_comment: Optional[str] = None
     ) -> PaymentStatusResult:
         """
@@ -194,7 +194,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
         Args:
             db: Database connection
             payment_id: Internal payment ID
-            agent_id: ID of the validating agent
+            agent_profile_id: UUID of the agent profile (from agent_profiles table)
             validation_comment: Optional comment from agent
 
         Returns:
@@ -218,7 +218,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
                 return PaymentStatusResult(
                     payment_id=payment_id,
                     status=PaymentStatus(payment["status"]),
-                    error="Payment is not pending validation"
+                    error=f"Payment is not pending validation (status: {payment['workflow_status']})"
                 )
 
             # 3. Get user data for receipt
@@ -238,26 +238,26 @@ class ManualValidationProcessor(PaymentProcessorBase):
             """
             service_data = await db.fetchrow(service_query, payment["service_request_id"])
 
-            # 5. Get agent data for receipt
+            # 5. Get agent data for receipt (using agent_profiles table)
             agent_query = """
                 SELECT u.first_name, u.last_name
                 FROM users u
-                JOIN ministry_agents ma ON ma.user_id = u.id
-                WHERE ma.id = $1
+                JOIN agent_profiles ap ON ap.user_id = u.id
+                WHERE ap.id = $1::uuid
             """
-            agent_data = await db.fetchrow(agent_query, agent_id)
+            agent_data = await db.fetchrow(agent_query, agent_profile_id)
             agent_name = None
             if agent_data:
                 agent_name = f"{agent_data['first_name'] or ''} {agent_data['last_name'] or ''}".strip()
 
-            # 6. Update payment status first
+            # 6. Update payment status first (using agent_profile_id UUID)
             paid_at = datetime.utcnow()
             update_query = """
                 UPDATE service_payments
                 SET status = 'completed',
                     workflow_status = 'completed',
                     paid_at = $2,
-                    validated_by_agent_id = $3,
+                    validated_by_agent_profile_id = $3::uuid,
                     validated_at = NOW(),
                     validation_comment = $4,
                     updated_at = NOW()
@@ -268,7 +268,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
                 update_query,
                 payment_id,
                 paid_at,
-                agent_id,
+                agent_profile_id,
                 validation_comment
             )
 
@@ -335,7 +335,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
                     "payment_method": updated["payment_method"],
                     "receipt_number": receipt_number,
                     "receipt_url": receipt_url,
-                    "validated_by_agent_id": agent_id,
+                    "agent_profile_id": agent_profile_id,
                     "user_email": user_data["email"] if user_data else None,
                     "user_phone": user_data["phone"] if user_data else None,
                 })
@@ -345,7 +345,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
                 logger.error(f"Failed to publish PAYMENT_COMPLETED event: {e}")
 
             logger.info(
-                f"Manual payment {payment_id} validated by agent {agent_id}. "
+                f"Manual payment {payment_id} validated by agent_profile {agent_profile_id}. "
                 f"Receipt: {receipt_number}"
             )
 
@@ -358,7 +358,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
                 currency=updated["currency"],
                 receipt_number=receipt_number,
                 receipt_url=receipt_url,
-                validated_by=str(agent_id),
+                validated_by=agent_profile_id,
             )
 
         except Exception as e:
@@ -373,7 +373,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
         self,
         db: asyncpg.Connection,
         payment_id: str,
-        agent_id: int,
+        agent_profile_id: str,
         rejection_reason: str
     ) -> PaymentStatusResult:
         """
@@ -382,7 +382,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
         Args:
             db: Database connection
             payment_id: Internal payment ID
-            agent_id: ID of the rejecting agent
+            agent_profile_id: UUID of the agent profile (from agent_profiles table)
             rejection_reason: Reason for rejection
 
         Returns:
@@ -393,7 +393,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
                 UPDATE service_payments
                 SET status = 'failed',
                     workflow_status = 'rejected',
-                    validated_by_agent_id = $2,
+                    validated_by_agent_profile_id = $2::uuid,
                     validated_at = NOW(),
                     validation_comment = $3,
                     updated_at = NOW()
@@ -403,7 +403,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
             updated = await db.fetchrow(
                 query,
                 payment_id,
-                agent_id,
+                agent_profile_id,
                 rejection_reason
             )
 
@@ -415,7 +415,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
                 )
 
             logger.info(
-                f"Manual payment {payment_id} rejected by agent {agent_id}. "
+                f"Manual payment {payment_id} rejected by agent_profile {agent_profile_id}. "
                 f"Reason: {rejection_reason}"
             )
 
@@ -424,7 +424,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
                 status=PaymentStatus.FAILED,
                 paid=False,
                 error=rejection_reason,
-                validated_by=str(agent_id),
+                validated_by=agent_profile_id,
             )
 
         except Exception as e:

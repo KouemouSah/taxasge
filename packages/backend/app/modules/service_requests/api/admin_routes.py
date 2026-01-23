@@ -26,8 +26,6 @@ from app.modules.treasury.errors import (
     TreasuryErrorCode,
     payment_not_found,
     no_agent_profile,
-    payment_locked_by_other,
-    must_lock_payment_first,
     anomaly_not_found,
     export_not_found,
     comment_required,
@@ -2627,16 +2625,6 @@ class PaymentRejectionRequest(BaseModel):
     reason: str = Field(..., min_length=10, max_length=500, description="Rejection reason")
 
 
-class PaymentLockRequest(BaseModel):
-    """Request model for agent lock."""
-    duration_minutes: int = Field(
-        default=15,
-        ge=5,
-        le=60,
-        description="Lock duration in minutes (5-60)"
-    )
-
-
 class PendingPaymentResponse(BaseModel):
     """Response for a pending payment."""
     payment_id: str
@@ -2918,73 +2906,6 @@ async def get_payment_details(
 
 
 @router.post(
-    "/treasury/payments/{payment_id}/lock",
-    response_model=PaymentActionResponse,
-    summary="Lock payment for review",
-    description="""
-    Lock a payment for exclusive review by this agent.
-
-    **Behavior:**
-    - Sets locked_by_agent_id to current user
-    - Sets lock_expires_at to now + duration_minutes
-    - Prevents other agents from modifying
-
-    **Permissions:**
-    - Requires 'treasury:validate_payments' permission
-    """
-)
-async def lock_payment(
-    payment_id: str = Path(..., description="Payment UUID"),
-    body: PaymentLockRequest = Body(default=PaymentLockRequest()),
-    db: asyncpg.Connection = Depends(get_database),
-    current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury.validate_payment"))
-):
-    """Lock payment for exclusive review"""
-    from datetime import datetime, timedelta
-
-    # Get agent_profile_id for current user
-    agent_profile_id = await get_agent_profile_id(db, current_user.id)
-    if not agent_profile_id:
-        no_agent_profile()
-
-    # Check if payment exists and is pending
-    payment = await db.fetchrow(
-        "SELECT id, workflow_status, locked_by_agent_profile_id, lock_expires_at FROM service_payments WHERE id = $1::uuid",
-        payment_id
-    )
-
-    if not payment:
-        payment_not_found(payment_id)
-
-    # Check if already locked by another agent
-    current_lock = payment["locked_by_agent_profile_id"]
-    if current_lock and str(current_lock) != agent_profile_id:
-        if payment["lock_expires_at"] and payment["lock_expires_at"] > datetime.utcnow():
-            payment_locked_by_other()
-
-    # Lock the payment
-    lock_expires = datetime.utcnow() + timedelta(minutes=body.duration_minutes)
-
-    await db.execute(
-        """
-        UPDATE service_payments
-        SET locked_by_agent_profile_id = $1::uuid, lock_expires_at = $2,
-            locked_at = NOW(), workflow_status = 'locked_by_agent'
-        WHERE id = $3::uuid
-        """,
-        agent_profile_id, lock_expires, payment_id
-    )
-
-    return PaymentActionResponse(
-        success=True,
-        payment_id=payment_id,
-        status="locked_by_agent",
-        message_es=f"Pago bloqueado hasta {lock_expires.strftime('%H:%M')}"
-    )
-
-
-@router.post(
     "/treasury/payments/{payment_id}/validate",
     response_model=PaymentActionResponse,
     summary="Validate payment",
@@ -2992,14 +2913,13 @@ async def lock_payment(
     Validate (approve) a cash/check payment.
 
     **Behavior:**
-    - Sets workflow_status to 'approved'
-    - Sets validated_by_agent_id and validated_at
+    - Sets workflow_status to 'completed'
+    - Sets validated_by_agent_profile_id and validated_at
     - Generates receipt_number
     - Updates service_request payment_status
 
     **Permissions:**
     - Requires 'treasury:validate_payments' permission
-    - With auto-assignment: can validate directly without lock
     """
 )
 async def validate_payment(
@@ -3019,39 +2939,27 @@ async def validate_payment(
 
     # Get payment with workflow status
     payment = await db.fetchrow(
-        "SELECT id, locked_by_agent_profile_id, service_request_id, workflow_status FROM service_payments WHERE id = $1::uuid",
+        "SELECT id, service_request_id, workflow_status FROM service_payments WHERE id = $1::uuid",
         payment_id
     )
 
     if not payment:
         payment_not_found(payment_id)
 
-    # With auto-assignment architecture, allow direct validation if:
-    # 1. Payment is pending_agent_review (not locked by anyone), OR
-    # 2. Payment is locked by the current agent
-    current_lock = payment["locked_by_agent_profile_id"]
-    workflow_status = payment["workflow_status"]
-
-    if workflow_status == "locked_by_agent" and (not current_lock or str(current_lock) != agent_profile_id):
-        # Payment is locked by another agent
-        must_lock_payment_first()
-
-    # If payment is pending_agent_review, auto-assign to current agent
-    if workflow_status == "pending_agent_review":
-        await db.execute(
-            """
-            UPDATE service_payments
-            SET locked_by_agent_profile_id = $2, workflow_status = 'locked_by_agent', updated_at = NOW()
-            WHERE id = $1
-            """,
-            payment_id, agent_profile_id
+    # With auto-assignment architecture, agent validates directly
+    # Only pending_agent_review payments can be validated
+    if payment["workflow_status"] != "pending_agent_review":
+        raise TreasuryError(
+            error_code=TreasuryErrorCode.INVALID_PAYMENT_STATUS,
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail_override=f"El pago no está pendiente de validación (estado: {payment['workflow_status']})"
         )
 
-    # Validate via registry (using agent_profile_id instead of user_id)
+    # Validate via registry (using agent_profile_id)
     result = await payment_processor_registry.validate_manual_payment(
         db=db,
         payment_id=payment_id,
-        agent_id=agent_profile_id,
+        agent_profile_id=agent_profile_id,
         comment=body.comment
     )
 
@@ -3137,7 +3045,6 @@ async def validate_payment(
 
     **Permissions:**
     - Requires 'treasury:validate_payments' permission
-    - With auto-assignment: can reject directly without lock
     """
 )
 async def reject_payment(
@@ -3157,39 +3064,27 @@ async def reject_payment(
 
     # Get payment with workflow status
     payment = await db.fetchrow(
-        "SELECT id, locked_by_agent_profile_id, workflow_status FROM service_payments WHERE id = $1::uuid",
+        "SELECT id, workflow_status FROM service_payments WHERE id = $1::uuid",
         payment_id
     )
 
     if not payment:
         payment_not_found(payment_id)
 
-    # With auto-assignment architecture, allow direct rejection if:
-    # 1. Payment is pending_agent_review (not locked by anyone), OR
-    # 2. Payment is locked by the current agent
-    current_lock = payment["locked_by_agent_profile_id"]
-    workflow_status = payment["workflow_status"]
-
-    if workflow_status == "locked_by_agent" and (not current_lock or str(current_lock) != agent_profile_id):
-        # Payment is locked by another agent
-        must_lock_payment_first()
-
-    # If payment is pending_agent_review, auto-assign to current agent before rejection
-    if workflow_status == "pending_agent_review":
-        await db.execute(
-            """
-            UPDATE service_payments
-            SET locked_by_agent_profile_id = $2, workflow_status = 'locked_by_agent', updated_at = NOW()
-            WHERE id = $1
-            """,
-            payment_id, agent_profile_id
+    # With auto-assignment architecture, agent rejects directly
+    # Only pending_agent_review payments can be rejected
+    if payment["workflow_status"] != "pending_agent_review":
+        raise TreasuryError(
+            error_code=TreasuryErrorCode.INVALID_PAYMENT_STATUS,
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail_override=f"El pago no está pendiente de validación (estado: {payment['workflow_status']})"
         )
 
-    # Reject via registry (using agent_profile_id instead of user_id)
+    # Reject via registry (using agent_profile_id)
     result = await payment_processor_registry.reject_manual_payment(
         db=db,
         payment_id=payment_id,
-        agent_id=agent_profile_id,
+        agent_profile_id=agent_profile_id,
         reason=body.reason
     )
 
@@ -3236,69 +3131,6 @@ async def reject_payment(
         payment_id=payment_id,
         status="rejected",
         message_es="Pago rechazado."
-    )
-
-
-@router.post(
-    "/treasury/payments/{payment_id}/unlock",
-    response_model=PaymentActionResponse,
-    summary="Release payment lock",
-    description="""
-    Release lock on a payment without validating.
-
-    **Behavior:**
-    - Clears locked_by_agent_id and lock_expires_at
-    - Returns status to 'pending_agent_review'
-
-    **Permissions:**
-    - Requires 'treasury:validate_payments' permission
-    - Must be the agent who locked it
-    """
-)
-async def unlock_payment(
-    payment_id: str = Path(..., description="Payment UUID"),
-    db: asyncpg.Connection = Depends(get_database),
-    current_user=Depends(get_current_user),
-    _=Depends(permission_required("treasury.validate_payment"))
-):
-    """Release lock on a payment"""
-    # Get agent_profile_id for current user
-    agent_profile_id = await get_agent_profile_id(db, current_user.id)
-    if not agent_profile_id:
-        no_agent_profile()
-
-    # Verify ownership
-    payment = await db.fetchrow(
-        "SELECT id, locked_by_agent_profile_id FROM service_payments WHERE id = $1::uuid",
-        payment_id
-    )
-
-    if not payment:
-        payment_not_found(payment_id)
-
-    current_lock = payment["locked_by_agent_profile_id"]
-    if not current_lock or str(current_lock) != agent_profile_id:
-        raise TreasuryError(
-            error_code=TreasuryErrorCode.PAYMENT_LOCKED_BY_OTHER,
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail_override="Solo puede desbloquear pagos que usted haya bloqueado."
-        )
-
-    await db.execute(
-        """
-        UPDATE service_payments
-        SET locked_by_agent_profile_id = NULL, locked_at = NULL, lock_expires_at = NULL,
-            workflow_status = 'pending_agent_review'
-        WHERE id = $1::uuid
-        """,
-        payment_id
-    )
-
-    return PaymentActionResponse(
-        success=True,
-        payment_id=payment_id,
-        status="pending_agent_review",
-        message_es="Bloqueo liberado."
     )
 
 

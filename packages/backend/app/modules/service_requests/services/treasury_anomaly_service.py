@@ -408,7 +408,7 @@ class TreasuryAnomalyService:
                 END as sla_breached
             FROM service_payments sp
             JOIN service_requests sr ON sr.id = sp.service_request_id
-            WHERE sp.workflow_status IN ('pending_agent_review', 'locked_by_agent', 'agent_reviewing')
+            WHERE sp.workflow_status IN ('pending_agent_review', 'agent_reviewing')
               AND sp.created_at < NOW() - INTERVAL '{self.SLA_THRESHOLD_HOURS} hours'
               AND NOT EXISTS (
                 SELECT 1 FROM payment_anomalies pa

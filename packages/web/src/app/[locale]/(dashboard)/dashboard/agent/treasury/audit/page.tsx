@@ -36,26 +36,20 @@ import {
   FileText,
   ChevronLeft,
   ChevronRight,
-  Lock,
-  Unlock,
   CheckCircle,
   XCircle,
   AlertTriangle,
   ArrowUpRight,
-  UserCog,
 } from 'lucide-react';
 import { useAuditEntries } from '@/modules/treasury/hooks';
 import type { AuditEntry, AgentActionType, AuditParams } from '@/modules/treasury/types';
 
 // Action type styling configuration (colors/icons only)
+// Note: lock_for_review, unlock_release, assign_to_colleague removed (not implemented)
 const actionStyles: Record<
   AgentActionType,
-  { color: string; Icon: typeof Lock }
+  { color: string; Icon: typeof CheckCircle }
 > = {
-  lock_for_review: {
-    color: 'bg-blue-100 text-blue-800 border-blue-200',
-    Icon: Lock,
-  },
   approve: {
     color: 'bg-green-100 text-green-800 border-green-200',
     Icon: CheckCircle,
@@ -72,24 +66,14 @@ const actionStyles: Record<
     color: 'bg-purple-100 text-purple-800 border-purple-200',
     Icon: ArrowUpRight,
   },
-  unlock_release: {
-    color: 'bg-gray-100 text-gray-800 border-gray-200',
-    Icon: Unlock,
-  },
-  assign_to_colleague: {
-    color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-    Icon: UserCog,
-  },
 };
 
 // Action types for filter dropdown
 const actionTypes: AgentActionType[] = [
-  'lock_for_review',
   'approve',
   'reject',
   'request_documents',
   'escalate',
-  'unlock_release',
 ];
 
 function ActionBadge({ action, label }: { action: AgentActionType; label: string }) {

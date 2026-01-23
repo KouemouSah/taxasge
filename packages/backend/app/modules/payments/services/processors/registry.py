@@ -214,7 +214,7 @@ class PaymentProcessorRegistry:
         self,
         db: asyncpg.Connection,
         payment_id: str,
-        agent_id: int,
+        agent_profile_id: str,
         comment: Optional[str] = None
     ) -> PaymentStatusResult:
         """
@@ -225,7 +225,7 @@ class PaymentProcessorRegistry:
         Args:
             db: Database connection
             payment_id: Internal payment ID
-            agent_id: ID of the validating agent
+            agent_profile_id: UUID of the agent profile (from agent_profiles table)
             comment: Optional validation comment
 
         Returns:
@@ -248,13 +248,13 @@ class PaymentProcessorRegistry:
                 error="Payment method does not require manual validation"
             )
 
-        return await manual_processor.validate_payment(db, payment_id, agent_id, comment)
+        return await manual_processor.validate_payment(db, payment_id, agent_profile_id, comment)
 
     async def reject_manual_payment(
         self,
         db: asyncpg.Connection,
         payment_id: str,
-        agent_id: int,
+        agent_profile_id: str,
         reason: str
     ) -> PaymentStatusResult:
         """
@@ -265,13 +265,13 @@ class PaymentProcessorRegistry:
         Args:
             db: Database connection
             payment_id: Internal payment ID
-            agent_id: ID of the rejecting agent
+            agent_profile_id: UUID of the agent profile (from agent_profiles table)
             reason: Rejection reason
 
         Returns:
             PaymentStatusResult with updated status
         """
-        return await manual_processor.reject_payment(db, payment_id, agent_id, reason)
+        return await manual_processor.reject_payment(db, payment_id, agent_profile_id, reason)
 
     # === Private Helper Methods ===
 

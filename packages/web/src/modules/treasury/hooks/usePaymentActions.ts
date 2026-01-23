@@ -1,8 +1,9 @@
 /**
- * Hook for payment actions (lock, validate, reject, unlock)
+ * Hook for payment actions (validate, reject)
  * Includes error handling with user-friendly toast messages
  *
  * @module treasury/hooks
+ * @version 2.0.0 - Removed lock/unlock (auto-assignment architecture)
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -10,7 +11,6 @@ import { useTranslations } from 'next-intl';
 import { useToast } from '@/hooks/use-toast';
 import { treasuryApi } from '../services/api';
 import type {
-  PaymentLockRequest,
   PaymentValidationRequest,
   PaymentRejectionRequest,
   PaymentActionResponse,
@@ -65,24 +65,6 @@ export function usePaymentActions() {
     });
   };
 
-  const lockPayment = useMutation<
-    PaymentActionResponse,
-    Error,
-    { paymentId: string; request?: PaymentLockRequest }
-  >({
-    mutationFn: ({ paymentId, request }) =>
-      treasuryApi.lockPayment(paymentId, request),
-    onSuccess: (data) => {
-      invalidatePayments();
-      if (data.messageEs) {
-        showSuccess(data.messageEs);
-      }
-    },
-    onError: (error) => {
-      showError(error, 'lockFailed');
-    },
-  });
-
   const validatePayment = useMutation<
     PaymentActionResponse,
     Error,
@@ -119,28 +101,11 @@ export function usePaymentActions() {
     },
   });
 
-  const unlockPayment = useMutation<PaymentActionResponse, Error, string>({
-    mutationFn: (paymentId) => treasuryApi.unlockPayment(paymentId),
-    onSuccess: (data) => {
-      invalidatePayments();
-      if (data.messageEs) {
-        showSuccess(data.messageEs);
-      }
-    },
-    onError: (error) => {
-      showError(error, 'unlockFailed');
-    },
-  });
-
   return {
-    lockPayment,
     validatePayment,
     rejectPayment,
-    unlockPayment,
-    isLocking: lockPayment.isPending,
     isValidating: validatePayment.isPending,
     isRejecting: rejectPayment.isPending,
-    isUnlocking: unlockPayment.isPending,
   };
 }
 

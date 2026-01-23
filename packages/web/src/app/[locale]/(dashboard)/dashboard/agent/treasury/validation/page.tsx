@@ -2,7 +2,7 @@
  * Treasury Validation Page
  * Lists pending payments requiring manual validation (cash/check)
  * Treasury agents can validate or reject payments directly (auto-assignment)
- * @version 1.2.0 - Simplified workflow: removed mandatory lock step
+ * @version 2.0.0 - Removed lock mechanism entirely (auto-assignment architecture)
  */
 
 'use client';
@@ -29,7 +29,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  Unlock,
   CheckCircle,
   XCircle,
   Search,
@@ -83,10 +82,8 @@ export default function TreasuryValidationPage() {
   const {
     validatePayment,
     rejectPayment,
-    unlockPayment,
     isValidating,
     isRejecting,
-    isUnlocking,
   } = usePaymentActions();
 
   // Filter payments by search term and SLA status
@@ -134,10 +131,6 @@ export default function TreasuryValidationPage() {
     });
   };
 
-  const handleUnlock = async (payment: PendingPayment) => {
-    await unlockPayment.mutateAsync(payment.id);
-  };
-
   const openValidationDialog = (payment: PendingPayment) => {
     setSelectedPayment(payment);
     setIsValidationOpen(true);
@@ -156,7 +149,7 @@ export default function TreasuryValidationPage() {
     await rejectPayment.mutateAsync({ paymentId, request: { reason } });
   };
 
-  const isAnyLoading = isValidating || isRejecting || isUnlocking;
+  const isAnyLoading = isValidating || isRejecting;
 
   return (
     <div className="space-y-6">
@@ -202,7 +195,7 @@ export default function TreasuryValidationPage() {
               />
             </div>
 
-            {/* Status Filter */}
+            {/* Status Filter - simplified: only pending_agent_review with auto-assignment */}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger>
                 <SelectValue placeholder="Estado del workflow" />
@@ -210,7 +203,6 @@ export default function TreasuryValidationPage() {
               <SelectContent>
                 <SelectItem value="all">Todos los estados</SelectItem>
                 <SelectItem value="pending_agent_review">Pendiente revision</SelectItem>
-                <SelectItem value="locked_by_agent">Bloqueado por agente</SelectItem>
               </SelectContent>
             </Select>
 
@@ -330,25 +322,8 @@ export default function TreasuryValidationPage() {
                             <Eye className="h-4 w-4" />
                           </Button>
 
-                          {/* Unlock - only show if locked by agent */}
-                          {payment.workflowStatus === 'locked_by_agent' && (
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() => handleUnlock(payment)}
-                              disabled={isAnyLoading}
-                              title="Desbloquear"
-                            >
-                              {isUnlocking ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Unlock className="h-4 w-4" />
-                              )}
-                            </Button>
-                          )}
-
-                          {/* Validate - show for both pending_agent_review and locked_by_agent */}
-                          {(payment.workflowStatus === 'pending_agent_review' || payment.workflowStatus === 'locked_by_agent') && (
+                          {/* Validate - with auto-assignment, agent validates directly */}
+                          {payment.workflowStatus === 'pending_agent_review' && (
                             <Button
                               variant="default"
                               size="icon"
@@ -361,8 +336,8 @@ export default function TreasuryValidationPage() {
                             </Button>
                           )}
 
-                          {/* Reject - show for both pending_agent_review and locked_by_agent */}
-                          {(payment.workflowStatus === 'pending_agent_review' || payment.workflowStatus === 'locked_by_agent') && (
+                          {/* Reject - with auto-assignment, agent rejects directly */}
+                          {payment.workflowStatus === 'pending_agent_review' && (
                             <Button
                               variant="destructive"
                               size="icon"
