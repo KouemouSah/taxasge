@@ -1011,3 +1011,143 @@ async def reject_document(
         logger.error(f"Failed to publish DOCUMENT_REJECTED event: {e}")
 
     return {"message": "Document rejected", "document_id": document_id, "reason": body.reason}
+
+
+# ═══════════════════════════════════════════════════════════════
+# APPOINTMENT ATTENDANCE TRACKING
+# ═══════════════════════════════════════════════════════════════
+
+@router.post(
+    "/appointments/{request_id}/mark-arrived",
+    summary="Mark citizen as arrived",
+    description="Agent marks that the citizen has arrived for their appointment."
+)
+async def mark_appointment_arrived(
+    request_id: str,
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("service_request.review"))
+):
+    """Mark that citizen arrived for appointment."""
+    # Get request with user and appointment info
+    request = await db.fetchrow("""
+        SELECT sr.id, sr.user_id, sr.status, sr.workflow_code, sr.reference,
+               sr.cita_date as appointment_date, sr.cita_time as appointment_time,
+               sr.cita_location as location,
+               u.email, u.phone_number as phone, u.first_name, u.last_name, u.preferred_language
+        FROM service_requests sr
+        JOIN users u ON u.id = sr.user_id
+        WHERE sr.id = $1::uuid
+    """, request_id)
+
+    if not request:
+        raise HTTPException(status_code=404, detail="Service request not found")
+
+    # Update appointment status
+    await db.execute("""
+        UPDATE service_requests
+        SET appointment_status = 'arrived',
+            arrived_at = NOW(),
+            updated_at = NOW()
+        WHERE id = $1::uuid
+    """, request_id)
+
+    # Update appointment_holds if exists
+    await db.execute("""
+        UPDATE appointment_holds
+        SET status = 'completed', completed_at = NOW()
+        WHERE service_request_id = $1::uuid AND status = 'confirmed'
+    """, request_id)
+
+    # Publish APPOINTMENT_COMPLETED event
+    try:
+        EventBus.publish_nowait(
+            EventType.APPOINTMENT_COMPLETED,
+            {
+                "request_id": request_id,
+                "user_id": str(request["user_id"]),
+                "user_email": request["email"],
+                "user_phone": request["phone"],
+                "user_name": f"{request['first_name'] or ''} {request['last_name'] or ''}".strip(),
+                "preferred_language": request.get("preferred_language", "es"),
+                "workflow_code": request["workflow_code"],
+                "reference": request["reference"],
+                "appointment_date": str(request["appointment_date"]) if request.get("appointment_date") else None,
+                "appointment_time": str(request["appointment_time"]) if request.get("appointment_time") else None,
+                "location": request.get("location"),
+                "agent_id": str(current_user.id),
+            }
+        )
+        logger.info(f"APPOINTMENT_COMPLETED event published for request {request_id}")
+    except Exception as e:
+        logger.error(f"Failed to publish APPOINTMENT_COMPLETED event: {e}")
+
+    return {"message": "Citizen marked as arrived", "request_id": request_id}
+
+
+@router.post(
+    "/appointments/{request_id}/mark-no-show",
+    summary="Mark citizen as no-show",
+    description="Agent marks that the citizen did not arrive for their appointment."
+)
+async def mark_appointment_no_show(
+    request_id: str,
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("service_request.review"))
+):
+    """Mark that citizen did not arrive for appointment (no-show)."""
+    # Get request with user and appointment info
+    request = await db.fetchrow("""
+        SELECT sr.id, sr.user_id, sr.status, sr.workflow_code, sr.reference,
+               sr.cita_date as appointment_date, sr.cita_time as appointment_time,
+               sr.cita_location as location,
+               u.email, u.phone_number as phone, u.first_name, u.last_name, u.preferred_language
+        FROM service_requests sr
+        JOIN users u ON u.id = sr.user_id
+        WHERE sr.id = $1::uuid
+    """, request_id)
+
+    if not request:
+        raise HTTPException(status_code=404, detail="Service request not found")
+
+    # Update appointment status
+    await db.execute("""
+        UPDATE service_requests
+        SET appointment_status = 'no_show',
+            no_show_at = NOW(),
+            updated_at = NOW()
+        WHERE id = $1::uuid
+    """, request_id)
+
+    # Update appointment_holds if exists
+    await db.execute("""
+        UPDATE appointment_holds
+        SET status = 'no_show', completed_at = NOW()
+        WHERE service_request_id = $1::uuid AND status = 'confirmed'
+    """, request_id)
+
+    # Publish APPOINTMENT_NO_SHOW event
+    try:
+        EventBus.publish_nowait(
+            EventType.APPOINTMENT_NO_SHOW,
+            {
+                "request_id": request_id,
+                "user_id": str(request["user_id"]),
+                "user_email": request["email"],
+                "user_phone": request["phone"],
+                "user_name": f"{request['first_name'] or ''} {request['last_name'] or ''}".strip(),
+                "preferred_language": request.get("preferred_language", "es"),
+                "workflow_code": request["workflow_code"],
+                "reference": request["reference"],
+                "appointment_date": str(request["appointment_date"]) if request.get("appointment_date") else None,
+                "appointment_time": str(request["appointment_time"]) if request.get("appointment_time") else None,
+                "location": request.get("location"),
+                "agent_id": str(current_user.id),
+            }
+        )
+        logger.info(f"APPOINTMENT_NO_SHOW event published for request {request_id}")
+    except Exception as e:
+        logger.error(f"Failed to publish APPOINTMENT_NO_SHOW event: {e}")
+
+    return {"message": "Citizen marked as no-show", "request_id": request_id}

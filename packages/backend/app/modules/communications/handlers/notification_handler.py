@@ -63,13 +63,15 @@ EVENT_NOTIFICATION_MAP: Dict[EventType, NotificationConfig] = {
         template_code="payment_failed",
         channels=[NotificationChannel.EMAIL, NotificationChannel.SMS],
         priority="high",
-        subject_key="notifications.payment.failed.subject"
+        subject_key="notifications.payment.failed.subject",
+        sms_template_code="PAYMENT_FAILED"
     ),
     EventType.PAYMENT_CASH_PENDING: NotificationConfig(
         template_code="payment_cash_pending",
         channels=[NotificationChannel.EMAIL, NotificationChannel.SMS],
         priority="normal",
-        subject_key="notifications.payment.cash_pending.subject"
+        subject_key="notifications.payment.cash_pending.subject",
+        sms_template_code="PAYMENT_CASH_PENDING"
     ),
     EventType.PAYMENT_CASH_VALIDATED: NotificationConfig(
         template_code="payment_cash_validated",
@@ -89,9 +91,10 @@ EVENT_NOTIFICATION_MAP: Dict[EventType, NotificationConfig] = {
     # Service Request Events
     EventType.REQUEST_SUBMITTED: NotificationConfig(
         template_code="request_submitted",
-        channels=[NotificationChannel.EMAIL, NotificationChannel.PUSH],
+        channels=[NotificationChannel.EMAIL, NotificationChannel.SMS, NotificationChannel.PUSH],
         priority="normal",
-        subject_key="notifications.request.submitted.subject"
+        subject_key="notifications.request.submitted.subject",
+        sms_template_code="REQUEST_SUBMITTED"
     ),
     EventType.REQUEST_APPROVED: NotificationConfig(
         template_code="request_approved",
@@ -111,21 +114,31 @@ EVENT_NOTIFICATION_MAP: Dict[EventType, NotificationConfig] = {
         template_code="request_completed",
         channels=[NotificationChannel.EMAIL, NotificationChannel.SMS, NotificationChannel.PUSH],
         priority="high",
-        subject_key="notifications.request.completed.subject"
+        subject_key="notifications.request.completed.subject",
+        sms_template_code="REQUEST_COMPLETED"
+    ),
+    EventType.REQUEST_CANCELLED: NotificationConfig(
+        template_code="request_cancelled",
+        channels=[NotificationChannel.EMAIL, NotificationChannel.SMS],
+        priority="normal",
+        subject_key="notifications.request.cancelled.subject",
+        sms_template_code="REQUEST_CANCELLED"
     ),
 
     # Document Events
     EventType.DOCUMENT_VALIDATED: NotificationConfig(
         template_code="document_validated",
-        channels=[NotificationChannel.EMAIL, NotificationChannel.PUSH],
+        channels=[NotificationChannel.EMAIL, NotificationChannel.SMS, NotificationChannel.PUSH],
         priority="normal",
-        subject_key="notifications.document.validated.subject"
+        subject_key="notifications.document.validated.subject",
+        sms_template_code="DOCUMENT_VALIDATED"
     ),
     EventType.DOCUMENT_REJECTED: NotificationConfig(
         template_code="document_rejected",
         channels=[NotificationChannel.EMAIL, NotificationChannel.SMS],
         priority="high",
-        subject_key="notifications.document.rejected.subject"
+        subject_key="notifications.document.rejected.subject",
+        sms_template_code="DOCUMENT_REJECTED"
     ),
 
     # Appointment Events
@@ -138,9 +151,10 @@ EVENT_NOTIFICATION_MAP: Dict[EventType, NotificationConfig] = {
     ),
     EventType.APPOINTMENT_CONFIRMED: NotificationConfig(
         template_code="appointment_confirmed",
-        channels=[NotificationChannel.EMAIL, NotificationChannel.SMS],
-        priority="normal",
-        subject_key="notifications.appointment.confirmed.subject"
+        channels=[NotificationChannel.EMAIL, NotificationChannel.SMS, NotificationChannel.PUSH],
+        priority="high",
+        subject_key="notifications.appointment.confirmed.subject",
+        sms_template_code="APPOINTMENT_CONFIRMED"
     ),
     EventType.APPOINTMENT_CANCELLED: NotificationConfig(
         template_code="appointment_cancelled",
@@ -155,6 +169,19 @@ EVENT_NOTIFICATION_MAP: Dict[EventType, NotificationConfig] = {
         priority="high",
         subject_key="notifications.appointment.reminder.subject",
         sms_template_code="APPOINTMENT_REMINDER"  # Reuses existing template from migration 012
+    ),
+    EventType.APPOINTMENT_COMPLETED: NotificationConfig(
+        template_code="appointment_completed",
+        channels=[NotificationChannel.EMAIL],
+        priority="normal",
+        subject_key="notifications.appointment.completed.subject"
+    ),
+    EventType.APPOINTMENT_NO_SHOW: NotificationConfig(
+        template_code="appointment_no_show",
+        channels=[NotificationChannel.EMAIL, NotificationChannel.SMS],
+        priority="high",
+        subject_key="notifications.appointment.no_show.subject",
+        sms_template_code="APPOINTMENT_NO_SHOW"
     ),
 
     # Declaration Events
