@@ -36,6 +36,14 @@ const ITEM_TYPES: { value: ItemType; label: string }[] = [
   { value: 'other', label: 'Other' },
 ]
 
+// Entity types - aligned with backend pattern: ^(ministry|entity)$
+const ENTITY_TYPES = [
+  { value: 'ministry', label: 'Ministry' },
+  { value: 'entity', label: 'Entity' },
+] as const
+
+type EntityType = 'ministry' | 'entity'
+
 export default function AutoAssignmentPage() {
   const router = useRouter()
   const locale = useLocale()
@@ -45,14 +53,9 @@ export default function AutoAssignmentPage() {
   // Form state
   const [itemId, setItemId] = useState('')
   const [itemType, setItemType] = useState<ItemType | ''>('')
-  const [entityType, setEntityType] = useState<'DGI' | 'Ministry'>('DGI')
+  const [entityType, setEntityType] = useState<EntityType>('ministry')
   const [entityId, setEntityId] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-
-  // Handler for Select component (converts string to ItemType)
-  const handleItemTypeChange = (value: string) => {
-    setItemType(value as ItemType)
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -66,7 +69,7 @@ export default function AutoAssignmentPage() {
     try {
       const result = await assignmentsApi.createAuto({
         item_id: itemId,
-        item_type: itemType as ItemType,
+        item_type: itemType,
         item_data: {}, // Empty object - rules will evaluate based on item_type
         entity_type: entityType,
         entity_id: entityId || undefined,
@@ -134,7 +137,10 @@ export default function AutoAssignmentPage() {
             {/* Item Type */}
             <div className="space-y-2">
               <Label htmlFor="itemType">{t('itemType') || 'Item Type'} *</Label>
-              <Select value={itemType} onValueChange={handleItemTypeChange}>
+              <Select
+                value={itemType}
+                onValueChange={(value: string) => setItemType(value as ItemType)}
+              >
                 <SelectTrigger id="itemType">
                   <SelectValue placeholder={t('selectItemType') || 'Select item type'} />
                 </SelectTrigger>
@@ -165,13 +171,19 @@ export default function AutoAssignmentPage() {
             {/* Entity Type */}
             <div className="space-y-2">
               <Label htmlFor="entityType">{t('entityType') || 'Entity Type'}</Label>
-              <Select value={entityType} onValueChange={(v) => setEntityType(v as 'DGI' | 'Ministry')}>
+              <Select
+                value={entityType}
+                onValueChange={(value: string) => setEntityType(value as EntityType)}
+              >
                 <SelectTrigger id="entityType">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="DGI">DGI (Tax Authority)</SelectItem>
-                  <SelectItem value="Ministry">Ministry</SelectItem>
+                  {ENTITY_TYPES.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {t(`entityTypes.${type.value}`) || type.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">

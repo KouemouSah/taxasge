@@ -183,7 +183,7 @@ export interface AutoAssignmentRequest {
   item_id: string
   item_type: ItemType
   item_data: Record<string, unknown>
-  entity_type?: 'DGI' | 'Ministry'
+  entity_type?: 'ministry' | 'entity'  // Backend pattern: ^(ministry|entity)$
   entity_id?: string
 }
 
