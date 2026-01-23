@@ -48,8 +48,6 @@ interface NotificationTemplateListProps {
 
 export function NotificationTemplateList(_props: NotificationTemplateListProps) {
   const { locale } = _props
-  const t = useTranslations('admin.notificationTemplates')
-  const tCategories = useTranslations('admin.emailTemplates.categories')
   const tCommon = useTranslations('common')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
