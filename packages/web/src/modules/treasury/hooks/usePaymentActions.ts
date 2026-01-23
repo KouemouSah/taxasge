@@ -1,9 +1,9 @@
 /**
- * Hook for payment actions (validate, reject)
+ * Hook for payment actions (validate, reject) - single and batch
  * Includes error handling with user-friendly toast messages
  *
  * @module treasury/hooks
- * @version 2.0.0 - Removed lock/unlock (auto-assignment architecture)
+ * @version 3.0.0 - Added batch actions support
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -17,6 +17,11 @@ import type {
 } from '../types';
 import { getTreasuryErrorCode } from '../types';
 import { PENDING_PAYMENTS_QUERY_KEY } from './usePendingPayments';
+
+interface BatchResult {
+  success: string[];
+  failed: Array<{ id: string; error: string }>;
+}
 
 export function usePaymentActions() {
   const queryClient = useQueryClient();
@@ -34,14 +39,12 @@ export function usePaymentActions() {
   const getTranslatedError = (error: unknown, fallbackKey: string): string => {
     const errorCode = getTreasuryErrorCode(error);
     if (errorCode) {
-      // Try to get translation for this error code
       try {
         return tTreasury(`errors.${errorCode}`);
       } catch {
         // Fall through to fallback
       }
     }
-    // Use fallback translation key
     try {
       return tTreasury(`errors.${fallbackKey}`);
     } catch {
@@ -65,6 +68,7 @@ export function usePaymentActions() {
     });
   };
 
+  // Single payment validation
   const validatePayment = useMutation<
     PaymentActionResponse,
     Error,
@@ -83,6 +87,7 @@ export function usePaymentActions() {
     },
   });
 
+  // Single payment rejection
   const rejectPayment = useMutation<
     PaymentActionResponse,
     Error,
@@ -101,11 +106,117 @@ export function usePaymentActions() {
     },
   });
 
+  // Batch validation
+  const validateBatch = useMutation<
+    BatchResult,
+    Error,
+    { paymentIds: string[]; comment?: string }
+  >({
+    mutationFn: async ({ paymentIds, comment }) => {
+      const results: BatchResult = { success: [], failed: [] };
+
+      // Process sequentially to avoid overwhelming the server
+      for (const paymentId of paymentIds) {
+        try {
+          await treasuryApi.validatePayment(paymentId, comment ? { comment } : undefined);
+          results.success.push(paymentId);
+        } catch (error) {
+          results.failed.push({
+            id: paymentId,
+            error: error instanceof Error ? error.message : 'Error desconocido',
+          });
+        }
+      }
+
+      return results;
+    },
+    onSuccess: (results) => {
+      invalidatePayments();
+      if (results.success.length > 0) {
+        toast({
+          title: 'Validacion completada',
+          description: `${results.success.length} pago(s) validado(s) correctamente.${
+            results.failed.length > 0
+              ? ` ${results.failed.length} fallido(s).`
+              : ''
+          }`,
+          variant: results.failed.length > 0 ? 'default' : 'default',
+        });
+      }
+      if (results.failed.length > 0 && results.success.length === 0) {
+        toast({
+          title: 'Error en validacion',
+          description: `No se pudo validar ningun pago. ${results.failed.length} error(es).`,
+          variant: 'destructive',
+        });
+      }
+    },
+    onError: (error) => {
+      showError(error, 'validateFailed');
+    },
+  });
+
+  // Batch rejection
+  const rejectBatch = useMutation<
+    BatchResult,
+    Error,
+    { paymentIds: string[]; reason: string }
+  >({
+    mutationFn: async ({ paymentIds, reason }) => {
+      const results: BatchResult = { success: [], failed: [] };
+
+      for (const paymentId of paymentIds) {
+        try {
+          await treasuryApi.rejectPayment(paymentId, { reason });
+          results.success.push(paymentId);
+        } catch (error) {
+          results.failed.push({
+            id: paymentId,
+            error: error instanceof Error ? error.message : 'Error desconocido',
+          });
+        }
+      }
+
+      return results;
+    },
+    onSuccess: (results) => {
+      invalidatePayments();
+      if (results.success.length > 0) {
+        toast({
+          title: 'Rechazo completado',
+          description: `${results.success.length} pago(s) rechazado(s).${
+            results.failed.length > 0
+              ? ` ${results.failed.length} fallido(s).`
+              : ''
+          }`,
+          variant: results.failed.length > 0 ? 'default' : 'default',
+        });
+      }
+      if (results.failed.length > 0 && results.success.length === 0) {
+        toast({
+          title: 'Error en rechazo',
+          description: `No se pudo rechazar ningun pago. ${results.failed.length} error(es).`,
+          variant: 'destructive',
+        });
+      }
+    },
+    onError: (error) => {
+      showError(error, 'rejectFailed');
+    },
+  });
+
   return {
+    // Single actions
     validatePayment,
     rejectPayment,
     isValidating: validatePayment.isPending,
     isRejecting: rejectPayment.isPending,
+    // Batch actions
+    validateBatch,
+    rejectBatch,
+    isValidatingBatch: validateBatch.isPending,
+    isRejectingBatch: rejectBatch.isPending,
+    isBatchProcessing: validateBatch.isPending || rejectBatch.isPending,
   };
 }
 

@@ -305,7 +305,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
                     payment_data=payment_data,
                     user_data=dict(user_data) if user_data else {},
                     service_data=dict(service_data) if service_data else None,
-                    validated_by=str(agent_id),
+                    validated_by=agent_profile_id,
                     validated_by_name=agent_name,
                     validated_at=paid_at,
                     language="es",  # TODO: Get user's preferred language
