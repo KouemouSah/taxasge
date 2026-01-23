@@ -16,10 +16,12 @@
 -- Author: Claude Code
 
 -- =====================================================================
--- STEP 1: Recreate the view WITHOUT locked_until column
+-- STEP 1: Drop and recreate the view WITHOUT locked_until column
 -- =====================================================================
 
-CREATE OR REPLACE VIEW v_agent_work_queue_priority AS
+DROP VIEW IF EXISTS v_agent_work_queue_priority;
+
+CREATE VIEW v_agent_work_queue_priority AS
 SELECT
     awq.id AS queue_id,
     awq.ministry_id,
