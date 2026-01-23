@@ -149,6 +149,9 @@ class EventType(str, Enum):
     USER_PASSWORD_RESET = "user.password.reset"
     """Password reset requested"""
 
+    USER_PASSWORD_CHANGED = "user.password.changed"
+    """Password successfully changed (security notification)"""
+
     USER_2FA_ENABLED = "user.2fa.enabled"
     """Two-factor authentication enabled"""
 

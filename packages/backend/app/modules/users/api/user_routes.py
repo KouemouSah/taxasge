@@ -209,127 +209,30 @@ async def change_password(
                 logger.warning(f"Failed to log password change activity: {log_error}")
 
         # =================================================================
-        # SEND SECURITY NOTIFICATIONS (SMS + Email)
+        # SEND SECURITY NOTIFICATIONS via EventBus (SMS + Email)
         # IMPORTANT: Only send AFTER password change is confirmed
-        # Uses a new connection to avoid transaction issues
+        # Uses fire-and-forget pattern (non-blocking)
         # =================================================================
-        now = datetime.utcnow()
-        change_date = now.strftime("%d/%m/%Y")
-        change_time = now.strftime("%H:%M")
+        try:
+            from app.core.events import EventBus, EventType
 
-        # Common variables for both SMS and Email templates
-        notification_variables = {
-            "user_name": f"{current_user.first_name} {current_user.last_name}",
-            "date": change_date,
-            "time": change_time
-        }
+            now = datetime.utcnow()
 
-        # Send notifications in a separate connection (non-blocking)
-        async with db_manager.get_connection() as notification_db:
-            # 1. Send Email notification using database template
-            try:
-                from app.modules.communications.services.email_service import get_email_service
+            # Publish password changed event - notification handler will send email + SMS
+            EventBus.publish_nowait(EventType.USER_PASSWORD_CHANGED, {
+                "user_id": str(current_user.id),
+                "user_email": current_user.email,
+                "user_phone": current_user.phone_number,
+                "user_name": f"{current_user.first_name} {current_user.last_name}",
+                "preferred_language": current_user.preferred_language or "es",
+                "date": now.strftime("%d/%m/%Y"),
+                "time": now.strftime("%H:%M"),
+            })
+            logger.info(f"USER_PASSWORD_CHANGED event published for user {current_user.id}")
 
-                email_service = get_email_service()
-
-                # Use send_with_template for database template
-                email_sent = await email_service.send_with_template(
-                    db=notification_db,
-                    template_code="SECURITY_PASSWORD_CHANGED",
-                    to_email=current_user.email,
-                    variables=notification_variables,
-                    language=current_user.preferred_language or "es"
-                )
-
-                if email_sent:
-                    logger.info(f"Password change email notification sent to {current_user.email}")
-                else:
-                    logger.warning(f"Failed to send password change email to {current_user.email}")
-
-            except Exception as email_error:
-                logger.error(f"Error sending password change email: {email_error}")
-
-            # 2. Send SMS notification (if user has phone number)
-            logger.info(f"[SMS] Starting SMS notification for user {current_user.id}, phone={current_user.phone_number}")
-
-            if current_user.phone_number:
-                try:
-                    from app.modules.communications.services.sms_template_service import SmsTemplateService
-                    from app.modules.communications.models.sms_template import SmsTemplateRenderRequest
-                    from app.modules.communications.services.provider_settings_service import ProviderSettingsService
-                    from app.modules.communications.services.sms_provider_service import SmsService
-
-                    sms_template_service = SmsTemplateService()
-
-                    # Get the SMS template
-                    logger.info("[SMS] Step 1: Fetching SMS template SECURITY_PASSWORD_CHANGED")
-                    template = await sms_template_service.get_template_by_code(
-                        notification_db, "SECURITY_PASSWORD_CHANGED"
-                    )
-
-                    if not template:
-                        logger.error("[SMS] FAILED: Template SECURITY_PASSWORD_CHANGED not found in database")
-                    elif not template.is_active:
-                        logger.error(f"[SMS] FAILED: Template exists but is_active=False")
-                    else:
-                        logger.info(f"[SMS] Step 2: Template found, is_active={template.is_active}")
-
-                        # SMS template uses same variables as email: user_name, date, time
-                        user_language = current_user.preferred_language or "es"
-                        logger.info(f"[SMS] Step 3: Rendering template with language={user_language}, vars={list(notification_variables.keys())}")
-
-                        render_request = SmsTemplateRenderRequest(
-                            template_code="SECURITY_PASSWORD_CHANGED",
-                            language=user_language,
-                            variables=notification_variables
-                        )
-                        rendered = await sms_template_service.render_template(
-                            notification_db, render_request
-                        )
-                        logger.info(f"[SMS] Step 4: Template rendered, content_length={len(rendered.rendered_content)}")
-
-                        # Get SMS provider credentials
-                        logger.info("[SMS] Step 5: Fetching SMS provider credentials")
-                        provider_service = ProviderSettingsService()
-                        credentials = await provider_service.get_active_sms_credentials(notification_db)
-
-                        if not credentials:
-                            logger.error("[SMS] FAILED: No SMS credentials returned (check communication_provider_settings table)")
-                        elif not credentials.get("api_key"):
-                            logger.error("[SMS] FAILED: Credentials found but api_key is empty/null")
-                        else:
-                            logger.info(f"[SMS] Step 6: Credentials found, api_key_length={len(credentials.get('api_key', ''))}")
-
-                            sms_service = SmsService(
-                                provider="infobip",
-                                api_key=credentials["api_key"],
-                                base_url="y45e8g.api.infobip.com",
-                                sender_id="TaxasGE"
-                            )
-
-                            logger.info(f"[SMS] Step 7: Sending SMS to {current_user.phone_number}")
-                            sms_result = sms_service.send_sms(
-                                to=current_user.phone_number,
-                                message=rendered.rendered_content
-                            )
-
-                            if sms_result.success:
-                                logger.info(
-                                    f"[SMS] SUCCESS: Password change SMS sent to {current_user.phone_number}, "
-                                    f"message_id={sms_result.message_id}, status={sms_result.status}"
-                                )
-                            else:
-                                logger.error(
-                                    f"[SMS] FAILED: Infobip API error for {current_user.phone_number}: "
-                                    f"error={sms_result.error}, status={sms_result.status}"
-                                )
-
-                except Exception as sms_error:
-                    logger.error(f"[SMS] EXCEPTION: {type(sms_error).__name__}: {sms_error}")
-                    import traceback
-                    logger.error(f"[SMS] TRACEBACK: {traceback.format_exc()}")
-            else:
-                logger.warning(f"[SMS] SKIPPED: User {current_user.id} has no phone number configured")
+        except Exception as event_error:
+            # Log but don't fail - password change was successful
+            logger.error(f"Failed to publish password change event: {event_error}")
 
         return {
             "message": "Password changed successfully"

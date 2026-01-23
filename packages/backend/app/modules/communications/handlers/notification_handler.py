@@ -4,11 +4,12 @@ Notification Event Handler
 Handles events from the EventBus and sends appropriate notifications.
 
 Maps event types to notification templates and sends via:
-- Email
-- SMS (when configured)
-- Push notifications (when configured)
+- Email (via CommunicationService)
+- SMS (via SmsSendingService + Infobip)
+- Push notifications (via PushSendingService + Firebase)
 
 @module communications/handlers/notification_handler
+@version 2.0.0 - Implemented SMS and Push channels
 """
 
 import asyncio
@@ -18,7 +19,10 @@ from enum import Enum
 from loguru import logger
 
 from app.core.events import EventBus, EventType, EventPayload
+from app.database.connection import db_manager
 from app.modules.communications.services.communication_service import CommunicationService
+from app.modules.communications.services.sms_sending_service import get_sms_sending_service
+from app.modules.communications.services.push_sending_service import get_push_sending_service
 from app.modules.communications.models.communication import CommunicationType
 
 
@@ -191,6 +195,16 @@ EVENT_NOTIFICATION_MAP: Dict[EventType, NotificationConfig] = {
         requires_user_prefs=False,  # Always notify agents
         sms_template_code="SECURITY_ALERT"  # Reuses existing template from migration 012
     ),
+
+    # User Security Events
+    EventType.USER_PASSWORD_CHANGED: NotificationConfig(
+        template_code="password_changed",
+        channels=[NotificationChannel.EMAIL, NotificationChannel.SMS],
+        priority="high",
+        subject_key="notifications.user.password_changed.subject",
+        requires_user_prefs=False,  # Always notify for security
+        sms_template_code="SECURITY_PASSWORD_CHANGED"
+    ),
 }
 
 
@@ -255,6 +269,7 @@ class NotificationEventHandler:
         )
 
         # Extract user info from payload
+        user_id = payload.get("user_id")
         user_email = payload.get("user_email")
         user_phone = payload.get("user_phone")
         user_name = payload.get("user_name")
@@ -269,6 +284,7 @@ class NotificationEventHandler:
                 await self._send_notification(
                     channel=channel,
                     config=config,
+                    user_id=user_id,
                     user_email=user_email,
                     user_phone=user_phone,
                     user_name=user_name,
@@ -285,6 +301,7 @@ class NotificationEventHandler:
         self,
         channel: NotificationChannel,
         config: NotificationConfig,
+        user_id: Optional[str],
         user_email: Optional[str],
         user_phone: Optional[str],
         user_name: Optional[str],
@@ -297,6 +314,7 @@ class NotificationEventHandler:
         Args:
             channel: The notification channel
             config: Notification configuration
+            user_id: User UUID (for push notifications)
             user_email: User's email address
             user_phone: User's phone number
             user_name: User's display name
@@ -352,19 +370,81 @@ class NotificationEventHandler:
             # Use specific SMS template code if defined, otherwise fall back to email template code
             sms_template_code = config.sms_template_code or config.template_code.upper()
 
-            # SMS sending would be implemented here
-            logger.info(
-                f"SMS notification queued for {user_phone} "
-                f"(template: {sms_template_code})"
-            )
-            # TODO: Implement SMS sending via sms_provider_service with sms_template_code
-            return True
+            # Send SMS via SmsSendingService
+            try:
+                sms_service = get_sms_sending_service()
+                async with db_manager.get_connection() as db:
+                    result = await sms_service.send_sms(
+                        db=db,
+                        phone=user_phone,
+                        template_code=sms_template_code,
+                        variables=context,
+                        language=language
+                    )
+
+                if result.success:
+                    logger.info(
+                        f"SMS sent to {user_phone} "
+                        f"(template: {sms_template_code}, message_id: {result.message_id})"
+                    )
+                    return True
+                else:
+                    logger.warning(
+                        f"SMS failed for {user_phone}: {result.error} "
+                        f"(template: {sms_template_code})"
+                    )
+                    return False
+
+            except Exception as e:
+                logger.error(f"SMS sending error for {user_phone}: {e}")
+                return False
 
         elif channel == NotificationChannel.PUSH:
-            # Push notification would be implemented here
-            logger.debug(f"Push notification queued ({config.template_code})")
-            # TODO: Implement push notifications
-            return True
+            if not user_id:
+                logger.debug("Cannot send push: no user_id")
+                return False
+
+            # Get notification title and body
+            title = self._get_subject(config, language, context)
+            body = self._get_push_body(config, language, context)
+
+            # Send push notification via PushSendingService
+            try:
+                push_service = get_push_sending_service()
+
+                if not push_service.is_available():
+                    logger.warning("[PUSH] Firebase not available, skipping")
+                    return False
+
+                async with db_manager.get_connection() as db:
+                    result = await push_service.send_to_user(
+                        db=db,
+                        user_id=user_id,
+                        title=title,
+                        body=body,
+                        data={
+                            "template_code": config.template_code,
+                            "priority": config.priority,
+                            **{k: str(v) for k, v in context.items() if v is not None and isinstance(v, (str, int, float))}
+                        }
+                    )
+
+                if result.success:
+                    logger.info(
+                        f"Push sent to user {user_id} "
+                        f"(template: {config.template_code}, message_id: {result.message_id})"
+                    )
+                    return True
+                else:
+                    logger.debug(
+                        f"Push failed for user {user_id}: {result.error} "
+                        f"(template: {config.template_code})"
+                    )
+                    return False
+
+            except Exception as e:
+                logger.error(f"Push sending error for user {user_id}: {e}")
+                return False
 
         elif channel == NotificationChannel.IN_APP:
             # In-app notification would be implemented here
@@ -573,6 +653,11 @@ class NotificationEventHandler:
                 "fr": "Violation SLA - TaxasGE",
                 "en": "SLA Breach - TaxasGE"
             },
+            "password_changed": {
+                "es": "Alerta de seguridad: Contraseña modificada - TaxasGE",
+                "fr": "Alerte de sécurité: Mot de passe modifié - TaxasGE",
+                "en": "Security alert: Password changed - TaxasGE"
+            },
         }
 
         template_subjects = subjects.get(config.template_code, {})
@@ -702,6 +787,11 @@ class NotificationEventHandler:
                 "fr": f"Nous vous rappelons votre rendez-vous prévu pour le {context.get('appointment_date')} à {context.get('appointment_time')}.",
                 "en": f"This is a reminder of your appointment scheduled for {context.get('appointment_date')} at {context.get('appointment_time')}."
             },
+            "password_changed": {
+                "es": f"Su contraseña fue modificada el {context.get('date')} a las {context.get('time')}. Si no realizó este cambio, contacte soporte inmediatamente.",
+                "fr": f"Votre mot de passe a été modifié le {context.get('date')} à {context.get('time')}. Si vous n'avez pas effectué ce changement, contactez le support immédiatement.",
+                "en": f"Your password was changed on {context.get('date')} at {context.get('time')}. If you did not make this change, contact support immediately."
+            },
         }
 
         template_bodies = bodies.get(template_code, {})
@@ -709,6 +799,26 @@ class NotificationEventHandler:
             language,
             template_bodies.get("es", "Tiene una nueva notificación de TaxasGE.")
         )
+
+    def _get_push_body(
+        self,
+        config: NotificationConfig,
+        language: str,
+        context: Dict[str, Any]
+    ) -> str:
+        """
+        Get push notification body text.
+
+        Uses shorter versions of template bodies suitable for push notifications.
+        """
+        # Reuse template body but keep it shorter for push
+        body = self._get_template_body(config.template_code, language, context)
+
+        # Truncate for push notification (max ~200 chars recommended)
+        if len(body) > 180:
+            body = body[:177] + "..."
+
+        return body
 
 
 # =============================================================================
