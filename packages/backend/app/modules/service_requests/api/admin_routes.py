@@ -2999,7 +2999,7 @@ async def lock_payment(
 
     **Permissions:**
     - Requires 'treasury:validate_payments' permission
-    - Must have lock on the payment
+    - With auto-assignment: can validate directly without lock
     """
 )
 async def validate_payment(
@@ -3017,18 +3017,35 @@ async def validate_payment(
     if not agent_profile_id:
         no_agent_profile()
 
-    # Verify lock ownership
+    # Get payment with workflow status
     payment = await db.fetchrow(
-        "SELECT id, locked_by_agent_profile_id, service_request_id FROM service_payments WHERE id = $1::uuid",
+        "SELECT id, locked_by_agent_profile_id, service_request_id, workflow_status FROM service_payments WHERE id = $1::uuid",
         payment_id
     )
 
     if not payment:
         payment_not_found(payment_id)
 
+    # With auto-assignment architecture, allow direct validation if:
+    # 1. Payment is pending_agent_review (not locked by anyone), OR
+    # 2. Payment is locked by the current agent
     current_lock = payment["locked_by_agent_profile_id"]
-    if not current_lock or str(current_lock) != agent_profile_id:
+    workflow_status = payment["workflow_status"]
+
+    if workflow_status == "locked_by_agent" and (not current_lock or str(current_lock) != agent_profile_id):
+        # Payment is locked by another agent
         must_lock_payment_first()
+
+    # If payment is pending_agent_review, auto-assign to current agent
+    if workflow_status == "pending_agent_review":
+        await db.execute(
+            """
+            UPDATE service_payments
+            SET locked_by_agent_profile_id = $2, workflow_status = 'locked_by_agent', updated_at = NOW()
+            WHERE id = $1
+            """,
+            payment_id, agent_profile_id
+        )
 
     # Validate via registry (using agent_profile_id instead of user_id)
     result = await payment_processor_registry.validate_manual_payment(
@@ -3120,7 +3137,7 @@ async def validate_payment(
 
     **Permissions:**
     - Requires 'treasury:validate_payments' permission
-    - Must have lock on the payment
+    - With auto-assignment: can reject directly without lock
     """
 )
 async def reject_payment(
@@ -3138,18 +3155,35 @@ async def reject_payment(
     if not agent_profile_id:
         no_agent_profile()
 
-    # Verify lock ownership
+    # Get payment with workflow status
     payment = await db.fetchrow(
-        "SELECT id, locked_by_agent_profile_id FROM service_payments WHERE id = $1::uuid",
+        "SELECT id, locked_by_agent_profile_id, workflow_status FROM service_payments WHERE id = $1::uuid",
         payment_id
     )
 
     if not payment:
         payment_not_found(payment_id)
 
+    # With auto-assignment architecture, allow direct rejection if:
+    # 1. Payment is pending_agent_review (not locked by anyone), OR
+    # 2. Payment is locked by the current agent
     current_lock = payment["locked_by_agent_profile_id"]
-    if not current_lock or str(current_lock) != agent_profile_id:
+    workflow_status = payment["workflow_status"]
+
+    if workflow_status == "locked_by_agent" and (not current_lock or str(current_lock) != agent_profile_id):
+        # Payment is locked by another agent
         must_lock_payment_first()
+
+    # If payment is pending_agent_review, auto-assign to current agent before rejection
+    if workflow_status == "pending_agent_review":
+        await db.execute(
+            """
+            UPDATE service_payments
+            SET locked_by_agent_profile_id = $2, workflow_status = 'locked_by_agent', updated_at = NOW()
+            WHERE id = $1
+            """,
+            payment_id, agent_profile_id
+        )
 
     # Reject via registry (using agent_profile_id instead of user_id)
     result = await payment_processor_registry.reject_manual_payment(

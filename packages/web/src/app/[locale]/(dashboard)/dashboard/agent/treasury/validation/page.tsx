@@ -1,8 +1,8 @@
 /**
  * Treasury Validation Page
  * Lists pending payments requiring manual validation (cash/check)
- * Treasury agents can lock, validate, or reject payments
- * @version 1.1.4 - Added debugging for frontend error
+ * Treasury agents can validate or reject payments directly (auto-assignment)
+ * @version 1.2.0 - Simplified workflow: removed mandatory lock step
  */
 
 'use client';
@@ -29,7 +29,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  Lock,
   Unlock,
   CheckCircle,
   XCircle,
@@ -82,11 +81,9 @@ export default function TreasuryValidationPage() {
 
   // Actions
   const {
-    lockPayment,
     validatePayment,
     rejectPayment,
     unlockPayment,
-    isLocking,
     isValidating,
     isRejecting,
     isUnlocking,
@@ -137,10 +134,6 @@ export default function TreasuryValidationPage() {
     });
   };
 
-  const handleLock = async (payment: PendingPayment) => {
-    await lockPayment.mutateAsync({ paymentId: payment.id });
-  };
-
   const handleUnlock = async (payment: PendingPayment) => {
     await unlockPayment.mutateAsync(payment.id);
   };
@@ -163,7 +156,7 @@ export default function TreasuryValidationPage() {
     await rejectPayment.mutateAsync({ paymentId, request: { reason } });
   };
 
-  const isAnyLoading = isLocking || isValidating || isRejecting || isUnlocking;
+  const isAnyLoading = isValidating || isRejecting || isUnlocking;
 
   return (
     <div className="space-y-6">
@@ -337,62 +330,48 @@ export default function TreasuryValidationPage() {
                             <Eye className="h-4 w-4" />
                           </Button>
 
-                          {/* Lock/Unlock */}
-                          {payment.workflowStatus === 'pending_agent_review' && (
+                          {/* Unlock - only show if locked by agent */}
+                          {payment.workflowStatus === 'locked_by_agent' && (
                             <Button
                               variant="outline"
                               size="icon"
-                              onClick={() => handleLock(payment)}
+                              onClick={() => handleUnlock(payment)}
                               disabled={isAnyLoading}
-                              title="Bloquear para revision"
+                              title="Desbloquear"
                             >
-                              {isLocking ? (
+                              {isUnlocking ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
-                                <Lock className="h-4 w-4" />
+                                <Unlock className="h-4 w-4" />
                               )}
                             </Button>
                           )}
 
-                          {payment.workflowStatus === 'locked_by_agent' && (
-                            <>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() => handleUnlock(payment)}
-                                disabled={isAnyLoading}
-                                title="Desbloquear"
-                              >
-                                {isUnlocking ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Unlock className="h-4 w-4" />
-                                )}
-                              </Button>
+                          {/* Validate - show for both pending_agent_review and locked_by_agent */}
+                          {(payment.workflowStatus === 'pending_agent_review' || payment.workflowStatus === 'locked_by_agent') && (
+                            <Button
+                              variant="default"
+                              size="icon"
+                              onClick={() => openValidationDialog(payment)}
+                              disabled={isAnyLoading}
+                              className="bg-green-600 hover:bg-green-700"
+                              title="Validar pago"
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                            </Button>
+                          )}
 
-                              {/* Validate */}
-                              <Button
-                                variant="default"
-                                size="icon"
-                                onClick={() => openValidationDialog(payment)}
-                                disabled={isAnyLoading}
-                                className="bg-green-600 hover:bg-green-700"
-                                title="Validar pago"
-                              >
-                                <CheckCircle className="h-4 w-4" />
-                              </Button>
-
-                              {/* Reject */}
-                              <Button
-                                variant="destructive"
-                                size="icon"
-                                onClick={() => openRejectionDialog(payment)}
-                                disabled={isAnyLoading}
-                                title="Rechazar pago"
-                              >
-                                <XCircle className="h-4 w-4" />
-                              </Button>
-                            </>
+                          {/* Reject - show for both pending_agent_review and locked_by_agent */}
+                          {(payment.workflowStatus === 'pending_agent_review' || payment.workflowStatus === 'locked_by_agent') && (
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              onClick={() => openRejectionDialog(payment)}
+                              disabled={isAnyLoading}
+                              title="Rechazar pago"
+                            >
+                              <XCircle className="h-4 w-4" />
+                            </Button>
                           )}
                         </div>
                       </TableCell>
