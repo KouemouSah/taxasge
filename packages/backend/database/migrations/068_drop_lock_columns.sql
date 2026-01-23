@@ -51,6 +51,7 @@ END $$;
 DROP VIEW IF EXISTS v_pending_payment_validations CASCADE;
 
 -- Recreate without lock-related columns and joins
+-- Note: Using assigned_agent_profile_id (UUID) which references agent_profiles
 CREATE OR REPLACE VIEW v_pending_payment_validations AS
 SELECT
     sp.id AS payment_id,
@@ -65,7 +66,7 @@ SELECT
     sp.total_amount,
     sp.currency,
     sp.workflow_status,
-    sp.assigned_agent_id,
+    sp.assigned_agent_profile_id,
     assigned_ap.user_id AS assigned_to_user_id,
     assigned_user.full_name AS assigned_to_name,
     sp.created_at,
@@ -73,7 +74,7 @@ SELECT
 FROM service_payments sp
 LEFT JOIN service_requests sr ON sp.service_request_id = sr.id
 LEFT JOIN users u ON sp.user_id = u.id
-LEFT JOIN agent_profiles assigned_ap ON sp.assigned_agent_id = assigned_ap.id
+LEFT JOIN agent_profiles assigned_ap ON sp.assigned_agent_profile_id = assigned_ap.id
 LEFT JOIN users assigned_user ON assigned_ap.user_id = assigned_user.id
 WHERE sp.workflow_status = 'pending_agent_review'
   AND sp.requires_agent_validation = true
