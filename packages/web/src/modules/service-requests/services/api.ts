@@ -1090,20 +1090,6 @@ class ServiceRequestsApiClient {
   }
 
   /**
-   * Assign request to agent
-   */
-  async assignToAgent(
-    requestId: string,
-    agentId: string
-  ): Promise<ServiceRequest> {
-    const backend = await this.request<BackendServiceRequest>(`/${requestId}/assign`, {
-      method: 'POST',
-      body: JSON.stringify({ agent_id: agentId }),
-    })
-    return transformServiceRequest(backend)
-  }
-
-  /**
    * Approve request
    */
   async approveRequest(

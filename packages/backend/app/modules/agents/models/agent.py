@@ -172,7 +172,6 @@ class AgentWorkQueueResponse(AgentWorkQueueBase):
     id: str
     sla_status: Optional[str] = None
     assigned_at: Optional[datetime] = None
-    locked_until: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     completed_by: Optional[str] = None
     retry_count: int = 0

@@ -1064,7 +1064,6 @@ async def assign_escalation(
         UPDATE agent_work_queue
         SET assigned_to = $2,
             assigned_at = NOW(),
-            locked_until = NOW() + INTERVAL '60 minutes',
             status = 'assigned',
             updated_at = NOW()
         WHERE id = $1

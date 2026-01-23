@@ -247,7 +247,6 @@ class AssignmentRepository:
             SELECT * FROM agent_work_queue
             WHERE ministry_id = $1
               AND status = 'pending'
-              AND (assigned_to IS NULL OR locked_until < NOW())
             ORDER BY priority_score DESC, created_at ASC
             LIMIT $2
         """
@@ -259,20 +258,18 @@ class AssignmentRepository:
         conn: asyncpg.Connection,
         queue_id: str,
         agent_id: str,
-        lock_duration_minutes: int = 30,
     ) -> Dict[str, Any]:
-        """Assign queue item to agent"""
+        """Assign queue item to agent (used by auto-assignment)"""
         query = """
             UPDATE agent_work_queue
             SET assigned_to = $2,
                 assigned_at = NOW(),
-                locked_until = NOW() + INTERVAL '$3 minutes',
                 status = 'assigned',
                 updated_at = NOW()
             WHERE id = $1
             RETURNING *
         """
-        result = await conn.fetchrow(query, queue_id, agent_id, lock_duration_minutes)
+        result = await conn.fetchrow(query, queue_id, agent_id)
         return dict(result)
 
     async def complete_queue_item(
@@ -315,26 +312,6 @@ class AssignmentRepository:
         """
         result = await conn.fetchrow(query, queue_id, escalated_by, reason)
         return dict(result)
-
-    async def unlock_expired_items(
-        self,
-        conn: asyncpg.Connection,
-    ) -> int:
-        """Unlock items with expired locks"""
-        query = """
-            UPDATE agent_work_queue
-            SET assigned_to = NULL,
-                locked_until = NULL,
-                status = 'pending',
-                retry_count = retry_count + 1,
-                updated_at = NOW()
-            WHERE status = 'assigned'
-              AND locked_until < NOW()
-              AND retry_count < max_retries
-            RETURNING id
-        """
-        results = await conn.fetch(query)
-        return len(results)
 
     async def get_sla_violations(
         self,

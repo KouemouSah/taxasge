@@ -99,7 +99,6 @@ export interface UseServiceRequestsReturn {
   deleteRequestById: (requestId: string) => Promise<boolean>
 
   // Agent actions
-  assignToAgent: (agentId: string) => Promise<boolean>
   approveRequest: (notes?: string) => Promise<boolean>
   rejectRequest: (reason: string, notes?: string) => Promise<boolean>
   requestAdditionalInfo: (message: string, requiredDocs?: string[]) => Promise<boolean>
@@ -768,23 +767,6 @@ export function useServiceRequests(): UseServiceRequestsReturn {
   // AGENT ACTIONS
   // =========================================================================
 
-  const assignToAgent = useCallback(async (agentId: string): Promise<boolean> => {
-    if (!currentRequest) return false
-
-    try {
-      setIsSaving(true)
-      setError(null)
-      const request = await serviceRequestsApi.assignToAgent(currentRequest.id, agentId)
-      setCurrentRequest(request)
-      return true
-    } catch (err) {
-      handleError(err)
-      return false
-    } finally {
-      setIsSaving(false)
-    }
-  }, [currentRequest, handleError])
-
   const approveRequest = useCallback(async (notes?: string): Promise<boolean> => {
     if (!currentRequest) return false
 
@@ -1019,7 +1001,6 @@ export function useServiceRequests(): UseServiceRequestsReturn {
     deleteRequestById,
 
     // Agent actions
-    assignToAgent,
     approveRequest,
     rejectRequest,
     requestAdditionalInfo,

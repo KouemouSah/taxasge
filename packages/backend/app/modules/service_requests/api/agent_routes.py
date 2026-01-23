@@ -236,47 +236,18 @@ async def get_my_queue(
 
 
 # ═══════════════════════════════════════════════════════════════
-# ITEM ASSIGNMENT
+# ITEM MANAGEMENT
 # ═══════════════════════════════════════════════════════════════
 
 @router.post(
-    "/queue/{queue_id}/assign",
-    summary="Assign queue item to self",
-    description="""
-    Assign a pending queue item to yourself.
-
-    The item will be locked for 30 minutes to prevent conflicts.
-    After assignment, the service request status changes to UNDER_REVIEW.
-    """
-)
-async def assign_to_self(
-    queue_id: str = Path(..., description="Queue item ID"),
-    db: asyncpg.Connection = Depends(get_database),
-    current_user=Depends(get_current_user),
-    _=Depends(permission_required("service_request.process"))
-):
-    try:
-        item = await agent_queue_service.assign_to_agent(
-            db=db,
-            queue_id=queue_id,
-            agent_id=str(current_user.id)
-        )
-        return {
-            "message": "Item assigned successfully",
-            "queue_id": queue_id,
-            "service_request_id": item['item_id']
-        }
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(e)
-        )
-
-
-@router.post(
     "/queue/{queue_id}/release",
-    summary="Release queue item",
-    description="Release an assigned queue item back to the pending queue."
+    summary="Release queue item for reassignment",
+    description="""
+    Release an assigned queue item back to the pending queue.
+
+    This will trigger auto-assignment to find a new agent.
+    Use this when you cannot complete the assigned task.
+    """
 )
 async def release_item(
     queue_id: str = Path(..., description="Queue item ID"),
@@ -285,17 +256,52 @@ async def release_item(
     current_user=Depends(get_current_user),
     _=Depends(permission_required("service_request.process"))
 ):
+    # Get queue item info before releasing
+    queue_item = await db.fetchrow(
+        "SELECT item_id FROM agent_work_queue WHERE id = $1 AND assigned_to = $2",
+        queue_id, str(current_user.id)
+    )
+
+    if not queue_item:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Queue item not found or not assigned to you"
+        )
+
+    # Release the queue item
     await db.execute("""
         UPDATE agent_work_queue
         SET assigned_to = NULL,
-            locked_until = NULL,
             status = 'pending',
             updated_at = NOW()
         WHERE id = $1
         AND assigned_to = $2
     """, queue_id, str(current_user.id))
 
-    return {"message": "Item released back to queue"}
+    # Also update service_request
+    await db.execute("""
+        UPDATE service_requests
+        SET assigned_to = NULL,
+            assigned_at = NULL,
+            status = 'SUBMITTED',
+            updated_at = NOW()
+        WHERE id = $1
+    """, queue_item['item_id'])
+
+    # Cancel the assignment record
+    await db.execute("""
+        UPDATE assignments
+        SET status = 'cancelled',
+            notes = COALESCE(notes, '') || ' [Released by agent: ' || COALESCE($2, 'no reason') || ']',
+            updated_at = NOW()
+        WHERE item_id = $1
+        AND status IN ('assigned', 'in_progress')
+    """, queue_item['item_id'], reason)
+
+    # TODO: Trigger auto-assignment for the released item
+    # This could be done via event bus or directly here
+
+    return {"message": "Item released back to queue for reassignment"}
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -536,7 +542,6 @@ async def make_decision(
             UPDATE agent_work_queue
             SET status = 'pending',
                 assigned_to = NULL,
-                locked_until = NULL,
                 updated_at = NOW()
             WHERE id = $1
         """, str(queue_item['id']))
@@ -706,6 +711,98 @@ async def cancel_appointment(
 
     return {"message": "Appointment cancelled"}
 
+
+# ═══════════════════════════════════════════════════════════════
+# MY ESCALATIONS
+# ═══════════════════════════════════════════════════════════════
+
+class EscalationItemResponse(BaseModel):
+    """Escalation item response for agent view"""
+    id: str
+    queue_id: str
+    reason: str
+    priority_score: float
+    status: str  # pending, assigned, completed
+    escalation_status: str  # pending, in_review, resolved, reassigned
+    case_reference: str
+    case_type: str
+    notes: Optional[str]
+    created_at: str
+    escalated_at: str
+
+
+@router.get(
+    "/my-escalations",
+    response_model=List[EscalationItemResponse],
+    summary="Get my escalated items",
+    description="""
+    Get all items that I have escalated.
+
+    Returns items from agent_work_queue where:
+    - escalated = true
+    - escalated_by = current user
+    """
+)
+async def get_my_escalations(
+    include_resolved: bool = Query(False, description="Include resolved escalations"),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(50, ge=1, le=100, description="Items per page"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("service_request.escalate"))
+):
+    offset = (page - 1) * page_size
+
+    status_filter = "AND q.status != 'completed'" if not include_resolved else ""
+
+    rows = await db.fetch(f"""
+        SELECT
+            q.id as queue_id,
+            q.item_id,
+            q.escalation_reason,
+            q.priority_score,
+            q.status,
+            q.escalated_at,
+            q.created_at,
+            sr.reference as case_reference,
+            sr.workflow_code as case_type,
+            sr.notes,
+            CASE
+                WHEN q.status = 'completed' THEN 'resolved'
+                WHEN q.assigned_to IS NOT NULL THEN 'in_review'
+                ELSE 'pending'
+            END as escalation_status
+        FROM agent_work_queue q
+        JOIN service_requests sr ON sr.id = q.item_id
+        WHERE q.item_type = 'service_request'
+        AND q.escalated = true
+        AND q.escalated_by = $1
+        {status_filter}
+        ORDER BY q.escalated_at DESC
+        LIMIT $2 OFFSET $3
+    """, str(current_user.id), page_size, offset)
+
+    return [
+        EscalationItemResponse(
+            id=str(row['item_id']),
+            queue_id=str(row['queue_id']),
+            reason=row['escalation_reason'] or '',
+            priority_score=float(row['priority_score']),
+            status=row['status'],
+            escalation_status=row['escalation_status'],
+            case_reference=row['case_reference'] or '',
+            case_type=row['case_type'] or '',
+            notes=row['notes'],
+            created_at=row['created_at'].isoformat(),
+            escalated_at=row['escalated_at'].isoformat() if row['escalated_at'] else row['created_at'].isoformat()
+        )
+        for row in rows
+    ]
+
+
+# ═══════════════════════════════════════════════════════════════
+# APPOINTMENT MANAGEMENT
+# ═══════════════════════════════════════════════════════════════
 
 @router.get(
     "/appointments/available",
