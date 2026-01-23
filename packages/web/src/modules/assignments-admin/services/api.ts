@@ -68,7 +68,8 @@ export const assignmentsApi = {
    * - item_id, item_type (not declaration_id, declaration_type)
    */
   getAll: async (params?: AssignmentFilters): Promise<Assignment[]> => {
-    return fetchClient.get<Assignment[]>(ASSIGNMENTS_BASE, {
+    // Use trailing slash to avoid 307 redirect from FastAPI
+    return fetchClient.get<Assignment[]>(`${ASSIGNMENTS_BASE}/`, {
       agent_profile_id: params?.agent_profile_id,
       assigned_by_profile_id: params?.assigned_by_profile_id,  // DB column name
       status_filter: params?.status,  // Backend uses status_filter, not status
@@ -301,7 +302,8 @@ export const assignmentsApi = {
    * BACKEND: GET /api/v1/assignments
    */
   getPaginated: async (params?: AssignmentFilters): Promise<PaginatedAssignmentsResponse> => {
-    const response = await fetchClient.get<Assignment[]>(ASSIGNMENTS_BASE, {
+    // Use trailing slash to avoid 307 redirect from FastAPI
+    const response = await fetchClient.get<Assignment[]>(`${ASSIGNMENTS_BASE}/`, {
       agent_profile_id: params?.agent_profile_id,
       assigned_by_profile_id: params?.assigned_by_profile_id,  // DB column name
       status_filter: params?.status,  // Backend uses status_filter, not status
