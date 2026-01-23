@@ -16,8 +16,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Slider } from '@/components/ui/slider'
-import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -47,10 +45,14 @@ export default function AutoAssignmentPage() {
   // Form state
   const [itemId, setItemId] = useState('')
   const [itemType, setItemType] = useState<ItemType | ''>('')
-  const [priorityLevel, setPriorityLevel] = useState(5)
-  const [useLoadBalancing, setUseLoadBalancing] = useState(true)
-  const [respectSpecializations, setRespectSpecializations] = useState(true)
+  const [entityType, setEntityType] = useState<'DGI' | 'Ministry'>('DGI')
+  const [entityId, setEntityId] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Handler for Select component (converts string to ItemType)
+  const handleItemTypeChange = (value: string) => {
+    setItemType(value as ItemType)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -65,9 +67,9 @@ export default function AutoAssignmentPage() {
       const result = await assignmentsApi.createAuto({
         item_id: itemId,
         item_type: itemType as ItemType,
-        priority_level: priorityLevel,
-        use_load_balancing: useLoadBalancing,
-        respect_specializations: respectSpecializations,
+        item_data: {}, // Empty object - rules will evaluate based on item_type
+        entity_type: entityType,
+        entity_id: entityId || undefined,
       })
       toast.success(
         t('autoAssignmentSuccess', { agent: result.agent_name }) ||
@@ -132,7 +134,7 @@ export default function AutoAssignmentPage() {
             {/* Item Type */}
             <div className="space-y-2">
               <Label htmlFor="itemType">{t('itemType') || 'Item Type'} *</Label>
-              <Select value={itemType} onValueChange={setItemType}>
+              <Select value={itemType} onValueChange={handleItemTypeChange}>
                 <SelectTrigger id="itemType">
                   <SelectValue placeholder={t('selectItemType') || 'Select item type'} />
                 </SelectTrigger>
@@ -160,60 +162,35 @@ export default function AutoAssignmentPage() {
               </p>
             </div>
 
-            {/* Priority */}
-            <div className="space-y-4">
-              <Label>
-                {t('priority') || 'Priority'}: {priorityLevel}
-              </Label>
-              <Slider
-                value={[priorityLevel]}
-                onValueChange={(v) => setPriorityLevel(v[0])}
-                min={1}
-                max={10}
-                step={1}
-                className="w-full"
-              />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{t('low') || 'Low (1-3)'}</span>
-                <span>{t('medium') || 'Medium (4-6)'}</span>
-                <span>{t('high') || 'High (7-8)'}</span>
-                <span>{t('urgent') || 'Urgent (9-10)'}</span>
-              </div>
+            {/* Entity Type */}
+            <div className="space-y-2">
+              <Label htmlFor="entityType">{t('entityType') || 'Entity Type'}</Label>
+              <Select value={entityType} onValueChange={(v) => setEntityType(v as 'DGI' | 'Ministry')}>
+                <SelectTrigger id="entityType">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="DGI">DGI (Tax Authority)</SelectItem>
+                  <SelectItem value="Ministry">Ministry</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {t('entityTypeHelp') || 'The type of entity that will handle this item'}
+              </p>
             </div>
 
-            {/* Algorithm Options */}
-            <div className="space-y-4 pt-4 border-t">
-              <h3 className="font-medium">{t('algorithmOptions') || 'Algorithm Options'}</h3>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="loadBalancing">{t('useLoadBalancing') || 'Load Balancing'}</Label>
-                  <p className="text-xs text-muted-foreground">
-                    {t('loadBalancingDesc') || 'Distribute work evenly among agents'}
-                  </p>
-                </div>
-                <Switch
-                  id="loadBalancing"
-                  checked={useLoadBalancing}
-                  onCheckedChange={setUseLoadBalancing}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="specializations">
-                    {t('respectSpecializations') || 'Respect Specializations'}
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    {t('specializationsDesc') || 'Match agents with relevant expertise'}
-                  </p>
-                </div>
-                <Switch
-                  id="specializations"
-                  checked={respectSpecializations}
-                  onCheckedChange={setRespectSpecializations}
-                />
-              </div>
+            {/* Entity ID (optional) */}
+            <div className="space-y-2">
+              <Label htmlFor="entityId">{t('entityId') || 'Entity ID'} ({tCommon('optional') || 'Optional'})</Label>
+              <Input
+                id="entityId"
+                placeholder={t('enterEntityId') || 'Enter entity UUID (optional)'}
+                value={entityId}
+                onChange={(e) => setEntityId(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                {t('entityIdHelp') || 'Specific entity to route to (leave empty for auto-selection)'}
+              </p>
             </div>
 
             {/* Actions */}

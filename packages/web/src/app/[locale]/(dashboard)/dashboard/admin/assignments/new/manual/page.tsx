@@ -54,6 +54,11 @@ export default function ManualAssignmentPage() {
   const [notes, setNotes] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // Handler for Select component (converts string to ItemType)
+  const handleItemTypeChange = (value: string) => {
+    setItemType(value as ItemType)
+  }
+
   // Fetch available agents
   const { data: agents = [], isLoading: isLoadingAgents } = useQuery({
     queryKey: ['agents', 'available'],
@@ -119,7 +124,7 @@ export default function ManualAssignmentPage() {
             {/* Item Type */}
             <div className="space-y-2">
               <Label htmlFor="itemType">{t('itemType') || 'Item Type'} *</Label>
-              <Select value={itemType} onValueChange={setItemType}>
+              <Select value={itemType} onValueChange={handleItemTypeChange}>
                 <SelectTrigger id="itemType">
                   <SelectValue placeholder={t('selectItemType') || 'Select item type'} />
                 </SelectTrigger>
