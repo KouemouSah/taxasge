@@ -2550,6 +2550,12 @@
         "notifications": "Notificaciones",
         "declarations": "Declaraciones",
         "payments": "Pagos",
+        "payment": "Pago",
+        "request": "Solicitud",
+        "requests": "Solicitudes",
+        "appointment": "Cita",
+        "document": "Documento",
+        "security": "Seguridad",
         "reminders": "Recordatorios",
         "alerts": "Alertas",
         "system": "Sistema"

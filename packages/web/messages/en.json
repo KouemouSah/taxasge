@@ -2348,6 +2348,12 @@
         "notifications": "Notifications",
         "declarations": "Declarations",
         "payments": "Payments",
+        "payment": "Payment",
+        "request": "Request",
+        "requests": "Requests",
+        "appointment": "Appointment",
+        "document": "Document",
+        "security": "Security",
         "reminders": "Reminders",
         "alerts": "Alerts",
         "system": "System"

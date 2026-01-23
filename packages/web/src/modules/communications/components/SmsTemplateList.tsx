@@ -7,6 +7,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { Plus, Edit, Trash2, MessageCircle, Filter, CheckCircle, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -43,28 +44,28 @@ interface SmsTemplateListProps {
   locale: string
 }
 
-const SMS_CATEGORY_LABELS: Record<SmsTemplateCategory, string> = {
-  auth: 'Authentication',
-  notifications: 'Notifications',
-  payments: 'Payments',
-  declarations: 'Declarations',
-  reminders: 'Reminders',
-  alerts: 'Alerts',
-}
-
 export function SmsTemplateList({ locale }: SmsTemplateListProps) {
   const router = useRouter()
+  const t = useTranslations('admin.smsTemplates')
+  const tCategories = useTranslations('admin.emailTemplates.categories')
+  const tCommon = useTranslations('common')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
   const [category, setCategory] = useState<SmsTemplateCategory | 'all'>('all')
   const [isActive, setIsActive] = useState<boolean | undefined>(undefined)
   const [deleteId, setDeleteId] = useState<number | null>(null)
 
   const { data, isLoading, error } = useSmsTemplatesList({
     page,
-    pageSize: 20,
+    pageSize,
     category: category !== 'all' ? category : undefined,
     isActive,
   })
+
+  const handlePageSizeChange = (newSize: string) => {
+    setPageSize(Number(newSize))
+    setPage(1) // Reset to first page when changing page size
+  }
 
   const deleteMutation = useDeleteSmsTemplate()
 
@@ -75,19 +76,26 @@ export function SmsTemplateList({ locale }: SmsTemplateListProps) {
     }
   }
 
-  const getCategoryBadge = (category: SmsTemplateCategory) => {
-    const colors: Record<SmsTemplateCategory, string> = {
+  const getCategoryBadge = (category: string) => {
+    const colors: Record<string, string> = {
       auth: 'bg-blue-100 text-blue-800 border-blue-200',
       notifications: 'bg-purple-100 text-purple-800 border-purple-200',
       payments: 'bg-green-100 text-green-800 border-green-200',
+      payment: 'bg-green-100 text-green-800 border-green-200',
       declarations: 'bg-orange-100 text-orange-800 border-orange-200',
       reminders: 'bg-yellow-100 text-yellow-800 border-yellow-200',
       alerts: 'bg-red-100 text-red-800 border-red-200',
+      request: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+      requests: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+      appointment: 'bg-cyan-100 text-cyan-800 border-cyan-200',
+      document: 'bg-teal-100 text-teal-800 border-teal-200',
+      security: 'bg-rose-100 text-rose-800 border-rose-200',
+      system: 'bg-gray-100 text-gray-800 border-gray-200',
     }
 
     return (
-      <Badge variant="outline" className={colors[category]}>
-        {SMS_CATEGORY_LABELS[category]}
+      <Badge variant="outline" className={colors[category] || 'bg-gray-100 text-gray-800 border-gray-200'}>
+        {tCategories(category)}
       </Badge>
     )
   }
@@ -125,7 +133,7 @@ export function SmsTemplateList({ locale }: SmsTemplateListProps) {
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Category</label>
+              <label className="text-sm font-medium">{t('category') || 'Category'}</label>
               <Select
                 value={category}
                 onValueChange={(value) => setCategory(value as SmsTemplateCategory | 'all')}
@@ -134,19 +142,26 @@ export function SmsTemplateList({ locale }: SmsTemplateListProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  <SelectItem value="auth">Authentication</SelectItem>
-                  <SelectItem value="notifications">Notifications</SelectItem>
-                  <SelectItem value="payments">Payments</SelectItem>
-                  <SelectItem value="declarations">Declarations</SelectItem>
-                  <SelectItem value="reminders">Reminders</SelectItem>
-                  <SelectItem value="alerts">Alerts</SelectItem>
+                  <SelectItem value="all">{tCommon('all')}</SelectItem>
+                  <SelectItem value="auth">{tCategories('auth')}</SelectItem>
+                  <SelectItem value="notifications">{tCategories('notifications')}</SelectItem>
+                  <SelectItem value="payments">{tCategories('payments')}</SelectItem>
+                  <SelectItem value="payment">{tCategories('payment')}</SelectItem>
+                  <SelectItem value="declarations">{tCategories('declarations')}</SelectItem>
+                  <SelectItem value="request">{tCategories('request')}</SelectItem>
+                  <SelectItem value="requests">{tCategories('requests')}</SelectItem>
+                  <SelectItem value="appointment">{tCategories('appointment')}</SelectItem>
+                  <SelectItem value="document">{tCategories('document')}</SelectItem>
+                  <SelectItem value="security">{tCategories('security')}</SelectItem>
+                  <SelectItem value="reminders">{tCategories('reminders')}</SelectItem>
+                  <SelectItem value="alerts">{tCategories('alerts')}</SelectItem>
+                  <SelectItem value="system">{tCategories('system')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Status</label>
+              <label className="text-sm font-medium">{tCommon('status')}</label>
               <Select
                 value={isActive === undefined ? 'all' : isActive ? 'active' : 'inactive'}
                 onValueChange={(value) =>
@@ -157,9 +172,9 @@ export function SmsTemplateList({ locale }: SmsTemplateListProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="all">{tCommon('all')}</SelectItem>
+                  <SelectItem value="active">{tCommon('active')}</SelectItem>
+                  <SelectItem value="inactive">{tCommon('inactive')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -173,7 +188,7 @@ export function SmsTemplateList({ locale }: SmsTemplateListProps) {
                 }}
                 className="w-full"
               >
-                Clear Filters
+                {tCommon('clearFilters') || 'Clear Filters'}
               </Button>
             </div>
           </div>
@@ -281,33 +296,86 @@ export function SmsTemplateList({ locale }: SmsTemplateListProps) {
               </Table>
 
               {/* Pagination */}
-              {data && data.totalPages > 1 && (
+              {data && (
                 <div className="flex items-center justify-between border-t p-4">
-                  <div className="text-sm text-muted-foreground">
-                    Showing {(page - 1) * data.pageSize + 1} to{' '}
-                    {Math.min(page * data.pageSize, data.total)} of {data.total} templates
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      disabled={page === 1}
-                    >
-                      Previous
-                    </Button>
-                    <div className="text-sm">
-                      Page {page} of {data.totalPages}
+                  <div className="flex items-center gap-4">
+                    <div className="text-sm text-muted-foreground">
+                      Showing {(page - 1) * pageSize + 1} - {Math.min(page * pageSize, data.total)} of {data.total}
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}
-                      disabled={page === data.totalPages}
-                    >
-                      Next
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Rows:</span>
+                      <Select value={String(pageSize)} onValueChange={handlePageSizeChange}>
+                        <SelectTrigger className="w-[70px] h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="10">10</SelectItem>
+                          <SelectItem value="20">20</SelectItem>
+                          <SelectItem value="50">50</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
+                  {data.totalPages > 1 && (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(1)}
+                        disabled={page === 1}
+                      >
+                        {'<<'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                      >
+                        Previous
+                      </Button>
+                      {/* Page Numbers */}
+                      {Array.from({ length: Math.min(5, data.totalPages) }, (_, i) => {
+                        let pageNum: number
+                        if (data.totalPages <= 5) {
+                          pageNum = i + 1
+                        } else if (page <= 3) {
+                          pageNum = i + 1
+                        } else if (page >= data.totalPages - 2) {
+                          pageNum = data.totalPages - 4 + i
+                        } else {
+                          pageNum = page - 2 + i
+                        }
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={page === pageNum ? 'default' : 'outline'}
+                            size="sm"
+                            className="w-9"
+                            onClick={() => setPage(pageNum)}
+                          >
+                            {pageNum}
+                          </Button>
+                        )
+                      })}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}
+                        disabled={page === data.totalPages}
+                      >
+                        Next
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(data.totalPages)}
+                        disabled={page === data.totalPages}
+                      >
+                        {'>>'}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </>

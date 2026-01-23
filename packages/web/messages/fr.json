@@ -2550,6 +2550,12 @@
         "notifications": "Notifications",
         "declarations": "Déclarations",
         "payments": "Paiements",
+        "payment": "Paiement",
+        "request": "Demande",
+        "requests": "Demandes",
+        "appointment": "Rendez-vous",
+        "document": "Document",
+        "security": "Sécurité",
         "reminders": "Rappels",
         "alerts": "Alertes",
         "system": "Système"

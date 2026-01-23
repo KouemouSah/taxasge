@@ -64,8 +64,14 @@ export default function EmailTemplatesPage() {
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplateResponse | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
   const [starterViewMode, setStarterViewMode] = useState<'grid' | 'list'>('grid')
   const [starterTemplatesExpanded, setStarterTemplatesExpanded] = useState(false)
+
+  const handlePageSizeChange = (newSize: string) => {
+    setPageSize(Number(newSize))
+    setCurrentPage(1) // Reset to first page when changing page size
+  }
 
   // Filter starter templates by category and search
   const filteredStarterTemplates = useMemo(() => {
@@ -89,7 +95,7 @@ export default function EmailTemplatesPage() {
   // Queries and mutations
   const { data: templatesData, isLoading, error } = useEmailTemplates({
     page: currentPage,
-    pageSize: 20,
+    pageSize,
     category: categoryFilter === 'all' ? undefined : categoryFilter,
     isActive: isActiveFilter === 'all' ? undefined : isActiveFilter === 'true',
   })
@@ -195,6 +201,12 @@ export default function EmailTemplatesPage() {
                 <SelectItem value="notifications">{tCategories('notifications')}</SelectItem>
                 <SelectItem value="declarations">{tCategories('declarations')}</SelectItem>
                 <SelectItem value="payments">{tCategories('payments')}</SelectItem>
+                <SelectItem value="payment">{tCategories('payment')}</SelectItem>
+                <SelectItem value="request">{tCategories('request')}</SelectItem>
+                <SelectItem value="requests">{tCategories('requests')}</SelectItem>
+                <SelectItem value="appointment">{tCategories('appointment')}</SelectItem>
+                <SelectItem value="document">{tCategories('document')}</SelectItem>
+                <SelectItem value="security">{tCategories('security')}</SelectItem>
                 <SelectItem value="reminders">{tCategories('reminders')}</SelectItem>
                 <SelectItem value="alerts">{tCategories('alerts')}</SelectItem>
                 <SelectItem value="system">{tCategories('system')}</SelectItem>
@@ -413,27 +425,86 @@ export default function EmailTemplatesPage() {
           )}
 
           {/* Pagination */}
-          {templatesData && templatesData.totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage(currentPage - 1)}
-              >
-                {tCommon('previous')}
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                {t('page')} {currentPage} {t('of')} {templatesData.totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={currentPage === templatesData.totalPages}
-                onClick={() => setCurrentPage(currentPage + 1)}
-              >
-                {tCommon('next')}
-              </Button>
+          {templatesData && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+              <div className="flex items-center gap-4">
+                <div className="text-sm text-muted-foreground">
+                  {tCommon('showing')} {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, templatesData.total)} {tCommon('of')} {templatesData.total}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">{t('rows') || 'Rows'}:</span>
+                  <Select value={String(pageSize)} onValueChange={handlePageSizeChange}>
+                    <SelectTrigger className="w-[70px] h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {templatesData.totalPages > 1 && (
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(1)}
+                  >
+                    {'<<'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(currentPage - 1)}
+                  >
+                    {tCommon('previous')}
+                  </Button>
+                  {/* Page Numbers */}
+                  {Array.from({ length: Math.min(5, templatesData.totalPages) }, (_, i) => {
+                    let pageNum: number
+                    if (templatesData.totalPages <= 5) {
+                      pageNum = i + 1
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1
+                    } else if (currentPage >= templatesData.totalPages - 2) {
+                      pageNum = templatesData.totalPages - 4 + i
+                    } else {
+                      pageNum = currentPage - 2 + i
+                    }
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={currentPage === pageNum ? 'default' : 'outline'}
+                        size="sm"
+                        className="w-9"
+                        onClick={() => setCurrentPage(pageNum)}
+                      >
+                        {pageNum}
+                      </Button>
+                    )
+                  })}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === templatesData.totalPages}
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                  >
+                    {tCommon('next')}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === templatesData.totalPages}
+                    onClick={() => setCurrentPage(templatesData.totalPages)}
+                  >
+                    {'>>'}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

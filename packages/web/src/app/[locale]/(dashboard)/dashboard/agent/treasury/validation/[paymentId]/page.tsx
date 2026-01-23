@@ -11,7 +11,6 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -34,14 +33,12 @@ import {
   AlertTriangle,
   Loader2,
   User,
-  FileText,
   Calendar,
   CreditCard,
   Mail,
   Clock,
   Hash,
   Building,
-  Phone,
   Receipt,
 } from 'lucide-react';
 import { treasuryApi } from '@/modules/treasury/services/api';
@@ -51,7 +48,6 @@ import {
   WorkflowStatusBadge,
   SLABadge,
 } from '@/modules/treasury/components';
-import type { PendingPayment } from '@/modules/treasury/types';
 
 // Workflow names mapping
 const WORKFLOW_NAMES: Record<string, string> = {

@@ -7,6 +7,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { Plus, Search, Edit, Trash2, Eye, Filter, CheckCircle, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -47,7 +48,11 @@ interface NotificationTemplateListProps {
 
 export function NotificationTemplateList(_props: NotificationTemplateListProps) {
   const { locale } = _props
+  const t = useTranslations('admin.notificationTemplates')
+  const tCategories = useTranslations('admin.emailTemplates.categories')
+  const tCommon = useTranslations('common')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
   const [search, setSearch] = useState('')
   const [notificationType, setNotificationType] = useState<NotificationType | 'all'>('all')
   const [isActive, setIsActive] = useState<boolean | undefined>(undefined)
@@ -55,11 +60,16 @@ export function NotificationTemplateList(_props: NotificationTemplateListProps) 
 
   const { data, isLoading, error } = useNotificationTemplates({
     page,
-    pageSize: 20,
+    pageSize,
     search: search || undefined,
     notificationType: notificationType !== 'all' ? notificationType : undefined,
     isActive,
   })
+
+  const handlePageSizeChange = (newSize: string) => {
+    setPageSize(Number(newSize))
+    setPage(1) // Reset to first page when changing page size
+  }
 
   const deleteMutation = useDeleteNotificationTemplate()
 
@@ -162,7 +172,7 @@ export function NotificationTemplateList(_props: NotificationTemplateListProps) 
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Status</label>
+              <label className="text-sm font-medium">{tCommon('status')}</label>
               <Select
                 value={isActive === undefined ? 'all' : isActive ? 'active' : 'inactive'}
                 onValueChange={(value) =>
@@ -173,9 +183,9 @@ export function NotificationTemplateList(_props: NotificationTemplateListProps) 
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="all">{tCommon('all')}</SelectItem>
+                  <SelectItem value="active">{tCommon('active')}</SelectItem>
+                  <SelectItem value="inactive">{tCommon('inactive')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -190,7 +200,7 @@ export function NotificationTemplateList(_props: NotificationTemplateListProps) 
                 }}
                 className="w-full"
               >
-                Clear Filters
+                {tCommon('clearFilters') || 'Clear Filters'}
               </Button>
             </div>
           </div>
@@ -301,33 +311,86 @@ export function NotificationTemplateList(_props: NotificationTemplateListProps) 
               </Table>
 
               {/* Pagination */}
-              {data && data.totalPages > 1 && (
+              {data && (
                 <div className="flex items-center justify-between border-t p-4">
-                  <div className="text-sm text-muted-foreground">
-                    Showing {(page - 1) * data.pageSize + 1} to{' '}
-                    {Math.min(page * data.pageSize, data.total)} of {data.total} templates
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      disabled={page === 1}
-                    >
-                      Previous
-                    </Button>
-                    <div className="text-sm">
-                      Page {page} of {data.totalPages}
+                  <div className="flex items-center gap-4">
+                    <div className="text-sm text-muted-foreground">
+                      Showing {(page - 1) * pageSize + 1} - {Math.min(page * pageSize, data.total)} of {data.total}
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}
-                      disabled={page === data.totalPages}
-                    >
-                      Next
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Rows:</span>
+                      <Select value={String(pageSize)} onValueChange={handlePageSizeChange}>
+                        <SelectTrigger className="w-[70px] h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="10">10</SelectItem>
+                          <SelectItem value="20">20</SelectItem>
+                          <SelectItem value="50">50</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
+                  {data.totalPages > 1 && (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(1)}
+                        disabled={page === 1}
+                      >
+                        {'<<'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                      >
+                        Previous
+                      </Button>
+                      {/* Page Numbers */}
+                      {Array.from({ length: Math.min(5, data.totalPages) }, (_, i) => {
+                        let pageNum: number
+                        if (data.totalPages <= 5) {
+                          pageNum = i + 1
+                        } else if (page <= 3) {
+                          pageNum = i + 1
+                        } else if (page >= data.totalPages - 2) {
+                          pageNum = data.totalPages - 4 + i
+                        } else {
+                          pageNum = page - 2 + i
+                        }
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={page === pageNum ? 'default' : 'outline'}
+                            size="sm"
+                            className="w-9"
+                            onClick={() => setPage(pageNum)}
+                          >
+                            {pageNum}
+                          </Button>
+                        )
+                      })}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}
+                        disabled={page === data.totalPages}
+                      >
+                        Next
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(data.totalPages)}
+                        disabled={page === data.totalPages}
+                      >
+                        {'>>'}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </>

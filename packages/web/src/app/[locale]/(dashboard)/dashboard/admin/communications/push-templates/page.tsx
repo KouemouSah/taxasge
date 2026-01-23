@@ -82,8 +82,15 @@ export default function PushTemplatesPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
 
   // Pagination
-  const [currentPage, _setCurrentPage] = useState(1)
-  const [pageSize] = useState(20)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+
+  const handlePageSizeChange = (newSize: string) => {
+    setPageSize(Number(newSize))
+    setCurrentPage(1) // Reset to first page when changing page size
+  }
+
+  const totalPages = Math.ceil(total / pageSize)
 
   // Preview dialog
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
@@ -324,68 +331,149 @@ export default function PushTemplatesPage() {
           )}
 
           {!isLoading && !error && templates.length > 0 && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('tableCode')}</TableHead>
-                  <TableHead>{t('tableName')}</TableHead>
-                  <TableHead>{t('tablePlatform')}</TableHead>
-                  <TableHead>{t('tableVariables')}</TableHead>
-                  <TableHead>{t('tableStatus')}</TableHead>
-                  <TableHead className="text-right">{t('tableActions')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {templates.map((template) => {
-                  const PlatformIcon = getPlatformIcon(template.platform)
-                  return (
-                    <TableRow key={template.id}>
-                      <TableCell className="font-mono text-sm">
-                        {template.templateCode}
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-medium">{getLocalizedName(template)}</span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <PlatformIcon className="h-4 w-4" />
-                          <span className="text-sm">{getPlatformLabel(template.platform)}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="text-xs">
-                          {template.variables?.length || 0} vars
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={template.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t('tableCode')}</TableHead>
+                    <TableHead>{t('tableName')}</TableHead>
+                    <TableHead>{t('tablePlatform')}</TableHead>
+                    <TableHead>{t('tableVariables')}</TableHead>
+                    <TableHead>{t('tableStatus')}</TableHead>
+                    <TableHead className="text-right">{t('tableActions')}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {templates.map((template) => {
+                    const PlatformIcon = getPlatformIcon(template.platform)
+                    return (
+                      <TableRow key={template.id}>
+                        <TableCell className="font-mono text-sm">
+                          {template.templateCode}
+                        </TableCell>
+                        <TableCell>
+                          <span className="font-medium">{getLocalizedName(template)}</span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <PlatformIcon className="h-4 w-4" />
+                            <span className="text-sm">{getPlatformLabel(template.platform)}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" className="text-xs">
+                            {template.variables?.length || 0} vars
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={template.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}
+                          >
+                            {template.isActive ? t('statusActive') : t('statusInactive')}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => handlePreview(template)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleEdit(template)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDeleteClick(template)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+
+              {/* Pagination */}
+              <div className="flex items-center justify-between border-t p-4">
+                <div className="flex items-center gap-4">
+                  <div className="text-sm text-muted-foreground">
+                    {tCommon('showing')} {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, total)} {tCommon('of')} {total}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">{t('rows') || 'Rows'}:</span>
+                    <Select value={String(pageSize)} onValueChange={handlePageSizeChange}>
+                      <SelectTrigger className="w-[70px] h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="20">20</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(1)}
+                      disabled={currentPage === 1}
+                    >
+                      {'<<'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      {tCommon('previous')}
+                    </Button>
+                    {/* Page Numbers */}
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum: number
+                      if (totalPages <= 5) {
+                        pageNum = i + 1
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i
+                      } else {
+                        pageNum = currentPage - 2 + i
+                      }
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={currentPage === pageNum ? 'default' : 'outline'}
+                          size="sm"
+                          className="w-9"
+                          onClick={() => setCurrentPage(pageNum)}
                         >
-                          {template.isActive ? t('statusActive') : t('statusInactive')}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => handlePreview(template)}>
-                            <Eye className="h-4 w-4 mr-1" />
-                            {t('preview')}
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(template)}>
-                            <Edit className="h-4 w-4 mr-1" />
-                            {t('edit')}
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleDeleteClick(template)}>
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            {t('delete')}
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
+                          {pageNum}
+                        </Button>
+                      )
+                    })}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      {tCommon('next')}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(totalPages)}
+                      disabled={currentPage === totalPages}
+                    >
+                      {'>>'}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
