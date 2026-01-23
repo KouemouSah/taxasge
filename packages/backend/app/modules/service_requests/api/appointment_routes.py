@@ -330,6 +330,29 @@ async def hold_appointment_slot(
     )
 
     if result.success and result.hold:
+        # Publish APPOINTMENT_BOOKED event (slot reserved, pending payment)
+        try:
+            EventBus.publish_nowait(
+                EventType.APPOINTMENT_BOOKED,
+                {
+                    "request_id": str(request_id),
+                    "user_id": str(request['user_id']),
+                    "user_email": current_user.email,
+                    "user_name": f"{current_user.first_name} {current_user.last_name}",
+                    "user_phone": getattr(current_user, 'phone_number', None),
+                    "preferred_language": getattr(current_user, 'preferred_language', 'es'),
+                    "workflow_code": request['workflow_code'],
+                    "appointment_date": str(result.hold.appointment_date) if result.hold.appointment_date else None,
+                    "appointment_time": str(result.hold.appointment_time) if result.hold.appointment_time else None,
+                    "location": result.hold.location_name,
+                    "expires_at": str(result.hold.expires_at) if result.hold.expires_at else None,
+                    "timestamp": datetime.now().isoformat(),
+                }
+            )
+            logger.info(f"APPOINTMENT_BOOKED event published for request {request_id}")
+        except Exception as e:
+            logger.error(f"Failed to publish APPOINTMENT_BOOKED event: {e}")
+
         return HoldSlotResponse(
             success=True,
             hold_id=result.hold.id,
@@ -568,11 +591,11 @@ async def confirm_appointment_hold(
     # Confirm hold
     result = await appointment_service.confirm_hold(db, request_id)
 
-    # Publish APPOINTMENT_BOOKED event if successful
+    # Publish APPOINTMENT_CONFIRMED event if successful (hold confirmed after payment)
     if result.success:
         try:
             EventBus.publish_nowait(
-                EventType.APPOINTMENT_BOOKED,
+                EventType.APPOINTMENT_CONFIRMED,
                 {
                     "request_id": str(request_id),
                     "user_id": str(request['user_id']),
@@ -587,8 +610,9 @@ async def confirm_appointment_hold(
                     "timestamp": datetime.now().isoformat(),
                 }
             )
-        except Exception:
-            pass  # Non-blocking
+            logger.info(f"APPOINTMENT_CONFIRMED event published for request {request_id}")
+        except Exception as e:
+            logger.error(f"Failed to publish APPOINTMENT_CONFIRMED event: {e}")
 
     return ConfirmHoldResponse(
         success=result.success,

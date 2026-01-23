@@ -873,3 +873,141 @@ async def get_available_slots(
         }
         for slot in slots
     ]
+
+
+# ═══════════════════════════════════════════════════════════════
+# DOCUMENT VALIDATION
+# ═══════════════════════════════════════════════════════════════
+
+class DocumentValidationRequest(BaseModel):
+    """Request body for document validation"""
+    comment: Optional[str] = None
+
+
+class DocumentRejectionRequest(BaseModel):
+    """Request body for document rejection"""
+    reason: str = Field(..., min_length=5, description="Rejection reason")
+
+
+@router.post(
+    "/documents/{document_id}/validate",
+    summary="Validate a document",
+    description="Mark a document as validated by agent."
+)
+async def validate_document(
+    document_id: str,
+    body: DocumentValidationRequest = None,
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("service_request.review"))
+):
+    """Validate a document uploaded by a citizen."""
+    # Get document with user info
+    doc = await db.fetchrow("""
+        SELECT uf.id, uf.user_id, uf.document_type, uf.file_name, uf.validation_status,
+               u.email, u.phone_number as phone, u.first_name, u.last_name, u.preferred_language
+        FROM uploaded_files uf
+        JOIN users u ON u.id = uf.user_id
+        WHERE uf.id = $1
+    """, document_id)
+
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    if doc["validation_status"] == "validated":
+        raise HTTPException(status_code=400, detail="Document already validated")
+
+    # Update document status
+    await db.execute("""
+        UPDATE uploaded_files
+        SET validation_status = 'validated',
+            validated_at = NOW(),
+            validated_by = $2,
+            updated_at = NOW()
+        WHERE id = $1
+    """, document_id, str(current_user.id))
+
+    # Publish DOCUMENT_VALIDATED event
+    try:
+        EventBus.publish_nowait(
+            EventType.DOCUMENT_VALIDATED,
+            {
+                "document_id": document_id,
+                "user_id": str(doc["user_id"]),
+                "user_email": doc["email"],
+                "user_phone": doc["phone"],
+                "user_name": f"{doc['first_name'] or ''} {doc['last_name'] or ''}".strip(),
+                "preferred_language": doc.get("preferred_language", "es"),
+                "document_type": doc["document_type"],
+                "file_name": doc["file_name"],
+                "agent_id": str(current_user.id),
+            }
+        )
+        logger.info(f"DOCUMENT_VALIDATED event published for document {document_id}")
+    except Exception as e:
+        logger.error(f"Failed to publish DOCUMENT_VALIDATED event: {e}")
+
+    return {"message": "Document validated", "document_id": document_id}
+
+
+@router.post(
+    "/documents/{document_id}/reject",
+    summary="Reject a document",
+    description="Mark a document as rejected with reason."
+)
+async def reject_document(
+    document_id: str,
+    body: DocumentRejectionRequest,
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("service_request.review"))
+):
+    """Reject a document uploaded by a citizen."""
+    # Get document with user info
+    doc = await db.fetchrow("""
+        SELECT uf.id, uf.user_id, uf.document_type, uf.file_name, uf.validation_status,
+               u.email, u.phone_number as phone, u.first_name, u.last_name, u.preferred_language
+        FROM uploaded_files uf
+        JOIN users u ON u.id = uf.user_id
+        WHERE uf.id = $1
+    """, document_id)
+
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    if doc["validation_status"] == "rejected":
+        raise HTTPException(status_code=400, detail="Document already rejected")
+
+    # Update document status
+    await db.execute("""
+        UPDATE uploaded_files
+        SET validation_status = 'rejected',
+            rejection_reason = $2,
+            validated_at = NOW(),
+            validated_by = $3,
+            updated_at = NOW()
+        WHERE id = $1
+    """, document_id, body.reason, str(current_user.id))
+
+    # Publish DOCUMENT_REJECTED event
+    try:
+        EventBus.publish_nowait(
+            EventType.DOCUMENT_REJECTED,
+            {
+                "document_id": document_id,
+                "user_id": str(doc["user_id"]),
+                "user_email": doc["email"],
+                "user_phone": doc["phone"],
+                "user_name": f"{doc['first_name'] or ''} {doc['last_name'] or ''}".strip(),
+                "preferred_language": doc.get("preferred_language", "es"),
+                "document_type": doc["document_type"],
+                "file_name": doc["file_name"],
+                "reason": body.reason,
+                "agent_id": str(current_user.id),
+            }
+        )
+        logger.info(f"DOCUMENT_REJECTED event published for document {document_id}")
+    except Exception as e:
+        logger.error(f"Failed to publish DOCUMENT_REJECTED event: {e}")
+
+    return {"message": "Document rejected", "document_id": document_id, "reason": body.reason}

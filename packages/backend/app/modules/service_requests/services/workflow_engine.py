@@ -48,6 +48,7 @@ from .schema_loader import schema_loader
 from .gemini_document_processor import gemini_document_processor
 from .tariff_service import tariff_service
 from .tariff_calculator import tariff_calculator
+from app.core.events import EventBus, EventType
 
 logger = logging.getLogger(__name__)
 
@@ -833,6 +834,32 @@ class WorkflowEngine:
                 WHERE id = $1
             """
             await db.execute(update_query, context.service_request_id, new_status.value)
+
+            # Publish REQUEST_COMPLETED event for notifications
+            try:
+                # Get user data for notification
+                user_data = await db.fetchrow(
+                    """SELECT u.id, u.email, u.phone_number as phone, u.first_name, u.last_name, u.preferred_language,
+                              sr.workflow_code, sr.reference
+                       FROM users u
+                       JOIN service_requests sr ON sr.user_id = u.id
+                       WHERE sr.id = $1""",
+                    context.service_request_id
+                )
+                if user_data:
+                    EventBus.publish_nowait(EventType.REQUEST_COMPLETED, {
+                        "request_id": str(context.service_request_id),
+                        "user_id": str(user_data["id"]),
+                        "user_email": user_data["email"],
+                        "user_phone": user_data["phone"],
+                        "user_name": f"{user_data['first_name'] or ''} {user_data['last_name'] or ''}".strip(),
+                        "preferred_language": user_data.get("preferred_language", "es"),
+                        "workflow_code": user_data["workflow_code"],
+                        "reference": user_data["reference"],
+                    })
+                    logger.info(f"REQUEST_COMPLETED event published for request {context.service_request_id}")
+            except Exception as e:
+                logger.error(f"Failed to publish REQUEST_COMPLETED event: {e}")
         else:
             await db.execute(update_query, context.service_request_id, new_status.value)
 

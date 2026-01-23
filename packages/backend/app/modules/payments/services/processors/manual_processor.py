@@ -19,6 +19,7 @@ import asyncpg
 from loguru import logger
 
 from app.modules.payments.models.payment import PaymentMethod, PaymentStatus
+from app.core.events import EventBus, EventType
 
 from .base import (
     PaymentProcessorBase,
@@ -102,6 +103,24 @@ class ManualValidationProcessor(PaymentProcessorBase):
                 f"Manual payment initiated: {payment_id} ({context.payment_method.value}) "
                 f"for service_request {context.service_request_id}"
             )
+
+            # Publish PAYMENT_CASH_PENDING event for notifications
+            try:
+                EventBus.publish_nowait(EventType.PAYMENT_CASH_PENDING, {
+                    "payment_id": payment_id,
+                    "user_id": context.user_id,
+                    "service_request_id": context.service_request_id,
+                    "amount": float(context.amount),
+                    "currency": context.currency,
+                    "payment_method": context.payment_method.value,
+                    "payment_reference": payment_reference,
+                    "user_email": context.user_email,
+                    "user_phone": context.user_phone,
+                    "preferred_language": "es",
+                })
+                logger.info(f"PAYMENT_CASH_PENDING event published for payment {payment_id}")
+            except Exception as e:
+                logger.error(f"Failed to publish PAYMENT_CASH_PENDING event: {e}")
 
             return PaymentInitResult(
                 success=True,
@@ -201,7 +220,6 @@ class ManualValidationProcessor(PaymentProcessorBase):
             PaymentStatusResult with updated status
         """
         from app.modules.payments.services.receipt_service import receipt_service
-        from app.core.events import EventBus, EventType
 
         try:
             # 1. Get payment with user and service request data
@@ -391,6 +409,15 @@ class ManualValidationProcessor(PaymentProcessorBase):
             PaymentStatusResult with updated status
         """
         try:
+            # Get payment with user data for notification
+            payment = await self._get_payment(db, payment_id)
+            user_data = None
+            if payment:
+                user_data = await db.fetchrow(
+                    "SELECT email, phone_number as phone, preferred_language FROM users WHERE id = $1",
+                    payment["user_id"]
+                )
+
             query = """
                 UPDATE service_payments
                 SET status = 'failed',
@@ -415,6 +442,24 @@ class ManualValidationProcessor(PaymentProcessorBase):
                     status=PaymentStatus.FAILED,
                     error="Payment not found"
                 )
+
+            # Publish PAYMENT_CASH_REJECTED event for notifications
+            try:
+                EventBus.publish_nowait(EventType.PAYMENT_CASH_REJECTED, {
+                    "payment_id": payment_id,
+                    "user_id": str(updated["user_id"]),
+                    "service_request_id": str(updated["service_request_id"]),
+                    "amount": float(updated["total_amount"]),
+                    "currency": updated["currency"],
+                    "payment_method": updated["payment_method"],
+                    "reason": rejection_reason,
+                    "user_email": user_data["email"] if user_data else None,
+                    "user_phone": user_data["phone"] if user_data else None,
+                    "preferred_language": user_data["preferred_language"] if user_data else "es",
+                })
+                logger.info(f"PAYMENT_CASH_REJECTED event published for payment {payment_id}")
+            except Exception as e:
+                logger.error(f"Failed to publish PAYMENT_CASH_REJECTED event: {e}")
 
             logger.info(
                 f"Manual payment {payment_id} rejected by agent_profile {agent_profile_id}. "

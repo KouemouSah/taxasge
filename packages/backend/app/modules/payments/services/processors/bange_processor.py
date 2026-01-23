@@ -124,6 +124,25 @@ class BangeProcessor(PaymentProcessorBase):
                     status=PaymentStatus.FAILED,
                     error="BANGE API call failed"
                 )
+
+                # Publish PAYMENT_FAILED event for notifications
+                try:
+                    EventBus.publish_nowait(EventType.PAYMENT_FAILED, {
+                        "payment_id": payment_id,
+                        "user_id": context.user_id,
+                        "service_request_id": context.service_request_id,
+                        "amount": float(context.amount),
+                        "currency": context.currency,
+                        "payment_method": context.payment_method.value,
+                        "user_email": context.user_email,
+                        "user_phone": context.user_phone,
+                        "preferred_language": "es",
+                        "reason": "Error al conectar con el sistema de pago BANGE",
+                    })
+                    logger.info(f"PAYMENT_FAILED event published for payment {payment_id}")
+                except Exception as e:
+                    logger.error(f"Failed to publish PAYMENT_FAILED event: {e}")
+
                 return PaymentInitResult(
                     success=False,
                     payment_id=payment_id,
