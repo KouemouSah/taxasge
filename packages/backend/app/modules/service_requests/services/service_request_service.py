@@ -38,6 +38,8 @@ from .tariff_calculator import tariff_calculator
 from .schema_loader import schema_loader
 from .gemini_document_processor import gemini_document_processor
 from .workflow_engine import workflow_engine
+from .agent_queue_service import agent_queue_service
+from app.modules.assignment.services.auto_assignment_service import AutoAssignmentService
 
 logger = logging.getLogger(__name__)
 
@@ -1128,6 +1130,79 @@ class ServiceRequestService:
             performed_by=user_id,
             comment="User submitted request"
         )
+
+        # === AUTO-ASSIGNMENT TRIGGER ===
+        # Add to agent work queue for visibility and SLA tracking
+        workflow_code = request["workflow_code"]
+        entity_code = request.get("entity_code")
+
+        if workflow_code and entity_code:
+            try:
+                # 1. Add to agent work queue (for queue management and SLA)
+                queue_item = await agent_queue_service.add_to_queue(
+                    db=db,
+                    service_request_id=request_id,
+                    workflow_code=workflow_code,
+                    entity_code=entity_code,
+                    priority_boost=0
+                )
+                logger.info(
+                    f"Service request {request['reference']} added to agent queue. "
+                    f"Queue ID: {queue_item.get('id')}, Priority: {queue_item.get('priority_score')}"
+                )
+
+                # 2. Trigger auto-assignment to select best agent
+                auto_assignment_service = AutoAssignmentService()
+                assignment = await auto_assignment_service.auto_assign_item(
+                    db=db,
+                    item_id=request_id,
+                    item_type="service_request",
+                    item_data={
+                        "workflow_code": workflow_code,
+                        "entity_code": entity_code,
+                        "solicitud_type": request.get("solicitud_type", "expedicion"),
+                        "priority": request.get("priority", "NORMAL"),
+                    },
+                    entity_type="entity",
+                    entity_id=entity_code,
+                    priority_level=5
+                )
+
+                if assignment:
+                    # Sync assigned_to in service_requests for backward compatibility
+                    # agent_profile_id -> user_id via agent_profiles table
+                    agent_user_id = await db.fetchval(
+                        "SELECT user_id FROM agent_profiles WHERE id = $1",
+                        assignment.agent_profile_id
+                    )
+                    if agent_user_id:
+                        await db.execute("""
+                            UPDATE service_requests
+                            SET assigned_to = $1, assigned_at = NOW(), updated_at = NOW()
+                            WHERE id = $2
+                        """, agent_user_id, request_id)
+
+                    logger.info(
+                        f"Service request {request['reference']} auto-assigned to agent "
+                        f"{assignment.agent_profile_id} (user_id: {agent_user_id})"
+                    )
+                else:
+                    logger.warning(
+                        f"Service request {request['reference']} could not be auto-assigned. "
+                        "No agent available or no matching rules."
+                    )
+
+            except Exception as e:
+                # Log error but don't fail the submission
+                logger.error(
+                    f"Auto-assignment failed for {request['reference']}: {e}",
+                    exc_info=True
+                )
+        else:
+            logger.warning(
+                f"Service request {request['reference']} missing workflow_code or entity_code. "
+                f"Skipping auto-assignment. workflow_code={workflow_code}, entity_code={entity_code}"
+            )
 
         # Refresh request data
         updated = await service_request_repository.find_by_id(db, request_id)
