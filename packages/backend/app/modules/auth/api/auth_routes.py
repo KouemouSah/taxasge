@@ -12,6 +12,7 @@ from datetime import datetime
 from enum import Enum
 from loguru import logger
 
+from app.core.events import EventBus, EventType
 from app.modules.auth.services.auth_service import get_auth_service
 from app.modules.auth.services.session_service import get_session_service
 from app.modules.users.models.user import (
@@ -475,6 +476,23 @@ async def register(
 
         # STEP 3: Delete pending registration (cleanup)
         await pending_repo.delete_by_email(request.email)
+
+        # STEP 4: Publish USER_REGISTERED event for welcome notification
+        try:
+            EventBus.publish_nowait(
+                EventType.USER_REGISTERED,
+                {
+                    "user_id": result.get("user", {}).get("id"),
+                    "user_email": request.email,
+                    "user_name": f"{request.first_name} {request.last_name}",
+                    "user_phone": request.phone,
+                    "preferred_language": preferred_lang,
+                    "role": request.role,
+                    "timestamp": datetime.now().isoformat(),
+                }
+            )
+        except Exception:
+            pass  # Non-blocking
 
         logger.info(f"User registered successfully with verified email: {request.email}")
         return TokenResponse(**result)

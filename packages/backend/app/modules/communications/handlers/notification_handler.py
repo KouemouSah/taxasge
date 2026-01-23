@@ -205,6 +205,14 @@ EVENT_NOTIFICATION_MAP: Dict[EventType, NotificationConfig] = {
         requires_user_prefs=False,  # Always notify for security
         sms_template_code="SECURITY_PASSWORD_CHANGED"
     ),
+
+    # User Registration Events
+    EventType.USER_REGISTERED: NotificationConfig(
+        template_code="user_welcome",
+        channels=[NotificationChannel.EMAIL],
+        priority="normal",
+        subject_key="notifications.user.welcome.subject"
+    ),
 }
 
 
@@ -475,18 +483,20 @@ class NotificationEventHandler:
         appointment_time = payload.get("appointment_time")
 
         # Generate formatted date for payments (PAYMENT_RECEIVED uses {{date}})
-        payment_date = None
-        if payload.get("timestamp"):
-            try:
-                ts = payload.get("timestamp")
-                if isinstance(ts, str):
-                    payment_date = ts[:10]  # Extract YYYY-MM-DD
-                elif isinstance(ts, datetime):
-                    payment_date = ts.strftime("%Y-%m-%d")
-            except Exception:
-                payment_date = datetime.now().strftime("%Y-%m-%d")
-        else:
-            payment_date = datetime.now().strftime("%Y-%m-%d")
+        # Priority: payload.date > payload.timestamp > now()
+        payment_date = payload.get("date")
+        if not payment_date:
+            if payload.get("timestamp"):
+                try:
+                    ts = payload.get("timestamp")
+                    if isinstance(ts, str):
+                        payment_date = ts[:10]  # Extract YYYY-MM-DD
+                    elif isinstance(ts, datetime):
+                        payment_date = ts.strftime("%d/%m/%Y")
+                except Exception:
+                    payment_date = datetime.now().strftime("%d/%m/%Y")
+            else:
+                payment_date = datetime.now().strftime("%d/%m/%Y")
 
         return {
             # User info
@@ -658,6 +668,11 @@ class NotificationEventHandler:
                 "fr": "Alerte de sécurité: Mot de passe modifié - TaxasGE",
                 "en": "Security alert: Password changed - TaxasGE"
             },
+            "user_welcome": {
+                "es": "¡Bienvenido a TaxasGE!",
+                "fr": "Bienvenue sur TaxasGE!",
+                "en": "Welcome to TaxasGE!"
+            },
         }
 
         template_subjects = subjects.get(config.template_code, {})
@@ -791,6 +806,11 @@ class NotificationEventHandler:
                 "es": f"Su contraseña fue modificada el {context.get('date')} a las {context.get('time')}. Si no realizó este cambio, contacte soporte inmediatamente.",
                 "fr": f"Votre mot de passe a été modifié le {context.get('date')} à {context.get('time')}. Si vous n'avez pas effectué ce changement, contactez le support immédiatement.",
                 "en": f"Your password was changed on {context.get('date')} at {context.get('time')}. If you did not make this change, contact support immediately."
+            },
+            "user_welcome": {
+                "es": "Gracias por registrarse en TaxasGE. Su cuenta ha sido creada exitosamente. Ahora puede acceder a todos los servicios fiscales de Guinea Ecuatorial.",
+                "fr": "Merci de vous être inscrit sur TaxasGE. Votre compte a été créé avec succès. Vous pouvez maintenant accéder à tous les services fiscaux de Guinée Équatoriale.",
+                "en": "Thank you for registering on TaxasGE. Your account has been created successfully. You can now access all fiscal services of Equatorial Guinea."
             },
         }
 

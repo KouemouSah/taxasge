@@ -202,9 +202,9 @@ async def reconcile_service_payment(db, merchant_reference: str, bange_transacti
         service_request_id = payment["service_request_id"]
         user_id = payment["user_id"]
 
-        # 2. Get user data for receipt
+        # 2. Get user data for receipt and notifications
         user_query = """
-            SELECT id, email, phone, first_name, last_name, dni
+            SELECT id, email, phone_number as phone, first_name, last_name, dni, preferred_language
             FROM users WHERE id = $1
         """
         user_data = await db.fetchrow(user_query, user_id)
@@ -270,6 +270,7 @@ async def reconcile_service_payment(db, merchant_reference: str, bange_transacti
 
         # 7. Publish PAYMENT_COMPLETED event for notifications
         try:
+            paid_at = datetime.utcnow()
             await EventBus.publish(EventType.PAYMENT_COMPLETED, {
                 "payment_id": payment_id,
                 "user_id": str(user_id),
@@ -282,6 +283,8 @@ async def reconcile_service_payment(db, merchant_reference: str, bange_transacti
                 "bange_transaction_id": bange_transaction_id,
                 "user_email": user_data["email"] if user_data else None,
                 "user_phone": user_data["phone"] if user_data else None,
+                "preferred_language": user_data.get("preferred_language", "es") if user_data else "es",
+                "date": paid_at.strftime("%d/%m/%Y"),
             })
             logger.info(f"PAYMENT_COMPLETED event published for BANGE payment {payment_id}")
         except Exception as e:

@@ -697,6 +697,15 @@ async def cancel_appointment(
     current_user=Depends(get_current_user),
     _=Depends(permission_required("service_request.schedule_appointment"))
 ):
+    # Get request info before cancellation (for notification)
+    request_info = await db.fetchrow("""
+        SELECT sr.user_id, sr.workflow_code,
+               ah.appointment_date, ah.appointment_time, ah.location_name
+        FROM service_requests sr
+        LEFT JOIN appointment_holds ah ON ah.service_request_id = sr.id AND ah.status = 'confirmed'
+        WHERE sr.id = $1
+    """, request_id)
+
     cancelled = await appointment_scheduler.cancel_appointment(
         db=db,
         service_request_id=request_id,
@@ -708,6 +717,34 @@ async def cancel_appointment(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No active appointment found"
         )
+
+    # Publish APPOINTMENT_CANCELLED event for notification
+    if request_info:
+        try:
+            user_info = await db.fetchrow(
+                "SELECT id, email, first_name, last_name, phone_number, preferred_language FROM users WHERE id = $1",
+                request_info['user_id']
+            )
+            if user_info:
+                EventBus.publish_nowait(
+                    EventType.APPOINTMENT_CANCELLED,
+                    {
+                        "request_id": str(request_id),
+                        "user_id": str(user_info['id']),
+                        "user_email": user_info['email'],
+                        "user_name": f"{user_info['first_name']} {user_info['last_name']}",
+                        "user_phone": user_info['phone_number'],
+                        "preferred_language": user_info['preferred_language'] or 'es',
+                        "workflow_code": request_info['workflow_code'],
+                        "appointment_date": str(request_info['appointment_date']) if request_info.get('appointment_date') else None,
+                        "appointment_time": str(request_info['appointment_time']) if request_info.get('appointment_time') else None,
+                        "location": request_info.get('location_name'),
+                        "reason": reason or "Agent cancellation",
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                )
+        except Exception:
+            pass  # Non-blocking
 
     return {"message": "Appointment cancelled"}
 

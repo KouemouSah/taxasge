@@ -24,6 +24,9 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional, List, Dict, Any
 from loguru import logger
 
+from datetime import datetime
+
+from app.core.events import EventBus, EventType
 from app.modules.declarations.models import (
     DeclarationCreate,
     DeclarationUpdate,
@@ -478,7 +481,30 @@ async def submit_declaration(
 
         logger.info(f"User {user_id} submitted declaration {declaration_id}")
 
-        # TODO: Trigger agent assignment workflow (Phase 3.2)
+        # Publish DECLARATION_SUBMITTED event for notifications
+        try:
+            user_info = await db.fetchrow(
+                "SELECT id, email, first_name, last_name, phone_number, preferred_language FROM users WHERE id = $1",
+                user_id
+            )
+            if user_info:
+                EventBus.publish_nowait(
+                    EventType.DECLARATION_SUBMITTED,
+                    {
+                        "declaration_id": declaration_id,
+                        "user_id": str(user_id),
+                        "user_email": user_info['email'],
+                        "user_name": f"{user_info['first_name']} {user_info['last_name']}",
+                        "user_phone": user_info['phone_number'],
+                        "preferred_language": user_info['preferred_language'] or 'es',
+                        "declaration_type": submitted.get("declaration_type"),
+                        "reference": submitted.get("reference"),
+                        "amount": float(submitted.get("calculated_tax", 0)),
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                )
+        except Exception:
+            pass  # Non-blocking
 
         return DeclarationResponse(**submitted)
 

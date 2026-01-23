@@ -221,9 +221,9 @@ class ManualValidationProcessor(PaymentProcessorBase):
                     error=f"Payment is not pending validation (status: {payment['workflow_status']})"
                 )
 
-            # 3. Get user data for receipt
+            # 3. Get user data for receipt and notifications
             user_query = """
-                SELECT id, email, phone, first_name, last_name, dni
+                SELECT id, email, phone_number as phone, first_name, last_name, dni, preferred_language
                 FROM users WHERE id = $1
             """
             user_data = await db.fetchrow(user_query, payment["user_id"])
@@ -338,6 +338,8 @@ class ManualValidationProcessor(PaymentProcessorBase):
                     "agent_profile_id": agent_profile_id,
                     "user_email": user_data["email"] if user_data else None,
                     "user_phone": user_data["phone"] if user_data else None,
+                    "preferred_language": user_data.get("preferred_language", "es") if user_data else "es",
+                    "date": paid_at.strftime("%d/%m/%Y"),
                 })
                 logger.info(f"PAYMENT_COMPLETED event published for {payment_id}")
             except Exception as e:

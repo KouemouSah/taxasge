@@ -24,6 +24,7 @@ from app.modules.payments.models.payment import (
 )
 from app.modules.payments.services.bange_service import BANGEService
 from app.config import get_settings
+from app.core.events import EventBus, EventType
 
 from .base import (
     PaymentProcessorBase,
@@ -218,16 +219,48 @@ class BangeProcessor(PaymentProcessorBase):
 
                 if bange_status and bange_status.get("status") == "completed":
                     # Update local status
+                    paid_at = datetime.utcnow()
                     await self._mark_payment_completed(
                         db=db,
                         payment_id=payment_id,
-                        paid_at=datetime.utcnow()
+                        paid_at=paid_at
                     )
+
+                    # Get user data for notifications
+                    user_data = None
+                    try:
+                        user_data = await db.fetchrow(
+                            "SELECT email, phone_number as phone, preferred_language FROM users WHERE id = $1",
+                            payment.get("user_id")
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to fetch user data for notification: {e}")
+
+                    # Publish PAYMENT_COMPLETED event for agent queue and notifications
+                    try:
+                        await EventBus.publish(EventType.PAYMENT_COMPLETED, {
+                            "payment_id": payment_id,
+                            "user_id": str(payment.get("user_id")),
+                            "service_request_id": str(payment.get("service_request_id")),
+                            "amount": float(payment.get("total_amount", 0)),
+                            "currency": payment.get("currency", "XAF"),
+                            "payment_method": payment.get("payment_method", "bange_wallet"),
+                            "receipt_number": payment.get("receipt_number"),
+                            "bange_transaction_id": bange_transaction_id,
+                            "user_email": user_data["email"] if user_data else None,
+                            "user_phone": user_data["phone"] if user_data else None,
+                            "preferred_language": user_data["preferred_language"] if user_data else "es",
+                            "date": paid_at.strftime("%d/%m/%Y"),
+                        })
+                        logger.info(f"PAYMENT_COMPLETED event published for BANGE payment {payment_id} (via check_status)")
+                    except Exception as e:
+                        logger.error(f"Failed to publish PAYMENT_COMPLETED event for BANGE payment: {e}")
+
                     return PaymentStatusResult(
                         payment_id=payment_id,
                         status=PaymentStatus.COMPLETED,
                         paid=True,
-                        paid_at=datetime.utcnow(),
+                        paid_at=paid_at,
                         amount=payment.get("total_amount"),
                         currency=payment.get("currency", "XAF"),
                     )
