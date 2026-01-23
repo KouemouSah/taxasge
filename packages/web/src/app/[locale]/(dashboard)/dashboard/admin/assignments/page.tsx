@@ -315,10 +315,36 @@ export default function AssignmentsPage() {
           <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
           <p className="text-muted-foreground">{t('subtitle')}</p>
         </div>
-        <Button variant="outline" onClick={() => refetch()}>
-          <RefreshCw className="mr-2 h-4 w-4" />
-          {tCommon('refresh') || 'Refresh'}
-        </Button>
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button>
+                <ClipboardList className="mr-2 h-4 w-4" />
+                {t('newAssignment') || 'New Assignment'}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>{t('createAssignment') || 'Create Assignment'}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href={`/${locale}/dashboard/admin/assignments/new/manual`}>
+                  <User className="mr-2 h-4 w-4" />
+                  {t('manualAssignment') || 'Manual Assignment'}
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={`/${locale}/dashboard/admin/assignments/new/auto`}>
+                  <Play className="mr-2 h-4 w-4" />
+                  {t('autoAssignment') || 'Auto Assignment'}
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button variant="outline" onClick={() => refetch()}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            {tCommon('refresh') || 'Refresh'}
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}

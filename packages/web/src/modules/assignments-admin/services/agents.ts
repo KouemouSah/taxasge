@@ -59,9 +59,53 @@ export interface AgentListFilters {
 }
 
 /**
+ * Available agent for assignment (simplified view)
+ */
+export interface AvailableAgent {
+  agent_profile_id: string
+  user_id: string
+  agent_name: string
+  email?: string
+  current_assignments: number
+  max_concurrent_assignments: number
+  workload_status: string
+  specializations?: string[]
+}
+
+/**
  * Agents API Service
  */
 export const agentsApi = {
+  /**
+   * Get available agents for assignment
+   * Returns agents that are active and not overloaded
+   * BACKEND: GET /api/v1/agents/available (or profiles with filters)
+   */
+  getAvailable: async (): Promise<AvailableAgent[]> => {
+    try {
+      // Try dedicated available endpoint first
+      return await fetchClient.get<AvailableAgent[]>(`${AGENTS_BASE}/available`)
+    } catch {
+      // Fallback: get all active agents and filter client-side
+      const response = await fetchClient.get<AgentListResponse>(`${AGENTS_BASE}/profiles`, {
+        is_active: true,
+        page_size: 100,
+      })
+      return response.items
+        .filter(a => a.workload_status !== 'unavailable' && a.workload_status !== 'overloaded')
+        .map(a => ({
+          agent_profile_id: a.id,
+          user_id: a.user_id,
+          agent_name: a.full_name || a.email || 'Unknown',
+          email: a.email,
+          current_assignments: a.current_workload || 0,
+          max_concurrent_assignments: a.max_capacity || 20,
+          workload_status: a.workload_status || 'available',
+          specializations: a.specializations,
+        }))
+    }
+  },
+
   /**
    * Get paginated list of agent profiles
    * BACKEND: GET /api/v1/agents/profiles
