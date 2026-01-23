@@ -35,7 +35,10 @@ def extract_supplements_list(calculation_details: Optional[Dict[str, Any]]) -> L
 class PaymentWorkflowStatus(str, Enum):
     """
     Workflow status for payments requiring agent review.
-    Must match database enum: payment_workflow_status (16 values)
+    Must match database enum: payment_workflow_status (15 values)
+
+    Note: locked_by_agent was removed - with auto-assignment architecture,
+    agents only see their assigned payments, so locking is obsolete.
     """
     # Initial states
     SUBMITTED = "submitted"
@@ -44,7 +47,6 @@ class PaymentWorkflowStatus(str, Enum):
 
     # Agent review states
     PENDING_AGENT_REVIEW = "pending_agent_review"
-    LOCKED_BY_AGENT = "locked_by_agent"
     AGENT_REVIEWING = "agent_reviewing"
 
     # Document states
