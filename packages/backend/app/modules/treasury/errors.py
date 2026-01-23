@@ -18,12 +18,8 @@ class TreasuryErrorCode(str, Enum):
     UNAUTHORIZED = "TREASURY_002"
     INSUFFICIENT_PERMISSIONS = "TREASURY_003"
 
-    # Payment Lock Errors
+    # Payment Errors
     PAYMENT_NOT_FOUND = "TREASURY_100"
-    PAYMENT_ALREADY_LOCKED = "TREASURY_101"
-    PAYMENT_NOT_LOCKED = "TREASURY_102"
-    PAYMENT_LOCKED_BY_OTHER = "TREASURY_103"
-    LOCK_EXPIRED = "TREASURY_104"
 
     # Validation Errors
     VALIDATION_FAILED = "TREASURY_200"
@@ -61,12 +57,8 @@ ERROR_MESSAGES = {
     TreasuryErrorCode.UNAUTHORIZED: "No está autorizado para realizar esta acción.",
     TreasuryErrorCode.INSUFFICIENT_PERMISSIONS: "No tiene permisos suficientes para esta operación.",
 
-    # Payment Lock Errors
+    # Payment Errors
     TreasuryErrorCode.PAYMENT_NOT_FOUND: "El pago no fue encontrado. Verifique el identificador.",
-    TreasuryErrorCode.PAYMENT_ALREADY_LOCKED: "Este pago ya está siendo procesado por otro agente.",
-    TreasuryErrorCode.PAYMENT_NOT_LOCKED: "Debe bloquear el pago antes de realizar esta acción.",
-    TreasuryErrorCode.PAYMENT_LOCKED_BY_OTHER: "Este pago está bloqueado por otro agente. Intente más tarde.",
-    TreasuryErrorCode.LOCK_EXPIRED: "El bloqueo del pago ha expirado. Bloquee nuevamente para continuar.",
 
     # Validation Errors
     TreasuryErrorCode.VALIDATION_FAILED: "No se pudo validar el pago. Intente nuevamente.",
@@ -157,22 +149,6 @@ def no_agent_profile():
     """Raise no agent profile error"""
     raise TreasuryError(
         error_code=TreasuryErrorCode.NO_AGENT_PROFILE,
-        status_code=status.HTTP_403_FORBIDDEN
-    )
-
-
-def payment_locked_by_other():
-    """Raise payment locked by other agent error"""
-    raise TreasuryError(
-        error_code=TreasuryErrorCode.PAYMENT_LOCKED_BY_OTHER,
-        status_code=status.HTTP_409_CONFLICT
-    )
-
-
-def must_lock_payment_first():
-    """Raise must lock payment first error"""
-    raise TreasuryError(
-        error_code=TreasuryErrorCode.PAYMENT_NOT_LOCKED,
         status_code=status.HTTP_403_FORBIDDEN
     )
 

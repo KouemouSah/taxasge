@@ -155,10 +155,7 @@ class ServicePaymentResponse(BaseModel):
 
     # Agent workflow
     requires_agent_validation: bool = False
-    # UUID-based agent profile references (replaces deprecated integer agent_id fields)
-    locked_by_agent_profile_id: Optional[str] = None
-    locked_at: Optional[datetime] = None
-    lock_expires_at: Optional[datetime] = None
+    # UUID-based agent profile references
     validated_by_agent_profile_id: Optional[str] = None
     validated_at: Optional[datetime] = None
     validation_comment: Optional[str] = None
@@ -225,11 +222,6 @@ class PendingValidationResponse(BaseModel):
 
     # Status
     workflow_status: PaymentWorkflowStatus
-
-    # Lock (UUID-based agent profile reference)
-    locked_by_agent_profile_id: Optional[str] = None
-    locked_at: Optional[datetime] = None
-    lock_expires_at: Optional[datetime] = None
 
     # SLA tracking
     sla_target_date: Optional[datetime] = None

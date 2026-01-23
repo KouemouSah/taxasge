@@ -57,14 +57,7 @@ EVENT_AUDIT_MAP: Dict[EventType, AuditConfig] = {
         entity_type="payment",
         action="payment_refunded"
     ),
-    EventType.PAYMENT_LOCKED: AuditConfig(
-        entity_type="payment",
-        action="payment_locked"
-    ),
-    EventType.PAYMENT_UNLOCKED: AuditConfig(
-        entity_type="payment",
-        action="payment_unlocked"
-    ),
+    # Note: PAYMENT_LOCKED/UNLOCKED removed - lock mechanism obsolete with auto-assignment
 
     # Service Request Events
     EventType.REQUEST_SUBMITTED: AuditConfig(

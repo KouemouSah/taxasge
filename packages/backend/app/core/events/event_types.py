@@ -42,11 +42,7 @@ class EventType(str, Enum):
     PAYMENT_REFUNDED = "payment.refunded"
     """Payment refunded"""
 
-    PAYMENT_LOCKED = "payment.locked"
-    """Payment locked by agent for review"""
-
-    PAYMENT_UNLOCKED = "payment.unlocked"
-    """Payment unlocked/released"""
+    # Note: PAYMENT_LOCKED and PAYMENT_UNLOCKED removed - lock mechanism obsolete with auto-assignment
 
     # ==========================================================================
     # SERVICE REQUEST EVENTS
