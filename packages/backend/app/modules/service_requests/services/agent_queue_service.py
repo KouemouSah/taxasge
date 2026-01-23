@@ -565,6 +565,96 @@ class AgentQueueService:
 
         return removed
 
+    async def cleanup_expired_locks(
+        self,
+        db: asyncpg.Connection
+    ) -> Dict[str, Any]:
+        """
+        Clean up expired locks in agent_work_queue.
+
+        This job should run periodically (e.g., every 5 minutes) to release
+        items that were locked by agents but the lock has expired (agent
+        didn't complete the work in time).
+
+        Actions:
+        1. Find items where locked_until < NOW() and status = 'assigned'
+        2. Reset them to 'pending' status with assigned_to = NULL
+        3. Also reset corresponding service_requests.assigned_to
+
+        Returns:
+            Dict with cleanup statistics
+        """
+        # Find expired locks
+        expired_items = await db.fetch("""
+            SELECT id, item_id, assigned_to, locked_until, declaration_type as workflow_code
+            FROM agent_work_queue
+            WHERE status = 'assigned'
+            AND locked_until IS NOT NULL
+            AND locked_until < NOW()
+        """)
+
+        if not expired_items:
+            return {"cleaned": 0, "items": []}
+
+        cleaned_items = []
+
+        for item in expired_items:
+            try:
+                # Reset queue item to pending
+                await db.execute("""
+                    UPDATE agent_work_queue
+                    SET status = 'pending',
+                        assigned_to = NULL,
+                        assigned_at = NULL,
+                        locked_until = NULL,
+                        updated_at = NOW()
+                    WHERE id = $1
+                """, item['id'])
+
+                # Reset service_request assignment
+                await db.execute("""
+                    UPDATE service_requests
+                    SET assigned_to = NULL,
+                        assigned_at = NULL,
+                        status = 'SUBMITTED',
+                        updated_at = NOW()
+                    WHERE id = $1
+                    AND status = 'UNDER_REVIEW'
+                """, item['item_id'])
+
+                # Also clean up the assignment record if exists
+                await db.execute("""
+                    UPDATE assignments
+                    SET status = 'cancelled',
+                        notes = COALESCE(notes, '') || ' [Lock expired - auto-cancelled]',
+                        updated_at = NOW()
+                    WHERE item_id = $1
+                    AND status IN ('assigned', 'in_progress')
+                """, item['item_id'])
+
+                cleaned_items.append({
+                    "queue_id": str(item['id']),
+                    "item_id": str(item['item_id']),
+                    "was_assigned_to": str(item['assigned_to']) if item['assigned_to'] else None,
+                    "lock_expired_at": item['locked_until'].isoformat() if item['locked_until'] else None,
+                    "workflow_code": item['workflow_code']
+                })
+
+                logger.info(
+                    f"Cleaned expired lock: queue_id={item['id']}, "
+                    f"item_id={item['item_id']}, was_assigned_to={item['assigned_to']}"
+                )
+
+            except Exception as e:
+                logger.error(f"Failed to clean lock for queue_id={item['id']}: {e}")
+
+        logger.info(f"Lock cleanup completed: {len(cleaned_items)} items released")
+
+        return {
+            "cleaned": len(cleaned_items),
+            "items": cleaned_items
+        }
+
 
 # Singleton instance
 agent_queue_service = AgentQueueService()

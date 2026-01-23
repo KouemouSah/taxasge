@@ -44,6 +44,39 @@ security = HTTPBearer()
 # Global connections
 from app.database.connection import db_manager  # Use centralized DB manager
 redis_client = None
+_background_tasks = []  # Track background tasks for cleanup
+
+
+async def lock_cleanup_job(interval_seconds: int = 300):
+    """
+    Background job to clean up expired locks in agent_work_queue.
+
+    Runs every interval_seconds (default: 5 minutes).
+    Releases items where lock has expired, making them available for reassignment.
+    """
+    from app.modules.service_requests.services.agent_queue_service import agent_queue_service
+
+    logger.info(f"🔄 Lock cleanup job started (interval: {interval_seconds}s)")
+
+    while True:
+        try:
+            await asyncio.sleep(interval_seconds)
+
+            async with db_manager.get_connection() as conn:
+                result = await agent_queue_service.cleanup_expired_locks(conn)
+
+                if result["cleaned"] > 0:
+                    logger.info(
+                        f"🧹 Lock cleanup: released {result['cleaned']} expired items"
+                    )
+
+        except asyncio.CancelledError:
+            logger.info("🔄 Lock cleanup job cancelled")
+            break
+        except Exception as e:
+            logger.error(f"❌ Lock cleanup job error: {e}")
+            # Continue running despite errors
+            await asyncio.sleep(60)  # Wait a bit before retrying
 
 # Lifespan management for FastAPI
 @asynccontextmanager
@@ -126,6 +159,15 @@ async def lifespan(app: FastAPI):
         else:
             logger.info("ℹ️ Redis not configured (caching disabled - direct DB queries)")
 
+        # Start background jobs
+        try:
+            # Lock cleanup job - runs every 5 minutes
+            cleanup_task = asyncio.create_task(lock_cleanup_job(interval_seconds=300))
+            _background_tasks.append(cleanup_task)
+            logger.info("✅ Background jobs started (lock cleanup)")
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to start background jobs: {e}")
+
     except Exception as e:
         logger.error(f"❌ Failed to initialize connections: {e}")
         # For development, continue without external dependencies
@@ -138,6 +180,16 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     try:
+        # Cancel background tasks
+        for task in _background_tasks:
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+        _background_tasks.clear()
+        logger.info("🔄 Background tasks cancelled")
+
         await db_manager.disconnect()
         logger.info("🔄 Database pool closed")
         if redis_client:
