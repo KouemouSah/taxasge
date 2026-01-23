@@ -28,13 +28,14 @@ import {
 import { ArrowLeft, Loader2, Zap, FileText, Info } from 'lucide-react'
 import { toast } from 'sonner'
 import { assignmentsApi } from '@/modules/assignments-admin/services/api'
+import type { ItemType } from '@/modules/assignments-admin/types'
 
-// Item types that can be assigned
-const ITEM_TYPES = [
+// Item types that can be assigned - aligned with ItemType
+const ITEM_TYPES: { value: ItemType; label: string }[] = [
   { value: 'service_request', label: 'Service Request' },
-  { value: 'declaration', label: 'Declaration' },
-  { value: 'payment', label: 'Payment' },
-  { value: 'document', label: 'Document' },
+  { value: 'tax_declaration', label: 'Tax Declaration' },
+  { value: 'service_payment', label: 'Service Payment' },
+  { value: 'other', label: 'Other' },
 ]
 
 export default function AutoAssignmentPage() {
@@ -45,7 +46,7 @@ export default function AutoAssignmentPage() {
 
   // Form state
   const [itemId, setItemId] = useState('')
-  const [itemType, setItemType] = useState('')
+  const [itemType, setItemType] = useState<ItemType | ''>('')
   const [priorityLevel, setPriorityLevel] = useState(5)
   const [useLoadBalancing, setUseLoadBalancing] = useState(true)
   const [respectSpecializations, setRespectSpecializations] = useState(true)
@@ -63,7 +64,7 @@ export default function AutoAssignmentPage() {
     try {
       const result = await assignmentsApi.createAuto({
         item_id: itemId,
-        item_type: itemType,
+        item_type: itemType as ItemType,
         priority_level: priorityLevel,
         use_load_balancing: useLoadBalancing,
         respect_specializations: respectSpecializations,

@@ -29,14 +29,15 @@ import { ArrowLeft, Loader2, Save, User, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 import { assignmentsApi } from '@/modules/assignments-admin/services/api'
 import { agentsApi } from '@/modules/assignments-admin/services/agents'
+import type { ItemType } from '@/modules/assignments-admin/types'
 import { useQuery } from '@tanstack/react-query'
 
-// Item types that can be assigned
-const ITEM_TYPES = [
+// Item types that can be assigned - aligned with ItemType
+const ITEM_TYPES: { value: ItemType; label: string }[] = [
   { value: 'service_request', label: 'Service Request' },
-  { value: 'declaration', label: 'Declaration' },
-  { value: 'payment', label: 'Payment' },
-  { value: 'document', label: 'Document' },
+  { value: 'tax_declaration', label: 'Tax Declaration' },
+  { value: 'service_payment', label: 'Service Payment' },
+  { value: 'other', label: 'Other' },
 ]
 
 export default function ManualAssignmentPage() {
@@ -47,7 +48,7 @@ export default function ManualAssignmentPage() {
 
   // Form state
   const [itemId, setItemId] = useState('')
-  const [itemType, setItemType] = useState('')
+  const [itemType, setItemType] = useState<ItemType | ''>('')
   const [agentProfileId, setAgentProfileId] = useState('')
   const [priorityLevel, setPriorityLevel] = useState(5)
   const [notes, setNotes] = useState('')
@@ -71,7 +72,7 @@ export default function ManualAssignmentPage() {
     try {
       await assignmentsApi.createManual({
         item_id: itemId,
-        item_type: itemType,
+        item_type: itemType as ItemType,
         agent_profile_id: agentProfileId,
         priority_level: priorityLevel,
         notes: notes || undefined,
