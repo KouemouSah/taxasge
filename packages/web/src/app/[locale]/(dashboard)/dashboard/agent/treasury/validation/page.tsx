@@ -131,8 +131,10 @@ export default function TreasuryValidationPage() {
 
   // Actions
   const {
+    validatePayment,
     validateBatch,
     rejectBatch,
+    isValidating,
     isBatchProcessing,
   } = usePaymentActions();
 
@@ -243,12 +245,13 @@ export default function TreasuryValidationPage() {
     setSelectedIds(new Set());
   };
 
-  // Single payment actions - use batch dialog with single item
-  const handleSingleValidate = (paymentId: string) => {
-    setSelectedIds(new Set([paymentId]));
-    setShowBatchValidateDialog(true);
+  // Single payment actions
+  // Validation: Direct action without dialog (fast workflow)
+  const handleSingleValidate = async (paymentId: string) => {
+    await validatePayment.mutateAsync({ paymentId });
   };
 
+  // Rejection: Opens dialog because reason is required
   const handleSingleReject = (paymentId: string) => {
     setSelectedIds(new Set([paymentId]));
     setShowBatchRejectDialog(true);
@@ -541,7 +544,7 @@ export default function TreasuryValidationPage() {
                                     e.stopPropagation();
                                     handleSingleValidate(payment.id);
                                   }}
-                                  disabled={isBatchProcessing}
+                                  disabled={isValidating || isBatchProcessing}
                                 >
                                   <CheckCircle className="h-4 w-4" />
                                 </Button>
@@ -553,7 +556,7 @@ export default function TreasuryValidationPage() {
                                     e.stopPropagation();
                                     handleSingleReject(payment.id);
                                   }}
-                                  disabled={isBatchProcessing}
+                                  disabled={isValidating || isBatchProcessing}
                                 >
                                   <XCircle className="h-4 w-4" />
                                 </Button>
