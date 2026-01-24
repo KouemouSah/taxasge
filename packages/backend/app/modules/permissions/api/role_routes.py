@@ -371,6 +371,32 @@ async def remove_permissions_from_role(
     return result
 
 
+# POST alias for remove permissions (DELETE with body not well supported by all HTTP clients)
+@router.post("/{role_id}/permissions/remove", response_model=dict)
+@require_permission("roles.assign_permissions")
+async def remove_permissions_from_role_post(
+    role_id: UUID,
+    request: RemovePermissionsFromRoleRequest,
+    current_user: UserResponse = Depends(get_current_user),
+    role_service: RoleService = Depends(get_role_service),
+    permission_service: PermissionService = Depends(get_permission_service),
+):
+    """
+    Remove permissions from a role (POST alias)
+
+    This is a POST alias for DELETE /{role_id}/permissions because
+    DELETE with request body is not well supported by all HTTP clients.
+
+    Requires: roles.assign_permissions (critical permission)
+    """
+    result = await role_service.remove_permissions_from_role(
+        role_id=str(role_id),
+        permission_ids=[str(pid) for pid in request.permission_ids]
+    )
+
+    return result
+
+
 @router.get("/{role_id}/permissions", response_model=List[str])
 @require_permission("roles.view")
 async def get_role_permissions(

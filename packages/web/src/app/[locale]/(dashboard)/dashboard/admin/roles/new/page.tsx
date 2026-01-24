@@ -51,7 +51,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { useCreateRole } from '@/modules/roles-admin';
+import { useCreateRole, rolesApi } from '@/modules/roles-admin';
 import type { CreateRoleRequest } from '@/modules/roles-admin';
 import { usePermissions, useModuleNames } from '@/modules/permissions-admin';
 import type { Permission } from '@/modules/permissions-admin';
@@ -158,13 +158,32 @@ export default function CreateRolePage() {
     }
 
     try {
+      // Step 1: Create the role
       const newRole = await createMutation.mutateAsync(formData);
-      toast.success(t('createSuccess') || 'Rôle créé avec succès');
 
-      // Navigate to role detail to assign permissions
+      // Step 2: Assign permissions if any selected
       if (selectedPermissions.length > 0) {
-        toast.info(`${selectedPermissions.length} permissions à assigner sur la page suivante`);
+        try {
+          await rolesApi.assignPermissions(newRole.id, {
+            permission_ids: selectedPermissions,
+            granted: true,
+          });
+          toast.success(
+            `Rôle créé avec ${selectedPermissions.length} permissions`,
+            { description: `Le rôle "${formData.name}" a été créé avec succès.` }
+          );
+        } catch (permErr) {
+          // Role created but permissions failed
+          toast.warning(
+            'Rôle créé, mais erreur lors de l\'assignation des permissions',
+            { description: 'Vous pouvez assigner les permissions manuellement.' }
+          );
+          console.error('Permission assignment error:', permErr);
+        }
+      } else {
+        toast.success(t('createSuccess') || 'Rôle créé avec succès');
       }
+
       router.push(`/${locale}/dashboard/admin/roles/${newRole.id}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erreur lors de la création');

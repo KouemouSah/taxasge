@@ -223,8 +223,12 @@ class AgentProfileService:
         granted_by: Optional[UUID] = None,
     ) -> None:
         """
-        Update user's permissions to match the specified RBAC role.
-        Removes existing permissions and copies permissions from the role.
+        Update user's RBAC role by setting role_id on users table.
+
+        This is the PRIMARY mechanism for permissions - the user gets permissions
+        through role_permissions via their role_id.
+
+        Optionally also copies to user_permissions for per-user overrides.
         """
         # Verify role exists
         role_check = await conn.fetchrow(
@@ -237,13 +241,19 @@ class AgentProfileService:
 
         logger.info(f"Updating user {user_id} RBAC role to {role_check['code']}")
 
-        # Remove existing user permissions (from previous RBAC role assignment)
+        # CRITICAL: Update users.role_id - this is how permissions work via role_permissions
+        await conn.execute(
+            """UPDATE users SET role_id = $1, updated_at = NOW() WHERE id = $2""",
+            rbac_role_id, user_id
+        )
+
+        # Remove existing user-specific permissions (from previous RBAC role assignment)
         await conn.execute(
             """DELETE FROM user_permissions WHERE user_id = $1""",
             user_id
         )
 
-        # Copy permissions from the new role
+        # Copy permissions to user_permissions for per-user override capability
         perms_query = """
             SELECT permission_id FROM role_permissions
             WHERE role_id = $1 AND granted = TRUE
@@ -257,7 +267,7 @@ class AgentProfileService:
                 ON CONFLICT (user_id, permission_id) DO UPDATE SET granted = TRUE, granted_by = $3, granted_at = NOW()
             """, user_id, perm["permission_id"], str(granted_by) if granted_by else None)
 
-        logger.info(f"RBAC role updated: {len(role_permissions)} permissions assigned")
+        logger.info(f"RBAC role updated: role_id set + {len(role_permissions)} permissions copied to user_permissions")
 
     async def deactivate_agent_profile(
         self,
@@ -699,13 +709,15 @@ class AgentProfileService:
 
         try:
             async with conn.transaction():
-                # Step 2: Create user
+                # Step 2: Create user with role_id (critical for permissions via role_permissions)
                 logger.info(f"[AGENT_ACTIVATION] Step 2 - Creating user...")
+                rbac_role_id = UUID(agent_data['rbac_role_id']) if agent_data.get('rbac_role_id') else None
+
                 user_query = """
                     INSERT INTO users (email, password_hash, first_name, last_name,
-                                       phone_number, role, preferred_language, status,
+                                       phone_number, role, role_id, preferred_language, status,
                                        email_verified, created_at, updated_at)
-                    VALUES ($1, $2, $3, $4, $5, 'agent', $6, 'active', TRUE, NOW(), NOW())
+                    VALUES ($1, $2, $3, $4, $5, 'agent', $6, $7, 'active', TRUE, NOW(), NOW())
                     RETURNING id, email, first_name, last_name
                 """
                 user_row = await conn.fetchrow(
@@ -715,15 +727,16 @@ class AgentProfileService:
                     user_data.get('first_name'),
                     user_data.get('last_name'),
                     user_data.get('phone_number'),
+                    rbac_role_id,  # role_id for permissions via role_permissions
                     user_data.get('preferred_language', 'es'),
                 )
                 user_id = user_row["id"]
-                logger.info(f"[AGENT_ACTIVATION] Step 2 OK - User created: {user_id}")
+                logger.info(f"[AGENT_ACTIVATION] Step 2 OK - User created: {user_id} with role_id: {rbac_role_id}")
 
                 # Step 3: Create agent profile
                 logger.info(f"[AGENT_ACTIVATION] Step 3 - Creating agent profile...")
                 entity_id = UUID(agent_data['entity_id']) if agent_data.get('entity_id') else None
-                rbac_role_id = UUID(agent_data['rbac_role_id']) if agent_data.get('rbac_role_id') else None
+                # rbac_role_id already defined above for user creation
                 assigned_by = UUID(created_by) if created_by else None
 
                 # Convert time strings back to datetime.time objects for PostgreSQL TIME columns
