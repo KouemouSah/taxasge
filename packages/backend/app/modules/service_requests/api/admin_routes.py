@@ -3647,7 +3647,7 @@ async def get_treasury_audit(
         FROM payment_validation_audit pva
         JOIN service_payments sp ON sp.id = pva.payment_id
         LEFT JOIN service_requests sr ON sr.id = sp.service_request_id
-        LEFT JOIN ministry_agents ma ON ma.id = pva.agent_id
+        LEFT JOIN agent_profiles ap ON ap.id = pva.agent_id
         LEFT JOIN users u ON u.id = pva.agent_user_id
         WHERE {where_sql}
         ORDER BY pva.created_at DESC
@@ -3750,7 +3750,7 @@ async def get_payment_audit_history(
             pva.ip_address::text AS ip_address,
             pva.created_at
         FROM payment_validation_audit pva
-        LEFT JOIN ministry_agents ma ON ma.id = pva.agent_id
+        LEFT JOIN agent_profiles ap ON ap.id = pva.agent_id
         LEFT JOIN users u ON u.id = pva.agent_user_id
         WHERE pva.payment_id = $1::uuid
         ORDER BY pva.created_at ASC

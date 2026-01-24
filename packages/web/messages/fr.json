@@ -2555,6 +2555,7 @@
         "requests": "Demandes",
         "appointment": "Rendez-vous",
         "document": "Document",
+        "documents": "Documents",
         "security": "Sécurité",
         "reminders": "Rappels",
         "alerts": "Alertes",
@@ -2654,6 +2655,7 @@
       }
     },
     "smsTemplates": {
+      "category": "Catégorie",
       "form": {
         "basicInfo": "Informations de Base",
         "basicInfoDescription": "Données essentielles du modèle SMS",
@@ -3092,6 +3094,7 @@
     "appName": "TaxasGE",
     "cancel": "Annuler",
     "clear": "Effacer",
+    "clearFilters": "Effacer les filtres",
     "close": "Fermer",
     "confirm": "Confirmer",
     "delete": "Supprimer",

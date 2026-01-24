@@ -145,12 +145,13 @@ class VerificationEventHandler:
 
             # Get all available agents for this ministry
             agents_query = """
-                SELECT ma.user_id, u.email, u.full_name
-                FROM ministry_agents ma
-                JOIN users u ON ma.user_id = u.id
-                WHERE ma.ministry_id = $1
-                  AND ma.is_active = TRUE
-                  AND ma.availability_status = 'available'
+                SELECT ap.user_id, u.email, u.full_name
+                FROM agent_profiles ap
+                JOIN users u ON ap.user_id = u.id
+                LEFT JOIN agent_workloads aw ON ap.id = aw.agent_profile_id
+                WHERE ap.ministry_id = $1
+                  AND ap.is_active = TRUE
+                  AND (aw.availability = 'available' OR aw.availability IS NULL)
             """
             async with pool.acquire() as conn:
                 agents = await conn.fetch(agents_query, ministry_id)

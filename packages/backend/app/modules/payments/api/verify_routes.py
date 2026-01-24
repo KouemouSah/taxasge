@@ -123,14 +123,14 @@ async def verify_receipt(
 
             # Agent data (if manually validated)
             validated_by_name = None
-            if payment["validated_by_agent_id"]:
+            if payment["validated_by_agent_profile_id"]:
                 agent_query = """
                     SELECT u.first_name, u.last_name
                     FROM users u
-                    JOIN ministry_agents ma ON ma.user_id = u.id
-                    WHERE ma.id = $1
+                    JOIN agent_profiles ap ON ap.user_id = u.id
+                    WHERE ap.id = $1
                 """
-                agent_data = await db.fetchrow(agent_query, payment["validated_by_agent_id"])
+                agent_data = await db.fetchrow(agent_query, payment["validated_by_agent_profile_id"])
                 if agent_data:
                     validated_by_name = f"{agent_data['first_name'] or ''} {agent_data['last_name'] or ''}".strip()
 

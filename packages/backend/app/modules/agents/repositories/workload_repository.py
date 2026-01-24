@@ -217,11 +217,11 @@ class WorkloadRepository:
     ) -> List[Dict[str, Any]]:
         """Get agents with available capacity"""
         query = """
-            SELECT aw.*, ma.ministry_id, ma.agent_role
+            SELECT aw.*, ap.ministry_id, ap.agent_role
             FROM agent_workloads aw
-            JOIN ministry_agents ma ON aw.agent_id = ma.id
-            WHERE ma.ministry_id = $1
-              AND ma.is_active = true
+            JOIN agent_profiles ap ON aw.agent_profile_id = ap.id
+            WHERE ap.ministry_id = $1
+              AND ap.is_active = true
               AND aw.availability = 'available'
               AND aw.capacity_percentage < $2
               AND aw.workload_status != 'overloaded'
@@ -240,13 +240,13 @@ class WorkloadRepository:
         params = []
 
         if ministry_id:
-            where_clause += " AND ma.ministry_id = $1"
+            where_clause += " AND ap.ministry_id = $1"
             params.append(ministry_id)
 
         query = f"""
-            SELECT aw.*, ma.ministry_id, ma.agent_role
+            SELECT aw.*, ap.ministry_id, ap.agent_role
             FROM agent_workloads aw
-            JOIN ministry_agents ma ON aw.agent_id = ma.id
+            JOIN agent_profiles ap ON aw.agent_profile_id = ap.id
             {where_clause}
             ORDER BY aw.capacity_percentage DESC
         """
@@ -454,11 +454,11 @@ class WorkloadRepository:
     ) -> List[Dict[str, Any]]:
         """Get top performing agents"""
         query = """
-            SELECT aps.*, ma.user_id, ma.agent_role
+            SELECT aps.*, ap.user_id, ap.agent_role
             FROM agent_performance_stats aps
-            JOIN ministry_agents ma ON aps.agent_id = ma.id
-            WHERE aps.ministry_id = $1
-              AND ma.is_active = true
+            JOIN agent_profiles ap ON aps.agent_profile_id = ap.id
+            WHERE ap.ministry_id = $1
+              AND ap.is_active = true
             ORDER BY
                 aps.sla_respect_percentage DESC,
                 aps.current_month_processed DESC,

@@ -444,8 +444,8 @@ async def check_workload_rebalancing(
     # Get all agent workloads for ministry
     query = """
         SELECT aw.* FROM agent_workloads aw
-        JOIN ministry_agents ma ON aw.agent_id = ma.id
-        WHERE ma.ministry_id = $1 AND ma.is_active = true
+        JOIN agent_profiles ap ON aw.agent_profile_id = ap.id
+        WHERE ap.ministry_id = $1 AND ap.is_active = true
     """
     workloads = await db.fetch(query, ministry_id)
     workload_dicts = [dict(w) for w in workloads]
@@ -472,8 +472,8 @@ async def predict_capacity(
     # Get all agent workloads for ministry
     query = """
         SELECT aw.* FROM agent_workloads aw
-        JOIN ministry_agents ma ON aw.agent_id = ma.id
-        WHERE ma.ministry_id = $1 AND ma.is_active = true
+        JOIN agent_profiles ap ON aw.agent_profile_id = ap.id
+        WHERE ap.ministry_id = $1 AND ap.is_active = true
     """
     workloads = await db.fetch(query, ministry_id)
     workload_dicts = [dict(w) for w in workloads]

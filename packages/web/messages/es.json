@@ -2555,6 +2555,7 @@
         "requests": "Solicitudes",
         "appointment": "Cita",
         "document": "Documento",
+        "documents": "Documentos",
         "security": "Seguridad",
         "reminders": "Recordatorios",
         "alerts": "Alertas",
@@ -2668,6 +2669,7 @@
       "createDescription": "Crear una nueva plantilla de notificación push"
     },
     "smsTemplates": {
+      "category": "Categoría",
       "form": {
         "basicInfo": "Información Básica",
         "basicInfoDescription": "Datos esenciales de la plantilla SMS",
@@ -3106,6 +3108,7 @@
     "appName": "TaxasGE",
     "cancel": "Cancelar",
     "clear": "Limpiar",
+    "clearFilters": "Limpiar filtros",
     "close": "Cerrar",
     "confirm": "Confirmar",
     "delete": "Eliminar",

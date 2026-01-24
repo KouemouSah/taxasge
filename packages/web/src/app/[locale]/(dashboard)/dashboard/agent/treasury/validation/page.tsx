@@ -12,7 +12,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -89,6 +89,7 @@ const PAGE_SIZE = 20;
 
 export default function TreasuryValidationPage() {
   const t = useTranslations('treasury');
+  const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -130,10 +131,18 @@ export default function TreasuryValidationPage() {
 
   // Actions
   const {
+    validatePayment,
+    rejectPayment,
     validateBatch,
     rejectBatch,
+    isValidating,
+    isRejecting,
     isBatchProcessing,
   } = usePaymentActions();
+
+  // Single item action states
+  const [singleRejectId, setSingleRejectId] = useState<string | null>(null);
+  const [singleRejectReason, setSingleRejectReason] = useState('');
 
   // Filter payments by search term and SLA status (client-side)
   const filteredPayments = useMemo(() => {
@@ -216,12 +225,12 @@ export default function TreasuryValidationPage() {
     const params = new URLSearchParams();
     params.set('status', statusFilter);
     if (methodFilter !== 'all') params.set('method', methodFilter);
-    router.push(`/dashboard/agent/treasury/validation/${paymentId}?${params.toString()}`);
+    router.push(`/${locale}/dashboard/agent/treasury/validation/${paymentId}?${params.toString()}`);
   };
 
   // Navigate back to dashboard
   const goToDashboard = () => {
-    router.push('/dashboard/agent/treasury');
+    router.push(`/${locale}/dashboard/agent/treasury`);
   };
 
   // Batch actions
@@ -240,6 +249,18 @@ export default function TreasuryValidationPage() {
     setShowBatchRejectDialog(false);
     setBatchRejectReason('');
     setSelectedIds(new Set());
+  };
+
+  // Single payment actions
+  const handleSingleValidate = async (paymentId: string) => {
+    await validatePayment.mutateAsync({ paymentId });
+  };
+
+  const handleSingleReject = async () => {
+    if (!singleRejectId || !singleRejectReason.trim()) return;
+    await rejectPayment.mutateAsync({ paymentId: singleRejectId, request: { reason: singleRejectReason } });
+    setSingleRejectId(null);
+    setSingleRejectReason('');
   };
 
   // Calculate total amount of selected payments
@@ -358,11 +379,64 @@ export default function TreasuryValidationPage() {
               )}
             </CardTitle>
 
-            {/* Pagination info */}
-            {totalPages > 1 && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                Pagina {page} de {totalPages}
+            {/* Selection Actions Bar - shows when payments are selected */}
+            {selectedIds.size > 0 ? (
+              <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-lg px-4 py-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="text-sm px-2 py-0.5">
+                    {selectedIds.size}
+                  </Badge>
+                  <span className="text-sm text-muted-foreground">
+                    seleccionado(s) • {formatCurrency(selectedTotalAmount)}
+                  </span>
+                </div>
+                <div className="h-4 w-px bg-border" />
+                <div className="flex items-center gap-1">
+                  <Button
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700 h-7"
+                    onClick={() => setShowBatchValidateDialog(true)}
+                    disabled={isBatchProcessing}
+                  >
+                    {isBatchProcessing ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                    )}
+                    Validar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="h-7"
+                    onClick={() => setShowBatchRejectDialog(true)}
+                    disabled={isBatchProcessing}
+                  >
+                    {isBatchProcessing ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <XCircle className="h-3 w-3 mr-1" />
+                    )}
+                    Rechazar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7"
+                    onClick={() => setSelectedIds(new Set())}
+                    disabled={isBatchProcessing}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
               </div>
+            ) : (
+              /* Pagination info - shows when nothing selected */
+              totalPages > 1 && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  Pagina {page} de {totalPages}
+                </div>
+              )
             )}
           </div>
         </CardHeader>
@@ -465,17 +539,46 @@ export default function TreasuryValidationPage() {
                           {formatDate(payment.submittedAt || payment.createdAt)}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openPaymentDetail(payment.id);
-                            }}
-                          >
-                            <ExternalLink className="h-4 w-4 mr-1" />
-                            Ver
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            {payment.workflowStatus === 'pending_agent_review' && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSingleValidate(payment.id);
+                                  }}
+                                  disabled={isValidating || isRejecting}
+                                >
+                                  <CheckCircle className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSingleRejectId(payment.id);
+                                  }}
+                                  disabled={isValidating || isRejecting}
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openPaymentDetail(payment.id);
+                              }}
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -541,64 +644,6 @@ export default function TreasuryValidationPage() {
           )}
         </CardContent>
       </Card>
-
-      {/* Floating Batch Actions Bar */}
-      {selectedIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-          <Card className="shadow-lg border-primary">
-            <CardContent className="flex items-center gap-4 py-3 px-4">
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="text-base px-3 py-1">
-                  {selectedIds.size}
-                </Badge>
-                <span className="text-sm">
-                  pago(s) seleccionado(s)
-                </span>
-                <span className="text-sm font-bold text-primary ml-2">
-                  {formatCurrency(selectedTotalAmount)}
-                </span>
-              </div>
-              <div className="h-6 w-px bg-border" />
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  className="bg-green-600 hover:bg-green-700"
-                  onClick={() => setShowBatchValidateDialog(true)}
-                  disabled={isBatchProcessing}
-                >
-                  {isBatchProcessing ? (
-                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                  ) : (
-                    <CheckCircle className="h-4 w-4 mr-1" />
-                  )}
-                  Validar Todos
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => setShowBatchRejectDialog(true)}
-                  disabled={isBatchProcessing}
-                >
-                  {isBatchProcessing ? (
-                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                  ) : (
-                    <XCircle className="h-4 w-4 mr-1" />
-                  )}
-                  Rechazar Todos
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setSelectedIds(new Set())}
-                  disabled={isBatchProcessing}
-                >
-                  Cancelar
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
 
       {/* Batch Validate Dialog */}
       <AlertDialog open={showBatchValidateDialog} onOpenChange={setShowBatchValidateDialog}>
@@ -693,6 +738,53 @@ export default function TreasuryValidationPage() {
                 </>
               ) : (
                 `Rechazar ${selectedIds.size} Pago(s)`
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Single Payment Reject Dialog */}
+      <AlertDialog open={singleRejectId !== null} onOpenChange={(open) => !open && setSingleRejectId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <XCircle className="h-5 w-5 text-red-500" />
+              Rechazar Pago
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4">
+                <p>
+                  Indique el motivo del rechazo. El solicitante será notificado.
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="singleRejectReason">Motivo del rechazo (obligatorio)</Label>
+                  <Textarea
+                    id="singleRejectReason"
+                    placeholder="Indique el motivo del rechazo..."
+                    value={singleRejectReason}
+                    onChange={(e) => setSingleRejectReason(e.target.value)}
+                    rows={3}
+                    className="bg-background"
+                  />
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRejecting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleSingleReject}
+              disabled={isRejecting || !singleRejectReason.trim()}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isRejecting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Procesando...
+                </>
+              ) : (
+                'Rechazar Pago'
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
