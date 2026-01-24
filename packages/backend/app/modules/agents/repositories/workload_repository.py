@@ -215,12 +215,18 @@ class WorkloadRepository:
         ministry_id: int,
         max_capacity_percentage: float = 80.0,
     ) -> List[Dict[str, Any]]:
-        """Get agents with available capacity"""
+        """Get agents with available capacity.
+
+        Considers both direct ministry assignment and entity-based assignment.
+        An agent can be linked to a ministry directly (ap.ministry_id) or
+        through an entity (ap.entity_id -> entities.ministry_id).
+        """
         query = """
-            SELECT aw.*, ap.ministry_id, ap.agent_role
+            SELECT aw.*, COALESCE(ap.ministry_id, e.ministry_id) as ministry_id, ap.agent_role
             FROM agent_workloads aw
             JOIN agent_profiles ap ON aw.agent_profile_id = ap.id
-            WHERE ap.ministry_id = $1
+            LEFT JOIN entities e ON ap.entity_id = e.id
+            WHERE (ap.ministry_id = $1 OR e.ministry_id = $1)
               AND ap.is_active = true
               AND aw.availability = 'available'
               AND aw.capacity_percentage < $2
@@ -235,18 +241,22 @@ class WorkloadRepository:
         conn: asyncpg.Connection,
         ministry_id: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
-        """Get overloaded agents for rebalancing"""
+        """Get overloaded agents for rebalancing.
+
+        Considers both direct ministry assignment and entity-based assignment.
+        """
         where_clause = "WHERE aw.workload_status = 'overloaded'"
         params = []
 
         if ministry_id:
-            where_clause += " AND ap.ministry_id = $1"
+            where_clause += " AND (ap.ministry_id = $1 OR e.ministry_id = $1)"
             params.append(ministry_id)
 
         query = f"""
-            SELECT aw.*, ap.ministry_id, ap.agent_role
+            SELECT aw.*, COALESCE(ap.ministry_id, e.ministry_id) as ministry_id, ap.agent_role
             FROM agent_workloads aw
             JOIN agent_profiles ap ON aw.agent_profile_id = ap.id
+            LEFT JOIN entities e ON ap.entity_id = e.id
             {where_clause}
             ORDER BY aw.capacity_percentage DESC
         """
@@ -452,12 +462,16 @@ class WorkloadRepository:
         ministry_id: int,
         limit: int = 10,
     ) -> List[Dict[str, Any]]:
-        """Get top performing agents"""
+        """Get top performing agents.
+
+        Considers both direct ministry assignment and entity-based assignment.
+        """
         query = """
             SELECT aps.*, ap.user_id, ap.agent_role
             FROM agent_performance_stats aps
             JOIN agent_profiles ap ON aps.agent_profile_id = ap.id
-            WHERE ap.ministry_id = $1
+            LEFT JOIN entities e ON ap.entity_id = e.id
+            WHERE (ap.ministry_id = $1 OR e.ministry_id = $1)
               AND ap.is_active = true
             ORDER BY
                 aps.sla_respect_percentage DESC,

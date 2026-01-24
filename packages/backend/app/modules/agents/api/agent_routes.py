@@ -440,12 +440,16 @@ async def check_workload_rebalancing(
     current_user: Dict[str, Any] = Depends(get_current_user),
     db = Depends(get_database),
 ):
-    """Check if workload rebalancing is needed"""
-    # Get all agent workloads for ministry
+    """Check if workload rebalancing is needed.
+
+    Considers both direct ministry assignment and entity-based assignment.
+    """
+    # Get all agent workloads for ministry (direct or via entity)
     query = """
         SELECT aw.* FROM agent_workloads aw
         JOIN agent_profiles ap ON aw.agent_profile_id = ap.id
-        WHERE ap.ministry_id = $1 AND ap.is_active = true
+        LEFT JOIN entities e ON ap.entity_id = e.id
+        WHERE (ap.ministry_id = $1 OR e.ministry_id = $1) AND ap.is_active = true
     """
     workloads = await db.fetch(query, ministry_id)
     workload_dicts = [dict(w) for w in workloads]
@@ -468,12 +472,16 @@ async def predict_capacity(
     current_user: Dict[str, Any] = Depends(get_current_user),
     db = Depends(get_database),
 ):
-    """Predict capacity needs"""
-    # Get all agent workloads for ministry
+    """Predict capacity needs.
+
+    Considers both direct ministry assignment and entity-based assignment.
+    """
+    # Get all agent workloads for ministry (direct or via entity)
     query = """
         SELECT aw.* FROM agent_workloads aw
         JOIN agent_profiles ap ON aw.agent_profile_id = ap.id
-        WHERE ap.ministry_id = $1 AND ap.is_active = true
+        LEFT JOIN entities e ON ap.entity_id = e.id
+        WHERE (ap.ministry_id = $1 OR e.ministry_id = $1) AND ap.is_active = true
     """
     workloads = await db.fetch(query, ministry_id)
     workload_dicts = [dict(w) for w in workloads]

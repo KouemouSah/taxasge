@@ -131,18 +131,10 @@ export default function TreasuryValidationPage() {
 
   // Actions
   const {
-    validatePayment,
-    rejectPayment,
     validateBatch,
     rejectBatch,
-    isValidating,
-    isRejecting,
     isBatchProcessing,
   } = usePaymentActions();
-
-  // Single item action states
-  const [singleRejectId, setSingleRejectId] = useState<string | null>(null);
-  const [singleRejectReason, setSingleRejectReason] = useState('');
 
   // Filter payments by search term and SLA status (client-side)
   const filteredPayments = useMemo(() => {
@@ -251,16 +243,15 @@ export default function TreasuryValidationPage() {
     setSelectedIds(new Set());
   };
 
-  // Single payment actions
-  const handleSingleValidate = async (paymentId: string) => {
-    await validatePayment.mutateAsync({ paymentId });
+  // Single payment actions - use batch dialog with single item
+  const handleSingleValidate = (paymentId: string) => {
+    setSelectedIds(new Set([paymentId]));
+    setShowBatchValidateDialog(true);
   };
 
-  const handleSingleReject = async () => {
-    if (!singleRejectId || !singleRejectReason.trim()) return;
-    await rejectPayment.mutateAsync({ paymentId: singleRejectId, request: { reason: singleRejectReason } });
-    setSingleRejectId(null);
-    setSingleRejectReason('');
+  const handleSingleReject = (paymentId: string) => {
+    setSelectedIds(new Set([paymentId]));
+    setShowBatchRejectDialog(true);
   };
 
   // Calculate total amount of selected payments
@@ -550,7 +541,7 @@ export default function TreasuryValidationPage() {
                                     e.stopPropagation();
                                     handleSingleValidate(payment.id);
                                   }}
-                                  disabled={isValidating || isRejecting}
+                                  disabled={isBatchProcessing}
                                 >
                                   <CheckCircle className="h-4 w-4" />
                                 </Button>
@@ -560,9 +551,9 @@ export default function TreasuryValidationPage() {
                                   className="text-red-600 hover:text-red-700 hover:bg-red-50"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setSingleRejectId(payment.id);
+                                    handleSingleReject(payment.id);
                                   }}
-                                  disabled={isValidating || isRejecting}
+                                  disabled={isBatchProcessing}
                                 >
                                   <XCircle className="h-4 w-4" />
                                 </Button>
@@ -744,52 +735,6 @@ export default function TreasuryValidationPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Single Payment Reject Dialog */}
-      <AlertDialog open={singleRejectId !== null} onOpenChange={(open) => !open && setSingleRejectId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <XCircle className="h-5 w-5 text-red-500" />
-              Rechazar Pago
-            </AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-4">
-                <p>
-                  Indique el motivo del rechazo. El solicitante será notificado.
-                </p>
-                <div className="space-y-2">
-                  <Label htmlFor="singleRejectReason">Motivo del rechazo (obligatorio)</Label>
-                  <Textarea
-                    id="singleRejectReason"
-                    placeholder="Indique el motivo del rechazo..."
-                    value={singleRejectReason}
-                    onChange={(e) => setSingleRejectReason(e.target.value)}
-                    rows={3}
-                    className="bg-background"
-                  />
-                </div>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isRejecting}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleSingleReject}
-              disabled={isRejecting || !singleRejectReason.trim()}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {isRejecting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Procesando...
-                </>
-              ) : (
-                'Rechazar Pago'
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

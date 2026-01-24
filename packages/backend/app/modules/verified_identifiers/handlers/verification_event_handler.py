@@ -143,13 +143,14 @@ class VerificationEventHandler:
                 logger.warning(f"No ministry found for request {request_id}")
                 return
 
-            # Get all available agents for this ministry
+            # Get all available agents for this ministry (direct or via entity)
             agents_query = """
                 SELECT ap.user_id, u.email, u.full_name
                 FROM agent_profiles ap
                 JOIN users u ON ap.user_id = u.id
                 LEFT JOIN agent_workloads aw ON ap.id = aw.agent_profile_id
-                WHERE ap.ministry_id = $1
+                LEFT JOIN entities e ON ap.entity_id = e.id
+                WHERE (ap.ministry_id = $1 OR e.ministry_id = $1)
                   AND ap.is_active = TRUE
                   AND (aw.availability = 'available' OR aw.availability IS NULL)
             """
