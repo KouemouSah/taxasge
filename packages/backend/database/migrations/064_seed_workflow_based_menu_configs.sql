@@ -1,205 +1,48 @@
 -- ============================================================================
--- Migration 064: Seed menu configs for workflow-based roles
+-- Migration 064: Seed menu templates for workflow-based entities
 -- ============================================================================
--- Purpose: Set menu_config to NULL for workflow-based roles to trigger
---          auto-generation from entity.workflow_codes
+-- Purpose: Create reusable menu templates for entities with workflows
 --
--- This migration ensures that:
--- - Module-based roles (TESORO) have explicit menu_config (already done in 063)
--- - Workflow-based roles have NULL menu_config (auto-generated)
--- - Ministry validator/approver roles have appropriate configs
+-- VERIFIED AGAINST DATABASE STATE (2026-01-25):
+--   - Entity CNEDOGE_PASAPORTE: 5 PASAPORTE_* workflows
+--   - Entity CNEDOGE_RESIDENCIA: 5 RESIDENCIA_* workflows
+--   - Entity DGT: 5 CONDUCIR_* workflows
+--   - Entity OFIVE: 6 VEHICULO_* workflows
+--   - Entity ONRC: 7 CONTRATO_* workflows
+--   - Entity TESORO: No workflows (module-based, handled by role menu_config)
+--
+-- NOTE: This migration does NOT update roles that don't exist.
+-- Future roles should be created with their menu_config OR use NULL for auto-generation.
 --
 -- Author: Claude Code Expert
 -- Date: 2026-01-19
+-- Revised: 2026-01-25 (removed references to non-existent roles)
 -- ============================================================================
 
 BEGIN;
 
 -- =============================================================================
--- 1. SET NULL menu_config FOR WORKFLOW-BASED ROLES
+-- 1. MENU TEMPLATES FOR WORKFLOW-BASED ENTITIES
 -- =============================================================================
--- These roles use entities with workflow_codes and should auto-generate menus
+-- These templates provide default configurations for entities with workflows.
+-- When an agent's role has menu_config = NULL, the system auto-generates menus
+-- from entity.workflow_codes using workflow_menu_mapping rules.
+-- These templates can be used to customize the auto-generated menus.
 
--- Ministry Validator: Uses service_requests workflows
-UPDATE roles SET
-    menu_config = NULL,
-    dashboard_config = '{
-        "version": "1.0",
-        "layout": "grid",
-        "widgets": [
-            {"id": "pending_requests", "visible": true, "position": 1, "size": "small"},
-            {"id": "in_progress", "visible": true, "position": 2, "size": "small"},
-            {"id": "completed_today", "visible": true, "position": 3, "size": "small"},
-            {"id": "recent_activity", "visible": true, "position": 4, "size": "large"}
-        ]
-    }'
-WHERE code = 'ministry_validator';
-
--- Ministry Approver: Uses service_requests workflows with extra permissions
-UPDATE roles SET
-    menu_config = NULL,
-    dashboard_config = '{
-        "version": "1.0",
-        "layout": "grid",
-        "widgets": [
-            {"id": "pending_requests", "visible": true, "position": 1, "size": "small"},
-            {"id": "in_progress", "visible": true, "position": 2, "size": "small"},
-            {"id": "completed_today", "visible": true, "position": 3, "size": "small"},
-            {"id": "team_stats", "visible": true, "position": 4, "size": "medium"},
-            {"id": "recent_activity", "visible": true, "position": 5, "size": "large"}
-        ]
-    }'
-WHERE code = 'ministry_approver';
-
--- DGI Validator: Uses tax declarations module
-UPDATE roles SET
-    menu_config = '{
-        "version": "1.0",
-        "source": "role",
-        "menus": [
-            {
-                "id": "dashboard",
-                "titleKey": "agent.nav.dashboard",
-                "href": "/dashboard/agent/dgi",
-                "icon": "LayoutDashboard"
-            },
-            {
-                "id": "declarations",
-                "titleKey": "agent.nav.declarations",
-                "icon": "FileText",
-                "permission": "declarations.view_assigned",
-                "items": [
-                    {"id": "pending", "titleKey": "agent.nav.pending", "href": "/dashboard/agent/dgi/pending", "icon": "Clock", "permission": "declarations.view_assigned"},
-                    {"id": "validation", "titleKey": "agent.nav.validation", "href": "/dashboard/agent/dgi/validation", "icon": "CheckCircle", "permission": "declarations.validate"}
-                ]
-            }
-        ]
-    }',
-    dashboard_config = '{
-        "version": "1.0",
-        "layout": "grid",
-        "widgets": [
-            {"id": "pending_declarations", "visible": true, "position": 1, "size": "small"},
-            {"id": "in_review", "visible": true, "position": 2, "size": "small"},
-            {"id": "approved_today", "visible": true, "position": 3, "size": "small"},
-            {"id": "recent_activity", "visible": true, "position": 4, "size": "large"}
-        ]
-    }'
-WHERE code = 'dgi_validator';
-
--- DGI Approver: Full declarations access
-UPDATE roles SET
-    menu_config = '{
-        "version": "1.0",
-        "source": "role",
-        "menus": [
-            {
-                "id": "dashboard",
-                "titleKey": "agent.nav.dashboard",
-                "href": "/dashboard/agent/dgi",
-                "icon": "LayoutDashboard"
-            },
-            {
-                "id": "declarations",
-                "titleKey": "agent.nav.declarations",
-                "icon": "FileText",
-                "items": [
-                    {"id": "pending", "titleKey": "agent.nav.pending", "href": "/dashboard/agent/dgi/pending", "icon": "Clock"},
-                    {"id": "validation", "titleKey": "agent.nav.validation", "href": "/dashboard/agent/dgi/validation", "icon": "CheckCircle"},
-                    {"id": "history", "titleKey": "agent.nav.history", "href": "/dashboard/agent/dgi/history", "icon": "History"}
-                ]
-            },
-            {
-                "id": "reports",
-                "titleKey": "agent.nav.reports",
-                "icon": "BarChart3",
-                "items": [
-                    {"id": "stats", "titleKey": "agent.nav.stats", "href": "/dashboard/agent/dgi/stats", "icon": "TrendingUp"}
-                ]
-            }
-        ]
-    }',
-    dashboard_config = '{
-        "version": "1.0",
-        "layout": "grid",
-        "widgets": [
-            {"id": "pending_declarations", "visible": true, "position": 1, "size": "small"},
-            {"id": "in_review", "visible": true, "position": 2, "size": "small"},
-            {"id": "approved_today", "visible": true, "position": 3, "size": "small"},
-            {"id": "team_performance", "visible": true, "position": 4, "size": "medium"},
-            {"id": "recent_activity", "visible": true, "position": 5, "size": "large"}
-        ]
-    }'
-WHERE code = 'dgi_approver';
-
--- Auditor: Read-only access across modules
-UPDATE roles SET
-    menu_config = '{
-        "version": "1.0",
-        "source": "role",
-        "menus": [
-            {
-                "id": "dashboard",
-                "titleKey": "agent.nav.dashboard",
-                "href": "/dashboard/agent/audit",
-                "icon": "LayoutDashboard"
-            },
-            {
-                "id": "audit",
-                "titleKey": "agent.nav.auditLogs",
-                "icon": "FileSearch",
-                "items": [
-                    {"id": "treasury", "titleKey": "agent.nav.treasuryAudit", "href": "/dashboard/agent/audit/treasury", "icon": "Wallet"},
-                    {"id": "declarations", "titleKey": "agent.nav.declarationsAudit", "href": "/dashboard/agent/audit/declarations", "icon": "FileText"},
-                    {"id": "requests", "titleKey": "agent.nav.requestsAudit", "href": "/dashboard/agent/audit/requests", "icon": "ClipboardList"}
-                ]
-            }
-        ]
-    }',
-    dashboard_config = '{
-        "version": "1.0",
-        "layout": "grid",
-        "widgets": [
-            {"id": "total_audited", "visible": true, "position": 1, "size": "small"},
-            {"id": "anomalies_found", "visible": true, "position": 2, "size": "small"},
-            {"id": "recent_audits", "visible": true, "position": 3, "size": "large"}
-        ]
-    }'
-WHERE code = 'auditor';
-
--- Supervisor Agent: Full access (uses auto-generation if entity has workflows)
-UPDATE roles SET
-    menu_config = NULL,
-    dashboard_config = '{
-        "version": "1.0",
-        "layout": "grid",
-        "widgets": [
-            {"id": "team_pending", "visible": true, "position": 1, "size": "small"},
-            {"id": "team_in_progress", "visible": true, "position": 2, "size": "small"},
-            {"id": "team_completed", "visible": true, "position": 3, "size": "small"},
-            {"id": "team_performance", "visible": true, "position": 4, "size": "medium"},
-            {"id": "workload_distribution", "visible": true, "position": 5, "size": "medium"},
-            {"id": "recent_activity", "visible": true, "position": 6, "size": "large"}
-        ]
-    }'
-WHERE code = 'supervisor_agent';
-
--- =============================================================================
--- 2. ADD DEFAULT MENU TEMPLATE FOR CNEDOGE WORKFLOWS
--- =============================================================================
-
+-- Template for CNEDOGE_PASAPORTE entity
 INSERT INTO menu_templates (code, name, description, template_type, entity_code, menu_structure, dashboard_widgets)
 VALUES (
-    'cnedoge_default',
-    'CNEDOGE Default Template',
-    'Template par défaut pour les agents CNEDOGE (passeports, cédulas)',
+    'cnedoge_pasaporte_default',
+    'CNEDOGE Pasaportes Template',
+    'Template par defaut pour les agents de passeports CNEDOGE',
     'workflow',
-    'CNEDOGE',
+    'CNEDOGE_PASAPORTE',
     '{
         "version": "1.0",
         "source": "template",
         "default_menus": ["dashboard", "pending", "validation", "appointments", "history"],
-        "permission_prefix": "service_requests"
+        "permission_prefix": "service_requests",
+        "workflows": ["PASAPORTE_NUEVO", "PASAPORTE_RENOVACION", "PASAPORTE_PERDIDA", "PASAPORTE_ROBO", "PASAPORTE_DETERIORO"]
     }',
     '{
         "version": "1.0",
@@ -212,37 +55,188 @@ VALUES (
         ]
     }'
 )
-ON CONFLICT (code) DO NOTHING;
+ON CONFLICT (code) DO UPDATE SET
+    menu_structure = EXCLUDED.menu_structure,
+    dashboard_widgets = EXCLUDED.dashboard_widgets,
+    updated_at = NOW();
 
--- =============================================================================
--- 3. ADD DEFAULT MENU TEMPLATE FOR DGT WORKFLOWS
--- =============================================================================
+-- Template for CNEDOGE_RESIDENCIA entity
+INSERT INTO menu_templates (code, name, description, template_type, entity_code, menu_structure, dashboard_widgets)
+VALUES (
+    'cnedoge_residencia_default',
+    'CNEDOGE Residencias Template',
+    'Template par defaut pour les agents de residencias CNEDOGE',
+    'workflow',
+    'CNEDOGE_RESIDENCIA',
+    '{
+        "version": "1.0",
+        "source": "template",
+        "default_menus": ["dashboard", "pending", "validation", "appointments", "history"],
+        "permission_prefix": "service_requests",
+        "workflows": ["RESIDENCIA_PRIMERA_VEZ", "RESIDENCIA_RENOVACION", "RESIDENCIA_DUPLICADO", "RESIDENCIA_CAMBIO_DATOS", "RESIDENCIA_REAGRUPACION"]
+    }',
+    '{
+        "version": "1.0",
+        "layout": "grid",
+        "widgets": [
+            {"id": "pending_requests", "visible": true, "position": 1, "size": "small"},
+            {"id": "appointments_today", "visible": true, "position": 2, "size": "small"},
+            {"id": "completed_today", "visible": true, "position": 3, "size": "small"},
+            {"id": "recent_activity", "visible": true, "position": 4, "size": "large"}
+        ]
+    }'
+)
+ON CONFLICT (code) DO UPDATE SET
+    menu_structure = EXCLUDED.menu_structure,
+    dashboard_widgets = EXCLUDED.dashboard_widgets,
+    updated_at = NOW();
 
+-- Template for DGT entity (Licencias de conducir)
 INSERT INTO menu_templates (code, name, description, template_type, entity_code, menu_structure, dashboard_widgets)
 VALUES (
     'dgt_default',
-    'DGT Default Template',
-    'Template par défaut pour les agents DGT (licencias, vehículos)',
+    'DGT Licencias Template',
+    'Template par defaut pour les agents DGT (licencias de conducir)',
     'workflow',
     'DGT',
     '{
         "version": "1.0",
         "source": "template",
         "default_menus": ["dashboard", "pending", "validation", "appointments", "history"],
-        "permission_prefix": "service_requests"
+        "permission_prefix": "service_requests",
+        "workflows": ["CONDUCIR_NUEVO", "CONDUCIR_CANJE", "CONDUCIR_RENOVACION", "CONDUCIR_DUPLICADO", "CONDUCIR_EXTENSION"]
     }',
     '{
         "version": "1.0",
         "layout": "grid",
         "widgets": [
             {"id": "pending_licenses", "visible": true, "position": 1, "size": "small"},
-            {"id": "pending_vehicles", "visible": true, "position": 2, "size": "small"},
-            {"id": "appointments_today", "visible": true, "position": 3, "size": "small"},
+            {"id": "appointments_today", "visible": true, "position": 2, "size": "small"},
+            {"id": "completed_today", "visible": true, "position": 3, "size": "small"},
             {"id": "recent_activity", "visible": true, "position": 4, "size": "large"}
         ]
     }'
 )
-ON CONFLICT (code) DO NOTHING;
+ON CONFLICT (code) DO UPDATE SET
+    menu_structure = EXCLUDED.menu_structure,
+    dashboard_widgets = EXCLUDED.dashboard_widgets,
+    updated_at = NOW();
+
+-- Template for OFIVE entity (Vehiculos)
+INSERT INTO menu_templates (code, name, description, template_type, entity_code, menu_structure, dashboard_widgets)
+VALUES (
+    'ofive_default',
+    'OFIVE Vehiculos Template',
+    'Template par defaut pour les agents OFIVE (vehiculos, CUVE)',
+    'workflow',
+    'OFIVE',
+    '{
+        "version": "1.0",
+        "source": "template",
+        "default_menus": ["dashboard", "pending", "validation", "appointments", "history"],
+        "permission_prefix": "service_requests",
+        "workflows": ["VEHICULO_PRIMERA_MATRICULACION", "VEHICULO_TRANSFERENCIA", "VEHICULO_RENOVACION_CUVE", "VEHICULO_DUPLICADO_PERMISO", "VEHICULO_DUPLICADO_CUVE", "VEHICULO_CAMBIO_CARACTERISTICAS"]
+    }',
+    '{
+        "version": "1.0",
+        "layout": "grid",
+        "widgets": [
+            {"id": "pending_vehicles", "visible": true, "position": 1, "size": "small"},
+            {"id": "appointments_today", "visible": true, "position": 2, "size": "small"},
+            {"id": "completed_today", "visible": true, "position": 3, "size": "small"},
+            {"id": "recent_activity", "visible": true, "position": 4, "size": "large"}
+        ]
+    }'
+)
+ON CONFLICT (code) DO UPDATE SET
+    menu_structure = EXCLUDED.menu_structure,
+    dashboard_widgets = EXCLUDED.dashboard_widgets,
+    updated_at = NOW();
+
+-- Template for ONRC entity (Contratos)
+INSERT INTO menu_templates (code, name, description, template_type, entity_code, menu_structure, dashboard_widgets)
+VALUES (
+    'onrc_default',
+    'ONRC Contratos Template',
+    'Template par defaut pour les agents ONRC (contratos)',
+    'workflow',
+    'ONRC',
+    '{
+        "version": "1.0",
+        "source": "template",
+        "default_menus": ["dashboard", "pending", "validation", "history"],
+        "permission_prefix": "service_requests",
+        "workflows": ["CONTRATO_OBRA", "CONTRATO_SERVICIO", "CONTRATO_SUMINISTRO", "CONTRATO_CONCESION", "CONTRATO_JOINT_VENTURE", "CONTRATO_ARRENDAMIENTO", "CONTRATO_OTRO"]
+    }',
+    '{
+        "version": "1.0",
+        "layout": "grid",
+        "widgets": [
+            {"id": "pending_contracts", "visible": true, "position": 1, "size": "small"},
+            {"id": "in_review", "visible": true, "position": 2, "size": "small"},
+            {"id": "completed_today", "visible": true, "position": 3, "size": "small"},
+            {"id": "recent_activity", "visible": true, "position": 4, "size": "large"}
+        ]
+    }'
+)
+ON CONFLICT (code) DO UPDATE SET
+    menu_structure = EXCLUDED.menu_structure,
+    dashboard_widgets = EXCLUDED.dashboard_widgets,
+    updated_at = NOW();
+
+-- Template for TESORO entity (Module-based, explicit menu)
+INSERT INTO menu_templates (code, name, description, template_type, entity_code, menu_structure, dashboard_widgets)
+VALUES (
+    'tesoro_default',
+    'Tesoro Treasury Template',
+    'Template par defaut pour les agents Tesoro (validation paiements)',
+    'module',
+    'TESORO',
+    '{
+        "version": "1.0",
+        "source": "template",
+        "menus": [
+            {
+                "id": "dashboard",
+                "titleKey": "agent.nav.dashboard",
+                "href": "/dashboard/agent/treasury",
+                "icon": "LayoutDashboard"
+            },
+            {
+                "id": "payments",
+                "titleKey": "agent.nav.payments",
+                "icon": "CreditCard",
+                "items": [
+                    {"id": "validation", "titleKey": "agent.nav.validation", "href": "/dashboard/agent/treasury/validation", "icon": "CheckCircle", "permission": "treasury.validate_payment"},
+                    {"id": "transactions", "titleKey": "agent.nav.transactions", "href": "/dashboard/agent/treasury/transactions", "icon": "History", "permission": "treasury.view_payment"}
+                ]
+            },
+            {
+                "id": "reports",
+                "titleKey": "agent.nav.reports",
+                "icon": "BarChart3",
+                "permission": "treasury_stat.view",
+                "items": [
+                    {"id": "stats", "titleKey": "agent.nav.stats", "href": "/dashboard/agent/treasury/stats", "icon": "TrendingUp", "permission": "treasury_stat.view"}
+                ]
+            }
+        ]
+    }',
+    '{
+        "version": "1.0",
+        "layout": "grid",
+        "widgets": [
+            {"id": "pending_payments", "visible": true, "position": 1, "size": "small"},
+            {"id": "in_progress_payments", "visible": true, "position": 2, "size": "small"},
+            {"id": "completed_payments", "visible": true, "position": 3, "size": "small"},
+            {"id": "recent_activity", "visible": true, "position": 4, "size": "large"}
+        ]
+    }'
+)
+ON CONFLICT (code) DO UPDATE SET
+    menu_structure = EXCLUDED.menu_structure,
+    dashboard_widgets = EXCLUDED.dashboard_widgets,
+    updated_at = NOW();
 
 COMMIT;
 
@@ -252,19 +246,16 @@ COMMIT;
 
 SELECT
     'Migration 064 completed' AS status,
-    COUNT(*) FILTER (WHERE menu_config IS NOT NULL) AS roles_with_menu_config,
-    COUNT(*) FILTER (WHERE menu_config IS NULL) AS roles_auto_generate,
-    COUNT(*) FILTER (WHERE dashboard_config IS NOT NULL) AS roles_with_dashboard_config
-FROM roles
-WHERE entity_type = 'agent';
+    COUNT(*) AS menu_templates_count
+FROM menu_templates;
 
 SELECT
     code,
     name,
-    CASE WHEN menu_config IS NOT NULL THEN 'Explicit' ELSE 'Auto-generate' END as menu_source
-FROM roles
-WHERE entity_type = 'agent'
-ORDER BY code;
+    template_type,
+    entity_code
+FROM menu_templates
+ORDER BY entity_code, code;
 
 -- ============================================================================
 -- END OF MIGRATION 064
