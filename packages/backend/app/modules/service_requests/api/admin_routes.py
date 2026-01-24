@@ -2858,7 +2858,7 @@ async def get_payment_details(
         FROM service_payments sp
         LEFT JOIN service_requests sr ON sr.id = sp.service_request_id
         LEFT JOIN users u ON u.id = sp.user_id
-        WHERE sp.id = $1
+        WHERE sp.id = $1::uuid
     """
     row = await db.fetchrow(query, payment_id)
 

@@ -421,7 +421,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
             query = """
                 UPDATE service_payments
                 SET status = 'failed',
-                    workflow_status = 'rejected',
+                    workflow_status = 'rejected_by_agent',
                     validated_by_agent_profile_id = $2::uuid,
                     validated_at = NOW(),
                     validation_comment = $3,

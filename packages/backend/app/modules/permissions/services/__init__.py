@@ -8,6 +8,7 @@ from .permission_registry import (
     PermissionRegistry,
     is_permission_registered,
     initialize_permissions,
+    cleanup_obsolete_permissions,
 )
 
 __all__ = [
@@ -19,4 +20,5 @@ __all__ = [
     "PermissionRegistry",
     "is_permission_registered",
     "initialize_permissions",
+    "cleanup_obsolete_permissions",
 ]

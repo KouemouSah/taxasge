@@ -58,23 +58,46 @@ async def lifespan(app: FastAPI):
 
         # Initialize permissions system (RBAC)
         try:
-            # Import and register permissions from all modules
-            from app.modules.permissions.services import initialize_permissions
+            # Import permissions module - triggers auto-discovery of all module_permissions
+            # This import chain:
+            #   1. permissions/__init__.py imports module_permissions
+            #   2. module_permissions/__init__.py runs discover_and_register_permissions()
+            #   3. All *_permissions.py files are loaded and registered
+            from app.modules.permissions import initialize_permissions
+
+            # Register legacy module permissions (separate from module_permissions folder)
             from app.modules.assignment.permissions import register_assignment_permissions
             from app.modules.declarations.permissions import register_declarations_permissions
-
-            # Register all module permissions
             register_assignment_permissions()
             register_declarations_permissions()
 
-            # Sync to database
+            # Sync permissions, role_permissions, and cleanup obsolete
             async with db_manager.get_connection() as conn:
-                sync_result = await initialize_permissions(conn)
+                sync_result = await initialize_permissions(
+                    conn,
+                    sync_role_permissions=True,
+                    cleanup_obsolete=True  # Remove obsolete permissions from DB
+                )
                 logger.info(
                     f"✅ Permissions initialized: {sync_result['created_count']} new, "
                     f"{sync_result['skipped_count']} existing, "
                     f"{sync_result['total_count']} total"
                 )
+                # Log role_permissions sync if available
+                if 'role_permissions' in sync_result:
+                    rp = sync_result['role_permissions']
+                    if 'error' not in rp:
+                        logger.info(
+                            f"✅ Role permissions synced: {rp.get('roles_updated', 0)} roles, "
+                            f"{rp.get('permissions_assigned', 0)} assignments"
+                        )
+                # Log cleanup results if any obsolete permissions were removed
+                if 'cleanup' in sync_result:
+                    cleanup = sync_result['cleanup']
+                    if 'error' not in cleanup and cleanup.get('deleted_count', 0) > 0:
+                        logger.info(
+                            f"🧹 Cleanup: {cleanup['deleted_count']} obsolete permissions removed"
+                        )
         except Exception as e:
             logger.warning(f"⚠️ Failed to initialize permissions (non-blocking): {e}")
 

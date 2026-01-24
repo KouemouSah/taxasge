@@ -1,10 +1,16 @@
 """
 Permission Registry - Central registry for module permissions
+
+This module provides:
+- Permission registration from module files
+- Role-permission mapping registration
+- Auto-sync to database at startup
 """
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Set, Any
 import logging
 
 from app.modules.permissions.repositories.permission_repository import PermissionRepository
+from app.modules.permissions.repositories.role_repository import RoleRepository
 from app.modules.permissions.models.permission import PermissionCreate
 
 logger = logging.getLogger(__name__)
@@ -12,14 +18,20 @@ logger = logging.getLogger(__name__)
 
 class PermissionRegistry:
     """
-    Central registry for permissions
+    Central registry for permissions and role-permission mappings
 
     Modules can register their permissions at startup using this registry.
     The registry will then sync permissions to the database.
+
+    Also handles ROLE_PERMISSIONS mappings to auto-assign permissions to roles.
     """
 
     # Class-level storage for registered permissions
     _registered_permissions: Dict[str, List[Tuple]] = {}
+
+    # Class-level storage for role-permission mappings
+    # Format: {module_name: {role_code: [permission_names]}}
+    _registered_role_permissions: Dict[str, Dict[str, List[str]]] = {}
 
     @classmethod
     def register_module_permissions(
@@ -56,6 +68,55 @@ class PermissionRegistry:
 
         cls._registered_permissions[module_name] = permissions
         logger.info(f"Registered {len(permissions)} permissions for module '{module_name}'")
+
+    @classmethod
+    def register_role_permissions(
+        cls,
+        module_name: str,
+        role_permissions: Dict[str, List[str]]
+    ):
+        """
+        Register role-permission mappings for a module
+
+        This should be called after register_module_permissions.
+
+        Args:
+            module_name: Name of the module (e.g., "treasury")
+            role_permissions: Dict mapping role codes to permission name lists
+
+        Example:
+            ```python
+            ROLE_PERMISSIONS = {
+                "agent_tesoro": [
+                    "treasury.view_payment",
+                    "treasury.validate_payment",
+                ],
+                "supervisor_tesoro": [
+                    "treasury.view_payment",
+                    "treasury.validate_payment",
+                    "treasury.manage_settings",
+                ],
+            }
+
+            PermissionRegistry.register_role_permissions("treasury", ROLE_PERMISSIONS)
+            ```
+        """
+        if module_name in cls._registered_role_permissions:
+            # Merge with existing mappings
+            existing = cls._registered_role_permissions[module_name]
+            for role_code, perms in role_permissions.items():
+                if role_code in existing:
+                    # Extend existing list, avoiding duplicates
+                    existing[role_code] = list(set(existing[role_code] + perms))
+                else:
+                    existing[role_code] = perms
+            logger.info(f"Merged role_permissions for module '{module_name}'")
+        else:
+            cls._registered_role_permissions[module_name] = role_permissions
+            logger.info(
+                f"Registered role_permissions for {len(role_permissions)} roles "
+                f"in module '{module_name}'"
+            )
 
     @classmethod
     def get_registered_permissions(cls) -> Dict[str, List[Tuple]]:
@@ -144,31 +205,157 @@ class PermissionRegistry:
         }
 
     @classmethod
+    def get_all_role_permissions(cls) -> Dict[str, List[str]]:
+        """
+        Get aggregated role-permission mappings from all modules
+
+        Returns:
+            Dict mapping role_code to list of permission names
+        """
+        aggregated: Dict[str, Set[str]] = {}
+
+        for module_name, role_perms in cls._registered_role_permissions.items():
+            for role_code, perm_names in role_perms.items():
+                if role_code == "admin" and perm_names == ["*"]:
+                    # Skip wildcard admin - admin gets all permissions separately
+                    continue
+
+                if role_code not in aggregated:
+                    aggregated[role_code] = set()
+
+                aggregated[role_code].update(perm_names)
+
+        # Convert sets to lists for return
+        return {role: list(perms) for role, perms in aggregated.items()}
+
+    @classmethod
+    async def sync_role_permissions_to_database(cls, db_connection) -> Dict[str, int]:
+        """
+        Sync all registered role-permission mappings to the database
+
+        This should be called after sync_to_database to ensure permissions exist.
+
+        Args:
+            db_connection: Database connection
+
+        Returns:
+            Dict with sync statistics (roles_updated, permissions_assigned, skipped)
+        """
+        role_repo = RoleRepository(db_connection)
+        permission_repo = PermissionRepository(db_connection)
+
+        roles_updated = 0
+        permissions_assigned = 0
+        skipped = 0
+        errors = []
+
+        # Get all role-permission mappings
+        all_role_perms = cls.get_all_role_permissions()
+
+        logger.info(f"Syncing role_permissions for {len(all_role_perms)} roles...")
+
+        for role_code, permission_names in all_role_perms.items():
+            try:
+                # Get role by code
+                role = await role_repo.get_by_code(role_code)
+                if not role:
+                    logger.warning(f"Role '{role_code}' not found in database, skipping")
+                    skipped += len(permission_names)
+                    continue
+
+                role_id = str(role['id'])
+                role_updated = False
+
+                # Assign each permission
+                for perm_name in permission_names:
+                    try:
+                        # Get permission by name
+                        permission = await permission_repo.get_by_name(perm_name)
+                        if not permission:
+                            logger.warning(
+                                f"Permission '{perm_name}' not found for role '{role_code}'"
+                            )
+                            skipped += 1
+                            continue
+
+                        permission_id = str(permission['id'])
+
+                        # Assign permission to role (uses ON CONFLICT DO UPDATE)
+                        await role_repo.assign_permission(
+                            role_id=role_id,
+                            permission_id=permission_id,
+                            granted=True,
+                            created_by=None  # System assignment
+                        )
+                        permissions_assigned += 1
+                        role_updated = True
+
+                    except Exception as e:
+                        logger.error(
+                            f"Error assigning '{perm_name}' to '{role_code}': {e}"
+                        )
+                        errors.append(f"{role_code}.{perm_name}: {str(e)}")
+                        skipped += 1
+
+                if role_updated:
+                    roles_updated += 1
+
+            except Exception as e:
+                logger.error(f"Error processing role '{role_code}': {e}")
+                errors.append(f"{role_code}: {str(e)}")
+                skipped += len(permission_names)
+
+        logger.info(
+            f"Role permission sync completed: {roles_updated} roles updated, "
+            f"{permissions_assigned} permissions assigned, {skipped} skipped"
+        )
+
+        if errors:
+            logger.warning(f"Sync errors: {errors[:5]}{'...' if len(errors) > 5 else ''}")
+
+        return {
+            "roles_updated": roles_updated,
+            "permissions_assigned": permissions_assigned,
+            "skipped": skipped,
+            "errors": errors[:10]  # Return first 10 errors
+        }
+
+    @classmethod
     def clear_registry(cls):
         """
-        Clear all registered permissions
+        Clear all registered permissions and role mappings
 
         This is mainly useful for testing.
         """
         cls._registered_permissions.clear()
-        logger.info("Permission registry cleared")
+        cls._registered_role_permissions.clear()
+        logger.info("Permission registry cleared (permissions and role mappings)")
 
     @classmethod
     def get_stats(cls) -> Dict[str, int]:
         """
-        Get statistics about registered permissions
+        Get statistics about registered permissions and role mappings
 
         Returns:
-            Dict with module_count and permission_count
+            Dict with module_count, permission_count, role_count, role_permission_count
         """
         module_count = len(cls._registered_permissions)
         permission_count = sum(
             len(perms) for perms in cls._registered_permissions.values()
         )
 
+        # Count unique roles and total role-permission mappings
+        all_role_perms = cls.get_all_role_permissions()
+        role_count = len(all_role_perms)
+        role_permission_count = sum(
+            len(perms) for perms in all_role_perms.values()
+        )
+
         return {
             "module_count": module_count,
-            "permission_count": permission_count
+            "permission_count": permission_count,
+            "role_count": role_count,
+            "role_permission_count": role_permission_count
         }
 
 
@@ -187,16 +374,24 @@ def is_permission_registered(permission_name: str) -> bool:
 
 
 # Function to be called at application startup
-async def initialize_permissions(db_connection):
+async def initialize_permissions(
+    db_connection,
+    sync_role_permissions: bool = True,
+    cleanup_obsolete: bool = True
+):
     """
     Initialize permissions at application startup
 
     This function:
     1. Loads all module permissions from the registry
-    2. Syncs them to the database
+    2. Syncs them to the database (permissions table)
+    3. Syncs role-permission mappings to the database (role_permissions table)
+    4. Cleans up obsolete permissions not defined in backend (optional)
 
     Args:
         db_connection: Database connection
+        sync_role_permissions: Whether to sync role-permission mappings (default: True)
+        cleanup_obsolete: Whether to remove obsolete permissions from DB (default: True)
 
     Returns:
         Dict with sync statistics
@@ -208,7 +403,13 @@ async def initialize_permissions(db_connection):
         f"Found {stats['permission_count']} permissions "
         f"across {stats['module_count']} modules"
     )
+    if stats.get('role_count', 0) > 0:
+        logger.info(
+            f"Found {stats['role_permission_count']} role-permission mappings "
+            f"for {stats['role_count']} roles"
+        )
 
+    # Step 1: Sync permissions to database
     sync_result = await PermissionRegistry.sync_to_database(db_connection)
 
     logger.info(
@@ -217,4 +418,121 @@ async def initialize_permissions(db_connection):
         f"{sync_result['total_count']} total"
     )
 
+    # Step 2: Sync role-permission mappings
+    if sync_role_permissions and stats.get('role_count', 0) > 0:
+        try:
+            role_sync_result = await PermissionRegistry.sync_role_permissions_to_database(
+                db_connection
+            )
+            sync_result['role_permissions'] = role_sync_result
+            logger.info(
+                f"Role permissions initialized: {role_sync_result['roles_updated']} roles, "
+                f"{role_sync_result['permissions_assigned']} assignments"
+            )
+        except Exception as e:
+            logger.warning(f"Failed to sync role permissions (non-blocking): {e}")
+            sync_result['role_permissions'] = {"error": str(e)}
+
+    # Step 3: Cleanup obsolete permissions
+    if cleanup_obsolete:
+        try:
+            cleanup_result = await cleanup_obsolete_permissions(db_connection)
+            sync_result['cleanup'] = cleanup_result
+            if cleanup_result['deleted_count'] > 0:
+                logger.info(
+                    f"Cleanup completed: {cleanup_result['deleted_count']} obsolete permissions removed, "
+                    f"{cleanup_result['role_permissions_removed']} role assignments removed"
+                )
+        except Exception as e:
+            logger.warning(f"Failed to cleanup obsolete permissions (non-blocking): {e}")
+            sync_result['cleanup'] = {"error": str(e)}
+
     return sync_result
+
+
+async def cleanup_obsolete_permissions(db_connection) -> Dict[str, Any]:
+    """
+    Remove permissions from database that are not defined in the backend registry.
+
+    This ensures the database stays in sync with the backend code and prevents
+    admins from accidentally selecting obsolete permissions.
+
+    Process:
+    1. Get all permission names from the database
+    2. Get all permission names from the registry (backend)
+    3. Find permissions in DB but not in registry (obsolete)
+    4. Remove role_permissions assignments for obsolete permissions
+    5. Delete the obsolete permissions
+
+    Args:
+        db_connection: Database connection
+
+    Returns:
+        Dict with cleanup statistics
+    """
+    # Get all backend permission names
+    backend_permissions = set(PermissionRegistry.get_all_permission_names())
+
+    # Get all database permission names
+    db_permissions_rows = await db_connection.fetch(
+        "SELECT id, name FROM permissions"
+    )
+    db_permissions = {row['name']: row['id'] for row in db_permissions_rows}
+
+    # Find obsolete permissions (in DB but not in backend)
+    obsolete_names = set(db_permissions.keys()) - backend_permissions
+
+    if not obsolete_names:
+        logger.info("No obsolete permissions found - database is in sync with backend")
+        return {
+            "deleted_count": 0,
+            "role_permissions_removed": 0,
+            "deleted_permissions": []
+        }
+
+    logger.info(f"Found {len(obsolete_names)} obsolete permissions to cleanup")
+
+    # Get IDs of obsolete permissions
+    obsolete_ids = [db_permissions[name] for name in obsolete_names]
+
+    # Step 1: Remove role_permissions assignments for obsolete permissions
+    # This prevents foreign key violations when deleting permissions
+    role_perms_deleted = await db_connection.execute(
+        """
+        DELETE FROM role_permissions
+        WHERE permission_id = ANY($1::uuid[])
+        """,
+        obsolete_ids
+    )
+    role_perms_count = int(role_perms_deleted.split()[-1]) if role_perms_deleted else 0
+
+    # Step 2: Remove user_permissions assignments for obsolete permissions
+    user_perms_deleted = await db_connection.execute(
+        """
+        DELETE FROM user_permissions
+        WHERE permission_id = ANY($1::uuid[])
+        """,
+        obsolete_ids
+    )
+    user_perms_count = int(user_perms_deleted.split()[-1]) if user_perms_deleted else 0
+
+    # Step 3: Delete the obsolete permissions
+    perms_deleted = await db_connection.execute(
+        """
+        DELETE FROM permissions
+        WHERE id = ANY($1::uuid[])
+        """,
+        obsolete_ids
+    )
+    perms_count = int(perms_deleted.split()[-1]) if perms_deleted else 0
+
+    # Log what was deleted (first 20 for brevity)
+    deleted_list = sorted(list(obsolete_names))[:20]
+    logger.info(f"Deleted obsolete permissions: {deleted_list}{'...' if len(obsolete_names) > 20 else ''}")
+
+    return {
+        "deleted_count": perms_count,
+        "role_permissions_removed": role_perms_count,
+        "user_permissions_removed": user_perms_count,
+        "deleted_permissions": sorted(list(obsolete_names))
+    }

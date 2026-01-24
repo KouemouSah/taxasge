@@ -26,6 +26,13 @@ Usage:
     app.include_router(user_permission_router, prefix="/api/v1")
 """
 
+# =============================================================================
+# AUTO-DISCOVERY: Import module_permissions to trigger auto-registration
+# This MUST be imported BEFORE services to ensure permissions are registered
+# before initialize_permissions() is called
+# =============================================================================
+from . import module_permissions  # noqa: F401 - triggers discover_and_register_permissions()
+
 # API Routers
 from .api import (
     permission_router,
