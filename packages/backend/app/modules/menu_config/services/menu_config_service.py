@@ -6,8 +6,13 @@ Supports two modes:
 - Workflow-based: Auto-generates menus from entity.workflow_codes using mapping rules
 - Module-based: Uses explicit menu_config from roles table
 
+Requires database columns (migration 063):
+- roles: menu_config, dashboard_config, ui_config
+- agent_profiles: menu_overrides, dashboard_overrides
+
 Author: Claude Code Expert
 Date: 2026-01-19
+Updated: 2026-01-25 - Added migration dependency note
 """
 from typing import List, Optional, Dict, Any
 from uuid import UUID
