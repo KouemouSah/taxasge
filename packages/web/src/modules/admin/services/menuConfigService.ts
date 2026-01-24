@@ -243,32 +243,13 @@ export const menuConfigApi = {
   // ===========================================================================
   // ROLE MENU CONFIG
   // ===========================================================================
-
-  /**
-   * Get menu config for a specific role
-   * BACKEND: GET /api/v1/roles/{role_id}/menu-config
-   * PERMISSION: menu.view_role_config
-   */
-  getRoleMenuConfig: async (
-    roleId: string
-  ): Promise<{ menu_config: Record<string, unknown>; dashboard_config: Record<string, unknown> }> => {
-    return fetchClient.get(`/roles/${roleId}/menu-config`);
-  },
-
-  /**
-   * Update menu config for a specific role
-   * BACKEND: PUT /api/v1/roles/{role_id}/menu-config
-   * PERMISSION: menu.update_role_config
-   */
-  updateRoleMenuConfig: async (
-    roleId: string,
-    data: {
-      menu_config?: Record<string, unknown>;
-      dashboard_config?: Record<string, unknown>;
-    }
-  ): Promise<void> => {
-    return fetchClient.put(`/roles/${roleId}/menu-config`, data);
-  },
+  // NOTE: These methods require backend routes that are not yet implemented.
+  // The menu_config is currently managed directly in the roles table via migrations.
+  // When /roles/{role_id}/menu-config endpoints are added to the backend,
+  // uncomment these methods.
+  //
+  // getRoleMenuConfig: async (roleId: string) => { ... }
+  // updateRoleMenuConfig: async (roleId: string, data) => { ... }
 };
 
 // =============================================================================

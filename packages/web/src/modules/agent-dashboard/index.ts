@@ -58,7 +58,15 @@ export {
   useAgentProfile,
   useAgentDashboard,
   useAgentEntityRedirect,
+  useMenuConfig,
+  useDynamicMenuItems,
 } from './hooks';
 
 // Components
-export { GenericAgentSidebar, GenericEntityDashboard } from './components';
+export {
+  GenericAgentSidebar,
+  GenericEntityDashboard,
+  DynamicMenu,
+  DynamicDashboard,
+} from './components';
+export type { WidgetData } from './components';

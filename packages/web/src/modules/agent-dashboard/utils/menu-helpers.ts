@@ -50,6 +50,19 @@ import {
   UserCheck,
   UserX,
   Home,
+  // Treasury icons
+  RefreshCw,
+  Activity,
+  ShieldAlert,
+  FileSpreadsheet,
+  Banknote,
+  // Escalation icons
+  AlertTriangle,
+  List,
+  // Workflow icons
+  Plane,
+  Truck,
+  FileSignature,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -66,8 +79,9 @@ const ICON_MAP: Record<string, LucideIcon> = {
   LayoutDashboard,
   Home,
   Dashboard: LayoutDashboard,
+  ChevronDown,
 
-  // Documents
+  // Documents & Files
   FileText,
   File,
   FileCheck,
@@ -78,6 +92,8 @@ const ICON_MAP: Record<string, LucideIcon> = {
   FolderOpen,
   ClipboardList,
   FileSearch,
+  FileSpreadsheet,
+  FileSignature,
 
   // Time & Status
   Clock,
@@ -92,14 +108,19 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Receipt,
   TrendingUp,
   BarChart3,
+  Banknote,
+  RefreshCw,
+  Activity,
 
-  // Entities
+  // Entities & Business
   Building2,
   Car,
+  Truck,
   BadgeCheck,
   IdCard: BadgeCheck, // Alias
   Briefcase,
   Globe,
+  Plane,
 
   // Users
   User,
@@ -117,10 +138,14 @@ const ICON_MAP: Record<string, LucideIcon> = {
   // Settings & Security
   Settings,
   Shield,
+  ShieldAlert,
   LogOut,
 
+  // Alerts & Lists
+  AlertTriangle,
+  List,
+
   // UI Elements
-  ChevronDown,
   HelpCircle,
   Info,
 };

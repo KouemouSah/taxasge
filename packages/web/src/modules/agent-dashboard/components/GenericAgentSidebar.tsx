@@ -48,6 +48,20 @@ import {
   BadgeCheck,
   Briefcase,
   Globe,
+  // Treasury icons
+  RefreshCw,
+  Activity,
+  ShieldAlert,
+  FileSpreadsheet,
+  Banknote,
+  // Escalation icons
+  AlertTriangle,
+  AlertCircle,
+  List,
+  // Workflow icons
+  Plane,
+  Truck,
+  FileSignature,
   type LucideIcon,
 } from 'lucide-react';
 import { clearAuthData } from '@/core/auth/storage';
@@ -67,30 +81,54 @@ import { useAgentDashboard } from '../hooks';
  * Used for dynamic menus where icons come from backend as strings
  */
 const ICON_MAP: Record<string, LucideIcon> = {
+  // Layout & Navigation
   LayoutDashboard,
+  ChevronDown,
+
+  // Documents & Files
   FileText,
+  FileSearch,
+  FileSpreadsheet,
+  FileSignature,
+  ClipboardList,
+
+  // Time & Status
   Clock,
   CheckCircle,
   History,
   Calendar,
+
+  // Finance & Payment
   Wallet,
   CreditCard,
   Receipt,
   TrendingUp,
   BarChart3,
-  FileSearch,
-  ClipboardList,
+  Banknote,
+  RefreshCw,
+  Activity,
+
+  // Entities & Business
   Building2,
   Car,
-  IdCard: BadgeCheck, // Alias for IdCard
+  Truck,
+  IdCard: BadgeCheck,
   BadgeCheck,
   Briefcase,
   Globe,
+  Plane,
+
+  // Users & Security
   User,
   Settings,
   Shield,
+  ShieldAlert,
   LogOut,
-  ChevronDown,
+
+  // Alerts & Notifications
+  AlertTriangle,
+  AlertCircle,
+  List,
 };
 
 /**
