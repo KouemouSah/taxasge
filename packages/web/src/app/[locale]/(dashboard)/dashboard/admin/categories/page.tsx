@@ -565,6 +565,7 @@ export default function CategoriesPage() {
 
           {!isLoading && !error && sortedCategories.length > 0 && (
             <>
+              <div className="border rounded-md overflow-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -590,7 +591,7 @@ export default function CategoriesPage() {
                         {getSortIcon('name_es')}
                       </Button>
                     </TableHead>
-                    <TableHead>
+                    <TableHead className="hidden lg:table-cell">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -601,7 +602,7 @@ export default function CategoriesPage() {
                         {getSortIcon('sector_id')}
                       </Button>
                     </TableHead>
-                    <TableHead>
+                    <TableHead className="hidden lg:table-cell">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -612,7 +613,7 @@ export default function CategoriesPage() {
                         {getSortIcon('ministry_id')}
                       </Button>
                     </TableHead>
-                    <TableHead>
+                    <TableHead className="hidden md:table-cell">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -654,9 +655,9 @@ export default function CategoriesPage() {
                           <span className="font-medium">{getLocalizedName(category, locale)}</span>
                         </div>
                       </TableCell>
-                      <TableCell>{getSectorName(category.sectorId ?? category.sector_id)}</TableCell>
-                      <TableCell>{getMinistryName(category.ministryId ?? category.ministry_id)}</TableCell>
-                      <TableCell>{category.displayOrder ?? category.display_order ?? 0}</TableCell>
+                      <TableCell className="hidden lg:table-cell">{getSectorName(category.sectorId ?? category.sector_id)}</TableCell>
+                      <TableCell className="hidden lg:table-cell">{getMinistryName(category.ministryId ?? category.ministry_id)}</TableCell>
+                      <TableCell className="hidden md:table-cell">{category.displayOrder ?? category.display_order ?? 0}</TableCell>
                       <TableCell>
                         <Badge
                           variant="outline"
@@ -681,6 +682,7 @@ export default function CategoriesPage() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
 
               {/* Pagination Controls */}
               <div className="flex items-center justify-between px-2 py-4 border-t">

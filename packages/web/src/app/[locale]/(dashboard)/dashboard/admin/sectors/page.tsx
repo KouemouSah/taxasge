@@ -481,6 +481,7 @@ export default function SectorsPage() {
 
           {!isLoading && !error && sortedSectors.length > 0 && (
             <>
+              <div className="border rounded-md overflow-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -506,7 +507,7 @@ export default function SectorsPage() {
                         {getSortIcon('name_es')}
                       </Button>
                     </TableHead>
-                    <TableHead>
+                    <TableHead className="hidden lg:table-cell">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -517,7 +518,7 @@ export default function SectorsPage() {
                         {getSortIcon('ministry_id')}
                       </Button>
                     </TableHead>
-                    <TableHead>
+                    <TableHead className="hidden md:table-cell">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -559,8 +560,8 @@ export default function SectorsPage() {
                           <span className="font-medium">{getLocalizedName(sector, locale)}</span>
                         </div>
                       </TableCell>
-                      <TableCell>{getMinistryName(sector.ministryId ?? sector.ministry_id)}</TableCell>
-                      <TableCell>{sector.displayOrder ?? sector.display_order ?? 0}</TableCell>
+                      <TableCell className="hidden lg:table-cell">{getMinistryName(sector.ministryId ?? sector.ministry_id)}</TableCell>
+                      <TableCell className="hidden md:table-cell">{sector.displayOrder ?? sector.display_order ?? 0}</TableCell>
                       <TableCell>
                         <Badge
                           variant="outline"
@@ -585,6 +586,7 @@ export default function SectorsPage() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
 
               {/* Pagination Controls */}
               <div className="flex items-center justify-between px-2 py-4 border-t">

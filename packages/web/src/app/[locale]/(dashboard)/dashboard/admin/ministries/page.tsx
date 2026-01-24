@@ -457,6 +457,7 @@ export default function MinistriesPage() {
 
           {!isLoading && !error && sortedMinistries.length > 0 && (
             <>
+              <div className="border rounded-md overflow-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -482,7 +483,7 @@ export default function MinistriesPage() {
                         {getSortIcon('name_es')}
                       </Button>
                     </TableHead>
-                    <TableHead>
+                    <TableHead className="hidden md:table-cell">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -524,7 +525,7 @@ export default function MinistriesPage() {
                           <span className="font-medium">{getLocalizedName(ministry, locale)}</span>
                         </div>
                       </TableCell>
-                      <TableCell>{ministry.displayOrder ?? ministry.display_order ?? 0}</TableCell>
+                      <TableCell className="hidden md:table-cell">{ministry.displayOrder ?? ministry.display_order ?? 0}</TableCell>
                       <TableCell>
                         <Badge
                           variant="outline"
@@ -549,6 +550,7 @@ export default function MinistriesPage() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
 
               {/* Pagination Controls */}
               <div className="flex items-center justify-between px-2 py-4 border-t">

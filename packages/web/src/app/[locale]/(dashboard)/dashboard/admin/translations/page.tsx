@@ -388,14 +388,15 @@ function EntityTranslationsTab() {
             </div>
           ) : (
             <>
+              <div className="border rounded-md overflow-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>{t('entity.tableHeaders.type')}</TableHead>
                     <TableHead>{t('entity.tableHeaders.entityCode')}</TableHead>
-                    <TableHead>{t('entity.tableHeaders.field')}</TableHead>
+                    <TableHead className="hidden md:table-cell">{t('entity.tableHeaders.field')}</TableHead>
                     <TableHead>{t('entity.tableHeaders.language')}</TableHead>
-                    <TableHead>{t('entity.tableHeaders.translation')}</TableHead>
+                    <TableHead className="hidden lg:table-cell">{t('entity.tableHeaders.translation')}</TableHead>
                     <TableHead className="text-right">{t('entity.tableHeaders.actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -406,9 +407,9 @@ function EntityTranslationsTab() {
                         <Badge variant="outline">{getEntityTypeLabel(tr.entity_type)}</Badge>
                       </TableCell>
                       <TableCell className="font-mono text-sm">{tr.entity_code}</TableCell>
-                      <TableCell>{tr.field_name}</TableCell>
+                      <TableCell className="hidden md:table-cell">{tr.field_name}</TableCell>
                       <TableCell>{getLanguageFlag(tr.language_code)} {tr.language_code.toUpperCase()}</TableCell>
-                      <TableCell className="max-w-[300px] truncate">{tr.translation_text}</TableCell>
+                      <TableCell className="hidden lg:table-cell max-w-[300px] truncate">{tr.translation_text}</TableCell>
                       <TableCell className="text-right">
                         <Button variant="ghost" size="sm" onClick={() => handleEdit(tr)}>
                           <Pencil className="h-4 w-4" />
@@ -421,6 +422,7 @@ function EntityTranslationsTab() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
 
               <div className="flex items-center justify-between mt-4">
                 <p className="text-sm text-muted-foreground">
@@ -882,14 +884,15 @@ function SystemTranslationsTab() {
             </div>
           ) : (
             <>
+              <div className="border rounded-md overflow-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>{t('system.tableHeaders.category')}</TableHead>
                     <TableHead>{t('system.tableHeaders.key')}</TableHead>
                     <TableHead>{t('system.tableHeaders.es')}</TableHead>
-                    <TableHead>{t('system.tableHeaders.fr')}</TableHead>
-                    <TableHead>{t('system.tableHeaders.en')}</TableHead>
+                    <TableHead className="hidden md:table-cell">{t('system.tableHeaders.fr')}</TableHead>
+                    <TableHead className="hidden lg:table-cell">{t('system.tableHeaders.en')}</TableHead>
                     <TableHead className="text-right">{t('system.tableHeaders.actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -908,14 +911,14 @@ function SystemTranslationsTab() {
                               <span className="text-primary/70">{catInfo.groupLabel}</span>
                             )}
                             {catInfo.enum && <span className="font-mono">{catInfo.enum}</span>}
-                            {catInfo.table && !catInfo.enum && <span>📋 {catInfo.table}</span>}
+                            {catInfo.table && !catInfo.enum && <span>{catInfo.table}</span>}
                           </div>
                         </div>
                       </TableCell>
                       <TableCell className="font-mono text-sm">{tr.key_code}</TableCell>
                       <TableCell className="max-w-[150px] truncate" title={tr.es}>{tr.es}</TableCell>
-                      <TableCell className="max-w-[150px] truncate" title={tr.fr}>{tr.fr}</TableCell>
-                      <TableCell className="max-w-[150px] truncate" title={tr.en}>{tr.en}</TableCell>
+                      <TableCell className="hidden md:table-cell max-w-[150px] truncate" title={tr.fr}>{tr.fr}</TableCell>
+                      <TableCell className="hidden lg:table-cell max-w-[150px] truncate" title={tr.en}>{tr.en}</TableCell>
                       <TableCell className="text-right">
                         <Button variant="ghost" size="sm" onClick={() => handleEdit(tr)}>
                           <Pencil className="h-4 w-4" />
@@ -928,6 +931,7 @@ function SystemTranslationsTab() {
                   )})}
                 </TableBody>
               </Table>
+              </div>
 
               <div className="flex items-center justify-between mt-4">
                 <p className="text-sm text-muted-foreground">
@@ -1263,15 +1267,16 @@ function EnumManagementTab() {
               <p>{t('enums.noValues')}</p>
             </div>
           ) : (
+            <div className="border rounded-md overflow-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>{t('enums.tableHeaders.value')}</TableHead>
                   <TableHead>{t('enums.tableHeaders.status')}</TableHead>
                   <TableHead>{t('system.tableHeaders.es')}</TableHead>
-                  <TableHead>{t('system.tableHeaders.fr')}</TableHead>
-                  <TableHead>{t('system.tableHeaders.en')}</TableHead>
-                  <TableHead>{t('enums.tableHeaders.usage')}</TableHead>
+                  <TableHead className="hidden md:table-cell">{t('system.tableHeaders.fr')}</TableHead>
+                  <TableHead className="hidden lg:table-cell">{t('system.tableHeaders.en')}</TableHead>
+                  <TableHead className="hidden md:table-cell">{t('enums.tableHeaders.usage')}</TableHead>
                   <TableHead className="text-right">{t('system.tableHeaders.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -1300,13 +1305,13 @@ function EnumManagementTab() {
                     <TableCell className="max-w-[120px] truncate" title={val.es || ''}>
                       {val.es || <span className="text-muted-foreground italic">-</span>}
                     </TableCell>
-                    <TableCell className="max-w-[120px] truncate" title={val.fr || ''}>
+                    <TableCell className="hidden md:table-cell max-w-[120px] truncate" title={val.fr || ''}>
                       {val.fr || <span className="text-muted-foreground italic">-</span>}
                     </TableCell>
-                    <TableCell className="max-w-[120px] truncate" title={val.en || ''}>
+                    <TableCell className="hidden lg:table-cell max-w-[120px] truncate" title={val.en || ''}>
                       {val.en || <span className="text-muted-foreground italic">-</span>}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                       <Badge variant="outline">{val.usage_count}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -1333,6 +1338,7 @@ function EnumManagementTab() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -1760,14 +1766,15 @@ function FrontendTranslationsTab() {
             </div>
           ) : (
             <>
+              <div className="border rounded-md overflow-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>{t('frontend.tableHeaders.namespace')}</TableHead>
                     <TableHead>{t('frontend.tableHeaders.key')}</TableHead>
                     <TableHead>{t('system.tableHeaders.es')}</TableHead>
-                    <TableHead>{t('system.tableHeaders.fr')}</TableHead>
-                    <TableHead>{t('system.tableHeaders.en')}</TableHead>
+                    <TableHead className="hidden md:table-cell">{t('system.tableHeaders.fr')}</TableHead>
+                    <TableHead className="hidden lg:table-cell">{t('system.tableHeaders.en')}</TableHead>
                     <TableHead className="text-right">{t('system.tableHeaders.actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1779,8 +1786,8 @@ function FrontendTranslationsTab() {
                       </TableCell>
                       <TableCell className="font-mono text-sm">{tr.key_code}</TableCell>
                       <TableCell className="max-w-[150px] truncate" title={tr.es}>{tr.es}</TableCell>
-                      <TableCell className="max-w-[150px] truncate" title={tr.fr}>{tr.fr}</TableCell>
-                      <TableCell className="max-w-[150px] truncate" title={tr.en}>{tr.en}</TableCell>
+                      <TableCell className="hidden md:table-cell max-w-[150px] truncate" title={tr.fr}>{tr.fr}</TableCell>
+                      <TableCell className="hidden lg:table-cell max-w-[150px] truncate" title={tr.en}>{tr.en}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button variant="ghost" size="sm" onClick={() => handleEdit(tr)}>
@@ -1795,6 +1802,7 @@ function FrontendTranslationsTab() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
 
               <div className="flex items-center justify-between mt-4">
                 <p className="text-sm text-muted-foreground">

@@ -313,7 +313,7 @@ class ResidenciaWorkflow(BaseWorkflow):
             instructions_es="Autorización expedida por el Ministerio de Trabajo y Seguridad Social"
         ))
 
-        # 6. Contrato de Trabajo
+        # 6. Contrato de Trabajo (if worker)
         requirements.append(DocumentRequirement(
             document_code="contrato_trabajo",
             document_name_es="Contrato de Trabajo",
