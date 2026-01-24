@@ -20,6 +20,8 @@ from app.modules.auth.models.auth_models import (
     TokenRefreshResponse,
     LogoutResponse,
 )
+from app.modules.permissions.repositories.user_permission_repository import UserPermissionRepository
+from app.database.connection import db_manager
 
 
 class AuthService:
@@ -263,6 +265,17 @@ class AuthService:
                 remember_me=remember_me,
             )
 
+            # Fetch user permissions (from role + user-specific grants)
+            user_permissions = []
+            try:
+                async with db_manager.get_connection() as db:
+                    perm_repo = UserPermissionRepository(db)
+                    user_permissions = await perm_repo.get_all_permission_names(user.id)
+                    logger.debug(f"Loaded {len(user_permissions)} permissions for user {user.email}")
+            except Exception as perm_error:
+                logger.warning(f"Failed to load permissions for user {user.email}: {perm_error}")
+                # Continue without permissions - user will have role-based access
+
             # Prepare user response
             user_response = UserResponse(
                 id=user.id,
@@ -281,6 +294,7 @@ class AuthService:
                 last_login=datetime.utcnow(),
                 email_verified=user.email_verified,
                 two_factor_enabled=user.two_factor_enabled,
+                permissions=user_permissions,
             )
 
             return {
@@ -869,6 +883,17 @@ class AuthService:
                 remember_me=remember_me,
             )
 
+            # Fetch user permissions (from role + user-specific grants)
+            user_permissions = []
+            try:
+                async with db_manager.get_connection() as db:
+                    perm_repo = UserPermissionRepository(db)
+                    user_permissions = await perm_repo.get_all_permission_names(user_id)
+                    logger.debug(f"Loaded {len(user_permissions)} permissions for user {email} (2FA login)")
+            except Exception as perm_error:
+                logger.warning(f"Failed to load permissions for user {email}: {perm_error}")
+                # Continue without permissions - user will have role-based access
+
             # Map user data to UserResponse model
             user = self.user_repo._map_to_model(user_data)
 
@@ -890,6 +915,7 @@ class AuthService:
                 last_login=datetime.utcnow(),
                 email_verified=user.email_verified,
                 two_factor_enabled=user.two_factor_enabled,
+                permissions=user_permissions,
             )
 
             return {

@@ -461,8 +461,10 @@ async def cleanup_obsolete_permissions(db_connection) -> Dict[str, Any]:
     1. Get all permission names from the database
     2. Get all permission names from the registry (backend)
     3. Find permissions in DB but not in registry (obsolete)
-    4. Remove role_permissions assignments for obsolete permissions
-    5. Delete the obsolete permissions
+    4. Disable audit triggers (to prevent FK violations during CASCADE delete)
+    5. Delete permission_audit_log entries
+    6. Delete the obsolete permissions (CASCADE handles role/user_permissions)
+    7. Re-enable audit triggers
 
     Args:
         db_connection: Database connection
@@ -495,56 +497,76 @@ async def cleanup_obsolete_permissions(db_connection) -> Dict[str, Any]:
     # Get IDs of obsolete permissions
     obsolete_ids = [db_permissions[name] for name in obsolete_names]
 
-    # Step 1: Remove permission_audit_log entries for obsolete permissions
-    # This table has FK constraint to permissions
+    audit_log_count = 0
+    role_perms_count = 0
+    user_perms_count = 0
+    perms_count = 0
+
     try:
-        audit_log_deleted = await db_connection.execute(
+        # Step 1: Disable audit triggers to prevent FK violations during CASCADE
+        # The trigger trg_audit_role_permissions tries to INSERT into permission_audit_log
+        # with the permission_id being deleted, causing FK violation
+        # Note: Cannot use DISABLE TRIGGER ALL because it includes system FK triggers
+        await db_connection.execute(
+            "ALTER TABLE role_permissions DISABLE TRIGGER trg_audit_role_permissions"
+        )
+        # Check if user_permissions has audit trigger and disable it
+        try:
+            await db_connection.execute(
+                "ALTER TABLE user_permissions DISABLE TRIGGER trg_audit_user_permissions"
+            )
+        except Exception:
+            pass  # Trigger may not exist
+        logger.info("Disabled audit triggers on role_permissions")
+
+        # Step 2: Remove permission_audit_log entries for obsolete permissions
+        # This table has FK constraint NO ACTION to permissions
+        try:
+            audit_log_deleted = await db_connection.execute(
+                """
+                DELETE FROM permission_audit_log
+                WHERE permission_id = ANY($1::uuid[])
+                """,
+                obsolete_ids
+            )
+            audit_log_count = int(audit_log_deleted.split()[-1]) if audit_log_deleted else 0
+            logger.info(f"Deleted {audit_log_count} permission_audit_log entries")
+        except Exception as e:
+            logger.warning(f"Could not delete from permission_audit_log: {e}")
+
+        # Step 3: Delete the obsolete permissions
+        # CASCADE will automatically delete from role_permissions and user_permissions
+        perms_deleted = await db_connection.execute(
             """
-            DELETE FROM permission_audit_log
-            WHERE permission_id = ANY($1::uuid[])
+            DELETE FROM permissions
+            WHERE id = ANY($1::uuid[])
             """,
             obsolete_ids
         )
-        audit_log_count = int(audit_log_deleted.split()[-1]) if audit_log_deleted else 0
-        logger.info(f"Deleted {audit_log_count} permission_audit_log entries")
-    except Exception as e:
-        logger.warning(f"Could not delete from permission_audit_log: {e}")
-        audit_log_count = 0
+        perms_count = int(perms_deleted.split()[-1]) if perms_deleted else 0
 
-    # Step 2: Remove role_permissions assignments for obsolete permissions
-    # This prevents foreign key violations when deleting permissions
-    role_perms_deleted = await db_connection.execute(
-        """
-        DELETE FROM role_permissions
-        WHERE permission_id = ANY($1::uuid[])
-        """,
-        obsolete_ids
-    )
-    role_perms_count = int(role_perms_deleted.split()[-1]) if role_perms_deleted else 0
-
-    # Step 3: Remove user_permissions assignments for obsolete permissions
-    user_perms_deleted = await db_connection.execute(
-        """
-        DELETE FROM user_permissions
-        WHERE permission_id = ANY($1::uuid[])
-        """,
-        obsolete_ids
-    )
-    user_perms_count = int(user_perms_deleted.split()[-1]) if user_perms_deleted else 0
-
-    # Step 4: Delete the obsolete permissions
-    perms_deleted = await db_connection.execute(
-        """
-        DELETE FROM permissions
-        WHERE id = ANY($1::uuid[])
-        """,
-        obsolete_ids
-    )
-    perms_count = int(perms_deleted.split()[-1]) if perms_deleted else 0
+    finally:
+        # Step 4: Always re-enable triggers, even if deletion failed
+        try:
+            await db_connection.execute(
+                "ALTER TABLE role_permissions ENABLE TRIGGER trg_audit_role_permissions"
+            )
+        except Exception as e:
+            logger.error(f"Failed to re-enable role_permissions trigger: {e}")
+        try:
+            await db_connection.execute(
+                "ALTER TABLE user_permissions ENABLE TRIGGER trg_audit_user_permissions"
+            )
+        except Exception:
+            pass  # Trigger may not exist
+        logger.info("Re-enabled audit triggers")
 
     # Log what was deleted (first 20 for brevity)
     deleted_list = sorted(list(obsolete_names))[:20]
-    logger.info(f"Deleted obsolete permissions: {deleted_list}{'...' if len(obsolete_names) > 20 else ''}")
+    logger.info(
+        f"Deleted obsolete permissions: {deleted_list}"
+        f"{'...' if len(obsolete_names) > 20 else ''}"
+    )
 
     return {
         "deleted_count": perms_count,

@@ -227,6 +227,9 @@ class UserResponse(BaseModel):
     # Funcionario status from verified_identifiers (real-time check)
     funcionario_status: Optional[Dict[str, Any]] = Field(None, description="Real-time funcionario status from verified_identifiers")
 
+    # User permissions (from role + user-specific overrides)
+    permissions: Optional[List[str]] = Field(None, description="User's effective permissions (from role and user-specific grants)")
+
 
 class UserListResponse(BaseModel):
     """Model for paginated user list response"""

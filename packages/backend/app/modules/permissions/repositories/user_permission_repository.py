@@ -404,3 +404,50 @@ class UserPermissionRepository:
         """, user_id)
 
         return _row_to_dict(result) if result else None
+
+    async def get_all_permission_names(self, user_id: str) -> List[str]:
+        """
+        Get all permission names for a user (combining role and user-specific permissions).
+
+        This returns the effective set of permissions, accounting for:
+        1. Role permissions (from role_permissions via user's role_id)
+        2. User-specific granted permissions (user_permissions where granted=true)
+        3. User-specific denied permissions are excluded (user_permissions where granted=false)
+
+        Args:
+            user_id: User UUID
+
+        Returns:
+            List of permission names the user has
+        """
+        results = await self.db.fetch("""
+            -- Get role permissions (not denied by user override)
+            SELECT DISTINCT p.name
+            FROM users u
+            INNER JOIN roles r ON u.role_id = r.id
+            INNER JOIN role_permissions rp ON r.id = rp.role_id
+            INNER JOIN permissions p ON rp.permission_id = p.id
+            WHERE u.id = $1
+              AND rp.granted = TRUE
+              AND NOT EXISTS (
+                  -- Exclude if user has explicit deny
+                  SELECT 1
+                  FROM user_permissions up
+                  WHERE up.user_id = $1
+                    AND up.permission_id = p.id
+                    AND up.granted = FALSE
+                    AND (up.expires_at IS NULL OR up.expires_at >= NOW())
+              )
+
+            UNION
+
+            -- Add user-specific granted permissions
+            SELECT DISTINCT p.name
+            FROM user_permissions up
+            INNER JOIN permissions p ON up.permission_id = p.id
+            WHERE up.user_id = $1
+              AND up.granted = TRUE
+              AND (up.expires_at IS NULL OR up.expires_at >= NOW())
+        """, user_id)
+
+        return [row['name'] for row in results]
