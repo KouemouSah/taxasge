@@ -156,3 +156,25 @@ async def fetch_val(query: str, *args):
 async def execute(query: str, *args) -> str:
     """Execute command query"""
     return await db_manager.execute_command(query, *args)
+
+
+async def get_db_pool() -> asyncpg.Pool:
+    """
+    Get the database connection pool directly.
+
+    Used by event handlers and other components that need direct pool access.
+    Ensures pool is initialized before returning.
+
+    Returns:
+        asyncpg.Pool: The database connection pool
+
+    Raises:
+        RuntimeError: If pool cannot be initialized
+    """
+    if db_manager.pool is None:
+        await db_manager.connect()
+
+    if db_manager.pool is None:
+        raise RuntimeError("Database pool not available")
+
+    return db_manager.pool

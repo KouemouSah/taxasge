@@ -78,8 +78,19 @@ export function usePaymentActions() {
       treasuryApi.validatePayment(paymentId, request),
     onSuccess: (data) => {
       invalidatePayments();
+      // Check if backend returned success=false (partial failure)
+      if (data.success === false) {
+        toast({
+          title: tCommon('error'),
+          description: data.error || data.messageEs || 'Error al validar el pago',
+          variant: 'destructive',
+        });
+        return;
+      }
       if (data.messageEs) {
         showSuccess(data.messageEs);
+      } else {
+        showSuccess('Pago validado correctamente');
       }
     },
     onError: (error) => {
@@ -97,8 +108,19 @@ export function usePaymentActions() {
       treasuryApi.rejectPayment(paymentId, request),
     onSuccess: (data) => {
       invalidatePayments();
+      // Check if backend returned success=false (partial failure)
+      if (data.success === false) {
+        toast({
+          title: tCommon('error'),
+          description: data.error || data.messageEs || 'Error al rechazar el pago',
+          variant: 'destructive',
+        });
+        return;
+      }
       if (data.messageEs) {
         showSuccess(data.messageEs);
+      } else {
+        showSuccess('Pago rechazado correctamente');
       }
     },
     onError: (error) => {
@@ -118,8 +140,16 @@ export function usePaymentActions() {
       // Process sequentially to avoid overwhelming the server
       for (const paymentId of paymentIds) {
         try {
-          await treasuryApi.validatePayment(paymentId, comment ? { comment } : undefined);
-          results.success.push(paymentId);
+          const response = await treasuryApi.validatePayment(paymentId, comment ? { comment } : undefined);
+          // Check backend response success field
+          if (response.success === false) {
+            results.failed.push({
+              id: paymentId,
+              error: response.error || 'Error de validacion',
+            });
+          } else {
+            results.success.push(paymentId);
+          }
         } catch (error) {
           results.failed.push({
             id: paymentId,
@@ -167,8 +197,16 @@ export function usePaymentActions() {
 
       for (const paymentId of paymentIds) {
         try {
-          await treasuryApi.rejectPayment(paymentId, { reason });
-          results.success.push(paymentId);
+          const response = await treasuryApi.rejectPayment(paymentId, { reason });
+          // Check backend response success field
+          if (response.success === false) {
+            results.failed.push({
+              id: paymentId,
+              error: response.error || 'Error de rechazo',
+            });
+          } else {
+            results.success.push(paymentId);
+          }
         } catch (error) {
           results.failed.push({
             id: paymentId,
