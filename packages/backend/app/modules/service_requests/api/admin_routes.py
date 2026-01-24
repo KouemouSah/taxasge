@@ -2982,7 +2982,7 @@ async def validate_payment(
             payment_id
         )
         payment_info = await db.fetchrow(
-            "SELECT total_amount, currency, receipt_number, payment_method FROM service_payments WHERE id = $1",
+            "SELECT total_amount, currency, receipt_number, payment_method FROM service_payments WHERE id = $1::uuid",
             payment_id
         )
 

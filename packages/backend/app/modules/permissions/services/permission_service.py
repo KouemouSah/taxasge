@@ -49,8 +49,10 @@ class PermissionService:
 
         This checks:
         1. **ADMIN AUTO-APPROVAL**: If user is admin, automatically return True
-        2. User-specific permission overrides (highest priority)
-        3. Role-based permissions (if no override)
+        2. **SUPERVISOR AUTO-APPROVAL**: If user is supervisor (agent_profiles.is_supervisor=true),
+           automatically grant permissions for their entity scope
+        3. User-specific permission overrides (highest priority)
+        4. Role-based permissions (if no override)
 
         Args:
             user_id: User UUID
@@ -68,11 +70,88 @@ class PermissionService:
                 if user_role == "admin":
                     logger.debug(f"Admin user {user_id} auto-granted permission: {permission_name}")
                     return True
-        except Exception as e:
-            logger.warning(f"Could not check admin status for user {user_id}: {e}")
 
-        # For non-admins, check normal permissions
+                # Check if user is a supervisor (agent_profiles.is_supervisor = true)
+                # Supervisors get all permissions within their entity scope
+                if user_role == "agent":
+                    is_supervisor = await self._check_is_supervisor(user_id, permission_name)
+                    if is_supervisor:
+                        logger.debug(f"Supervisor {user_id} auto-granted permission: {permission_name}")
+                        return True
+
+        except Exception as e:
+            logger.warning(f"Could not check admin/supervisor status for user {user_id}: {e}")
+
+        # For non-admins and non-supervisors, check normal permissions
         return await self.user_permission_repo.has_permission(user_id, permission_name)
+
+    async def _check_is_supervisor(self, user_id: str, permission_name: str) -> bool:
+        """
+        Check if user is a supervisor and the permission is within their scope.
+
+        Supervisors (agent_profiles.is_supervisor = true) automatically get:
+        1. Generic supervisory permissions (agent, assignment, dashboard, etc.)
+        2. Permissions matching their entity's workflow permission modules
+        3. Permissions granted via their role (checked via normal flow)
+
+        This is fully dynamic - no hardcoded entity codes.
+
+        Args:
+            user_id: User UUID
+            permission_name: Permission name to check
+
+        Returns:
+            True if user is supervisor with access to this permission scope
+        """
+        try:
+            # Query agent_profiles to check is_supervisor and get entity's permission modules
+            query = """
+                SELECT
+                    ap.is_supervisor,
+                    e.code as entity_code,
+                    r.code as role_code,
+                    -- Get permission modules from role_permissions for this user's role
+                    (
+                        SELECT array_agg(DISTINCT p.module_name)
+                        FROM role_permissions rp
+                        JOIN permissions p ON rp.permission_id = p.id
+                        JOIN users u ON u.role_id = rp.role_id
+                        WHERE u.id = $1 AND p.module_name IS NOT NULL
+                    ) as role_modules
+                FROM agent_profiles ap
+                LEFT JOIN entities e ON ap.entity_id = e.id
+                LEFT JOIN users u ON ap.user_id = u.id
+                LEFT JOIN roles r ON u.role_id = r.id
+                WHERE ap.user_id = $1 AND ap.is_active = true
+            """
+            result = await self.user_permission_repo.db.fetchrow(query, user_id)
+
+            if not result or not result.get('is_supervisor'):
+                return False
+
+            # Get the permission prefix (e.g., "treasury" from "treasury.validate_payment")
+            perm_prefix = permission_name.split('.')[0] if '.' in permission_name else permission_name
+
+            # Generic permissions that ALL supervisors can access
+            generic_prefixes = ['agent', 'assignment', 'dashboard', 'reports', 'stats', 'workload']
+            if perm_prefix in generic_prefixes:
+                return True
+
+            # Check if permission module is in supervisor's role modules
+            role_modules = result.get('role_modules') or []
+            if perm_prefix in role_modules:
+                return True
+
+            # Supervisors can also access service_requests if they have any entity
+            entity_code = result.get('entity_code')
+            if entity_code and perm_prefix in ['service_requests', 'appointments']:
+                return True
+
+            return False
+
+        except Exception as e:
+            logger.warning(f"Error checking supervisor status for {user_id}: {e}")
+            return False
 
     async def check_permission(
         self,

@@ -257,7 +257,7 @@ async def reconcile_service_payment(db, merchant_reference: str, bange_transacti
             count_query = "SELECT COUNT(*) + 1 as n FROM service_payments WHERE receipt_number IS NOT NULL AND EXTRACT(YEAR FROM paid_at) = $1"
             result = await db.fetchrow(count_query, year)
             receipt_number = f"REC-{year}-{result['n']:06d}" if result else f"REC-{year}-000001"
-            await db.execute("UPDATE service_payments SET receipt_number = $1 WHERE id = $2", receipt_number, payment_id)
+            await db.execute("UPDATE service_payments SET receipt_number = $1 WHERE id = $2::uuid", receipt_number, payment_id)
 
         # 6. Update service_request payment status
         if service_request_id:

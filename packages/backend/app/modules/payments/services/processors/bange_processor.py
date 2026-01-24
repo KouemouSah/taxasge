@@ -489,7 +489,7 @@ class BangeProcessor(PaymentProcessorBase):
     ) -> Optional[dict]:
         """Get payment record from database."""
         query = """
-            SELECT * FROM service_payments WHERE id = $1
+            SELECT * FROM service_payments WHERE id = $1::uuid
         """
         return await db.fetchrow(query, payment_id)
 

@@ -175,12 +175,10 @@ class AgentProfileRepository:
                 pe.name as parent_entity_name,
                 m.ministry_code,
                 m.name_es as ministry_name,
-                -- Agent category based on entity_code (stable identifier)
-                -- Entity is the source of truth, not ministry (can be reorganized)
+                -- Agent category: use entity code dynamically (lowercase)
+                -- No hardcoded values - entity.code is the source of truth
                 CASE
-                    WHEN e.code = 'DGI' THEN 'dgi'
-                    WHEN e.code = 'TESORO' THEN 'treasury'
-                    WHEN e.code IS NOT NULL THEN 'entity'
+                    WHEN e.code IS NOT NULL THEN LOWER(e.code)
                     WHEN ap.agent_type = 'ministry_agent' THEN 'ministry'
                     ELSE 'general'
                 END as agent_category,
@@ -394,11 +392,9 @@ class AgentProfileRepository:
                 e.name as entity_name,
                 m.ministry_code,
                 m.name_es as ministry_name,
-                -- Agent category based on entity_code (stable identifier)
+                -- Agent category: use entity code dynamically (lowercase)
                 CASE
-                    WHEN e.code = 'DGI' THEN 'dgi'
-                    WHEN e.code = 'TESORO' THEN 'treasury'
-                    WHEN e.code IS NOT NULL THEN 'entity'
+                    WHEN e.code IS NOT NULL THEN LOWER(e.code)
                     WHEN ap.agent_type = 'ministry_agent' THEN 'ministry'
                     ELSE 'general'
                 END as agent_category,
@@ -438,26 +434,26 @@ class AgentProfileRepository:
         """
         Get SQL condition for agent category filter.
 
-        Uses entity_code as the stable identifier (not ministry_code).
+        Uses entity_code dynamically - no hardcoded values.
         Entity is the source of truth - ministries can be reorganized.
 
         Categories:
-        - 'dgi': Agents assigned to DGI entity
-        - 'treasury': Agents assigned to TESORO entity
-        - 'entity': Agents assigned to other entities (CNEDOGE, DGT, etc.)
+        - Any entity code (lowercase): Filters by LOWER(e.code) = category
+        - 'entity': Agents assigned to any entity
         - 'ministry': Ministry agents without specific entity assignment
         """
-        if category == 'dgi':
-            return (f"e.code = ${param_idx}", ['DGI'])
-        elif category == 'treasury':
-            return (f"e.code = ${param_idx}", ['TESORO'])
-        elif category == 'entity':
-            # All entity agents except DGI and TESORO (they have their own categories)
-            return ("e.code IS NOT NULL AND e.code NOT IN ('DGI', 'TESORO')", [])
+        if category == 'entity':
+            # All agents with an entity assignment
+            return ("e.code IS NOT NULL", [])
         elif category == 'ministry':
             # Ministry agents without direct entity assignment
             return ("ap.agent_type = 'ministry_agent' AND e.code IS NULL", [])
-        return None
+        elif category == 'general':
+            # Agents without entity or ministry
+            return ("e.code IS NULL AND ap.agent_type != 'ministry_agent'", [])
+        else:
+            # Dynamic entity code filter (case-insensitive)
+            return (f"LOWER(e.code) = LOWER(${param_idx})", [category])
 
     # ========================================================================
     # ASSIGNMENT & AVAILABILITY

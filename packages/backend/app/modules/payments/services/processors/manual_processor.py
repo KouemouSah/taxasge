@@ -279,7 +279,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
                     validated_at = NOW(),
                     validation_comment = $4,
                     updated_at = NOW()
-                WHERE id = $1
+                WHERE id = $1::uuid
                 RETURNING *
             """
             updated = await db.fetchrow(
@@ -338,7 +338,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
                 receipt_number = await self._generate_receipt_number(db)
                 # Update payment with fallback receipt number
                 await db.execute(
-                    "UPDATE service_payments SET receipt_number = $1 WHERE id = $2",
+                    "UPDATE service_payments SET receipt_number = $1 WHERE id = $2::uuid",
                     receipt_number, payment_id
                 )
 
@@ -426,7 +426,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
                     validated_at = NOW(),
                     validation_comment = $3,
                     updated_at = NOW()
-                WHERE id = $1
+                WHERE id = $1::uuid
                 RETURNING *
             """
             updated = await db.fetchrow(
@@ -548,7 +548,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
         payment_id: str
     ) -> Optional[dict]:
         """Get payment record from database."""
-        query = """SELECT * FROM service_payments WHERE id = $1"""
+        query = """SELECT * FROM service_payments WHERE id = $1::uuid"""
         return await db.fetchrow(query, payment_id)
 
     async def _generate_receipt_number(self, db: asyncpg.Connection) -> str:

@@ -176,9 +176,9 @@ PERMISSIONS = [
 # ROLE PERMISSIONS MAPPING
 # =============================================================================
 # Treasury roles are defined in Migration 062.
-# Entity-based access is determined by agent_profiles.entity_id → entities.code = 'TESORO'
+# Entity-based access is determined dynamically by agent_profiles.entity_id → entities
 #
-# Available roles for TESORO entity:
+# Treasury agent roles (from roles table):
 #   - agent_tesoro: Unified agent (validation + reconciliation + transactions)
 #   - agent_tesoro_validation: Validation only (specific use cases)
 #   - agent_tesoro_reconciliation: Reconciliation only (specific use cases)

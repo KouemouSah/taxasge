@@ -30,6 +30,7 @@ class MenuConfigService:
     """Service for generating and managing menu configurations"""
 
     # Workflow category icons mapping (fallback if no mapping rule exists)
+    # These are workflow prefixes, not entity codes - used for icon assignment
     WORKFLOW_ICONS = {
         'PASAPORTE': 'Plane',
         'RESIDENCIA': 'Globe',
@@ -42,8 +43,9 @@ class MenuConfigService:
         'ACTA': 'FileText',
     }
 
-    # Module-based entities (don't generate from workflows)
-    MODULE_BASED_ENTITIES = ['TESORO', 'AUDIT', 'SUPPORT']
+    # NOTE: Module-based entities are now determined dynamically:
+    # If role.menu_config IS NOT NULL → module-based (use role config)
+    # Otherwise → workflow-based (generate from entity.workflow_codes)
 
     async def get_agent_menu_config(
         self,
@@ -84,20 +86,23 @@ class MenuConfigService:
         agent_dashboard_overrides = agent_data.get('dashboard_overrides')
         available_workflows = agent_data.get('available_workflows', [])
 
-        # 2. Determine entity type
-        is_module_based = entity_code in self.MODULE_BASED_ENTITIES
+        # 2. Determine entity type dynamically
+        # Module-based: role has explicit menu_config (no workflow generation needed)
+        # Workflow-based: generate menus from entity.workflow_codes
+        is_module_based = role_menu_config is not None
         entity_type = "module" if is_module_based else "workflow"
 
         logger.debug(
             f"Agent {agent_profile_id}: entity={entity_code}, type={entity_type}, "
+            f"role={role_code}, has_role_menu={role_menu_config is not None}, "
             f"workflows={available_workflows}"
         )
 
         # 3. Generate or fetch menu config
         if is_module_based:
-            # Module-based: use role.menu_config
+            # Module-based: use role.menu_config directly
             menu_config = self._parse_menu_config(role_menu_config, "role")
-            logger.debug(f"Using role menu_config for module-based entity: {entity_code}")
+            logger.debug(f"Using role menu_config for {role_code}")
         else:
             # Workflow-based: generate from workflows
             menu_config = await self._generate_workflow_menus(

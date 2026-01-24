@@ -284,7 +284,7 @@ class PaymentProcessorRegistry:
         query = """
             SELECT id, payment_method, status
             FROM service_payments
-            WHERE id = $1
+            WHERE id = $1::uuid
         """
         return await db.fetchrow(query, payment_id)
 

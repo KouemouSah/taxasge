@@ -70,7 +70,7 @@ async def get_agent_context(user_id: str, db) -> Dict[str, Any]:
         - ministry_id: int or None (for ministry_agent)
         - entity_id: UUID or None (for entity_agent)
         - entity_type: 'ministry' or 'entity' (derived from agent_type)
-        - ministry_code: str or None (e.g., 'DGI', 'TREASURY')
+        - ministry_code: str or None (from ministries table)
     """
     query = """
         SELECT

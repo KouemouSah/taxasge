@@ -82,9 +82,9 @@ class RoleResponse(RoleBase):
         json_schema_extra = {
             "example": {
                 "id": "123e4567-e89b-12d3-a456-426614174000",
-                "name": "Supervisor DGI Junior",
-                "code": "supervisor_dgi_junior",
-                "entity_type": "DGI",
+                "name": "Supervisor Entidad Junior",
+                "code": "supervisor_entity_junior",
+                "entity_type": "agent",
                 "description": "Supervisor junior con permisos limitados",
                 "is_system": False,
                 "created_at": "2025-11-17T10:00:00Z",

@@ -8,6 +8,7 @@
 
 import { useState, useMemo } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useLocale } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -98,6 +99,7 @@ export default function PaymentDetailPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const locale = useLocale();
   const paymentId = params.paymentId as string;
 
   // Get filter params from URL to maintain context
@@ -148,17 +150,17 @@ export default function PaymentDetailPage() {
 
   // Navigation handlers
   const navigateToPayment = (id: string) => {
-    const params = new URLSearchParams();
-    if (statusFilter) params.set('status', statusFilter);
-    if (methodFilter) params.set('method', methodFilter);
-    router.push(`/dashboard/agent/treasury/validation/${id}?${params.toString()}`);
+    const navParams = new URLSearchParams();
+    if (statusFilter) navParams.set('status', statusFilter);
+    if (methodFilter) navParams.set('method', methodFilter);
+    router.push(`/${locale}/dashboard/agent/treasury/validation/${id}?${navParams.toString()}`);
   };
 
   const goBack = () => {
-    const params = new URLSearchParams();
-    if (statusFilter) params.set('status', statusFilter);
-    if (methodFilter) params.set('method', methodFilter);
-    router.push(`/dashboard/agent/treasury/validation?${params.toString()}`);
+    const navParams = new URLSearchParams();
+    if (statusFilter) navParams.set('status', statusFilter);
+    if (methodFilter) navParams.set('method', methodFilter);
+    router.push(`/${locale}/dashboard/agent/treasury/validation?${navParams.toString()}`);
   };
 
   // Action handlers
