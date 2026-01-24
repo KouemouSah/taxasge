@@ -370,7 +370,7 @@ async def create_profile(
     profile: AgentProfileCreate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db = Depends(get_database),
-    _: None = Depends(permission_required("agents.create"))
+    _: None = Depends(permission_required("agent.create"))
 ):
     """
     Create agent profile for existing user.
@@ -404,7 +404,7 @@ async def update_profile(
     update_data: AgentProfileUpdate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db = Depends(get_database),
-    _: None = Depends(permission_required("agents.update"))
+    _: None = Depends(permission_required("agent.update"))
 ):
     """Update agent profile"""
     from app.modules.agents.services.agent_profile_service import AgentProfileService
@@ -436,7 +436,7 @@ async def deactivate_profile(
     reason: Optional[str] = None,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db = Depends(get_database),
-    _: None = Depends(permission_required("agents.deactivate"))
+    _: None = Depends(permission_required("agent.deactivate"))
 ):
     """Deactivate agent profile"""
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
@@ -481,7 +481,7 @@ async def invite_agent(
     data: AgentInviteRequest,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db = Depends(get_database),
-    _: None = Depends(permission_required("agents.create"))
+    _: None = Depends(permission_required("agent.create"))
 ):
     """
     Step 1: Invite agent.
@@ -570,7 +570,7 @@ async def create_agent_complete(
     data: AgentCompleteCreate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db = Depends(get_database),
-    _: None = Depends(permission_required("agents.create"))
+    _: None = Depends(permission_required("agent.create"))
 ):
     """
     [DEPRECATED] Create agent user + profile atomically.
@@ -787,7 +787,7 @@ async def update_profile_workload(
     update_data: AgentWorkloadUpdate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db = Depends(get_database),
-    _: None = Depends(permission_required("agents.manage_workload"))
+    _: None = Depends(permission_required("agent.manage_workload"))
 ):
     """Update agent workload by profile ID - Requires agents.manage_workload permission"""
     # First check if workload exists

@@ -163,7 +163,7 @@ async def _get_agent_profile_id_for_user(user_id: str, db) -> Optional[UUID]:
 # ============================================================================
 
 @router.get("/agent/{agent_profile_id}", response_model=AgentAssignmentStats)
-@require_permission("agents.view_performance")
+@require_permission("agent.view_performance")
 async def get_agent_statistics(
     agent_profile_id: UUID,
     period_days: int = Query(30, ge=1, le=365, description="Statistics period in days"),
@@ -230,7 +230,7 @@ async def get_agent_statistics(
 
 
 @router.get("/agent/{agent_profile_id}/performance", response_model=AgentPerformanceMetrics)
-@require_permission("agents.view_performance")
+@require_permission("agent.view_performance")
 async def get_agent_performance(
     agent_profile_id: UUID,
     current_user: UserResponse = Depends(get_current_user),
@@ -311,7 +311,7 @@ async def get_agent_performance(
 
 
 @router.get("/agent/{agent_profile_id}/trends", response_model=PerformanceTrendsResponse)
-@require_permission("agents.view_performance")
+@require_permission("agent.view_performance")
 async def get_agent_trends(
     agent_profile_id: UUID,
     period_days: int = Query(30, ge=7, le=180, description="Trend period in days"),
@@ -512,7 +512,7 @@ async def get_team_performance(
 
 
 @router.get("/team/workload")
-@require_permission("agents.view_workload")
+@require_permission("agent.view_workload")
 async def get_team_workload(
     current_user: UserResponse = Depends(get_current_user),
     db = Depends(get_db_connection)

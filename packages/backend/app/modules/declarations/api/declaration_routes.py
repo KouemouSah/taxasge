@@ -228,7 +228,7 @@ async def get_declaration(
             # Check if user has admin permission to view any declaration
             from app.modules.permissions.services.permission_service import get_permission_service
             perm_service = get_permission_service()
-            has_admin_perm = await perm_service.has_permission(user_id, "declarations.view_all")
+            has_admin_perm = await perm_service.has_permission(user_id, "declaration.view_all")
 
             if not has_admin_perm:
                 raise HTTPException(
@@ -288,7 +288,7 @@ async def update_declaration(
         # Check if user has admin permission
         from app.modules.permissions.services.permission_service import get_permission_service
         perm_service = get_permission_service()
-        has_admin_perm = await perm_service.has_permission(user_id, "declarations.update")
+        has_admin_perm = await perm_service.has_permission(user_id, "declaration.update")
 
         # Security: Check ownership OR admin permission
         if declaration["user_id"] != user_id and not has_admin_perm:
@@ -368,7 +368,7 @@ async def delete_declaration(
         # Check if user has admin permission
         from app.modules.permissions.services.permission_service import get_permission_service
         perm_service = get_permission_service()
-        has_admin_perm = await perm_service.has_permission(user_id, "declarations.delete")
+        has_admin_perm = await perm_service.has_permission(user_id, "declaration.delete")
 
         # Security: Check ownership OR admin permission
         if declaration["user_id"] != user_id and not has_admin_perm:
@@ -560,7 +560,7 @@ async def get_declaration_workflow_status(
         if declaration["user_id"] != user_id:
             from app.modules.permissions.services.permission_service import get_permission_service
             perm_service = get_permission_service()
-            has_admin_perm = await perm_service.has_permission(user_id, "declarations.view_all")
+            has_admin_perm = await perm_service.has_permission(user_id, "declaration.view_all")
 
             if not has_admin_perm:
                 raise HTTPException(

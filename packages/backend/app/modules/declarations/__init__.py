@@ -21,13 +21,12 @@ Module critique gérant les déclarations fiscales:
 9. declaration_corrections (audit trail corrections/rectificatives)
 
 Endpoints: ~25
-Priorité: 🔴 CRITIQUE P1
+Priorité: CRITIQUE P1
+
+Note: Permissions are managed via module_permissions/declaration_permissions.py
+      using SINGULAR names (declaration.*)
 """
 
 from app.modules.declarations.api.declaration_routes import router as declaration_router
-from app.modules.declarations.permissions import register_declarations_permissions
-
-# Register permissions at module import
-register_declarations_permissions()
 
 __all__ = ["declaration_router"]

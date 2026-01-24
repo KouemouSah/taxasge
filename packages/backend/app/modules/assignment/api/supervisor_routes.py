@@ -280,7 +280,7 @@ async def get_dashboard(
 # ============================================================================
 
 @router.get("/agents", response_model=List[AgentListItem])
-@require_permission("agents.view")
+@require_permission("agent.view")
 async def list_agents(
     include_unavailable: bool = Query(False, description="Include unavailable agents"),
     current_user: UserResponse = Depends(get_current_user),
@@ -349,7 +349,7 @@ async def list_agents(
 
 
 @router.get("/agents/{agent_profile_id}/stats", response_model=AgentAssignmentStats)
-@require_permission("agents.view_performance")
+@require_permission("agent.view_performance")
 async def get_agent_stats(
     agent_profile_id: UUID,
     period_days: int = Query(30, ge=1, le=365, description="Statistics period in days"),
@@ -397,7 +397,7 @@ async def get_agent_stats(
 
 
 @router.get("/agents/{agent_profile_id}/forecast", response_model=AgentCapacityForecast)
-@require_permission("agents.view_workload")
+@require_permission("agent.view_workload")
 async def get_agent_forecast(
     agent_profile_id: UUID,
     horizon_days: int = Query(7, ge=1, le=30, description="Forecast horizon in days"),
@@ -453,7 +453,7 @@ async def get_agent_forecast(
 # ============================================================================
 
 @router.get("/workload/balance", response_model=WorkloadBalanceResponse)
-@require_permission("agents.view_workload")
+@require_permission("agent.view_workload")
 async def get_workload_balance(
     current_user: UserResponse = Depends(get_current_user),
     db = Depends(get_db_connection)

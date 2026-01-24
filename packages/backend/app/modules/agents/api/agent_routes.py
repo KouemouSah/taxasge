@@ -54,7 +54,7 @@ async def create_agent(
     agent: MinistryAgentCreate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db = Depends(get_database),
-    _: None = Depends(permission_required("agents.create"))
+    _: None = Depends(permission_required("agent.create"))
 ):
     """Create new ministry agent - Requires agents.create permission"""
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
@@ -109,7 +109,7 @@ async def update_agent(
     update_data: MinistryAgentUpdate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db = Depends(get_database),
-    _: None = Depends(permission_required("agents.update"))
+    _: None = Depends(permission_required("agent.update"))
 ):
     """Update agent configuration - Requires agents.update permission"""
     updated = await agent_repository.update(db, agent_id, update_data)
@@ -126,7 +126,7 @@ async def deactivate_agent(
     reason: Optional[str] = None,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db = Depends(get_database),
-    _: None = Depends(permission_required("agents.deactivate"))
+    _: None = Depends(permission_required("agent.deactivate"))
 ):
     """Deactivate agent - Requires agents.deactivate permission"""
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
@@ -396,7 +396,7 @@ async def update_agent_workload(
     update_data: AgentWorkloadUpdate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db = Depends(get_database),
-    _: None = Depends(permission_required("agents.manage_workload"))
+    _: None = Depends(permission_required("agent.manage_workload"))
 ):
     """Update agent workload - Requires agents.manage_workload permission"""
     updated = await workload_repository.update_workload(db, agent_id, update_data)

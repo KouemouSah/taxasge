@@ -65,12 +65,6 @@ async def lifespan(app: FastAPI):
             #   3. All *_permissions.py files are loaded and registered
             from app.modules.permissions import initialize_permissions
 
-            # Register legacy module permissions (separate from module_permissions folder)
-            from app.modules.assignment.permissions import register_assignment_permissions
-            from app.modules.declarations.permissions import register_declarations_permissions
-            register_assignment_permissions()
-            register_declarations_permissions()
-
             # Sync permissions, role_permissions, and cleanup obsolete
             async with db_manager.get_connection() as conn:
                 sync_result = await initialize_permissions(
