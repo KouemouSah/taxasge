@@ -495,7 +495,23 @@ async def cleanup_obsolete_permissions(db_connection) -> Dict[str, Any]:
     # Get IDs of obsolete permissions
     obsolete_ids = [db_permissions[name] for name in obsolete_names]
 
-    # Step 1: Remove role_permissions assignments for obsolete permissions
+    # Step 1: Remove permission_audit_log entries for obsolete permissions
+    # This table has FK constraint to permissions
+    try:
+        audit_log_deleted = await db_connection.execute(
+            """
+            DELETE FROM permission_audit_log
+            WHERE permission_id = ANY($1::uuid[])
+            """,
+            obsolete_ids
+        )
+        audit_log_count = int(audit_log_deleted.split()[-1]) if audit_log_deleted else 0
+        logger.info(f"Deleted {audit_log_count} permission_audit_log entries")
+    except Exception as e:
+        logger.warning(f"Could not delete from permission_audit_log: {e}")
+        audit_log_count = 0
+
+    # Step 2: Remove role_permissions assignments for obsolete permissions
     # This prevents foreign key violations when deleting permissions
     role_perms_deleted = await db_connection.execute(
         """
@@ -506,7 +522,7 @@ async def cleanup_obsolete_permissions(db_connection) -> Dict[str, Any]:
     )
     role_perms_count = int(role_perms_deleted.split()[-1]) if role_perms_deleted else 0
 
-    # Step 2: Remove user_permissions assignments for obsolete permissions
+    # Step 3: Remove user_permissions assignments for obsolete permissions
     user_perms_deleted = await db_connection.execute(
         """
         DELETE FROM user_permissions
@@ -516,7 +532,7 @@ async def cleanup_obsolete_permissions(db_connection) -> Dict[str, Any]:
     )
     user_perms_count = int(user_perms_deleted.split()[-1]) if user_perms_deleted else 0
 
-    # Step 3: Delete the obsolete permissions
+    # Step 4: Delete the obsolete permissions
     perms_deleted = await db_connection.execute(
         """
         DELETE FROM permissions
@@ -534,5 +550,6 @@ async def cleanup_obsolete_permissions(db_connection) -> Dict[str, Any]:
         "deleted_count": perms_count,
         "role_permissions_removed": role_perms_count,
         "user_permissions_removed": user_perms_count,
+        "audit_log_removed": audit_log_count,
         "deleted_permissions": sorted(list(obsolete_names))
     }
