@@ -20,8 +20,8 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { declarationsApi } from '@/modules/declarations/services/api';
 import { paymentsApi } from '@/modules/payments/services/api';
-import type { DeclarationResponse, DeclarationListResponse } from '@/types/declaration';
-import type { PaymentResponse, PaymentListResponse } from '@/types/payment';
+import type { DeclarationResponse } from '@/types/declaration';
+import type { PaymentResponse } from '@/types/payment';
 
 // =============================================================================
 // QUERY KEYS
