@@ -12,7 +12,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -60,7 +60,6 @@ import {
   agentRequestsApi,
   getDocumentDownloadUrl,
   type ServiceRequestDetail,
-  type WorkflowSchemaResponse,
   type FormDisplaySchema,
   type AgentChecklistItem,
 } from '@/modules/agent-dashboard/services/agent-requests-api';
@@ -161,9 +160,8 @@ export default function AgentRequestDetailPage() {
     mimeType: string;
   } | null>(null);
 
-  // Navigation state - get from URL search params or sessionStorage
+  // Navigation state - loaded from sessionStorage
   const [requestIds, setRequestIds] = useState<string[]>([]);
-  const searchParams = useSearchParams();
 
   // Load request IDs from sessionStorage on mount
   useEffect(() => {
