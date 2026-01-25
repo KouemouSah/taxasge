@@ -1356,12 +1356,18 @@ async def get_entity_service_requests(
             sr.created_at,
             sr.submitted_at,
             sr.assigned_to,
-            sr.sla_deadline,
+            -- Calculate SLA deadline from workflows.sla_hours + submitted_at
+            CASE
+                WHEN sr.submitted_at IS NOT NULL AND w.sla_hours IS NOT NULL
+                THEN sr.submitted_at + (w.sla_hours * interval '1 hour')
+                ELSE sr.expires_at
+            END as sla_deadline,
             u.first_name,
             u.last_name,
             u.email
         FROM service_requests sr
         JOIN users u ON u.id = sr.user_id
+        LEFT JOIN workflows w ON w.code = sr.workflow_code
         WHERE {where_clause}
         ORDER BY
             CASE sr.priority
