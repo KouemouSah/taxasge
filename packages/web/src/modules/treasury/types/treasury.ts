@@ -135,7 +135,7 @@ export interface PendingPaymentsParams {
   page?: number;
   pageSize?: number;
   // Filter by assigned agent (supervisor only)
-  agentId?: string;
+  agentProfileId?: string;
 }
 
 // =============================================================================

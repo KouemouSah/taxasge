@@ -157,8 +157,8 @@ export const treasuryApi = {
       queryParams.workflow_status = workflowStatus;
     }
     // Filter by assigned agent (supervisor only)
-    if (params.agentId) {
-      queryParams.agent_id = params.agentId;
+    if (params.agentProfileId) {
+      queryParams.agent_profile_id = params.agentProfileId;
     }
 
     const response = await fetchClient.get<Record<string, unknown>>(

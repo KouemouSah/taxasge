@@ -2697,7 +2697,7 @@ async def get_pending_payments(
         "pending_agent_review",
         description="Filter by workflow status"
     ),
-    agent_id: Optional[str] = Query(None, description="(Supervisor only) Filter by assigned agent"),
+    agent_profile_id: Optional[str] = Query(None, description="(Supervisor only) Filter by assigned agent_profile_id"),
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(20, ge=1, le=100, description="Items per page"),
     db: asyncpg.Connection = Depends(get_database),
@@ -2753,11 +2753,11 @@ async def get_pending_payments(
         # Agent-based filtering
         if is_supervisor:
             # Supervisor can filter by specific agent or see all
-            if agent_id:
+            if agent_profile_id:
                 where_clauses.append(f"sp.assigned_agent_id = ${param_idx}::uuid")
-                params.append(agent_id)
+                params.append(agent_profile_id)
                 param_idx += 1
-                logger.info(f"[Treasury] Supervisor filtering by agent_id: {agent_id}")
+                logger.info(f"[Treasury] Supervisor filtering by agent_profile_id: {agent_profile_id}")
         else:
             # Regular agent sees only their assigned payments
             if current_agent_profile_id:
