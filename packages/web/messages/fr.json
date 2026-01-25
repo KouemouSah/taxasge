@@ -781,6 +781,10 @@
       "menuTemplates": {
         "title": "Modèles de Menu",
         "subtitle": "Créer et gérer des modèles de menu réutilisables",
+        "createTitle": "Créer Nouveau Modèle",
+        "createDescription": "Configurer un nouveau modèle de menu réutilisable",
+        "editTitle": "Modifier Modèle",
+        "editDescription": "Modifier la configuration du modèle {code}",
         "createTemplate": "Créer Modèle",
         "editTemplate": "Modifier Modèle",
         "deleteTemplate": "Supprimer Modèle",

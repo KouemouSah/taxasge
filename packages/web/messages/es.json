@@ -781,6 +781,10 @@
       "menuTemplates": {
         "title": "Plantillas de Menú",
         "subtitle": "Crear y gestionar plantillas de menú reutilizables",
+        "createTitle": "Crear Nueva Plantilla",
+        "createDescription": "Configurar una nueva plantilla de menú reutilizable",
+        "editTitle": "Editar Plantilla",
+        "editDescription": "Modificar la configuración de la plantilla {code}",
         "createTemplate": "Crear Plantilla",
         "editTemplate": "Editar Plantilla",
         "deleteTemplate": "Eliminar Plantilla",

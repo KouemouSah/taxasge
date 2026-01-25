@@ -833,6 +833,10 @@
       "menuTemplates": {
         "title": "Menu Templates",
         "subtitle": "Create and manage reusable menu templates",
+        "createTitle": "Create New Template",
+        "createDescription": "Configure a new reusable menu template",
+        "editTitle": "Edit Template",
+        "editDescription": "Modify the configuration of template {code}",
         "createTemplate": "Create Template",
         "editTemplate": "Edit Template",
         "deleteTemplate": "Delete Template",

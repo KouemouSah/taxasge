@@ -1,9 +1,9 @@
 /**
- * Menu Template Edit Page
- * Admin page for editing existing menu templates
+ * Workflow Mapping Edit Page
+ * Admin page for editing existing workflow-to-menu mappings
  *
- * @page /dashboard/admin/menu-templates/[id]
- * @date 2026-01-19
+ * @page /dashboard/admin/workflow-mappings/[id]
+ * @date 2026-01-25
  */
 
 'use client';
@@ -12,47 +12,52 @@ import React from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import Link from 'next/link';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { MenuTemplateForm } from '@/modules/admin/components/MenuTemplateForm';
-import { useMenuTemplate, useUpdateMenuTemplate, useMenuTemplateIds } from '@/modules/admin/hooks/useMenuTemplates';
+import { WorkflowMappingForm } from '@/modules/admin/components/WorkflowMappingForm';
+import {
+  useWorkflowMapping,
+  useUpdateWorkflowMapping,
+  useWorkflowMappingIds,
+} from '@/modules/admin/hooks/useWorkflowMappings';
 import { ItemNavigation } from '@/modules/admin/components/ItemNavigation';
-import type { MenuTemplateUpdateRequest } from '@/modules/admin/services/menuConfigService';
+import type { WorkflowMappingUpdateRequest } from '@/modules/admin/services/menuConfigService';
 
-export default function MenuTemplateEditPage() {
+export default function WorkflowMappingEditPage() {
   const router = useRouter();
   const params = useParams();
   const locale = useLocale();
   const t = useTranslations('menuConfig');
 
-  const templateId = params.id as string;
+  // Parse mapping ID from URL params
+  const mappingId = params.id ? parseInt(params.id as string, 10) : 0;
 
-  // Fetch template data
+  // Fetch mapping data
   const {
-    data: template,
+    data: mapping,
     isLoading,
     isError,
     error,
-  } = useMenuTemplate(templateId);
+  } = useWorkflowMapping(mappingId, mappingId > 0);
 
   // Fetch all IDs for navigation
-  const { data: allIds = [] } = useMenuTemplateIds();
+  const { data: allIds = [] } = useWorkflowMappingIds();
 
   // Update mutation
-  const updateMutation = useUpdateMenuTemplate();
+  const updateMutation = useUpdateWorkflowMapping();
 
-  const handleSubmit = async (data: MenuTemplateUpdateRequest) => {
+  const handleSubmit = async (data: WorkflowMappingUpdateRequest) => {
     try {
-      await updateMutation.mutateAsync({ id: templateId, data });
-      router.push(`/${locale}/dashboard/admin/menu-config?tab=templates`);
+      await updateMutation.mutateAsync({ id: mappingId, data });
+      router.push(`/${locale}/dashboard/admin/menu-config?tab=workflow-mappings`);
     } catch {
       // Error is handled by the mutation's onError callback
     }
   };
 
   const handleCancel = () => {
-    router.push(`/${locale}/dashboard/admin/menu-config?tab=templates`);
+    router.push(`/${locale}/dashboard/admin/menu-config?tab=workflow-mappings`);
   };
 
   // Loading state
@@ -65,17 +70,18 @@ export default function MenuTemplateEditPage() {
   }
 
   // Error state
-  if (isError || !template) {
+  if (isError || !mapping) {
     return (
       <div className="space-y-4">
         <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
           <AlertTitle>{t('errors.loadError')}</AlertTitle>
           <AlertDescription>
-            {error?.message || t('errors.templateNotFound')}
+            {error?.message || t('errors.mappingNotFound')}
           </AlertDescription>
         </Alert>
         <Button asChild variant="outline">
-          <Link href={`/${locale}/dashboard/admin/menu-config?tab=templates`}>
+          <Link href={`/${locale}/dashboard/admin/menu-config?tab=workflow-mappings`}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             {t('actions.backToList')}
           </Link>
@@ -96,24 +102,26 @@ export default function MenuTemplateEditPage() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">
-              {t('menuTemplates.editTitle')}
+              {t('workflowMappings.editTitle')}
             </h1>
             <p className="text-muted-foreground">
-              {t('menuTemplates.editDescription', { code: template.code })}
+              {t('workflowMappings.editDescription', {
+                pattern: mapping.workflow_pattern,
+              })}
             </p>
           </div>
         </div>
         {/* Prev/Next Navigation */}
         <ItemNavigation
-          currentId={templateId}
+          currentId={mappingId}
           allIds={allIds}
-          basePath="/dashboard/admin/menu-templates"
+          basePath="/dashboard/admin/workflow-mappings"
         />
       </div>
 
       {/* Form */}
-      <MenuTemplateForm
-        template={template}
+      <WorkflowMappingForm
+        mapping={mapping}
         onSubmit={handleSubmit}
         onCancel={handleCancel}
         isLoading={updateMutation.isPending}

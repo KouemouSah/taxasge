@@ -1,9 +1,9 @@
 /**
- * Menu Template Create Page
- * Admin page for creating new menu templates
+ * Workflow Mapping Create Page
+ * Admin page for creating new workflow-to-menu mappings
  *
- * @page /dashboard/admin/menu-templates/new
- * @date 2026-01-19
+ * @page /dashboard/admin/workflow-mappings/new
+ * @date 2026-01-25
  */
 
 'use client';
@@ -14,34 +14,34 @@ import { useTranslations, useLocale } from 'next-intl';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { MenuTemplateForm } from '@/modules/admin/components/MenuTemplateForm';
-import { useCreateMenuTemplate } from '@/modules/admin/hooks/useMenuTemplates';
+import { WorkflowMappingForm } from '@/modules/admin/components/WorkflowMappingForm';
+import { useCreateWorkflowMapping } from '@/modules/admin/hooks/useWorkflowMappings';
 import type {
-  MenuTemplateCreateRequest,
-  MenuTemplateUpdateRequest,
+  WorkflowMappingCreateRequest,
+  WorkflowMappingUpdateRequest,
 } from '@/modules/admin/services/menuConfigService';
 
-export default function MenuTemplateCreatePage() {
+export default function WorkflowMappingCreatePage() {
   const router = useRouter();
   const locale = useLocale();
   const t = useTranslations('menuConfig');
 
   // Create mutation
-  const createMutation = useCreateMenuTemplate();
+  const createMutation = useCreateWorkflowMapping();
 
   const handleSubmit = async (
-    data: MenuTemplateCreateRequest | MenuTemplateUpdateRequest
+    data: WorkflowMappingCreateRequest | WorkflowMappingUpdateRequest
   ) => {
     try {
-      await createMutation.mutateAsync(data as MenuTemplateCreateRequest);
-      router.push(`/${locale}/dashboard/admin/menu-config?tab=templates`);
+      await createMutation.mutateAsync(data as WorkflowMappingCreateRequest);
+      router.push(`/${locale}/dashboard/admin/menu-config?tab=workflow-mappings`);
     } catch {
       // Error is handled by the mutation's onError callback
     }
   };
 
   const handleCancel = () => {
-    router.push(`/${locale}/dashboard/admin/menu-config?tab=templates`);
+    router.push(`/${locale}/dashboard/admin/menu-config?tab=workflow-mappings`);
   };
 
   return (
@@ -49,22 +49,22 @@ export default function MenuTemplateCreatePage() {
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button asChild variant="ghost" size="icon">
-          <Link href={`/${locale}/dashboard/admin/menu-config?tab=templates`}>
+          <Link href={`/${locale}/dashboard/admin/menu-config?tab=workflow-mappings`}>
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            {t('menuTemplates.createTitle')}
+            {t('workflowMappings.createTitle')}
           </h1>
           <p className="text-muted-foreground">
-            {t('menuTemplates.createDescription')}
+            {t('workflowMappings.createDescription')}
           </p>
         </div>
       </div>
 
       {/* Form */}
-      <MenuTemplateForm
+      <WorkflowMappingForm
         onSubmit={handleSubmit}
         onCancel={handleCancel}
         isLoading={createMutation.isPending}

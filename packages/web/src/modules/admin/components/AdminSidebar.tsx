@@ -295,12 +295,12 @@ export default function AdminSidebar() {
           items: [
             {
               title: t('nav.menuTemplates'),
-              href: `/${locale}/dashboard/admin/menu-templates`,
+              href: `/${locale}/dashboard/admin/menu-config?tab=templates`,
               icon: FileStack,
             },
             {
               title: t('nav.workflowMappings'),
-              href: `/${locale}/dashboard/admin/workflow-mappings`,
+              href: `/${locale}/dashboard/admin/menu-config?tab=workflow-mappings`,
               icon: Link2,
             },
             {
