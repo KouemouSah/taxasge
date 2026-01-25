@@ -421,3 +421,85 @@ async def get_role_permissions(
     """
     permission_ids = await role_service.get_role_permissions(str(role_id))
     return permission_ids
+
+
+# =============================================================================
+# ROLE MENU CONFIG ENDPOINTS
+# =============================================================================
+
+@router.get("/{role_id}/menu-config", response_model=dict)
+@require_permission("roles.view")
+async def get_role_menu_config(
+    role_id: UUID,
+    current_user: UserResponse = Depends(get_current_user),
+    role_service: RoleService = Depends(get_role_service),
+    permission_service: PermissionService = Depends(get_permission_service),
+):
+    """
+    Get role menu and dashboard configuration
+
+    Requires: roles.view
+
+    Args:
+        role_id: Role UUID
+
+    Returns:
+        Dict with menu_config and dashboard_config
+
+    Raises:
+        404: Role not found
+    """
+    role = await role_service.get_role_by_id(str(role_id))
+
+    if not role:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Role with id '{role_id}' not found"
+        )
+
+    return {
+        "menu_config": role.get("menu_config"),
+        "dashboard_config": role.get("dashboard_config"),
+        "ui_config": role.get("ui_config"),
+    }
+
+
+@router.put("/{role_id}/menu-config", response_model=dict)
+@require_permission("roles.update")
+async def update_role_menu_config(
+    role_id: UUID,
+    data: dict,
+    current_user: UserResponse = Depends(get_current_user),
+    role_service: RoleService = Depends(get_role_service),
+    permission_service: PermissionService = Depends(get_permission_service),
+):
+    """
+    Update role menu and dashboard configuration
+
+    Requires: roles.update
+
+    Args:
+        role_id: Role UUID
+        data: Dict with menu_config and/or dashboard_config and/or ui_config
+
+    Returns:
+        Updated menu_config and dashboard_config
+
+    Raises:
+        404: Role not found
+        403: Cannot update system roles
+    """
+    # Build RoleUpdate with only config fields
+    update_data = RoleUpdate(
+        menu_config=data.get("menu_config"),
+        dashboard_config=data.get("dashboard_config"),
+        ui_config=data.get("ui_config"),
+    )
+
+    updated = await role_service.update_role(str(role_id), update_data)
+
+    return {
+        "menu_config": updated.get("menu_config"),
+        "dashboard_config": updated.get("dashboard_config"),
+        "ui_config": updated.get("ui_config"),
+    }

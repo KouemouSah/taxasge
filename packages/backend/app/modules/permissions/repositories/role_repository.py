@@ -5,6 +5,7 @@ from typing import List, Optional, Dict, Any
 from uuid import UUID
 from datetime import datetime
 import asyncpg
+import json
 
 from app.modules.permissions.models.role import (
     RoleCreate,
@@ -47,6 +48,7 @@ class RoleRepository:
         """
         result = await self.db.fetchrow("""
             SELECT id, name, code, entity_type, description, is_system,
+                   menu_config, dashboard_config, ui_config,
                    created_at, updated_at, created_by
             FROM roles
             WHERE id = $1
@@ -66,6 +68,7 @@ class RoleRepository:
         """
         result = await self.db.fetchrow("""
             SELECT id, name, code, entity_type, description, is_system,
+                   menu_config, dashboard_config, ui_config,
                    created_at, updated_at, created_by
             FROM roles
             WHERE code = $1
@@ -94,6 +97,7 @@ class RoleRepository:
         """
         query = """
             SELECT id, name, code, entity_type, description, is_system,
+                   menu_config, dashboard_config, ui_config,
                    created_at, updated_at, created_by
             FROM roles
             WHERE 1=1
@@ -288,6 +292,24 @@ class RoleRepository:
             update_fields.append(f"description = ${param_count}")
             params.append(role.description)
 
+        # Handle menu_config (JSONB)
+        if role.menu_config is not None:
+            param_count += 1
+            update_fields.append(f"menu_config = ${param_count}::jsonb")
+            params.append(json.dumps(role.menu_config) if role.menu_config else None)
+
+        # Handle dashboard_config (JSONB)
+        if role.dashboard_config is not None:
+            param_count += 1
+            update_fields.append(f"dashboard_config = ${param_count}::jsonb")
+            params.append(json.dumps(role.dashboard_config) if role.dashboard_config else None)
+
+        # Handle ui_config (JSONB)
+        if role.ui_config is not None:
+            param_count += 1
+            update_fields.append(f"ui_config = ${param_count}::jsonb")
+            params.append(json.dumps(role.ui_config) if role.ui_config else None)
+
         if not update_fields:
             # No fields to update
             return await self.get_by_id(role_id)
@@ -301,6 +323,7 @@ class RoleRepository:
             SET {', '.join(update_fields)}
             WHERE id = ${param_count}
             RETURNING id, name, code, entity_type, description, is_system,
+                      menu_config, dashboard_config, ui_config,
                       created_at, updated_at, created_by
         """
 
