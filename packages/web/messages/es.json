@@ -822,8 +822,38 @@
         "delete": "Eliminar",
         "save": "Guardar",
         "cancel": "Cancelar",
+        "create": "Crear",
         "preview": "Vista Previa",
         "backToList": "Volver a la lista"
+      },
+      "mappings": {
+        "create": "Crear Mapeo",
+        "edit": "Editar Mapeo"
+      },
+      "fields": {
+        "workflowPattern": "Patrón de Workflow",
+        "workflowPatternDescription": "Patrón SQL LIKE para coincidir con códigos de workflow (ej: PASAPORTE_%, RESIDENCIA_%)",
+        "menuGroupId": "ID del Grupo de Menú",
+        "menuGroupIdDescription": "Identificador único para el grupo de menú (ej: pasaportes, residencias)",
+        "menuTitleKey": "Clave del Título del Menú",
+        "menuTitleKeyDescription": "Clave i18n para el título del menú (ej: agent.nav.passports)",
+        "menuIcon": "Icono",
+        "menuIconDescription": "Icono Lucide para el menú",
+        "displayOrder": "Orden de Visualización",
+        "displayOrderDescription": "Posición en el menú (0 = primero)",
+        "permissionPrefix": "Prefijo de Permiso",
+        "permissionPrefixDescription": "Prefijo para verificaciones de permisos (opcional)",
+        "subMenuOptions": "Opciones de Submenú",
+        "includePending": "Incluir Pendientes",
+        "includePendingDescription": "Mostrar submenú de solicitudes pendientes",
+        "includeValidation": "Incluir Validación",
+        "includeValidationDescription": "Mostrar submenú de validaciones",
+        "includeAppointments": "Incluir Citas",
+        "includeAppointmentsDescription": "Mostrar submenú de citas",
+        "includeHistory": "Incluir Historial",
+        "includeHistoryDescription": "Mostrar submenú de historial",
+        "isActive": "Activo",
+        "isActiveDescription": "Activar o desactivar este mapeo"
       },
       "errors": {
         "loadError": "Error al cargar",
@@ -842,7 +872,13 @@
         "mappingDeleted": "Mapeo eliminado exitosamente",
         "mappingCreateError": "Error al crear mapeo",
         "mappingUpdateError": "Error al actualizar mapeo",
-        "mappingDeleteError": "Error al eliminar mapeo"
+        "mappingDeleteError": "Error al eliminar mapeo",
+        "templateCreated": "Plantilla creada exitosamente",
+        "templateUpdated": "Plantilla actualizada exitosamente",
+        "templateDeleted": "Plantilla eliminada exitosamente",
+        "templateCreateError": "Error al crear plantilla",
+        "templateUpdateError": "Error al actualizar plantilla",
+        "templateDeleteError": "Error al eliminar plantilla"
       },
       "roleConfig": {
         "title": "Configuración de Menú del Rol",

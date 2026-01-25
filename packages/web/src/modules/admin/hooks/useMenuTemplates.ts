@@ -4,6 +4,11 @@
  *
  * @module admin/hooks
  * @date 2026-01-19
+ *
+ * ERROR HANDLING:
+ * - All mutations show toast messages on success/error
+ * - Console logs for debugging in development
+ * - Specific error messages for different failure scenarios
  */
 
 'use client';
@@ -18,6 +23,26 @@ import type {
   PaginationParams,
 } from '../services/menuConfigService';
 import type { MenuTemplate, MenuTemplateListResponse } from '@/modules/agent-dashboard/types/menu-config';
+
+// =============================================================================
+// LOGGING UTILITY
+// =============================================================================
+
+const LOG_PREFIX = '[MenuTemplates]';
+
+function logInfo(message: string, data?: unknown) {
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`${LOG_PREFIX} ${message}`, data ?? '');
+  }
+}
+
+function logError(message: string, error: unknown, context?: Record<string, unknown>) {
+  console.error(`${LOG_PREFIX} ERROR: ${message}`, {
+    error: error instanceof Error ? error.message : error,
+    stack: error instanceof Error ? error.stack : undefined,
+    ...context,
+  });
+}
 
 // =============================================================================
 // QUERY KEYS
@@ -41,7 +66,17 @@ export const menuTemplateKeys = {
 export function useMenuTemplates(params?: PaginationParams) {
   return useQuery<MenuTemplateListResponse, Error>({
     queryKey: menuTemplateKeys.list(params),
-    queryFn: () => menuConfigApi.listTemplates(params),
+    queryFn: async () => {
+      logInfo('Fetching menu templates', params);
+      try {
+        const result = await menuConfigApi.listTemplates(params);
+        logInfo(`Fetched ${result.items.length} templates (total: ${result.total})`);
+        return result;
+      } catch (error) {
+        logError('Failed to fetch menu templates', error, { params });
+        throw error;
+      }
+    },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
@@ -52,7 +87,17 @@ export function useMenuTemplates(params?: PaginationParams) {
 export function useMenuTemplate(id: string, enabled = true) {
   return useQuery<MenuTemplate, Error>({
     queryKey: menuTemplateKeys.detail(id),
-    queryFn: () => menuConfigApi.getTemplate(id),
+    queryFn: async () => {
+      logInfo(`Fetching menu template id=${id}`);
+      try {
+        const result = await menuConfigApi.getTemplate(id);
+        logInfo(`Fetched template: ${result.code}`);
+        return result;
+      } catch (error) {
+        logError(`Failed to fetch menu template id=${id}`, error);
+        throw error;
+      }
+    },
     enabled: enabled && !!id,
     staleTime: 5 * 60 * 1000,
   });
@@ -66,13 +111,20 @@ export function useCreateMenuTemplate() {
   const t = useTranslations('menuConfig');
 
   return useMutation<MenuTemplate, Error, MenuTemplateCreateRequest>({
-    mutationFn: (data) => menuConfigApi.createTemplate(data),
-    onSuccess: () => {
-      // Invalidate all template lists
+    mutationFn: async (data) => {
+      logInfo('Creating menu template', { code: data.code, type: data.template_type });
+      return menuConfigApi.createTemplate(data);
+    },
+    onSuccess: (result) => {
+      logInfo(`Template created successfully: id=${result.id}, code=${result.code}`);
       queryClient.invalidateQueries({ queryKey: menuTemplateKeys.lists() });
       toast.success(t('messages.templateCreated'));
     },
-    onError: (error) => {
+    onError: (error, variables) => {
+      logError('Failed to create menu template', error, {
+        code: variables.code,
+        data: variables,
+      });
       toast.error(t('messages.templateCreateError'), {
         description: error.message,
       });
@@ -92,14 +144,20 @@ export function useUpdateMenuTemplate() {
     Error,
     { id: string; data: MenuTemplateUpdateRequest }
   >({
-    mutationFn: ({ id, data }) => menuConfigApi.updateTemplate(id, data),
-    onSuccess: (_, variables) => {
-      // Invalidate the specific template and all lists
+    mutationFn: async ({ id, data }) => {
+      logInfo(`Updating menu template id=${id}`, data);
+      return menuConfigApi.updateTemplate(id, data);
+    },
+    onSuccess: (result, variables) => {
+      logInfo(`Template updated successfully: id=${variables.id}`, result);
       queryClient.invalidateQueries({ queryKey: menuTemplateKeys.detail(variables.id) });
       queryClient.invalidateQueries({ queryKey: menuTemplateKeys.lists() });
       toast.success(t('messages.templateUpdated'));
     },
-    onError: (error) => {
+    onError: (error, variables) => {
+      logError(`Failed to update menu template id=${variables.id}`, error, {
+        data: variables.data,
+      });
       toast.error(t('messages.templateUpdateError'), {
         description: error.message,
       });
@@ -115,14 +173,18 @@ export function useDeleteMenuTemplate() {
   const t = useTranslations('menuConfig');
 
   return useMutation<void, Error, string>({
-    mutationFn: (id) => menuConfigApi.deleteTemplate(id),
+    mutationFn: async (id) => {
+      logInfo(`Deleting menu template id=${id}`);
+      return menuConfigApi.deleteTemplate(id);
+    },
     onSuccess: (_, id) => {
-      // Remove from cache and invalidate lists
+      logInfo(`Template deleted successfully: id=${id}`);
       queryClient.removeQueries({ queryKey: menuTemplateKeys.detail(id) });
       queryClient.invalidateQueries({ queryKey: menuTemplateKeys.lists() });
       toast.success(t('messages.templateDeleted'));
     },
-    onError: (error) => {
+    onError: (error, id) => {
+      logError(`Failed to delete menu template id=${id}`, error);
       toast.error(t('messages.templateDeleteError'), {
         description: error.message,
       });

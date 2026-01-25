@@ -4,6 +4,11 @@
  *
  * @module admin/hooks
  * @date 2026-01-19
+ *
+ * ERROR HANDLING:
+ * - All mutations show toast messages on success/error
+ * - Console logs for debugging in development
+ * - Specific error messages for different failure scenarios
  */
 
 'use client';
@@ -21,6 +26,26 @@ import type {
   WorkflowMenuMapping,
   WorkflowMenuMappingListResponse,
 } from '@/modules/agent-dashboard/types/menu-config';
+
+// =============================================================================
+// LOGGING UTILITY
+// =============================================================================
+
+const LOG_PREFIX = '[WorkflowMappings]';
+
+function logInfo(message: string, data?: unknown) {
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`${LOG_PREFIX} ${message}`, data ?? '');
+  }
+}
+
+function logError(message: string, error: unknown, context?: Record<string, unknown>) {
+  console.error(`${LOG_PREFIX} ERROR: ${message}`, {
+    error: error instanceof Error ? error.message : error,
+    stack: error instanceof Error ? error.stack : undefined,
+    ...context,
+  });
+}
 
 // =============================================================================
 // QUERY KEYS
@@ -44,7 +69,17 @@ export const workflowMappingKeys = {
 export function useWorkflowMappings(params?: PaginationParams) {
   return useQuery<WorkflowMenuMappingListResponse, Error>({
     queryKey: workflowMappingKeys.list(params),
-    queryFn: () => menuConfigApi.listWorkflowMappings(params),
+    queryFn: async () => {
+      logInfo('Fetching workflow mappings', params);
+      try {
+        const result = await menuConfigApi.listWorkflowMappings(params);
+        logInfo(`Fetched ${result.items.length} mappings (total: ${result.total})`);
+        return result;
+      } catch (error) {
+        logError('Failed to fetch workflow mappings', error, { params });
+        throw error;
+      }
+    },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
@@ -55,7 +90,17 @@ export function useWorkflowMappings(params?: PaginationParams) {
 export function useWorkflowMapping(id: number, enabled = true) {
   return useQuery<WorkflowMenuMapping, Error>({
     queryKey: workflowMappingKeys.detail(id),
-    queryFn: () => menuConfigApi.getWorkflowMapping(id),
+    queryFn: async () => {
+      logInfo(`Fetching workflow mapping id=${id}`);
+      try {
+        const result = await menuConfigApi.getWorkflowMapping(id);
+        logInfo(`Fetched mapping: ${result.workflow_pattern}`);
+        return result;
+      } catch (error) {
+        logError(`Failed to fetch workflow mapping id=${id}`, error);
+        throw error;
+      }
+    },
     enabled: enabled && id > 0,
     staleTime: 5 * 60 * 1000,
   });
@@ -69,13 +114,20 @@ export function useCreateWorkflowMapping() {
   const t = useTranslations('menuConfig');
 
   return useMutation<WorkflowMenuMapping, Error, WorkflowMappingCreateRequest>({
-    mutationFn: (data) => menuConfigApi.createWorkflowMapping(data),
-    onSuccess: () => {
-      // Invalidate all mapping lists
+    mutationFn: async (data) => {
+      logInfo('Creating workflow mapping', { pattern: data.workflow_pattern });
+      return menuConfigApi.createWorkflowMapping(data);
+    },
+    onSuccess: (result) => {
+      logInfo(`Mapping created successfully: id=${result.id}, pattern=${result.workflow_pattern}`);
       queryClient.invalidateQueries({ queryKey: workflowMappingKeys.lists() });
       toast.success(t('messages.mappingCreated'));
     },
-    onError: (error) => {
+    onError: (error, variables) => {
+      logError('Failed to create workflow mapping', error, {
+        pattern: variables.workflow_pattern,
+        data: variables,
+      });
       toast.error(t('messages.mappingCreateError'), {
         description: error.message,
       });
@@ -95,16 +147,22 @@ export function useUpdateWorkflowMapping() {
     Error,
     { id: number; data: WorkflowMappingUpdateRequest }
   >({
-    mutationFn: ({ id, data }) => menuConfigApi.updateWorkflowMapping(id, data),
-    onSuccess: (_, variables) => {
-      // Invalidate the specific mapping and all lists
+    mutationFn: async ({ id, data }) => {
+      logInfo(`Updating workflow mapping id=${id}`, data);
+      return menuConfigApi.updateWorkflowMapping(id, data);
+    },
+    onSuccess: (result, variables) => {
+      logInfo(`Mapping updated successfully: id=${variables.id}`, result);
       queryClient.invalidateQueries({
         queryKey: workflowMappingKeys.detail(variables.id),
       });
       queryClient.invalidateQueries({ queryKey: workflowMappingKeys.lists() });
       toast.success(t('messages.mappingUpdated'));
     },
-    onError: (error) => {
+    onError: (error, variables) => {
+      logError(`Failed to update workflow mapping id=${variables.id}`, error, {
+        data: variables.data,
+      });
       toast.error(t('messages.mappingUpdateError'), {
         description: error.message,
       });
@@ -120,14 +178,18 @@ export function useDeleteWorkflowMapping() {
   const t = useTranslations('menuConfig');
 
   return useMutation<void, Error, number>({
-    mutationFn: (id) => menuConfigApi.deleteWorkflowMapping(id),
+    mutationFn: async (id) => {
+      logInfo(`Deleting workflow mapping id=${id}`);
+      return menuConfigApi.deleteWorkflowMapping(id);
+    },
     onSuccess: (_, id) => {
-      // Remove from cache and invalidate lists
+      logInfo(`Mapping deleted successfully: id=${id}`);
       queryClient.removeQueries({ queryKey: workflowMappingKeys.detail(id) });
       queryClient.invalidateQueries({ queryKey: workflowMappingKeys.lists() });
       toast.success(t('messages.mappingDeleted'));
     },
-    onError: (error) => {
+    onError: (error, id) => {
+      logError(`Failed to delete workflow mapping id=${id}`, error);
       toast.error(t('messages.mappingDeleteError'), {
         description: error.message,
       });

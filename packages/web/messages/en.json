@@ -874,8 +874,38 @@
         "delete": "Delete",
         "save": "Save",
         "cancel": "Cancel",
+        "create": "Create",
         "preview": "Preview",
         "backToList": "Back to list"
+      },
+      "mappings": {
+        "create": "Create Mapping",
+        "edit": "Edit Mapping"
+      },
+      "fields": {
+        "workflowPattern": "Workflow Pattern",
+        "workflowPatternDescription": "SQL LIKE pattern to match workflow codes (e.g., PASAPORTE_%, RESIDENCIA_%)",
+        "menuGroupId": "Menu Group ID",
+        "menuGroupIdDescription": "Unique identifier for the menu group (e.g., pasaportes, residencias)",
+        "menuTitleKey": "Menu Title Key",
+        "menuTitleKeyDescription": "i18n key for the menu title (e.g., agent.nav.passports)",
+        "menuIcon": "Icon",
+        "menuIconDescription": "Lucide icon for the menu",
+        "displayOrder": "Display Order",
+        "displayOrderDescription": "Position in the menu (0 = first)",
+        "permissionPrefix": "Permission Prefix",
+        "permissionPrefixDescription": "Prefix for permission checks (optional)",
+        "subMenuOptions": "Sub-Menu Options",
+        "includePending": "Include Pending",
+        "includePendingDescription": "Show pending requests sub-menu",
+        "includeValidation": "Include Validation",
+        "includeValidationDescription": "Show validations sub-menu",
+        "includeAppointments": "Include Appointments",
+        "includeAppointmentsDescription": "Show appointments sub-menu",
+        "includeHistory": "Include History",
+        "includeHistoryDescription": "Show history sub-menu",
+        "isActive": "Active",
+        "isActiveDescription": "Enable or disable this mapping"
       },
       "errors": {
         "loadError": "Load error",
@@ -894,7 +924,13 @@
         "mappingDeleted": "Mapping deleted successfully",
         "mappingCreateError": "Error creating mapping",
         "mappingUpdateError": "Error updating mapping",
-        "mappingDeleteError": "Error deleting mapping"
+        "mappingDeleteError": "Error deleting mapping",
+        "templateCreated": "Template created successfully",
+        "templateUpdated": "Template updated successfully",
+        "templateDeleted": "Template deleted successfully",
+        "templateCreateError": "Error creating template",
+        "templateUpdateError": "Error updating template",
+        "templateDeleteError": "Error deleting template"
       },
       "roleConfig": {
         "title": "Role Menu Configuration",

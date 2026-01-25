@@ -822,8 +822,38 @@
         "delete": "Supprimer",
         "save": "Enregistrer",
         "cancel": "Annuler",
+        "create": "Créer",
         "preview": "Aperçu",
         "backToList": "Retour à la liste"
+      },
+      "mappings": {
+        "create": "Créer un Mappage",
+        "edit": "Modifier le Mappage"
+      },
+      "fields": {
+        "workflowPattern": "Pattern Workflow",
+        "workflowPatternDescription": "Pattern SQL LIKE pour matcher les codes workflow (ex: PASAPORTE_%, RESIDENCIA_%)",
+        "menuGroupId": "ID du Groupe Menu",
+        "menuGroupIdDescription": "Identifiant unique pour le groupe de menu (ex: pasaportes, residencias)",
+        "menuTitleKey": "Clé du Titre Menu",
+        "menuTitleKeyDescription": "Clé i18n pour le titre du menu (ex: agent.nav.passports)",
+        "menuIcon": "Icône",
+        "menuIconDescription": "Icône Lucide pour le menu",
+        "displayOrder": "Ordre d'Affichage",
+        "displayOrderDescription": "Position dans le menu (0 = premier)",
+        "permissionPrefix": "Préfixe de Permission",
+        "permissionPrefixDescription": "Préfixe pour les vérifications de permission (optionnel)",
+        "subMenuOptions": "Options de Sous-Menu",
+        "includePending": "Inclure En Attente",
+        "includePendingDescription": "Afficher le sous-menu des demandes en attente",
+        "includeValidation": "Inclure Validation",
+        "includeValidationDescription": "Afficher le sous-menu des validations",
+        "includeAppointments": "Inclure Rendez-vous",
+        "includeAppointmentsDescription": "Afficher le sous-menu des rendez-vous",
+        "includeHistory": "Inclure Historique",
+        "includeHistoryDescription": "Afficher le sous-menu de l'historique",
+        "isActive": "Actif",
+        "isActiveDescription": "Activer ou désactiver ce mappage"
       },
       "errors": {
         "loadError": "Erreur de chargement",
@@ -842,7 +872,13 @@
         "mappingDeleted": "Mappage supprimé avec succès",
         "mappingCreateError": "Erreur lors de la création du mappage",
         "mappingUpdateError": "Erreur lors de la mise à jour du mappage",
-        "mappingDeleteError": "Erreur lors de la suppression du mappage"
+        "mappingDeleteError": "Erreur lors de la suppression du mappage",
+        "templateCreated": "Modèle créé avec succès",
+        "templateUpdated": "Modèle mis à jour avec succès",
+        "templateDeleted": "Modèle supprimé avec succès",
+        "templateCreateError": "Erreur lors de la création du modèle",
+        "templateUpdateError": "Erreur lors de la mise à jour du modèle",
+        "templateDeleteError": "Erreur lors de la suppression du modèle"
       },
       "roleConfig": {
         "title": "Configuration du Menu du Rôle",
