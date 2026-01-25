@@ -2649,6 +2649,9 @@ class PendingPaymentResponse(BaseModel):
     penalties: Optional[float] = None
     discounts: Optional[float] = None
     sla_target_date: Optional[str] = None
+    # Assigned agent info (for supervisor view)
+    assigned_agent_id: Optional[str] = None
+    assigned_agent_name: Optional[str] = None
 
 
 class PendingPaymentsListResponse(BaseModel):
@@ -2675,12 +2678,17 @@ class PaymentActionResponse(BaseModel):
     description="""
     Get list of payments pending Treasury Agent validation.
 
+    **Access Control:**
+    - Treasury Agents: See only their assigned payments
+    - Supervisors: See all payments (can filter by agent)
+
     **Filters:**
     - payment_method: 'cash' or 'check' (default: all manual methods)
     - workflow_status: Filter by workflow status
+    - agent_id: (Supervisor only) Filter by assigned agent
 
     **Permissions:**
-    - Requires 'treasury:validate_payments' permission
+    - Requires 'treasury.validate_payment' permission
     """
 )
 async def get_pending_payments(
@@ -2689,6 +2697,7 @@ async def get_pending_payments(
         "pending_agent_review",
         description="Filter by workflow status"
     ),
+    agent_id: Optional[str] = Query(None, description="(Supervisor only) Filter by assigned agent"),
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(20, ge=1, le=100, description="Items per page"),
     db: asyncpg.Connection = Depends(get_database),
@@ -2700,7 +2709,30 @@ async def get_pending_payments(
     from loguru import logger
 
     try:
-        logger.info(f"[Treasury] get_pending_payments called: method={payment_method}, status={workflow_status}, page={page}")
+        user_id = current_user.get("id") or current_user.get("user_id")
+        logger.info(f"[Treasury] get_pending_payments called by user {user_id}: method={payment_method}, status={workflow_status}, page={page}")
+
+        # Check if user is a supervisor (has treasury.view_all permission or supervisor_tesoro role)
+        is_supervisor = await db.fetchval("""
+            SELECT EXISTS(
+                SELECT 1 FROM user_permissions up
+                JOIN permissions p ON p.id = up.permission_id
+                WHERE up.user_id = $1::uuid AND p.name = 'treasury.view_all'
+                UNION
+                SELECT 1 FROM roles r
+                JOIN role_permissions rp ON rp.role_id = r.id
+                JOIN permissions p ON p.id = rp.permission_id
+                JOIN users u ON u.role = r.code
+                WHERE u.id = $1::uuid AND p.name = 'treasury.view_all'
+            )
+        """, user_id) or False
+
+        # Get current user's agent_profile_id (if they're an agent)
+        current_agent_profile_id = await db.fetchval("""
+            SELECT id FROM agent_profiles WHERE user_id = $1::uuid AND is_active = true
+        """, user_id)
+
+        logger.info(f"[Treasury] User {user_id}: is_supervisor={is_supervisor}, agent_profile_id={current_agent_profile_id}")
 
         # Calculate offset from page
         offset = (page - 1) * limit
@@ -2716,7 +2748,27 @@ async def get_pending_payments(
             param_idx += 1
         else:
             # Default: only manual validation methods
-            where_clauses.append(f"sp.payment_method IN ('cash', 'check')")
+            where_clauses.append("sp.payment_method IN ('cash', 'check')")
+
+        # Agent-based filtering
+        if is_supervisor:
+            # Supervisor can filter by specific agent or see all
+            if agent_id:
+                where_clauses.append(f"sp.assigned_agent_id = ${param_idx}::uuid")
+                params.append(agent_id)
+                param_idx += 1
+                logger.info(f"[Treasury] Supervisor filtering by agent_id: {agent_id}")
+        else:
+            # Regular agent sees only their assigned payments
+            if current_agent_profile_id:
+                where_clauses.append(f"sp.assigned_agent_id = ${param_idx}::uuid")
+                params.append(str(current_agent_profile_id))
+                param_idx += 1
+                logger.info(f"[Treasury] Agent filtering by own profile: {current_agent_profile_id}")
+            else:
+                # User has permission but no agent profile - show nothing
+                logger.warning(f"[Treasury] User {user_id} has no agent_profile, showing empty results")
+                return PendingPaymentsListResponse(payments=[], total=0, page=page, page_size=limit)
 
         where_sql = " AND ".join(where_clauses)
 
@@ -2741,10 +2793,14 @@ async def get_pending_payments(
                 sp.sla_target_date,
                 sr.submitted_at,
                 sp.created_at,
-                EXTRACT(EPOCH FROM (NOW() - sp.created_at)) / 3600 AS hours_waiting
+                EXTRACT(EPOCH FROM (NOW() - sp.created_at)) / 3600 AS hours_waiting,
+                sp.assigned_agent_id,
+                COALESCE(assigned_user.full_name, assigned_user.first_name || ' ' || assigned_user.last_name) AS assigned_agent_name
             FROM service_payments sp
             LEFT JOIN service_requests sr ON sr.id = sp.service_request_id
             LEFT JOIN users u ON u.id = sp.user_id
+            LEFT JOIN agent_profiles assigned_ap ON assigned_ap.id = sp.assigned_agent_id
+            LEFT JOIN users assigned_user ON assigned_user.id = assigned_ap.user_id
             WHERE {where_sql}
             ORDER BY sp.created_at ASC
             LIMIT ${param_idx} OFFSET ${param_idx + 1}
@@ -2790,6 +2846,8 @@ async def get_pending_payments(
                     sla_target_date=row["sla_target_date"].isoformat() if row["sla_target_date"] else None,
                     created_at=row["created_at"].isoformat(),
                     hours_waiting=float(row["hours_waiting"] or 0),
+                    assigned_agent_id=str(row["assigned_agent_id"]) if row["assigned_agent_id"] else None,
+                    assigned_agent_name=row["assigned_agent_name"],
                 )
                 payments.append(payment)
             except Exception as row_error:

@@ -76,7 +76,8 @@ class WorkloadRepository:
         db,
         max_workload_pct: float = 80,
         entity_id: Optional[UUID] = None,
-        workflow_code: Optional[str] = None
+        workflow_code: Optional[str] = None,
+        entity_code: Optional[str] = None
     ) -> List[AgentWorkload]:
         """Get available agents for assignment
 
@@ -89,10 +90,17 @@ class WorkloadRepository:
             max_workload_pct: Maximum workload percentage (default 80%)
             entity_id: Filter agents by entity_id (CRITICAL for correct routing)
             workflow_code: Alternative: find entity by workflow_code and filter agents
+            entity_code: Alternative: find entity by code (e.g., 'TESORO') and filter agents
 
         Returns:
             List of available agents, filtered by entity if specified
         """
+        # If entity_code provided but no entity_id, find the entity by code
+        if entity_code and not entity_id:
+            entity_id = await self._get_entity_id_by_code(db, entity_code)
+            if entity_id:
+                logger.info(f"Resolved entity_code '{entity_code}' to entity_id '{entity_id}'")
+
         # If workflow_code provided but no entity_id, find the entity
         if workflow_code and not entity_id:
             entity_id = await self._get_entity_id_for_workflow(db, workflow_code)
@@ -160,6 +168,27 @@ class WorkloadRepository:
 
         logger.info(f"Found {len(agents)} available agents" + (f" for entity {entity_id}" if entity_id else ""))
         return agents
+
+    async def _get_entity_id_by_code(self, db, entity_code: str) -> Optional[UUID]:
+        """Find entity by its code
+
+        Args:
+            db: Database connection
+            entity_code: The entity code (e.g., 'TESORO', 'CNEDOGE_PASAPORTE')
+
+        Returns:
+            entity_id if found, None otherwise
+        """
+        row = await db.fetchrow("""
+            SELECT id FROM entities
+            WHERE code = $1 AND is_active = true
+        """, entity_code)
+
+        if row:
+            return row['id']
+
+        logger.warning(f"No entity found for entity_code: {entity_code}")
+        return None
 
     async def _get_entity_id_for_workflow(self, db, workflow_code: str) -> Optional[UUID]:
         """Find the entity that handles a specific workflow_code

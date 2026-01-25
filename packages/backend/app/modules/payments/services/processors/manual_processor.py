@@ -104,9 +104,9 @@ class ManualValidationProcessor(PaymentProcessorBase):
                 f"for service_request {context.service_request_id}"
             )
 
-            # Publish PAYMENT_CASH_PENDING event for notifications
+            # Publish PAYMENT_MANUAL_PENDING event for notifications and auto-assignment
             try:
-                EventBus.publish_nowait(EventType.PAYMENT_CASH_PENDING, {
+                EventBus.publish_nowait(EventType.PAYMENT_MANUAL_PENDING, {
                     "payment_id": payment_id,
                     "user_id": context.user_id,
                     "service_request_id": context.service_request_id,
@@ -118,9 +118,9 @@ class ManualValidationProcessor(PaymentProcessorBase):
                     "user_phone": context.user_phone,
                     "preferred_language": "es",
                 })
-                logger.info(f"PAYMENT_CASH_PENDING event published for payment {payment_id}")
+                logger.info(f"PAYMENT_MANUAL_PENDING event published for payment {payment_id}")
             except Exception as e:
-                logger.error(f"Failed to publish PAYMENT_CASH_PENDING event: {e}")
+                logger.error(f"Failed to publish PAYMENT_MANUAL_PENDING event: {e}")
 
             return PaymentInitResult(
                 success=True,
@@ -443,9 +443,9 @@ class ManualValidationProcessor(PaymentProcessorBase):
                     error="Payment not found"
                 )
 
-            # Publish PAYMENT_CASH_REJECTED event for notifications
+            # Publish PAYMENT_MANUAL_REJECTED event for notifications
             try:
-                EventBus.publish_nowait(EventType.PAYMENT_CASH_REJECTED, {
+                EventBus.publish_nowait(EventType.PAYMENT_MANUAL_REJECTED, {
                     "payment_id": payment_id,
                     "user_id": str(updated["user_id"]),
                     "service_request_id": str(updated["service_request_id"]),
@@ -457,9 +457,9 @@ class ManualValidationProcessor(PaymentProcessorBase):
                     "user_phone": user_data["phone"] if user_data else None,
                     "preferred_language": user_data["preferred_language"] if user_data else "es",
                 })
-                logger.info(f"PAYMENT_CASH_REJECTED event published for payment {payment_id}")
+                logger.info(f"PAYMENT_MANUAL_REJECTED event published for payment {payment_id}")
             except Exception as e:
-                logger.error(f"Failed to publish PAYMENT_CASH_REJECTED event: {e}")
+                logger.error(f"Failed to publish PAYMENT_MANUAL_REJECTED event: {e}")
 
             logger.info(
                 f"Manual payment {payment_id} rejected by agent_profile {agent_profile_id}. "

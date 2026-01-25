@@ -41,6 +41,13 @@ PERMISSIONS = [
         False
     ),
     (
+        "treasury.view_all",
+        "treasury",
+        "view_all",
+        "Ver todos los pagos de todos los agentes (supervisor)",
+        False
+    ),
+    (
         "treasury.process_payment",
         "treasury",
         "process_payment",
@@ -237,6 +244,7 @@ ROLE_PERMISSIONS = {
     "supervisor_tesoro": [
         # ALL Payment operations
         "treasury.view_payment",
+        "treasury.view_all",  # See all payments from all agents
         "treasury.validate_payment",
         "treasury.reject_payment",
         "treasury.process_payment",

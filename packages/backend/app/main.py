@@ -101,6 +101,7 @@ async def lifespan(app: FastAPI):
             from app.modules.communications.handlers import register_notification_handlers
             from app.modules.admin.handlers import register_audit_handlers
             from app.modules.service_requests.handlers import register_agent_queue_handlers
+            from app.modules.payments.handlers import register_payment_assignment_handlers
 
             # Initialize the EventBus
             EventBus.initialize()
@@ -110,6 +111,10 @@ async def lifespan(app: FastAPI):
             audit_handler = register_audit_handlers()
             agent_queue_handler = register_agent_queue_handlers()
             logger.info("✅ Agent queue event handlers registered")
+
+            # Register payment assignment handler (auto-assign manual payments to Treasury)
+            payment_assignment_handler = register_payment_assignment_handlers()
+            logger.info("✅ Payment assignment event handlers registered")
 
             # Register verification event handlers (external document verification)
             try:

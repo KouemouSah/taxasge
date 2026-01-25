@@ -30,14 +30,26 @@ class EventType(str, Enum):
     PAYMENT_FAILED = "payment.failed"
     """Payment failed"""
 
-    PAYMENT_CASH_PENDING = "payment.cash.pending"
-    """Cash payment pending agent validation"""
+    PAYMENT_MANUAL_PENDING = "payment.manual.pending"
+    """Manual payment (Cash or Check) pending Treasury agent validation"""
 
-    PAYMENT_CASH_VALIDATED = "payment.cash.validated"
-    """Cash payment validated by treasury agent"""
+    # Alias for backward compatibility
+    PAYMENT_CASH_PENDING = "payment.manual.pending"
+    """@deprecated Use PAYMENT_MANUAL_PENDING - Cash/Check payment pending agent validation"""
 
-    PAYMENT_CASH_REJECTED = "payment.cash.rejected"
-    """Cash payment rejected by treasury agent"""
+    PAYMENT_MANUAL_VALIDATED = "payment.manual.validated"
+    """Manual payment validated by Treasury agent"""
+
+    # Alias for backward compatibility
+    PAYMENT_CASH_VALIDATED = "payment.manual.validated"
+    """@deprecated Use PAYMENT_MANUAL_VALIDATED - Cash/Check payment validated by agent"""
+
+    PAYMENT_MANUAL_REJECTED = "payment.manual.rejected"
+    """Manual payment rejected by Treasury agent"""
+
+    # Alias for backward compatibility
+    PAYMENT_CASH_REJECTED = "payment.manual.rejected"
+    """@deprecated Use PAYMENT_MANUAL_REJECTED - Cash/Check payment rejected by agent"""
 
     PAYMENT_REFUNDED = "payment.refunded"
     """Payment refunded"""
