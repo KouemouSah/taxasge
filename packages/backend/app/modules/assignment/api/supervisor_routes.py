@@ -45,8 +45,8 @@ from app.modules.assignment.repositories.rules_repository import (
 )
 from app.core.database import get_db_connection
 
-# Permission middleware
-from app.modules.permissions.middleware import require_permission
+# Permission middleware - use permission_required dependency instead of decorator
+from app.modules.permissions.middleware import permission_required
 
 import logging
 
@@ -170,10 +170,10 @@ class WorkloadBalanceResponse(BaseModel):
 # ============================================================================
 
 @router.get("/dashboard", response_model=DashboardResponse)
-@require_permission("dashboard.view")
 async def get_dashboard(
     current_user: UserResponse = Depends(get_current_user),
-    db = Depends(get_db_connection)
+    db = Depends(get_db_connection),
+    _: None = Depends(permission_required("dashboard.view"))
 ):
     """
     **Get supervisor dashboard with real-time metrics**
@@ -280,11 +280,11 @@ async def get_dashboard(
 # ============================================================================
 
 @router.get("/agents", response_model=List[AgentListItem])
-@require_permission("agent.view")
 async def list_agents(
     include_unavailable: bool = Query(False, description="Include unavailable agents"),
     current_user: UserResponse = Depends(get_current_user),
-    db = Depends(get_db_connection)
+    db = Depends(get_db_connection),
+    _: None = Depends(permission_required("agent.view"))
 ):
     """
     **List all agents under supervision**
@@ -349,12 +349,12 @@ async def list_agents(
 
 
 @router.get("/agents/{agent_profile_id}/stats", response_model=AgentAssignmentStats)
-@require_permission("agent.view_performance")
 async def get_agent_stats(
     agent_profile_id: UUID,
     period_days: int = Query(30, ge=1, le=365, description="Statistics period in days"),
     current_user: UserResponse = Depends(get_current_user),
-    db = Depends(get_db_connection)
+    db = Depends(get_db_connection),
+    _: None = Depends(permission_required("agent.view_performance"))
 ):
     """
     **Get detailed statistics for an agent**
@@ -397,12 +397,12 @@ async def get_agent_stats(
 
 
 @router.get("/agents/{agent_profile_id}/forecast", response_model=AgentCapacityForecast)
-@require_permission("agent.view_workload")
 async def get_agent_forecast(
     agent_profile_id: UUID,
     horizon_days: int = Query(7, ge=1, le=30, description="Forecast horizon in days"),
     current_user: UserResponse = Depends(get_current_user),
-    db = Depends(get_db_connection)
+    db = Depends(get_db_connection),
+    _: None = Depends(permission_required("agent.view_workload"))
 ):
     """
     **Get capacity forecast for an agent**
@@ -453,10 +453,10 @@ async def get_agent_forecast(
 # ============================================================================
 
 @router.get("/workload/balance", response_model=WorkloadBalanceResponse)
-@require_permission("agent.view_workload")
 async def get_workload_balance(
     current_user: UserResponse = Depends(get_current_user),
-    db = Depends(get_db_connection)
+    db = Depends(get_db_connection),
+    _: None = Depends(permission_required("agent.view_workload"))
 ):
     """
     **Get workload balance report for team**
@@ -571,11 +571,11 @@ async def get_workload_balance(
 # ============================================================================
 
 @router.post("/rules", response_model=AssignmentRule, status_code=status.HTTP_201_CREATED)
-@require_permission("rules.create")
 async def create_rule(
     rule_data: AssignmentRuleCreate,
     current_user: UserResponse = Depends(get_current_user),
-    db = Depends(get_db_connection)
+    db = Depends(get_db_connection),
+    _: None = Depends(permission_required("rules.create"))
 ):
     """
     **Create a new assignment rule (Supervisor only)**
@@ -641,11 +641,11 @@ async def create_rule(
 
 
 @router.get("/rules", response_model=List[AssignmentRule])
-@require_permission("rules.view")
 async def list_rules(
     status_filter: Optional[RuleStatus] = Query(None, description="Filter by status"),
     current_user: UserResponse = Depends(get_current_user),
-    db = Depends(get_db_connection)
+    db = Depends(get_db_connection),
+    _: None = Depends(permission_required("rules.view"))
 ):
     """
     **List assignment rules**
@@ -694,11 +694,11 @@ async def list_rules(
 
 
 @router.get("/rules/{rule_id}", response_model=AssignmentRule)
-@require_permission("rules.view")
 async def get_rule(
     rule_id: UUID,
     current_user: UserResponse = Depends(get_current_user),
-    db = Depends(get_db_connection)
+    db = Depends(get_db_connection),
+    _: None = Depends(permission_required("rules.view"))
 ):
     """**Get assignment rule by ID**"""
     rules_repo = get_rules_repository(db)
@@ -725,12 +725,12 @@ async def get_rule(
 
 
 @router.put("/rules/{rule_id}", response_model=AssignmentRule)
-@require_permission("rules.edit")
 async def update_rule(
     rule_id: UUID,
     update_data: AssignmentRuleUpdate,
     current_user: UserResponse = Depends(get_current_user),
-    db = Depends(get_db_connection)
+    db = Depends(get_db_connection),
+    _: None = Depends(permission_required("rules.edit"))
 ):
     """**Update assignment rule**"""
     rules_repo = get_rules_repository(db)
@@ -763,11 +763,11 @@ async def update_rule(
 
 
 @router.post("/rules/{rule_id}/activate", response_model=AssignmentRule)
-@require_permission("rules.activate")
 async def activate_rule(
     rule_id: UUID,
     current_user: UserResponse = Depends(get_current_user),
-    db = Depends(get_db_connection)
+    db = Depends(get_db_connection),
+    _: None = Depends(permission_required("rules.activate"))
 ):
     """**Activate a rule (draft/inactive → active)**"""
     rules_repo = get_rules_repository(db)
@@ -796,11 +796,11 @@ async def activate_rule(
 
 
 @router.post("/rules/{rule_id}/deactivate", response_model=AssignmentRule)
-@require_permission("rules.activate")
 async def deactivate_rule(
     rule_id: UUID,
     current_user: UserResponse = Depends(get_current_user),
-    db = Depends(get_db_connection)
+    db = Depends(get_db_connection),
+    _: None = Depends(permission_required("rules.activate"))
 ):
     """**Deactivate a rule (active → inactive)**"""
     rules_repo = get_rules_repository(db)
@@ -829,11 +829,11 @@ async def deactivate_rule(
 
 
 @router.delete("/rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
-@require_permission("rules.delete")
 async def archive_rule(
     rule_id: UUID,
     current_user: UserResponse = Depends(get_current_user),
-    db = Depends(get_db_connection)
+    db = Depends(get_db_connection),
+    _: None = Depends(permission_required("rules.delete"))
 ):
     """**Archive a rule (soft delete)**"""
     rules_repo = get_rules_repository(db)
@@ -891,14 +891,14 @@ class EscalationStatsResponse(BaseModel):
 
 
 @router.get("/escalations", response_model=List[EscalationListItem])
-@require_permission("escalations.view")
 async def list_escalations(
     status_filter: Optional[str] = Query(None, description="Filter by status: pending, in_review, resolved"),
     include_resolved: bool = Query(False, description="Include resolved escalations"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=100, description="Items per page"),
     current_user: UserResponse = Depends(get_current_user),
-    db = Depends(get_db_connection)
+    db = Depends(get_db_connection),
+    _: None = Depends(permission_required("escalations.view"))
 ):
     """
     **List all escalated items for supervisor review**
@@ -1000,10 +1000,10 @@ async def list_escalations(
 
 
 @router.get("/escalations/stats", response_model=EscalationStatsResponse)
-@require_permission("escalations.view")
 async def get_escalation_stats(
     current_user: UserResponse = Depends(get_current_user),
-    db = Depends(get_db_connection)
+    db = Depends(get_db_connection),
+    _: None = Depends(permission_required("escalations.view"))
 ):
     """
     **Get escalation statistics**
@@ -1046,12 +1046,12 @@ async def get_escalation_stats(
 
 
 @router.post("/escalations/{queue_id}/assign")
-@require_permission("escalations.assign")
 async def assign_escalation(
     queue_id: UUID,
     agent_id: Optional[UUID] = None,
     current_user: UserResponse = Depends(get_current_user),
-    db = Depends(get_db_connection)
+    db = Depends(get_db_connection),
+    _: None = Depends(permission_required("escalations.assign"))
 ):
     """
     **Assign an escalated item to an agent (or self)**
@@ -1089,12 +1089,12 @@ class ResolveEscalationRequest(BaseModel):
 
 
 @router.post("/escalations/{queue_id}/resolve")
-@require_permission("escalations.resolve")
 async def resolve_escalation(
     queue_id: UUID,
     request_data: ResolveEscalationRequest,
     current_user: UserResponse = Depends(get_current_user),
-    db = Depends(get_db_connection)
+    db = Depends(get_db_connection),
+    _: None = Depends(permission_required("escalations.resolve"))
 ):
     """
     **Resolve an escalation**
@@ -1145,11 +1145,11 @@ async def resolve_escalation(
 
 
 @router.get("/rules/effectiveness/report", response_model=List[RuleEffectivenessItem])
-@require_permission("rules.view_effectiveness")
 async def get_rules_effectiveness(
     min_applications: int = Query(10, ge=1, description="Minimum applications to include"),
     current_user: UserResponse = Depends(get_current_user),
-    db = Depends(get_db_connection)
+    db = Depends(get_db_connection),
+    _: None = Depends(permission_required("rules.view_effectiveness"))
 ):
     """
     **Get rule effectiveness report**
