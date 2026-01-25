@@ -156,6 +156,10 @@ export const treasuryApi = {
     if (workflowStatus) {
       queryParams.workflow_status = workflowStatus;
     }
+    // Filter by assigned agent (supervisor only)
+    if (params.agentId) {
+      queryParams.agent_id = params.agentId;
+    }
 
     const response = await fetchClient.get<Record<string, unknown>>(
       `${TREASURY_BASE}/payments/pending`,

@@ -115,6 +115,9 @@ export interface PendingPayment {
     quantity: number;
     subtotal: number;
   }>;
+  // Assigned agent info (for supervisor view)
+  assignedAgentId?: string;
+  assignedAgentName?: string;
 }
 
 export interface PendingPaymentsListResponse {
@@ -131,6 +134,8 @@ export interface PendingPaymentsParams {
   status?: string; // Alias for workflowStatus
   page?: number;
   pageSize?: number;
+  // Filter by assigned agent (supervisor only)
+  agentId?: string;
 }
 
 // =============================================================================

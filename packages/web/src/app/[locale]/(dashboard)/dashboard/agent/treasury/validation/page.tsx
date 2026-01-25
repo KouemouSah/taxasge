@@ -472,6 +472,7 @@ export default function TreasuryValidationPage() {
                       <TableHead>Servicio</TableHead>
                       <TableHead>Monto</TableHead>
                       <TableHead>Metodo</TableHead>
+                      <TableHead>Agente</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead>SLA</TableHead>
                       <TableHead>Fecha</TableHead>
@@ -519,6 +520,11 @@ export default function TreasuryValidationPage() {
                         </TableCell>
                         <TableCell>
                           <PaymentMethodBadge method={payment.paymentMethod} />
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {payment.assignedAgentName || (
+                            <span className="text-muted-foreground italic">Sin asignar</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <WorkflowStatusBadge status={payment.workflowStatus} />
