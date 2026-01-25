@@ -114,7 +114,8 @@ class AccountantDeadlineRepository:
 
         if filters.declaration_types:
             param_count += 1
-            conditions.append(f"d.declaration_type = ANY(${param_count})")
+            # Cast enum to text for comparison
+            conditions.append(f"d.declaration_type::text = ANY(${param_count}::text[])")
             params.append(filters.declaration_types)
 
         if filters.status:
