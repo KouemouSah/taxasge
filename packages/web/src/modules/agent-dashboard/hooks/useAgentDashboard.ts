@@ -11,7 +11,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocale } from 'next-intl';
 import { getAuthData } from '@/core/auth/storage';
@@ -20,6 +20,7 @@ import type { AgentDashboardContext, EntityCode, MenuItem, MinistryCode } from '
 import { MINISTRY_ENTITIES } from '../types';
 import { getEntityConfig, getEntityCodeFromName, ENTITY_CONFIGS } from '../config/entity-menus';
 import type { AgentMenuConfigResponse, DynamicMenuItem } from '../types/menu-config';
+import { FEATURE_DYNAMIC_MENUS } from '@/core/config/features';
 
 // =============================================================================
 // API RESPONSE TYPES
@@ -196,8 +197,11 @@ export function useAgentDashboard(): UseAgentDashboardReturn {
     retry: 1, // Only retry once since we have static fallback
   });
 
-  // Use dynamic menus if available from API
-  const useDynamicMenus = !!menuConfigData?.menu_config?.menus?.length;
+  // Use dynamic menus if:
+  // 1. Feature flag is enabled (default: true, set NEXT_PUBLIC_FEATURE_DYNAMIC_MENUS=false to disable)
+  // 2. API returns menu config with menus
+  const useDynamicMenus =
+    FEATURE_DYNAMIC_MENUS && !!menuConfigData?.menu_config?.menus?.length;
 
   // Include userState.isLoaded in loading check to prevent SSR mismatch
   const isLoading = !userState.isLoaded || profileLoading || (isAgent && menuConfigLoading);
@@ -245,18 +249,21 @@ export function useAgentDashboard(): UseAgentDashboardReturn {
   }
 
   // Get user permissions (from auth data or agent profile)
-  const userPermissions = new Set(user?.permissions || []);
+  const userPermissions = useMemo(
+    () => new Set(user?.permissions || []),
+    [user?.permissions]
+  );
 
-  // Helper to check permission
-  const hasPermission = (permission: string): boolean => {
+  // Helper to check permission (memoized to prevent infinite re-renders)
+  const hasPermission = useCallback((permission: string): boolean => {
     // Supervisors have all permissions within their entity
     if (context?.isSupervisor) return true;
     // Check if user has the specific permission
     return userPermissions.has(permission);
-  };
+  }, [context?.isSupervisor, userPermissions]);
 
-  // Filter menu items by permissions
-  const filterMenuItems = (items: MenuItem[]): MenuItem[] => {
+  // Filter menu items by permissions (memoized to prevent infinite re-renders)
+  const filterMenuItems = useCallback((items: MenuItem[]): MenuItem[] => {
     return items
       .filter((item) => {
         // Check group/item level permission
@@ -286,7 +293,7 @@ export function useAgentDashboard(): UseAgentDashboardReturn {
         return item;
       })
       .filter(Boolean) as MenuItem[];
-  };
+  }, [hasPermission]);
 
   // Determine if this is a ministry_agent (supervisor over ministry entities)
   const isMinistryAgent = agentProfile?.agent_type === 'ministry_agent';
@@ -299,7 +306,8 @@ export function useAgentDashboard(): UseAgentDashboardReturn {
 
   // Get filtered menu items
   // For ministry_agent: merge menus from all entities of the ministry
-  const menuItems: MenuItem[] = (() => {
+  // Memoize to prevent infinite re-render loop when used as useEffect dependency
+  const menuItems: MenuItem[] = useMemo(() => {
     if (isMinistryAgent && ministryEntities.length > 0) {
       // Merge menus from all ministry entities
       const mergedMenus: MenuItem[] = [];
@@ -348,7 +356,7 @@ export function useAgentDashboard(): UseAgentDashboardReturn {
 
     // Regular entity agent: return entity-specific menus
     return entityConfig ? filterMenuItems(entityConfig.menuItems) : [];
-  })();
+  }, [isMinistryAgent, ministryEntities, entityConfig, filterMenuItems]);
 
   // Debug: log menu items count
   if (typeof window !== 'undefined' && entityConfig) {

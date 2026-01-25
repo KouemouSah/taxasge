@@ -14,7 +14,7 @@
 
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
@@ -189,7 +189,11 @@ export function GenericAgentSidebar({
   const entityConfig = propConfig || hookConfig;
 
   // Build menu items with locale in href (for static menus)
-  const localizedMenuItems = menuItems.map((item) => localizeMenuItem(item, locale));
+  // Memoize to prevent infinite re-render loop when used as useEffect dependency
+  const localizedMenuItems = useMemo(
+    () => menuItems.map((item) => localizeMenuItem(item, locale)),
+    [menuItems, locale]
+  );
 
   // Debug: log which menu system is being used
   if (typeof window !== 'undefined') {
