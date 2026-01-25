@@ -152,6 +152,49 @@ class AgentQueueEventHandler:
                 f"Entity: {entity_code}"
             )
 
+            # Trigger auto-assignment to route to correct entity's agents
+            # CRITICAL: workflow_code determines which entity's agents receive the assignment
+            # e.g., PASAPORTE_NUEVO -> CNEDOGE_PASAPORTE agents
+            from app.modules.assignment.services.auto_assignment_service import AutoAssignmentService
+
+            auto_assignment_service = AutoAssignmentService()
+            assignment = await auto_assignment_service.auto_assign_item(
+                db=conn,
+                item_id=UUID(service_request_id),
+                item_type="service_request",
+                item_data={
+                    "workflow_code": workflow_code,
+                    "entity_code": entity_code,
+                },
+                entity_type="entity",
+                entity_id=None,  # Let workflow_code determine the entity
+                priority_level=5,
+                workflow_code=workflow_code  # Route by workflow to correct entity
+            )
+
+            if assignment:
+                # Sync assigned_to in service_requests for backward compatibility
+                agent_user_id = await conn.fetchval(
+                    "SELECT user_id FROM agent_profiles WHERE id = $1",
+                    assignment.agent_profile_id
+                )
+                if agent_user_id:
+                    await conn.execute("""
+                        UPDATE service_requests
+                        SET assigned_to = $1, assigned_at = NOW(), updated_at = NOW()
+                        WHERE id = $2
+                    """, agent_user_id, UUID(service_request_id))
+
+                logger.info(
+                    f"Service request {sr['reference']} auto-assigned to agent "
+                    f"{assignment.agent_profile_id} via PAYMENT_COMPLETED handler"
+                )
+            else:
+                logger.warning(
+                    f"No agent available for service request {sr['reference']} "
+                    f"(workflow: {workflow_code})"
+                )
+
             # Note: service_request status remains 'PAID', agent queue handles the workflow
 
         except Exception as e:

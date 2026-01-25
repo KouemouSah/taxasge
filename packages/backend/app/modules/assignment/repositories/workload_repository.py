@@ -71,16 +71,48 @@ class WorkloadRepository:
 
         return AgentWorkload(**data)
 
-    async def get_available_agents(self, db, max_workload_pct: float = 80) -> List[AgentWorkload]:
+    async def get_available_agents(
+        self,
+        db,
+        max_workload_pct: float = 80,
+        entity_id: Optional[UUID] = None,
+        workflow_code: Optional[str] = None
+    ) -> List[AgentWorkload]:
         """Get available agents for assignment
 
         Migration 048: Uses unified 'agent' role with agent_profiles table
         Migration 053/054: Uses assignments table with agent_profile_id
+        Migration 058: Entity-based routing via agent_profiles.entity_id
+
+        Args:
+            db: Database connection
+            max_workload_pct: Maximum workload percentage (default 80%)
+            entity_id: Filter agents by entity_id (CRITICAL for correct routing)
+            workflow_code: Alternative: find entity by workflow_code and filter agents
+
+        Returns:
+            List of available agents, filtered by entity if specified
         """
-        query = """
+        # If workflow_code provided but no entity_id, find the entity
+        if workflow_code and not entity_id:
+            entity_id = await self._get_entity_id_for_workflow(db, workflow_code)
+            if entity_id:
+                logger.info(f"Resolved workflow_code '{workflow_code}' to entity_id '{entity_id}'")
+
+        # Build query with optional entity filter
+        params = [max_workload_pct]
+        entity_filter = ""
+
+        if entity_id:
+            entity_filter = "AND ap.entity_id = $2"
+            params.append(entity_id)
+            logger.info(f"Filtering agents by entity_id: {entity_id}")
+
+        query = f"""
             SELECT
                 ap.id as agent_profile_id,
                 ap.user_id,
+                ap.entity_id,
                 COALESCE(u.full_name, u.first_name || ' ' || u.last_name) as agent_name,
                 u.email as agent_email,
                 COUNT(a.id) FILTER (WHERE a.status IN ('assigned', 'in_progress')) as current_assignments,
@@ -102,14 +134,19 @@ class WorkloadRepository:
             AND u.role = 'agent'
             AND u.status = 'active'
             AND COALESCE(aw.availability::text, 'available') = 'available'
-            GROUP BY ap.id, ap.user_id, u.id, u.full_name, u.first_name, u.last_name, u.email,
+            {entity_filter}
+            GROUP BY ap.id, ap.user_id, ap.entity_id, u.id, u.full_name, u.first_name, u.last_name, u.email,
                      aw.max_concurrent_assignments, aw.workload_status, aw.availability,
                      aw.success_rate, aw.avg_processing_time_hours, ap.specializations
             HAVING (COUNT(a.id) FILTER (WHERE a.status IN ('assigned', 'in_progress'))::float /
                     COALESCE(aw.max_concurrent_assignments, 20)) * 100 < $1
             ORDER BY COUNT(a.id) FILTER (WHERE a.status IN ('assigned', 'in_progress')) ASC
         """
-        rows = await db.fetch(query, max_workload_pct)
+        rows = await db.fetch(query, *params)
+
+        if not rows and entity_id:
+            logger.warning(f"No available agents found for entity_id: {entity_id}")
+
         agents = []
         for row in rows:
             data = dict(row)
@@ -117,8 +154,44 @@ class WorkloadRepository:
             max_assign = data.get('max_concurrent_assignments', 20) or 20
             data['capacity_percentage'] = (current / max_assign) * 100 if max_assign > 0 else 0
             data['is_available'] = True
+            # Remove entity_id from data as it's not in AgentWorkload model
+            data.pop('entity_id', None)
             agents.append(AgentWorkload(**data))
+
+        logger.info(f"Found {len(agents)} available agents" + (f" for entity {entity_id}" if entity_id else ""))
         return agents
+
+    async def _get_entity_id_for_workflow(self, db, workflow_code: str) -> Optional[UUID]:
+        """Find the entity that handles a specific workflow_code
+
+        Searches entities.workflow_codes JSONB array for the workflow.
+
+        Args:
+            db: Database connection
+            workflow_code: The workflow code (e.g., 'PASAPORTE_NUEVO')
+
+        Returns:
+            entity_id if found, None otherwise
+        """
+        # Search for entity where workflow_code is in the workflow_codes JSONB array
+        row = await db.fetchrow("""
+            SELECT id FROM entities
+            WHERE workflow_codes ? $1
+            AND is_active = true
+            ORDER BY
+                CASE entity_type
+                    WHEN 'department' THEN 1
+                    WHEN 'entity' THEN 2
+                    ELSE 3
+                END
+            LIMIT 1
+        """, workflow_code)
+
+        if row:
+            return row['id']
+
+        logger.warning(f"No entity found for workflow_code: {workflow_code}")
+        return None
 
     async def get_workload_stats(
         self,

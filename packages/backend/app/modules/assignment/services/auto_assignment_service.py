@@ -65,7 +65,8 @@ class AutoAssignmentService:
         item_data: Dict[str, Any],
         entity_type: str = "ministry",
         entity_id: Optional[str] = None,
-        priority_level: int = 5
+        priority_level: int = 5,
+        workflow_code: Optional[str] = None
     ) -> Optional[Assignment]:
         """Automatically assign an item to the best available agent
 
@@ -75,20 +76,42 @@ class AutoAssignmentService:
             item_type: Type of item (declaration type or workflow code)
             item_data: Item data for rule evaluation
             entity_type: Entity type for filtering agents
-            entity_id: Entity ID for filtering agents
+            entity_id: Entity ID (UUID) for filtering agents by entity
             priority_level: Priority 1-10 (default 5)
+            workflow_code: Workflow code to determine entity (e.g., 'PASAPORTE_NUEVO')
 
         Returns:
             Assignment or None if no agent available
+
+        Note:
+            CRITICAL: Either entity_id or workflow_code should be provided
+            to ensure correct routing to the appropriate entity's agents.
+            - PASAPORTE_* workflows -> CNEDOGE_PASAPORTE agents
+            - RESIDENCIA_* workflows -> CNEDOGE_RESIDENCIA agents
         """
         # Get active rules for this entity
         rules = await self.rules_repository.get_active_rules(
             db, entity_type=entity_type, entity_id=entity_id
         )
 
-        # Get available agents
+        # Convert entity_id string to UUID if needed
+        entity_uuid = None
+        if entity_id:
+            try:
+                entity_uuid = UUID(entity_id) if isinstance(entity_id, str) else entity_id
+            except (ValueError, TypeError):
+                logger.warning(f"Invalid entity_id format: {entity_id}")
+
+        # Use workflow_code to determine entity if not provided
+        # This is the key fix: route by workflow_code -> entity -> agents
+        effective_workflow = workflow_code or item_type
+
+        # Get available agents filtered by entity
         available_agents = await self.workload_repository.get_available_agents(
-            db, max_workload_pct=80.0
+            db,
+            max_workload_pct=80.0,
+            entity_id=entity_uuid,
+            workflow_code=effective_workflow if not entity_uuid else None
         )
 
         if not available_agents:
@@ -153,7 +176,8 @@ class AutoAssignmentService:
         db,
         item_id: UUID,
         item_type: str,
-        priority_level: int = 5
+        priority_level: int = 5,
+        workflow_code: Optional[str] = None
     ) -> Optional[Assignment]:
         """Simple auto-assign without rule evaluation (backward compatible)
 
@@ -162,13 +186,20 @@ class AutoAssignmentService:
             item_id: UUID of the item
             item_type: Type of item
             priority_level: Priority 1-10
+            workflow_code: Workflow code for entity-based routing
+
+        Note:
+            For service_requests, item_type is usually the workflow_code.
+            The workflow_code is used to determine which entity's agents
+            should receive the assignment (e.g., PASAPORTE_NUEVO -> CNEDOGE_PASAPORTE)
         """
         return await self.auto_assign_item(
             db=db,
             item_id=item_id,
             item_type=item_type,
             item_data={},
-            priority_level=priority_level
+            priority_level=priority_level,
+            workflow_code=workflow_code or item_type  # Use item_type as fallback
         )
 
     async def rebalance_assignments(

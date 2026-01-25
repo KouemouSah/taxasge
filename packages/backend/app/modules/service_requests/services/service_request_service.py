@@ -1152,6 +1152,9 @@ class ServiceRequestService:
                 )
 
                 # 2. Trigger auto-assignment to select best agent
+                # CRITICAL: Pass workflow_code for entity-based routing
+                # This ensures PASAPORTE_* goes to CNEDOGE_PASAPORTE agents,
+                # and RESIDENCIA_* goes to CNEDOGE_RESIDENCIA agents
                 auto_assignment_service = AutoAssignmentService()
                 assignment = await auto_assignment_service.auto_assign_item(
                     db=db,
@@ -1164,8 +1167,9 @@ class ServiceRequestService:
                         "priority": request.get("priority", "NORMAL"),
                     },
                     entity_type="entity",
-                    entity_id=entity_code,
-                    priority_level=5
+                    entity_id=None,  # Let workflow_code determine the entity
+                    priority_level=5,
+                    workflow_code=workflow_code  # NEW: Route by workflow to correct entity
                 )
 
                 if assignment:
