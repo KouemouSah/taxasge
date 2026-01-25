@@ -326,7 +326,7 @@ class AssignmentRepository:
                 ) as deadline_compliance_rate
             FROM assignments
             WHERE agent_profile_id = $1
-            AND assigned_at >= NOW() - ($2::int || ' days')::interval
+            AND assigned_at >= NOW() - MAKE_INTERVAL(days => $2)
         """
         row = await db.fetchrow(query, agent_profile_id, period_days)
 
@@ -335,7 +335,7 @@ class AssignmentRepository:
             SELECT status, COUNT(*) as count
             FROM assignments
             WHERE agent_profile_id = $1
-            AND assigned_at >= NOW() - ($2::int || ' days')::interval
+            AND assigned_at >= NOW() - MAKE_INTERVAL(days => $2)
             GROUP BY status
         """
         status_rows = await db.fetch(status_query, agent_profile_id, period_days)
@@ -346,7 +346,7 @@ class AssignmentRepository:
             SELECT item_type, COUNT(*) as count
             FROM assignments
             WHERE agent_profile_id = $1
-            AND assigned_at >= NOW() - ($2::int || ' days')::interval
+            AND assigned_at >= NOW() - MAKE_INTERVAL(days => $2)
             GROUP BY item_type
         """
         type_rows = await db.fetch(type_query, agent_profile_id, period_days)
@@ -393,7 +393,7 @@ class AssignmentRepository:
                 AVG(processing_duration_hours) FILTER (WHERE status = 'completed') as avg_processing_time
             FROM assignments
             WHERE assigned_by_profile_id = $1
-            AND assigned_at >= NOW() - ($2::int || ' days')::interval
+            AND assigned_at >= NOW() - MAKE_INTERVAL(days => $2)
         """
         row = await db.fetchrow(query, supervisor_profile_id, period_days)
 
