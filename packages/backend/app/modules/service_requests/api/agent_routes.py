@@ -1266,12 +1266,14 @@ async def get_entity_service_requests(
             detail=f"Entity {entity_code} not found"
         )
 
-    # Parse workflow_codes from JSONB
+    # Parse workflow_codes from JSONB and ensure it's a proper list
     entity_workflows = entity['workflow_codes']
     if isinstance(entity_workflows, str):
         entity_workflows = json.loads(entity_workflows)
     if not entity_workflows:
         entity_workflows = []
+    # Convert to list of strings for asyncpg array binding
+    entity_workflows = [str(wf) for wf in entity_workflows] if entity_workflows else []
 
     # Get statuses for the action
     statuses = ActionStatusMapping.get_statuses(action)
@@ -1288,7 +1290,8 @@ async def get_entity_service_requests(
         params.append(workflow_code)
         param_idx += 1
     elif entity_workflows:
-        conditions.append(f"sr.workflow_code = ANY(${param_idx}::text[])")
+        # asyncpg converts Python list to PostgreSQL array automatically
+        conditions.append(f"sr.workflow_code = ANY(${param_idx})")
         params.append(entity_workflows)
         param_idx += 1
 
