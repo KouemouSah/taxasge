@@ -1319,8 +1319,9 @@ async def get_entity_service_requests(
         param_idx += 1
 
     # Priority filter
+    # Cast priority enum to text for comparison
     if priority:
-        conditions.append(f"sr.priority = ${param_idx}")
+        conditions.append(f"sr.priority::text = ${param_idx}")
         params.append(priority.upper())
         param_idx += 1
 

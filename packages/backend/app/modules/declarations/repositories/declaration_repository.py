@@ -415,11 +415,13 @@ class DeclarationRepository:
             params = [user_id]
 
             if status:
-                where_conditions.append(f"status = ${len(params) + 1}")
+                # Cast enum to text for comparison
+                where_conditions.append(f"status::text = ${len(params) + 1}")
                 params.append(status.value)
 
             if declaration_type:
-                where_conditions.append(f"declaration_type = ${len(params) + 1}")
+                # Cast enum to text for comparison
+                where_conditions.append(f"declaration_type::text = ${len(params) + 1}")
                 params.append(declaration_type.value)
 
             where_clause = " AND ".join(where_conditions)
@@ -763,11 +765,13 @@ class DeclarationRepository:
                 params.append(user_id)
 
             if status:
-                where_conditions.append(f"d.status = ${len(params) + 1}")
+                # Cast enum to text for comparison
+                where_conditions.append(f"d.status::text = ${len(params) + 1}")
                 params.append(status.value)
 
             if declaration_type:
-                where_conditions.append(f"d.declaration_type = ${len(params) + 1}")
+                # Cast enum to text for comparison
+                where_conditions.append(f"d.declaration_type::text = ${len(params) + 1}")
                 params.append(declaration_type.value)
 
             if date_from:

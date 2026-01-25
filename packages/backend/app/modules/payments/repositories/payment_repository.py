@@ -251,7 +251,8 @@ class PaymentRepository:
                 params.append(user_id)
 
             if status:
-                where_conditions.append(f"status = ${len(params) + 1}")
+                # Cast enum to text for comparison
+                where_conditions.append(f"status::text = ${len(params) + 1}")
                 params.append(status)
 
             if payment_method:
