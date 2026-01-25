@@ -33,8 +33,10 @@ from app.modules.assignment.repositories.workload_repository import (
 )
 from app.core.database import get_db_connection
 
-# Permission middleware
-from app.modules.permissions.middleware import require_permission
+# Permission middleware - use permission_required (dependency) instead of require_permission (decorator)
+# The decorator requires permission_service in kwargs, the dependency handles it automatically
+from app.modules.permissions.middleware import permission_required
+from app.modules.permissions.services.permission_service import PermissionService, get_permission_service
 
 import logging
 
@@ -163,12 +165,12 @@ async def _get_agent_profile_id_for_user(user_id: str, db) -> Optional[UUID]:
 # ============================================================================
 
 @router.get("/agent/{agent_profile_id}", response_model=AgentAssignmentStats)
-@require_permission("agent.view_performance")
 async def get_agent_statistics(
     agent_profile_id: UUID,
     period_days: int = Query(30, ge=1, le=365, description="Statistics period in days"),
     current_user: UserResponse = Depends(get_current_user),
-    db = Depends(get_db_connection)
+    db = Depends(get_db_connection),
+    _: None = Depends(permission_required("agent.view_performance"))
 ):
     """
     **Get comprehensive statistics for an agent**
@@ -230,11 +232,11 @@ async def get_agent_statistics(
 
 
 @router.get("/agent/{agent_profile_id}/performance", response_model=AgentPerformanceMetrics)
-@require_permission("agent.view_performance")
 async def get_agent_performance(
     agent_profile_id: UUID,
     current_user: UserResponse = Depends(get_current_user),
-    db = Depends(get_db_connection)
+    db = Depends(get_db_connection),
+    _: None = Depends(permission_required("agent.view_performance"))
 ):
     """
     **Get real-time performance metrics for an agent**
@@ -311,13 +313,13 @@ async def get_agent_performance(
 
 
 @router.get("/agent/{agent_profile_id}/trends", response_model=PerformanceTrendsResponse)
-@require_permission("agent.view_performance")
 async def get_agent_trends(
     agent_profile_id: UUID,
     period_days: int = Query(30, ge=7, le=180, description="Trend period in days"),
     granularity: str = Query("daily", pattern="^(daily|weekly)$"),
     current_user: UserResponse = Depends(get_current_user),
-    db = Depends(get_db_connection)
+    db = Depends(get_db_connection),
+    _: None = Depends(permission_required("agent.view_performance"))
 ):
     """
     **Get performance trends for an agent over time**
@@ -379,11 +381,11 @@ async def get_agent_trends(
 # ============================================================================
 
 @router.get("/team/performance", response_model=TeamPerformanceResponse)
-@require_permission("dashboard.team_stats")
 async def get_team_performance(
     period_days: int = Query(30, ge=1, le=365, description="Statistics period in days"),
     current_user: UserResponse = Depends(get_current_user),
-    db = Depends(get_db_connection)
+    db = Depends(get_db_connection),
+    _: None = Depends(permission_required("dashboard.team_stats"))
 ):
     """
     **Get team performance metrics**
@@ -512,10 +514,10 @@ async def get_team_performance(
 
 
 @router.get("/team/workload")
-@require_permission("agent.view_workload")
 async def get_team_workload(
     current_user: UserResponse = Depends(get_current_user),
-    db = Depends(get_db_connection)
+    db = Depends(get_db_connection),
+    _: None = Depends(permission_required("agent.view_workload"))
 ):
     """
     **Get team workload balance report**
@@ -616,12 +618,12 @@ async def get_team_workload(
 # ============================================================================
 
 @router.get("/supervisor/{supervisor_profile_id}")
-@require_permission("dashboard.view")
 async def get_supervisor_statistics(
     supervisor_profile_id: UUID,
     period_days: int = Query(30, ge=1, le=365, description="Statistics period in days"),
     current_user: UserResponse = Depends(get_current_user),
-    db = Depends(get_db_connection)
+    db = Depends(get_db_connection),
+    _: None = Depends(permission_required("dashboard.view"))
 ):
     """
     **Get statistics for a supervisor**
@@ -677,13 +679,13 @@ async def get_supervisor_statistics(
 # ============================================================================
 
 @router.get("/comparison", response_model=List[ComparisonMetrics])
-@require_permission("reports.view")
 async def get_comparison_metrics(
     metric_type: str = Query(..., pattern="^(performance|workload|quality|speed)$"),
     current_period_days: int = Query(30, ge=7, le=90),
     previous_period_days: int = Query(30, ge=7, le=90),
     current_user: UserResponse = Depends(get_current_user),
-    db = Depends(get_db_connection)
+    db = Depends(get_db_connection),
+    _: None = Depends(permission_required("reports.view"))
 ):
     """
     **Compare metrics between two periods**
@@ -724,11 +726,11 @@ async def get_comparison_metrics(
 # ============================================================================
 
 @router.post("/export")
-@require_permission("reports.generate")
 async def export_statistics(
     request: ExportRequest,
     current_user: UserResponse = Depends(get_current_user),
-    db = Depends(get_db_connection)
+    db = Depends(get_db_connection),
+    _: None = Depends(permission_required("reports.generate"))
 ):
     """
     **Export statistics in various formats**
@@ -765,10 +767,10 @@ async def export_statistics(
 # ============================================================================
 
 @router.get("/realtime/summary")
-@require_permission("dashboard.view")
 async def get_realtime_summary(
     current_user: UserResponse = Depends(get_current_user),
-    db = Depends(get_db_connection)
+    db = Depends(get_db_connection),
+    _: None = Depends(permission_required("dashboard.view"))
 ):
     """
     **Get real-time summary for dashboard**
