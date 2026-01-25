@@ -20,10 +20,8 @@ import {
   CheckCircle,
   Calendar,
   History,
-  AlertCircle,
   ArrowLeft,
   FileText,
-  Loader2,
   Construction,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -72,7 +70,7 @@ export default function WorkflowActionPage() {
   const workflowGroup = params.workflowGroup as string;
   const action = params.action as string;
 
-  const { isLoading, context } = useAgentDashboard();
+  const { isLoading } = useAgentDashboard();
 
   // Validate action
   const isValidAction = VALID_ACTIONS.includes(action as ActionType);
